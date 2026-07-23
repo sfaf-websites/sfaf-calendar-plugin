@@ -1,0 +1,25 @@
+/* SFAF Calendar Satellite — admin (settings + shortcode generator) */
+
+.sfaf-sat-wrap { max-width: 820px; }
+.sfaf-sat-card { background: #fff; border: 1px solid #E2E5EA; border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+.sfaf-sat-card h2 { margin-top: 0; }
+.sfaf-sat-status { margin-left: 10px; font-size: 13px; color: #6B7280; }
+.sfaf-sat-status.ok { color: #065f46; }
+.sfaf-sat-status.err { color: #991b1b; }
+
+/* Shortcode generator */
+.uc-generator { padding: 24px; }
+.uc-generator-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+.uc-gen-field { display: flex; flex-direction: column; gap: 6px; }
+.uc-gen-field label { font-size: 13px; font-weight: 600; color: #1A1D21; }
+.uc-gen-input { padding: 9px 12px; border: 1px solid #E2E5EA; border-radius: 8px; font-size: 14px; background: #F7F8FA; }
+.uc-gen-checkbox { flex-direction: row !important; align-items: center; gap: 8px; }
+.uc-gen-output-wrap { border-top: 1px solid #E2E5EA; padding-top: 18px; }
+.uc-gen-output-wrap > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.uc-gen-output-row { display: flex; gap: 10px; align-items: stretch; }
+.uc-gen-output { flex: 1; padding: 12px 16px; background: #373433; color: #7CFFE0; border: none; border-radius: 8px; font-family: monospace; font-size: 14px; }
+.uc-gen-copied { display: inline-block; margin-top: 8px; color: #10B981; font-size: 13px; font-weight: 600; }
+
+@media (max-width: 782px) {
+    .uc-generator-grid { grid-template-columns: 1fr; }
+}

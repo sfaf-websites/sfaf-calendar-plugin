@@ -1,0 +1,160 @@
+<?php
+/**
+ * Single event template for the SFAF Calendar plugin.
+ * Loaded via the template_include filter unless the theme provides its own
+ * single-uc_event.php.
+ */
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+get_header();
+
+while ( have_posts() ) :
+    the_post();
+    $post_id = get_the_ID();
+
+    $date       = get_post_meta( $post_id, '_uc_event_date', true );
+    $start_time = get_post_meta( $post_id, '_uc_start_time', true );
+    $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
+    $location   = get_post_meta( $post_id, '_uc_location', true );
+    $recurrence = get_post_meta( $post_id, '_uc_recurrence', true );
+
+    $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
+    $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
+    $venues     = wp_get_post_terms( $post_id, 'uc_venue' );
+
+    $cat_color = ! empty( $categories ) ? ( get_term_meta( $categories[0]->term_id, '_uc_category_color', true ) ?: '#16BECF' ) : '#16BECF';
+
+    $date_ts = $date ? strtotime( $date ) : false;
+
+    $recurrence_labels = array(
+        'daily'    => 'Repeats daily',
+        'weekly'   => 'Repeats weekly',
+        'biweekly' => 'Repeats every 2 weeks',
+        'monthly'  => 'Repeats monthly',
+    );
+
+    $settings   = get_option( 'uc_settings', array() );
+    $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
+    ?>
+    <div class="uc-single" style="--event-color: <?php echo esc_attr( $cat_color ); ?>">
+        <div class="uc-single-inner">
+
+            <?php if ( $brand_logo ) : ?>
+                <div class="uc-single-brand">
+                    <img src="<?php echo esc_url( $brand_logo ); ?>" alt="" class="uc-single-logo" />
+                </div>
+            <?php endif; ?>
+
+            <a href="<?php echo esc_url( get_post_type_archive_link( 'uc_event' ) ); ?>" class="uc-single-back">&larr; All Events</a>
+
+            <header class="uc-single-header">
+                <div class="uc-single-badges">
+                    <?php foreach ( $categories as $cat ) :
+                        $c = get_term_meta( $cat->term_id, '_uc_category_color', true ) ?: '#16BECF'; ?>
+                        <span class="uc-badge" style="--badge-color: <?php echo esc_attr( $c ); ?>"><?php echo esc_html( $cat->name ); ?></span>
+                    <?php endforeach; ?>
+                    <?php if ( $recurrence && isset( $recurrence_labels[ $recurrence ] ) ) : ?>
+                        <span class="uc-badge uc-badge-recurrence">🔄 <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
+                    <?php endif; ?>
+                    <?php if ( sfaf_is_galaxy_need( $post_id ) ) : ?>
+                        <span class="uc-badge uc-badge-volunteer">🤝 Volunteer</span>
+                    <?php endif; ?>
+                </div>
+
+                <h1 class="uc-single-title"><?php the_title(); ?></h1>
+
+                <?php if ( ! empty( $organizers ) ) : ?>
+                    <p class="uc-single-organizer">Hosted by
+                        <?php
+                        $names = wp_list_pluck( $organizers, 'name' );
+                        echo esc_html( implode( ', ', $names ) );
+                        ?>
+                    </p>
+                <?php endif; ?>
+
+                <?php
+                $series_link = sfaf_series_link( $post_id );
+                if ( $series_link ) {
+                    echo '<p class="uc-single-series-link">' . $series_link . '</p>';
+                }
+                ?>
+            </header>
+
+            <div class="uc-single-grid">
+                <div class="uc-single-main">
+                    <?php if ( sfaf_event_image_url( $post_id ) ) : ?>
+                        <div class="uc-single-image"><?php echo sfaf_event_thumbnail( $post_id, 'large' ); ?></div>
+                    <?php endif; ?>
+
+                    <div class="uc-single-body">
+                        <?php the_content(); ?>
+                    </div>
+
+                    <?php
+                    // Donate block (only shows when a campaign URL is set).
+                    echo sfaf_donate_block( $post_id );
+
+                    // Galaxy Digital volunteer signup (imported needs only).
+                    echo sfaf_galaxy_block( $post_id );
+
+                    // Frequently asked questions (series-level, inherited by children).
+                    echo sfaf_faq_accordion_html( $post_id );
+
+                    // Other events in this series.
+                    echo sfaf_series_list_html( $post_id );
+                    ?>
+                </div>
+
+                <aside class="uc-single-sidebar">
+                    <div class="uc-single-card">
+                        <ul class="uc-single-facts">
+                            <?php if ( $date_ts ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon">📅</span>
+                                    <span><strong><?php echo esc_html( date_i18n( 'l, F j, Y', $date_ts ) ); ?></strong></span>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ( $start_time ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon">🕐</span>
+                                    <span><?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?><?php echo $end_time ? ' – ' . esc_html( date( 'g:i A', strtotime( $end_time ) ) ) : ''; ?></span>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ( $location ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon">📍</span>
+                                    <span><?php echo esc_html( $location ); ?></span>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $venues ) ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon">🏛️</span>
+                                    <span><?php echo esc_html( implode( ', ', wp_list_pluck( $venues, 'name' ) ) ); ?></span>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+
+                        <?php
+                        // RSVP block.
+                        echo sfaf_rsvp_block( $post_id );
+
+                        // Add to calendar + reminders.
+                        $secondary = sfaf_add_to_calendar( $post_id ) . sfaf_reminders_button( $post_id );
+                        if ( trim( $secondary ) !== '' ) :
+                        ?>
+                            <div class="uc-single-actions"><?php echo $secondary; ?></div>
+                        <?php endif; ?>
+
+                        <?php
+                        // Social share (full variant).
+                        echo sfaf_social_share_buttons( $post_id );
+                        ?>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+    <?php
+endwhile;
+
+get_footer();
