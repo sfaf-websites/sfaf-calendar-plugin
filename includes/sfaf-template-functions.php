@@ -53,6 +53,109 @@ function sfaf_is_embed_context() {
     return $flag;
 }
 
+/* -------------------------------------------------------------------------
+ * SFAF icon set (brand guide v3.0, p.14)
+ *
+ * DESIGN SPEC — match these when adding an icon so the set stays one family:
+ *
+ *   Grid          24 x 24 viewBox.
+ *   Live area     20 x 20 centred; keep artwork within x/y 2-22 so every icon
+ *                 optically sizes the same next to text.
+ *   Stroke        2px, round caps, round joins. No fills on interface icons.
+ *   Corners       Rounded throughout — arcs and round joins, never mitred.
+ *   Detail        Simplest shapes that still read; no interior detail that
+ *                 collapses below ~16px.
+ *   Color         currentColor only. Never hardcode a fill or stroke, so an
+ *                 icon inherits whatever text color its context sets. This is
+ *                 what lets the same icon sit on white, light gray and teal.
+ *   Sizing        1em square by default; scales with the surrounding font-size.
+ *
+ * Third-party platform marks (Facebook, LinkedIn) are the one intentional
+ * exception: they are solid rather than stroked, because those marks are
+ * defined as solid shapes and stop being recognisable when redrawn as
+ * outlines. They still use the same 24 grid, live area and currentColor.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Inner markup for each icon, drawn to the spec above.
+ *
+ * @return array<string,string>
+ */
+function sfaf_icon_paths() {
+    return array(
+        // Interface icons — 2px stroke, round caps/joins, no fill.
+        'clock'     => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+        'pin'       => '<path d="M12 21c4.3-4.7 6.5-8.2 6.5-11a6.5 6.5 0 0 0-13 0c0 2.8 2.2 6.3 6.5 11z"/><circle cx="12" cy="10" r="2.5"/>',
+        'calendar'  => '<rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/>',
+        'bell'      => '<path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/>',
+        'heart'     => '<path d="M12 20.5 4.8 13.3a4.6 4.6 0 0 1 6.5-6.5l.7.7.7-.7a4.6 4.6 0 0 1 6.5 6.5z"/>',
+        'handshake' => '<path d="M3 10.5 6.6 7a2.2 2.2 0 0 1 3.1 0L12 9.3l2.3-2.3a2.2 2.2 0 0 1 3.1 0L21 10.5"/><path d="M3 10.5v2.9l5.5 5a2 2 0 0 0 2.8 0l.7-.7"/><path d="M21 10.5v2.9l-5.5 5a2 2 0 0 1-2.8 0L12 17"/>',
+        'repeat'    => '<path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/>',
+        'hand'      => '<path d="M9 12V6.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M15 11.5V9a1.5 1.5 0 0 1 3 0v5.5A6.5 6.5 0 0 1 11.5 21 6.5 6.5 0 0 1 5 14.5V13a1.5 1.5 0 0 1 3 0v1"/>',
+        'cloud'     => '<path d="M7 19a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 17.7 9.7 4.2 4.2 0 0 1 17.2 19z"/>',
+        'link'      => '<path d="M10.5 13.5a4.5 4.5 0 0 0 6.8.5l2.4-2.4a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4"/><path d="M13.5 10.5a4.5 4.5 0 0 0-6.8-.5L4.3 12.4a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4"/>',
+        'bolt'      => '<path d="M13 2.5 4.5 14H11l-1 7.5L19.5 10H13z"/>',
+        'venue'     => '<path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/>',
+        'mail'      => '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/>',
+        'check'     => '<path d="M20 6.5 9.5 17 4 11.5"/>',
+        'x'         => '<path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/>',
+        'home'      => '<path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/>',
+        'users'     => '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/>',
+        'menu'      => '<path d="M4 7h16M4 12h16M4 17h16"/>',
+        'palette'   => '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.9 2-2s.6-2 2-2h1.6a2.9 2.9 0 0 0 2.9-3A8.6 8.6 0 0 0 12 3.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16.5" cy="11" r="1"/>',
+
+        // Platform marks — solid, see note above.
+        'facebook'  => '<path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/>',
+        'linkedin'  => '<path d="M7.1 20H4.2V9.5h2.9zM5.65 8.2A1.7 1.7 0 1 1 5.65 4.8a1.7 1.7 0 0 1 0 3.4zM20 20h-2.9v-5.1c0-1.2 0-2.8-1.7-2.8s-2 1.35-2 2.7V20H10.5V9.5h2.8v1.45h.05A3.05 3.05 0 0 1 16.1 9.3c3 0 3.9 2 3.9 4.5z"/>',
+    );
+}
+
+/**
+ * Render an inline SVG icon from the SFAF set.
+ *
+ * Icons use currentColor, so they take the text color of wherever they sit.
+ * Output is safe to echo directly — the markup is authored here, not user data.
+ *
+ * @param string $name Icon name, see sfaf_icon_paths().
+ * @param array  $args {
+ *     @type string $class Extra class names.
+ *     @type string $size  CSS length for width/height. Default '1em'.
+ *     @type string $label Accessible label. When empty the icon is decorative
+ *                         and hidden from assistive tech.
+ * }
+ * @return string SVG markup, or '' for an unknown icon.
+ */
+function sfaf_icon( $name, $args = array() ) {
+    $paths = sfaf_icon_paths();
+    if ( ! isset( $paths[ $name ] ) ) {
+        return '';
+    }
+
+    $args = array_merge( array( 'class' => '', 'size' => '1em', 'label' => '' ), (array) $args );
+
+    // Platform marks are solid; every interface icon is stroked.
+    $solid = in_array( $name, array( 'facebook', 'linkedin' ), true );
+
+    $classes = trim( 'sfaf-icon sfaf-icon-' . $name . ' ' . $args['class'] );
+
+    $svg  = '<svg class="' . esc_attr( $classes ) . '"';
+    $svg .= ' width="' . esc_attr( $args['size'] ) . '" height="' . esc_attr( $args['size'] ) . '"';
+    $svg .= ' viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"';
+    if ( $solid ) {
+        $svg .= ' fill="currentColor"';
+    } else {
+        $svg .= ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+    }
+    if ( '' !== $args['label'] ) {
+        $svg .= ' role="img" aria-label="' . esc_attr( $args['label'] ) . '"';
+    } else {
+        $svg .= ' aria-hidden="true" focusable="false"';
+    }
+    $svg .= '>' . $paths[ $name ] . '</svg>';
+
+    return $svg;
+}
+
 /**
  * Whether a per-event display feature should be shown.
  * Defaults to true when the meta has never been saved (new events).
@@ -166,22 +269,22 @@ function sfaf_social_share_buttons( $post_id, $compact = false ) {
     $links = array(
         'facebook' => array(
             'label' => 'Facebook',
-            'icon'  => 'f',
+            'icon'  => 'facebook',
             'url'   => 'https://www.facebook.com/sharer/sharer.php?u=' . $enc_url,
         ),
         'x' => array(
             'label' => 'X',
-            'icon'  => '𝕏',
+            'icon'  => 'x',
             'url'   => 'https://twitter.com/intent/tweet?url=' . $enc_url . '&text=' . $enc_title,
         ),
         'linkedin' => array(
             'label' => 'LinkedIn',
-            'icon'  => 'in',
+            'icon'  => 'linkedin',
             'url'   => 'https://www.linkedin.com/sharing/share-offsite/?url=' . $enc_url,
         ),
         'email' => array(
             'label' => 'Email',
-            'icon'  => '✉',
+            'icon'  => 'mail',
             'url'   => 'mailto:?subject=' . $enc_title . '&body=' . rawurlencode( 'Check out this event: ' ) . $enc_url,
         ),
     );
@@ -195,7 +298,7 @@ function sfaf_social_share_buttons( $post_id, $compact = false ) {
                href="<?php echo esc_url( $l['url'] ); ?>"
                target="_blank" rel="noopener noreferrer"
                aria-label="Share on <?php echo esc_attr( $l['label'] ); ?>">
-                <span class="uc-share-icon"><?php echo esc_html( $l['icon'] ); ?></span>
+                <span class="uc-share-icon"><?php echo sfaf_icon( $l['icon'], array( 'size' => '15px' ) ); ?></span>
             </a>
         <?php endforeach; ?>
     </div>
@@ -237,7 +340,7 @@ function sfaf_donate_block( $post_id ) {
                 <div class="uc-donate-bar"><div class="uc-donate-fill" style="width: <?php echo (int) $percent; ?>%"></div></div>
             </div>
         <?php endif; ?>
-        <a class="uc-donate-btn" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer">💚 Donate</a>
+        <a class="uc-donate-btn" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo sfaf_icon( 'heart' ); ?> Donate</a>
     </div>
     <?php
     return ob_get_clean();
@@ -259,7 +362,7 @@ function sfaf_add_to_calendar( $post_id ) {
     ob_start();
     ?>
     <div class="uc-addcal">
-        <button type="button" class="uc-addcal-toggle">📅 Add to Calendar</button>
+        <button type="button" class="uc-addcal-toggle"><?php echo sfaf_icon( 'calendar' ); ?> Add to Calendar</button>
         <div class="uc-addcal-menu">
             <?php if ( $google ) : ?>
                 <a href="<?php echo esc_url( $google ); ?>" target="_blank" rel="noopener noreferrer">Google Calendar</a>
@@ -282,14 +385,15 @@ function sfaf_reminders_button( $post_id ) {
     // In an embed the modal can't submit cross-origin, so this becomes a link to
     // the event page where the form works — see the embed context notes above.
     if ( sfaf_is_embed_context() ) {
-        return '<a class="uc-reminder-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">🔔 Get Reminders</a>';
+        return '<a class="uc-reminder-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">'
+            . sfaf_icon( 'bell' ) . ' Get Reminders</a>';
     }
 
     ob_start();
     ?>
     <button type="button" class="uc-reminder-btn"
             data-event-id="<?php echo (int) $post_id; ?>"
-            data-event-title="<?php echo esc_attr( get_the_title( $post_id ) ); ?>">🔔 Get Reminders</button>
+            data-event-title="<?php echo esc_attr( get_the_title( $post_id ) ); ?>"><?php echo sfaf_icon( 'bell' ); ?> Get Reminders</button>
     <?php
     return ob_get_clean();
 }
@@ -442,7 +546,7 @@ function sfaf_series_link( $post_id ) {
     $name   = get_the_title( $parent );
 
     return '<a class="uc-series-link" href="' . esc_url( get_permalink( $parent ) ) . '">'
-        . '🔁 Part of series: ' . esc_html( $name ) . '</a>';
+        . sfaf_icon( 'repeat' ) . ' Part of series: ' . esc_html( $name ) . '</a>';
 }
 
 /**
@@ -522,7 +626,7 @@ function sfaf_galaxy_block( $post_id ) {
     ob_start();
     ?>
     <div class="uc-galaxy-block">
-        <span class="uc-galaxy-spots">🙋 <?php echo (int) $slots; ?> spots remaining</span>
+        <span class="uc-galaxy-spots"><?php echo sfaf_icon( 'hand' ); ?> <?php echo (int) $slots; ?> spots remaining</span>
         <?php if ( $signup ) : ?>
             <a class="uc-galaxy-btn" href="<?php echo esc_url( $signup ); ?>" target="_blank" rel="noopener noreferrer">Sign Up to Volunteer</a>
         <?php endif; ?>
@@ -686,25 +790,32 @@ function sfaf_event_placeholder_svg( $post_id ) {
     $cats = wp_get_post_terms( $post_id, 'uc_event_category' );
     $name = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? $cats[0]->name : '';
 
+    // Approved brand palette (brand guide v3.0, p.9). The third value is the
+    // foreground: light brand backgrounds take the dark gray, dark ones take
+    // white, so the label and icon stay legible.
     $map = array(
-        'Support Groups'  => array( '#16BECF', 'people' ),
-        'Fundraising'     => array( '#E8573A', 'heart' ),
-        'Health Services' => array( '#10B981', 'cross' ),
-        'Volunteer'       => array( '#7B61FF', 'hands' ),
-        'Program Groups'  => array( '#F59E0B', 'community' ),
+        'Support Groups'  => array( '#16BECF', 'people',    '#373433' ), // Teal
+        'Fundraising'     => array( '#F04937', 'heart',     '#ffffff' ), // Red
+        'Health Services' => array( '#8CC745', 'cross',     '#373433' ), // Green
+        'Volunteer'       => array( '#8D54A2', 'hands',     '#ffffff' ), // Purple
+        'Program Groups'  => array( '#FFD900', 'community', '#373433' ), // Yellow
     );
 
     if ( $name !== '' && isset( $map[ $name ] ) ) {
-        $bg = $map[ $name ][0]; $icon = $map[ $name ][1]; $fg = '#ffffff'; $label = $name;
+        $bg = $map[ $name ][0]; $icon = $map[ $name ][1]; $fg = $map[ $name ][2]; $label = $name;
     } else {
-        $bg = '#373433'; $icon = 'calendar'; $fg = '#FFD500'; $label = $name !== '' ? $name : 'Event';
+        $bg = '#373433'; $icon = 'calendar'; $fg = '#FFD900'; $label = $name !== '' ? $name : 'Event';
     }
+
+    // The yellow brand accent would vanish on the yellow background, so fall
+    // back to the dark gray in that one case.
+    $accent = ( $bg === '#FFD900' ) ? '#373433' : '#FFD900';
 
     $svg  = '<svg class="uc-thumb-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' . esc_attr( $label ) . '">';
     $svg .= '<rect width="1600" height="900" fill="' . esc_attr( $bg ) . '"/>';
     // SFAF yellow brand accents: top-right corner + left edge stripe.
-    $svg .= '<polygon points="1600,0 1600,150 1450,0" fill="#FFD500"/>';
-    $svg .= '<rect x="0" y="0" width="14" height="900" fill="#FFD500"/>';
+    $svg .= '<polygon points="1600,0 1600,150 1450,0" fill="' . esc_attr( $accent ) . '"/>';
+    $svg .= '<rect x="0" y="0" width="14" height="900" fill="' . esc_attr( $accent ) . '"/>';
     $svg .= '<g fill="' . esc_attr( $fg ) . '">' . sfaf_event_icon_svg( $icon, $fg ) . '</g>';
     $svg .= '<text x="800" y="664" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="92" font-weight="700" fill="' . esc_attr( $fg ) . '">' . esc_html( $label ) . '</text>';
     $svg .= '</svg>';
@@ -743,6 +854,43 @@ function sfaf_series_image_url( $parent_id ) {
 }
 
 /**
+ * The ten approved SFAF brand colors (brand guide v3.0, p.9), in the order the
+ * palette is presented on p.18.
+ *
+ * @return array<string,string> hex => human label.
+ */
+function sfaf_brand_palette() {
+    return array(
+        '#FFD900' => 'Yellow',     // Pantone 109 CP
+        '#F7921E' => 'Orange',     // Pantone 144 CP
+        '#F04937' => 'Red',        // Pantone 179 CP
+        '#A30C33' => 'Burgundy',   // Pantone 201 CP
+        '#F1668C' => 'Pink',       // Pantone 1915 CP
+        '#8D54A2' => 'Purple',     // Pantone 258 CP
+        '#16BECF' => 'Teal',       // Pantone 7710 UP
+        '#8CC745' => 'Green',      // Pantone 3561 UP
+        '#D1D3D4' => 'Light Gray', // Cool Gray 3 CP
+        '#373433' => 'Dark Gray',  // Cool Gray 11 CP
+    );
+}
+
+/**
+ * The default category color when none is set.
+ */
+function sfaf_default_category_color() {
+    return '#16BECF';
+}
+
+/**
+ * Coerce a value to an approved brand color, falling back to the default.
+ * Enforced on save so an off-palette hex can never be stored from our UI.
+ */
+function sfaf_sanitize_brand_color( $hex ) {
+    $hex = strtoupper( trim( (string) $hex ) );
+    return array_key_exists( $hex, sfaf_brand_palette() ) ? $hex : sfaf_default_category_color();
+}
+
+/**
  * Category color (with the SFAF teal default), memoized per term for the request.
  * Cards and filter chips look this up repeatedly for the same handful of terms.
  */
@@ -751,7 +899,7 @@ function sfaf_category_color( $term_id ) {
     $term_id = (int) $term_id;
     if ( ! isset( $cache[ $term_id ] ) ) {
         $color = $term_id ? get_term_meta( $term_id, '_uc_category_color', true ) : '';
-        $cache[ $term_id ] = $color ? $color : '#16BECF';
+        $cache[ $term_id ] = $color ? $color : sfaf_default_category_color();
     }
     return $cache[ $term_id ];
 }

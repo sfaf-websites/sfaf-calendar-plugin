@@ -371,7 +371,7 @@ class SFAF_Admin {
                                     if ( $simg ) {
                                         echo '<img src="' . esc_url( $simg ) . '" alt="" />';
                                     } else {
-                                        echo '<span class="uc-series-thumb-none" aria-hidden="true">🗓️</span>';
+                                        echo '<span class="uc-series-thumb-none" aria-hidden="true"><?php echo sfaf_icon( 'calendar', array( 'size' => '18px' ) ); ?></span>';
                                     }
                                 ?></a></td>
                                 <td><a href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( get_the_title( $pid ) ); ?></strong></a></td>
@@ -741,7 +741,7 @@ class SFAF_Admin {
                 <!-- DISPLAY -->
                 <div class="uc-integration-panel uc-panel-open">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">🗓️</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'calendar', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Display</h2>
                             <p>How many events to show and how visitors page through them</p>
@@ -779,7 +779,7 @@ class SFAF_Admin {
                 <!-- BRANDING -->
                 <div class="uc-integration-panel uc-panel-open">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">🎨</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'palette', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Branding</h2>
                             <p>Logo, colors, and card style for the public calendar</p>
@@ -802,7 +802,7 @@ class SFAF_Admin {
                         </div>
                         <div class="uc-field-row">
                             <label>Primary Color</label>
-                            <input type="text" name="uc_settings[brand_primary_color]" value="<?php echo esc_attr( $s( 'brand_primary_color', '#FFD500' ) ); ?>" class="uc-color-field" data-default-color="#FFD500" />
+                            <input type="text" name="uc_settings[brand_primary_color]" value="<?php echo esc_attr( $s( 'brand_primary_color', '#FFD900' ) ); ?>" class="uc-color-field" data-default-color="#FFD900" />
                         </div>
                         <div class="uc-field-row">
                             <label>Accent Color</label>
@@ -811,11 +811,11 @@ class SFAF_Admin {
                         <div class="uc-field-row">
                             <label>SFAF Palette</label>
                             <div class="uc-palette">
-                                <span class="uc-swatch" style="background:#FFD500" title="SFAF Yellow #FFD500"></span>
+                                <span class="uc-swatch" style="background:#FFD900" title="SFAF Yellow #FFD900"></span>
                                 <span class="uc-swatch" style="background:#000000" title="SFAF Black #000000"></span>
                                 <span class="uc-swatch" style="background:#373433" title="SFAF Dark Gray #373433"></span>
                                 <span class="uc-swatch" style="background:#16BECF" title="Teal #16BECF"></span>
-                                <span class="uc-palette-note">Yellow #FFD500 · Black #000000 · Dark Gray #373433</span>
+                                <span class="uc-palette-note">Yellow #FFD900 · Black #000000 · Dark Gray #373433</span>
                             </div>
                         </div>
                         <div class="uc-field-row">
@@ -836,7 +836,7 @@ class SFAF_Admin {
                 <!-- RSVP DATA ROUTING -->
                 <div class="uc-integration-panel uc-panel-open">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">🔀</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'link', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>RSVP Data Routing</h2>
                             <p>What happens when someone RSVPs</p>
@@ -888,7 +888,7 @@ class SFAF_Admin {
                 <!-- EMAIL TEMPLATES -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">✉️</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'mail', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Email Templates</h2>
                             <p>Global defaults for confirmation and reminder emails</p>
@@ -927,7 +927,7 @@ class SFAF_Admin {
                 <!-- MULTI-SITE API (server) -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">🔗</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'link', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Multi-Site API</h2>
                             <p>This site is the API server. Satellite sites pull events from it using the SFAF Calendar Satellite plugin.</p>
@@ -952,7 +952,7 @@ class SFAF_Admin {
                 <!-- GOFUNDME PRO -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">💚</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'heart', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>GoFundMe Pro</h2>
                             <p>Manage campaigns and display live progress on event cards</p>
@@ -1024,7 +1024,7 @@ class SFAF_Admin {
                 <!-- PARDOT / SALESFORCE -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">☁️</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'cloud', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Pardot / Salesforce</h2>
                             <p>Manage campaigns and route RSVPs to prospect lists</p>
@@ -1116,7 +1116,7 @@ class SFAF_Admin {
                 <!-- GOOGLE CALENDAR -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">📅</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'calendar', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Google Calendar</h2>
                             <p>Two-way sync between WordPress events and Google Workspace calendars</p>
@@ -1139,7 +1139,7 @@ class SFAF_Admin {
                 <!-- GALAXY DIGITAL -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">🤝</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'handshake', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Galaxy Digital</h2>
                             <p>Import volunteer opportunities from volunteers.sfaf.org</p>
@@ -1205,7 +1205,7 @@ class SFAF_Admin {
                 <!-- WEBHOOKS -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
-                        <span class="uc-panel-icon">⚡</span>
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'bolt', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Webhooks (n8n / Zapier)</h2>
                             <p>Fire outbound webhooks on event actions for custom automation</p>

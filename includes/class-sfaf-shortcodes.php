@@ -552,10 +552,10 @@ class SFAF_Shortcodes {
                         </span>
                     <?php endif; ?>
                     <?php if ( $recurrence && isset( $recurrence_labels[ $recurrence ] ) ) : ?>
-                        <span class="uc-badge uc-badge-recurrence">🔄 <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
+                        <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
                     <?php endif; ?>
                     <?php if ( sfaf_is_galaxy_need( $post_id ) ) : ?>
-                        <span class="uc-badge uc-badge-volunteer">🤝 Volunteer</span>
+                        <span class="uc-badge uc-badge-volunteer"><?php echo sfaf_icon( 'handshake' ); ?> Volunteer</span>
                     <?php endif; ?>
                 </div>
 
@@ -567,10 +567,10 @@ class SFAF_Shortcodes {
 
                 <div class="uc-card-meta">
                     <?php if ( $start_time ) : ?>
-                        <span class="uc-meta-item">🕐 <?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?><?php echo $end_time ? ' - ' . esc_html( date( 'g:i A', strtotime( $end_time ) ) ) : ''; ?></span>
+                        <span class="uc-meta-item"><?php echo sfaf_icon( 'clock' ); ?> <?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?><?php echo $end_time ? ' - ' . esc_html( date( 'g:i A', strtotime( $end_time ) ) ) : ''; ?></span>
                     <?php endif; ?>
                     <?php if ( $location ) : ?>
-                        <span class="uc-meta-item">📍 <?php echo esc_html( $location ); ?></span>
+                        <span class="uc-meta-item"><?php echo sfaf_icon( 'pin' ); ?> <?php echo esc_html( $location ); ?></span>
                     <?php endif; ?>
                     <?php if ( $org_name ) : ?>
                         <span class="uc-meta-item uc-meta-organizer"><?php echo esc_html( $org_name ); ?></span>

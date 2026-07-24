@@ -1,21 +1,46 @@
 /* SFAF Calendar Frontend Styles */
 
 :root {
-    --uc-teal: #16BECF;
-    --uc-dark: #373433;
-    --uc-warm: #E8573A;
-    --uc-green: #10B981;
-    --uc-yellow: #F59E0B;
-    --uc-purple: #7B61FF;
+    /* Approved SFAF brand palette (brand guide v3.0, p.9). */
+    --uc-teal: #16BECF;         /* Pantone 7710 UP — fills, borders, accents */
+    --uc-dark: #373433;         /* Cool Gray 11 CP */
+    --uc-warm: #F04937;         /* Red, Pantone 179 CP */
+    --uc-green: #8CC745;        /* Pantone 3561 UP */
+    --uc-yellow: #FFD900;       /* Pantone 109 CP */
+    --uc-purple: #8D54A2;       /* Pantone 258 CP */
+    /* Darkened teal for TEXT only (p.18 permits darker variations). The brand
+       teal is 2.26:1 on white and fails as text; this is 4.63:1 and passes.
+       Fills, borders and accent bars keep #16BECF. */
+    --uc-teal-text: #0E818C;
     --uc-bg: #F7F8FA;
     --uc-border: #E2E5EA;
     --uc-text: #1A1D21;
     --uc-muted: #9CA3AF;
     --uc-secondary: #6B7280;
+
+    /* Web brand typefaces (brand guide v3.0, p.10): Montserrat for headings and
+       UI chrome, Merriweather reserved for body prose. The host theme already
+       loads these — the plugin only references them, never enqueues them. */
+    --uc-font-heading: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --uc-font-body: 'Merriweather', Georgia, 'Times New Roman', serif;
 }
 
 /* Calendar container */
-.uc-calendar { max-width: 900px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.uc-calendar { max-width: 900px; margin: 0 auto; font-family: var(--uc-font-heading); }
+
+/* ---------------------------------------------------------------------------
+   Brand typography (p.10). Set explicitly rather than by inheritance: an
+   inherited font-family loses to any direct theme rule on h1/h3/p, and form
+   controls don't inherit font-family at all.
+   --------------------------------------------------------------------------- */
+.uc-card-title, .uc-compact-title, .uc-upcoming-title,
+.uc-single-title, .uc-faq-heading, .uc-faq-q, .uc-series-heading { font-family: var(--uc-font-heading); }
+.uc-calendar button, .uc-calendar input, .uc-calendar select, .uc-calendar textarea,
+.uc-upcoming-widget button, .uc-upcoming-widget input, .uc-upcoming-widget select { font-family: var(--uc-font-heading); }
+.uc-card-excerpt, .uc-single-body, .uc-single-body p { font-family: var(--uc-font-body); }
+
+/* Icon set — inherits currentColor, sits on the text baseline. */
+.sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
 
 /* Filters */
 .uc-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--uc-border); margin-bottom: 16px; }
@@ -25,8 +50,8 @@
 
 .uc-filter-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
 .uc-filter-btn { padding: 6px 14px; border-radius: 99px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.uc-filter-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal); }
-.uc-filter-btn.active { border-color: var(--uc-teal); background: rgba(22,190,207,0.08); color: var(--uc-teal); }
+.uc-filter-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+.uc-filter-btn.active { border-color: var(--uc-teal); background: rgba(22,190,207,0.08); color: var(--uc-teal-text); }
 
 .uc-organizer-select { padding: 8px 12px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 13px; color: var(--uc-secondary); background: #fff; }
 
@@ -45,7 +70,7 @@
 
 /* Date block */
 .uc-card-date { min-width: 60px; text-align: center; padding-top: 4px; margin-left: 8px; flex-shrink: 0; }
-.uc-card-month { display: block; font-size: 12px; font-weight: 700; color: var(--uc-teal); text-transform: uppercase; letter-spacing: 0.5px; }
+.uc-card-month { display: block; font-size: 12px; font-weight: 700; color: var(--uc-teal-text); text-transform: uppercase; letter-spacing: 0.5px; }
 .uc-card-day { display: block; font-size: 28px; font-weight: 800; color: var(--uc-text); line-height: 1.1; }
 .uc-card-weekday { display: block; font-size: 11px; color: var(--uc-muted); }
 
@@ -58,13 +83,13 @@
 
 .uc-card-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 6px; line-height: 1.3; }
 .uc-card-title a { color: inherit; text-decoration: none; }
-.uc-card-title a:hover { color: var(--uc-teal); }
+.uc-card-title a:hover { color: var(--uc-teal-text); }
 
 .uc-card-excerpt { font-size: 14px; color: var(--uc-secondary); margin: 0 0 10px; line-height: 1.5; }
 
 .uc-card-meta { display: flex; gap: 16px; font-size: 13px; color: var(--uc-muted); flex-wrap: wrap; }
 .uc-meta-item { white-space: nowrap; }
-.uc-meta-organizer { color: var(--uc-teal); }
+.uc-meta-organizer { color: var(--uc-teal-text); }
 
 /* RSVP section */
 .uc-card-rsvp { margin-top: 14px; padding: 12px 14px; background: var(--uc-bg); border-radius: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -74,7 +99,7 @@
 
 .uc-capacity-text { font-size: 12px; color: var(--uc-muted); white-space: nowrap; }
 
-.uc-rsvp-btn { padding: 7px 20px; border-radius: 8px; border: none; background: var(--uc-teal); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+.uc-rsvp-btn { padding: 7px 20px; border-radius: 8px; border: none; background: var(--uc-teal); color: var(--uc-dark); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
 .uc-rsvp-btn:hover { background: #13a8b8; }
 
 /* RSVP Modal */
@@ -90,7 +115,7 @@
 .uc-rsvp-form input { width: 100%; padding: 10px 14px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box; }
 .uc-rsvp-form input:focus { border-color: var(--uc-teal); box-shadow: 0 0 0 3px rgba(22,190,207,0.1); }
 
-.uc-rsvp-submit { padding: 12px 0; border-radius: 10px; border: none; background: var(--uc-teal); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; transition: background 0.2s; }
+.uc-rsvp-submit { padding: 12px 0; border-radius: 10px; border: none; background: var(--uc-teal); color: var(--uc-dark); font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; transition: background 0.2s; }
 .uc-rsvp-submit:hover { background: #13a8b8; }
 .uc-rsvp-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -104,7 +129,7 @@
 /* Subscribe bar */
 .uc-subscribe { display: flex; align-items: center; gap: 8px; margin-top: 24px; padding: 16px 0; border-top: 1px solid var(--uc-border); font-size: 13px; color: var(--uc-muted); }
 .uc-subscribe-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 12px; text-decoration: none; transition: all 0.2s; }
-.uc-subscribe-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal); }
+.uc-subscribe-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
 
 /* No events */
 .uc-no-events { padding: 40px; text-align: center; color: var(--uc-muted); }
@@ -121,7 +146,7 @@
 .uc-compact-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
 
 .uc-compact-date { min-width: 44px; text-align: center; flex-shrink: 0; padding-left: 6px; }
-.uc-compact-month { display: block; font-size: 11px; font-weight: 700; color: var(--uc-teal); text-transform: uppercase; }
+.uc-compact-month { display: block; font-size: 11px; font-weight: 700; color: var(--uc-teal-text); text-transform: uppercase; }
 .uc-compact-day { display: block; font-size: 22px; font-weight: 800; color: var(--uc-text); line-height: 1.1; }
 
 .uc-compact-info { min-width: 0; }
@@ -135,7 +160,7 @@
 .uc-share { display: flex; align-items: center; gap: 6px; }
 .uc-share-label { font-size: 12px; color: var(--uc-muted); font-weight: 600; }
 .uc-share-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); text-decoration: none; font-size: 13px; font-weight: 700; transition: all 0.2s; }
-.uc-share-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal); transform: translateY(-1px); }
+.uc-share-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); transform: translateY(-1px); }
 .uc-share-icon { line-height: 1; }
 .uc-share-facebook:hover { border-color: #1877F2; color: #1877F2; }
 .uc-share-linkedin:hover { border-color: #0A66C2; color: #0A66C2; }
@@ -155,15 +180,15 @@
 /* Add to Calendar dropdown */
 .uc-addcal { position: relative; }
 .uc-addcal-toggle { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.uc-addcal-toggle:hover { border-color: var(--uc-teal); color: var(--uc-teal); }
+.uc-addcal-toggle:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
 .uc-addcal-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 50; min-width: 190px; background: #fff; border: 1px solid var(--uc-border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); padding: 6px; display: none; }
 .uc-addcal.open .uc-addcal-menu { display: block; }
 .uc-addcal-menu a { display: block; padding: 9px 12px; font-size: 13px; color: var(--uc-text); text-decoration: none; border-radius: 6px; }
-.uc-addcal-menu a:hover { background: var(--uc-bg); color: var(--uc-teal); }
+.uc-addcal-menu a:hover { background: var(--uc-bg); color: var(--uc-teal-text); }
 
 /* Reminder button */
 .uc-reminder-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.uc-reminder-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal); }
+.uc-reminder-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
 
 /* Card style variations (set via Branding) */
 .sfaf-card-minimal .uc-event-card { border-color: transparent; box-shadow: none; background: transparent; padding-left: 12px; }
@@ -171,12 +196,12 @@
 .sfaf-card-shadow .uc-event-card { border-color: transparent; box-shadow: 0 6px 24px rgba(0,0,0,0.08); }
 
 /* Single event template */
-.uc-single { --event-color: var(--uc-teal); padding: 32px 16px 60px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.uc-single { --event-color: var(--uc-teal); padding: 32px 16px 60px; font-family: var(--uc-font-heading); }
 .uc-single-inner { max-width: 980px; margin: 0 auto; }
 .uc-single-brand { margin-bottom: 16px; }
 .uc-single-logo { max-height: 48px; width: auto; }
 .uc-single-back { display: inline-block; margin-bottom: 16px; font-size: 13px; color: var(--uc-muted); text-decoration: none; }
-.uc-single-back:hover { color: var(--uc-teal); }
+.uc-single-back:hover { color: var(--uc-teal-text); }
 .uc-single-header { border-left: 4px solid var(--event-color); padding-left: 18px; margin-bottom: 28px; }
 .uc-single-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .uc-single-title { font-size: 34px; font-weight: 800; line-height: 1.2; color: var(--uc-text); margin: 0 0 8px; }
@@ -212,7 +237,7 @@
 
 /* Series link + list */
 .uc-card-series { margin: 8px 0 4px; }
-.uc-series-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--uc-teal); background: rgba(22,190,207,0.08); padding: 3px 10px; border-radius: 99px; text-decoration: none; }
+.uc-series-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); background: rgba(22,190,207,0.08); padding: 3px 10px; border-radius: 99px; text-decoration: none; }
 .uc-series-link:hover { background: rgba(22,190,207,0.16); }
 .uc-single-series-link { margin: 8px 0 0; }
 
@@ -221,7 +246,7 @@
 .uc-series-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .uc-series-list li a { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: #fff; border: 1px solid var(--uc-border); border-radius: 10px; text-decoration: none; color: var(--uc-text); transition: border-color 0.2s; }
 .uc-series-list li a:hover { border-color: var(--uc-teal); }
-.uc-series-date { font-weight: 700; color: var(--uc-teal); min-width: 52px; }
+.uc-series-date { font-weight: 700; color: var(--uc-teal-text); min-width: 52px; }
 .uc-series-title { flex: 1; font-weight: 600; }
 .uc-series-time { font-size: 13px; color: var(--uc-muted); }
 
@@ -245,8 +270,8 @@
 .uc-faq-heading { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: var(--uc-text); }
 .uc-faq-item { border: 1px solid var(--uc-border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; background: #fff; }
 .uc-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: none; border: none; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--uc-text); text-align: left; }
-.uc-faq-q:hover { color: var(--uc-teal); }
-.uc-faq-toggle { font-size: 22px; line-height: 1; color: var(--uc-teal); flex-shrink: 0; }
+.uc-faq-q:hover { color: var(--uc-teal-text); }
+.uc-faq-toggle { font-size: 22px; line-height: 1; color: var(--uc-teal-text); flex-shrink: 0; }
 .uc-faq-a { display: none; padding: 0 16px 16px; font-size: 14px; color: var(--uc-secondary); line-height: 1.6; }
 .uc-faq-item.open .uc-faq-a { display: block; }
 .uc-faq-a p { margin: 0 0 0.8em; }
@@ -257,14 +282,14 @@
 
 /* Pagination */
 .uc-pagination { margin: 24px 0 8px; display: flex; justify-content: center; align-items: center; }
-.uc-load-more { padding: 11px 28px; border-radius: 8px; border: none; background: var(--uc-teal); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.uc-load-more { padding: 11px 28px; border-radius: 8px; border: none; background: var(--uc-teal); color: var(--uc-dark); font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
 .uc-load-more:hover { background: #13a8b8; }
 .uc-load-more:disabled { opacity: 0.6; cursor: default; }
 .uc-pagination-pages { gap: 6px; flex-wrap: wrap; }
 .uc-page-numbers { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .uc-page-link, .uc-page-num { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 10px; border: 1px solid var(--uc-border); border-radius: 8px; background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; text-decoration: none; }
-.uc-page-link:hover, .uc-page-num:hover { border-color: var(--uc-teal); color: var(--uc-teal); }
-.uc-page-num.current { background: var(--uc-teal); border-color: var(--uc-teal); color: #fff; }
+.uc-page-link:hover, .uc-page-num:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+.uc-page-num.current { background: var(--uc-teal); border-color: var(--uc-teal); color: var(--uc-dark); }
 .uc-pagination-infinite { flex-direction: column; }
 .uc-infinite-sentinel { width: 100%; height: 1px; }
 .uc-loading-indicator { font-size: 13px; color: var(--uc-muted); padding: 12px; display: none; }
@@ -284,7 +309,7 @@
 .sfaf-embed-error { padding: 20px; border: 1px solid var(--uc-border); border-radius: 12px; font-size: 14px; line-height: 1.5; color: var(--uc-text); }
 .sfaf-embed-error p { margin: 0 0 8px; }
 .sfaf-embed-error p:last-child { margin-bottom: 0; }
-.sfaf-embed-error a { color: var(--uc-teal); font-weight: 600; }
+.sfaf-embed-error a { color: var(--uc-teal-text); font-weight: 600; }
 
 /* RSVP and reminders are links to the event page in an embed (they can't post
    cross-origin) — give the anchors the button shape their classes imply. */

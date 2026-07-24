@@ -258,7 +258,7 @@ class SFAF_Post_Types {
         ?>
         <div class="uc-meta-box">
             <div class="uc-meta-field">
-                <label for="uc_gofundme_select">💚 GoFundMe Campaign</label>
+                <label for="uc_gofundme_select"><?php echo sfaf_icon( 'heart' ); ?> GoFundMe Campaign</label>
                 <select id="uc_gofundme_select" class="uc-gofundme-select">
                     <option value="" data-goal="">— Select a saved campaign —</option>
                     <?php foreach ( $gf_campaigns as $c ) : ?>
@@ -279,7 +279,7 @@ class SFAF_Post_Types {
             </div>
 
             <div class="uc-meta-field">
-                <label>☁️ Pardot Campaigns</label>
+                <label><?php echo sfaf_icon( 'cloud' ); ?> Pardot Campaigns</label>
                 <?php if ( empty( $pardot_campaigns ) ) : ?>
                     <p class="description">Add campaigns under Events &rsaquo; Settings &rsaquo; Pardot / Salesforce.</p>
                 <?php else : ?>

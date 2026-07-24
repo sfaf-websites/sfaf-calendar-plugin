@@ -1,9 +1,12 @@
 /* SFAF Calendar — /caladmin portal */
 
 :root {
-    --uc-primary: #FFD500;   /* SFAF yellow (dark surfaces / CTAs) */
-    --uc-accent: #16BECF;    /* teal (on-white accents) */
-    --sfaf-yellow: #FFD500;
+    /* Approved SFAF brand palette (brand guide v3.0, p.9). */
+    --uc-primary: #FFD900;   /* SFAF yellow, Pantone 109 CP (dark surfaces / CTAs) */
+    --uc-accent: #16BECF;    /* teal fill/border, Pantone 7710 UP */
+    /* Darkened teal for teal TEXT on white — #16BECF fails AA as text. */
+    --uc-accent-text: #0E818C;
+    --sfaf-yellow: #FFD900;
     --sfaf-black: #000000;
     --sfaf-gray: #373433;
     --p-bg: #F4F6F9;
@@ -13,9 +16,13 @@
     --p-muted: #6B7280;
     --p-sidebar: #000000;
     --p-sidebar-text: #cbd5e1;
-    --p-green: #10B981;
+    --p-green: #8CC745;      /* Pantone 3561 UP */
     --p-gray: #cbd5e1;
-    --p-danger: #E8573A;
+    --p-danger: #F04937;     /* Red, Pantone 179 CP */
+
+    /* Web brand typefaces (brand guide v3.0, p.10). */
+    --uc-font-heading: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --uc-font-body: 'Merriweather', Georgia, 'Times New Roman', serif;
 }
 
 * { box-sizing: border-box; }
@@ -23,11 +30,12 @@ body.uc-portal {
     margin: 0;
     background: var(--p-bg);
     color: var(--p-text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--uc-font-heading);
     font-size: 15px;
     line-height: 1.5;
 }
-.uc-portal a { color: var(--uc-accent); text-decoration: none; }
+.uc-portal .sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
+.uc-portal a { color: var(--uc-accent-text); text-decoration: none; }
 .uc-portal a:hover { text-decoration: underline; }
 .uc-portal h1 { font-size: 24px; font-weight: 800; margin: 0; }
 .uc-portal h2 { font-size: 17px; font-weight: 700; margin: 0; }
@@ -77,7 +85,7 @@ body.uc-portal {
 
 /* ---------- Buttons ---------- */
 .uc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border); background: #fff; color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-.uc-btn:hover { border-color: var(--uc-accent); color: var(--uc-accent); text-decoration: none; }
+.uc-btn:hover { border-color: var(--uc-accent); color: var(--uc-accent-text); text-decoration: none; }
 .uc-btn-primary { background: var(--uc-primary); border-color: var(--uc-primary); color: #1a1d21; }
 .uc-btn-primary:hover { filter: brightness(0.94); color: #1a1d21; }
 .uc-btn-block { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
@@ -90,9 +98,9 @@ body.uc-portal {
 /* ---------- Stats ---------- */
 .uc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
 .uc-stat { background: var(--p-panel); border: 1px solid var(--p-border); border-radius: 12px; padding: 20px; text-align: center; }
-.uc-stat-num { display: block; font-size: 32px; font-weight: 800; color: var(--uc-accent); }
+.uc-stat-num { display: block; font-size: 32px; font-weight: 800; color: var(--uc-accent-text); }
 .uc-stat-label { font-size: 13px; color: var(--p-muted); }
-.uc-stat-accent .uc-stat-num { color: var(--uc-accent); }
+.uc-stat-accent .uc-stat-num { color: var(--uc-accent-text); }
 
 /* ---------- Cards / tables ---------- */
 .uc-card { background: var(--p-panel); border: 1px solid var(--p-border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
@@ -150,7 +158,7 @@ body.uc-portal {
 .uc-user-controls label { font-size: 12px; color: var(--p-muted); display: flex; flex-direction: column; gap: 4px; }
 .uc-user-controls select { padding: 7px 10px; border: 1px solid var(--p-border); border-radius: 7px; }
 .uc-user-cats { grid-column: 1 / -1; font-size: 13px; }
-.uc-user-cats summary { cursor: pointer; color: var(--uc-primary); }
+.uc-user-cats summary { cursor: pointer; color: var(--uc-accent-text); }
 .uc-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; margin-top: 8px; }
 .uc-check-grid .uc-check { margin-bottom: 0; font-size: 13px; }
 .uc-user-actions, .uc-user-remove { display: flex; align-items: center; }

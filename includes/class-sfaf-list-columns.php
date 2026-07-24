@@ -66,7 +66,7 @@ class SFAF_List_Columns {
                     echo '<a href="' . esc_url( get_edit_post_link( $parent ) ) . '">' . esc_html( $name ) . '</a>';
                     echo $is_par ? ' <span class="uc-col-muted">(parent)</span>' : '';
                     if ( get_post_meta( $post_id, '_uc_manually_edited', true ) === '1' ) {
-                        echo '<br><span class="uc-col-muted">✏️ edited</span>';
+                        echo '<br><span class="uc-col-muted">edited</span>';
                     }
                 } else {
                     echo '<span class="uc-col-muted">—</span>';
@@ -77,7 +77,7 @@ class SFAF_List_Columns {
                 $source = get_post_meta( $post_id, '_uc_source_site', true );
                 if ( $source ) {
                     $host = wp_parse_url( $source, PHP_URL_HOST );
-                    echo '<span class="uc-col-source" title="' . esc_attr( $source ) . '">🔗 ' . esc_html( $host ? $host : $source ) . '</span>';
+                    echo '<span class="uc-col-source" title="' . esc_attr( $source ) . '">' . sfaf_icon( 'link' ) . ' ' . esc_html( $host ? $host : $source ) . '</span>';
                 } else {
                     echo '<span class="uc-col-muted">Local</span>';
                 }
@@ -88,8 +88,8 @@ class SFAF_List_Columns {
                 $pardot   = (array) get_post_meta( $post_id, '_uc_pardot_campaigns', true );
                 $pardot   = array_filter( $pardot );
 
-                echo '<span class="uc-col-badge ' . ( $gofundme ? 'uc-col-on' : 'uc-col-off' ) . '" title="GoFundMe">💚</span> ';
-                echo '<span class="uc-col-badge ' . ( ! empty( $pardot ) ? 'uc-col-on' : 'uc-col-off' ) . '" title="Pardot">☁️</span>';
+                echo '<span class="uc-col-badge ' . ( $gofundme ? 'uc-col-on' : 'uc-col-off' ) . '" title="GoFundMe">' . sfaf_icon( 'heart' ) . '</span> ';
+                echo '<span class="uc-col-badge ' . ( ! empty( $pardot ) ? 'uc-col-on' : 'uc-col-off' ) . '" title="Pardot">' . sfaf_icon( 'cloud' ) . '</span>';
                 break;
         }
     }

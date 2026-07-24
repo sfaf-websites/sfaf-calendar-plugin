@@ -440,7 +440,7 @@ class SFAF_Recurrence {
                 <p><a href="<?php echo esc_url( get_edit_post_link( $series_parent ) ); ?>">Edit the series parent &rarr;</a></p>
                 <p class="description">Saving here changes only this occurrence and locks it from future series updates.</p>
                 <?php if ( get_post_meta( $post->ID, '_uc_manually_edited', true ) === '1' ) : ?>
-                    <p class="uc-series-flag">✏️ This occurrence has been individually edited.</p>
+                    <p class="uc-series-flag">This occurrence has been individually edited.</p>
                 <?php endif; ?>
             <?php elseif ( $recurrence && $end_date ) : ?>
                 <?php $count = count( $this->get_series_children( $post->ID ) ); ?>

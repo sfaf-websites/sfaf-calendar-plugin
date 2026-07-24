@@ -54,10 +54,10 @@ while ( have_posts() ) :
                         <span class="uc-badge" style="--badge-color: <?php echo esc_attr( $c ); ?>"><?php echo esc_html( $cat->name ); ?></span>
                     <?php endforeach; ?>
                     <?php if ( $recurrence && isset( $recurrence_labels[ $recurrence ] ) ) : ?>
-                        <span class="uc-badge uc-badge-recurrence">🔄 <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
+                        <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
                     <?php endif; ?>
                     <?php if ( sfaf_is_galaxy_need( $post_id ) ) : ?>
-                        <span class="uc-badge uc-badge-volunteer">🤝 Volunteer</span>
+                        <span class="uc-badge uc-badge-volunteer"><?php echo sfaf_icon( 'handshake' ); ?> Volunteer</span>
                     <?php endif; ?>
                 </div>
 
@@ -110,25 +110,25 @@ while ( have_posts() ) :
                         <ul class="uc-single-facts">
                             <?php if ( $date_ts ) : ?>
                                 <li>
-                                    <span class="uc-fact-icon">📅</span>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'calendar' ); ?></span>
                                     <span><strong><?php echo esc_html( date_i18n( 'l, F j, Y', $date_ts ) ); ?></strong></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( $start_time ) : ?>
                                 <li>
-                                    <span class="uc-fact-icon">🕐</span>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'clock' ); ?></span>
                                     <span><?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?><?php echo $end_time ? ' – ' . esc_html( date( 'g:i A', strtotime( $end_time ) ) ) : ''; ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( $location ) : ?>
                                 <li>
-                                    <span class="uc-fact-icon">📍</span>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'pin' ); ?></span>
                                     <span><?php echo esc_html( $location ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( ! empty( $venues ) ) : ?>
                                 <li>
-                                    <span class="uc-fact-icon">🏛️</span>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'venue' ); ?></span>
                                     <span><?php echo esc_html( implode( ', ', wp_list_pluck( $venues, 'name' ) ) ); ?></span>
                                 </li>
                             <?php endif; ?>

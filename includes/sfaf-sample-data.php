@@ -46,12 +46,13 @@ function sfaf_install_sample_data() {
     }
 
     // Categories + brand colors.
+    // Approved SFAF brand colors (brand guide v3.0, p.9).
     $cat_colors = array(
-        'Support Groups'  => '#16BECF',
-        'Fundraising'     => '#E8573A',
-        'Health Services' => '#10B981',
-        'Volunteer'       => '#7B61FF',
-        'Program Groups'  => '#F59E0B',
+        'Support Groups'  => '#16BECF', // Teal
+        'Fundraising'     => '#F04937', // Red
+        'Health Services' => '#8CC745', // Green
+        'Volunteer'       => '#8D54A2', // Purple
+        'Program Groups'  => '#FFD900', // Yellow
     );
     foreach ( $cat_colors as $name => $color ) {
         $tid = sfaf_sample_term( $name, 'uc_event_category' );

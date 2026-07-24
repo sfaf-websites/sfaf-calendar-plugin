@@ -240,13 +240,13 @@ function sfaf_output_branding_css() {
     // their own teal/warm palette (--uc-teal / --uc-warm) intentionally.
     $primary = ( ! empty( $settings['brand_primary_color'] ) ? sanitize_hex_color( $settings['brand_primary_color'] ) : '' );
     $accent  = ( ! empty( $settings['brand_accent_color'] ) ? sanitize_hex_color( $settings['brand_accent_color'] ) : '' );
-    $primary = $primary ? $primary : '#FFD500';
+    $primary = $primary ? $primary : '#FFD900';
     $accent  = $accent ? $accent : '#16BECF';
 
     echo "<style id='sfaf-branding'>:root{";
     echo '--uc-primary:' . esc_html( $primary ) . ';';
     echo '--uc-accent:' . esc_html( $accent ) . ';';
-    echo '--sfaf-yellow:#FFD500;--sfaf-black:#000000;--sfaf-gray:#373433;';
+    echo '--sfaf-yellow:#FFD900;--sfaf-black:#000000;--sfaf-gray:#373433;';
     echo "}</style>\n";
 }
 add_action( 'wp_head', 'sfaf_output_branding_css' );

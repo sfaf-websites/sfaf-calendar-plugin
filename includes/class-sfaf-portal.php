@@ -503,7 +503,7 @@ class SFAF_Portal {
     }
 
     private function head( $title ) {
-        $primary = sanitize_hex_color( $this->brand( 'brand_primary_color', '#FFD500' ) ) ?: '#FFD500';
+        $primary = sanitize_hex_color( $this->brand( 'brand_primary_color', '#FFD900' ) ) ?: '#FFD900';
         $accent  = sanitize_hex_color( $this->brand( 'brand_accent_color', '#16BECF' ) ) ?: '#16BECF';
         ?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -541,17 +541,18 @@ class SFAF_Portal {
         $logo     = $this->brand( 'brand_logo' );
         $is_admin = $this->is_admin_role( $user );
 
+        // Third value is an SFAF icon name (see sfaf_icon()).
         $nav = array(
-            'dashboard' => array( 'Dashboard', '🏠', '' ),
-            'events'    => array( 'Events', '📅', 'events' ),
-            'series'    => array( 'Series', '🔁', 'series' ),
+            'dashboard' => array( 'Dashboard', '', 'home' ),
+            'events'    => array( 'Events', 'events', 'calendar' ),
+            'series'    => array( 'Series', 'series', 'repeat' ),
         );
         if ( $this->can_view_all( $user ) ) {
-            $nav['rsvps'] = array( 'RSVPs', '✅', 'rsvps' );
+            $nav['rsvps'] = array( 'RSVPs', 'rsvps', 'check' );
         }
         if ( $is_admin ) {
-            $nav['pending']  = array( 'Pending', '⏳', 'pending' );
-            $nav['users']    = array( 'Users', '👥', 'users' );
+            $nav['pending']  = array( 'Pending', 'pending', 'clock' );
+            $nav['users']    = array( 'Users', 'users', 'users' );
         }
         ?>
         <div class="uc-portal-layout">
@@ -566,8 +567,8 @@ class SFAF_Portal {
                 </div>
                 <nav class="uc-portal-nav">
                     <?php foreach ( $nav as $key => $item ) : ?>
-                        <a href="<?php echo esc_url( $this->url( $item[2] ) ); ?>" class="uc-nav-item<?php echo $active === $key ? ' active' : ''; ?>">
-                            <span class="uc-nav-icon"><?php echo esc_html( $item[1] ); ?></span>
+                        <a href="<?php echo esc_url( $this->url( $item[1] ) ); ?>" class="uc-nav-item<?php echo $active === $key ? ' active' : ''; ?>">
+                            <span class="uc-nav-icon"><?php echo sfaf_icon( $item[2], array( 'size' => '20px' ) ); ?></span>
                             <span><?php echo esc_html( $item[0] ); ?></span>
                         </a>
                     <?php endforeach; ?>
@@ -577,7 +578,7 @@ class SFAF_Portal {
 
             <div class="uc-portal-main">
                 <header class="uc-portal-topbar">
-                    <button class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu">☰</button>
+                    <button class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><?php echo sfaf_icon( 'menu', array( 'size' => '22px' ) ); ?></button>
                     <div class="uc-portal-user">
                         <span class="uc-portal-username"><?php echo esc_html( $user->display_name ); ?></span>
                         <a class="uc-portal-logout" href="<?php echo esc_url( wp_logout_url( $this->url() ) ); ?>">Log out</a>
@@ -921,7 +922,7 @@ class SFAF_Portal {
                                 if ( $simg ) {
                                     echo '<img src="' . esc_url( $simg ) . '" alt="" />';
                                 } else {
-                                    echo '<span class="uc-series-thumb-none" aria-hidden="true">🗓️</span>';
+                                    echo '<span class="uc-series-thumb-none" aria-hidden="true">' . sfaf_icon( 'calendar', array( 'size' => '18px' ) ) . '</span>';
                                 }
                             ?></a></td>
                             <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html( get_the_title( $pid ) ); ?></a></td>
@@ -1306,7 +1307,7 @@ class SFAF_Portal {
         <div class="uc-page-head"><h1>Pending Events</h1></div>
         <div class="uc-card">
             <?php if ( empty( $ids ) ) : ?>
-                <p class="uc-empty">Nothing waiting for review. 🎉</p>
+                <p class="uc-empty">Nothing waiting for review.</p>
             <?php else : ?>
                 <table class="uc-table">
                     <thead><tr><th>Event</th><th>Date</th><th>Submitted by</th><th>When</th><th class="uc-col-actions">Actions</th></tr></thead>
