@@ -7,6 +7,52 @@
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+/* -------------------------------------------------------------------------
+ * Embed context
+ *
+ * The same card markup is served two ways: inline on this site, and over the
+ * public embed endpoint into a page on another domain. They are deliberately
+ * the same markup so the two can't drift — but a few controls cannot work from
+ * another origin and have to render differently.
+ *
+ * Anything that posts back to admin-ajax carries a WordPress nonce, which a
+ * page on another domain can neither obtain nor have validated. RSVP and
+ * reminder signup are therefore rendered as links to the event's page here,
+ * where the real form lives. That also keeps every registration in one place.
+ *
+ * Set around a render, never globally:
+ *
+ *     sfaf_set_embed_context( true );
+ *     $html = ...render...;
+ *     sfaf_set_embed_context( false );
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Shared flag store for the embed rendering context.
+ *
+ * @return bool
+ */
+function &sfaf_embed_context_flag() {
+    static $on = false;
+    return $on;
+}
+
+/**
+ * Turn embed rendering on or off for the current render.
+ */
+function sfaf_set_embed_context( $on ) {
+    $flag =& sfaf_embed_context_flag();
+    $flag = (bool) $on;
+}
+
+/**
+ * Whether the current render is going out over the embed endpoint.
+ */
+function sfaf_is_embed_context() {
+    $flag =& sfaf_embed_context_flag();
+    return $flag;
+}
+
 /**
  * Whether a per-event display feature should be shown.
  * Defaults to true when the meta has never been saved (new events).
@@ -232,6 +278,13 @@ function sfaf_reminders_button( $post_id ) {
     if ( ! sfaf_show_feature( $post_id, 'reminders' ) ) {
         return '';
     }
+
+    // In an embed the modal can't submit cross-origin, so this becomes a link to
+    // the event page where the form works — see the embed context notes above.
+    if ( sfaf_is_embed_context() ) {
+        return '<a class="uc-reminder-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">🔔 Get Reminders</a>';
+    }
+
     ob_start();
     ?>
     <button type="button" class="uc-reminder-btn"
@@ -243,6 +296,11 @@ function sfaf_reminders_button( $post_id ) {
 
 /**
  * RSVP block (capacity bar + button). Shared by card and single template.
+ *
+ * Only aggregate counts are ever rendered here — no attendee name, email or
+ * phone reaches the markup, which is what makes this block safe to serve over
+ * the public embed endpoint. In an embed the RSVP button becomes a link to the
+ * event page, where the modal can talk to admin-ajax.
  */
 function sfaf_rsvp_block( $post_id ) {
     if ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) !== '1' || ! sfaf_show_feature( $post_id, 'rsvp' ) ) {
@@ -263,7 +321,11 @@ function sfaf_rsvp_block( $post_id ) {
         <?php else : ?>
             <span class="uc-capacity-text"><?php echo (int) $rsvp_count; ?> registered</span>
         <?php endif; ?>
-        <button class="uc-rsvp-btn" data-event-id="<?php echo (int) $post_id; ?>">RSVP</button>
+        <?php if ( sfaf_is_embed_context() ) : ?>
+            <a class="uc-rsvp-btn uc-embed-link" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>">RSVP</a>
+        <?php else : ?>
+            <button class="uc-rsvp-btn" data-event-id="<?php echo (int) $post_id; ?>">RSVP</button>
+        <?php endif; ?>
     </div>
     <?php
     return ob_get_clean();

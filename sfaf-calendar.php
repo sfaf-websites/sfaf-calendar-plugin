@@ -22,6 +22,7 @@ define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 require_once SFAF_PLUGIN_DIR . 'includes/sfaf-template-functions.php';
 require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-post-types.php';
 require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-shortcodes.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-embed.php';
 require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-rsvp.php';
 require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-recurrence.php';
 require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-list-columns.php';
@@ -40,6 +41,11 @@ function sfaf_init() {
 
     $shortcodes = new SFAF_Shortcodes();
     $shortcodes->register();
+
+    // The embed endpoint renders through the shortcode class rather than
+    // duplicating it, so it is handed the same instance.
+    $embed = new SFAF_Embed( $shortcodes );
+    $embed->register();
 
     $rsvp = new SFAF_RSVP();
     $rsvp->register();
@@ -96,7 +102,7 @@ add_action( 'wp_enqueue_scripts', 'sfaf_enqueue_frontend_assets' );
  */
 function sfaf_enqueue_admin_assets( $hook ) {
     $screen         = get_current_screen();
-    $plugin_pages   = array( 'uc-rsvps', 'uc-settings', 'uc-shortcode-generator', 'uc-series' );
+    $plugin_pages   = array( 'uc-rsvps', 'uc-settings', 'uc-shortcode-generator', 'uc-embed', 'uc-series' );
     $is_plugin_page = isset( $_GET['page'] ) && in_array( $_GET['page'], $plugin_pages, true );
     $is_event_edit  = $screen && $screen->post_type === 'uc_event';
 
@@ -125,6 +131,26 @@ function sfaf_enqueue_admin_assets( $hook ) {
         'ajaxUrl' => admin_url( 'admin-ajax.php' ),
         'nonce'   => wp_create_nonce( 'uc_admin_nonce' ),
     ) );
+
+    // The embed generator previews the block by running the real embed script
+    // against the real endpoint, so it loads exactly what a remote site loads.
+    // It also needs the public calendar stylesheet, since the preview renders
+    // actual event cards.
+    if ( isset( $_GET['page'] ) && $_GET['page'] === 'uc-embed' ) {
+        wp_enqueue_style(
+            'sfaf-calendar-public',
+            SFAF_PLUGIN_URL . 'public/css/calendar.css',
+            array(),
+            SFAF_VERSION
+        );
+        wp_enqueue_script(
+            'sfaf-calendar-embed',
+            SFAF_PLUGIN_URL . 'public/js/embed.js',
+            array(),
+            SFAF_VERSION,
+            true
+        );
+    }
 }
 add_action( 'admin_enqueue_scripts', 'sfaf_enqueue_admin_assets' );
 

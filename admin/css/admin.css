@@ -250,3 +250,38 @@
 .uc-palette { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
 .uc-swatch { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.15); display: inline-block; }
 .uc-palette-note { font-size: 12px; color: var(--uc-muted); margin-left: 6px; }
+
+/* ---------------------------------------------------------------------------
+   Embed code generator
+   --------------------------------------------------------------------------- */
+
+.uc-embed-note { padding: 16px 20px; margin-bottom: 16px; }
+.uc-embed-note p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--uc-text); max-width: 78ch; }
+
+.uc-embed-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 960px) { .uc-embed-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.uc-embed-options, .uc-embed-output { padding: 20px; }
+.uc-embed-options h2, .uc-embed-output h2, .uc-embed-preview-card h2 { font-size: 15px; font-weight: 700; margin: 0 0 16px; color: var(--uc-text); }
+
+.uc-embed-field { padding: 0 0 18px; margin-bottom: 18px; border-bottom: 1px solid var(--uc-border); }
+.uc-embed-field:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.uc-embed-label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--uc-text); }
+.uc-embed-field .description { margin: 8px 0 0; }
+.uc-embed-field-inline { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.uc-embed-field-inline .uc-embed-label { margin-bottom: 0; }
+.uc-embed-field-inline .description { grid-column: 1 / -1; }
+
+.uc-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.uc-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--uc-text); cursor: pointer; }
+.uc-check-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.uc-embed-field .uc-input { width: 100%; box-sizing: border-box; }
+.uc-embed-field .uc-input-narrow { width: 110px; }
+
+.uc-embed-code { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--uc-border); border-radius: 8px; background: var(--uc-bg); font-family: Consolas, Monaco, 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; color: var(--uc-text); resize: vertical; white-space: pre; }
+.uc-embed-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.uc-embed-copied { font-size: 13px; font-weight: 600; color: var(--uc-green); }
+
+.uc-embed-preview-card { padding: 20px; margin-top: 16px; }
+.uc-embed-preview { margin-top: 12px; padding: 16px; border: 1px dashed var(--uc-border); border-radius: 10px; background: #fff; }

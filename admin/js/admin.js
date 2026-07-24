@@ -11,6 +11,7 @@
         initRepeaters();
         initGofundmeAutofill();
         initShortcodeGenerator();
+        initEmbedGenerator();
         initGenerateKey();
         initGofundmeConnect();
         initGalaxySync();
@@ -232,6 +233,184 @@
                 window.alert('Demo: in production this calls the Galaxy Digital API to import volunteer needs.');
             }, 600);
         });
+    }
+
+    /* -----------------------------------------------------------------------
+     * Embed code generator
+     *
+     * Writes the block to paste into another site, and drives a live preview of
+     * that same block using embed.js — the preview is a real embed hitting the
+     * real endpoint, so if it works here it works there.
+     * -------------------------------------------------------------------- */
+
+    function initEmbedGenerator() {
+        var $screen = $('.uc-embed-gen');
+        if (!$screen.length) {
+            return;
+        }
+
+        var scriptUrl = $screen.attr('data-script-url') || '';
+        var $code = $('#uc-embed-code');
+        var $preview = $('#uc-embed-preview');
+        var previewTimer = null;
+
+        /** Slugs and names of the ticked boxes in one group. */
+        function checked(selector) {
+            var slugs = [];
+            var names = [];
+            $(selector + ':checked').each(function () {
+                slugs.push($(this).val());
+                names.push($(this).attr('data-name') || $(this).val());
+            });
+            return { slugs: slugs, names: names };
+        }
+
+        /** Everything the block needs, read off the form. */
+        function currentChoices() {
+            var $series = $('#uc-embed-series');
+            var perPage = parseInt($('#uc-embed-per-page').val(), 10);
+
+            return {
+                categories: checked('.uc-embed-category'),
+                organizers: checked('.uc-embed-organizer'),
+                seriesId: $series.val() || '',
+                seriesName: $series.find('option:selected').attr('data-name') || '',
+                perPage: (perPage > 0 ? perPage : 12),
+                showFilters: $('#uc-embed-filters').is(':checked')
+            };
+        }
+
+        /** Join names the way a sentence would: "A, B and C". */
+        function readableList(names) {
+            if (names.length < 2) {
+                return names.join('');
+            }
+            return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+        }
+
+        /**
+         * The plain-English comment above the block. This is the whole point of
+         * generating readable markup: someone opening the page in a year should
+         * be able to tell what it shows without decoding a series ID.
+         */
+        function summarize(choices) {
+            var cats = choices.categories.names;
+            var orgs = choices.organizers.names;
+            var what;
+
+            if (choices.seriesName) {
+                what = 'the ' + choices.seriesName + ' series';
+                if (cats.length) {
+                    what += ', ' + readableList(cats) + ' only';
+                }
+            } else if (cats.length) {
+                what = readableList(cats) + ' events';
+            } else {
+                what = 'all upcoming events';
+            }
+
+            if (orgs.length) {
+                what += ' from ' + readableList(orgs);
+            }
+
+            var summary = 'SFAF Calendar: ' + what +
+                ', ' + choices.perPage + ' at a time' +
+                (choices.showFilters ? ', with search and category filters' : ', without visitor filters');
+
+            // Nothing here may close the comment early.
+            return summary.replace(/--+/g, '-').replace(/[<>]/g, '');
+        }
+
+        function buildBlock(choices) {
+            var lines = [];
+            lines.push('<!-- ' + summarize(choices) + ' -->');
+            lines.push('<div class="sfaf-calendar-embed" data-sfaf-calendar');
+
+            if (choices.categories.slugs.length) {
+                lines.push('     data-category="' + choices.categories.slugs.join(',') + '"');
+            }
+            if (choices.organizers.slugs.length) {
+                lines.push('     data-organizer="' + choices.organizers.slugs.join(',') + '"');
+            }
+            if (choices.seriesId) {
+                lines.push('     data-series="' + choices.seriesId + '"');
+            }
+            lines.push('     data-per-page="' + choices.perPage + '"');
+            lines.push('     data-show-filters="' + (choices.showFilters ? 'yes' : 'no') + '"></div>');
+            lines.push('<script src="' + scriptUrl + '" async><\/script>');
+
+            return lines.join('\n');
+        }
+
+        /** Rebuild the preview embed from the current choices. */
+        function refreshPreview(choices) {
+            if (!$preview.length || !window.sfafCalendarEmbed) {
+                return;
+            }
+
+            var block = $('<div class="sfaf-calendar-embed"></div>');
+            block.attr('data-sfaf-calendar', '');
+            block.attr('data-per-page', choices.perPage);
+            block.attr('data-show-filters', choices.showFilters ? 'yes' : 'no');
+            if (choices.categories.slugs.length) {
+                block.attr('data-category', choices.categories.slugs.join(','));
+            }
+            if (choices.organizers.slugs.length) {
+                block.attr('data-organizer', choices.organizers.slugs.join(','));
+            }
+            if (choices.seriesId) {
+                block.attr('data-series', choices.seriesId);
+            }
+
+            $preview.empty().append(block);
+            window.sfafCalendarEmbed.scan();
+        }
+
+        function update() {
+            var choices = currentChoices();
+            $code.val(buildBlock(choices));
+
+            // The preview costs a request, so let a run of clicks settle first.
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(function () {
+                refreshPreview(choices);
+            }, 350);
+        }
+
+        $screen.on('change input', 'input, select', update);
+
+        $('#uc-embed-copy').on('click', function () {
+            var $note = $('#uc-embed-copied');
+
+            function report(copied) {
+                $note.text(copied ? 'Copied.' : 'Select the block and press Ctrl+C.');
+                setTimeout(function () { $note.text(''); }, 3000);
+            }
+
+            // Leave the block selected either way, so Ctrl+C works if the
+            // clipboard API is blocked (it needs a secure context).
+            $code[0].select();
+
+            function legacyCopy() {
+                var copied = false;
+                try {
+                    copied = document.execCommand('copy');
+                } catch (e) {
+                    copied = false;
+                }
+                report(copied);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText($code.val()).then(function () {
+                    report(true);
+                }, legacyCopy);
+            } else {
+                legacyCopy();
+            }
+        });
+
+        update();
     }
 
 })(jQuery);

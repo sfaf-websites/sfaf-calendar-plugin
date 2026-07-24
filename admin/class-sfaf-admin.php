@@ -30,7 +30,7 @@ class SFAF_Admin {
             array( $this, 'render_series_page' )
         );
 
-        // Shortcode Generator
+        // Shortcode Generator (produces [sfaf_calendar] blocks for pages on THIS site)
         add_submenu_page(
             'edit.php?post_type=uc_event',
             'Shortcode Generator',
@@ -38,6 +38,16 @@ class SFAF_Admin {
             'edit_posts',
             'uc-shortcode-generator',
             array( $this, 'render_shortcode_generator' )
+        );
+
+        // Embed Code (produces an HTML block for OTHER sites)
+        add_submenu_page(
+            'edit.php?post_type=uc_event',
+            'Embed Code',
+            'Embed Code',
+            'edit_posts',
+            'uc-embed',
+            array( $this, 'render_embed_page' )
         );
 
         // Settings / Integrations
@@ -545,6 +555,158 @@ class SFAF_Admin {
                     </div>
                     <span class="uc-gen-copied" id="uc-gen-copied" style="display:none;">Copied!</span>
                 </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Embed Code generator.
+     *
+     * Picks the filters, writes the block to paste into another site, and shows
+     * that block actually running underneath — the preview is a real embed
+     * loading from the real endpoint, not a mock-up of one.
+     *
+     * Distinct from the Shortcode Generator: that produces [sfaf_calendar]
+     * shortcodes for pages on THIS WordPress site; this produces a portable HTML
+     * block for OTHER sites that can't run the plugin.
+     */
+    public function render_embed_page() {
+        $categories = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+        $organizers = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) );
+        $categories = is_wp_error( $categories ) ? array() : $categories;
+        $organizers = is_wp_error( $organizers ) ? array() : $organizers;
+
+        // Recurring series, named by their parent event.
+        $series = array();
+        foreach ( sfaf_get_series_parents() as $parent_id ) {
+            $series[ $parent_id ] = get_the_title( $parent_id );
+        }
+        natcasesort( $series );
+
+        $settings = get_option( 'uc_settings', array() );
+        $per_page = ( isset( $settings['display_per_page'] ) && $settings['display_per_page'] !== '' )
+            ? (int) $settings['display_per_page'] : 12;
+        ?>
+        <div class="wrap uc-admin-wrap uc-embed-gen"
+             data-script-url="<?php echo esc_attr( SFAF_Embed::script_url() ); ?>">
+
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Embed Code</h1>
+                    <p class="uc-subtitle">Build a calendar block, then paste it into any page on any site.</p>
+                </div>
+            </div>
+
+            <div class="uc-admin-card uc-embed-note">
+                <p>
+                    <strong>This block works on any site or page</strong> — another WordPress site, or a
+                    platform where you can only add an HTML block. Nothing is installed on the other
+                    site and no events are copied to it. The block asks this calendar for its events
+                    each time someone opens the page, so what visitors see is always current, and every
+                    RSVP still happens here.
+                </p>
+            </div>
+
+            <div class="uc-embed-layout">
+                <div class="uc-admin-card uc-embed-options">
+                    <h2>What should this calendar show?</h2>
+
+                    <div class="uc-embed-field">
+                        <span class="uc-embed-label">Categories</span>
+                        <?php if ( empty( $categories ) ) : ?>
+                            <p class="description">No event categories yet.</p>
+                        <?php else : ?>
+                            <div class="uc-checkbox-grid">
+                                <?php foreach ( $categories as $cat ) : ?>
+                                    <label class="uc-check">
+                                        <input type="checkbox" class="uc-embed-category"
+                                               value="<?php echo esc_attr( $cat->slug ); ?>"
+                                               data-name="<?php echo esc_attr( $cat->name ); ?>" />
+                                        <span class="uc-check-dot" style="background: <?php echo esc_attr( sfaf_category_color( $cat->term_id ) ); ?>"></span>
+                                        <?php echo esc_html( $cat->name ); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="description">Leave all unticked to show every category.</p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="uc-embed-field">
+                        <span class="uc-embed-label">Organizers</span>
+                        <?php if ( empty( $organizers ) ) : ?>
+                            <p class="description">No organizers yet.</p>
+                        <?php else : ?>
+                            <div class="uc-checkbox-grid">
+                                <?php foreach ( $organizers as $org ) : ?>
+                                    <label class="uc-check">
+                                        <input type="checkbox" class="uc-embed-organizer"
+                                               value="<?php echo esc_attr( $org->slug ); ?>"
+                                               data-name="<?php echo esc_attr( $org->name ); ?>" />
+                                        <?php echo esc_html( $org->name ); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="description">Leave all unticked to show every organizer.</p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="uc-embed-field">
+                        <label class="uc-embed-label" for="uc-embed-series">Recurring series</label>
+                        <select id="uc-embed-series" class="uc-input">
+                            <option value="">Not limited to one series</option>
+                            <?php foreach ( $series as $parent_id => $title ) : ?>
+                                <option value="<?php echo (int) $parent_id; ?>"
+                                        data-name="<?php echo esc_attr( $title ); ?>">
+                                    <?php echo esc_html( $title ); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description">
+                            <?php if ( empty( $series ) ) : ?>
+                                No recurring series exist yet.
+                            <?php else : ?>
+                                Pins the block to one recurring group and its occurrences.
+                            <?php endif; ?>
+                        </p>
+                    </div>
+
+                    <div class="uc-embed-field">
+                        <label class="uc-embed-label" for="uc-embed-per-page">Events per page</label>
+                        <input type="number" id="uc-embed-per-page" class="uc-input uc-input-narrow"
+                               value="<?php echo (int) $per_page; ?>" min="1" max="100" />
+                        <p class="description">Visitors load the next batch with a button.</p>
+                    </div>
+
+                    <div class="uc-embed-field uc-embed-field-inline">
+                        <label class="uc-embed-label" for="uc-embed-filters">Let visitors search and filter</label>
+                        <label class="uc-toggle">
+                            <input type="checkbox" id="uc-embed-filters" checked />
+                            <span class="uc-toggle-slider"></span>
+                        </label>
+                        <p class="description">Shows a search box and category buttons above the events.</p>
+                    </div>
+                </div>
+
+                <div class="uc-admin-card uc-embed-output">
+                    <h2>Your block</h2>
+                    <textarea id="uc-embed-code" class="uc-embed-code" readonly rows="9"
+                              onfocus="this.select();"></textarea>
+                    <div class="uc-embed-actions">
+                        <button type="button" class="button button-primary" id="uc-embed-copy">Copy block</button>
+                        <span class="uc-embed-copied" id="uc-embed-copied" aria-live="polite"></span>
+                    </div>
+                    <p class="description">
+                        Paste it into an HTML or Custom HTML block. To filter by venue as well, add
+                        <code>data-venue="venue-slug"</code> to the block by hand.
+                    </p>
+                </div>
+            </div>
+
+            <div class="uc-admin-card uc-embed-preview-card">
+                <h2>Preview</h2>
+                <p class="description">This is the block above, running for real against the embed endpoint.</p>
+                <div class="uc-embed-preview" id="uc-embed-preview"></div>
             </div>
         </div>
         <?php

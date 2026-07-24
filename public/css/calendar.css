@@ -269,3 +269,28 @@
 .uc-infinite-sentinel { width: 100%; height: 1px; }
 .uc-loading-indicator { font-size: 13px; color: var(--uc-muted); padding: 12px; display: none; }
 .uc-pagination-infinite.is-loading .uc-loading-indicator { display: block; }
+
+/* ---------------------------------------------------------------------------
+   Embeds
+
+   The same stylesheet is loaded by embed.js on other sites, so everything above
+   applies there too. What follows covers the few things that only exist in an
+   embed: the block's own wrapper, its loading and failure states, and the
+   controls that are links there but buttons here.
+   --------------------------------------------------------------------------- */
+
+.sfaf-calendar-embed { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.sfaf-embed-loading { padding: 24px 0; color: var(--uc-secondary); font-size: 14px; }
+.sfaf-embed-error { padding: 20px; border: 1px solid var(--uc-border); border-radius: 12px; font-size: 14px; line-height: 1.5; color: var(--uc-text); }
+.sfaf-embed-error p { margin: 0 0 8px; }
+.sfaf-embed-error p:last-child { margin-bottom: 0; }
+.sfaf-embed-error a { color: var(--uc-teal); font-weight: 600; }
+
+/* RSVP and reminders are links to the event page in an embed (they can't post
+   cross-origin) — give the anchors the button shape their classes imply. */
+.uc-embed-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* Numbered pagination renders as buttons in an embed rather than links. */
+.uc-pagination-pages button.uc-page-link,
+.uc-pagination-pages button.uc-page-num { cursor: pointer; font-family: inherit; }

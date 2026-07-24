@@ -17,8 +17,11 @@ class SFAF_Shortcodes {
     /**
      * Resolve per-page: a shortcode attribute overrides the global setting.
      * 0 or -1 means "show all events with no pagination".
+     *
+     * Public so the embed endpoint resolves per-page identically rather than
+     * keeping a second copy of the fallback chain.
      */
-    private function resolve_per_page( $raw ) {
+    public function resolve_per_page( $raw ) {
         if ( $raw === '' || $raw === null ) {
             $settings = get_option( 'uc_settings', array() );
             return ( isset( $settings['display_per_page'] ) && $settings['display_per_page'] !== '' )
@@ -64,6 +67,20 @@ class SFAF_Shortcodes {
     private function slug_list( $raw ) {
         $slugs = array_filter( array_map( 'sanitize_title', explode( ',', (string) $raw ) ) );
         return implode( ',', array_unique( $slugs ) );
+    }
+
+    /**
+     * Whether the visitor-facing search and category buttons should render.
+     *
+     * Accepts what a shortcode attribute or a data attribute might carry —
+     * yes/no, true/false, 1/0 — and defaults to showing them.
+     */
+    private function show_filters( $raw ) {
+        $raw = strtolower( trim( (string) $raw ) );
+        if ( $raw === '' ) {
+            return true;
+        }
+        return ! in_array( $raw, array( 'no', 'false', '0', 'off' ), true );
     }
 
     /**
@@ -129,6 +146,44 @@ class SFAF_Shortcodes {
         return $args;
     }
 
+    /* ---------------------------------------------------------------------
+     * Rendering
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Render one page of event cards.
+     *
+     * This is the single rendering path behind the shortcodes, the load-more
+     * AJAX handler and the public embed endpoint. An embed therefore cannot
+     * drift from what the shortcode shows — there is only one renderer.
+     *
+     * @param int    $per_page Posts per page; 0 or less means all.
+     * @param int    $paged    1-based page number.
+     * @param array  $filters  category / organizer / series / venue.
+     * @param string $render   'card' or 'compact'.
+     * @return array{html:string,total:int,max_pages:int,page:int}
+     */
+    public function render_events( $per_page, $paged, $filters, $render = 'card' ) {
+        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $filters ) );
+
+        // One query for every card's RSVP count rather than one per card.
+        sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
+
+        ob_start();
+        while ( $query->have_posts() ) {
+            $query->the_post();
+            echo ( $render === 'compact' ) ? $this->render_compact_card( get_the_ID() ) : $this->render_event_card( get_the_ID() );
+        }
+        wp_reset_postdata();
+
+        return array(
+            'html'      => ob_get_clean(),
+            'total'     => (int) $query->found_posts,
+            'max_pages' => (int) $query->max_num_pages,
+            'page'      => max( 1, (int) $paged ),
+        );
+    }
+
     /** Pagination control markup for the chosen style. */
     private function render_pagination( $style, $paged, $max ) {
         if ( $max <= 1 ) {
@@ -146,25 +201,40 @@ class SFAF_Shortcodes {
             . '<button type="button" class="uc-load-more">Load More</button></div>';
     }
 
-    /** Numbered Next/Previous page links (uses the uc_page query arg). */
+    /**
+     * Numbered Next/Previous page links (uses the uc_page query arg).
+     *
+     * In an embed these are buttons instead: the page is being rendered inside
+     * a REST request, so add_query_arg() would build a link back to the REST
+     * URL rather than to the host page. embed.js reads the page number off the
+     * button and swaps the list contents.
+     */
     private function render_page_links( $current, $max ) {
+        $embed = sfaf_is_embed_context();
+        $link  = function ( $page, $class, $label ) use ( $embed ) {
+            if ( $embed ) {
+                return '<button type="button" class="' . esc_attr( $class ) . '" data-page="' . (int) $page . '">' . $label . '</button>';
+            }
+            return '<a class="' . esc_attr( $class ) . '" href="' . esc_url( add_query_arg( 'uc_page', $page ) ) . '">' . $label . '</a>';
+        };
+
         ob_start();
         ?>
         <nav class="uc-pagination uc-pagination-pages" aria-label="Events pagination">
             <?php if ( $current > 1 ) : ?>
-                <a class="uc-page-link uc-page-prev" href="<?php echo esc_url( add_query_arg( 'uc_page', $current - 1 ) ); ?>">&larr; Previous</a>
+                <?php echo $link( $current - 1, 'uc-page-link uc-page-prev', '&larr; Previous' ); ?>
             <?php endif; ?>
             <span class="uc-page-numbers">
                 <?php for ( $i = 1; $i <= $max; $i++ ) : ?>
                     <?php if ( $i === (int) $current ) : ?>
                         <span class="uc-page-num current"><?php echo (int) $i; ?></span>
                     <?php else : ?>
-                        <a class="uc-page-num" href="<?php echo esc_url( add_query_arg( 'uc_page', $i ) ); ?>"><?php echo (int) $i; ?></a>
+                        <?php echo $link( $i, 'uc-page-num', (string) (int) $i ); ?>
                     <?php endif; ?>
                 <?php endfor; ?>
             </span>
             <?php if ( $current < $max ) : ?>
-                <a class="uc-page-link uc-page-next" href="<?php echo esc_url( add_query_arg( 'uc_page', $current + 1 ) ); ?>">Next &rarr;</a>
+                <?php echo $link( $current + 1, 'uc-page-link uc-page-next', 'Next &rarr;' ); ?>
             <?php endif; ?>
         </nav>
         <?php
@@ -192,16 +262,52 @@ class SFAF_Shortcodes {
             'layout'       => 'cards',
         ), $atts );
 
-        $filters  = $this->normalize_filters( $atts );
-        $compact  = ( $atts['layout'] === 'compact' );
-        $per_page = $this->resolve_per_page( $atts['per_page'] );
+        $block = $this->render_calendar_block( $atts );
+        return $block['html'];
+    }
+
+    /**
+     * The whole calendar block: filter bar, count, event list, pagination.
+     *
+     * Split out of render_calendar() so the embed endpoint can serve exactly
+     * the same markup the shortcode produces, and get the paging numbers back
+     * without running the query twice.
+     *
+     * @param array $args category, organizer, series, venue, per_page,
+     *                    show_filters, layout, and an optional explicit page
+     *                    (0 falls back to the uc_page query arg).
+     * @return array{html:string,total:int,page:int,per_page:int,max_pages:int,has_more:bool}
+     */
+    public function render_calendar_block( $args = array() ) {
+        $args = wp_parse_args( $args, array(
+            'category'     => '',
+            'organizer'    => '',
+            'series'       => '',
+            'venue'        => '',
+            'per_page'     => '',
+            'show_filters' => 'yes',
+            'layout'       => 'cards',
+            'page'         => 0,
+        ) );
+
+        $filters  = $this->normalize_filters( $args );
+        $compact  = ( $args['layout'] === 'compact' );
+        $per_page = $this->resolve_per_page( $args['per_page'] );
         $paginate = ( $per_page > 0 );
         $style    = $this->pagination_style();
-        $paged    = ( $paginate && $style === 'pages' && isset( $_GET['uc_page'] ) ) ? max( 1, intval( $_GET['uc_page'] ) ) : 1;
 
-        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $filters ) );
-        $max   = $paginate ? (int) $query->max_num_pages : 1;
-        sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
+        if ( (int) $args['page'] > 0 ) {
+            $paged = max( 1, (int) $args['page'] );
+        } else {
+            $paged = ( $paginate && $style === 'pages' && isset( $_GET['uc_page'] ) ) ? max( 1, intval( $_GET['uc_page'] ) ) : 1;
+        }
+
+        $events = $this->render_events( $per_page, $paged, $filters, $compact ? 'compact' : 'card' );
+        $max    = $paginate ? $events['max_pages'] : 1;
+
+        // The whole-calendar .ics subscribe links point back to this site, so an
+        // embed on another origin would send visitors here — drop them there.
+        $embed = sfaf_is_embed_context();
 
         ob_start();
         ?>
@@ -217,7 +323,7 @@ class SFAF_Shortcodes {
              data-page="<?php echo (int) $paged; ?>"
              data-max-pages="<?php echo (int) $max; ?>">
 
-            <?php if ( $atts['show_filters'] === 'yes' ) : ?>
+            <?php if ( $this->show_filters( $args['show_filters'] ) ) : ?>
             <div class="uc-filters">
                 <div class="uc-search-wrap">
                     <input type="text" class="uc-search" placeholder="Search events..." />
@@ -238,6 +344,15 @@ class SFAF_Shortcodes {
                         </button>
                     <?php endforeach; ?>
                 </div>
+                <?php
+                /*
+                 * The organizer dropdown is a client-side stub on this site and
+                 * is left out of embeds rather than shipped dead: embed blocks
+                 * are normally already scoped to an organizer, and a control
+                 * that does nothing on someone else's page is worse than none.
+                 */
+                if ( ! $embed ) :
+                ?>
                 <div class="uc-organizer-filter">
                     <select class="uc-organizer-select">
                         <option value="all">All Organizers</option>
@@ -252,19 +367,17 @@ class SFAF_Shortcodes {
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
 
             <div class="uc-event-count">
-                <span class="uc-count-number"><?php echo (int) $query->found_posts; ?></span> upcoming events
+                <span class="uc-count-number"><?php echo (int) $events['total']; ?></span> upcoming events
             </div>
 
             <div class="uc-event-list">
-                <?php if ( $query->have_posts() ) : ?>
-                    <?php while ( $query->have_posts() ) : $query->the_post(); ?>
-                        <?php echo $compact ? $this->render_compact_card( get_the_ID() ) : $this->render_event_card( get_the_ID() ); ?>
-                    <?php endwhile; ?>
-                    <?php wp_reset_postdata(); ?>
+                <?php if ( $events['html'] !== '' ) : ?>
+                    <?php echo $events['html']; ?>
                 <?php else : ?>
                     <div class="uc-no-events">
                         <p>No upcoming events found.</p>
@@ -278,15 +391,24 @@ class SFAF_Shortcodes {
             }
             ?>
 
+            <?php if ( ! $embed ) : ?>
             <div class="uc-subscribe">
                 <span>Subscribe:</span>
                 <a href="<?php echo esc_url( home_url( '?uc_ical=1' ) ); ?>" class="uc-subscribe-btn">+ Google Calendar</a>
                 <a href="<?php echo esc_url( home_url( '?uc_ical=1' ) ); ?>" class="uc-subscribe-btn">+ iCalendar</a>
                 <a href="<?php echo esc_url( home_url( '?uc_ical=1' ) ); ?>" class="uc-subscribe-btn">+ Outlook</a>
             </div>
+            <?php endif; ?>
         </div>
         <?php
-        return ob_get_clean();
+        return array(
+            'html'      => ob_get_clean(),
+            'total'     => $events['total'],
+            'page'      => $paged,
+            'per_page'  => $per_page,
+            'max_pages' => $max,
+            'has_more'  => ( $paginate && $paged < $max ),
+        );
     }
 
     /**
@@ -314,9 +436,8 @@ class SFAF_Shortcodes {
         $style    = $this->pagination_style();
         $paged    = ( $paginate && $style === 'pages' && isset( $_GET['uc_page'] ) ) ? max( 1, intval( $_GET['uc_page'] ) ) : 1;
 
-        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $filters ) );
-        $max   = $paginate ? (int) $query->max_num_pages : 1;
-        sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
+        $events = $this->render_events( $per_page, $paged, $filters, 'compact' );
+        $max    = $paginate ? $events['max_pages'] : 1;
 
         ob_start();
         ?>
@@ -334,11 +455,8 @@ class SFAF_Shortcodes {
                 <h3 class="uc-upcoming-title"><?php echo esc_html( $atts['title'] ); ?></h3>
             <?php endif; ?>
             <div class="uc-upcoming-list">
-                <?php if ( $query->have_posts() ) : ?>
-                    <?php while ( $query->have_posts() ) : $query->the_post(); ?>
-                        <?php echo $this->render_compact_card( get_the_ID() ); ?>
-                    <?php endwhile; ?>
-                    <?php wp_reset_postdata(); ?>
+                <?php if ( $events['html'] !== '' ) : ?>
+                    <?php echo $events['html']; ?>
                 <?php else : ?>
                     <p class="uc-no-events">No upcoming events.</p>
                 <?php endif; ?>
@@ -372,20 +490,11 @@ class SFAF_Shortcodes {
             wp_send_json( array( 'html' => '', 'has_more' => false ) );
         }
 
-        $query = new WP_Query( $this->build_query_args( $per_page, $page, $filters ) );
-        sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
-
-        ob_start();
-        while ( $query->have_posts() ) {
-            $query->the_post();
-            echo ( $render === 'compact' ) ? $this->render_compact_card( get_the_ID() ) : $this->render_event_card( get_the_ID() );
-        }
-        wp_reset_postdata();
-        $html = ob_get_clean();
+        $events = $this->render_events( $per_page, $page, $filters, $render );
 
         wp_send_json( array(
-            'html'     => $html,
-            'has_more' => ( $page < (int) $query->max_num_pages ),
+            'html'     => $events['html'],
+            'has_more' => ( $page < $events['max_pages'] ),
         ) );
     }
 
@@ -499,12 +608,14 @@ class SFAF_Shortcodes {
 
         $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
         $cat_color  = ! empty( $categories ) ? sfaf_category_color( $categories[0]->term_id ) : '#16BECF';
+        $cat_slug   = ! empty( $categories ) ? $categories[0]->slug : '';
 
         $date_ts = strtotime( $date );
 
         ob_start();
         ?>
-        <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" class="uc-compact-card">
+        <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" class="uc-compact-card"
+           data-category="<?php echo esc_attr( $cat_slug ); ?>">
             <div class="uc-compact-accent" style="background: <?php echo esc_attr( $cat_color ); ?>"></div>
             <div class="uc-compact-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'thumbnail' ); ?></div>
             <div class="uc-compact-date">
