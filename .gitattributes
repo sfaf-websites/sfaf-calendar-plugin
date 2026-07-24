@@ -1,4 +1,0 @@
-# Normalize line endings across all contributors.
-# Git stores text with LF; working copies get platform-native endings on
-# checkout. Enforcing LF in the repo keeps diffs clean regardless of OS.
-* text=auto eol=lf

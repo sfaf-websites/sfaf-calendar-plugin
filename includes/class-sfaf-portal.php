@@ -1,0 +1,1532 @@
+<?php
+/**
+ * /caladmin — a standalone front-end portal for managing the calendar.
+ *
+ * Authenticates against WordPress users but renders its own chrome (no WP
+ * admin bar, sidebar, or dashboard). Routing is handled internally off a
+ * single rewrite rule.
+ */
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class SFAF_Portal {
+
+    /** Error string shown on the login screen. */
+    private $login_error = '';
+
+    /** Whether to load the WP media library (event form image picker). */
+    private $load_media = false;
+
+    /* =====================================================================
+     * Bootstrap
+     * ================================================================== */
+
+    public function register() {
+        // register() runs on the `init` hook, so register the rules directly.
+        self::add_rewrite_rules();
+        add_filter( 'query_vars', array( $this, 'query_vars' ) );
+        add_action( 'template_redirect', array( $this, 'maybe_render' ), 0 );
+    }
+
+    public static function add_rewrite_rules() {
+        add_rewrite_rule( '^caladmin/?$', 'index.php?uc_caladmin=1', 'top' );
+        add_rewrite_rule( '^caladmin/(.+?)/?$', 'index.php?uc_caladmin=1&uc_caladmin_route=$matches[1]', 'top' );
+    }
+
+    public function query_vars( $vars ) {
+        $vars[] = 'uc_caladmin';
+        $vars[] = 'uc_caladmin_route';
+        return $vars;
+    }
+
+    public function maybe_render() {
+        if ( ! get_query_var( 'uc_caladmin' ) ) {
+            return;
+        }
+        $this->handle( (string) get_query_var( 'uc_caladmin_route' ) );
+        exit;
+    }
+
+    /* =====================================================================
+     * Roles & capabilities
+     * ================================================================== */
+
+    public static function get_role( $user_id ) {
+        // Memoize: every capability check (can_view_all/can_create/...) resolves
+        // the role, so a single page render asks for it many times.
+        static $cache = array();
+        $user_id = (int) $user_id;
+        if ( isset( $cache[ $user_id ] ) ) {
+            return $cache[ $user_id ];
+        }
+        $role = get_user_meta( $user_id, '_uc_calendar_role', true );
+        if ( ! $role ) {
+            // WordPress administrators get implicit calendar-admin access.
+            $role = user_can( $user_id, 'manage_options' ) ? 'admin' : '';
+        }
+        $cache[ $user_id ] = $role;
+        return $role;
+    }
+
+    private function is_admin_role( $user ) {
+        return self::get_role( $user->ID ) === 'admin';
+    }
+
+    private function can_view_all( $user ) {
+        return in_array( self::get_role( $user->ID ), array( 'admin', 'editor' ), true );
+    }
+
+    private function can_create( $user ) {
+        return in_array( self::get_role( $user->ID ), array( 'admin', 'editor', 'contributor' ), true );
+    }
+
+    private function can_edit_event( $user, $post ) {
+        if ( $this->can_view_all( $user ) ) {
+            return true;
+        }
+        // Contributor: only their own events.
+        return (int) $post->post_author === (int) $user->ID;
+    }
+
+    /** Status a contributor's published event lands in (auto vs review). */
+    private function contributor_status( $user ) {
+        $mode = get_user_meta( $user->ID, '_uc_calendar_approval', true );
+        return $mode === 'auto' ? 'publish' : 'pending';
+    }
+
+    private function allowed_categories( $user ) {
+        $cats = get_user_meta( $user->ID, '_uc_calendar_categories', true );
+        return is_array( $cats ) ? $cats : array(); // empty array = all
+    }
+
+    /* =====================================================================
+     * URLs & helpers
+     * ================================================================== */
+
+    public function url( $path = '' ) {
+        $base = home_url( '/caladmin' );
+        return $path ? $base . '/' . ltrim( $path, '/' ) : $base;
+    }
+
+    private function redirect( $path = '', $args = array() ) {
+        $url = $this->url( $path );
+        if ( $args ) {
+            $url = add_query_arg( $args, $url );
+        }
+        wp_safe_redirect( $url );
+        exit;
+    }
+
+    /* =====================================================================
+     * Request handling
+     * ================================================================== */
+
+    public function handle( $route ) {
+        nocache_headers();
+        $segments = array_values( array_filter( explode( '/', trim( $route, '/' ) ) ) );
+
+        // POST dispatch (may redirect + exit).
+        if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['uc_action'] ) ) {
+            $this->dispatch_post( sanitize_key( $_POST['uc_action'] ) );
+        }
+
+        // CSV export streams and exits.
+        if ( isset( $segments[0], $segments[1] ) && $segments[0] === 'rsvps' && $segments[1] === 'export' ) {
+            $this->export_rsvps_csv();
+        }
+
+        if ( ! is_user_logged_in() ) {
+            $this->render_login();
+            return;
+        }
+
+        $user = wp_get_current_user();
+        if ( ! self::get_role( $user->ID ) ) {
+            $this->render_denied( $user );
+            return;
+        }
+
+        status_header( 200 );
+        $page = isset( $segments[0] ) ? $segments[0] : 'dashboard';
+
+        switch ( $page ) {
+            case 'events':
+                if ( isset( $segments[1] ) && $segments[1] === 'new' ) {
+                    $this->render_event_form( $user, 0 );
+                } elseif ( isset( $segments[1] ) && $segments[1] === 'edit' ) {
+                    $this->render_event_form( $user, isset( $segments[2] ) ? intval( $segments[2] ) : 0 );
+                } else {
+                    $this->render_events( $user );
+                }
+                break;
+            case 'series':
+                if ( isset( $segments[1] ) && $segments[1] === 'edit' ) {
+                    $this->render_series_edit( $user, isset( $segments[2] ) ? intval( $segments[2] ) : 0 );
+                } else {
+                    $this->render_series_list( $user );
+                }
+                break;
+            case 'rsvps':    $this->render_rsvps( $user ); break;
+            case 'pending':  $this->render_pending( $user ); break;
+            case 'users':    $this->render_users( $user ); break;
+            default:         $this->render_dashboard( $user );
+        }
+    }
+
+    private function dispatch_post( $action ) {
+        if ( ! is_user_logged_in() ) {
+            if ( $action === 'login' ) {
+                $this->process_login();
+            }
+            return;
+        }
+
+        $user  = wp_get_current_user();
+        $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_portal_' . $action ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        switch ( $action ) {
+            case 'save_event':
+                $id = $this->save_event_from_post( $user );
+                $this->redirect( 'events/edit/' . $id, array( 'msg' => 'saved' ) );
+                break;
+
+            case 'trash_event':
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                if ( $post && $post->post_type === 'uc_event' && $this->can_edit_event( $user, $post ) ) {
+                    wp_trash_post( $event_id );
+                }
+                $this->redirect( 'events', array( 'msg' => 'trashed' ) );
+                break;
+
+            case 'save_series':
+                $id = $this->save_series_from_post( $user );
+                $this->redirect( 'series/edit/' . $id, array( 'msg' => 'series_saved' ) );
+                break;
+
+            case 'approve_event':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $event_id = intval( $_POST['event_id'] );
+                wp_update_post( array( 'ID' => $event_id, 'post_status' => 'publish' ) );
+                $this->redirect( 'pending', array( 'msg' => 'approved' ) );
+                break;
+
+            case 'reject_event':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                wp_trash_post( intval( $_POST['event_id'] ) );
+                $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
+                break;
+
+            case 'set_user_role':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $this->save_user_role();
+                $this->redirect( 'users', array( 'msg' => 'user_saved' ) );
+                break;
+
+            case 'add_user':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $uid  = intval( $_POST['user_id'] );
+                $role = $this->valid_role( $_POST['role'] ?? 'contributor' );
+                if ( $uid && get_userdata( $uid ) ) {
+                    update_user_meta( $uid, '_uc_calendar_role', $role );
+                }
+                $this->redirect( 'users', array( 'msg' => 'user_added' ) );
+                break;
+
+            case 'remove_user':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $uid = intval( $_POST['user_id'] );
+                delete_user_meta( $uid, '_uc_calendar_role' );
+                delete_user_meta( $uid, '_uc_calendar_approval' );
+                delete_user_meta( $uid, '_uc_calendar_categories' );
+                $this->redirect( 'users', array( 'msg' => 'user_removed' ) );
+                break;
+        }
+    }
+
+    private function process_login() {
+        $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_portal_login' ) ) {
+            $this->login_error = 'Security check failed. Please try again.';
+            return;
+        }
+        $creds = array(
+            'user_login'    => sanitize_text_field( wp_unslash( $_POST['log'] ?? '' ) ),
+            'user_password' => (string) ( $_POST['pwd'] ?? '' ),
+            'remember'      => ! empty( $_POST['rememberme'] ),
+        );
+        $user = wp_signon( $creds, is_ssl() );
+        if ( is_wp_error( $user ) ) {
+            $this->login_error = 'Invalid username or password.';
+            return;
+        }
+        wp_set_current_user( $user->ID );
+        $this->redirect();
+    }
+
+    private function valid_role( $role ) {
+        $role = sanitize_key( $role );
+        return in_array( $role, array( 'admin', 'editor', 'contributor' ), true ) ? $role : 'contributor';
+    }
+
+    /* =====================================================================
+     * Event create / update
+     * ================================================================== */
+
+    private function save_event_from_post( $user ) {
+        $event_id = isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0;
+        $is_new   = ! $event_id;
+
+        if ( $is_new ) {
+            if ( ! $this->can_create( $user ) ) { wp_die( 'Denied' ); }
+        } else {
+            $post = get_post( $event_id );
+            if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+                wp_die( 'Denied' );
+            }
+        }
+
+        $role      = self::get_role( $user->ID );
+        $save_mode = isset( $_POST['save_mode'] ) ? sanitize_key( $_POST['save_mode'] ) : 'draft';
+
+        if ( $save_mode === 'publish' ) {
+            $status = in_array( $role, array( 'admin', 'editor' ), true ) ? 'publish' : $this->contributor_status( $user );
+        } elseif ( $save_mode === 'review' ) {
+            $status = 'pending';
+        } else {
+            $status = 'draft';
+        }
+
+        $postarr = array(
+            'post_type'    => 'uc_event',
+            'post_title'   => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ) ?: '(untitled event)',
+            'post_content' => wp_kses_post( wp_unslash( $_POST['description'] ?? '' ) ),
+            'post_status'  => $status,
+        );
+
+        if ( $is_new ) {
+            $postarr['post_author'] = $user->ID;
+            $event_id = wp_insert_post( $postarr, true );
+        } else {
+            $postarr['ID'] = $event_id;
+            wp_update_post( $postarr );
+        }
+        if ( is_wp_error( $event_id ) ) {
+            wp_die( 'Could not save event.' );
+        }
+
+        // Meta.
+        $text = array(
+            'date'       => '_uc_event_date',
+            'start_time' => '_uc_start_time',
+            'end_time'   => '_uc_end_time',
+            'location'   => '_uc_location',
+            'recurrence' => '_uc_recurrence',
+            'end_date'   => '_uc_end_date',
+            'capacity'   => '_uc_capacity',
+        );
+        foreach ( $text as $field => $key ) {
+            if ( isset( $_POST[ $field ] ) ) {
+                update_post_meta( $event_id, $key, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
+            }
+        }
+        if ( isset( $_POST['gofundme_url'] ) ) {
+            update_post_meta( $event_id, '_uc_gofundme_url', esc_url_raw( wp_unslash( $_POST['gofundme_url'] ) ) );
+        }
+        if ( isset( $_POST['organizer_email'] ) ) {
+            update_post_meta( $event_id, '_uc_organizer_email', sanitize_email( wp_unslash( $_POST['organizer_email'] ) ) );
+        }
+
+        $toggles = array(
+            'rsvp_enabled'    => '_uc_rsvp_enabled',
+            'notify_organizer'=> '_uc_notify_organizer',
+            'show_rsvp'       => '_uc_show_rsvp',
+            'show_donate'     => '_uc_show_donate',
+            'show_social'     => '_uc_show_social',
+            'show_calendar'   => '_uc_show_calendar',
+            'show_reminders'  => '_uc_show_reminders',
+        );
+        foreach ( $toggles as $field => $key ) {
+            update_post_meta( $event_id, $key, isset( $_POST[ $field ] ) ? '1' : '0' );
+        }
+
+        // Featured image: uploaded attachment wins, pasted URL is the fallback.
+        // "Reset to series image" clears the event's own image so it inherits.
+        if ( isset( $_POST['reset_series_image'] ) ) {
+            delete_post_thumbnail( $event_id );
+            delete_post_meta( $event_id, '_uc_image_url' );
+            delete_post_meta( $event_id, '_uc_image_override' );
+        } else {
+            $thumb_id = isset( $_POST['featured_image_id'] ) ? intval( $_POST['featured_image_id'] ) : 0;
+            if ( $thumb_id ) {
+                set_post_thumbnail( $event_id, $thumb_id );
+            } else {
+                delete_post_thumbnail( $event_id );
+            }
+            if ( isset( $_POST['image_url'] ) ) {
+                $img_url = esc_url_raw( wp_unslash( $_POST['image_url'] ) );
+                if ( $img_url ) {
+                    update_post_meta( $event_id, '_uc_image_url', $img_url );
+                } else {
+                    delete_post_meta( $event_id, '_uc_image_url' );
+                }
+            }
+            // Flag a per-event image override so series image changes skip it.
+            if ( has_post_thumbnail( $event_id ) || get_post_meta( $event_id, '_uc_image_url', true ) ) {
+                update_post_meta( $event_id, '_uc_image_override', '1' );
+            } else {
+                delete_post_meta( $event_id, '_uc_image_override' );
+            }
+        }
+
+        // Taxonomies (respect contributor category restrictions).
+        if ( isset( $_POST['category'] ) ) {
+            $cat = intval( $_POST['category'] );
+            $allowed = $this->allowed_categories( $user );
+            if ( $role === 'contributor' && ! empty( $allowed ) && $cat && ! in_array( $cat, $allowed, true ) ) {
+                $cat = 0; // not permitted
+            }
+            wp_set_object_terms( $event_id, $cat ? array( $cat ) : array(), 'uc_event_category' );
+        }
+        if ( isset( $_POST['organizer'] ) ) {
+            $org = intval( $_POST['organizer'] );
+            wp_set_object_terms( $event_id, $org ? array( $org ) : array(), 'uc_organizer' );
+        }
+
+        // FAQ. Child → event-specific FAQ + replace toggle; standalone → own FAQ.
+        // (Series parents manage their FAQ in the Series Manager.)
+        $sp_now   = (int) get_post_meta( $event_id, '_uc_series_parent', true );
+        $is_child = $sp_now && $sp_now !== (int) $event_id;
+        $clean_faq = function ( $raw ) {
+            $faqs = array();
+            foreach ( (array) wp_unslash( $raw ) as $row ) {
+                $q = isset( $row['question'] ) ? sanitize_text_field( $row['question'] ) : '';
+                $a = isset( $row['answer'] ) ? sanitize_textarea_field( $row['answer'] ) : '';
+                if ( $q === '' && $a === '' ) { continue; }
+                $faqs[] = array( 'question' => $q, 'answer' => $a );
+            }
+            return $faqs;
+        };
+        if ( $is_child ) {
+            if ( isset( $_POST['uc_event_faq'] ) ) {
+                update_post_meta( $event_id, '_uc_event_faq', $clean_faq( $_POST['uc_event_faq'] ) );
+            }
+            update_post_meta( $event_id, '_uc_faq_override', isset( $_POST['faq_override'] ) ? '1' : '0' );
+        } elseif ( ! $sp_now && isset( $_POST['uc_series_faq'] ) ) {
+            update_post_meta( $event_id, '_uc_series_faq', $clean_faq( $_POST['uc_series_faq'] ) );
+        }
+
+        // Editing a single occurrence locks it from future series sync;
+        // otherwise (parent/standalone) generate or refresh the series.
+        $series_parent = (int) get_post_meta( $event_id, '_uc_series_parent', true );
+        if ( $series_parent && $series_parent !== (int) $event_id ) {
+            update_post_meta( $event_id, '_uc_manually_edited', '1' );
+        } else {
+            $rec = new SFAF_Recurrence();
+            $rec->maybe_generate( $event_id );
+        }
+
+        return $event_id;
+    }
+
+    /* =====================================================================
+     * Users page actions
+     * ================================================================== */
+
+    private function save_user_role() {
+        $uid = intval( $_POST['user_id'] );
+        if ( ! $uid || ! get_userdata( $uid ) ) {
+            return;
+        }
+        update_user_meta( $uid, '_uc_calendar_role', $this->valid_role( $_POST['role'] ?? 'contributor' ) );
+        $approval = ( isset( $_POST['approval'] ) && $_POST['approval'] === 'auto' ) ? 'auto' : 'review';
+        update_user_meta( $uid, '_uc_calendar_approval', $approval );
+
+        if ( isset( $_POST['categories'] ) && is_array( $_POST['categories'] ) ) {
+            $cats = array_map( 'intval', wp_unslash( $_POST['categories'] ) );
+            update_user_meta( $uid, '_uc_calendar_categories', array_values( array_filter( $cats ) ) );
+        } else {
+            update_user_meta( $uid, '_uc_calendar_categories', array() );
+        }
+    }
+
+    /* =====================================================================
+     * CSV export
+     * ================================================================== */
+
+    private function export_rsvps_csv() {
+        if ( ! is_user_logged_in() || ! $this->can_view_all( wp_get_current_user() ) ) {
+            wp_die( 'Denied' );
+        }
+        $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_portal_export' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
+        $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+        $rsvps    = SFAF_RSVP::get_all_rsvps( array( 'event_id' => $event_id, 'search' => $search ) );
+
+        header( 'Content-Type: text/csv' );
+        header( 'Content-Disposition: attachment; filename="rsvps-' . current_time( 'Y-m-d' ) . '.csv"' );
+
+        $out = fopen( 'php://output', 'w' );
+        fputcsv( $out, array( 'Event', 'Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
+        foreach ( $rsvps as $r ) {
+            $title = isset( $r->event_title ) ? $r->event_title : get_the_title( $r->event_id );
+            fputcsv( $out, array(
+                $this->csv( $title ), $this->csv( $r->name ), $this->csv( $r->email ),
+                $this->csv( $r->phone ), $this->csv( $r->status ), $this->csv( $r->created_at ),
+            ) );
+        }
+        fclose( $out );
+        exit;
+    }
+
+    private function csv( $value ) {
+        $value = (string) $value;
+        if ( $value !== '' && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+            $value = "'" . $value;
+        }
+        return $value;
+    }
+
+    /* =====================================================================
+     * Rendering — chrome
+     * ================================================================== */
+
+    private function brand( $key, $default = '' ) {
+        $settings = get_option( 'uc_settings', array() );
+        return isset( $settings[ $key ] ) && $settings[ $key ] !== '' ? $settings[ $key ] : $default;
+    }
+
+    private function head( $title ) {
+        $primary = sanitize_hex_color( $this->brand( 'brand_primary_color', '#FFD500' ) ) ?: '#FFD500';
+        $accent  = sanitize_hex_color( $this->brand( 'brand_accent_color', '#16BECF' ) ) ?: '#16BECF';
+        ?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo( 'charset' ); ?>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title><?php echo esc_html( $title ); ?> — SFAF Calendar</title>
+    <link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
+    <style>:root{--uc-primary:<?php echo esc_html( $primary ); ?>;--uc-accent:<?php echo esc_html( $accent ); ?>;}</style>
+    <?php
+    if ( $this->load_media ) {
+        wp_print_styles();
+        wp_print_head_scripts();
+    }
+    ?>
+</head>
+<body class="uc-portal"><?php
+    }
+
+    private function foot() {
+        if ( $this->load_media ) {
+            // The portal builds its own document, so print the enqueued media
+            // scripts + Backbone templates manually to power wp.media here.
+            wp_print_footer_scripts();
+            wp_print_media_templates();
+        }
+        ?><script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
+</body></html><?php
+    }
+
+    private function chrome_open( $user, $active ) {
+        $this->head( ucfirst( $active ) );
+        $role     = self::get_role( $user->ID );
+        $logo     = $this->brand( 'brand_logo' );
+        $is_admin = $this->is_admin_role( $user );
+
+        $nav = array(
+            'dashboard' => array( 'Dashboard', '🏠', '' ),
+            'events'    => array( 'Events', '📅', 'events' ),
+            'series'    => array( 'Series', '🔁', 'series' ),
+        );
+        if ( $this->can_view_all( $user ) ) {
+            $nav['rsvps'] = array( 'RSVPs', '✅', 'rsvps' );
+        }
+        if ( $is_admin ) {
+            $nav['pending']  = array( 'Pending', '⏳', 'pending' );
+            $nav['users']    = array( 'Users', '👥', 'users' );
+        }
+        ?>
+        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                <div class="uc-portal-brand">
+                    <?php if ( $logo ) : ?>
+                        <img src="<?php echo esc_url( $logo ); ?>" alt="" class="uc-portal-logo" />
+                    <?php else : ?>
+                        <span class="uc-portal-brandmark">SFAF</span>
+                    <?php endif; ?>
+                    <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav">
+                    <?php foreach ( $nav as $key => $item ) : ?>
+                        <a href="<?php echo esc_url( $this->url( $item[2] ) ); ?>" class="uc-nav-item<?php echo $active === $key ? ' active' : ''; ?>">
+                            <span class="uc-nav-icon"><?php echo esc_html( $item[1] ); ?></span>
+                            <span><?php echo esc_html( $item[0] ); ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </nav>
+                <div class="uc-portal-rolebadge"><?php echo esc_html( ucfirst( $role ) ); ?></div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                    <button class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu">☰</button>
+                    <div class="uc-portal-user">
+                        <span class="uc-portal-username"><?php echo esc_html( $user->display_name ); ?></span>
+                        <a class="uc-portal-logout" href="<?php echo esc_url( wp_logout_url( $this->url() ) ); ?>">Log out</a>
+                    </div>
+                </header>
+                <main class="uc-portal-content">
+        <?php
+        $this->flash();
+    }
+
+    private function chrome_close() {
+        ?>
+                </main>
+            </div>
+        </div>
+        <?php
+        $this->foot();
+    }
+
+    private function flash() {
+        if ( empty( $_GET['msg'] ) ) {
+            return;
+        }
+        $map = array(
+            'saved'          => 'Event saved.',
+            'trashed'        => 'Event removed.',
+            'approved'       => 'Event approved and published.',
+            'rejected'       => 'Event rejected.',
+            'user_saved'     => 'User permissions updated.',
+            'user_added'     => 'User added to the calendar system.',
+            'user_removed'   => 'User removed from the calendar system.',
+            'series_saved'   => 'Series saved and propagated to its occurrences.',
+        );
+        $key = sanitize_key( $_GET['msg'] );
+        if ( isset( $map[ $key ] ) ) {
+            echo '<div class="uc-flash">' . esc_html( $map[ $key ] ) . '</div>';
+        }
+    }
+
+    /* =====================================================================
+     * Rendering — login & denied
+     * ================================================================== */
+
+    private function render_login() {
+        status_header( 200 );
+        $logo = $this->brand( 'brand_logo' );
+        $this->head( 'Sign In' );
+        ?>
+        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <div class="uc-login-brand">
+                    <?php if ( $logo ) : ?>
+                        <img src="<?php echo esc_url( $logo ); ?>" alt="" class="uc-login-logo" />
+                    <?php else : ?>
+                        <span class="uc-portal-brandmark">SFAF</span>
+                    <?php endif; ?>
+                </div>
+                <h1>SFAF Calendar Admin</h1>
+                <p class="uc-login-sub">Sign in to manage events</p>
+
+                <?php if ( $this->login_error ) : ?>
+                    <div class="uc-login-error"><?php echo esc_html( $this->login_error ); ?></div>
+                <?php endif; ?>
+
+                <form method="post" action="<?php echo esc_url( $this->url() ); ?>" class="uc-login-form">
+                    <input type="hidden" name="uc_action" value="login" />
+                    <?php wp_nonce_field( 'uc_portal_login', 'uc_nonce' ); ?>
+                    <label>Username or Email
+                        <input type="text" name="log" autocomplete="username" required autofocus />
+                    </label>
+                    <label>Password
+                        <input type="password" name="pwd" autocomplete="current-password" required />
+                    </label>
+                    <label class="uc-login-remember">
+                        <input type="checkbox" name="rememberme" value="1" /> Remember me
+                    </label>
+                    <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Sign In</button>
+                </form>
+            </div>
+        </div>
+        <?php
+        $this->foot();
+    }
+
+    private function render_denied( $user ) {
+        status_header( 403 );
+        $this->head( 'Access Denied' );
+        ?>
+        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <h1>Access Denied</h1>
+                <p class="uc-login-sub">Your account doesn't have access to the calendar portal. Contact an administrator to request a role.</p>
+                <a class="uc-btn" href="<?php echo esc_url( wp_logout_url( $this->url() ) ); ?>">Log out</a>
+            </div>
+        </div>
+        <?php
+        $this->foot();
+    }
+
+    /* =====================================================================
+     * Rendering — dashboard
+     * ================================================================== */
+
+    private function render_dashboard( $user ) {
+        $this->chrome_open( $user, 'dashboard' );
+
+        $own        = ! $this->can_view_all( $user );
+        $total      = $this->count_events( 'publish', $own ? $user->ID : 0 );
+        $upcoming   = $this->count_events( 'publish', $own ? $user->ID : 0, true );
+        $rsvp_total = $this->count_rsvps();
+        $pending    = $this->count_events( 'pending', 0 );
+        ?>
+        <div class="uc-page-head">
+            <h1>Welcome, <?php echo esc_html( $user->first_name ?: $user->display_name ); ?></h1>
+            <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
+        </div>
+
+        <div class="uc-stats">
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $total; ?></span><span class="uc-stat-label"><?php echo $own ? 'My Events' : 'Total Events'; ?></span></div>
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $upcoming; ?></span><span class="uc-stat-label">Upcoming</span></div>
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $rsvp_total; ?></span><span class="uc-stat-label">Total RSVPs</span></div>
+            <?php if ( $this->is_admin_role( $user ) ) : ?>
+                <div class="uc-stat uc-stat-accent"><span class="uc-stat-num"><?php echo (int) $pending; ?></span><span class="uc-stat-label">Pending Review</span></div>
+            <?php endif; ?>
+        </div>
+
+        <div class="uc-card">
+            <div class="uc-card-head">
+                <h2><?php echo $own ? 'My Upcoming Events' : 'Upcoming Events'; ?></h2>
+                <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>">View all &rarr;</a>
+            </div>
+            <?php $this->events_table( $this->query_events( $user, array( 'upcoming' => true, 'per_page' => 8 ) ), $user ); ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — events list
+     * ================================================================== */
+
+    private function render_events( $user ) {
+        $this->chrome_open( $user, 'events' );
+        $filters = array(
+            's'        => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+            'cat'      => isset( $_GET['cat'] ) ? intval( $_GET['cat'] ) : 0,
+            'status'   => isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '',
+            'from'     => isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '',
+            'to'       => isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '',
+        );
+        $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+        ?>
+        <div class="uc-page-head">
+            <h1><?php echo $this->can_view_all( $user ) ? 'All Events' : 'My Events'; ?></h1>
+            <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
+        </div>
+
+        <form method="get" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-filters-bar">
+            <input type="search" name="s" value="<?php echo esc_attr( $filters['s'] ); ?>" placeholder="Search events…" />
+            <select name="cat">
+                <option value="0">All categories</option>
+                <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) : ?>
+                    <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $filters['cat'], $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
+                <?php endforeach; endif; ?>
+            </select>
+            <select name="status">
+                <option value="">Any status</option>
+                <?php foreach ( array( 'publish' => 'Published', 'pending' => 'Pending', 'draft' => 'Draft' ) as $k => $lbl ) : ?>
+                    <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $filters['status'], $k ); ?>><?php echo esc_html( $lbl ); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <input type="date" name="from" value="<?php echo esc_attr( $filters['from'] ); ?>" title="From date" />
+            <input type="date" name="to" value="<?php echo esc_attr( $filters['to'] ); ?>" title="To date" />
+            <button class="uc-btn" type="submit">Filter</button>
+        </form>
+
+        <div class="uc-card">
+            <?php $this->events_table( $this->query_events( $user, $filters ), $user ); ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    private function events_table( $ids, $user ) {
+        if ( empty( $ids ) ) {
+            echo '<p class="uc-empty">No events found.</p>';
+            return;
+        }
+        // Bulk-load everything the rows need: post/meta/term caches in a couple of
+        // queries and all RSVP counts in one, so the loop below is cache-only.
+        _prime_post_caches( $ids, true, true );
+        sfaf_prime_rsvp_counts( $ids );
+        ?>
+        <table class="uc-table">
+            <thead><tr><th>Event</th><th>Date</th><th>Category</th><th>RSVPs</th><th>Status</th><th>Series</th><th>Source</th><th class="uc-col-actions">Actions</th></tr></thead>
+            <tbody>
+            <?php foreach ( $ids as $id ) :
+                $date = get_post_meta( $id, '_uc_event_date', true );
+                $cats = wp_get_post_terms( $id, 'uc_event_category', array( 'fields' => 'names' ) );
+                $st   = get_post_status( $id );
+                ?>
+                <tr>
+                    <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
+                    <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                    <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                    <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
+                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( ucfirst( $st ) ); ?></span></td>
+                    <td><?php echo sfaf_is_in_series( $id ) ? esc_html( sfaf_get_series_name( $id ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                    <td><?php
+                        $src = get_post_meta( $id, '_uc_source_site', true );
+                        echo $src ? esc_html( wp_parse_url( $src, PHP_URL_HOST ) ?: $src ) : '<span class="uc-muted">Local</span>';
+                    ?></td>
+                    <td class="uc-row-actions">
+                        <div class="uc-actions">
+                            <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" onsubmit="return confirm('Remove this event?');">
+                                <input type="hidden" name="uc_action" value="trash_event" />
+                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
+                                <button type="submit" class="uc-link-danger">Remove</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php
+    }
+
+    /* =====================================================================
+     * Series Manager
+     * ================================================================== */
+
+    /** Portal FAQ repeater markup (vanilla repeater handled by portal.js). */
+    private function faq_repeater( $name, $faqs ) {
+        ?>
+        <div class="uc-repeater" data-repeater>
+            <div class="uc-repeater-rows">
+                <?php foreach ( $faqs as $i => $f ) : ?>
+                    <div class="uc-repeater-row uc-faq-row">
+                        <input type="text" name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][question]" value="<?php echo esc_attr( $f['question'] ); ?>" placeholder="Question" />
+                        <textarea name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][answer]" rows="2" placeholder="Answer"><?php echo esc_textarea( $f['answer'] ); ?></textarea>
+                        <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
+            <template class="uc-repeater-tpl">
+                <div class="uc-repeater-row uc-faq-row">
+                    <input type="text" name="<?php echo esc_attr( $name ); ?>[__I__][question]" placeholder="Question" />
+                    <textarea name="<?php echo esc_attr( $name ); ?>[__I__][answer]" rows="2" placeholder="Answer"></textarea>
+                    <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
+                </div>
+            </template>
+        </div>
+        <?php
+    }
+
+    private function save_series_from_post( $user ) {
+        $parent_id = isset( $_POST['series_id_post'] ) ? intval( $_POST['series_id_post'] ) : 0;
+        $post      = $parent_id ? get_post( $parent_id ) : null;
+        if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+            wp_die( 'Denied' );
+        }
+
+        wp_update_post( array(
+            'ID'           => $parent_id,
+            'post_title'   => sanitize_text_field( wp_unslash( $_POST['series_name'] ?? '' ) ) ?: get_the_title( $parent_id ),
+            'post_content' => wp_kses_post( wp_unslash( $_POST['series_desc'] ?? '' ) ),
+        ) );
+        update_post_meta( $parent_id, '_uc_location', sanitize_text_field( wp_unslash( $_POST['series_location'] ?? '' ) ) );
+        update_post_meta( $parent_id, '_uc_start_time', sanitize_text_field( wp_unslash( $_POST['series_start'] ?? '' ) ) );
+        update_post_meta( $parent_id, '_uc_end_time', sanitize_text_field( wp_unslash( $_POST['series_end'] ?? '' ) ) );
+        wp_set_object_terms( $parent_id, ( $c = intval( $_POST['series_category'] ?? 0 ) ) ? array( $c ) : array(), 'uc_event_category' );
+        wp_set_object_terms( $parent_id, ( $o = intval( $_POST['series_organizer'] ?? 0 ) ) ? array( $o ) : array(), 'uc_organizer' );
+
+        $img_id = intval( $_POST['series_image_id'] ?? 0 );
+        if ( $img_id ) {
+            update_post_meta( $parent_id, '_uc_series_image_id', $img_id );
+        } else {
+            delete_post_meta( $parent_id, '_uc_series_image_id' );
+        }
+        $img_url = esc_url_raw( wp_unslash( $_POST['series_image_url'] ?? '' ) );
+        if ( $img_url ) {
+            update_post_meta( $parent_id, '_uc_series_image_url', $img_url );
+        } else {
+            delete_post_meta( $parent_id, '_uc_series_image_url' );
+        }
+
+        $faqs = array();
+        if ( isset( $_POST['uc_series_faq'] ) && is_array( $_POST['uc_series_faq'] ) ) {
+            foreach ( wp_unslash( $_POST['uc_series_faq'] ) as $row ) {
+                $q = isset( $row['question'] ) ? sanitize_text_field( $row['question'] ) : '';
+                $a = isset( $row['answer'] ) ? sanitize_textarea_field( $row['answer'] ) : '';
+                if ( $q === '' && $a === '' ) {
+                    continue;
+                }
+                $faqs[] = array( 'question' => $q, 'answer' => $a );
+            }
+        }
+        update_post_meta( $parent_id, '_uc_series_faq', $faqs );
+
+        $rec = new SFAF_Recurrence();
+        $rec->maybe_generate( $parent_id );
+
+        return $parent_id;
+    }
+
+    private function render_series_list( $user ) {
+        $this->chrome_open( $user, 'series' );
+        $parents = sfaf_get_series_parents();
+        if ( ! $this->can_view_all( $user ) ) {
+            $parents = array_values( array_filter( $parents, function ( $pid ) use ( $user ) {
+                return (int) get_post_field( 'post_author', $pid ) === (int) $user->ID;
+            } ) );
+        }
+        if ( ! empty( $parents ) ) {
+            _prime_post_caches( $parents, true, true );
+        }
+        ?>
+        <div class="uc-page-head"><h1>Series</h1></div>
+        <div class="uc-card">
+            <?php if ( empty( $parents ) ) : ?>
+                <p class="uc-empty">No event series yet. Create a recurring event (recurrence + series end date) to start one.</p>
+            <?php else : ?>
+                <table class="uc-table">
+                    <thead><tr><th></th><th>Series</th><th>Category</th><th>Organizer</th><th>Recurrence</th><th>Occurrences</th><th>Next</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $parents as $pid ) :
+                        $cats = wp_get_post_terms( $pid, 'uc_event_category', array( 'fields' => 'names' ) );
+                        $orgs = wp_get_post_terms( $pid, 'uc_organizer', array( 'fields' => 'names' ) );
+                        $rec  = get_post_meta( $pid, '_uc_recurrence', true );
+                        $up   = sfaf_get_series_events( $pid, true );
+                        $next = ! empty( $up ) ? get_post_meta( $up[0], '_uc_event_date', true ) : '';
+                        $edit = $this->url( 'series/edit/' . $pid );
+                        ?>
+                        <tr>
+                            <td class="uc-series-thumb"><a href="<?php echo esc_url( $edit ); ?>"><?php
+                                $simg = sfaf_event_image_url( $pid );
+                                if ( $simg ) {
+                                    echo '<img src="' . esc_url( $simg ) . '" alt="" />';
+                                } else {
+                                    echo '<span class="uc-series-thumb-none" aria-hidden="true">🗓️</span>';
+                                }
+                            ?></a></td>
+                            <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html( get_the_title( $pid ) ); ?></a></td>
+                            <td><?php echo ( ! is_wp_error( $cats ) && $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                            <td><?php echo ( ! is_wp_error( $orgs ) && $orgs ) ? esc_html( implode( ', ', $orgs ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                            <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                            <td><?php echo (int) sfaf_series_count( $pid ); ?></td>
+                            <td><?php echo $next ? esc_html( date_i18n( 'M j', strtotime( $next ) ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    private function render_series_edit( $user, $parent_id ) {
+        $post = $parent_id ? get_post( $parent_id ) : null;
+        if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+            $this->chrome_open( $user, 'series' );
+            echo '<div class="uc-card"><p class="uc-empty">Series not found or you don\'t have permission to edit it.</p></div>';
+            $this->chrome_close();
+            return;
+        }
+
+        $cats    = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+        $orgs    = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) );
+        $curcat  = ( wp_get_post_terms( $parent_id, 'uc_event_category', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0];
+        $curorg  = ( wp_get_post_terms( $parent_id, 'uc_organizer', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0];
+        $img_id  = (int) get_post_meta( $parent_id, '_uc_series_image_id', true );
+        $img_url = get_post_meta( $parent_id, '_uc_series_image_url', true );
+        $preview = $img_id ? wp_get_attachment_image_url( $img_id, 'medium' ) : $img_url;
+        $faqs    = sfaf_normalize_faqs( get_post_meta( $parent_id, '_uc_series_faq', true ) );
+
+        $this->load_media = true;
+        wp_enqueue_media();
+        $this->chrome_open( $user, 'series' );
+        ?>
+        <div class="uc-page-head">
+            <h1>Edit Series</h1>
+            <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-btn">&larr; Back</a>
+        </div>
+        <p class="uc-hint" style="margin-top:-8px;">Shared properties flow down to occurrences that haven't been individually overridden.</p>
+
+        <form method="post" action="<?php echo esc_url( $this->url( 'series/edit/' . $parent_id ) ); ?>" class="uc-form">
+            <input type="hidden" name="uc_action" value="save_series" />
+            <input type="hidden" name="series_id_post" value="<?php echo (int) $parent_id; ?>" />
+            <?php wp_nonce_field( 'uc_portal_save_series', 'uc_nonce' ); ?>
+
+            <div class="uc-card">
+                <label class="uc-field">Series name
+                    <input type="text" name="series_name" value="<?php echo esc_attr( get_the_title( $parent_id ) ); ?>" />
+                </label>
+
+                <div class="uc-field uc-image-field">
+                    <span class="uc-field-label">Featured image (series default)</span>
+                    <input type="hidden" name="series_image_id" id="uc-featured-image-id" value="<?php echo (int) $img_id; ?>" />
+                    <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
+                        <img src="<?php echo esc_url( $preview ); ?>" alt="" id="uc-image-preview-img" />
+                    </div>
+                    <div class="uc-image-buttons">
+                        <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
+                        <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $preview ? '' : ' style="display:none;"'; ?>>Remove</button>
+                    </div>
+                    <label class="uc-field uc-image-url-field">Or enter image URL
+                        <input type="url" name="series_image_url" id="uc-image-url" value="<?php echo esc_attr( $img_url ); ?>" placeholder="https://…/image.jpg" />
+                    </label>
+                </div>
+
+                <label class="uc-field">Default description
+                    <textarea name="series_desc" rows="5"><?php echo esc_textarea( get_post_field( 'post_content', $parent_id ) ); ?></textarea>
+                </label>
+
+                <div class="uc-field-row">
+                    <label class="uc-field">Default location<input type="text" name="series_location" value="<?php echo esc_attr( get_post_meta( $parent_id, '_uc_location', true ) ); ?>" /></label>
+                    <label class="uc-field">Default start<input type="time" name="series_start" value="<?php echo esc_attr( get_post_meta( $parent_id, '_uc_start_time', true ) ); ?>" /></label>
+                    <label class="uc-field">Default end<input type="time" name="series_end" value="<?php echo esc_attr( get_post_meta( $parent_id, '_uc_end_time', true ) ); ?>" /></label>
+                </div>
+
+                <div class="uc-field-row">
+                    <label class="uc-field">Category
+                        <select name="series_category"><option value="0">— none —</option>
+                            <?php if ( ! is_wp_error( $cats ) ) foreach ( $cats as $c ) : ?>
+                                <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $curcat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label class="uc-field">Organizer
+                        <select name="series_organizer"><option value="0">— none —</option>
+                            <?php if ( ! is_wp_error( $orgs ) ) foreach ( $orgs as $o ) : ?>
+                                <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $curorg, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
+
+                <h3>Series FAQ</h3>
+                <p class="uc-hint">These FAQs appear on every event in this series.</p>
+                <?php $this->faq_repeater( 'uc_series_faq', $faqs ); ?>
+            </div>
+
+            <div class="uc-form-actions">
+                <button type="submit" class="uc-btn uc-btn-primary">Save Series</button>
+            </div>
+        </form>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — event form
+     * ================================================================== */
+
+    private function render_event_form( $user, $event_id ) {
+        $post = $event_id ? get_post( $event_id ) : null;
+        if ( $event_id && ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) ) {
+            $this->chrome_open( $user, 'events' );
+            echo '<div class="uc-card"><p class="uc-empty">Event not found or you don\'t have permission to edit it.</p></div>';
+            $this->chrome_close();
+            return;
+        }
+
+        $g = function( $key, $default = '' ) use ( $event_id ) {
+            return $event_id ? get_post_meta( $event_id, $key, true ) : $default;
+        };
+        $role   = self::get_role( $user->ID );
+        $cats   = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+        $orgs   = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) );
+        $cur_cat = $event_id ? ( wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
+        $cur_org = $event_id ? ( wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
+        $allowed = $this->allowed_categories( $user );
+
+        // Load the WP media library for the image picker on this page.
+        $this->load_media = true;
+        wp_enqueue_media();
+
+        $this->chrome_open( $user, 'events' );
+        ?>
+        <div class="uc-page-head">
+            <h1><?php echo $event_id ? 'Edit Event' : 'New Event'; ?></h1>
+            <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Back</a>
+        </div>
+
+        <?php if ( $event_id && sfaf_get_series_parent( $event_id ) && sfaf_get_series_parent( $event_id ) !== (int) $event_id ) : ?>
+            <div class="uc-flash uc-flash-info">This is one occurrence in a series. Saving affects only this occurrence.</div>
+        <?php endif; ?>
+
+        <form method="post" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
+            <input type="hidden" name="uc_action" value="save_event" />
+            <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+            <?php wp_nonce_field( 'uc_portal_save_event', 'uc_nonce' ); ?>
+
+            <div class="uc-form-grid">
+                <div class="uc-form-main">
+                    <label class="uc-field">Title
+                        <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>" required />
+                    </label>
+
+                    <?php
+                    $thumb_id   = ( $event_id && has_post_thumbnail( $event_id ) ) ? get_post_thumbnail_id( $event_id ) : 0;
+                    $own_url    = $event_id ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
+                    $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
+                    $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
+                    $src_labels = array( 'event' => 'Event-specific', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
+                    $ev_parent  = $event_id ? (int) get_post_meta( $event_id, '_uc_series_parent', true ) : 0;
+                    $ev_in_series = $ev_parent && $ev_parent !== (int) $event_id;
+                    ?>
+                    <div class="uc-field uc-image-field">
+                        <span class="uc-field-label">Featured Image <span class="uc-img-source-tag"><?php echo esc_html( $src_labels[ $img_source ] ); ?></span></span>
+                        <input type="hidden" name="featured_image_id" id="uc-featured-image-id" value="<?php echo (int) $thumb_id; ?>" />
+                        <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
+                            <img src="<?php echo esc_url( $preview ); ?>" alt="" id="uc-image-preview-img" />
+                        </div>
+                        <div class="uc-image-buttons">
+                            <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
+                            <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo ( $img_source === 'event' ) ? '' : ' style="display:none;"'; ?>>Remove</button>
+                        </div>
+                        <?php if ( $img_source === 'event' && $ev_in_series ) : ?>
+                            <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
+                        <?php endif; ?>
+                        <label class="uc-field uc-image-url-field">Or enter image URL
+                            <input type="url" name="image_url" id="uc-image-url" value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
+                        </label>
+                        <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
+                    </div>
+
+                    <label class="uc-field">Description
+                        <textarea name="description" rows="8"><?php echo esc_textarea( $post ? $post->post_content : '' ); ?></textarea>
+                    </label>
+
+                    <div class="uc-field-row">
+                        <label class="uc-field">Date<input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>" /></label>
+                        <label class="uc-field">Start<input type="time" name="start_time" value="<?php echo esc_attr( $g( '_uc_start_time' ) ); ?>" /></label>
+                        <label class="uc-field">End<input type="time" name="end_time" value="<?php echo esc_attr( $g( '_uc_end_time' ) ); ?>" /></label>
+                    </div>
+
+                    <label class="uc-field">Location
+                        <input type="text" name="location" value="<?php echo esc_attr( $g( '_uc_location' ) ); ?>" placeholder="e.g., Strut - 470 Castro St" />
+                    </label>
+
+                    <div class="uc-field-row">
+                        <label class="uc-field">Category
+                            <select name="category">
+                                <option value="0">— none —</option>
+                                <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) :
+                                    if ( $role === 'contributor' && ! empty( $allowed ) && ! in_array( $c->term_id, $allowed, true ) ) { continue; } ?>
+                                    <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $cur_cat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
+                                <?php endforeach; endif; ?>
+                            </select>
+                        </label>
+                        <label class="uc-field">Organizer
+                            <select name="organizer">
+                                <option value="0">— none —</option>
+                                <?php if ( ! is_wp_error( $orgs ) ) : foreach ( $orgs as $o ) : ?>
+                                    <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $cur_org, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
+                                <?php endforeach; endif; ?>
+                            </select>
+                        </label>
+                    </div>
+
+                    <fieldset class="uc-fieldset">
+                        <legend>Recurrence</legend>
+                        <div class="uc-field-row">
+                            <label class="uc-field">Repeats
+                                <select name="recurrence">
+                                    <?php foreach ( array( '' => 'Does not repeat', 'daily' => 'Daily', 'weekly' => 'Weekly', 'biweekly' => 'Every 2 weeks', 'monthly' => 'Monthly' ) as $k => $lbl ) : ?>
+                                        <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $g( '_uc_recurrence' ), $k ); ?>><?php echo esc_html( $lbl ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label class="uc-field">Series end date<input type="date" name="end_date" value="<?php echo esc_attr( $g( '_uc_end_date' ) ); ?>" /></label>
+                        </div>
+                        <p class="uc-hint">Set a cadence and end date to auto-generate the series on save.</p>
+                    </fieldset>
+                </div>
+
+                <div class="uc-form-side">
+                    <div class="uc-side-box">
+                        <h3>RSVP</h3>
+                        <label class="uc-check"><input type="checkbox" name="rsvp_enabled" value="1" <?php checked( $g( '_uc_rsvp_enabled' ), '1' ); ?> /> Enable RSVP</label>
+                        <label class="uc-field">Capacity (0 = unlimited)<input type="number" name="capacity" min="0" value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>" /></label>
+                    </div>
+
+                    <div class="uc-side-box">
+                        <h3>Donate</h3>
+                        <label class="uc-field">GoFundMe URL<input type="url" name="gofundme_url" value="<?php echo esc_attr( $g( '_uc_gofundme_url' ) ); ?>" placeholder="https://gofund.me/…" /></label>
+                    </div>
+
+                    <div class="uc-side-box">
+                        <h3>Organizer</h3>
+                        <label class="uc-field">Email<input type="email" name="organizer_email" value="<?php echo esc_attr( $g( '_uc_organizer_email' ) ); ?>" /></label>
+                        <label class="uc-check"><input type="checkbox" name="notify_organizer" value="1" <?php checked( $g( '_uc_notify_organizer' ), '1' ); ?> /> Email on new RSVP</label>
+                    </div>
+
+                    <div class="uc-side-box">
+                        <h3>Display</h3>
+                        <?php
+                        $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Reminders' );
+                        foreach ( $feat as $f => $lbl ) :
+                            $on = $event_id ? sfaf_show_feature( $event_id, str_replace( 'show_', '', $f ) ) : true; ?>
+                            <label class="uc-check"><input type="checkbox" name="<?php echo esc_attr( $f ); ?>" value="1" <?php checked( $on ); ?> /> <?php echo esc_html( $lbl ); ?></label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <?php
+            $ev_parent    = $event_id ? (int) get_post_meta( $event_id, '_uc_series_parent', true ) : 0;
+            $ev_is_parent = $ev_parent && $ev_parent === (int) $event_id;
+            $ev_is_child  = $ev_parent && $ev_parent !== (int) $event_id;
+
+            if ( $ev_is_parent ) : ?>
+                <div class="uc-card">
+                    <h3>FAQ</h3>
+                    <p class="uc-hint">This is a series parent. Edit the shared FAQ in the <a href="<?php echo esc_url( $this->url( 'series/edit/' . $event_id ) ); ?>">Series Manager</a>.</p>
+                </div>
+            <?php elseif ( $ev_is_child ) :
+                $series   = sfaf_get_series_faq( $event_id );
+                $evfaq    = sfaf_get_event_faq( $event_id );
+                ?>
+                <div class="uc-card">
+                    <h3>FAQ</h3>
+                    <p class="uc-hint"><strong>Series FAQ (inherited)</strong></p>
+                    <?php if ( empty( $series ) ) : ?>
+                        <p class="uc-muted">No series FAQ yet.</p>
+                    <?php else : foreach ( $series as $f ) : ?>
+                        <p><strong><?php echo esc_html( $f['question'] ); ?></strong><br><?php echo esc_html( $f['answer'] ); ?></p>
+                    <?php endforeach; endif; ?>
+                    <label class="uc-check"><input type="checkbox" name="faq_override" value="1" <?php checked( sfaf_faq_is_override( $event_id ) ); ?> /> Replace the series FAQ with the event-specific FAQ below</label>
+                    <p class="uc-hint" style="margin-top:12px;"><strong>Event-specific FAQ</strong></p>
+                    <?php $this->faq_repeater( 'uc_event_faq', $evfaq ); ?>
+                </div>
+            <?php else :
+                $faqs = $event_id ? sfaf_normalize_faqs( get_post_meta( $event_id, '_uc_series_faq', true ) ) : array();
+                ?>
+                <div class="uc-card">
+                    <h3>FAQ</h3>
+                    <p class="uc-hint">Frequently asked questions for this event.</p>
+                    <?php $this->faq_repeater( 'uc_series_faq', $faqs ); ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="uc-form-actions">
+                <button type="submit" name="save_mode" value="draft" class="uc-btn">Save Draft</button>
+                <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
+                    <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
+                <?php else : ?>
+                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary">Publish</button>
+                <?php endif; ?>
+            </div>
+        </form>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — RSVPs
+     * ================================================================== */
+
+    private function render_rsvps( $user ) {
+        $this->chrome_open( $user, 'rsvps' );
+        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
+        $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+        $rsvps    = SFAF_RSVP::get_all_rsvps( array( 'event_id' => $event_id, 'search' => $search ) );
+
+        $export = add_query_arg(
+            array_filter( array( 'event_id' => $event_id, 's' => $search, '_wpnonce' => wp_create_nonce( 'uc_portal_export' ) ) ),
+            $this->url( 'rsvps/export' )
+        );
+        ?>
+        <div class="uc-page-head">
+            <h1>RSVPs</h1>
+            <a href="<?php echo esc_url( $export ); ?>" class="uc-btn">Export CSV</a>
+        </div>
+
+        <form method="get" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-filters-bar">
+            <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email…" />
+            <?php if ( $event_id ) : ?><input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" /><?php endif; ?>
+            <button class="uc-btn" type="submit">Search</button>
+        </form>
+
+        <div class="uc-card">
+            <div class="uc-card-head"><h2><?php echo count( $rsvps ); ?> registrations</h2></div>
+            <?php if ( empty( $rsvps ) ) : ?>
+                <p class="uc-empty">No RSVPs found.</p>
+            <?php else : ?>
+                <table class="uc-table">
+                    <thead><tr><th>Event</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Registered</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $rsvps as $r ) : ?>
+                        <tr>
+                            <td><?php echo esc_html( $r->event_title ?? get_the_title( $r->event_id ) ); ?></td>
+                            <td><strong><?php echo esc_html( $r->name ); ?></strong></td>
+                            <td><?php echo esc_html( $r->email ); ?></td>
+                            <td><?php echo esc_html( $r->phone ); ?></td>
+                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( ucfirst( $r->status ) ); ?></span></td>
+                            <td><?php echo esc_html( date_i18n( 'M j, Y g:i A', strtotime( $r->created_at ) ) ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — pending queue
+     * ================================================================== */
+
+    private function render_pending( $user ) {
+        if ( ! $this->is_admin_role( $user ) ) {
+            $this->render_dashboard( $user );
+            return;
+        }
+        $this->chrome_open( $user, 'pending' );
+        $ids = $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) );
+        ?>
+        <div class="uc-page-head"><h1>Pending Events</h1></div>
+        <div class="uc-card">
+            <?php if ( empty( $ids ) ) : ?>
+                <p class="uc-empty">Nothing waiting for review. 🎉</p>
+            <?php else : ?>
+                <table class="uc-table">
+                    <thead><tr><th>Event</th><th>Date</th><th>Submitted by</th><th>When</th><th class="uc-col-actions">Actions</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $ids as $id ) :
+                        $author = get_userdata( get_post_field( 'post_author', $id ) );
+                        $date   = get_post_meta( $id, '_uc_event_date', true ); ?>
+                        <tr>
+                            <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
+                            <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '—'; ?></td>
+                            <td><?php echo esc_html( $author ? $author->display_name : '—' ); ?></td>
+                            <td><?php echo esc_html( get_the_date( 'M j, Y', $id ) ); ?></td>
+                            <td class="uc-row-actions">
+                                <div class="uc-actions">
+                                    <a class="uc-action-link" href="<?php echo esc_url( get_permalink( $id ) ); ?>" target="_blank" rel="noopener">Preview</a>
+                                    <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="approve_event" />
+                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_approve_event', 'uc_nonce' ); ?>
+                                        <button class="uc-link-ok" type="submit">Approve</button>
+                                    </form>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" onsubmit="return confirm('Reject and remove this event?');">
+                                        <input type="hidden" name="uc_action" value="reject_event" />
+                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_reject_event', 'uc_nonce' ); ?>
+                                        <button class="uc-link-danger" type="submit">Reject</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — users & permissions
+     * ================================================================== */
+
+    private function render_users( $user ) {
+        if ( ! $this->is_admin_role( $user ) ) {
+            $this->render_dashboard( $user );
+            return;
+        }
+        $this->chrome_open( $user, 'users' );
+
+        $members = get_users( array( 'meta_key' => '_uc_calendar_role', 'orderby' => 'display_name' ) );
+        $member_ids = wp_list_pluck( $members, 'ID' );
+        $non_members = get_users( array( 'exclude' => $member_ids, 'number' => 200, 'orderby' => 'display_name' ) );
+        $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+        ?>
+        <div class="uc-page-head"><h1>Users &amp; Permissions</h1></div>
+
+        <div class="uc-card">
+            <div class="uc-card-head"><h2>Add a user to the calendar</h2></div>
+            <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-inline-form">
+                <input type="hidden" name="uc_action" value="add_user" />
+                <?php wp_nonce_field( 'uc_portal_add_user', 'uc_nonce' ); ?>
+                <select name="user_id" required>
+                    <option value="">— select WordPress user —</option>
+                    <?php foreach ( $non_members as $u ) : ?>
+                        <option value="<?php echo (int) $u->ID; ?>"><?php echo esc_html( $u->display_name . ' (' . $u->user_email . ')' ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <select name="role">
+                    <option value="contributor">Contributor</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <button class="uc-btn uc-btn-primary" type="submit">Add</button>
+            </form>
+        </div>
+
+        <div class="uc-card">
+            <div class="uc-card-head"><h2>Calendar Users (<?php echo count( $members ); ?>)</h2></div>
+            <?php if ( empty( $members ) ) : ?>
+                <p class="uc-empty">No calendar users yet.</p>
+            <?php else : foreach ( $members as $m ) :
+                $role     = self::get_role( $m->ID );
+                $approval = get_user_meta( $m->ID, '_uc_calendar_approval', true ) ?: 'review';
+                $ucats    = (array) get_user_meta( $m->ID, '_uc_calendar_categories', true );
+                $is_self  = (int) $m->ID === (int) $user->ID;
+                ?>
+                <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-row">
+                    <input type="hidden" name="uc_action" value="set_user_role" />
+                    <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                    <?php wp_nonce_field( 'uc_portal_set_user_role', 'uc_nonce' ); ?>
+                    <div class="uc-user-id">
+                        <strong><?php echo esc_html( $m->display_name ); ?></strong>
+                        <span class="uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
+                    </div>
+                    <div class="uc-user-controls">
+                        <label>Role
+                            <select name="role">
+                                <?php foreach ( array( 'contributor' => 'Contributor', 'editor' => 'Editor', 'admin' => 'Admin' ) as $rk => $rl ) : ?>
+                                    <option value="<?php echo esc_attr( $rk ); ?>" <?php selected( $role, $rk ); ?>><?php echo esc_html( $rl ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label>Approval
+                            <select name="approval">
+                                <option value="review" <?php selected( $approval, 'review' ); ?>>Requires approval</option>
+                                <option value="auto" <?php selected( $approval, 'auto' ); ?>>Auto-publish</option>
+                            </select>
+                        </label>
+                    </div>
+                    <details class="uc-user-cats">
+                        <summary>Contributor categories</summary>
+                        <p class="uc-hint">Leave all unchecked to allow all categories.</p>
+                        <div class="uc-check-grid">
+                            <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) : ?>
+                                <label class="uc-check"><input type="checkbox" name="categories[]" value="<?php echo (int) $c->term_id; ?>" <?php checked( in_array( $c->term_id, $ucats, true ) ); ?> /> <?php echo esc_html( $c->name ); ?></label>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </details>
+                    <div class="uc-user-actions">
+                        <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Save</button>
+                    </div>
+                    <?php if ( ! $is_self ) : ?>
+                        </form>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-remove" onsubmit="return confirm('Remove calendar access for this user?');">
+                            <input type="hidden" name="uc_action" value="remove_user" />
+                            <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
+                            <button class="uc-link-danger uc-btn-sm" type="submit">Remove</button>
+                        </form>
+                    <?php else : ?>
+                        <div class="uc-user-remove"><span class="uc-muted">(you)</span></div>
+                        </form>
+                    <?php endif; ?>
+            <?php endforeach; endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Data helpers
+     * ================================================================== */
+
+    private function query_events( $user, $args = array() ) {
+        // NB: we deliberately do NOT use fields=>ids here. A normal query primes
+        // the post, postmeta and term caches for the whole result set in a couple
+        // of queries, so the per-row get_post_meta()/get_the_title()/
+        // wp_get_post_terms() calls in events_table() are cache hits rather than
+        // one DB round-trip each.
+        $q = array(
+            'post_type'              => 'uc_event',
+            'posts_per_page'         => isset( $args['per_page'] ) ? (int) $args['per_page'] : 50,
+            'meta_key'               => '_uc_event_date',
+            'orderby'                => 'meta_value',
+            'order'                  => isset( $args['upcoming'] ) ? 'ASC' : 'DESC',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => true,
+            'meta_query'             => array(),
+        );
+
+        // Status.
+        if ( ! empty( $args['status'] ) ) {
+            $q['post_status'] = $args['status'];
+        } else {
+            $q['post_status'] = array( 'publish', 'pending', 'draft', 'future' );
+        }
+
+        // Contributors only see their own.
+        if ( ! $this->can_view_all( $user ) ) {
+            $q['author'] = $user->ID;
+        }
+
+        if ( ! empty( $args['s'] ) ) {
+            $q['s'] = $args['s'];
+        }
+        if ( ! empty( $args['cat'] ) ) {
+            $q['tax_query'] = array( array( 'taxonomy' => 'uc_event_category', 'field' => 'term_id', 'terms' => (int) $args['cat'] ) );
+        }
+        if ( ! empty( $args['upcoming'] ) ) {
+            $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' );
+        }
+        if ( ! empty( $args['from'] ) ) {
+            $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' );
+        }
+        if ( ! empty( $args['to'] ) ) {
+            $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => $args['to'], 'compare' => '<=', 'type' => 'DATE' );
+        }
+
+        $query = new WP_Query( $q );
+        return wp_list_pluck( $query->posts, 'ID' );
+    }
+
+    private function count_events( $status, $author = 0, $upcoming = false ) {
+        // Ask only for the total (found_posts) instead of pulling every matching
+        // ID into memory just to count() them.
+        $q = array(
+            'post_type'              => 'uc_event',
+            'post_status'            => $status,
+            'posts_per_page'         => 1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => false,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+        );
+        if ( $author ) {
+            $q['author'] = $author;
+        }
+        if ( $upcoming ) {
+            $q['meta_query'] = array( array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' ) );
+        }
+        $query = new WP_Query( $q );
+        return (int) $query->found_posts;
+    }
+
+    private function count_rsvps() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'uc_rsvps';
+        return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table WHERE status = 'confirmed'" );
+    }
+}

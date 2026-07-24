@@ -4,12 +4,14 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SFAF_RSVP {
 
     public function register() {
-        // RSVPs are handled locally on the satellite (own uc_rsvps table).
         add_action( 'wp_ajax_uc_submit_rsvp', array( $this, 'ajax_submit_rsvp' ) );
         add_action( 'wp_ajax_nopriv_uc_submit_rsvp', array( $this, 'ajax_submit_rsvp' ) );
         add_action( 'wp_ajax_uc_subscribe_reminder', array( $this, 'ajax_subscribe_reminder' ) );
         add_action( 'wp_ajax_nopriv_uc_subscribe_reminder', array( $this, 'ajax_subscribe_reminder' ) );
-        // No integration routing (route_submission) or admin CSV export on the satellite.
+        add_action( 'wp_ajax_uc_export_rsvps', array( $this, 'export_csv' ) );
+
+        // Route a confirmed RSVP to email / (mocked) integrations.
+        add_action( 'uc_rsvp_submitted', array( $this, 'route_submission' ), 10, 2 );
     }
 
     /**

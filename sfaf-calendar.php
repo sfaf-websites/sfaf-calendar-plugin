@@ -1,0 +1,440 @@
+<?php
+/**
+ * Plugin Name: SFAF Calendar
+ * Plugin URI: https://marketingmarksolutions.com
+ * Description: A modern, multi-site event calendar with RSVP tracking and integrations for GoFundMe Pro, Pardot/Salesforce, Google Calendar, and more.
+ * Version: 1.7.5
+ * Author: Marketing Mark Solutions
+ * Author URI: https://marketingmarksolutions.com
+ * License: GPL v2 or later
+ * Text Domain: sfaf-calendar
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+define( 'SFAF_VERSION', '1.7.5' );
+define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+// Core includes
+require_once SFAF_PLUGIN_DIR . 'includes/sfaf-template-functions.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-post-types.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-shortcodes.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-rsvp.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-recurrence.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-list-columns.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-sync.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-seo.php';
+require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-portal.php';
+require_once SFAF_PLUGIN_DIR . 'includes/sfaf-sample-data.php';
+require_once SFAF_PLUGIN_DIR . 'admin/class-sfaf-admin.php';
+
+/**
+ * Initialize the plugin
+ */
+function sfaf_init() {
+    $post_types = new SFAF_Post_Types();
+    $post_types->register();
+
+    $shortcodes = new SFAF_Shortcodes();
+    $shortcodes->register();
+
+    $rsvp = new SFAF_RSVP();
+    $rsvp->register();
+
+    $recurrence = new SFAF_Recurrence();
+    $recurrence->register();
+
+    $sync = new SFAF_Sync();
+    $sync->register();
+
+    $portal = new SFAF_Portal();
+    $portal->register();
+
+    $seo = new SFAF_SEO();
+    $seo->register();
+
+    if ( is_admin() ) {
+        $admin = new SFAF_Admin();
+        $admin->register();
+
+        $columns = new SFAF_List_Columns();
+        $columns->register();
+    }
+}
+add_action( 'init', 'sfaf_init' );
+
+/**
+ * Enqueue frontend styles and scripts
+ */
+function sfaf_enqueue_frontend_assets() {
+    wp_enqueue_style(
+        'sfaf-calendar-public',
+        SFAF_PLUGIN_URL . 'public/css/calendar.css',
+        array(),
+        SFAF_VERSION
+    );
+    wp_enqueue_script(
+        'sfaf-calendar-public',
+        SFAF_PLUGIN_URL . 'public/js/calendar.js',
+        array( 'jquery' ),
+        SFAF_VERSION,
+        true
+    );
+    wp_localize_script( 'sfaf-calendar-public', 'ucData', array(
+        'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+        'nonce'   => wp_create_nonce( 'uc_nonce' ),
+        'restUrl' => rest_url( 'sfaf-calendar/v1/' ),
+    ) );
+}
+add_action( 'wp_enqueue_scripts', 'sfaf_enqueue_frontend_assets' );
+
+/**
+ * Enqueue admin styles and scripts
+ */
+function sfaf_enqueue_admin_assets( $hook ) {
+    $screen         = get_current_screen();
+    $plugin_pages   = array( 'uc-rsvps', 'uc-settings', 'uc-shortcode-generator', 'uc-series' );
+    $is_plugin_page = isset( $_GET['page'] ) && in_array( $_GET['page'], $plugin_pages, true );
+    $is_event_edit  = $screen && $screen->post_type === 'uc_event';
+
+    if ( ! $is_plugin_page && ! $is_event_edit ) {
+        return;
+    }
+
+    // WP media (logo upload) + colour picker (branding) used on the settings/event screens.
+    wp_enqueue_media();
+    wp_enqueue_style( 'wp-color-picker' );
+
+    wp_enqueue_style(
+        'sfaf-calendar-admin',
+        SFAF_PLUGIN_URL . 'admin/css/admin.css',
+        array(),
+        SFAF_VERSION
+    );
+    wp_enqueue_script(
+        'sfaf-calendar-admin',
+        SFAF_PLUGIN_URL . 'admin/js/admin.js',
+        array( 'jquery', 'wp-color-picker' ),
+        SFAF_VERSION,
+        true
+    );
+    wp_localize_script( 'sfaf-calendar-admin', 'sfafAdmin', array(
+        'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+        'nonce'   => wp_create_nonce( 'uc_admin_nonce' ),
+    ) );
+}
+add_action( 'admin_enqueue_scripts', 'sfaf_enqueue_admin_assets' );
+
+/**
+ * Load the plugin's single event template unless the theme provides one.
+ */
+function sfaf_template_include( $template ) {
+    if ( is_singular( 'uc_event' ) ) {
+        $theme_template = locate_template( array( 'single-uc_event.php' ) );
+        if ( $theme_template ) {
+            return $theme_template;
+        }
+        $plugin_template = SFAF_PLUGIN_DIR . 'templates/single-uc_event.php';
+        if ( file_exists( $plugin_template ) ) {
+            return $plugin_template;
+        }
+    }
+    return $template;
+}
+add_filter( 'template_include', 'sfaf_template_include' );
+
+/**
+ * Output an .ics download for a single event: /?uc_ics=ID
+ */
+function sfaf_output_ics() {
+    if ( empty( $_GET['uc_ics'] ) ) {
+        return;
+    }
+
+    $post_id = intval( $_GET['uc_ics'] );
+    $post    = get_post( $post_id );
+    if ( ! $post || $post->post_type !== 'uc_event' || $post->post_status !== 'publish' ) {
+        status_header( 404 );
+        exit;
+    }
+
+    $dt = sfaf_event_datetimes( $post_id );
+    if ( ! $dt ) {
+        status_header( 404 );
+        exit;
+    }
+    list( $start, $end ) = $dt;
+
+    $utc = new DateTimeZone( 'UTC' );
+    $start->setTimezone( $utc );
+    $end->setTimezone( $utc );
+
+    $host        = wp_parse_url( home_url(), PHP_URL_HOST );
+    $description = wp_strip_all_tags( get_the_excerpt( $post_id ) );
+
+    $lines   = array();
+    $lines[] = 'BEGIN:VCALENDAR';
+    $lines[] = 'VERSION:2.0';
+    $lines[] = 'PRODID:-//SFAF Calendar//EN';
+    $lines[] = 'CALSCALE:GREGORIAN';
+    $lines[] = 'METHOD:PUBLISH';
+    $lines[] = 'BEGIN:VEVENT';
+    $lines[] = 'UID:sfaf-event-' . $post_id . '@' . $host;
+    $lines[] = 'DTSTAMP:' . gmdate( 'Ymd\THis\Z' );
+    $lines[] = 'DTSTART:' . $start->format( 'Ymd\THis\Z' );
+    $lines[] = 'DTEND:' . $end->format( 'Ymd\THis\Z' );
+    $lines[] = 'SUMMARY:' . sfaf_ics_escape( get_the_title( $post_id ) );
+    $lines[] = 'DESCRIPTION:' . sfaf_ics_escape( $description );
+    $lines[] = 'LOCATION:' . sfaf_ics_escape( get_post_meta( $post_id, '_uc_location', true ) );
+    $lines[] = 'URL:' . esc_url_raw( get_permalink( $post_id ) );
+    $lines[] = 'END:VEVENT';
+    $lines[] = 'END:VCALENDAR';
+
+    $slug = sanitize_title( get_the_title( $post_id ) ) ?: 'event';
+
+    nocache_headers();
+    header( 'Content-Type: text/calendar; charset=utf-8' );
+    header( 'Content-Disposition: attachment; filename="' . $slug . '.ics"' );
+    echo implode( "\r\n", $lines );
+    exit;
+}
+add_action( 'template_redirect', 'sfaf_output_ics' );
+
+/**
+ * Output branding overrides (colors) in the head.
+ */
+function sfaf_output_branding_css() {
+    $settings = get_option( 'uc_settings', array() );
+
+    // SFAF brand defaults (yellow primary, teal accent). These are exposed as
+    // --uc-primary / --uc-accent for branded UI accents; the event cards keep
+    // their own teal/warm palette (--uc-teal / --uc-warm) intentionally.
+    $primary = ( ! empty( $settings['brand_primary_color'] ) ? sanitize_hex_color( $settings['brand_primary_color'] ) : '' );
+    $accent  = ( ! empty( $settings['brand_accent_color'] ) ? sanitize_hex_color( $settings['brand_accent_color'] ) : '' );
+    $primary = $primary ? $primary : '#FFD500';
+    $accent  = $accent ? $accent : '#16BECF';
+
+    echo "<style id='sfaf-branding'>:root{";
+    echo '--uc-primary:' . esc_html( $primary ) . ';';
+    echo '--uc-accent:' . esc_html( $accent ) . ';';
+    echo '--sfaf-yellow:#FFD500;--sfaf-black:#000000;--sfaf-gray:#373433;';
+    echo "}</style>\n";
+}
+add_action( 'wp_head', 'sfaf_output_branding_css' );
+
+/**
+ * Add the chosen card style as a body class so the CSS can react to it.
+ */
+function sfaf_body_class( $classes ) {
+    $settings = get_option( 'uc_settings', array() );
+    $style    = isset( $settings['brand_card_style'] ) ? $settings['brand_card_style'] : '';
+    if ( $style ) {
+        $classes[] = 'sfaf-card-' . sanitize_html_class( $style );
+    }
+    return $classes;
+}
+add_filter( 'body_class', 'sfaf_body_class' );
+
+/**
+ * Activation hook - create RSVP table
+ */
+function sfaf_activate() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'uc_rsvps';
+    $charset = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE $table (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        event_id bigint(20) unsigned NOT NULL,
+        name varchar(200) NOT NULL,
+        email varchar(200) NOT NULL,
+        phone varchar(50) DEFAULT '',
+        status varchar(20) DEFAULT 'confirmed',
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY event_id (event_id),
+        KEY email (email)
+    ) $charset;";
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta( $sql );
+
+    // Register the post type and taxonomies directly so their rewrite rules
+    // exist before we flush. (Calling register() only adds init hooks, which
+    // won't fire again during activation.)
+    $post_types = new SFAF_Post_Types();
+    $post_types->register_post_type();
+    $post_types->register_taxonomies();
+
+    // Seed sample events + taxonomy terms on first activation (no-op if any exist).
+    sfaf_install_sample_data();
+
+    // Register the /caladmin portal rewrite rules before flushing.
+    SFAF_Portal::add_rewrite_rules();
+
+    flush_rewrite_rules();
+}
+register_activation_hook( __FILE__, 'sfaf_activate' );
+
+/**
+ * Deactivation hook
+ */
+function sfaf_deactivate() {
+    flush_rewrite_rules();
+}
+register_deactivation_hook( __FILE__, 'sfaf_deactivate' );
+
+/**
+ * Register REST API routes
+ */
+function sfaf_register_rest_routes() {
+    register_rest_route( 'sfaf-calendar/v1', '/events', array(
+        'methods'             => 'GET',
+        'callback'            => 'sfaf_rest_get_events',
+        'permission_callback' => 'sfaf_rest_events_permission',
+    ) );
+    register_rest_route( 'sfaf-calendar/v1', '/rsvp', array(
+        'methods'             => 'POST',
+        'callback'            => 'sfaf_rest_submit_rsvp',
+        'permission_callback' => '__return_true',
+    ) );
+}
+add_action( 'rest_api_init', 'sfaf_register_rest_routes' );
+
+/**
+ * Permission for the public events feed. If an API key has been generated it
+ * must be supplied via the X-SFAF-API-Key header (satellites send it); if no
+ * key is configured the feed is open so it works out of the box.
+ */
+function sfaf_rest_events_permission( $request ) {
+    $settings = get_option( 'uc_settings', array() );
+    $key      = isset( $settings['multisite_api_key'] ) ? (string) $settings['multisite_api_key'] : '';
+    if ( $key === '' ) {
+        return true;
+    }
+    $provided = (string) $request->get_header( 'x_sfaf_api_key' );
+    if ( $provided && hash_equals( $key, $provided ) ) {
+        return true;
+    }
+    return new WP_Error( 'sfaf_forbidden', 'A valid X-SFAF-API-Key header is required.', array( 'status' => 403 ) );
+}
+
+/**
+ * REST: Get events
+ */
+function sfaf_rest_get_events( $request ) {
+    $per_page = (int) $request->get_param( 'per_page' );
+    if ( $per_page < 1 ) {
+        $per_page = 20;
+    }
+    $per_page = min( $per_page, 100 );
+
+    $page = (int) $request->get_param( 'page' );
+    if ( $page < 1 ) {
+        $page = 1;
+    }
+
+    $args = array(
+        'post_type'      => 'uc_event',
+        'posts_per_page' => $per_page,
+        'paged'          => $page,
+        'post_status'    => 'publish',
+        'meta_key'       => '_uc_event_date',
+        'orderby'        => 'meta_value',
+        'order'          => 'ASC',
+    );
+
+    $category = $request->get_param( 'category' );
+    if ( $category ) {
+        $args['tax_query'] = array( array(
+            'taxonomy' => 'uc_event_category',
+            'field'    => 'slug',
+            'terms'    => $category,
+        ) );
+    }
+
+    $query = new WP_Query( $args );
+    $events = array();
+
+    $sync = new SFAF_Sync();
+    foreach ( $query->posts as $post ) {
+        // Full payload (content, status, series + source info) for multi-site sync.
+        $events[] = $sync->event_to_array( $post->ID );
+    }
+
+    return new WP_REST_Response( array(
+        'events' => $events,
+        'total'  => $query->found_posts,
+    ), 200 );
+}
+
+/**
+ * REST: Submit RSVP
+ */
+function sfaf_rest_submit_rsvp( $request ) {
+    $rsvp = new SFAF_RSVP();
+    $result = $rsvp->submit( array(
+        'event_id' => intval( $request->get_param( 'event_id' ) ),
+        'name'     => sanitize_text_field( $request->get_param( 'name' ) ),
+        'email'    => sanitize_email( $request->get_param( 'email' ) ),
+        'phone'    => sanitize_text_field( $request->get_param( 'phone' ) ),
+    ) );
+    return new WP_REST_Response( $result, $result['success'] ? 200 : 400 );
+}
+
+/**
+ * Helper: shared per-request store for confirmed RSVP counts.
+ * Returned by reference so the batch primer and the single-event getter share it.
+ */
+function &sfaf_rsvp_count_store() {
+    static $store = array();
+    return $store;
+}
+
+/**
+ * Helper: prime confirmed RSVP counts for many events in a single query.
+ * List screens call this once with all visible event IDs so sfaf_get_rsvp_count()
+ * never has to run one COUNT(*) per row.
+ */
+function sfaf_prime_rsvp_counts( $event_ids ) {
+    $event_ids = array_filter( array_unique( array_map( 'intval', (array) $event_ids ) ) );
+    if ( empty( $event_ids ) ) {
+        return;
+    }
+    $store =& sfaf_rsvp_count_store();
+    $need  = array_diff( $event_ids, array_keys( $store ) );
+    if ( empty( $need ) ) {
+        return;
+    }
+    global $wpdb;
+    $table = $wpdb->prefix . 'uc_rsvps';
+    $in    = implode( ',', array_map( 'intval', $need ) );
+    $rows  = $wpdb->get_results(
+        "SELECT event_id, COUNT(*) AS c FROM $table WHERE status = 'confirmed' AND event_id IN ($in) GROUP BY event_id",
+        OBJECT_K
+    );
+    foreach ( $need as $id ) {
+        $store[ $id ] = isset( $rows[ $id ] ) ? (int) $rows[ $id ]->c : 0;
+    }
+}
+
+/**
+ * Helper: Get RSVP count for event (served from the primed store when available).
+ */
+function sfaf_get_rsvp_count( $event_id ) {
+    $event_id = (int) $event_id;
+    $store    =& sfaf_rsvp_count_store();
+    if ( isset( $store[ $event_id ] ) ) {
+        return $store[ $event_id ];
+    }
+    global $wpdb;
+    $table = $wpdb->prefix . 'uc_rsvps';
+    $store[ $event_id ] = (int) $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(*) FROM $table WHERE event_id = %d AND status = 'confirmed'",
+        $event_id
+    ) );
+    return $store[ $event_id ];
+}
