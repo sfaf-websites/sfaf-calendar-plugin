@@ -17,9 +17,21 @@ function sfaf_sample_term( $name, $taxonomy ) {
 }
 
 /**
- * Seed realistic SFAF sample events + taxonomy terms. No-op if any event exists.
+ * Seed realistic SFAF sample events + taxonomy terms.
+ *
+ * Runs at most once, ever. Two guards, either of which stops it:
+ *   1. The sfaf_sample_data_seeded option — set the first time this completes,
+ *      so demo data is never re-inserted even if the site is later emptied and
+ *      the plugin reactivated.
+ *   2. Any existing uc_event post — so it also stays out of the way on a site
+ *      that already has real events but has never run this seeder.
  */
 function sfaf_install_sample_data() {
+    // Once seeded, never again — even if every event is later deleted.
+    if ( get_option( 'sfaf_sample_data_seeded' ) ) {
+        return;
+    }
+
     $existing = get_posts( array(
         'post_type'   => 'uc_event',
         'post_status' => 'any',
@@ -27,6 +39,9 @@ function sfaf_install_sample_data() {
         'fields'      => 'ids',
     ) );
     if ( ! empty( $existing ) ) {
+        // Real events already exist: record that seeding is settled so the demo
+        // data can never appear later, and bail without inserting anything.
+        update_option( 'sfaf_sample_data_seeded', '1' );
         return;
     }
 
@@ -223,4 +238,7 @@ function sfaf_install_sample_data() {
             $rec->maybe_generate( $post_id );
         }
     }
+
+    // Mark seeding done so it never runs again on a future reactivation.
+    update_option( 'sfaf_sample_data_seeded', '1' );
 }
