@@ -1,0 +1,24 @@
+# Archived pre-2.0 code, kept on disk but out of the repo
+Old Calendar Files/
+
+# Build artifacts / distributables — the plugin ships as source, not a zip
+*.zip
+
+# Partial downloads
+*.crdownload
+
+# OS cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Dependencies
+node_modules/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~

@@ -1,17 +1,19 @@
 === SFAF Calendar ===
-Contributors: marketingmarksolutions
-Tags: calendar, events, rsvp, multi-site, nonprofit
+Contributors: sanfranciscoaidsfoundation
+Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
 Stable tag: 1.7.5
 License: GPLv2 or later
 
-A modern, multi-site event calendar built for organizations managing events across multiple web properties. Features RSVP tracking, integration hooks for GoFundMe Pro, Pardot/Salesforce, Google Calendar, Galaxy Digital, and webhook-based automation.
+The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
 
 == Description ==
 
-SFAF Calendar replaces expensive third-party calendar plugins with a custom, API-driven solution designed for organizations that need to sync events across multiple WordPress sites and external platforms.
+SFAF Calendar is the San Francisco AIDS Foundation's own event calendar. Staff create and manage events — dates, recurring series, RSVPs with capacity, reminders, categories, organizers, and venues — either through the WordPress admin or the standalone /caladmin front-end portal, with role-based access for admins, editors, and contributors.
+
+Events display on this site through the [sfaf_calendar] shortcode and a styled single-event page with SEO/JSON-LD markup. Where the calendar needs to appear on another site that cannot run the plugin, a small HTML embed block renders the same event cards from this site — nothing is installed or stored remotely. A read-only REST feed (optionally gated by an API key) lets other SFAF sites mirror the events.
 
 **Core Features:**
 

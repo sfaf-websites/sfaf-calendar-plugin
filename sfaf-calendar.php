@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: SFAF Calendar
- * Plugin URI: https://marketingmarksolutions.com
- * Description: A modern, multi-site event calendar with RSVP tracking and integrations for GoFundMe Pro, Pardot/Salesforce, Google Calendar, and more.
+ * Plugin URI: https://sfaf.org
+ * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place — through the WordPress admin or the /caladmin front-end portal — and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
  * Version: 1.7.5
- * Author: Marketing Mark Solutions
- * Author URI: https://marketingmarksolutions.com
+ * Author: San Francisco AIDS Foundation
+ * Author URI: https://sfaf.org
  * License: GPL v2 or later
  * Text Domain: sfaf-calendar
  */
