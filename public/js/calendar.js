@@ -76,6 +76,8 @@
                 per_page:  $container.attr('data-per-page'),
                 category:  $container.attr('data-filter-category') || '',
                 organizer: $container.attr('data-filter-organizer') || '',
+                series:    $container.attr('data-filter-series') || '',
+                venue:     $container.attr('data-filter-venue') || '',
                 render:    $container.attr('data-render') || 'card'
             },
             success: function(resp) {

@@ -34,8 +34,48 @@ class SFAF_Shortcodes {
         return in_array( $style, array( 'load_more', 'pages', 'infinite' ), true ) ? $style : 'load_more';
     }
 
-    /** Shared WP_Query args for upcoming events. */
-    private function build_query_args( $per_page, $paged, $category, $organizer ) {
+    /* ---------------------------------------------------------------------
+     * Filters
+     * ------------------------------------------------------------------- */
+
+    /**
+     * The filter set every display path shares, normalized from raw input.
+     *
+     * Keeping this in one place means the shortcodes, the load-more handler and
+     * the public embed endpoint all accept exactly the same filters — a filter
+     * added here reaches all three at once.
+     *
+     * @param array $raw Any array with some of: category, organizer, series, venue.
+     * @return array{category:string,organizer:string,series:int,venue:string}
+     */
+    private function normalize_filters( $raw ) {
+        return array(
+            'category'  => $this->slug_list( isset( $raw['category'] ) ? $raw['category'] : '' ),
+            'organizer' => $this->slug_list( isset( $raw['organizer'] ) ? $raw['organizer'] : '' ),
+            'venue'     => $this->slug_list( isset( $raw['venue'] ) ? $raw['venue'] : '' ),
+            'series'    => isset( $raw['series'] ) ? absint( $raw['series'] ) : 0,
+        );
+    }
+
+    /**
+     * Sanitize a comma-separated list of term slugs down to a clean CSV string.
+     * Returns '' when nothing usable is left, which every caller reads as "no filter".
+     */
+    private function slug_list( $raw ) {
+        $slugs = array_filter( array_map( 'sanitize_title', explode( ',', (string) $raw ) ) );
+        return implode( ',', array_unique( $slugs ) );
+    }
+
+    /**
+     * Shared WP_Query args for upcoming events.
+     *
+     * @param int   $per_page Posts per page; 0 or less means all.
+     * @param int   $paged    1-based page number.
+     * @param array $filters  Normalized filters, see normalize_filters().
+     */
+    private function build_query_args( $per_page, $paged, $filters ) {
+        $filters = $this->normalize_filters( $filters );
+
         $args = array(
             'post_type'   => 'uc_event',
             'post_status' => 'publish',
@@ -59,20 +99,33 @@ class SFAF_Shortcodes {
             $args['paged']          = max( 1, $paged );
         }
 
-        if ( $category ) {
-            $args['tax_query'][] = array(
-                'taxonomy' => 'uc_event_category',
-                'field'    => 'slug',
-                'terms'    => explode( ',', $category ),
+        // Slug-based taxonomy filters. Several slugs in one filter are an OR;
+        // two different filters combine as an AND (WP_Query's tax_query default).
+        $taxonomies = array(
+            'category'  => 'uc_event_category',
+            'organizer' => 'uc_organizer',
+            'venue'     => 'uc_venue',
+        );
+        foreach ( $taxonomies as $key => $taxonomy ) {
+            if ( $filters[ $key ] !== '' ) {
+                $args['tax_query'][] = array(
+                    'taxonomy' => $taxonomy,
+                    'field'    => 'slug',
+                    'terms'    => explode( ',', $filters[ $key ] ),
+                );
+            }
+        }
+
+        // Series: given a series parent ID, return that parent's occurrences.
+        // Every occurrence stores the parent ID in _uc_series_parent, and the
+        // parent points at itself, so one clause covers parent and children.
+        if ( $filters['series'] > 0 ) {
+            $args['meta_query'][] = array(
+                'key'   => '_uc_series_parent',
+                'value' => $filters['series'],
             );
         }
-        if ( $organizer ) {
-            $args['tax_query'][] = array(
-                'taxonomy' => 'uc_organizer',
-                'field'    => 'slug',
-                'terms'    => explode( ',', $organizer ),
-            );
-        }
+
         return $args;
     }
 
@@ -124,36 +177,42 @@ class SFAF_Shortcodes {
 
     /**
      * Main calendar shortcode: [sfaf_calendar]
-     * Attributes: category, organizer, per_page, show_filters, layout
+     * Attributes: category, organizer, series, venue, per_page, show_filters, layout
      * per_page overrides the global setting; per_page="0"/"-1" shows all.
+     * series takes a series parent event ID and shows that series' occurrences.
      */
     public function render_calendar( $atts ) {
         $atts = shortcode_atts( array(
             'category'     => '',
             'organizer'    => '',
+            'series'       => '',
+            'venue'        => '',
             'per_page'     => '',
             'show_filters' => 'yes',
             'layout'       => 'cards',
         ), $atts );
 
+        $filters  = $this->normalize_filters( $atts );
         $compact  = ( $atts['layout'] === 'compact' );
         $per_page = $this->resolve_per_page( $atts['per_page'] );
         $paginate = ( $per_page > 0 );
         $style    = $this->pagination_style();
         $paged    = ( $paginate && $style === 'pages' && isset( $_GET['uc_page'] ) ) ? max( 1, intval( $_GET['uc_page'] ) ) : 1;
 
-        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $atts['category'], $atts['organizer'] ) );
+        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $filters ) );
         $max   = $paginate ? (int) $query->max_num_pages : 1;
         sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
 
         ob_start();
         ?>
         <div class="uc-calendar<?php echo $compact ? ' uc-calendar-compact' : ''; ?>"
-             data-category="<?php echo esc_attr( $atts['category'] ); ?>"
+             data-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-render="<?php echo $compact ? 'compact' : 'card'; ?>"
              data-per-page="<?php echo (int) $per_page; ?>"
-             data-filter-category="<?php echo esc_attr( $atts['category'] ); ?>"
-             data-filter-organizer="<?php echo esc_attr( $atts['organizer'] ); ?>"
+             data-filter-category="<?php echo esc_attr( $filters['category'] ); ?>"
+             data-filter-organizer="<?php echo esc_attr( $filters['organizer'] ); ?>"
+             data-filter-series="<?php echo (int) $filters['series']; ?>"
+             data-filter-venue="<?php echo esc_attr( $filters['venue'] ); ?>"
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
              data-max-pages="<?php echo (int) $max; ?>">
@@ -232,17 +291,21 @@ class SFAF_Shortcodes {
 
     /**
      * Upcoming events widget shortcode: [upcoming_events]
-     * Attributes: category, organizer, per_page (or legacy count), title.
+     * Attributes: category, organizer, series, venue, per_page (or legacy count), title.
      * per_page="0"/"-1" shows all with no pagination.
      */
     public function render_upcoming( $atts ) {
         $atts = shortcode_atts( array(
             'category'  => '',
             'organizer' => '',
+            'series'    => '',
+            'venue'     => '',
             'count'     => '',
             'per_page'  => '',
             'title'     => 'Upcoming Events',
         ), $atts );
+
+        $filters = $this->normalize_filters( $atts );
 
         // per_page attribute wins; fall back to legacy count; then global.
         $raw      = ( $atts['per_page'] !== '' ) ? $atts['per_page'] : $atts['count'];
@@ -251,7 +314,7 @@ class SFAF_Shortcodes {
         $style    = $this->pagination_style();
         $paged    = ( $paginate && $style === 'pages' && isset( $_GET['uc_page'] ) ) ? max( 1, intval( $_GET['uc_page'] ) ) : 1;
 
-        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $atts['category'], $atts['organizer'] ) );
+        $query = new WP_Query( $this->build_query_args( $per_page, $paged, $filters ) );
         $max   = $paginate ? (int) $query->max_num_pages : 1;
         sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
 
@@ -260,8 +323,10 @@ class SFAF_Shortcodes {
         <div class="uc-upcoming-widget"
              data-render="compact"
              data-per-page="<?php echo (int) $per_page; ?>"
-             data-filter-category="<?php echo esc_attr( $atts['category'] ); ?>"
-             data-filter-organizer="<?php echo esc_attr( $atts['organizer'] ); ?>"
+             data-filter-category="<?php echo esc_attr( $filters['category'] ); ?>"
+             data-filter-organizer="<?php echo esc_attr( $filters['organizer'] ); ?>"
+             data-filter-series="<?php echo (int) $filters['series']; ?>"
+             data-filter-venue="<?php echo esc_attr( $filters['venue'] ); ?>"
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
              data-max-pages="<?php echo (int) $max; ?>">
@@ -294,17 +359,20 @@ class SFAF_Shortcodes {
     public function ajax_load_events() {
         check_ajax_referer( 'uc_nonce', 'nonce' );
 
-        $page      = max( 1, isset( $_POST['page'] ) ? intval( $_POST['page'] ) : 1 );
-        $per_page  = isset( $_POST['per_page'] ) ? intval( $_POST['per_page'] ) : 12;
-        $category  = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
-        $organizer = isset( $_POST['organizer'] ) ? sanitize_text_field( wp_unslash( $_POST['organizer'] ) ) : '';
-        $render    = ( isset( $_POST['render'] ) && $_POST['render'] === 'compact' ) ? 'compact' : 'card';
+        $page     = max( 1, isset( $_POST['page'] ) ? intval( $_POST['page'] ) : 1 );
+        $per_page = isset( $_POST['per_page'] ) ? intval( $_POST['per_page'] ) : 12;
+        $render   = ( isset( $_POST['render'] ) && $_POST['render'] === 'compact' ) ? 'compact' : 'card';
+
+        $filters = array();
+        foreach ( array( 'category', 'organizer', 'series', 'venue' ) as $key ) {
+            $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
+        }
 
         if ( $per_page <= 0 ) {
             wp_send_json( array( 'html' => '', 'has_more' => false ) );
         }
 
-        $query = new WP_Query( $this->build_query_args( $per_page, $page, $category, $organizer ) );
+        $query = new WP_Query( $this->build_query_args( $per_page, $page, $filters ) );
         sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
 
         ob_start();
