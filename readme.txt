@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.7.5
+Stable tag: 2.0.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -50,6 +50,14 @@ Build any of these visually under Events &rsaquo; Shortcode Generator.
 5. Configure integrations under Events > Settings
 
 == Changelog ==
+
+= 2.0.0 =
+* Authorship and identity updated to San Francisco AIDS Foundation; plugin description rewritten to describe SFAF's actual use.
+* Sample demo data now seeds only once, ever (a one-time flag), and never re-inserts after the site is emptied and the plugin reactivated.
+* Removed a broken zero-byte bundled zip; added repo hygiene (.gitignore/.gitattributes).
+* Series and venue filtering on [sfaf_calendar] and [upcoming_events].
+* Public HTML embed: render the calendar on any other site with a small block, backed by a public read-only embed endpoint and a dependency-free script. New Events > Embed Code generator screen.
+* Brand guide v3.0 compliance across the public calendar, admin, and /caladmin portal: inline-SVG icon set replacing emoji, AA-contrast colours, Montserrat/Merriweather typography, and the approved palette as the branding defaults (the branding settings themselves are unchanged).
 
 = 1.7.5 =
 * Multi-site API: the events feed now includes each event's slug so satellites can mirror the main site's URLs exactly (including the dated occurrence slugs).
