@@ -371,7 +371,7 @@ class SFAF_Admin {
                                     if ( $simg ) {
                                         echo '<img src="' . esc_url( $simg ) . '" alt="" />';
                                     } else {
-                                        echo '<span class="uc-series-thumb-none" aria-hidden="true"><?php echo sfaf_icon( 'calendar', array( 'size' => '18px' ) ); ?></span>';
+                                        echo '<span class="uc-series-thumb-none" aria-hidden="true">' . sfaf_icon( 'calendar', array( 'size' => '18px' ) ) . '</span>';
                                     }
                                 ?></a></td>
                                 <td><a href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( get_the_title( $pid ) ); ?></strong></a></td>

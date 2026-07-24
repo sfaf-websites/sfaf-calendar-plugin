@@ -18,19 +18,79 @@ define( 'SFAF_VERSION', '2.0.0' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-// Core includes
-require_once SFAF_PLUGIN_DIR . 'includes/sfaf-template-functions.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-post-types.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-shortcodes.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-embed.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-rsvp.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-recurrence.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-list-columns.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-sync.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-seo.php';
-require_once SFAF_PLUGIN_DIR . 'includes/class-sfaf-portal.php';
-require_once SFAF_PLUGIN_DIR . 'includes/sfaf-sample-data.php';
-require_once SFAF_PLUGIN_DIR . 'admin/class-sfaf-admin.php';
+/**
+ * Deactivate the plugin and show an admin notice explaining why.
+ *
+ * The last-resort safety net: a fatal or compile error at load time would
+ * otherwise white-screen the entire site on every request (which is exactly
+ * what forced a folder rename in the field). Instead we catch it, switch the
+ * plugin off, and tell the admin what happened.
+ *
+ * @param string $context Where the failure happened, for the notice.
+ * @param string $message The error message.
+ */
+function sfaf_fail_safe( $context, $message ) {
+    // Remember the reason so a notice can be shown after any redirect.
+    set_transient( 'sfaf_fatal_notice', array( 'context' => $context, 'message' => $message ), HOUR_IN_SECONDS );
+
+    // Turn the plugin off so the next request loads cleanly rather than
+    // re-triggering the same fatal. deactivate_plugins() lives in the admin
+    // plugin API, which isn't always loaded this early.
+    add_action( 'admin_init', function () {
+        if ( ! function_exists( 'deactivate_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        deactivate_plugins( plugin_basename( __FILE__ ) );
+    } );
+}
+
+/**
+ * Render the stored fatal notice on admin screens, once.
+ */
+function sfaf_render_fatal_notice() {
+    $info = get_transient( 'sfaf_fatal_notice' );
+    if ( ! $info ) {
+        return;
+    }
+    delete_transient( 'sfaf_fatal_notice' );
+    $context = isset( $info['context'] ) ? $info['context'] : 'loading';
+    $message = isset( $info['message'] ) ? $info['message'] : '';
+    echo '<div class="notice notice-error"><p><strong>SFAF Calendar was deactivated</strong> to protect your site after a problem while '
+        . esc_html( $context ) . '.</p>';
+    if ( $message ) {
+        echo '<p><code>' . esc_html( $message ) . '</code></p>';
+    }
+    echo '</div>';
+}
+add_action( 'admin_notices', 'sfaf_render_fatal_notice' );
+
+// Core includes, loaded defensively. A syntax/compile error or a fatal in any
+// of these files is caught here (as a Throwable) rather than taking the whole
+// site down; the plugin deactivates itself and the rest of this file is skipped.
+$sfaf_includes = array(
+    'includes/sfaf-template-functions.php',
+    'includes/class-sfaf-post-types.php',
+    'includes/class-sfaf-shortcodes.php',
+    'includes/class-sfaf-embed.php',
+    'includes/class-sfaf-rsvp.php',
+    'includes/class-sfaf-recurrence.php',
+    'includes/class-sfaf-list-columns.php',
+    'includes/class-sfaf-sync.php',
+    'includes/class-sfaf-seo.php',
+    'includes/class-sfaf-portal.php',
+    'includes/sfaf-sample-data.php',
+    'admin/class-sfaf-admin.php',
+);
+try {
+    foreach ( $sfaf_includes as $sfaf_include ) {
+        require_once SFAF_PLUGIN_DIR . $sfaf_include;
+    }
+} catch ( \Throwable $sfaf_load_error ) {
+    // Bail before registering any hooks — the classes/functions those hooks
+    // depend on may be missing, which would only cause more fatals.
+    sfaf_fail_safe( 'loading the plugin files', $sfaf_load_error->getMessage() );
+    return;
+}
 
 /**
  * Initialize the plugin
@@ -265,9 +325,40 @@ function sfaf_body_class( $classes ) {
 add_filter( 'body_class', 'sfaf_body_class' );
 
 /**
- * Activation hook - create RSVP table
+ * Activation hook.
+ *
+ * Wraps the real work so a failure aborts the activation cleanly — the plugin
+ * is switched off and the admin sees the reason — instead of leaving a broken,
+ * white-screening install behind.
  */
 function sfaf_activate() {
+    try {
+        sfaf_run_activation();
+    } catch ( \Throwable $e ) {
+        if ( ! function_exists( 'deactivate_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        deactivate_plugins( plugin_basename( __FILE__ ) );
+        set_transient( 'sfaf_fatal_notice', array( 'context' => 'activating the plugin', 'message' => $e->getMessage() ), HOUR_IN_SECONDS );
+
+        // Abort activation with a readable page (WordPress styles wp_die — this
+        // is not a white screen) and a link back to the plugins list.
+        wp_die(
+            '<h1>SFAF Calendar could not be activated</h1>'
+            . '<p>The plugin was switched off and your site was left untouched.</p>'
+            . '<p><strong>Reason:</strong> <code>' . esc_html( $e->getMessage() ) . '</code></p>',
+            'Plugin activation failed',
+            array( 'back_link' => true )
+        );
+    }
+}
+register_activation_hook( __FILE__, 'sfaf_activate' );
+
+/**
+ * The real activation work: RSVP table, post type/taxonomies, sample data,
+ * portal rewrites, flush. Any fatal in here is caught by sfaf_activate().
+ */
+function sfaf_run_activation() {
     global $wpdb;
     $table = $wpdb->prefix . 'uc_rsvps';
     $charset = $wpdb->get_charset_collate();
@@ -303,7 +394,6 @@ function sfaf_activate() {
 
     flush_rewrite_rules();
 }
-register_activation_hook( __FILE__, 'sfaf_activate' );
 
 /**
  * Deactivation hook
