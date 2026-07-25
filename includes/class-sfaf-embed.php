@@ -39,10 +39,18 @@ class SFAF_Embed {
     public function register() {
         add_action( 'rest_api_init', array( $this, 'register_route' ) );
 
-        // Priority 20 on rest_pre_serve_request, rather than headers on the
-        // response object: response headers are sent earlier in serve_request(),
-        // where core's own CORS and cache headers can still overwrite them.
-        // This runs last and has the final say.
+        // CORS is sent three ways so it survives as many setups as possible, all
+        // scoped to the embed route (the key-gated /events feed is never touched):
+        //
+        //   1. On the WP_REST_Response object itself (handle_request + preflight).
+        //      Core emits these via send_headers() early in serve_request, before
+        //      the body, and REST cache plugins store them with the response — so
+        //      a cached hit still carries them.
+        //   2. An explicit OPTIONS preflight short-circuit (rest_pre_dispatch),
+        //      answered before core's generic OPTIONS handler.
+        //   3. A final header() pass on rest_pre_serve_request, which also covers
+        //      error/edge responses that never reach our callback.
+        add_filter( 'rest_pre_dispatch', array( $this, 'handle_preflight' ), 9, 3 );
         add_filter( 'rest_pre_serve_request', array( $this, 'send_embed_headers' ), 20, 3 );
 
         // Cache invalidation. Anything that can change a rendered card bumps the
@@ -130,7 +138,19 @@ class SFAF_Embed {
             $payload['cached'] = true;
         }
 
-        return new WP_REST_Response( $payload, 200 );
+        $response = new WP_REST_Response( $payload, 200 );
+
+        // Put CORS + browser-cache headers on the response object itself. Core
+        // sends these via send_headers() before the body, and REST cache layers
+        // store them with the response — the most reliable place for them.
+        $this->apply_cors_to_response( $response, $request );
+
+        $browser_ttl = (int) apply_filters( 'sfaf_embed_browser_cache_ttl', MINUTE_IN_SECONDS );
+        if ( $browser_ttl > 0 ) {
+            $response->header( 'Cache-Control', 'public, max-age=' . $browser_ttl );
+        }
+
+        return $response;
     }
 
     /**
@@ -227,57 +247,115 @@ class SFAF_Embed {
      * Cross-origin headers
      * ------------------------------------------------------------------- */
 
+    /** True when a REST request targets the embed route (and only that route). */
+    private function is_embed_request( $request ) {
+        return ( $request instanceof WP_REST_Request )
+            && $request->get_route() === '/' . self::REST_NAMESPACE . self::REST_ROUTE;
+    }
+
     /**
-     * Send the embed route's cross-origin and caching headers.
+     * The CORS header set for a request.
      *
-     * Open to any origin by default — this is public event data, and the sites
-     * that will embed it are not all known in advance. The allowed list is
-     * filterable so it can be narrowed later without touching this file:
+     * Open to any origin by default — this is public, published event data with
+     * no personal fields, and the sites that embed it are not all known in
+     * advance. The allowed list is filterable so it can be narrowed later
+     * without touching this file:
      *
      *     add_filter( 'sfaf_embed_allowed_origins', function () {
      *         return array( 'https://www.sfaf.org' );
      *     } );
      *
-     * @param bool            $served  Whether the request has already been served.
-     * @param WP_REST_Response $result  Response object.
+     * @return array<string,string> Header name => value.
+     */
+    private function cors_headers( $request = null ) {
+        $origin  = get_http_origin();
+        $allowed = (array) apply_filters( 'sfaf_embed_allowed_origins', array( '*' ), $request );
+
+        // A simple GET needs no preflight, but declare the preflight answers too
+        // so a stricter future request (or a proxy that forces one) still works.
+        $headers = array(
+            'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type',
+            'Access-Control-Max-Age'       => '600',
+        );
+
+        if ( in_array( '*', $allowed, true ) ) {
+            $headers['Access-Control-Allow-Origin'] = '*';
+        } elseif ( $origin && in_array( $origin, $allowed, true ) ) {
+            // Reflecting one origin: caches must key on the Origin header.
+            $headers['Access-Control-Allow-Origin'] = esc_url_raw( $origin );
+            $headers['Vary']                        = 'Origin';
+        } else {
+            // Not allowed: no Allow-Origin, so the browser blocks the read.
+            $headers['Vary'] = 'Origin';
+        }
+
+        return $headers;
+    }
+
+    /** Copy the CORS headers onto a WP_REST_Response object. */
+    private function apply_cors_to_response( $response, $request ) {
+        if ( ! $response instanceof WP_REST_Response ) {
+            return;
+        }
+        // This endpoint never uses cookies; a stray Allow-Credentials would make
+        // the wildcard origin invalid, so make sure it isn't set on our response.
+        $response->remove_header( 'Access-Control-Allow-Credentials' );
+        foreach ( $this->cors_headers( $request ) as $name => $value ) {
+            $response->header( $name, $value );
+        }
+    }
+
+    /**
+     * Answer a CORS preflight (OPTIONS) for the embed route ourselves.
+     *
+     * Hooked to rest_pre_dispatch at priority 9 so it runs before core's generic
+     * OPTIONS handler. Returning a response short-circuits dispatch with a 200,
+     * the CORS headers, and no body.
+     *
+     * @param mixed           $result  Dispatch result (null to continue).
+     * @param WP_REST_Server  $server  REST server.
+     * @param WP_REST_Request $request Current request.
+     * @return mixed
+     */
+    public function handle_preflight( $result, $server, $request ) {
+        if ( null !== $result || ! $this->is_embed_request( $request ) ) {
+            return $result;
+        }
+        if ( strtoupper( $request->get_method() ) !== 'OPTIONS' ) {
+            return $result;
+        }
+        $response = new WP_REST_Response( null, 200 );
+        $this->apply_cors_to_response( $response, $request );
+        return $response;
+    }
+
+    /**
+     * Final CORS pass on rest_pre_serve_request.
+     *
+     * The response-object headers (set in handle_request / handle_preflight) are
+     * the primary mechanism; this is a fallback that also reaches error and
+     * edge-case responses which never ran our callback. It emits via header()
+     * with replace semantics, so it overrides core's reflected-origin CORS and
+     * has the final say for our route.
+     *
+     * @param bool             $served  Whether the request was already served.
+     * @param WP_HTTP_Response $result  Response object.
      * @param WP_REST_Request  $request Request object.
      * @return bool
      */
     public function send_embed_headers( $served, $result, $request ) {
-        if ( ! $request instanceof WP_REST_Request || $request->get_route() !== '/' . self::REST_NAMESPACE . self::REST_ROUTE ) {
-            return $served;
-        }
-        if ( headers_sent() ) {
+        if ( ! $this->is_embed_request( $request ) || headers_sent() ) {
             return $served;
         }
 
-        $origin  = get_http_origin();
-        $allowed = (array) apply_filters( 'sfaf_embed_allowed_origins', array( '*' ), $request );
-
-        // Core adds Access-Control-Allow-Credentials alongside the origin it
-        // reflects. Credentials and a wildcard origin are mutually exclusive,
-        // and this endpoint never needs a cookie, so it comes back off.
+        // Core's rest_send_cors_headers reflects the origin and adds
+        // Allow-Credentials; drop that so our (possibly wildcard) origin is valid.
         header_remove( 'Access-Control-Allow-Credentials' );
 
-        if ( in_array( '*', $allowed, true ) ) {
-            header( 'Access-Control-Allow-Origin: *' );
-        } elseif ( $origin && in_array( $origin, $allowed, true ) ) {
-            header( 'Access-Control-Allow-Origin: ' . esc_url_raw( $origin ) );
-            header( 'Vary: Origin', false );
-        } else {
-            // Not on the list: no header, so the browser refuses the response.
-            header_remove( 'Access-Control-Allow-Origin' );
-            header( 'Vary: Origin', false );
-        }
-
-        header( 'Access-Control-Allow-Methods: GET, OPTIONS' );
-
-        // A short browser cache in front of the server-side one. Deliberately
-        // much shorter than the transient TTL: a transient can be thrown away
-        // the moment an event is saved, a browser cache can only be waited out.
-        $browser_ttl = (int) apply_filters( 'sfaf_embed_browser_cache_ttl', MINUTE_IN_SECONDS );
-        if ( $browser_ttl > 0 ) {
-            header( 'Cache-Control: public, max-age=' . $browser_ttl );
+        foreach ( $this->cors_headers( $request ) as $name => $value ) {
+            // Vary must append (there may be other Vary values); the rest replace.
+            header( $name . ': ' . $value, 'Vary' !== $name );
         }
 
         return $served;
