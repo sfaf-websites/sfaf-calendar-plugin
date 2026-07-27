@@ -238,28 +238,24 @@ class SFAF_Embed {
 
         $payload['per_page']     = $params['per_page'];
         $payload['calendar_url'] = self::calendar_url();
-        $payload['card_style']   = self::card_style();
         $payload['cached']       = false;
 
-        return $payload;
-    }
+        // The card style chosen under branding, as a bare slug ('minimal',
+        // 'shadow', …). Read straight from the same option sfaf_body_class()
+        // reads — uc_settings['brand_card_style'] — rather than through a
+        // helper of our own.
+        //
+        // On this site the style reaches the CSS as a body class. An embed has
+        // no body of ours to put a class on, so the slug travels in the payload
+        // and embed.js puts it on the block itself. Inlined deliberately: a
+        // helper here is one more callable that can go missing in a partial
+        // deployment, and this is the third undefined-callable fatal on this
+        // endpoint. get_option() and sanitize_html_class() are WordPress core.
+        $uc_settings           = get_option( 'uc_settings', array() );
+        $card_style            = isset( $uc_settings['brand_card_style'] ) ? $uc_settings['brand_card_style'] : '';
+        $payload['card_style'] = $card_style ? sanitize_html_class( $card_style ) : '';
 
-    /**
-     * The card style chosen in settings, as a bare slug ('minimal', 'shadow', …).
-     *
-     * On this site the style reaches the CSS through a body class added by
-     * sfaf_body_class(). An embed has no body of ours to put a class on — the
-     * host page's <body> belongs to someone else — so the style travels in the
-     * payload instead and embed.js puts it on the block itself. Without this the
-     * calendar always renders in the default style off-site, however the setting
-     * is configured here.
-     *
-     * @return string Slug, or '' when no style is set.
-     */
-    public static function card_style() {
-        $settings = get_option( 'uc_settings', array() );
-        $style    = isset( $settings['brand_card_style'] ) ? $settings['brand_card_style'] : '';
-        return $style ? sanitize_html_class( $style ) : '';
+        return $payload;
     }
 
     /* ---------------------------------------------------------------------
