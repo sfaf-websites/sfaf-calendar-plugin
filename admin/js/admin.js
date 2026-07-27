@@ -203,20 +203,48 @@
     }
 
     /**
-     * GoFundMe Pro: Connect (demo toggle) + Fetch Campaigns (demo note).
+     * GoFundMe Pro: real connection test.
+     *
+     * Posts whatever is currently in the credential fields, so the button works
+     * before the settings have been saved. A blank secret means "use the stored
+     * one" — which is what the write-only field submits when it has not been
+     * retyped. The secret is sent to our own admin-ajax endpoint only, and
+     * neither it nor the returned token is ever displayed.
      */
     function initGofundmeConnect() {
-        $(document).on('click', '.uc-gofundme-connect', function() {
-            var $box = $('#uc_gofundme_connected');
-            var connected = !$box.prop('checked');
-            $box.prop('checked', connected);
-            $('.uc-conn-pill').first()
-                .toggleClass('is-connected', connected)
-                .text(connected ? 'Connected' : 'Not connected');
-        });
-        $(document).on('click', '.uc-gofundme-fetch', function(e) {
+        $(document).on('click', '.uc-gofundme-connect', function(e) {
             e.preventDefault();
-            $('.uc-gofundme-fetch-msg').slideDown();
+
+            var $btn  = $(this);
+            var $pill = $btn.closest('.uc-conn-controls').find('.uc-conn-pill');
+            var $msg  = $('.uc-gofundme-conn-msg');
+            var label = $btn.text();
+
+            $btn.prop('disabled', true).text('Testing…');
+            $pill.removeClass('is-connected').text('Testing…');
+            $msg.hide().removeClass('notice notice-success notice-error').text('');
+
+            $.post(sfafAdmin.ajaxUrl, {
+                action: 'sfaf_gfmp_connect',
+                nonce: sfafAdmin.nonce,
+                client_id: $('input[name="uc_settings[gofundme_client_id]"]').val() || '',
+                client_secret: $('input[name="uc_settings[gofundme_client_secret]"]').val() || ''
+            }).done(function(res) {
+                var ok = res && res.success;
+                var data = (res && res.data) || {};
+                $pill.toggleClass('is-connected', !!ok).text(ok ? 'Connected' : 'Not connected');
+                $msg.addClass(ok ? 'notice notice-success' : 'notice notice-error')
+                    .text((ok ? '' : 'Connection failed: ') + (data.message || (ok ? 'Connected.' : 'Unknown error.'))
+                          + (data.endpoint ? ' [endpoint: ' + data.endpoint + ']' : ''))
+                    .slideDown();
+            }).fail(function(xhr) {
+                $pill.removeClass('is-connected').text('Not connected');
+                $msg.addClass('notice notice-error')
+                    .text('Connection failed: the request to WordPress itself failed (HTTP ' + xhr.status + ').')
+                    .slideDown();
+            }).always(function() {
+                $btn.prop('disabled', false).text(label);
+            });
         });
     }
 

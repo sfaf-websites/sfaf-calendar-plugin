@@ -71,7 +71,7 @@ class SFAF_Admin {
         // Plain text fields.
         $text_fields = array(
             'multisite_api_key',
-            'gofundme_client_id', 'gofundme_client_secret', 'gofundme_org_id',
+            'gofundme_client_id', 'gofundme_org_id',
             'pardot_business_unit', 'google_calendar_id',
             'galaxy_api_key', 'galaxy_portal_url', 'galaxy_agency_id',
             'galaxy_needs_category', 'galaxy_sync_interval',
@@ -112,9 +112,25 @@ class SFAF_Admin {
         $out['brand_card_style'] = ( isset( $input['brand_card_style'] ) && in_array( $input['brand_card_style'], $card_styles, true ) )
             ? $input['brand_card_style'] : 'bordered';
 
-        // Toggles.
+        // Secrets are write-only: the field submits blank unless it was retyped,
+        // and blank means "keep what is stored" rather than "clear it". Not run
+        // through sanitize_text_field — a secret is an opaque string that must
+        // survive byte-for-byte.
+        $existing = get_option( 'uc_settings', array() );
+        foreach ( array( 'gofundme_client_secret' ) as $secret_field ) {
+            $submitted = isset( $input[ $secret_field ] ) ? trim( (string) $input[ $secret_field ] ) : '';
+            if ( '' !== $submitted ) {
+                $out[ $secret_field ] = $submitted;
+            } else {
+                $out[ $secret_field ] = isset( $existing[ $secret_field ] ) ? $existing[ $secret_field ] : '';
+            }
+        }
+
+        // Toggles. gofundme_connected is gone: connection state is now derived
+        // from whether a real token is on file (SFAF_GFMP::status()), so it can
+        // no longer be set by hand.
         $toggles = array(
-            'gofundme_show_progress', 'gofundme_auto_import', 'gofundme_connected',
+            'gofundme_show_progress', 'gofundme_auto_import',
             'pardot_auto_prospect', 'pardot_event_emails',
             'google_auto_publish', 'galaxy_auto_sync',
             'galaxy_import_events', 'galaxy_active_only',
@@ -968,22 +984,29 @@ class SFAF_Admin {
                         </div>
                         <div class="uc-field-row">
                             <label>Client Secret</label>
-                            <input type="password" name="uc_settings[gofundme_client_secret]" value="<?php echo esc_attr( $s( 'gofundme_client_secret' ) ); ?>" class="uc-input" />
+                            <?php // Never rendered back to the browser — only whether one is stored. ?>
+                            <input type="password" name="uc_settings[gofundme_client_secret]" value="" autocomplete="new-password"
+                                   placeholder="<?php echo SFAF_GFMP::has_secret() ? 'Saved — leave blank to keep it' : 'Paste the client secret'; ?>"
+                                   class="uc-input" />
                         </div>
                         <div class="uc-field-row">
                             <label>Organization ID</label>
                             <input type="text" name="uc_settings[gofundme_org_id]" value="<?php echo esc_attr( $s( 'gofundme_org_id' ) ); ?>" class="uc-input" />
                         </div>
+                        <p class="description">The Organization ID is not used to obtain a token — it identifies which organization's data to read, in calls such as <code>GET /organizations/{org_id}/campaigns</code>. Set it before the campaign step.</p>
                         <div class="uc-field-row">
                             <label>Connection</label>
                             <div class="uc-conn-controls">
-                                <input type="checkbox" id="uc_gofundme_connected" name="uc_settings[gofundme_connected]" value="1" <?php checked( $s( 'gofundme_connected' ), '1' ); ?> hidden />
-                                <button type="button" class="button uc-gofundme-connect">Connect GoFundMe Pro</button>
-                                <button type="button" class="button uc-gofundme-fetch">Fetch Campaigns</button>
-                                <span class="uc-conn-pill <?php echo $s( 'gofundme_connected' ) === '1' ? 'is-connected' : ''; ?>"><?php echo $s( 'gofundme_connected' ) === '1' ? 'Connected' : 'Not connected'; ?></span>
+                                <?php $gf_status = SFAF_GFMP::status(); ?>
+                                <button type="button" class="button uc-gofundme-connect">Test connection</button>
+                                <span class="uc-conn-pill <?php echo $gf_status['connected'] ? 'is-connected' : ''; ?>"><?php
+                                    echo $gf_status['connected']
+                                        ? 'Connected — token valid for ' . esc_html( $gf_status['expires_human'] )
+                                        : 'Not connected';
+                                ?></span>
                             </div>
                         </div>
-                        <p class="description uc-gofundme-fetch-msg" style="display:none;">In production this calls <code>GET /organizations/{org_id}/campaigns</code> and fills the campaign manager below.</p>
+                        <p class="description uc-gofundme-conn-msg" style="display:none;"></p>
                         <div class="uc-field-row">
                             <label>Show progress bar on event cards</label>
                             <label class="uc-toggle"><input type="checkbox" name="uc_settings[gofundme_show_progress]" value="1" <?php checked( $s( 'gofundme_show_progress' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>
