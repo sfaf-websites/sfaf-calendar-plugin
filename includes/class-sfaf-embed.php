@@ -252,6 +252,12 @@ class SFAF_Embed {
             sfaf_set_embed_context( false );
         }
 
+        // Undo any lazy-loading rewrite first, so the real image URL is in src
+        // before URLs are resolved; then make everything absolute. Order
+        // matters — a URL parked in data-orig-src has to be moved into src
+        // before absolutize_urls() can qualify it.
+        $payload['html'] = $this->normalize_lazy_images( $payload['html'] );
+
         // Every URL in the markup is resolved against this site before it goes
         // out. The host page is on another domain, so a root-relative path like
         // /wp-content/uploads/photo.jpg would resolve against the host and 404
@@ -278,6 +284,183 @@ class SFAF_Embed {
         $payload['card_style'] = $card_style ? sanitize_html_class( $card_style ) : '';
 
         return $payload;
+    }
+
+    /* ---------------------------------------------------------------------
+     * Lazy-loading normalisation
+     *
+     * Image optimisers on this site rewrite <img> tags before the markup ever
+     * reaches us: the real URL is moved into data-orig-src / data-srcset, src
+     * and srcset are replaced with a blank inline SVG, and a "lazyload" class
+     * is added. On this site that is invisible, because the optimiser's own
+     * script swaps the real image back in on page load.
+     *
+     * An embed carries the markup but not that script, so on a remote page the
+     * blank placeholder is simply the final state and the card stays empty.
+     * Since the embed is required to work with no host-page JavaScript at all,
+     * the tags are put back into the form a browser understands unaided before
+     * the response goes out.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Attributes an optimiser parks the real image URL in, best first.
+     *
+     * @return array{src:string[],srcset:string[]}
+     */
+    private function lazy_attribute_map() {
+        return array(
+            'src' => array(
+                'data-orig-src',    // Jetpack / Photon, several cache plugins
+                'data-lazy-src',    // WP Rocket
+                'data-src',         // lazysizes, a3 Lazy Load, generic
+                'data-original',    // jQuery.lazyload (older)
+                'data-echo',
+            ),
+            'srcset' => array(
+                'data-orig-srcset',
+                'data-lazy-srcset',
+                'data-srcset',
+            ),
+        );
+    }
+
+    /**
+     * True when a value is a stand-in rather than a real image.
+     *
+     * Optimisers use an inline data: URI — a blank SVG of the right aspect
+     * ratio, or a 1x1 GIF — so the layout does not jump. Nothing the calendar
+     * renders legitimately uses a data: URI in src or srcset, so treating them
+     * all as placeholders is safe here.
+     *
+     * @param string $value Attribute value.
+     * @return bool
+     */
+    private function is_placeholder_url( $value ) {
+        $value = trim( $value );
+        return ( '' === $value ) || ( 0 === stripos( $value, 'data:' ) );
+    }
+
+    /**
+     * Rewrite one <img> tag so the real image is in src/srcset.
+     *
+     * @param string $tag The full tag, '<img …>'.
+     * @return string
+     */
+    private function normalize_img_tag( $tag ) {
+        $inner = preg_replace( '#^<img\b#i', '', $tag );
+        $inner = preg_replace( '#/?>$#', '', (string) $inner );
+
+        // WordPress and every optimiser in this list emit quoted values.
+        if ( ! preg_match_all( '/([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*("|\')(.*?)\2/s', (string) $inner, $found, PREG_SET_ORDER ) ) {
+            return $tag;
+        }
+
+        $attrs = array();
+        foreach ( $found as $one ) {
+            $name = strtolower( $one[1] );
+            if ( ! array_key_exists( $name, $attrs ) ) {
+                $attrs[ $name ] = $one[3];
+            }
+        }
+
+        $map = $this->lazy_attribute_map();
+
+        $real_src = '';
+        foreach ( $map['src'] as $key ) {
+            if ( isset( $attrs[ $key ] ) && ! $this->is_placeholder_url( $attrs[ $key ] ) ) {
+                $real_src = trim( $attrs[ $key ] );
+                break;
+            }
+        }
+
+        $real_srcset = '';
+        foreach ( $map['srcset'] as $key ) {
+            if ( isset( $attrs[ $key ] ) && ! $this->is_placeholder_url( $attrs[ $key ] ) ) {
+                $real_srcset = trim( $attrs[ $key ] );
+                break;
+            }
+        }
+
+        // Not a lazy-loaded tag: leave it exactly as rendered.
+        if ( '' === $real_src && '' === $real_srcset ) {
+            return $tag;
+        }
+
+        if ( '' !== $real_src ) {
+            $attrs['src'] = $real_src;
+        }
+        if ( '' !== $real_srcset ) {
+            $attrs['srcset'] = $real_srcset;
+        } elseif ( isset( $attrs['srcset'] ) && $this->is_placeholder_url( $attrs['srcset'] ) ) {
+            // A placeholder srcset outranks a real src, so it has to go.
+            unset( $attrs['srcset'] );
+        }
+
+        // src still blank but a real srcset survived: promote its first
+        // candidate, so browsers without srcset support still show something.
+        if ( ( ! isset( $attrs['src'] ) || $this->is_placeholder_url( $attrs['src'] ) ) && ! empty( $attrs['srcset'] ) ) {
+            $first          = preg_split( '/\s+/', trim( strtok( $attrs['srcset'], ',' ) ), 2 );
+            $attrs['src']   = $first[0];
+        }
+
+        // Drop the plumbing so nothing on the host page can act on it.
+        foreach ( array_merge( $map['src'], $map['srcset'], array( 'data-sizes', 'data-orig-sizes', 'data-ll-status', 'data-was-processed', 'data-lazy-srcset-done' ) ) as $key ) {
+            unset( $attrs[ $key ] );
+        }
+
+        // "sizes=auto" is a lazysizes convention the browser cannot use.
+        if ( isset( $attrs['sizes'] ) && 'auto' === strtolower( trim( $attrs['sizes'] ) ) ) {
+            unset( $attrs['sizes'] );
+        }
+
+        // Strip the optimiser's classes: if the consuming page happens to run a
+        // lazy loader of its own, a leftover "lazyload" would invite it to blank
+        // the image out again.
+        if ( isset( $attrs['class'] ) ) {
+            $class = preg_replace( '/\b(lazyload(ed|ing)?|lazy|ll-(loaded|error)|no-lazyload|skip-lazy)\b/i', ' ', $attrs['class'] );
+            $class = trim( preg_replace( '/\s+/', ' ', (string) $class ) );
+            if ( '' === $class ) {
+                unset( $attrs['class'] );
+            } else {
+                $attrs['class'] = $class;
+            }
+        }
+
+        // Native lazy loading needs no script, so the deferral survives.
+        if ( ! isset( $attrs['loading'] ) ) {
+            $attrs['loading'] = 'lazy';
+        }
+        if ( ! isset( $attrs['decoding'] ) ) {
+            $attrs['decoding'] = 'async';
+        }
+
+        $out = '<img';
+        foreach ( $attrs as $name => $value ) {
+            $out .= ' ' . $name . '="' . str_replace( '"', '&quot;', $value ) . '"';
+        }
+        return $out . ' />';
+    }
+
+    /**
+     * Put every lazy-loaded <img> in the markup back into native form.
+     *
+     * @param string $html Rendered markup.
+     * @return string
+     */
+    private function normalize_lazy_images( $html ) {
+        if ( ! is_string( $html ) || '' === $html || false === stripos( $html, '<img' ) ) {
+            return $html;
+        }
+
+        $out = preg_replace_callback(
+            '/<img\b[^>]*>/i',
+            function ( $m ) {
+                return $this->normalize_img_tag( $m[0] );
+            },
+            $html
+        );
+
+        return ( null === $out ) ? $html : $out;
     }
 
     /* ---------------------------------------------------------------------
