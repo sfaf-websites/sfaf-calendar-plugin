@@ -82,6 +82,52 @@ class SFAF_GFMP {
     }
 
     /**
+     * How the client credentials are presented to the token endpoint.
+     *
+     * The first live attempt sent client_id/client_secret in a form-encoded
+     * body and came back 401 "The access token is missing" — so the endpoint
+     * exists and rejects the presentation, not the credentials. Two things in
+     * the spec's own preamble bear on that:
+     *
+     *   "Currently, the GoFundMe Pro API only supports JSON. All POST/PUT
+     *    requests required a valid JSON object for the request body."
+     *
+     * which makes a JSON body a strong candidate, and the OAuth2 norm of
+     * sending the pair as HTTP Basic. Rather than guess again, all four
+     * combinations are supported and the connection test walks them:
+     *
+     *   basic_form  Authorization: Basic …  + form body (grant_type only)
+     *   basic_json  Authorization: Basic …  + JSON body (grant_type only)
+     *   body_json   no header               + JSON body carrying credentials
+     *   body_form   no header               + form body carrying credentials  (2.1.1)
+     *
+     * Whichever succeeds is remembered, so later refreshes go straight to it.
+     * Pin one by hand with:
+     *
+     *     add_filter( 'sfaf_gfmp_auth_mode', function () { return 'basic_json'; } );
+     *
+     * @return string
+     */
+    public static function auth_mode() {
+        $stored  = self::stored_token();
+        $default = ! empty( $stored['auth_mode'] ) ? (string) $stored['auth_mode'] : 'basic_form';
+        $mode    = (string) apply_filters( 'sfaf_gfmp_auth_mode', $default );
+        return in_array( $mode, self::auth_modes(), true ) ? $mode : 'basic_form';
+    }
+
+    /** Every supported presentation, in the order the test should try them. */
+    public static function auth_modes() {
+        return array( 'basic_form', 'basic_json', 'body_json', 'body_form' );
+    }
+
+    /** The configured mode first, then the rest as fallbacks. */
+    public static function auth_mode_order() {
+        $first = self::auth_mode();
+        $rest  = array_values( array_diff( self::auth_modes(), array( $first ) ) );
+        return (array) apply_filters( 'sfaf_gfmp_auth_mode_order', array_merge( array( $first ), $rest ) );
+    }
+
+    /**
      * Optional scope for the token request.
      *
      * The spec declares read and write scopes on the clientCredentials flow but
@@ -131,7 +177,7 @@ class SFAF_GFMP {
      * @param string $client_secret
      * @return array|WP_Error Token data on success.
      */
-    public static function request_token( $client_id, $client_secret ) {
+    public static function request_token( $client_id, $client_secret, $mode = null ) {
         $client_id     = trim( (string) $client_id );
         $client_secret = trim( (string) $client_secret );
 
@@ -139,34 +185,45 @@ class SFAF_GFMP {
             return new WP_Error( 'sfaf_gfmp_missing', 'Client ID and Client Secret are both required.' );
         }
 
+        $mode     = ( null === $mode ) ? self::auth_mode() : (string) $mode;
         $endpoint = self::token_endpoint();
+        $scope    = self::token_scope();
 
-        $form = array(
-            'grant_type'    => 'client_credentials',
-            'client_id'     => $client_id,
-            'client_secret' => $client_secret,
-        );
-        $scope = self::token_scope();
+        $payload = array( 'grant_type' => 'client_credentials' );
         if ( '' !== $scope ) {
-            $form['scope'] = $scope;
+            $payload['scope'] = $scope;
+        }
+
+        $headers = array( 'Accept' => 'application/json' );
+
+        // Basic modes put the pair in the Authorization header; body modes put
+        // it in the payload. Either way it is never written anywhere else.
+        if ( 0 === strpos( $mode, 'basic_' ) ) {
+            $headers['Authorization'] = 'Basic ' . base64_encode( $client_id . ':' . $client_secret );
+        } else {
+            $payload['client_id']     = $client_id;
+            $payload['client_secret'] = $client_secret;
+        }
+
+        if ( '_json' === substr( $mode, -5 ) ) {
+            $headers['Content-Type'] = 'application/json';
+            $body                    = wp_json_encode( $payload );
+        } else {
+            $headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            $body                    = $payload; // WordPress form-encodes an array.
         }
 
         $response = wp_remote_post( $endpoint, array(
             'timeout'     => 20,
             'redirection' => 3,
-            'headers'     => array(
-                'Content-Type' => 'application/x-www-form-urlencoded',
-                'Accept'       => 'application/json',
-            ),
-            // WordPress form-encodes an array body, which is what the
-            // client-credentials grant expects.
-            'body'        => $form,
+            'headers'     => $headers,
+            'body'        => $body,
         ) );
 
         if ( is_wp_error( $response ) ) {
             return new WP_Error(
                 'sfaf_gfmp_unreachable',
-                sprintf( 'Could not reach %s — %s', $endpoint, $response->get_error_message() )
+                sprintf( 'Could not reach %s [%s] — %s', $endpoint, $mode, $response->get_error_message() )
             );
         }
 
@@ -177,14 +234,14 @@ class SFAF_GFMP {
         if ( $status < 200 || $status >= 300 ) {
             return new WP_Error(
                 'sfaf_gfmp_http_' . $status,
-                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d [%s] — %s', $status, $mode, self::error_detail( $body, $raw, $status ) )
             );
         }
 
         if ( ! is_array( $body ) || empty( $body['access_token'] ) ) {
             return new WP_Error(
                 'sfaf_gfmp_no_token',
-                sprintf( 'HTTP %d from %s but the response contained no access_token. %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d [%s] but the response contained no access_token. %s', $status, $mode, self::error_detail( $body, $raw, $status ) )
             );
         }
 
@@ -201,6 +258,8 @@ class SFAF_GFMP {
             'expires_in'   => $expires_in,
             'expires_at'   => time() + $expires_in - self::EXPIRY_MARGIN,
             'obtained_at'  => time(),
+            // Remembered so refreshes skip straight to what worked.
+            'auth_mode'    => $mode,
         );
     }
 
@@ -335,13 +394,31 @@ class SFAF_GFMP {
             $client_secret = $stored['client_secret'];
         }
 
-        $token = self::request_token( $client_id, $client_secret );
+        // Walk the presentations until one is accepted. Which of the four a
+        // server wants is not something the spec states, and a failed guess
+        // costs a rebuild — so try them all here and remember the winner.
+        $token    = null;
+        $attempts = array();
 
-        if ( is_wp_error( $token ) ) {
+        foreach ( self::auth_mode_order() as $mode ) {
+            $result = self::request_token( $client_id, $client_secret, $mode );
+            if ( ! is_wp_error( $result ) ) {
+                $token = $result;
+                break;
+            }
+            $attempts[] = $result->get_error_message();
+
+            // Missing/blank credentials fail identically in every mode.
+            if ( 'sfaf_gfmp_missing' === $result->get_error_code() ) {
+                break;
+            }
+        }
+
+        if ( null === $token ) {
             // A failed test invalidates any previous claim of a connection.
             self::clear_token();
             wp_send_json_error( array(
-                'message'  => $token->get_error_message(),
+                'message'  => implode( ' | ', $attempts ),
                 'endpoint' => self::token_endpoint(),
             ) );
         }
@@ -354,9 +431,9 @@ class SFAF_GFMP {
 
         wp_send_json_success( array(
             'message'  => sprintf(
-                'Connected — token obtained, expires in %s (%s grant).%s',
+                'Connected — token obtained via %s, expires in %s (client_credentials grant).%s',
+                $token['auth_mode'],
                 human_time_diff( time(), $token['expires_at'] ),
-                'client_credentials',
                 $org_note
             ),
             'endpoint' => self::token_endpoint(),
