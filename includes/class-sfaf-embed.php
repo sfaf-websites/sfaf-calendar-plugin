@@ -104,12 +104,28 @@ class SFAF_Embed {
             // Public on purpose: this is the same event information the site
             // already publishes, and remote pages have no way to authenticate.
             'permission_callback' => '__return_true',
+            // A sanitize_callback is invoked by core as
+            // call_user_func( $cb, $value, $request, $param_name ) — three
+            // arguments, always (WP_REST_Request::sanitize_params).
+            //
+            // That rules out bare PHP built-ins here. Since PHP 8 an internal
+            // function raises ArgumentCountError when handed more arguments
+            // than it accepts, so 'intval' fatals the request: intval() takes
+            // ($value, $base) and gets a third. WordPress's own helpers are
+            // userland functions, where PHP silently ignores extra arguments,
+            // which is why 'absint' and 'sanitize_text_field' are fine.
+            //
+            // Anything that is not a WordPress userland helper is wrapped in a
+            // one-argument closure below.
             'args'                => array(
                 'category'     => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'organizer'    => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'venue'        => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'series'       => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'absint' ),
-                'per_page'     => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'intval' ),
+                // Not absint: a negative per_page must stay negative so
+                // normalize_params() sees it as "unset" and falls back to the
+                // configured default, rather than flipping -5 into a real 5.
+                'per_page'     => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => function ( $value ) { return (int) $value; } ),
                 'page'         => array( 'type' => 'integer', 'default' => 1,       'sanitize_callback' => 'absint' ),
                 'show_filters' => array( 'type' => 'string',  'default' => 'yes',   'sanitize_callback' => 'sanitize_text_field' ),
                 'layout'       => array( 'type' => 'string',  'default' => 'cards', 'sanitize_callback' => 'sanitize_text_field' ),
