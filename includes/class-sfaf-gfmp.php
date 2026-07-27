@@ -98,6 +98,60 @@ class SFAF_GFMP {
     }
 
     /**
+     * The User-Agent sent with every GoFundMe Pro request.
+     *
+     * The token host sits behind Cloudflare, which answered WordPress's default
+     * agent with a 403 "Just a moment…" interstitial — bot protection, not a
+     * credential rejection. An identifying agent is both the polite thing to
+     * send and what a filter like that expects to see.
+     *
+     * Filterable because tuning it is the cheapest lever if the challenge
+     * returns:
+     *
+     *     add_filter( 'sfaf_gfmp_user_agent', function () { return '…'; } );
+     *
+     * @return string
+     */
+    public static function user_agent() {
+        $default = 'SFAF-Calendar/' . SFAF_VERSION . ' (+https://sfaf.org)';
+        return (string) apply_filters( 'sfaf_gfmp_user_agent', $default );
+    }
+
+    /**
+     * Base arguments for any request to GoFundMe Pro — token or data.
+     *
+     * Centralised so the two cannot drift: whatever gets a request past
+     * Cloudflare for the token endpoint is then automatically also sent on
+     * every campaign call.
+     *
+     * The agent goes in the 'user-agent' argument rather than the headers
+     * array, which is WordPress's own slot for it — setting both would send the
+     * header twice on the cURL transport.
+     *
+     * @param array $args Arguments to merge over the defaults.
+     * @return array
+     */
+    public static function request_args( $args = array() ) {
+        $defaults = array(
+            'timeout'     => 20,
+            'redirection' => 3,
+            'user-agent'  => self::user_agent(),
+            'headers'     => array(
+                'Accept' => 'application/json',
+            ),
+        );
+
+        // Merge headers rather than letting a caller's array replace them.
+        $headers = isset( $args['headers'] ) && is_array( $args['headers'] ) ? $args['headers'] : array();
+        unset( $args['headers'] );
+
+        $merged            = array_merge( $defaults, $args );
+        $merged['headers'] = array_merge( $defaults['headers'], $headers );
+
+        return $merged;
+    }
+
+    /**
      * Stored credentials.
      *
      * @return array{client_id:string,client_secret:string,org_id:string}
@@ -143,19 +197,16 @@ class SFAF_GFMP {
 
         // The documented format: credentials in a form-encoded body, no Basic
         // header, no scope. WordPress form-encodes an array body.
-        $response = wp_remote_post( $endpoint, array(
-            'timeout'     => 20,
-            'redirection' => 3,
-            'headers'     => array(
+        $response = wp_remote_post( $endpoint, self::request_args( array(
+            'headers' => array(
                 'Content-Type' => 'application/x-www-form-urlencoded',
-                'Accept'       => 'application/json',
             ),
-            'body'        => array(
+            'body'    => array(
                 'grant_type'    => 'client_credentials',
                 'client_id'     => $client_id,
                 'client_secret' => $client_secret,
             ),
-        ) );
+        ) ) );
 
         if ( is_wp_error( $response ) ) {
             return new WP_Error(
@@ -167,6 +218,16 @@ class SFAF_GFMP {
         $status = (int) wp_remote_retrieve_response_code( $response );
         $raw    = (string) wp_remote_retrieve_body( $response );
         $body   = json_decode( $raw, true );
+
+        // A bot-protection interstitial is not an API error and reads nothing
+        // like one, so it is called out before anything else.
+        $challenge = self::challenge_detail( $response, $raw );
+        if ( '' !== $challenge ) {
+            return new WP_Error(
+                'sfaf_gfmp_challenge',
+                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, $challenge )
+            );
+        }
 
         if ( $status < 200 || $status >= 300 ) {
             return new WP_Error(
@@ -195,6 +256,62 @@ class SFAF_GFMP {
             'expires_in'   => $expires_in,
             'expires_at'   => time() + $expires_in - self::EXPIRY_MARGIN,
             'obtained_at'  => time(),
+        );
+    }
+
+    /**
+     * Recognise a bot-protection challenge, and say so plainly.
+     *
+     * Cloudflare's interstitial arrives as an HTML page, so the generic error
+     * reader would return a slice of markup that tells you nothing. Worse, it
+     * looks like an auth failure — it is a 403 — when the credentials were
+     * never examined at all.
+     *
+     * Detection is deliberately two-sided: the body's tell-tale phrases, and
+     * the response headers Cloudflare adds. Either alone is enough.
+     *
+     * @param array|WP_Error $response Full wp_remote_* response.
+     * @param string         $raw      Raw body.
+     * @return string Explanation, or '' when this is not a challenge.
+     */
+    private static function challenge_detail( $response, $raw ) {
+        $body_tells = array(
+            'Just a moment',
+            'Enable JavaScript and cookies to continue',
+            'cf-browser-verification',
+            'cf_chl_opt',
+            'Checking your browser before accessing',
+            'Attention Required! | Cloudflare',
+        );
+
+        $hit = '';
+        foreach ( $body_tells as $tell ) {
+            if ( false !== stripos( $raw, $tell ) ) {
+                $hit = $tell;
+                break;
+            }
+        }
+
+        // Header side: cf-mitigated marks a request Cloudflare acted on.
+        if ( '' === $hit ) {
+            $mitigated = wp_remote_retrieve_header( $response, 'cf-mitigated' );
+            if ( ! empty( $mitigated ) ) {
+                $hit = 'cf-mitigated: ' . ( is_array( $mitigated ) ? implode( ',', $mitigated ) : $mitigated );
+            }
+        }
+
+        if ( '' === $hit ) {
+            return '';
+        }
+
+        return sprintf(
+            'Cloudflare bot protection blocked this request (matched "%s") — the credentials were never checked. '
+            . 'The identifying User-Agent this plugin now sends was not enough to satisfy it. '
+            . 'Next things to try: change the Token endpoint URL in settings (the data host, or a sandbox host, may not be behind the same rule); '
+            . 'ask GoFundMe Pro to allow this server; or tune the agent via the sfaf_gfmp_user_agent filter. '
+            . 'Agent sent: %s',
+            $hit,
+            self::user_agent()
         );
     }
 
