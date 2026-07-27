@@ -7,34 +7,33 @@
  * code here yet; this file exists so that "can we authenticate at all?" can be
  * answered on its own before anything is built on top of it.
  *
- * ENDPOINT — taken from the official OpenAPI spec, apiv2-public-gfmp.json.
+ * ENDPOINTS — from the official authentication documentation.
  * ---------------------------------------------------------------------------
- * No longer assumed. The spec in the project folder gives, verbatim:
+ * Two different hosts, which is the thing to keep straight:
  *
- *   servers[0].url                                  https://pro.gofundme.com/api/2.0
- *   securitySchemes.OAuth2Application.type          oauth2
- *   …flows.clientCredentials.tokenUrl               /oauth2/auth
- *   …flows.clientCredentials.scopes                 read, write
+ *   TOKEN   POST https://api.classy.org/oauth2/auth
+ *                Content-Type: application/x-www-form-urlencoded
+ *                grant_type=client_credentials&client_id=…&client_secret=…
  *
- * tokenUrl is relative to the server URL, so the absolute endpoint is:
+ *                -> { "access_token": …, "expires_in": …, "token_type": "bearer" }
  *
- *   POST https://pro.gofundme.com/api/2.0/oauth2/auth
- *        Content-Type: application/x-www-form-urlencoded
- *        grant_type=client_credentials&client_id=…&client_secret=…
+ *   DATA    GET  https://pro.gofundme.com/api/2.0/…
+ *                Authorization: Bearer <access_token>
  *
- *   -> { "access_token": "…", "token_type": "bearer", "expires_in": …, … }
+ * Credentials go in the body, form-encoded. Not HTTP Basic. No scope parameter.
  *
- * (An earlier build pointed at api.classy.org, the pre-rebrand host. Wrong
- * domain, right flow.)
+ * The two hosts are why earlier attempts failed: the OpenAPI spec's server URL
+ * (pro.gofundme.com/api/2.0) is the DATA host, and its clientCredentials
+ * tokenUrl of "/oauth2/auth" reads as relative to it — but tokens are issued by
+ * api.classy.org. Posting to pro.gofundme.com/api/2.0/oauth2/auth hits a path
+ * behind the resource-auth middleware, which answers "The access token is
+ * missing" — a 401 that looks like a credential problem and is not.
  *
- * Still filterable, for the sandbox host or any future move:
- *
- *     add_filter( 'sfaf_gfmp_token_endpoint', function () {
- *         return 'https://sandbox.example/api/2.0/oauth2/auth';
- *     } );
- *
- * The connection test reports the endpoint it used, so a 404 or 405 points at
- * the address rather than the credentials.
+ * The data host is itself unsettled: the docs example shows
+ * api.classy.org/2.0/resource while the spec says pro.gofundme.com/api/2.0. The
+ * spec's value is the default, but both URLs are editable in the settings panel
+ * so either can be corrected on a live site without a rebuild. Filters
+ * (sfaf_gfmp_token_endpoint, sfaf_gfmp_api_base) still override the settings.
  *
  * SECRETS: the client secret is never echoed back to the browser and the access
  * token is never rendered or logged. The settings screen shows only whether a
@@ -44,11 +43,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SFAF_GFMP {
 
-    /** servers[0].url from the spec. Resource base for later steps. */
-    const API_BASE = 'https://pro.gofundme.com/api/2.0';
+    /** Default data host — servers[0].url from the OpenAPI spec. */
+    const DEFAULT_API_BASE = 'https://pro.gofundme.com/api/2.0';
 
-    /** API_BASE + the spec's clientCredentials tokenUrl (/oauth2/auth). */
-    const TOKEN_URL = 'https://pro.gofundme.com/api/2.0/oauth2/auth';
+    /** Default token host — from the authentication documentation. */
+    const DEFAULT_TOKEN_URL = 'https://api.classy.org/oauth2/auth';
 
     /**
      * Where the token lives.
@@ -71,76 +70,31 @@ class SFAF_GFMP {
      * Configuration
      * ------------------------------------------------------------------- */
 
-    /** The token endpoint, filterable for sandbox hosts. */
+    /**
+     * The token endpoint.
+     *
+     * Settings field first so it can be corrected on a live site, then the
+     * documented default. The filter still wins over both, for environments
+     * configured in code.
+     */
     public static function token_endpoint() {
-        return (string) apply_filters( 'sfaf_gfmp_token_endpoint', self::TOKEN_URL );
+        $settings = get_option( 'uc_settings', array() );
+        $configured = isset( $settings['gofundme_token_url'] ) ? trim( (string) $settings['gofundme_token_url'] ) : '';
+        $url = ( '' !== $configured ) ? $configured : self::DEFAULT_TOKEN_URL;
+        return (string) apply_filters( 'sfaf_gfmp_token_endpoint', $url );
     }
 
-    /** The resource base, filterable alongside the token endpoint. */
+    /**
+     * The data/resource base — a different host from the token endpoint.
+     *
+     * Editable for the same reason, and more pressingly: the documentation and
+     * the OpenAPI spec disagree about which host serves resources.
+     */
     public static function api_base() {
-        return untrailingslashit( (string) apply_filters( 'sfaf_gfmp_api_base', self::API_BASE ) );
-    }
-
-    /**
-     * How the client credentials are presented to the token endpoint.
-     *
-     * The first live attempt sent client_id/client_secret in a form-encoded
-     * body and came back 401 "The access token is missing" — so the endpoint
-     * exists and rejects the presentation, not the credentials. Two things in
-     * the spec's own preamble bear on that:
-     *
-     *   "Currently, the GoFundMe Pro API only supports JSON. All POST/PUT
-     *    requests required a valid JSON object for the request body."
-     *
-     * which makes a JSON body a strong candidate, and the OAuth2 norm of
-     * sending the pair as HTTP Basic. Rather than guess again, all four
-     * combinations are supported and the connection test walks them:
-     *
-     *   basic_form  Authorization: Basic …  + form body (grant_type only)
-     *   basic_json  Authorization: Basic …  + JSON body (grant_type only)
-     *   body_json   no header               + JSON body carrying credentials
-     *   body_form   no header               + form body carrying credentials  (2.1.1)
-     *
-     * Whichever succeeds is remembered, so later refreshes go straight to it.
-     * Pin one by hand with:
-     *
-     *     add_filter( 'sfaf_gfmp_auth_mode', function () { return 'basic_json'; } );
-     *
-     * @return string
-     */
-    public static function auth_mode() {
-        $stored  = self::stored_token();
-        $default = ! empty( $stored['auth_mode'] ) ? (string) $stored['auth_mode'] : 'basic_form';
-        $mode    = (string) apply_filters( 'sfaf_gfmp_auth_mode', $default );
-        return in_array( $mode, self::auth_modes(), true ) ? $mode : 'basic_form';
-    }
-
-    /** Every supported presentation, in the order the test should try them. */
-    public static function auth_modes() {
-        return array( 'basic_form', 'basic_json', 'body_json', 'body_form' );
-    }
-
-    /** The configured mode first, then the rest as fallbacks. */
-    public static function auth_mode_order() {
-        $first = self::auth_mode();
-        $rest  = array_values( array_diff( self::auth_modes(), array( $first ) ) );
-        return (array) apply_filters( 'sfaf_gfmp_auth_mode_order', array_merge( array( $first ), $rest ) );
-    }
-
-    /**
-     * Optional scope for the token request.
-     *
-     * The spec declares read and write scopes on the clientCredentials flow but
-     * does not mark either required, so nothing is sent by default and the
-     * server applies whatever the app is registered for. If a call later comes
-     * back short of permission, request them explicitly:
-     *
-     *     add_filter( 'sfaf_gfmp_token_scope', function () { return 'read write'; } );
-     *
-     * @return string Space-separated scopes, or '' to send none.
-     */
-    public static function token_scope() {
-        return trim( (string) apply_filters( 'sfaf_gfmp_token_scope', '' ) );
+        $settings = get_option( 'uc_settings', array() );
+        $configured = isset( $settings['gofundme_api_base'] ) ? trim( (string) $settings['gofundme_api_base'] ) : '';
+        $url = ( '' !== $configured ) ? $configured : self::DEFAULT_API_BASE;
+        return untrailingslashit( (string) apply_filters( 'sfaf_gfmp_api_base', $url ) );
     }
 
     /**
@@ -177,7 +131,7 @@ class SFAF_GFMP {
      * @param string $client_secret
      * @return array|WP_Error Token data on success.
      */
-    public static function request_token( $client_id, $client_secret, $mode = null ) {
+    public static function request_token( $client_id, $client_secret ) {
         $client_id     = trim( (string) $client_id );
         $client_secret = trim( (string) $client_secret );
 
@@ -185,45 +139,28 @@ class SFAF_GFMP {
             return new WP_Error( 'sfaf_gfmp_missing', 'Client ID and Client Secret are both required.' );
         }
 
-        $mode     = ( null === $mode ) ? self::auth_mode() : (string) $mode;
         $endpoint = self::token_endpoint();
-        $scope    = self::token_scope();
 
-        $payload = array( 'grant_type' => 'client_credentials' );
-        if ( '' !== $scope ) {
-            $payload['scope'] = $scope;
-        }
-
-        $headers = array( 'Accept' => 'application/json' );
-
-        // Basic modes put the pair in the Authorization header; body modes put
-        // it in the payload. Either way it is never written anywhere else.
-        if ( 0 === strpos( $mode, 'basic_' ) ) {
-            $headers['Authorization'] = 'Basic ' . base64_encode( $client_id . ':' . $client_secret );
-        } else {
-            $payload['client_id']     = $client_id;
-            $payload['client_secret'] = $client_secret;
-        }
-
-        if ( '_json' === substr( $mode, -5 ) ) {
-            $headers['Content-Type'] = 'application/json';
-            $body                    = wp_json_encode( $payload );
-        } else {
-            $headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            $body                    = $payload; // WordPress form-encodes an array.
-        }
-
+        // The documented format: credentials in a form-encoded body, no Basic
+        // header, no scope. WordPress form-encodes an array body.
         $response = wp_remote_post( $endpoint, array(
             'timeout'     => 20,
             'redirection' => 3,
-            'headers'     => $headers,
-            'body'        => $body,
+            'headers'     => array(
+                'Content-Type' => 'application/x-www-form-urlencoded',
+                'Accept'       => 'application/json',
+            ),
+            'body'        => array(
+                'grant_type'    => 'client_credentials',
+                'client_id'     => $client_id,
+                'client_secret' => $client_secret,
+            ),
         ) );
 
         if ( is_wp_error( $response ) ) {
             return new WP_Error(
                 'sfaf_gfmp_unreachable',
-                sprintf( 'Could not reach %s [%s] — %s', $endpoint, $mode, $response->get_error_message() )
+                sprintf( 'Could not reach %s — %s', $endpoint, $response->get_error_message() )
             );
         }
 
@@ -234,14 +171,14 @@ class SFAF_GFMP {
         if ( $status < 200 || $status >= 300 ) {
             return new WP_Error(
                 'sfaf_gfmp_http_' . $status,
-                sprintf( 'HTTP %d [%s] — %s', $status, $mode, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
             );
         }
 
         if ( ! is_array( $body ) || empty( $body['access_token'] ) ) {
             return new WP_Error(
                 'sfaf_gfmp_no_token',
-                sprintf( 'HTTP %d [%s] but the response contained no access_token. %s', $status, $mode, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d from %s but the response contained no access_token. %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
             );
         }
 
@@ -258,8 +195,6 @@ class SFAF_GFMP {
             'expires_in'   => $expires_in,
             'expires_at'   => time() + $expires_in - self::EXPIRY_MARGIN,
             'obtained_at'  => time(),
-            // Remembered so refreshes skip straight to what worked.
-            'auth_mode'    => $mode,
         );
     }
 
@@ -394,31 +329,13 @@ class SFAF_GFMP {
             $client_secret = $stored['client_secret'];
         }
 
-        // Walk the presentations until one is accepted. Which of the four a
-        // server wants is not something the spec states, and a failed guess
-        // costs a rebuild — so try them all here and remember the winner.
-        $token    = null;
-        $attempts = array();
+        $token = self::request_token( $client_id, $client_secret );
 
-        foreach ( self::auth_mode_order() as $mode ) {
-            $result = self::request_token( $client_id, $client_secret, $mode );
-            if ( ! is_wp_error( $result ) ) {
-                $token = $result;
-                break;
-            }
-            $attempts[] = $result->get_error_message();
-
-            // Missing/blank credentials fail identically in every mode.
-            if ( 'sfaf_gfmp_missing' === $result->get_error_code() ) {
-                break;
-            }
-        }
-
-        if ( null === $token ) {
+        if ( is_wp_error( $token ) ) {
             // A failed test invalidates any previous claim of a connection.
             self::clear_token();
             wp_send_json_error( array(
-                'message'  => implode( ' | ', $attempts ),
+                'message'  => $token->get_error_message(),
                 'endpoint' => self::token_endpoint(),
             ) );
         }
@@ -431,9 +348,9 @@ class SFAF_GFMP {
 
         wp_send_json_success( array(
             'message'  => sprintf(
-                'Connected — token obtained via %s, expires in %s (client_credentials grant).%s',
-                $token['auth_mode'],
+                'Connected — token obtained, expires in %s (client_credentials grant). Data calls will use %s.%s',
                 human_time_diff( time(), $token['expires_at'] ),
+                self::api_base(),
                 $org_note
             ),
             'endpoint' => self::token_endpoint(),

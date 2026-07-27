@@ -112,6 +112,13 @@ class SFAF_Admin {
         $out['brand_card_style'] = ( isset( $input['brand_card_style'] ) && in_array( $input['brand_card_style'], $card_styles, true ) )
             ? $input['brand_card_style'] : 'bordered';
 
+        // Endpoint overrides. Blank means "use the documented default", so an
+        // empty field is stored empty rather than being filled in — that way the
+        // default can change in a later release without a stale copy overriding it.
+        foreach ( array( 'gofundme_token_url', 'gofundme_api_base' ) as $url_field ) {
+            $out[ $url_field ] = isset( $input[ $url_field ] ) ? esc_url_raw( trim( (string) $input[ $url_field ] ) ) : '';
+        }
+
         // Secrets are write-only: the field submits blank unless it was retyped,
         // and blank means "keep what is stored" rather than "clear it". Not run
         // through sanitize_text_field — a secret is an opaque string that must
@@ -977,7 +984,18 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Base URL: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code> &middot; token endpoint: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code></p>
+                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong> — both are pre-filled with the documented values and only need changing if a call fails.</p>
+                        <div class="uc-field-row">
+                            <label>Token endpoint URL</label>
+                            <input type="url" name="uc_settings[gofundme_token_url]" value="<?php echo esc_attr( $s( 'gofundme_token_url' ) ); ?>"
+                                   placeholder="<?php echo esc_attr( SFAF_GFMP::DEFAULT_TOKEN_URL ); ?>" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>API base URL (data)</label>
+                            <input type="url" name="uc_settings[gofundme_api_base]" value="<?php echo esc_attr( $s( 'gofundme_api_base' ) ); ?>"
+                                   placeholder="<?php echo esc_attr( SFAF_GFMP::DEFAULT_API_BASE ); ?>" class="uc-input" />
+                        </div>
+                        <p class="description">Leave blank to use the defaults shown. In use now — token: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code> &middot; data: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code></p>
                         <div class="uc-field-row">
                             <label>Client ID</label>
                             <input type="text" name="uc_settings[gofundme_client_id]" value="<?php echo esc_attr( $s( 'gofundme_client_id' ) ); ?>" class="uc-input" />
