@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SFAF Calendar embed — diagnostics</title>
+<style>
+    body { margin: 0; padding: 24px; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1A1D21; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: #6B7280; margin: 0 0 20px; }
+    #diag { border: 1px solid #E2E5EA; border-radius: 12px; padding: 16px; margin-bottom: 28px; background: #F7F8FA; }
+    #diag h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; color: #6B7280; }
+    #diag ul { margin: 0; padding: 0; list-style: none; }
+    #diag li { padding: 4px 0; border-bottom: 1px solid #E9ECF1; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; word-break: break-word; }
+    #diag li:last-child { border-bottom: 0; }
+    .ok   { color: #17792B; }
+    .bad  { color: #B3261E; }
+    .wait { color: #92670B; }
+    .hint { margin-top: 12px; padding: 10px 12px; background: #FFF7E0; border-left: 3px solid #FFD900; font-family: inherit; font-size: 13px; display: none; }
+    .divider { border: 0; border-top: 1px solid #E2E5EA; margin: 28px 0; }
+</style>
+</head>
+<body>
+
+<h1>SFAF Calendar embed — diagnostics</h1>
+<p class="sub">Same block as <code>embed-test.html</code>, plus an observer that reports what happens. The observer only watches; it never touches the embed.</p>
+
+<div id="diag">
+    <h2>Checks</h2>
+    <ul id="diag-list"></ul>
+    <div class="hint" id="diag-hint"></div>
+</div>
+
+<hr class="divider">
+
+<!-- ===== the embed block, byte-for-byte what the generator produces ===== -->
+
+<!-- SFAF Calendar: all upcoming events, 12 at a time, with search and category filters -->
+<div class="sfaf-calendar-embed" data-sfaf-calendar
+     data-per-page="12"
+     data-show-filters="yes"></div>
+<script src="https://www.sfaf.org/wp-content/plugins/sfaf-calendar/public/js/embed.js" async></script>
+
+<!-- ===== everything below is the observer, not part of the embed ===== -->
+<script>
+(function () {
+    'use strict';
+
+    // Must match the <script src> above.
+    var SITE = 'https://www.sfaf.org';
+    var SCRIPT_URL = SITE + '/wp-content/plugins/sfaf-calendar/public/js/embed.js';
+    var ENDPOINT = SITE + '/wp-json/sfaf-calendar/v1/embed';
+    var ALT_ENDPOINT = SITE + '/?rest_route=/sfaf-calendar/v1/embed';
+
+    var list = document.getElementById('diag-list');
+    var hintBox = document.getElementById('diag-hint');
+    var rows = {};
+
+    function row(key, label) {
+        var li = document.createElement('li');
+        li.innerHTML = '<span class="wait">…</span> ' + label;
+        list.appendChild(li);
+        rows[key] = li;
+        return li;
+    }
+    function mark(key, state, text) {
+        var li = rows[key];
+        if (!li) { return; }
+        var cls = state === true ? 'ok' : (state === false ? 'bad' : 'wait');
+        var sym = state === true ? 'PASS' : (state === false ? 'FAIL' : '…');
+        li.innerHTML = '<span class="' + cls + '">' + sym + '</span> ' + text;
+    }
+    function hint(text) {
+        hintBox.style.display = 'block';
+        hintBox.innerHTML = text;
+    }
+
+    row('page', 'Page origin');
+    row('script', 'embed.js downloads and executes');
+    row('endpoint', 'Endpoint reachable cross-origin (CORS)');
+    row('render', 'Calendar markup rendered into the block');
+    row('errors', 'No uncaught JavaScript errors');
+
+    mark('page', true, 'Page origin: ' + (location.origin === 'null' || !location.origin ? 'file:// (opaque)' : location.origin));
+
+    // --- uncaught errors -------------------------------------------------
+    var errors = [];
+    window.addEventListener('error', function (e) {
+        // Resource load failures surface here too, with no message.
+        if (e && e.target && e.target !== window && e.target.tagName === 'SCRIPT') {
+            errors.push('script failed to load: ' + (e.target.src || '?'));
+        } else if (e && e.message) {
+            errors.push(e.message);
+        }
+        mark('errors', false, 'JavaScript errors: ' + errors.join(' | '));
+    }, true);
+
+    // --- did embed.js run? -----------------------------------------------
+    function checkScript() {
+        if (window.sfafCalendarEmbed && typeof window.sfafCalendarEmbed.scan === 'function') {
+            mark('script', true, 'embed.js executed (window.sfafCalendarEmbed present)');
+            return true;
+        }
+        return false;
+    }
+
+    // --- can we reach the endpoint at all? --------------------------------
+    function probe(url, done) {
+        var xhr = new XMLHttpRequest();
+        try { xhr.open('GET', url + '&per_page=1&page=1', true); }
+        catch (e) { done(false, 'open() threw: ' + e.message); return; }
+        xhr.timeout = 15000;
+        xhr.onload = function () {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var ok = false;
+                try { ok = typeof JSON.parse(xhr.responseText).html === 'string'; } catch (e) {}
+                done(ok, 'HTTP ' + xhr.status + (ok ? ', JSON payload with html' : ', but payload was not the expected JSON'));
+            } else {
+                done(false, 'HTTP ' + xhr.status);
+            }
+        };
+        xhr.onerror = function () { done(false, 'network/CORS failure (browser blocked the read, or host unreachable)'); };
+        xhr.ontimeout = function () { done(false, 'timed out after 15s'); };
+        xhr.send();
+    }
+
+    probe(ENDPOINT + '?x=1', function (ok, detail) {
+        if (ok) { mark('endpoint', true, 'Pretty permalink endpoint OK — ' + detail); return; }
+        probe(ALT_ENDPOINT, function (ok2, detail2) {
+            if (ok2) {
+                mark('endpoint', true, 'Plain permalink endpoint OK — ' + detail2);
+            } else {
+                mark('endpoint', false, 'Both endpoint forms failed. /wp-json: ' + detail + ' — ?rest_route: ' + detail2);
+                hint('The endpoint could not be read from this page. If curl returns 200 with <code>access-control-allow-origin: *</code> but this fails, the difference is the browser: check that no redirect (http→https, non-www→www) sits in front of the endpoint, since the CORS header must be present on the <em>final</em> response.');
+            }
+        });
+    });
+
+    // --- did the block actually fill in? ----------------------------------
+    var waited = 0;
+    var timer = setInterval(function () {
+        waited += 500;
+        checkScript();
+
+        var block = document.querySelector('[data-sfaf-calendar]');
+        if (block && block.querySelector('.uc-calendar, .uc-upcoming-widget')) {
+            mark('render', true, 'Calendar rendered (' + block.querySelectorAll('.uc-event-card, .uc-compact-card').length + ' cards)');
+            if (!errors.length) { mark('errors', true, 'No uncaught JavaScript errors'); }
+            clearInterval(timer);
+            return;
+        }
+        if (block && block.querySelector('.sfaf-embed-error')) {
+            mark('render', false, 'The embed showed its own error box — it could not load any page of events');
+            clearInterval(timer);
+            return;
+        }
+
+        if (waited >= 20000) {
+            clearInterval(timer);
+            if (!checkScript()) {
+                mark('script', false, 'embed.js never executed — the browser could not download ' + SCRIPT_URL);
+                hint('The script itself did not load. Open that URL directly in a tab: if it 404s, the plugin folder name or path is different on the server.');
+            }
+            mark('render', false, 'Block never filled in after 20s');
+            if (!errors.length) { mark('errors', true, 'No uncaught JavaScript errors'); }
+        }
+    }, 500);
+})();
+</script>
+
+</body>
+</html>

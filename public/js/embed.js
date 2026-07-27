@@ -138,6 +138,13 @@
             return;
         }
 
+        // Without an explicit timeout the ontimeout handler below can never
+        // fire: a request that is blackholed rather than refused (a proxy that
+        // swallows it, a captive portal, a firewalled origin) would leave
+        // "Loading events…" on someone else's page for as long as the tab is
+        // open. Fail over to the next endpoint, then to the error box, instead.
+        xhr.timeout = 15000;
+
         xhr.onload = function () {
             if (xhr.status < 200 || xhr.status >= 300) {
                 onFail();
@@ -259,10 +266,33 @@
         return container.querySelector('.uc-event-list, .uc-upcoming-list');
     }
 
+    /**
+     * Apply the calendar site's card style to the block.
+     *
+     * On the calendar site this arrives as a body class (sfaf_body_class). The
+     * host page's <body> is not ours to touch, so the style rides in the payload
+     * and goes on the block instead — the CSS rules are descendant selectors
+     * (.sfaf-card-minimal .uc-event-card), so they match from here just as well.
+     */
+    function applyCardStyle(container, style) {
+        var classes = container.className.split(/\s+/);
+        var kept = [];
+        for (var i = 0; i < classes.length; i++) {
+            if (classes[i] && classes[i].indexOf('sfaf-card-') !== 0) {
+                kept.push(classes[i]);
+            }
+        }
+        if (style && /^[A-Za-z0-9_-]+$/.test(style)) {
+            kept.push('sfaf-card-' + style);
+        }
+        container.className = kept.join(' ');
+    }
+
     /** Replace the whole block (first load, and numbered page navigation). */
     function loadBlock(container, page, scrollIntoView) {
         request(container, page, 'block', function (data) {
             container.innerHTML = data.html;
+            applyCardStyle(container, data.card_style);
             // The block arrives with a fresh filter bar — "All Events" active,
             // search box empty — so the remembered filter state resets with it.
             container.setAttribute('data-active-category', 'all');
