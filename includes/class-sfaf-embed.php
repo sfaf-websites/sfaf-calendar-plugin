@@ -300,7 +300,20 @@ class SFAF_Embed {
         }
         // This endpoint never uses cookies; a stray Allow-Credentials would make
         // the wildcard origin invalid, so make sure it isn't set on our response.
-        $response->remove_header( 'Access-Control-Allow-Credentials' );
+        //
+        // WP_REST_Response has no remove_header() — that method exists on
+        // WP_REST_Request and WP_REST_Server, but WP_HTTP_Response (the parent
+        // here) only exposes get_headers()/set_headers()/header(). Calling it
+        // fatals the request, so the header is dropped by rewriting the set.
+        // HTTP header names are case-insensitive, so match that way.
+        $headers = $response->get_headers();
+        foreach ( array_keys( $headers ) as $name ) {
+            if ( 0 === strcasecmp( $name, 'Access-Control-Allow-Credentials' ) ) {
+                unset( $headers[ $name ] );
+            }
+        }
+        $response->set_headers( $headers );
+
         foreach ( $this->cors_headers( $request ) as $name => $value ) {
             $response->header( $name, $value );
         }
