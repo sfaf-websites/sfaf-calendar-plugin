@@ -252,6 +252,12 @@ class SFAF_Embed {
             sfaf_set_embed_context( false );
         }
 
+        // Every URL in the markup is resolved against this site before it goes
+        // out. The host page is on another domain, so a root-relative path like
+        // /wp-content/uploads/photo.jpg would resolve against the host and 404
+        // — which is what turned event images into blank placeholders.
+        $payload['html'] = $this->absolutize_urls( $payload['html'] );
+
         $payload['per_page']     = $params['per_page'];
         $payload['calendar_url'] = self::calendar_url();
         $payload['cached']       = false;
@@ -272,6 +278,121 @@ class SFAF_Embed {
         $payload['card_style'] = $card_style ? sanitize_html_class( $card_style ) : '';
 
         return $payload;
+    }
+
+    /* ---------------------------------------------------------------------
+     * Absolute URLs
+     *
+     * A browser resolves a relative URL against the page it is on. For an embed
+     * that page belongs to someone else, so anything not fully qualified points
+     * at the wrong domain. WordPress core emits absolute URLs for attachments,
+     * but an image URL typed into a meta field (_uc_image_url, the series
+     * image, a synced remote image) is stored exactly as entered — often as
+     * /wp-content/uploads/… — and those are the ones that broke.
+     *
+     * Rewriting the finished markup rather than each image helper means every
+     * URL the renderer can emit is covered, including any added later, and the
+     * shortcode path on this site is untouched.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Resolve one URL against this site.
+     *
+     * @param string $url Raw URL from the markup (still HTML-escaped).
+     * @return string Absolute URL, or the input unchanged when it is not a
+     *                relative reference.
+     */
+    private function absolutize_url( $url ) {
+        $url = trim( $url );
+
+        if ( '' === $url ) {
+            return $url;
+        }
+        // Fragments, and anything already carrying a scheme (https:, mailto:,
+        // tel:, data:) is either already absolute or not a location at all.
+        if ( '#' === $url[0] || preg_match( '#^[a-z][a-z0-9+.\-]*:#i', $url ) ) {
+            return $url;
+        }
+
+        $home = wp_parse_url( home_url( '/' ) );
+        if ( empty( $home['scheme'] ) || empty( $home['host'] ) ) {
+            return $url;
+        }
+        $origin = $home['scheme'] . '://' . $home['host']
+            . ( empty( $home['port'] ) ? '' : ':' . $home['port'] );
+
+        // Protocol-relative: //cdn.example.org/x.jpg — keep the host, add ours.
+        if ( 0 === strpos( $url, '//' ) ) {
+            return $home['scheme'] . ':' . $url;
+        }
+        // Root-relative: /wp-content/uploads/x.jpg. The leading slash already
+        // means "from the domain root", so the origin alone is the right base
+        // even when WordPress lives in a subdirectory.
+        if ( '/' === $url[0] ) {
+            return $origin . $url;
+        }
+        // Bare relative: uploads/x.jpg — resolve from the site root.
+        return rtrim( home_url( '/' ), '/' ) . '/' . $url;
+    }
+
+    /**
+     * Resolve every candidate in a srcset/data-srcset value.
+     *
+     * Format is "url 320w, url 2x" — comma separated, each entry an optional
+     * descriptor after the URL. Only the URL part is rewritten.
+     *
+     * @param string $value Attribute value.
+     * @return string
+     */
+    private function absolutize_srcset( $value ) {
+        $out = array();
+        foreach ( explode( ',', $value ) as $candidate ) {
+            $candidate = trim( $candidate );
+            if ( '' === $candidate ) {
+                continue;
+            }
+            $bits = preg_split( '/\s+/', $candidate, 2 );
+            $url  = $this->absolutize_url( $bits[0] );
+            $out[] = isset( $bits[1] ) ? $url . ' ' . $bits[1] : $url;
+        }
+        return implode( ', ', $out );
+    }
+
+    /**
+     * Make every URL-bearing attribute in a block of markup absolute.
+     *
+     * Covers the plain single-URL attributes and the srcset pair. data-src /
+     * data-srcset are included because a lazy-loading script on the host page
+     * may swap them into src/srcset after the markup lands, at which point a
+     * relative value would fail exactly like an unrewritten src.
+     *
+     * @param string $html Rendered markup.
+     * @return string
+     */
+    private function absolutize_urls( $html ) {
+        if ( ! is_string( $html ) || '' === $html || false === strpos( $html, '<' ) ) {
+            return $html;
+        }
+
+        // A closure declared inside a method keeps the enclosing class scope and
+        // its $this binding, so it can call these private methods directly.
+        $html = preg_replace_callback(
+            '/\s(src|data-src|href|poster)=(["\'])(.*?)\2/i',
+            function ( $m ) {
+                return ' ' . $m[1] . '=' . $m[2] . $this->absolutize_url( $m[3] ) . $m[2];
+            },
+            $html
+        );
+
+        $html = preg_replace_callback(
+            '/\s(srcset|data-srcset)=(["\'])(.*?)\2/i',
+            function ( $m ) {
+                return ' ' . $m[1] . '=' . $m[2] . $this->absolutize_srcset( $m[3] ) . $m[2];
+            },
+            $html
+        );
+
+        return ( null === $html ) ? '' : $html;
     }
 
     /* ---------------------------------------------------------------------
