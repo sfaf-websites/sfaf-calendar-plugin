@@ -977,7 +977,7 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description">GoFundMe Pro uses OAuth2 on the Classy platform. Base URL: <code>https://api.classy.org/2.0</code></p>
+                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Base URL: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code> &middot; token endpoint: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code></p>
                         <div class="uc-field-row">
                             <label>Client ID</label>
                             <input type="text" name="uc_settings[gofundme_client_id]" value="<?php echo esc_attr( $s( 'gofundme_client_id' ) ); ?>" class="uc-input" />

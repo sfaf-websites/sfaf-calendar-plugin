@@ -7,30 +7,34 @@
  * code here yet; this file exists so that "can we authenticate at all?" can be
  * answered on its own before anything is built on top of it.
  *
- * ENDPOINT ASSUMPTION — please verify against the sandbox app.
+ * ENDPOINT — taken from the official OpenAPI spec, apiv2-public-gfmp.json.
  * ---------------------------------------------------------------------------
- * The live documentation at developers.gofundme.com renders through JavaScript
- * and could not be read programmatically (developers.classy.org 301-redirects
- * there; the /pro/api-docs path 404s and the help centre returns 403). The
- * values below are therefore the documented Classy OAuth2 client-credentials
- * flow as previously published, NOT something confirmed from the live docs:
+ * No longer assumed. The spec in the project folder gives, verbatim:
  *
- *   POST https://api.classy.org/oauth2/auth
+ *   servers[0].url                                  https://pro.gofundme.com/api/2.0
+ *   securitySchemes.OAuth2Application.type          oauth2
+ *   …flows.clientCredentials.tokenUrl               /oauth2/auth
+ *   …flows.clientCredentials.scopes                 read, write
+ *
+ * tokenUrl is relative to the server URL, so the absolute endpoint is:
+ *
+ *   POST https://pro.gofundme.com/api/2.0/oauth2/auth
  *        Content-Type: application/x-www-form-urlencoded
  *        grant_type=client_credentials&client_id=…&client_secret=…
  *
- *   -> { "access_token": "…", "token_type": "bearer", "expires_in": 7200, … }
+ *   -> { "access_token": "…", "token_type": "bearer", "expires_in": …, … }
  *
- * Note the token endpoint sits at the API root, NOT under /2.0 — the /2.0 base
- * is for resource calls. If the sandbox rejects this, the endpoint can be
- * corrected without editing code, via the sfaf_gfmp_token_endpoint filter:
+ * (An earlier build pointed at api.classy.org, the pre-rebrand host. Wrong
+ * domain, right flow.)
+ *
+ * Still filterable, for the sandbox host or any future move:
  *
  *     add_filter( 'sfaf_gfmp_token_endpoint', function () {
- *         return 'https://api.classy.org/oauth2/auth';
+ *         return 'https://sandbox.example/api/2.0/oauth2/auth';
  *     } );
  *
- * The connection test reports the endpoint it used, so a 404 or 405 there
- * immediately tells you the assumption was wrong.
+ * The connection test reports the endpoint it used, so a 404 or 405 points at
+ * the address rather than the credentials.
  *
  * SECRETS: the client secret is never echoed back to the browser and the access
  * token is never rendered or logged. The settings screen shows only whether a
@@ -40,11 +44,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SFAF_GFMP {
 
-    /** Resource base, for later steps. Not used by the token request. */
-    const API_BASE = 'https://api.classy.org/2.0';
+    /** servers[0].url from the spec. Resource base for later steps. */
+    const API_BASE = 'https://pro.gofundme.com/api/2.0';
 
-    /** Assumed token endpoint — see the file header. */
-    const TOKEN_URL = 'https://api.classy.org/oauth2/auth';
+    /** API_BASE + the spec's clientCredentials tokenUrl (/oauth2/auth). */
+    const TOKEN_URL = 'https://pro.gofundme.com/api/2.0/oauth2/auth';
 
     /**
      * Where the token lives.
@@ -67,9 +71,30 @@ class SFAF_GFMP {
      * Configuration
      * ------------------------------------------------------------------- */
 
-    /** The token endpoint, filterable so a wrong assumption is a one-liner. */
+    /** The token endpoint, filterable for sandbox hosts. */
     public static function token_endpoint() {
         return (string) apply_filters( 'sfaf_gfmp_token_endpoint', self::TOKEN_URL );
+    }
+
+    /** The resource base, filterable alongside the token endpoint. */
+    public static function api_base() {
+        return untrailingslashit( (string) apply_filters( 'sfaf_gfmp_api_base', self::API_BASE ) );
+    }
+
+    /**
+     * Optional scope for the token request.
+     *
+     * The spec declares read and write scopes on the clientCredentials flow but
+     * does not mark either required, so nothing is sent by default and the
+     * server applies whatever the app is registered for. If a call later comes
+     * back short of permission, request them explicitly:
+     *
+     *     add_filter( 'sfaf_gfmp_token_scope', function () { return 'read write'; } );
+     *
+     * @return string Space-separated scopes, or '' to send none.
+     */
+    public static function token_scope() {
+        return trim( (string) apply_filters( 'sfaf_gfmp_token_scope', '' ) );
     }
 
     /**
@@ -116,6 +141,16 @@ class SFAF_GFMP {
 
         $endpoint = self::token_endpoint();
 
+        $form = array(
+            'grant_type'    => 'client_credentials',
+            'client_id'     => $client_id,
+            'client_secret' => $client_secret,
+        );
+        $scope = self::token_scope();
+        if ( '' !== $scope ) {
+            $form['scope'] = $scope;
+        }
+
         $response = wp_remote_post( $endpoint, array(
             'timeout'     => 20,
             'redirection' => 3,
@@ -125,11 +160,7 @@ class SFAF_GFMP {
             ),
             // WordPress form-encodes an array body, which is what the
             // client-credentials grant expects.
-            'body'        => array(
-                'grant_type'    => 'client_credentials',
-                'client_id'     => $client_id,
-                'client_secret' => $client_secret,
-            ),
+            'body'        => $form,
         ) );
 
         if ( is_wp_error( $response ) ) {
