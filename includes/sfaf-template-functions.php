@@ -921,10 +921,15 @@ function sfaf_category_color( $term_id ) {
 
 /**
  * Effective image URL for an event, in priority order:
- * 1) the event's own featured image or _uc_image_url
- * 2) the series-level image (_uc_series_image_* on the series parent)
- * 3) _uc_remote_image_url (synced from another site)
- * 4) '' (caller falls back to the SVG placeholder)
+ * 1) the event's own featured image or _uc_image_url (both set by hand)
+ * 2) _uc_external_image — whatever the third-party source last supplied
+ * 3) the series-level image (_uc_series_image_* on the series parent)
+ * 4) _uc_remote_image_url (synced from another site)
+ * 5) '' (caller falls back to the SVG placeholder)
+ *
+ * The split at 1/2 is the whole point: a manually chosen image always beats
+ * the source's, and a fetch refreshes the source's without ever touching the
+ * manual one. Clear the manual image and the current source image shows again.
  */
 function sfaf_event_image_url( $post_id ) {
     if ( has_post_thumbnail( $post_id ) ) {
@@ -933,6 +938,10 @@ function sfaf_event_image_url( $post_id ) {
     $own = get_post_meta( $post_id, '_uc_image_url', true );
     if ( $own ) {
         return $own;
+    }
+    $external = get_post_meta( $post_id, '_uc_external_image', true );
+    if ( $external ) {
+        return $external;
     }
     $series = sfaf_series_image_url( sfaf_get_series_parent( $post_id ) );
     if ( $series ) {
@@ -943,12 +952,16 @@ function sfaf_event_image_url( $post_id ) {
 }
 
 /**
- * Where the displayed image comes from: 'event' | 'series' | 'remote' | 'none'.
+ * Where the displayed image comes from:
+ * 'event' | 'source' | 'series' | 'remote' | 'none'.
  * Used for the "From series" / "Event-specific" label on edit screens.
  */
 function sfaf_event_image_source( $post_id ) {
     if ( has_post_thumbnail( $post_id ) || get_post_meta( $post_id, '_uc_image_url', true ) ) {
         return 'event';
+    }
+    if ( get_post_meta( $post_id, '_uc_external_image', true ) ) {
+        return 'source';
     }
     if ( sfaf_series_image_url( sfaf_get_series_parent( $post_id ) ) ) {
         return 'series';

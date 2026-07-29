@@ -110,6 +110,20 @@ abstract class SFAF_Source_Adapter {
      * @return array|null The common shape, or null to skip this item.
      */
     abstract public function normalize( $item );
+
+    /**
+     * Re-fetch a single item by its ID at the source.
+     *
+     * Backs the per-event "Refresh from source" button. Concrete rather than
+     * abstract so an adapter that has no single-item endpoint simply inherits
+     * "not supported" instead of being forced to fake one.
+     *
+     * @param string $external_id
+     * @return array|WP_Error|null Raw item, an error, or null when unsupported.
+     */
+    public function fetch_one( $external_id ) {
+        return null;
+    }
 }
 
 class SFAF_Sources {
@@ -128,6 +142,59 @@ class SFAF_Sources {
     const META_IMAGE       = '_uc_external_image';
     const META_TIMEZONE    = '_uc_external_timezone';
     const META_IMPORTED_AT = '_uc_imported_at';
+
+    /* Part B: refresh and removal bookkeeping. */
+    const META_UPDATED_AT  = '_uc_source_updated_at';
+    const META_REMOVED_AT  = '_uc_source_removed_at';
+    const META_REMOVED_WHY = '_uc_source_removed_reason';
+
+    /**
+     * Where an event goes when it has disappeared at the source.
+     *
+     * `draft` rather than a new status, and rather than uc_dismissed:
+     *
+     *   - It is excluded from every public query already. Every public path in
+     *     this plugin names post_status 'publish' by hand — shortcodes, embed,
+     *     REST feed, .ics, series listings, RSVP guards — so a draft is off the
+     *     calendar the moment it is set, with no new status to teach them.
+     *   - It stays findable and restorable: the portal's Events list includes
+     *     drafts by default, so it is visible where a manager already looks,
+     *     and publishing it again is one click.
+     *   - uc_dismissed would have been wrong. That means "a manager rejected
+     *     this", and events in it are deliberately never re-imported or
+     *     updated. Reusing it would have destroyed the distinction between a
+     *     human decision and a disappearance at the source.
+     *
+     * META_REMOVED_AT / META_REMOVED_WHY are what tell it apart from an
+     * ordinary human draft.
+     */
+    const STATUS_REMOVED = 'draft';
+
+    /**
+     * Statuses an update is allowed to touch.
+     *
+     * uc_dismissed and trash are deliberately absent: a dismissed event is a
+     * decision a person made, and neither it nor a trashed one should be
+     * revived, rewritten or resurrected by a fetch.
+     *
+     * @return string[]
+     */
+    public static function updatable_statuses() {
+        return array( self::STATUS_PENDING, 'publish', 'pending', 'draft', 'future' );
+    }
+
+    /**
+     * Statuses an event can be REMOVED from when it vanishes at the source.
+     *
+     * Only things that are live or awaiting review. A draft is already off the
+     * calendar (and may be one of ours from a previous removal), and dismissed
+     * and trashed events stay exactly where they are.
+     *
+     * @return string[]
+     */
+    public static function removable_statuses() {
+        return array( 'publish', 'future', 'pending', self::STATUS_PENDING );
+    }
 
     /** Adapters registered in code. */
     private static $adapters = array();
@@ -358,26 +425,21 @@ class SFAF_Sources {
             update_post_meta( $post_id, self::META_SOURCE_URL, esc_url_raw( (string) $event['source_url'] ) );
         }
         if ( ! empty( $event['image_url'] ) ) {
-            $image = esc_url_raw( (string) $event['image_url'] );
-
-            // Kept under our own key as a record of what the platform supplied.
-            update_post_meta( $post_id, self::META_IMAGE, $image );
-
-            // And written to _uc_image_url, which is the field the whole
-            // calendar actually renders from — sfaf_event_image_url(), the
-            // embed, the SEO tags and the portal's image preview all read it.
-            // Storing it only under META_IMAGE was why imported events showed
-            // the placeholder despite the fetch having the image all along.
+            // The source's image goes in its OWN key and nowhere else.
+            //
+            // _uc_image_url is the manual override — it is what the "Or enter
+            // image URL" field on the event form writes, and a fetch must
+            // never touch it. sfaf_event_image_url() reads the manual one
+            // first and falls through to this, so a pasted banner always wins
+            // and clearing it reveals whatever the source currently has.
+            //
+            // (2.6.0 wrote both to the same key, which meant a refetch would
+            // have overwritten a manager's image. migrate_image_split()
+            // untangles the events created that way.)
             //
             // A URL, not a media-library attachment: third-party images stay
-            // remote by design. Events created here still use the media
-            // library's Choose Image, which sets a featured image and takes
-            // priority over this.
-            update_post_meta( $post_id, '_uc_image_url', $image );
-
-            // Mark it as this event's own image so a series image change does
-            // not overwrite what the platform gave us.
-            update_post_meta( $post_id, '_uc_image_override', '1' );
+            // remote by design.
+            update_post_meta( $post_id, self::META_IMAGE, esc_url_raw( (string) $event['image_url'] ) );
         }
         if ( ! empty( $event['timezone'] ) ) {
             update_post_meta( $post_id, self::META_TIMEZONE, sanitize_text_field( (string) $event['timezone'] ) );
@@ -412,6 +474,160 @@ class SFAF_Sources {
     }
 
     /**
+     * Refresh an already-imported event from the source.
+     *
+     * WHAT THIS TOUCHES — the platform's fields, and only when the source
+     * actually supplied a value:
+     *
+     *   title, description, date, start/end time, end date, location,
+     *   timezone, source URL, the source image, and adapter meta extras.
+     *
+     * WHAT IT NEVER TOUCHES — every local decision:
+     *
+     *   post_status (an update NEVER changes whether an event is live),
+     *   category, organizer, series, FAQs, RSVP settings, capacity, the
+     *   featured image, and _uc_image_url — the manual image override.
+     *
+     * EMPTY IN, LEAVE ALONE. A blank value from the source is treated as
+     * "nothing to say", not as "clear this". Most GoFundMe Pro campaigns have
+     * no date and a manager fills one in at approval; writing the source's
+     * empty date back on the next fetch would erase that work. The same
+     * applies to description and location.
+     *
+     * @param int   $post_id
+     * @param array $event Common event shape.
+     * @return array|WP_Error {changed: array<string,array{from:string,to:string}>}
+     */
+    public static function update_event( $post_id, $event ) {
+        $post_id = (int) $post_id;
+        $post    = get_post( $post_id );
+
+        if ( ! $post || 'uc_event' !== $post->post_type ) {
+            return new WP_Error( 'sfaf_sources_not_event', 'That post is not an event.' );
+        }
+        if ( ! in_array( $post->post_status, self::updatable_statuses(), true ) ) {
+            return new WP_Error(
+                'sfaf_sources_not_updatable',
+                sprintf( 'Events in the "%s" state are left alone by a refresh.', $post->post_status )
+            );
+        }
+
+        $changed = array();
+
+        /* ---- Post fields. post_status is deliberately not among them. ---- */
+        $postarr = array( 'ID' => $post_id );
+
+        $title = isset( $event['title'] ) ? trim( (string) $event['title'] ) : '';
+        if ( '' !== $title && $title !== $post->post_title ) {
+            $postarr['post_title'] = $title;
+            $changed['Title']      = array( 'from' => $post->post_title, 'to' => $title );
+        }
+
+        $description = isset( $event['description'] ) ? (string) $event['description'] : '';
+        if ( '' !== trim( $description ) ) {
+            $new_content = wp_kses_post( $description );
+            if ( $new_content !== $post->post_content ) {
+                $postarr['post_content'] = $new_content;
+                $changed['Description']  = array(
+                    'from' => self::excerpt( $post->post_content ),
+                    'to'   => self::excerpt( $new_content ),
+                );
+            }
+        }
+
+        if ( count( $postarr ) > 1 ) {
+            wp_update_post( $postarr );
+        }
+
+        /* ---- Platform meta, each skipped when the source said nothing. ---- */
+        $meta_map = array(
+            '_uc_event_date'    => array( 'key' => 'start_date', 'label' => 'Date' ),
+            '_uc_start_time'    => array( 'key' => 'start_time', 'label' => 'Start time' ),
+            '_uc_end_time'      => array( 'key' => 'end_time',   'label' => 'End time' ),
+            '_uc_end_date'      => array( 'key' => 'end_date',   'label' => 'End date' ),
+            '_uc_location'      => array( 'key' => 'location',   'label' => 'Location' ),
+            self::META_TIMEZONE => array( 'key' => 'timezone',   'label' => 'Timezone' ),
+        );
+        foreach ( $meta_map as $meta_key => $spec ) {
+            $value = isset( $event[ $spec['key'] ] ) ? trim( (string) $event[ $spec['key'] ] ) : '';
+            if ( '' === $value ) {
+                continue; // empty in, leave alone
+            }
+            $current = (string) get_post_meta( $post_id, $meta_key, true );
+            if ( $current === $value ) {
+                continue;
+            }
+            update_post_meta( $post_id, $meta_key, sanitize_text_field( $value ) );
+            $changed[ $spec['label'] ] = array( 'from' => $current, 'to' => $value );
+        }
+
+        /* ---- URLs. ---- */
+        $url_map = array(
+            self::META_SOURCE_URL => array( 'key' => 'source_url', 'label' => 'Source URL' ),
+            // The SOURCE image only. _uc_image_url is the manual override and
+            // is never written here — that is the whole point of the split.
+            self::META_IMAGE      => array( 'key' => 'image_url',  'label' => 'Source image' ),
+        );
+        foreach ( $url_map as $meta_key => $spec ) {
+            $value = isset( $event[ $spec['key'] ] ) ? trim( (string) $event[ $spec['key'] ] ) : '';
+            if ( '' === $value ) {
+                continue;
+            }
+            $value   = esc_url_raw( $value );
+            $current = (string) get_post_meta( $post_id, $meta_key, true );
+            if ( '' === $value || $current === $value ) {
+                continue;
+            }
+            update_post_meta( $post_id, $meta_key, $value );
+            $changed[ $spec['label'] ] = array( 'from' => $current, 'to' => $value );
+        }
+
+        /* ---- Adapter meta extras (GoFundMe URL, goal, raised …). ---- */
+        if ( ! empty( $event['meta'] ) && is_array( $event['meta'] ) ) {
+            foreach ( $event['meta'] as $meta_key => $meta_value ) {
+                $meta_key = (string) $meta_key;
+                if ( 0 !== strpos( $meta_key, '_uc_' ) || ! is_scalar( $meta_value ) ) {
+                    continue;
+                }
+                // Never let an adapter's extras reach the manual image field.
+                if ( '_uc_image_url' === $meta_key || '_uc_image_override' === $meta_key ) {
+                    continue;
+                }
+                $meta_value = trim( (string) $meta_value );
+                if ( '' === $meta_value ) {
+                    continue;
+                }
+                $meta_value = ( false !== strpos( $meta_key, '_url' ) )
+                    ? esc_url_raw( $meta_value )
+                    : sanitize_text_field( $meta_value );
+                $current = (string) get_post_meta( $post_id, $meta_key, true );
+                if ( $current === $meta_value ) {
+                    continue;
+                }
+                update_post_meta( $post_id, $meta_key, $meta_value );
+                // The raised-at stamp changes on every fetch and is noise in a
+                // change report, so it is applied but not reported.
+                if ( '_uc_gofundme_raised_at' !== $meta_key ) {
+                    $changed[ $meta_key ] = array( 'from' => $current, 'to' => $meta_value );
+                }
+            }
+        }
+
+        update_post_meta( $post_id, self::META_UPDATED_AT, time() );
+
+        return array( 'changed' => $changed );
+    }
+
+    /** A short, single-line version of a value, for change reports. */
+    private static function excerpt( $value ) {
+        $value = trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $value ) ) );
+        if ( '' === $value ) {
+            return '(empty)';
+        }
+        return ( strlen( $value ) > 90 ) ? substr( $value, 0, 90 ) . '…' : $value;
+    }
+
+    /**
      * Run one adapter and report what happened.
      *
      * Never throws: a source that fails returns a result carrying its error,
@@ -420,20 +636,69 @@ class SFAF_Sources {
      * @param SFAF_Source_Adapter $adapter
      * @return array
      */
+    /**
+     * An empty result row — every counter the report knows about, at zero.
+     *
+     * One definition so a skipped, failed and completed source all carry the
+     * same keys and the report never has to guard for a missing one.
+     *
+     * @param SFAF_Source_Adapter $adapter
+     * @param bool                $skipped
+     * @param string              $reason
+     * @param string              $error
+     * @return array
+     */
+    private static function blank_result( $adapter, $skipped = false, $reason = '', $error = '' ) {
+        return array(
+            'slug'         => $adapter->slug(),
+            'label'        => $adapter->label(),
+            'skipped'      => (bool) $skipped,
+            'reason'       => (string) $reason,
+            'fetched'      => 0,
+            'new'          => 0,
+            'updated'      => 0,
+            'unchanged'    => 0,
+            'untouched'    => 0,
+            'invalid'      => 0,
+            'failed'       => 0,
+            'unpublished'  => 0,
+            'ended'        => 0,
+            'vanished'     => 0,
+            'reappeared'   => 0,
+            'removal_ran'  => false,
+            'removal_skip' => '',
+            'error'        => (string) $error,
+            'notes'        => array(),
+            'images'       => array(),
+            'new_ids'      => array(),
+            'updated_ids'  => array(),
+        );
+    }
+
     public static function run_adapter( $adapter ) {
         $result = array(
-            'slug'    => $adapter->slug(),
-            'label'   => $adapter->label(),
-            'skipped' => false,
-            'reason'  => '',
-            'fetched' => 0,
-            'new'     => 0,
-            'known'   => 0,
-            'invalid' => 0,
-            'failed'  => 0,
-            'error'   => '',
-            'notes'   => array(),
-            'new_ids' => array(),
+            'slug'          => $adapter->slug(),
+            'label'         => $adapter->label(),
+            'skipped'       => false,
+            'reason'        => '',
+            'fetched'       => 0,
+            'new'           => 0,
+            'updated'       => 0,
+            'unchanged'     => 0,
+            'untouched'     => 0,
+            'invalid'       => 0,
+            'failed'        => 0,
+            'unpublished'   => 0,
+            'ended'         => 0,
+            'vanished'      => 0,
+            'reappeared'    => 0,
+            'removal_ran'   => false,
+            'removal_skip'  => '',
+            'error'         => '',
+            'notes'         => array(),
+            'images'        => array(),
+            'new_ids'       => array(),
+            'updated_ids'   => array(),
         );
 
         $response = $adapter->fetch();
@@ -455,7 +720,8 @@ class SFAF_Sources {
 
         // Guards against the same event arriving twice in one run — an event
         // shared across two organizations, say.
-        $seen = array();
+        $seen     = array();
+        $seen_ids = array();
 
         foreach ( $items as $item ) {
             $result['fetched']++;
@@ -469,15 +735,60 @@ class SFAF_Sources {
 
             $key = $event['external_source'] . '|' . $event['external_id'];
             if ( isset( $seen[ $key ] ) ) {
-                $result['known']++;
-                continue;
+                continue; // the same event twice in one run
             }
-            $seen[ $key ] = true;
+            $seen[ $key ]           = true;
+            $seen_ids[]             = (string) $event['external_id'];
 
-            // Known in ANY state — published, pending, dismissed, trashed —
-            // means leave it alone. A dismissed event is never resurrected.
-            if ( self::find_existing( $event['external_source'], $event['external_id'] ) ) {
-                $result['known']++;
+            // Adapters may report which of the platform's image fields they
+            // resolved to, so the report can show what was actually picked up
+            // rather than just that something was.
+            if ( ! empty( $event['image_field'] ) ) {
+                $result['images'][] = array(
+                    'title' => isset( $event['title'] ) ? (string) $event['title'] : (string) $event['external_id'],
+                    'field' => (string) $event['image_field'],
+                    'url'   => isset( $event['image_url'] ) ? (string) $event['image_url'] : '',
+                );
+            }
+
+            $existing = self::find_existing( $event['external_source'], $event['external_id'] );
+
+            if ( $existing ) {
+                $status = get_post_status( $existing );
+
+                // Dismissed and trashed events are decisions a person made.
+                // They are neither updated nor resurrected.
+                if ( ! in_array( $status, self::updatable_statuses(), true ) ) {
+                    $result['untouched']++;
+                    continue;
+                }
+
+                // An event that had been removed at the source and is back is
+                // reported, never auto-republished — putting something live
+                // again without a person looking is exactly what we do not do.
+                if ( get_post_meta( $existing, self::META_REMOVED_AT, true ) ) {
+                    delete_post_meta( $existing, self::META_REMOVED_AT );
+                    delete_post_meta( $existing, self::META_REMOVED_WHY );
+                    $result['reappeared']++;
+                    $result['notes'][] = sprintf(
+                        'Back at the source: "%s" reappeared and has been refreshed, but is left as a draft — republish it by hand if it should go live again.',
+                        isset( $event['title'] ) ? $event['title'] : $event['external_id']
+                    );
+                }
+
+                $update = self::update_event( $existing, $event );
+                if ( is_wp_error( $update ) ) {
+                    $result['failed']++;
+                    $result['notes'][] = sprintf( 'Could not refresh #%d: %s', $existing, $update->get_error_message() );
+                    continue;
+                }
+
+                if ( empty( $update['changed'] ) ) {
+                    $result['unchanged']++;
+                } else {
+                    $result['updated']++;
+                    $result['updated_ids'][] = (int) $existing;
+                }
                 continue;
             }
 
@@ -496,7 +807,97 @@ class SFAF_Sources {
             $result['new_ids'][] = (int) $post_id;
         }
 
+        self::handle_removals( $adapter, $response, $seen_ids, $result );
+
         return $result;
+    }
+
+    /**
+     * Take events off the calendar when they have gone from the source.
+     *
+     * THE GUARD IS THE POINT. "Not in the response" and "the fetch broke" look
+     * identical from here, and getting it wrong silently pulls live events off
+     * the public calendar. So removal only runs when the adapter can say the
+     * run was CLEAN — every request succeeded, pagination reached the last
+     * page, and at least one item came back. Any doubt at all and the whole
+     * removal step is skipped for that source, and the report says why.
+     *
+     * It is per source: one platform failing never affects another's events.
+     *
+     * @param SFAF_Source_Adapter $adapter
+     * @param array               $response The adapter's fetch() return.
+     * @param string[]            $seen_ids External IDs present in this run.
+     * @param array               $result   Modified by reference.
+     */
+    private static function handle_removals( $adapter, $response, $seen_ids, &$result ) {
+        $complete = ! empty( $response['complete'] );
+        $reason   = isset( $response['complete_reason'] ) ? (string) $response['complete_reason'] : '';
+
+        if ( ! $complete ) {
+            $result['removal_skip'] = ( '' !== $reason )
+                ? $reason
+                : 'the source did not confirm a complete run';
+            return;
+        }
+
+        // Belt and braces on top of the adapter's own word: a run that
+        // produced nothing usable is never grounds for removing anything.
+        if ( empty( $seen_ids ) ) {
+            $result['removal_skip'] = 'the run returned no usable events, which is never treated as "everything was deleted"';
+            return;
+        }
+
+        $result['removal_ran'] = true;
+
+        // IDs the adapter saw but deliberately filtered out — a campaign that
+        // was unpublished at source, say. Absent from the fetched set for a
+        // known reason, which is worth telling apart from a disappearance.
+        $filtered = array();
+        if ( ! empty( $response['filtered_ids'] ) && is_array( $response['filtered_ids'] ) ) {
+            foreach ( $response['filtered_ids'] as $id ) {
+                $filtered[ (string) $id ] = true;
+            }
+        }
+
+        $seen = array_flip( array_map( 'strval', $seen_ids ) );
+
+        $query = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => self::removable_statuses(),
+            'posts_per_page'         => 500,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'ignore_sticky_posts'    => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                array( 'key' => self::META_SOURCE, 'value' => $adapter->slug() ),
+            ),
+        ) );
+
+        foreach ( $query->posts as $post_id ) {
+            $external_id = (string) get_post_meta( $post_id, self::META_EXTERNAL_ID, true );
+            if ( '' === $external_id || isset( $seen[ $external_id ] ) ) {
+                continue;
+            }
+
+            $why = isset( $filtered[ $external_id ] ) ? 'ended' : 'vanished';
+
+            wp_update_post( array( 'ID' => $post_id, 'post_status' => self::STATUS_REMOVED ) );
+            update_post_meta( $post_id, self::META_REMOVED_AT, time() );
+            update_post_meta( $post_id, self::META_REMOVED_WHY, $why );
+
+            $result['unpublished']++;
+            $result[ $why ]++;
+            $result['notes'][] = sprintf(
+                '%s: "%s" %s and has been made a draft — it is off the calendar but kept, and can be republished.',
+                ( 'ended' === $why ) ? 'Closed at source' : 'Gone from source',
+                get_the_title( $post_id ),
+                ( 'ended' === $why )
+                    ? 'is no longer an active campaign at the source'
+                    : 'is no longer returned by the source at all'
+            );
+        }
     }
 
     /**
@@ -515,20 +916,7 @@ class SFAF_Sources {
         // and neither should collapse into a bare "0 fetched".
         foreach ( self::adapters() as $adapter ) {
             if ( ! $adapter->is_active() ) {
-                $results[] = array(
-                    'slug'    => $adapter->slug(),
-                    'label'   => $adapter->label(),
-                    'skipped' => true,
-                    'reason'  => (string) $adapter->inactive_reason(),
-                    'fetched' => 0,
-                    'new'     => 0,
-                    'known'   => 0,
-                    'invalid' => 0,
-                    'failed'  => 0,
-                    'error'   => '',
-                    'notes'   => array(),
-                    'new_ids' => array(),
-                );
+                $results[] = self::blank_result( $adapter, true, (string) $adapter->inactive_reason(), '' );
                 continue;
             }
 
@@ -537,20 +925,7 @@ class SFAF_Sources {
             } catch ( \Throwable $e ) {
                 // A broken adapter is contained here rather than taking the
                 // whole fetch — and the rest still run.
-                $results[] = array(
-                    'slug'    => $adapter->slug(),
-                    'label'   => $adapter->label(),
-                    'skipped' => false,
-                    'reason'  => '',
-                    'fetched' => 0,
-                    'new'     => 0,
-                    'known'   => 0,
-                    'invalid' => 0,
-                    'failed'  => 0,
-                    'error'   => 'The source failed unexpectedly: ' . $e->getMessage(),
-                    'notes'   => array(),
-                    'new_ids' => array(),
-                );
+                $results[] = self::blank_result( $adapter, false, '', 'The source failed unexpectedly: ' . $e->getMessage() );
             }
         }
 
@@ -578,9 +953,19 @@ class SFAF_Sources {
             return sprintf( '%s: connected, but the source returned no events at all.', $result['label'] );
         }
 
-        $parts = array( sprintf( '%d new', (int) $result['new'] ) );
-        if ( $result['known'] ) {
-            $parts[] = sprintf( '%d already known', (int) $result['known'] );
+        $parts = array(
+            sprintf( '%d new', (int) $result['new'] ),
+            sprintf( '%d updated', (int) $result['updated'] ),
+            sprintf( '%d unchanged', (int) $result['unchanged'] ),
+        );
+        if ( $result['unpublished'] ) {
+            $parts[] = sprintf( '%d unpublished', (int) $result['unpublished'] );
+        }
+        if ( $result['reappeared'] ) {
+            $parts[] = sprintf( '%d back at source', (int) $result['reappeared'] );
+        }
+        if ( $result['untouched'] ) {
+            $parts[] = sprintf( '%d dismissed, left alone', (int) $result['untouched'] );
         }
         if ( $result['invalid'] ) {
             $parts[] = sprintf( '%d unusable', (int) $result['invalid'] );
@@ -689,6 +1074,123 @@ class SFAF_Sources {
 
         wp_update_post( array( 'ID' => $post_id, 'post_status' => $status ) );
         return true;
+    }
+
+    /**
+     * Re-fetch one event from its source and apply the same update path.
+     *
+     * Backs the "Refresh from source" button on the event form. Uses the very
+     * same update_event() the bulk fetch uses, so the local-field protections
+     * are identical and cannot drift.
+     *
+     * @param int $post_id
+     * @return array|WP_Error {changed, label}
+     */
+    public static function refresh_event( $post_id ) {
+        $post_id = (int) $post_id;
+        $prov    = self::provenance( $post_id );
+
+        if ( '' === $prov['source'] || '' === $prov['external_id'] ) {
+            return new WP_Error( 'sfaf_sources_not_imported', 'This event did not come from a third-party source.' );
+        }
+
+        $adapter = self::adapter( $prov['source'] );
+        if ( ! $adapter ) {
+            return new WP_Error(
+                'sfaf_sources_no_adapter',
+                sprintf( 'No adapter is registered for "%s", so this event cannot be refreshed.', $prov['source'] )
+            );
+        }
+        if ( ! $adapter->is_active() ) {
+            return new WP_Error(
+                'sfaf_sources_inactive',
+                sprintf( '%s is not connected — %s.', $adapter->label(), $adapter->inactive_reason() )
+            );
+        }
+
+        $item = $adapter->fetch_one( $prov['external_id'] );
+
+        if ( is_wp_error( $item ) ) {
+            return $item;
+        }
+        if ( null === $item ) {
+            return new WP_Error(
+                'sfaf_sources_no_single_fetch',
+                sprintf( '%s cannot re-fetch a single event.', $adapter->label() )
+            );
+        }
+
+        $event = $adapter->normalize( $item );
+        if ( ! is_array( $event ) || empty( $event['external_id'] ) ) {
+            return new WP_Error( 'sfaf_sources_unusable', 'The source returned something this adapter could not read.' );
+        }
+
+        $update = self::update_event( $post_id, $event );
+        if ( is_wp_error( $update ) ) {
+            return $update;
+        }
+
+        // A single refresh proves the event is still there, so a stale
+        // "removed" mark is cleared — but the status is deliberately left as
+        // it is. Nothing here republishes anything.
+        if ( get_post_meta( $post_id, self::META_REMOVED_AT, true ) ) {
+            delete_post_meta( $post_id, self::META_REMOVED_AT );
+            delete_post_meta( $post_id, self::META_REMOVED_WHY );
+        }
+
+        $update['label'] = $adapter->label();
+        return $update;
+    }
+
+    /* ---------------------------------------------------------------------
+     * One-time migration
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Untangle the image keys on events imported by 2.6.0.
+     *
+     * That release wrote the source's image to BOTH _uc_external_image and
+     * _uc_image_url, before the two had been separated. _uc_image_url is the
+     * manual override, so those events now look as though a person had chosen
+     * that image — which would stop the source image ever refreshing.
+     *
+     * The two being byte-identical is what identifies an importer-written
+     * value: a human pasting the exact same URL the API returned is not a case
+     * worth protecting against, and anything a person actually changed differs
+     * and is left alone.
+     *
+     * Runs once, guarded by an option.
+     */
+    public static function migrate_image_split() {
+        if ( get_option( 'sfaf_sources_image_split_done' ) ) {
+            return;
+        }
+
+        $query = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => self::all_statuses(),
+            'posts_per_page'         => 500,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'ignore_sticky_posts'    => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                array( 'key' => self::META_IMAGE, 'compare' => 'EXISTS' ),
+            ),
+        ) );
+
+        foreach ( $query->posts as $post_id ) {
+            $external = (string) get_post_meta( $post_id, self::META_IMAGE, true );
+            $manual   = (string) get_post_meta( $post_id, '_uc_image_url', true );
+            if ( '' === $external || $external !== $manual ) {
+                continue;
+            }
+            delete_post_meta( $post_id, '_uc_image_url' );
+            delete_post_meta( $post_id, '_uc_image_override' );
+        }
+
+        update_option( 'sfaf_sources_image_split_done', '1', false );
     }
 
     /**

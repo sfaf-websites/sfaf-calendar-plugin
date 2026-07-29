@@ -92,25 +92,32 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             $notes[] = $result['truncated_reason'];
         }
 
-        $items = $result['items'];
+        $items        = $result['items'];
+        $filtered_ids = array();
 
         // Statuses worth importing. Blank means "take everything".
+        //
+        // The IDs dropped here are kept and handed back: a campaign that was
+        // closed or unpublished at the source disappears from the fetched set
+        // for a KNOWN reason, and the framework counts that separately from a
+        // campaign that vanished outright.
         $wanted = trim( (string) apply_filters( 'sfaf_gfmp_import_statuses', self::DEFAULT_STATUSES ) );
         if ( '' !== $wanted ) {
             $allowed = array_filter( array_map( 'trim', explode( ',', strtolower( $wanted ) ) ) );
-            $before  = count( $items );
             $kept    = array();
             foreach ( $items as $row ) {
                 $status = isset( $row['status'] ) && is_string( $row['status'] ) ? strtolower( trim( $row['status'] ) ) : '';
                 if ( '' === $status || in_array( $status, $allowed, true ) ) {
                     $kept[] = $row;
+                } elseif ( ! empty( $row['id'] ) ) {
+                    $filtered_ids[] = (string) $row['id'];
                 }
             }
             $items = $kept;
-            if ( $before !== count( $items ) ) {
+            if ( ! empty( $filtered_ids ) ) {
                 $notes[] = sprintf(
                     '%d campaign(s) skipped for not being %s. Change this with the sfaf_gfmp_import_statuses filter.',
-                    $before - count( $items ),
+                    count( $filtered_ids ),
                     implode( ' or ', $allowed )
                 );
             }
@@ -123,10 +130,61 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             $items = $this->attach_raised( $items, $notes );
         }
 
+        // Clean enough to conclude that a missing campaign has really gone?
+        // Only when pagination reached the last page and something came back.
+        // A WP_Error above has already returned, so every request succeeded by
+        // the time we are here.
+        $complete = true;
+        $reason   = '';
+        if ( $result['truncated'] ) {
+            $complete = false;
+            $reason   = 'the paged results were cut short, so the list may be incomplete';
+        } elseif ( empty( $result['items'] ) ) {
+            $complete = false;
+            $reason   = 'the source returned no campaigns at all, which is never treated as "everything was deleted"';
+        }
+
         return array(
-            'items' => $items,
-            'notes' => $notes,
+            'items'           => $items,
+            'notes'           => $notes,
+            'complete'        => $complete,
+            'complete_reason' => $reason,
+            'filtered_ids'    => $filtered_ids,
         );
+    }
+
+    /**
+     * Re-fetch one campaign: GET {data_base}/campaigns/{id}
+     *
+     * The spec returns a bare Campaign object here, not a paginated wrapper,
+     * but a `data` envelope is unwrapped too in case this account differs.
+     *
+     * @param string $external_id
+     * @return array|WP_Error
+     */
+    public function fetch_one( $external_id ) {
+        $campaign = SFAF_GFMP::fetch_campaign( $external_id );
+        if ( is_wp_error( $campaign ) ) {
+            return $campaign;
+        }
+
+        // A single refresh is worth one extra call for the raised figure.
+        if ( apply_filters( 'sfaf_gfmp_fetch_raised', true ) ) {
+            $token = SFAF_GFMP::get_access_token();
+            if ( ! is_wp_error( $token ) ) {
+                $overview = SFAF_GFMP::fetch_campaign_overview( $token, $external_id );
+                if ( ! is_wp_error( $overview ) ) {
+                    foreach ( array( 'raised_amount', 'progress_bar_amount', 'total_online_funds_raised' ) as $key ) {
+                        if ( isset( $overview[ $key ] ) && is_numeric( $overview[ $key ] ) ) {
+                            $campaign['sfaf_raised_amount'] = (float) $overview[ $key ];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $campaign;
     }
 
     /**
@@ -207,6 +265,7 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
         $start = $this->split_datetime( isset( $item['started_at'] ) ? $item['started_at'] : '' );
         $end   = $this->split_datetime( isset( $item['ended_at'] ) ? $item['ended_at'] : '' );
 
+        $image  = $this->image( $item );
         $goal   = ( isset( $item['goal'] ) && is_numeric( $item['goal'] ) ) ? (float) $item['goal'] : 0;
         $raised = ( isset( $item['sfaf_raised_amount'] ) && is_numeric( $item['sfaf_raised_amount'] ) ) ? (float) $item['sfaf_raised_amount'] : null;
         $url    = $this->source_url( $item );
@@ -238,9 +297,54 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             'timezone'        => isset( $item['timezone_identifier'] ) && is_string( $item['timezone_identifier'] ) ? $item['timezone_identifier'] : '',
             'location'        => $this->location( $item ),
             'source_url'      => $url,
-            'image_url'       => isset( $item['logo_url'] ) && is_string( $item['logo_url'] ) ? $item['logo_url'] : '',
+            'image_url'       => $image['url'],
+            // Which of the two candidate fields this resolved to, so the fetch
+            // report can show what was actually picked up rather than just
+            // that something was. See image().
+            'image_field'     => $image['field'],
             'meta'            => $meta,
         );
+    }
+
+    /**
+     * The campaign image, and which field it came from.
+     *
+     * The Campaign schema exposes exactly two image URLs — logo_url and
+     * team_cover_photo_url — and no hero or banner field at all.
+     *
+     * logo_url is the small logo mark, which is what 2.6.0 used and why
+     * imported campaigns showed a logo where a banner belonged.
+     * team_cover_photo_url is preferred instead, but THIS IS A BEST GUESS:
+     * the spec describes it as the default cover photo for the campaign's
+     * fundraising Teams, inherited from the Theme, not explicitly as the
+     * campaign page banner. It is shipped to find out what actually comes
+     * back, which is why the field used is reported per campaign rather than
+     * quietly chosen.
+     *
+     * Falls back to logo_url, then to nothing — at which point the calendar's
+     * own branded placeholder shows, as it does for any event with no image.
+     *
+     * @param array $item Raw campaign.
+     * @return array{url:string,field:string}
+     */
+    private function image( $item ) {
+        $candidates = (array) apply_filters(
+            'sfaf_gfmp_image_fields',
+            array( 'team_cover_photo_url', 'logo_url' ),
+            $item
+        );
+
+        foreach ( $candidates as $field ) {
+            $field = (string) $field;
+            if ( ! empty( $item[ $field ] ) && is_string( $item[ $field ] ) ) {
+                $value = trim( $item[ $field ] );
+                if ( '' !== $value ) {
+                    return array( 'url' => $value, 'field' => $field );
+                }
+            }
+        }
+
+        return array( 'url' => '', 'field' => 'none — placeholder will show' );
     }
 
     /* ---------------------------------------------------------------------

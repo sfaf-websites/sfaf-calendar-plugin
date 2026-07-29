@@ -618,6 +618,46 @@ class SFAF_GFMP {
     }
 
     /**
+     * One campaign by ID: GET {data_base}/campaigns/{id}
+     *
+     * The spec returns a bare Campaign object; a `data` envelope is unwrapped
+     * too, in case this account's response differs from the documentation.
+     *
+     * @param string $campaign_id
+     * @return array|WP_Error Raw campaign.
+     */
+    public static function fetch_campaign( $campaign_id ) {
+        $campaign_id = trim( (string) $campaign_id );
+        if ( '' === $campaign_id ) {
+            return new WP_Error( 'sfaf_gfmp_missing_campaign', 'A campaign ID is required.' );
+        }
+
+        $token = self::get_access_token();
+        if ( is_wp_error( $token ) ) {
+            return $token;
+        }
+
+        $url  = self::endpoint( 'campaigns/' . rawurlencode( $campaign_id ) );
+        $body = self::request_json( $token, $url );
+        if ( is_wp_error( $body ) ) {
+            return $body;
+        }
+
+        if ( isset( $body['data'] ) && is_array( $body['data'] ) && ! empty( $body['data']['id'] ) ) {
+            $body = $body['data'];
+        }
+
+        if ( empty( $body['id'] ) ) {
+            return new WP_Error(
+                'sfaf_gfmp_unexpected',
+                sprintf( 'HTTP 200 from %s but the response did not look like a campaign.', $url )
+            );
+        }
+
+        return $body;
+    }
+
+    /**
      * Aggregate totals for one campaign — the raised amount for a progress bar.
      *
      * A CAVEAT WORTH KNOWING: the supplied API specification defines a

@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place — through the WordPress admin or the /caladmin front-end portal — and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 2.6.0
+ * Version: 2.7.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '2.6.0' );
+define( 'SFAF_VERSION', '2.7.0' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -143,6 +143,11 @@ function sfaf_init() {
     // outside via the sfaf_source_adapters filter.
     SFAF_Sources::register_adapter( new SFAF_Source_Eventbrite() );
     SFAF_Sources::register_adapter( new SFAF_Source_GFMP() );
+
+    // 2.6.0 wrote a source image to the manual-override key as well as its
+    // own. Separate them once so a refetch can refresh the source image
+    // without stepping on an image a person chose.
+    SFAF_Sources::migrate_image_split();
 
     $portal = new SFAF_Portal();
     $portal->register();

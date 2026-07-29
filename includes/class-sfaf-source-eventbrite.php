@@ -95,12 +95,14 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
         // Anything the fetch could not finish is passed up as a note rather
         // than swallowed: a truncated page run or one organization failing
         // both mean "this list is not everything", and the fetch report says so.
-        $notes = array();
+        $notes      = array();
+        $org_errors = 0;
         foreach ( $result['notes'] as $note ) {
             $notes[] = (string) $note;
         }
         foreach ( $result['organizations'] as $org ) {
             if ( ! empty( $org['error'] ) ) {
+                $org_errors++;
                 $notes[] = sprintf(
                     'Organization %s could not be read: %s',
                     ( '' !== $org['name'] ) ? $org['name'] : $org['id'],
@@ -109,10 +111,59 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
             }
         }
 
+        // Was this run good enough to conclude that anything missing from it
+        // has genuinely gone? Only if every organization answered, no page run
+        // was cut short, and something actually came back. Anything less and
+        // the framework skips removal handling entirely.
+        $complete = true;
+        $reason   = '';
+        if ( $org_errors > 0 ) {
+            $complete = false;
+            $reason   = sprintf( '%d organization(s) could not be read, so the list may be incomplete', $org_errors );
+        } elseif ( ! empty( $result['notes'] ) ) {
+            // fetch_events() only puts truncation warnings in notes.
+            $complete = false;
+            $reason   = 'the paged results were cut short, so the list may be incomplete';
+        } elseif ( empty( $result['events'] ) ) {
+            $complete = false;
+            $reason   = 'the source returned no events, which is never treated as "everything was deleted"';
+        }
+
         return array(
-            'items' => $result['events'],
-            'notes' => $notes,
+            'items'           => $result['events'],
+            'notes'           => $notes,
+            'complete'        => $complete,
+            'complete_reason' => $reason,
+            // Eventbrite is asked for live/current_future events only, so an
+            // event that ends or is unpublished simply stops being returned.
+            // There is no separately-observed "filtered out" set to report.
+            'filtered_ids'    => array(),
         );
+    }
+
+    /**
+     * Re-fetch one event: GET {api_base}/events/{id}/?expand=venue,logo,organizer
+     *
+     * Returned in the same flattened shape fetch() produces, so normalize()
+     * cannot tell the difference between a bulk and a single fetch.
+     *
+     * @param string $external_id
+     * @return array|WP_Error
+     */
+    public function fetch_one( $external_id ) {
+        $token = SFAF_Eventbrite::private_token();
+        if ( '' === $token ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'No Eventbrite private token is stored.' );
+        }
+
+        $raw = SFAF_Eventbrite::fetch_event( $token, $external_id, array(
+            'expand' => (string) apply_filters( 'sfaf_eventbrite_import_expand', self::EXPAND ),
+        ) );
+        if ( is_wp_error( $raw ) ) {
+            return $raw;
+        }
+
+        return SFAF_Eventbrite::normalize_event( $raw );
     }
 
     /**

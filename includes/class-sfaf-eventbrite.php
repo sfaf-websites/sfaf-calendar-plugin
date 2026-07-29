@@ -291,6 +291,51 @@ class SFAF_Eventbrite {
     }
 
     /**
+     * One event by ID: GET {api_base}/events/{event_id}/
+     *
+     * Used by the per-event "Refresh from source" button. The expansions have
+     * to be asked for here too — a single-event call returns no venue or logo
+     * object without them, and an update would then see empty values.
+     *
+     * @param string $token Private token.
+     * @param string $event_id
+     * @param array  $args  { @type string $expand Comma-separated expansions. }
+     * @return array|WP_Error Raw event.
+     */
+    public static function fetch_event( $token, $event_id, $args = array() ) {
+        $token    = trim( (string) $token );
+        $event_id = trim( (string) $event_id );
+
+        if ( '' === $token ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token is required.' );
+        }
+        if ( '' === $event_id ) {
+            return new WP_Error( 'sfaf_eventbrite_missing_event', 'An event ID is required.' );
+        }
+
+        $query  = array();
+        $expand = isset( $args['expand'] ) ? trim( (string) $args['expand'] ) : '';
+        if ( '' !== $expand ) {
+            $query['expand'] = $expand;
+        }
+
+        $url  = self::endpoint( 'events/' . rawurlencode( $event_id ) . '/', $query );
+        $body = self::request_json( $token, $url );
+        if ( is_wp_error( $body ) ) {
+            return $body;
+        }
+
+        if ( empty( $body['id'] ) ) {
+            return new WP_Error(
+                'sfaf_eventbrite_unexpected',
+                sprintf( 'HTTP 200 from %s but the response did not look like an event.', $url )
+            );
+        }
+
+        return $body;
+    }
+
+    /**
      * The primary email from a /users/me/ payload.
      *
      * Eventbrite returns every address on the account; the one flagged primary
@@ -711,7 +756,7 @@ class SFAF_Eventbrite {
      * @param string $org_name Owning organization name.
      * @return array
      */
-    private static function normalize_event( $event, $org_id = '', $org_name = '' ) {
+    public static function normalize_event( $event, $org_id = '', $org_name = '' ) {
         $text = function ( $value ) {
             return is_string( $value ) ? $value : '';
         };

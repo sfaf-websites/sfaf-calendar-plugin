@@ -230,3 +230,21 @@ body.uc-portal {
 .uc-fetch-fail { border-left-color: #ef4444; }
 .uc-fetch-notes { margin: 6px 0 0 18px; padding: 0; list-style: disc; font-size: 12px; color: #6B7280; }
 .uc-fetch-skip { border-left-color: #9ca3af; color: #6B7280; }
+
+/* Part B: refresh panel, change diff, removal-guard reporting */
+.uc-flash-warn { background: #fef3c7; color: #92400e; }
+.uc-flash-error { background: #fee2e2; color: #991b1b; }
+
+.uc-refresh-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+.uc-refresh-panel .uc-flash, .uc-refresh-panel .uc-refresh-diff { flex-basis: 100%; margin-top: 4px; }
+.uc-refresh-diff { font-size: 12px; }
+.uc-refresh-diff td { vertical-align: top; word-break: break-word; }
+.uc-diff-old { color: #6B7280; text-decoration: line-through; }
+.uc-diff-new { color: #065f46; font-weight: 600; }
+
+.uc-fetch-guard { margin: 6px 0 0; padding: 5px 9px; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 12px; }
+.uc-fetch-guard-ok { background: #ecfdf5; color: #065f46; }
+.uc-fetch-images { margin-top: 8px; font-size: 12px; }
+.uc-fetch-images summary { cursor: pointer; color: #6B7280; }
+.uc-fetch-images table { margin-top: 8px; }
+.uc-break { word-break: break-all; }

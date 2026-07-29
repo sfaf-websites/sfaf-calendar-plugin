@@ -241,6 +241,24 @@ class SFAF_Portal {
                 $this->redirect( 'pending', array( 'msg' => 'import_restored' ) );
                 break;
 
+            case 'refresh_source_event':
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                // Same capability rule as every other edit in this portal.
+                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $refresh = SFAF_Sources::refresh_event( $event_id );
+                set_transient(
+                    'sfaf_refresh_result_' . $user->ID . '_' . $event_id,
+                    is_wp_error( $refresh )
+                        ? array( 'error' => $refresh->get_error_message() )
+                        : $refresh,
+                    5 * MINUTE_IN_SECONDS
+                );
+                $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'refreshed' ) );
+                break;
+
             case 'import_publish':
                 // Publishing is not a one-click move: the platform supplies the
                 // title, times and location, but the category, organizer and
@@ -651,6 +669,7 @@ class SFAF_Portal {
             'import_dismissed' => 'Event dismissed. It stays in the Dismissed list and will not be fetched again.',
             'import_restored'  => 'Event restored to Pending.',
             'import_review'    => 'Assign a category, organizer and series, then press Publish to put this event on the calendar.',
+            'refreshed'        => 'Refreshed from the source — see below for what changed.',
         );
         $key = sanitize_key( $_GET['msg'] );
         if ( isset( $map[ $key ] ) ) {
@@ -850,12 +869,49 @@ class SFAF_Portal {
                     ?>
                     <li class="<?php echo esc_attr( $row_class ); ?>">
                         <?php echo esc_html( SFAF_Sources::summarize( $result ) ); ?>
+
+                        <?php // Whether removal handling was allowed to run at all is
+                              // the thing worth being loudest about — it is the step
+                              // that takes live events off the calendar.
+                        if ( ! empty( $result['removal_skip'] ) ) : ?>
+                            <div class="uc-fetch-guard">Removal check skipped &mdash; <?php echo esc_html( $result['removal_skip'] ); ?>. No event was unpublished by this source.</div>
+                        <?php elseif ( ! empty( $result['removal_ran'] ) ) : ?>
+                            <div class="uc-fetch-guard uc-fetch-guard-ok">Removal check ran on a complete result set<?php
+                                if ( (int) $result['unpublished'] > 0 ) {
+                                    echo ' — ' . (int) $result['ended'] . ' closed at source, ' . (int) $result['vanished'] . ' gone entirely.';
+                                } else {
+                                    echo ' — nothing had gone.';
+                                }
+                            ?></div>
+                        <?php endif; ?>
+
                         <?php if ( ! empty( $result['notes'] ) ) : ?>
                             <ul class="uc-fetch-notes">
                                 <?php foreach ( $result['notes'] as $note ) : ?>
                                     <li><?php echo esc_html( $note ); ?></li>
                                 <?php endforeach; ?>
                             </ul>
+                        <?php endif; ?>
+
+                        <?php // Which image field each item resolved to. Shipped
+                              // because the GoFundMe Pro mapping is a best guess and
+                              // we need to see what actually came back.
+                        if ( ! empty( $result['images'] ) ) : ?>
+                            <details class="uc-fetch-images">
+                                <summary>Image field used (<?php echo (int) count( $result['images'] ); ?>)</summary>
+                                <table class="uc-table">
+                                    <thead><tr><th>Event</th><th>Field</th><th>URL</th></tr></thead>
+                                    <tbody>
+                                    <?php foreach ( $result['images'] as $img ) : ?>
+                                        <tr>
+                                            <td><?php echo esc_html( $img['title'] ); ?></td>
+                                            <td><code><?php echo esc_html( $img['field'] ); ?></code></td>
+                                            <td class="uc-break"><?php echo $img['url'] ? esc_html( $img['url'] ) : '&mdash;'; ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </details>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
@@ -1228,12 +1284,28 @@ class SFAF_Portal {
         if ( $event_id && '' !== $prov['source'] ) : ?>
             <div class="uc-flash uc-flash-info uc-import-banner">
                 <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ); ?></span>
-                Imported from <?php echo esc_html( $prov['label'] ); ?>. The title, description, times and location come from there.
+                Imported from <?php echo esc_html( $prov['label'] ); ?>. The title, description, times, location and image come from there.
                 Set the <strong>category, organizer and series</strong> below, then press Publish to put it on the calendar.
                 <?php if ( $prov['source_url'] ) : ?>
                     <a href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $prov['label'] ); ?> &nearr;</a>
                 <?php endif; ?>
             </div>
+
+            <?php
+            // "Removed at source" is a draft this plugin made, not a human one.
+            $removed_at = (int) get_post_meta( $event_id, '_uc_source_removed_at', true );
+            if ( $removed_at ) :
+                $removed_why = (string) get_post_meta( $event_id, '_uc_source_removed_reason', true );
+                ?>
+                <div class="uc-flash uc-flash-warn">
+                    This event is no longer at <?php echo esc_html( $prov['label'] ); ?>
+                    (<?php echo esc_html( 'ended' === $removed_why ? 'the campaign is no longer active there' : 'it stopped being returned by the source' ); ?>,
+                    <?php echo esc_html( human_time_diff( $removed_at, time() ) ); ?> ago),
+                    so it was taken off the calendar and kept as a draft. Publish it again if it should be live.
+                </div>
+            <?php endif; ?>
+
+            <?php $this->render_refresh_panel( $user, $event_id, $prov ); ?>
         <?php endif; ?>
 
         <form method="post" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
@@ -1252,7 +1324,7 @@ class SFAF_Portal {
                     $own_url    = $event_id ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
                     $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
                     $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
-                    $src_labels = array( 'event' => 'Event-specific', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
+                    $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
                     $ev_parent  = $event_id ? (int) get_post_meta( $event_id, '_uc_series_parent', true ) : 0;
                     $ev_in_series = $ev_parent && $ev_parent !== (int) $event_id;
                     ?>
@@ -1520,6 +1592,58 @@ class SFAF_Portal {
         </div>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * "Refresh from source" for a third-party event, plus the result of the
+     * last refresh.
+     *
+     * Its own form rather than a button inside the event form: this posts and
+     * redirects on its own, and must not carry the edit form's fields with it.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     * @param array   $prov     SFAF_Sources::provenance() for this event.
+     */
+    private function render_refresh_panel( $user, $event_id, $prov ) {
+        $key    = 'sfaf_refresh_result_' . $user->ID . '_' . (int) $event_id;
+        $result = get_transient( $key );
+        if ( false !== $result ) {
+            delete_transient( $key );
+        }
+        ?>
+        <div class="uc-card uc-refresh-panel">
+            <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form">
+                <input type="hidden" name="uc_action" value="refresh_source_event" />
+                <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                <?php wp_nonce_field( 'uc_portal_refresh_source_event', 'uc_nonce' ); ?>
+                <button type="submit" class="uc-btn uc-btn-sm">Refresh from source</button>
+            </form>
+            <span class="uc-hint">Pulls this event's platform fields again. Your category, organizer, series and any image you chose are left alone.</span>
+
+            <?php if ( is_array( $result ) ) : ?>
+                <?php if ( ! empty( $result['error'] ) ) : ?>
+                    <div class="uc-flash uc-flash-error">Refresh failed: <?php echo esc_html( $result['error'] ); ?></div>
+                <?php elseif ( empty( $result['changed'] ) ) : ?>
+                    <div class="uc-flash">Nothing had changed at the source — this event is already up to date.</div>
+                <?php else : ?>
+                    <div class="uc-flash">Updated <?php echo (int) count( $result['changed'] ); ?> field(s) from <?php echo esc_html( isset( $result['label'] ) ? $result['label'] : 'the source' ); ?>:</div>
+                    <table class="uc-table uc-refresh-diff">
+                        <thead><tr><th>Field</th><th>Was</th><th>Now</th></tr></thead>
+                        <tbody>
+                        <?php foreach ( $result['changed'] as $field => $change ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( $field ); ?></td>
+                                <td class="uc-diff-old"><?php echo esc_html( '' === $change['from'] ? '(empty)' : $change['from'] ); ?></td>
+                                <td class="uc-diff-new"><?php echo esc_html( $change['to'] ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     /**

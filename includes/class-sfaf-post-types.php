@@ -424,7 +424,7 @@ class SFAF_Post_Types {
      */
     public function render_image_meta_box( $post ) {
         $source = sfaf_event_image_source( $post->ID );
-        $labels = array( 'event' => 'Event-specific', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
+        $labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
         ?>
         <div class="uc-meta-box">
             <div class="uc-img-source-preview"><?php echo sfaf_event_thumbnail( $post->ID, 'medium' ); ?></div>
