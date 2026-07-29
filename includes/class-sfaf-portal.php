@@ -219,6 +219,42 @@ class SFAF_Portal {
                 $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
                 break;
 
+            case 'fetch_sources':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                // The report has to survive the redirect that stops a refresh
+                // re-running the fetch, so it goes in a short-lived transient
+                // keyed to this user.
+                $results = SFAF_Sources::run_all();
+                set_transient( 'sfaf_fetch_report_' . $user->ID, $results, 10 * MINUTE_IN_SECONDS );
+                $this->redirect( '', array( 'msg' => 'fetched' ) );
+                break;
+
+            case 'import_dismiss':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_Sources::move( intval( $_POST['event_id'] ), SFAF_Sources::STATUS_DISMISSED );
+                $this->redirect( 'pending', array( 'msg' => 'import_dismissed' ) );
+                break;
+
+            case 'import_restore':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_Sources::move( intval( $_POST['event_id'] ), SFAF_Sources::STATUS_PENDING );
+                $this->redirect( 'pending', array( 'msg' => 'import_restored' ) );
+                break;
+
+            case 'import_publish':
+                // Publishing is not a one-click move: the platform supplies the
+                // title, times and location, but the category, organizer and
+                // series are local decisions. So this opens the event for those
+                // to be assigned, and the form's own Publish button is what
+                // puts it on the calendar.
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $event_id = intval( $_POST['event_id'] );
+                if ( ! SFAF_Sources::is_queued( $event_id ) ) {
+                    $this->redirect( 'pending' );
+                }
+                $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'import_review' ) );
+                break;
+
             case 'set_user_role':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $this->save_user_role();
@@ -611,6 +647,10 @@ class SFAF_Portal {
             'user_added'     => 'User added to the calendar system.',
             'user_removed'   => 'User removed from the calendar system.',
             'series_saved'   => 'Series saved and propagated to its occurrences.',
+            'fetched'        => 'Fetch complete — see the results below.',
+            'import_dismissed' => 'Event dismissed. It stays in the Dismissed list and will not be fetched again.',
+            'import_restored'  => 'Event restored to Pending.',
+            'import_review'    => 'Assign a category, organizer and series, then press Publish to put this event on the calendar.',
         );
         $key = sanitize_key( $_GET['msg'] );
         if ( isset( $map[ $key ] ) ) {
@@ -690,11 +730,29 @@ class SFAF_Portal {
         $upcoming   = $this->count_events( 'publish', $own ? $user->ID : 0, true );
         $rsvp_total = $this->count_rsvps();
         $pending    = $this->count_events( 'pending', 0 );
+
+        // Which third-party sources are configured enough to be worth calling.
+        $active_sources = $this->is_admin_role( $user ) ? SFAF_Sources::active_adapters() : array();
         ?>
         <div class="uc-page-head">
             <h1>Welcome, <?php echo esc_html( $user->first_name ?: $user->display_name ); ?></h1>
-            <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
+            <div class="uc-head-actions">
+                <?php if ( $this->is_admin_role( $user ) ) : ?>
+                    <form method="post" action="<?php echo esc_url( $this->url() ); ?>" class="uc-inline-form">
+                        <input type="hidden" name="uc_action" value="fetch_sources" />
+                        <?php wp_nonce_field( 'uc_portal_fetch_sources', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-btn"<?php echo empty( $active_sources ) ? ' disabled' : ''; ?>>Fetch updates</button>
+                    </form>
+                <?php endif; ?>
+                <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
+            </div>
         </div>
+
+        <?php
+        if ( $this->is_admin_role( $user ) ) {
+            $this->render_fetch_report( $user, $active_sources );
+        }
+        ?>
 
         <div class="uc-stats">
             <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $total; ?></span><span class="uc-stat-label"><?php echo $own ? 'My Events' : 'Total Events'; ?></span></div>
@@ -714,6 +772,62 @@ class SFAF_Portal {
         </div>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * The result of the last "Fetch updates" run.
+     *
+     * Read once and cleared, so it belongs to the run that just happened
+     * rather than lingering on every later visit. Each source reports
+     * separately — one failing says so beside the ones that worked.
+     *
+     * @param WP_User               $user
+     * @param SFAF_Source_Adapter[] $active_sources
+     */
+    private function render_fetch_report( $user, $active_sources ) {
+        $key     = 'sfaf_fetch_report_' . $user->ID;
+        $results = get_transient( $key );
+
+        if ( false === $results ) {
+            // Nothing just ran. Say so only when there is nothing to fetch
+            // from, which is the case worth explaining.
+            if ( empty( $active_sources ) ) {
+                ?>
+                <div class="uc-card uc-card-muted">
+                    <p class="uc-empty">No third-party sources are connected yet. Connect one under
+                    <strong>Settings &rsaquo; Integrations</strong> in the WordPress admin, then
+                    &ldquo;Fetch updates&rdquo; will pull its events into the Pending queue.</p>
+                </div>
+                <?php
+            }
+            return;
+        }
+
+        delete_transient( $key );
+
+        if ( ! is_array( $results ) || empty( $results ) ) {
+            return;
+        }
+        ?>
+        <div class="uc-card">
+            <div class="uc-card-head"><h2>Fetch results</h2>
+                <a href="<?php echo esc_url( $this->url( 'pending' ) ); ?>">Review pending &rarr;</a></div>
+            <ul class="uc-fetch-report">
+                <?php foreach ( $results as $result ) : ?>
+                    <li class="<?php echo ! empty( $result['error'] ) ? 'uc-fetch-fail' : 'uc-fetch-ok'; ?>">
+                        <?php echo esc_html( SFAF_Sources::summarize( $result ) ); ?>
+                        <?php if ( ! empty( $result['notes'] ) ) : ?>
+                            <ul class="uc-fetch-notes">
+                                <?php foreach ( $result['notes'] as $note ) : ?>
+                                    <li><?php echo esc_html( $note ); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php
     }
 
     /* =====================================================================
@@ -1072,6 +1186,22 @@ class SFAF_Portal {
             <div class="uc-flash uc-flash-info">This is one occurrence in a series. Saving affects only this occurrence.</div>
         <?php endif; ?>
 
+        <?php
+        // Imported events: say where this came from, link back to it, and be
+        // explicit about which fields belong to the platform and which are
+        // ours to set.
+        $prov = $event_id ? SFAF_Sources::provenance( $event_id ) : array( 'source' => '' );
+        if ( $event_id && '' !== $prov['source'] ) : ?>
+            <div class="uc-flash uc-flash-info uc-import-banner">
+                <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ); ?></span>
+                Imported from <?php echo esc_html( $prov['label'] ); ?>. The title, description, times and location come from there.
+                Set the <strong>category, organizer and series</strong> below, then press Publish to put it on the calendar.
+                <?php if ( $prov['source_url'] ) : ?>
+                    <a href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $prov['label'] ); ?> &nearr;</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <form method="post" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
             <input type="hidden" name="uc_action" value="save_event" />
             <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
@@ -1305,6 +1435,16 @@ class SFAF_Portal {
         $ids = $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) );
         ?>
         <div class="uc-page-head"><h1>Pending Events</h1></div>
+
+        <?php
+        // Imported third-party events, in their own two sub-sections above the
+        // locally submitted queue. They are separate things: one is a
+        // colleague asking for review, the other is a platform's event
+        // awaiting a decision.
+        $this->render_import_queue( $user );
+        ?>
+
+        <h2 class="uc-section-title">Submitted for review</h2>
         <div class="uc-card">
             <?php if ( empty( $ids ) ) : ?>
                 <p class="uc-empty">Nothing waiting for review.</p>
@@ -1346,6 +1486,107 @@ class SFAF_Portal {
         </div>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * The imported-event queue: Pending and Dismissed, as two sub-sections.
+     *
+     * @param WP_User $user
+     */
+    private function render_import_queue( $user ) {
+        $pending   = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING );
+        $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
+        ?>
+        <h2 class="uc-section-title">
+            Imported &mdash; pending review
+            <?php if ( $pending ) : ?><span class="uc-count-badge"><?php echo count( $pending ); ?></span><?php endif; ?>
+        </h2>
+        <div class="uc-card">
+            <?php if ( empty( $pending ) ) : ?>
+                <p class="uc-empty">Nothing new from connected sources. Use &ldquo;Fetch updates&rdquo; on the dashboard to check again.</p>
+            <?php else : ?>
+                <?php $this->import_queue_table( $pending, 'pending' ); ?>
+            <?php endif; ?>
+        </div>
+
+        <?php if ( ! empty( $dismissed ) ) : ?>
+            <h2 class="uc-section-title">
+                Dismissed
+                <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
+            </h2>
+            <div class="uc-card">
+                <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the pending list.</p>
+                <?php $this->import_queue_table( $dismissed, 'dismissed' ); ?>
+            </div>
+        <?php endif;
+    }
+
+    /**
+     * One table of imported events.
+     *
+     * @param int[]  $ids
+     * @param string $section 'pending' or 'dismissed' — decides the actions.
+     */
+    private function import_queue_table( $ids, $section ) {
+        ?>
+        <table class="uc-table">
+            <thead><tr><th>Source</th><th>Event</th><th>Date &amp; time</th><th>Location</th><th class="uc-col-actions">Actions</th></tr></thead>
+            <tbody>
+            <?php foreach ( $ids as $id ) :
+                $prov     = SFAF_Sources::provenance( $id );
+                $date     = get_post_meta( $id, '_uc_event_date', true );
+                $start    = get_post_meta( $id, '_uc_start_time', true );
+                $end      = get_post_meta( $id, '_uc_end_time', true );
+                $location = get_post_meta( $id, '_uc_location', true );
+
+                $when = $date ? date_i18n( 'M j, Y', strtotime( $date ) ) : '—';
+                if ( $date && $start ) {
+                    $when .= ' · ' . $start . ( $end ? '–' . $end : '' );
+                }
+                if ( $prov['timezone'] ) {
+                    $when .= ' (' . $prov['timezone'] . ')';
+                }
+                ?>
+                <tr>
+                    <td><span class="uc-source-badge"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span></td>
+                    <td>
+                        <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
+                        <?php if ( $prov['source_url'] ) : ?>
+                            <br /><a class="uc-source-link" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">View on <?php echo esc_html( $prov['label'] ? $prov['label'] : 'source' ); ?> &nearr;</a>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo esc_html( $when ); ?></td>
+                    <td><?php echo esc_html( $location ? $location : '—' ); ?></td>
+                    <td class="uc-row-actions">
+                        <div class="uc-actions">
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                <input type="hidden" name="uc_action" value="import_publish" />
+                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_import_publish', 'uc_nonce' ); ?>
+                                <button class="uc-link-ok" type="submit">Publish</button>
+                            </form>
+                            <?php if ( 'dismissed' === $section ) : ?>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                    <input type="hidden" name="uc_action" value="import_restore" />
+                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_import_restore', 'uc_nonce' ); ?>
+                                    <button class="uc-action-link" type="submit">Restore</button>
+                                </form>
+                            <?php else : ?>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                    <input type="hidden" name="uc_action" value="import_dismiss" />
+                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_import_dismiss', 'uc_nonce' ); ?>
+                                    <button class="uc-action-link" type="submit">Dismiss</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php
     }
 
     /* =====================================================================

@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place — through the WordPress admin or the /caladmin front-end portal — and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 2.4.0
+ * Version: 2.5.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '2.4.0' );
+define( 'SFAF_VERSION', '2.5.0' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -78,6 +78,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-sync.php',
     'includes/class-sfaf-gfmp.php',
     'includes/class-sfaf-eventbrite.php',
+    'includes/class-sfaf-sources.php',
+    'includes/class-sfaf-source-eventbrite.php',
     'includes/class-sfaf-seo.php',
     'includes/class-sfaf-portal.php',
     'includes/sfaf-sample-data.php',
@@ -122,9 +124,18 @@ function sfaf_init() {
     $gfmp = new SFAF_GFMP();
     $gfmp->register();
 
-    // Eventbrite: authentication only at this stage.
     $eventbrite = new SFAF_Eventbrite();
     $eventbrite->register();
+
+    // Third-party import framework. The queue statuses are registered here,
+    // on `init`, which is where register_post_status() must be called.
+    $sources = new SFAF_Sources();
+    $sources->register();
+
+    // Eventbrite is the first adapter; GoFundMe Pro and EveryAction will
+    // register the same way, or from outside via the sfaf_source_adapters
+    // filter.
+    SFAF_Sources::register_adapter( new SFAF_Source_Eventbrite() );
 
     $portal = new SFAF_Portal();
     $portal->register();

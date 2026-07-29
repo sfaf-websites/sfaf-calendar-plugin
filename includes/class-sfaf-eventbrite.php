@@ -608,15 +608,18 @@ class SFAF_Eventbrite {
             // location and logo gives the image, both of which the mapping
             // step will want and neither of which is present without asking.
             'expand' => (string) apply_filters( 'sfaf_eventbrite_event_expand', 'venue,logo' ),
+            // Empty means "no time filter" — the preview screen wants
+            // everything, the importer asks for current_future.
+            'time_filter' => '',
         );
         $args = array_merge( $defaults, is_array( $args ) ? $args : array() );
 
         $query = array();
-        if ( '' !== trim( (string) $args['status'] ) ) {
-            $query['status'] = trim( (string) $args['status'] );
-        }
-        if ( '' !== trim( (string) $args['expand'] ) ) {
-            $query['expand'] = trim( (string) $args['expand'] );
+        foreach ( array( 'status', 'expand', 'time_filter' ) as $param ) {
+            $value = isset( $args[ $param ] ) ? trim( (string) $args[ $param ] ) : '';
+            if ( '' !== $value ) {
+                $query[ $param ] = $value;
+            }
         }
 
         $orgs_result = self::fetch_organizations( $token );

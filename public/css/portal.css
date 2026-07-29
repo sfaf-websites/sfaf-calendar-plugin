@@ -203,3 +203,29 @@ body.uc-portal {
     .uc-portal-menu-btn { display: block; }
     .uc-portal-content { padding: 18px; }
 }
+
+/* ---------------------------------------------------------------------------
+   Third-party import queue (dashboard fetch report + Pending sub-sections)
+   --------------------------------------------------------------------------- */
+.uc-head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.uc-inline-form { display: inline; margin: 0; }
+
+.uc-section-title { display: flex; align-items: center; gap: 8px; margin: 26px 0 10px; font-size: 16px; font-weight: 700; }
+.uc-section-title:first-of-type { margin-top: 0; }
+.uc-count-badge { display: inline-block; min-width: 20px; padding: 1px 8px; border-radius: 99px; background: var(--uc-primary, #0E818C); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+
+.uc-source-badge { display: inline-block; padding: 2px 9px; border-radius: 99px; background: #e0f2f1; color: #0E818C; font-size: 11px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.uc-source-link { font-size: 12px; color: #6B7280; text-decoration: none; }
+.uc-source-link:hover { text-decoration: underline; }
+
+.uc-import-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.uc-card-muted { background: #f9fafb; }
+.uc-help { margin: 0 0 12px; font-size: 13px; color: #6B7280; }
+
+.uc-fetch-report { margin: 0; padding: 0; list-style: none; }
+.uc-fetch-report > li { padding: 8px 0 8px 14px; border-left: 3px solid transparent; font-size: 14px; }
+.uc-fetch-report > li + li { border-top: 1px solid var(--uc-border, #e5e7eb); }
+.uc-fetch-ok { border-left-color: #10b981; }
+.uc-fetch-fail { border-left-color: #ef4444; }
+.uc-fetch-notes { margin: 6px 0 0 18px; padding: 0; list-style: disc; font-size: 12px; color: #6B7280; }
