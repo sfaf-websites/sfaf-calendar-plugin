@@ -49,6 +49,7 @@ class SFAF_Eventbrite {
 
     public function register() {
         add_action( 'wp_ajax_sfaf_eventbrite_connect', array( $this, 'ajax_connect' ) );
+        add_action( 'wp_ajax_sfaf_eventbrite_preview', array( $this, 'ajax_preview' ) );
     }
 
     /* ---------------------------------------------------------------------
@@ -184,21 +185,42 @@ class SFAF_Eventbrite {
      * @param string $token Private token.
      * @return array|WP_Error Account details on success.
      */
-    public static function fetch_me( $token ) {
-        $token = trim( (string) $token );
-
-        if ( '' === $token ) {
-            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token is required.' );
+    /**
+     * Build a full URL for an API path.
+     *
+     * @param string $path  Path below the base, e.g. 'users/me/organizations/'.
+     * @param array  $query Query arguments.
+     * @return string
+     */
+    public static function endpoint( $path, $query = array() ) {
+        $url = self::api_base() . '/' . ltrim( (string) $path, '/' );
+        if ( ! empty( $query ) ) {
+            $url = add_query_arg( $query, $url );
         }
+        return $url;
+    }
 
-        $endpoint = self::me_endpoint();
-
-        $response = wp_remote_get( $endpoint, self::auth_args( $token ) );
+    /**
+     * GET a URL with the bearer token and return its decoded JSON.
+     *
+     * The one place a response from Eventbrite is judged, so every call —
+     * the connection test, the organizations lookup, each page of events —
+     * gets the identical treatment: bot-challenge check first, then status,
+     * then "is this even JSON". Anything that goes wrong comes back as a
+     * WP_Error naming the real status, the endpoint and Eventbrite's own
+     * message.
+     *
+     * @param string $token Private token.
+     * @param string $url   Absolute URL.
+     * @return array|WP_Error Decoded body on success.
+     */
+    private static function request_json( $token, $url ) {
+        $response = wp_remote_get( $url, self::auth_args( $token ) );
 
         if ( is_wp_error( $response ) ) {
             return new WP_Error(
                 'sfaf_eventbrite_unreachable',
-                sprintf( 'Could not reach %s — %s', $endpoint, $response->get_error_message() )
+                sprintf( 'Could not reach %s — %s', $url, $response->get_error_message() )
             );
         }
 
@@ -212,25 +234,54 @@ class SFAF_Eventbrite {
         if ( '' !== $challenge ) {
             return new WP_Error(
                 'sfaf_eventbrite_challenge',
-                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, $challenge )
+                sprintf( 'HTTP %d from %s — %s', $status, $url, $challenge )
             );
         }
 
         if ( 200 !== $status ) {
             return new WP_Error(
                 'sfaf_eventbrite_http_' . $status,
-                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d from %s — %s', $status, $url, self::error_detail( $body, $raw, $status ) )
             );
         }
 
-        if ( ! is_array( $body ) || empty( $body['id'] ) ) {
+        if ( ! is_array( $body ) ) {
             return new WP_Error(
                 'sfaf_eventbrite_unexpected',
-                sprintf(
-                    'HTTP 200 from %s but the response did not look like an Eventbrite user. %s',
-                    $endpoint,
-                    self::error_detail( $body, $raw, $status )
-                )
+                sprintf( 'HTTP 200 from %s but the response was not JSON. %s', $url, self::error_detail( $body, $raw, $status ) )
+            );
+        }
+
+        return $body;
+    }
+
+    /**
+     * Fetch the account behind a token: GET {api_base}/users/me/.
+     *
+     * The token is passed in rather than read here so the settings screen can
+     * test what is currently typed in the form, before it has been saved.
+     *
+     * @param string $token Private token.
+     * @return array|WP_Error Account details on success.
+     */
+    public static function fetch_me( $token ) {
+        $token = trim( (string) $token );
+
+        if ( '' === $token ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token is required.' );
+        }
+
+        $endpoint = self::me_endpoint();
+        $body     = self::request_json( $token, $endpoint );
+
+        if ( is_wp_error( $body ) ) {
+            return $body;
+        }
+
+        if ( empty( $body['id'] ) ) {
+            return new WP_Error(
+                'sfaf_eventbrite_unexpected',
+                sprintf( 'HTTP 200 from %s but the response did not look like an Eventbrite user.', $endpoint )
             );
         }
 
@@ -367,6 +418,387 @@ class SFAF_Eventbrite {
     }
 
     /* ---------------------------------------------------------------------
+     * Fetching events
+     *
+     * STEP 2: reading and previewing only. Nothing here creates a uc_event
+     * post or touches the pending queue — fetch_events() returns data and the
+     * settings screen displays it, so the shape can be inspected before any
+     * mapping is written against it. Step 3 imports by calling the very same
+     * fetch_events(), which is why it returns normalised rows and keeps the
+     * untouched API payload alongside them.
+     *
+     * The route is two calls deep, and the old one-call shortcut
+     * (/users/me/events/) is deprecated and deliberately not used:
+     *
+     *   GET {api_base}/users/me/organizations/
+     *   GET {api_base}/organizations/{organization_id}/events/
+     *
+     * An account can own more than one organization, so the second call is
+     * made once per organization and the results combined.
+     * ------------------------------------------------------------------- */
+
+    /** Pages to follow per collection before giving up, unless filtered. */
+    const DEFAULT_MAX_PAGES = 20;
+
+    /**
+     * Follow an Eventbrite collection to the end and return every item.
+     *
+     * Eventbrite paginates with a `pagination` object: `has_more_items` says
+     * whether to keep going and `continuation` is the token that fetches the
+     * next page. The loop stops on the first of: no more items, no
+     * continuation token to follow, or the page cap — and when it stops early
+     * it says so rather than quietly returning a partial list that would look
+     * complete.
+     *
+     * @param string $token          Private token.
+     * @param string $path           Path below the API base.
+     * @param string $collection_key Key holding the list, e.g. 'events'.
+     * @param array  $query          Query arguments applied to every page.
+     * @return array|WP_Error {items, pages, truncated, truncated_reason, endpoint}
+     */
+    private static function fetch_all_pages( $token, $path, $collection_key, $query = array() ) {
+        $max_pages = (int) apply_filters( 'sfaf_eventbrite_max_pages', self::DEFAULT_MAX_PAGES );
+        if ( $max_pages < 1 ) {
+            $max_pages = 1;
+        }
+
+        $items            = array();
+        $pages            = 0;
+        $continuation     = '';
+        $truncated        = false;
+        $truncated_reason = '';
+        $first_endpoint   = self::endpoint( $path, $query );
+
+        do {
+            $page_query = $query;
+            if ( '' !== $continuation ) {
+                $page_query['continuation'] = $continuation;
+            }
+
+            $url  = self::endpoint( $path, $page_query );
+            $body = self::request_json( $token, $url );
+            if ( is_wp_error( $body ) ) {
+                return $body;
+            }
+            $pages++;
+
+            if ( isset( $body[ $collection_key ] ) && is_array( $body[ $collection_key ] ) ) {
+                foreach ( $body[ $collection_key ] as $item ) {
+                    if ( is_array( $item ) ) {
+                        $items[] = $item;
+                    }
+                }
+            } elseif ( 1 === $pages ) {
+                // First page with no list at all means the endpoint answered
+                // with something other than the collection we asked for —
+                // worth naming, along with what it did return.
+                $keys = array_keys( $body );
+                return new WP_Error(
+                    'sfaf_eventbrite_unexpected',
+                    sprintf(
+                        'HTTP 200 from %s but the response had no "%s" list. Keys returned: %s',
+                        $url,
+                        $collection_key,
+                        empty( $keys ) ? '(none)' : implode( ', ', $keys )
+                    )
+                );
+            }
+
+            $pagination   = isset( $body['pagination'] ) && is_array( $body['pagination'] ) ? $body['pagination'] : array();
+            $has_more     = ! empty( $pagination['has_more_items'] );
+            $continuation = isset( $pagination['continuation'] ) ? (string) $pagination['continuation'] : '';
+
+            if ( $has_more && '' === $continuation ) {
+                $truncated        = true;
+                $truncated_reason = sprintf(
+                    'Eventbrite reported more items after page %d but sent no continuation token, so the list stops there.',
+                    $pages
+                );
+                break;
+            }
+
+            if ( $has_more && $pages >= $max_pages ) {
+                $truncated        = true;
+                $truncated_reason = sprintf(
+                    'Stopped at the %d-page limit with more items still available. Raise it with the sfaf_eventbrite_max_pages filter.',
+                    $max_pages
+                );
+                break;
+            }
+        } while ( $has_more );
+
+        return array(
+            'items'            => $items,
+            'pages'            => $pages,
+            'truncated'        => $truncated,
+            'truncated_reason' => $truncated_reason,
+            'endpoint'         => $first_endpoint,
+        );
+    }
+
+    /**
+     * The organizations this token can see.
+     *
+     * GET {api_base}/users/me/organizations/
+     *
+     * @param string $token Private token.
+     * @return array|WP_Error {items, pages, truncated, truncated_reason, endpoint}
+     */
+    public static function fetch_organizations( $token ) {
+        $token = trim( (string) $token );
+        if ( '' === $token ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token is required.' );
+        }
+        return self::fetch_all_pages( $token, 'users/me/organizations/', 'organizations' );
+    }
+
+    /**
+     * Events belonging to one organization.
+     *
+     * GET {api_base}/organizations/{organization_id}/events/
+     *
+     * @param string $token  Private token.
+     * @param string $org_id Organization ID.
+     * @param array  $query  Query arguments (status, expand, …).
+     * @return array|WP_Error {items, pages, truncated, truncated_reason, endpoint}
+     */
+    public static function fetch_organization_events( $token, $org_id, $query = array() ) {
+        $token  = trim( (string) $token );
+        $org_id = trim( (string) $org_id );
+
+        if ( '' === $token ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token is required.' );
+        }
+        if ( '' === $org_id ) {
+            return new WP_Error( 'sfaf_eventbrite_missing_org', 'An organization ID is required to fetch events.' );
+        }
+
+        return self::fetch_all_pages( $token, 'organizations/' . rawurlencode( $org_id ) . '/events/', 'events', $query );
+    }
+
+    /**
+     * Every event the token can see, across every organization it owns.
+     *
+     * The seam step 3 will import through: it returns normalised rows for
+     * display and mapping, each carrying the untouched API payload, plus a
+     * per-organization account of what was fetched and from where.
+     *
+     * One organization failing does not lose the others — its error is
+     * recorded against that organization and the rest still come back. Only a
+     * failure of the organizations lookup itself is fatal, since without it
+     * there is nothing to iterate.
+     *
+     * @param string $token Private token.
+     * @param array  $args  {
+     *     @type string $status Event status to request. Default 'live'.
+     *     @type string $expand Comma-separated expansions. Default 'venue,logo'.
+     * }
+     * @return array|WP_Error
+     */
+    public static function fetch_events( $token, $args = array() ) {
+        $token = trim( (string) $token );
+        if ( '' === $token ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token is required.' );
+        }
+
+        $defaults = array(
+            // Published events only by default.
+            'status' => (string) apply_filters( 'sfaf_eventbrite_event_status', 'live' ),
+            // Expansions ride along as query parameters; venue gives the
+            // location and logo gives the image, both of which the mapping
+            // step will want and neither of which is present without asking.
+            'expand' => (string) apply_filters( 'sfaf_eventbrite_event_expand', 'venue,logo' ),
+        );
+        $args = array_merge( $defaults, is_array( $args ) ? $args : array() );
+
+        $query = array();
+        if ( '' !== trim( (string) $args['status'] ) ) {
+            $query['status'] = trim( (string) $args['status'] );
+        }
+        if ( '' !== trim( (string) $args['expand'] ) ) {
+            $query['expand'] = trim( (string) $args['expand'] );
+        }
+
+        $orgs_result = self::fetch_organizations( $token );
+        if ( is_wp_error( $orgs_result ) ) {
+            return $orgs_result;
+        }
+
+        $organizations = array();
+        $events        = array();
+        $sample_raw    = null;
+        $notes         = array();
+
+        if ( $orgs_result['truncated'] ) {
+            $notes[] = 'Organizations: ' . $orgs_result['truncated_reason'];
+        }
+
+        foreach ( $orgs_result['items'] as $org ) {
+            $org_id   = isset( $org['id'] ) ? (string) $org['id'] : '';
+            $org_name = isset( $org['name'] ) && is_string( $org['name'] ) ? $org['name'] : '';
+
+            $row = array(
+                'id'       => $org_id,
+                'name'     => $org_name,
+                'count'    => 0,
+                'pages'    => 0,
+                'endpoint' => '',
+                'error'    => '',
+            );
+
+            if ( '' === $org_id ) {
+                $row['error'] = 'This organization came back without an id, so its events could not be requested.';
+                $organizations[] = $row;
+                continue;
+            }
+
+            $result = self::fetch_organization_events( $token, $org_id, $query );
+
+            if ( is_wp_error( $result ) ) {
+                // Keep going: one bad organization should not hide the rest.
+                $row['error']    = $result->get_error_message();
+                $row['endpoint'] = self::endpoint( 'organizations/' . rawurlencode( $org_id ) . '/events/', $query );
+                $organizations[] = $row;
+                continue;
+            }
+
+            $row['pages']    = (int) $result['pages'];
+            $row['endpoint'] = (string) $result['endpoint'];
+            $row['count']    = count( $result['items'] );
+
+            if ( $result['truncated'] ) {
+                $notes[] = sprintf( 'Events for %s: %s', ( '' !== $org_name ) ? $org_name : $org_id, $result['truncated_reason'] );
+            }
+
+            foreach ( $result['items'] as $event ) {
+                if ( null === $sample_raw ) {
+                    $sample_raw = $event;
+                }
+                $events[] = self::normalize_event( $event, $org_id, $org_name );
+            }
+
+            $organizations[] = $row;
+        }
+
+        return array(
+            'organizations'      => $organizations,
+            'organization_count' => count( $organizations ),
+            'events'             => $events,
+            'total'              => count( $events ),
+            'sample_raw'         => $sample_raw,
+            'notes'              => $notes,
+            'status'             => isset( $query['status'] ) ? $query['status'] : '(any)',
+            'expand'             => isset( $query['expand'] ) ? $query['expand'] : '(none)',
+            'endpoints'          => array(
+                'organizations' => (string) $orgs_result['endpoint'],
+                'events'        => self::endpoint( 'organizations/{organization_id}/events/', $query ),
+            ),
+        );
+    }
+
+    /**
+     * Flatten one raw event into the fields the preview shows and the import
+     * will map from.
+     *
+     * Deliberately lossless in one respect: the untouched payload is kept
+     * under 'raw', so nothing is decided here about what matters. Values are
+     * read defensively because expansions are optional — ask for `venue` on an
+     * online-only event and there simply is no venue object.
+     *
+     * @param array  $event    Raw event from the API.
+     * @param string $org_id   Owning organization ID.
+     * @param string $org_name Owning organization name.
+     * @return array
+     */
+    private static function normalize_event( $event, $org_id = '', $org_name = '' ) {
+        $text = function ( $value ) {
+            return is_string( $value ) ? $value : '';
+        };
+
+        // name/description are objects with text+html, not plain strings.
+        $name_text = '';
+        if ( isset( $event['name'] ) && is_array( $event['name'] ) && isset( $event['name']['text'] ) ) {
+            $name_text = $text( $event['name']['text'] );
+        } elseif ( isset( $event['name'] ) && is_string( $event['name'] ) ) {
+            $name_text = $event['name'];
+        }
+
+        $desc_text = '';
+        $desc_html = '';
+        if ( isset( $event['description'] ) && is_array( $event['description'] ) ) {
+            $desc_text = isset( $event['description']['text'] ) ? $text( $event['description']['text'] ) : '';
+            $desc_html = isset( $event['description']['html'] ) ? $text( $event['description']['html'] ) : '';
+        }
+        $summary = isset( $event['summary'] ) ? $text( $event['summary'] ) : '';
+
+        $start = isset( $event['start'] ) && is_array( $event['start'] ) ? $event['start'] : array();
+        $end   = isset( $event['end'] ) && is_array( $event['end'] ) ? $event['end'] : array();
+
+        // Venue only exists when expand=venue was honoured and the event has one.
+        $venue = isset( $event['venue'] ) && is_array( $event['venue'] ) ? $event['venue'] : array();
+        $address = isset( $venue['address'] ) && is_array( $venue['address'] ) ? $venue['address'] : array();
+        $address_display = '';
+        if ( isset( $address['localized_address_display'] ) ) {
+            $address_display = $text( $address['localized_address_display'] );
+        }
+        if ( '' === $address_display ) {
+            // Fall back to assembling the parts, for payloads without the
+            // pre-localized string.
+            $parts = array();
+            foreach ( array( 'address_1', 'address_2', 'city', 'region', 'postal_code', 'country' ) as $key ) {
+                if ( isset( $address[ $key ] ) && '' !== $text( $address[ $key ] ) ) {
+                    $parts[] = $text( $address[ $key ] );
+                }
+            }
+            $address_display = implode( ', ', $parts );
+        }
+
+        // Logo likewise only exists when expand=logo was honoured.
+        $logo = isset( $event['logo'] ) && is_array( $event['logo'] ) ? $event['logo'] : array();
+        $logo_url = isset( $logo['url'] ) ? $text( $logo['url'] ) : '';
+        $logo_original = '';
+        if ( isset( $logo['original'] ) && is_array( $logo['original'] ) && isset( $logo['original']['url'] ) ) {
+            $logo_original = $text( $logo['original']['url'] );
+        }
+
+        return array(
+            'id'             => isset( $event['id'] ) ? (string) $event['id'] : '',
+            'name'           => $name_text,
+            'status'         => isset( $event['status'] ) ? $text( $event['status'] ) : '',
+            'url'            => isset( $event['url'] ) ? $text( $event['url'] ) : '',
+            'start_local'    => isset( $start['local'] ) ? $text( $start['local'] ) : '',
+            'start_utc'      => isset( $start['utc'] ) ? $text( $start['utc'] ) : '',
+            'start_timezone' => isset( $start['timezone'] ) ? $text( $start['timezone'] ) : '',
+            'end_local'      => isset( $end['local'] ) ? $text( $end['local'] ) : '',
+            'end_utc'        => isset( $end['utc'] ) ? $text( $end['utc'] ) : '',
+            'end_timezone'   => isset( $end['timezone'] ) ? $text( $end['timezone'] ) : '',
+            'online_event'   => ! empty( $event['online_event'] ),
+            'listed'         => ! empty( $event['listed'] ),
+            'currency'       => isset( $event['currency'] ) ? $text( $event['currency'] ) : '',
+            'capacity'       => isset( $event['capacity'] ) && is_numeric( $event['capacity'] ) ? (int) $event['capacity'] : null,
+            'venue_id'       => isset( $event['venue_id'] ) ? (string) $event['venue_id'] : '',
+            'venue_name'     => isset( $venue['name'] ) ? $text( $venue['name'] ) : '',
+            'venue_address'  => $address_display,
+            'venue_expanded' => ! empty( $venue ),
+            'logo_url'       => $logo_url,
+            'logo_original'  => $logo_original,
+            'logo_expanded'  => ! empty( $logo ),
+            'description'    => array(
+                'has_text'    => ( '' !== $desc_text ),
+                'has_html'    => ( '' !== $desc_html ),
+                'text_length' => strlen( $desc_text ),
+                'html_length' => strlen( $desc_html ),
+                'has_summary' => ( '' !== $summary ),
+                'excerpt'     => ( '' !== $desc_text ) ? ( ( strlen( $desc_text ) > 160 ) ? substr( $desc_text, 0, 160 ) . '…' : $desc_text ) : $summary,
+            ),
+            'organization_id'   => $org_id,
+            'organization_name' => $org_name,
+            // The untouched payload, so the mapping step decides for itself.
+            'raw'               => $event,
+        );
+    }
+
+    /* ---------------------------------------------------------------------
      * Proof of connection
      * ------------------------------------------------------------------- */
 
@@ -492,6 +924,80 @@ class SFAF_Eventbrite {
             'endpoint' => self::me_endpoint(),
             'pill'     => sprintf( 'Connected as %s', ( '' !== $account['name'] ) ? $account['name'] : $account['id'] ),
             // Deliberately no token, no length hints.
+        ) );
+    }
+
+    /**
+     * Fetch every event and hand the raw shape back to the settings screen.
+     *
+     * Read-only, by design for this step: nothing is created, queued or
+     * stored. The response is what came back from Eventbrite, flattened for
+     * display with the untouched payload of the first event alongside it, so
+     * the mapping can be written against data that has actually been seen.
+     */
+    public function ajax_preview() {
+        check_ajax_referer( 'uc_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'You do not have permission to do that.' ), 403 );
+        }
+
+        // As with the connection test: the form's token when it has been
+        // retyped, otherwise the stored one. Never sanitised, never echoed.
+        $token = isset( $_POST['private_token'] ) ? trim( (string) wp_unslash( $_POST['private_token'] ) ) : '';
+        if ( '' === $token ) {
+            $token = self::private_token();
+        }
+
+        $args = array();
+        if ( isset( $_POST['status'] ) ) {
+            $status = sanitize_text_field( wp_unslash( $_POST['status'] ) );
+            // "all" is this screen's word, not Eventbrite's — the API has no
+            // such status, and the way to ask for every one is to send none.
+            $args['status'] = ( 'all' === $status ) ? '' : $status;
+        }
+
+        $result = self::fetch_events( $token, $args );
+
+        if ( is_wp_error( $result ) ) {
+            // An auth failure here means the stored "Connected" badge is no
+            // longer telling the truth, so it is withdrawn.
+            $code = $result->get_error_code();
+            if ( 'sfaf_eventbrite_http_401' === $code || 'sfaf_eventbrite_http_403' === $code ) {
+                self::clear_verification();
+            }
+            wp_send_json_error( array(
+                'message'  => $result->get_error_message(),
+                'endpoint' => self::endpoint( 'users/me/organizations/' ),
+            ) );
+        }
+
+        // The raw sample is pretty-printed here rather than in the browser so
+        // the screen shows exactly the JSON this server received.
+        $sample = null === $result['sample_raw']
+            ? ''
+            : wp_json_encode( $result['sample_raw'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+        // The per-event 'raw' payload stays on the server. fetch_events() still
+        // returns it — step 3 maps from it — but shipping every untouched
+        // event object to the browser would make this response many times
+        // larger for no gain, when one full sample already shows the shape.
+        $rows = array();
+        foreach ( $result['events'] as $event ) {
+            unset( $event['raw'] );
+            $rows[] = $event;
+        }
+
+        wp_send_json_success( array(
+            'organizations'      => $result['organizations'],
+            'organization_count' => $result['organization_count'],
+            'events'             => $rows,
+            'total'              => $result['total'],
+            'notes'              => $result['notes'],
+            'status'             => $result['status'],
+            'expand'             => $result['expand'],
+            'endpoints'          => $result['endpoints'],
+            'sample_raw'         => is_string( $sample ) ? $sample : '',
         ) );
     }
 }

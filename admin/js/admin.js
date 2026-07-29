@@ -15,6 +15,7 @@
         initGenerateKey();
         initGofundmeConnect();
         initEventbriteConnect();
+        initEventbritePreview();
         initGalaxySync();
     });
 
@@ -295,6 +296,191 @@
                 $badge.removeClass('uc-status-connected').addClass('uc-status-pending').text('Not verified');
                 $msg.addClass('notice notice-error')
                     .text('Connection failed: the request to WordPress itself failed (HTTP ' + xhr.status + ').')
+                    .slideDown();
+            }).always(function() {
+                $btn.prop('disabled', false).text(label);
+            });
+        });
+    }
+
+    /**
+     * Eventbrite: fetch and preview events.
+     *
+     * Read-only — the server creates nothing. Everything rendered here goes in
+     * through .text(), so an event name or address from Eventbrite is shown as
+     * the characters it contains and can never become markup.
+     */
+    function initEventbritePreview() {
+        // Small builder: a <div>/<span>/etc with text content, never HTML.
+        function el(tag, cls, text) {
+            var $n = $('<' + tag + '>');
+            if (cls) { $n.addClass(cls); }
+            if (text !== undefined && text !== null && text !== '') { $n.text(String(text)); }
+            return $n;
+        }
+
+        // One "Label: value" line, skipped entirely when there is no value.
+        function field($into, label, value) {
+            if (value === undefined || value === null || value === '' || value === false) { return; }
+            var $p = el('div', 'uc-eb-field');
+            $p.append(el('span', 'uc-eb-key', label + ': '));
+            $p.append(el('span', 'uc-eb-val', value));
+            $into.append($p);
+        }
+
+        function renderEvent(ev) {
+            var $card = el('div', 'uc-eb-event');
+
+            $card.append(el('h4', null, ev.name || '(no name)'));
+            field($card, 'ID', ev.id);
+            field($card, 'Status', ev.status);
+
+            var start = ev.start_local || '(none)';
+            if (ev.start_timezone) { start += ' (' + ev.start_timezone + ')'; }
+            if (ev.start_utc) { start += '  ·  UTC ' + ev.start_utc; }
+            field($card, 'Start', start);
+
+            var end = ev.end_local || '';
+            if (end && ev.end_timezone) { end += ' (' + ev.end_timezone + ')'; }
+            if (end && ev.end_utc) { end += '  ·  UTC ' + ev.end_utc; }
+            field($card, 'End', end);
+
+            if (ev.online_event) { field($card, 'Online event', 'yes'); }
+            field($card, 'Listed', ev.listed ? 'yes' : 'no');
+            field($card, 'Capacity', (ev.capacity === null || ev.capacity === undefined) ? '' : ev.capacity);
+            field($card, 'Currency', ev.currency);
+
+            // Venue — say plainly when the expansion came back empty, so an
+            // absent address is never mistaken for a failed request.
+            if (ev.venue_expanded) {
+                field($card, 'Venue', ev.venue_name || '(unnamed venue)');
+                field($card, 'Address', ev.venue_address || '(no address on the venue)');
+            } else {
+                field($card, 'Venue', ev.venue_id
+                    ? '(not expanded — venue_id ' + ev.venue_id + ')'
+                    : (ev.online_event ? '(none — online event)' : '(none)'));
+            }
+
+            if (ev.logo_expanded) {
+                field($card, 'Logo', ev.logo_url || '(logo object present, no url)');
+                if (ev.logo_original && ev.logo_original !== ev.logo_url) {
+                    field($card, 'Logo (original)', ev.logo_original);
+                }
+            } else {
+                field($card, 'Logo', '(none)');
+            }
+
+            field($card, 'URL', ev.url);
+
+            var d = ev.description || {};
+            var desc = [];
+            desc.push(d.has_text ? 'text yes (' + d.text_length + ' chars)' : 'text no');
+            desc.push(d.has_html ? 'html yes (' + d.html_length + ' chars)' : 'html no');
+            desc.push(d.has_summary ? 'summary yes' : 'summary no');
+            field($card, 'Description', desc.join(' · '));
+            field($card, 'Excerpt', d.excerpt);
+
+            field($card, 'Organization', ev.organization_name
+                ? ev.organization_name + ' (' + ev.organization_id + ')'
+                : ev.organization_id);
+
+            return $card;
+        }
+
+        function render($out, data) {
+            $out.empty();
+
+            var $sum = el('div', 'uc-eb-summary');
+            $sum.append(el('h3', null, 'Fetched ' + data.total + ' event' + (data.total === 1 ? '' : 's')
+                + ' from ' + data.organization_count + ' organization' + (data.organization_count === 1 ? '' : 's')));
+            field($sum, 'Status requested', data.status);
+            field($sum, 'Expansions requested', data.expand);
+            if (data.endpoints) {
+                field($sum, 'Organizations endpoint', data.endpoints.organizations);
+                field($sum, 'Events endpoint', data.endpoints.events);
+            }
+            $out.append($sum);
+
+            // Anything the fetch could not finish is stated, not swallowed.
+            if (data.notes && data.notes.length) {
+                var $notes = el('div', 'uc-eb-notes notice notice-warning');
+                $notes.append(el('p', null, 'Incomplete results:'));
+                var $ul = el('ul');
+                $.each(data.notes, function(_, n) { $ul.append(el('li', null, n)); });
+                $notes.append($ul);
+                $out.append($notes);
+            }
+
+            var $orgs = el('div', 'uc-eb-orgs');
+            $orgs.append(el('h3', null, 'Organizations'));
+            $.each(data.organizations || [], function(_, org) {
+                var $row = el('div', 'uc-eb-org');
+                $row.append(el('strong', null, org.name || '(unnamed)'));
+                $row.append(el('span', null, '  id ' + org.id));
+                $row.append(el('span', null, '  —  ' + org.count + ' event' + (org.count === 1 ? '' : 's')
+                    + ' over ' + org.pages + ' page' + (org.pages === 1 ? '' : 's')));
+                if (org.endpoint) { field($row, 'Endpoint', org.endpoint); }
+                if (org.error) {
+                    $row.append(el('div', 'uc-eb-org-error notice notice-error', 'Failed: ' + org.error));
+                }
+                $orgs.append($row);
+            });
+            $out.append($orgs);
+
+            var $events = el('div', 'uc-eb-events');
+            $events.append(el('h3', null, 'Events'));
+            if (!data.events || !data.events.length) {
+                $events.append(el('p', null, 'No events came back for that status.'));
+            } else {
+                $.each(data.events, function(_, ev) { $events.append(renderEvent(ev)); });
+            }
+            $out.append($events);
+
+            if (data.sample_raw) {
+                var $raw = el('div', 'uc-eb-raw');
+                $raw.append(el('h3', null, 'Raw payload of the first event, exactly as received'));
+                $raw.append(el('pre', 'uc-eb-pre', data.sample_raw));
+                $out.append($raw);
+            }
+
+            $out.show();
+        }
+
+        $(document).on('click', '.uc-eventbrite-preview', function(e) {
+            e.preventDefault();
+
+            var $btn   = $(this);
+            var $panel = $btn.closest('.uc-integration-panel');
+            var $msg   = $panel.find('.uc-eventbrite-fetch-msg');
+            var $out   = $panel.find('.uc-eventbrite-preview-out');
+            var label  = $btn.text();
+
+            $btn.prop('disabled', true).text('Fetching…');
+            $msg.hide().removeClass('notice notice-success notice-error').text('');
+            $out.hide().empty();
+
+            $.post(sfafAdmin.ajaxUrl, {
+                action: 'sfaf_eventbrite_preview',
+                nonce: sfafAdmin.nonce,
+                status: $panel.find('.uc-eventbrite-status').val() || 'live',
+                private_token: $('input[name="uc_settings[eventbrite_private_token]"]').val() || ''
+            }).done(function(res) {
+                var data = (res && res.data) || {};
+                if (res && res.success) {
+                    $msg.addClass('notice notice-success')
+                        .text('Fetched ' + data.total + ' event(s) from ' + data.organization_count
+                              + ' organization(s). Nothing was imported.')
+                        .slideDown();
+                    render($out, data);
+                } else {
+                    $msg.addClass('notice notice-error')
+                        .text('Fetch failed: ' + (data.message || 'Unknown error.')
+                              + (data.endpoint ? ' [endpoint: ' + data.endpoint + ']' : ''))
+                        .slideDown();
+                }
+            }).fail(function(xhr) {
+                $msg.addClass('notice notice-error')
+                    .text('Fetch failed: the request to WordPress itself failed (HTTP ' + xhr.status + ').')
                     .slideDown();
             }).always(function() {
                 $btn.prop('disabled', false).text(label);

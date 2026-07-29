@@ -1113,7 +1113,27 @@ class SFAF_Admin {
                             <p class="description">Account email: <code><?php echo esc_html( $eb_status['email'] ); ?></code></p>
                         <?php endif; ?>
                         <p class="description uc-eventbrite-conn-msg" style="display:none;"></p>
-                        <p class="description">This step proves the token authenticates. Reading and importing events comes next.</p>
+
+                        <div class="uc-field-row">
+                            <label>Events</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-eventbrite-preview">Fetch events (preview)</button>
+                                <select class="uc-input uc-eventbrite-status uc-repeater-narrow">
+                                    <option value="live">Published (live)</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="started">Started</option>
+                                    <option value="ended">Ended</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="canceled">Canceled</option>
+                                    <option value="all">All statuses</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="description">Reads the account's organizations, then every event under each one, and shows what came back. <strong>Nothing is imported</strong> — this is a look at the data before anything is mapped to events on this site.</p>
+                        <p class="description uc-eventbrite-fetch-msg" style="display:none;"></p>
+                        <div class="uc-eventbrite-preview-out" style="display:none;"></div>
+
+                        <p class="description">Step 2 of the integration: authenticate, then read. Importing into the Pending queue comes next, using this same fetch.</p>
                     </div>
                 </div>
 

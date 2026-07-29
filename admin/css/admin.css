@@ -285,3 +285,19 @@
 
 .uc-embed-preview-card { padding: 20px; margin-top: 16px; }
 .uc-embed-preview { margin-top: 12px; padding: 16px; border: 1px dashed var(--uc-border); border-radius: 10px; background: #fff; }
+
+/* Eventbrite fetch preview (read-only inspection of the API payload) */
+.uc-eventbrite-preview-out { margin-top: 16px; }
+.uc-eventbrite-preview-out h3 { margin: 18px 0 8px; font-size: 14px; }
+.uc-eb-summary { padding: 12px 14px; border: 1px solid var(--uc-border); border-radius: 10px; background: #fff; }
+.uc-eb-summary h3 { margin-top: 0; }
+.uc-eb-field { font-size: 12px; line-height: 1.6; word-break: break-word; }
+.uc-eb-key { font-weight: 600; color: #6B7280; }
+.uc-eb-val { font-family: Consolas, Monaco, monospace; }
+.uc-eb-org { padding: 10px 14px; margin-bottom: 8px; border: 1px solid var(--uc-border); border-radius: 10px; background: #fff; font-size: 13px; }
+.uc-eb-org-error { padding: 6px 10px; margin-top: 8px; font-size: 12px; }
+.uc-eb-event { padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--uc-border); border-radius: 10px; background: #fff; }
+.uc-eb-event h4 { margin: 0 0 8px; font-size: 14px; }
+.uc-eb-notes { padding: 8px 12px; }
+.uc-eb-notes ul { margin: 6px 0 0 18px; list-style: disc; }
+.uc-eb-pre { max-height: 420px; overflow: auto; padding: 12px; border: 1px solid var(--uc-border); border-radius: 10px; background: #f9fafb; font-size: 12px; line-height: 1.5; white-space: pre; }
