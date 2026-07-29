@@ -7,9 +7,28 @@ Old Calendar Files/
 # Partial downloads
 *.crdownload
 
-# Chat/session handover transcripts — working notes, not part of the plugin
-*Transcript*.txt
-*transcript*.txt
+# Working notes, transcripts and handover documents dropped in the project
+# root. These are not part of the plugin and must never be committed — one of
+# them turned out to contain a live credential and had to be scrubbed from
+# history. Patterns are deliberately broad and case-insensitive by duplication,
+# because the cost of a stray note being ignored is nil and the cost of one
+# being committed is a history rewrite.
+*[Tt]ranscript*
+*TRANSCRIPT*
+*[Cc]hat[Ll]og*
+*[Cc]hat-[Ll]og*
+*[Hh]andover*.txt
+*[Hh]andoff*
+*[Ss]ession[-_ ]*.txt
+*[Nn]otes.txt
+*[Ss]cratch*.txt
+*.transcript
+/*.log
+
+# Anything under a folder explicitly marked private/local.
+private/
+scratch/
+_local/
 
 # OS cruft
 .DS_Store
