@@ -14,6 +14,7 @@
         initEmbedGenerator();
         initGenerateKey();
         initGofundmeConnect();
+        initEventbriteConnect();
         initGalaxySync();
     });
 
@@ -239,6 +240,59 @@
                     .slideDown();
             }).fail(function(xhr) {
                 $pill.removeClass('is-connected').text('Not connected');
+                $msg.addClass('notice notice-error')
+                    .text('Connection failed: the request to WordPress itself failed (HTTP ' + xhr.status + ').')
+                    .slideDown();
+            }).always(function() {
+                $btn.prop('disabled', false).text(label);
+            });
+        });
+    }
+
+    /**
+     * Eventbrite: real connection test.
+     *
+     * Posts whatever is currently in the token field, so the button works
+     * before the settings have been saved. A blank token means "use the stored
+     * one" — which is what the write-only field submits when it has not been
+     * retyped. The token is sent to our own admin-ajax endpoint only, and is
+     * never displayed or returned.
+     *
+     * The panel-header badge is updated too, so it cannot keep claiming a
+     * connection that has just failed.
+     */
+    function initEventbriteConnect() {
+        $(document).on('click', '.uc-eventbrite-connect', function(e) {
+            e.preventDefault();
+
+            var $btn   = $(this);
+            var $pill  = $btn.closest('.uc-conn-controls').find('.uc-conn-pill');
+            var $badge = $btn.closest('.uc-integration-panel').find('.uc-eventbrite-panel-status');
+            var $msg   = $('.uc-eventbrite-conn-msg');
+            var label  = $btn.text();
+
+            $btn.prop('disabled', true).text('Testing…');
+            $pill.removeClass('is-connected').text('Testing…');
+            $msg.hide().removeClass('notice notice-success notice-error').text('');
+
+            $.post(sfafAdmin.ajaxUrl, {
+                action: 'sfaf_eventbrite_connect',
+                nonce: sfafAdmin.nonce,
+                private_token: $('input[name="uc_settings[eventbrite_private_token]"]').val() || ''
+            }).done(function(res) {
+                var ok = res && res.success;
+                var data = (res && res.data) || {};
+                $pill.toggleClass('is-connected', !!ok).text(ok ? (data.pill || 'Connected') : 'Not connected');
+                $badge.toggleClass('uc-status-connected', !!ok)
+                      .toggleClass('uc-status-pending', !ok)
+                      .text(ok ? 'Connected' : 'Not verified');
+                $msg.addClass(ok ? 'notice notice-success' : 'notice notice-error')
+                    .text((ok ? '' : 'Connection failed: ') + (data.message || (ok ? 'Connected.' : 'Unknown error.'))
+                          + (data.endpoint ? ' [endpoint: ' + data.endpoint + ']' : ''))
+                    .slideDown();
+            }).fail(function(xhr) {
+                $pill.removeClass('is-connected').text('Not connected');
+                $badge.removeClass('uc-status-connected').addClass('uc-status-pending').text('Not verified');
                 $msg.addClass('notice notice-error')
                     .text('Connection failed: the request to WordPress itself failed (HTTP ' + xhr.status + ').')
                     .slideDown();

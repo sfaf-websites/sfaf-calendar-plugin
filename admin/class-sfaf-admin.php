@@ -115,7 +115,7 @@ class SFAF_Admin {
         // Endpoint overrides. Blank means "use the documented default", so an
         // empty field is stored empty rather than being filled in — that way the
         // default can change in a later release without a stale copy overriding it.
-        foreach ( array( 'gofundme_token_url', 'gofundme_api_base' ) as $url_field ) {
+        foreach ( array( 'gofundme_token_url', 'gofundme_api_base', 'eventbrite_api_base' ) as $url_field ) {
             $out[ $url_field ] = isset( $input[ $url_field ] ) ? esc_url_raw( trim( (string) $input[ $url_field ] ) ) : '';
         }
 
@@ -124,7 +124,7 @@ class SFAF_Admin {
         // through sanitize_text_field — a secret is an opaque string that must
         // survive byte-for-byte.
         $existing = get_option( 'uc_settings', array() );
-        foreach ( array( 'gofundme_client_secret' ) as $secret_field ) {
+        foreach ( array( 'gofundme_client_secret', 'eventbrite_private_token' ) as $secret_field ) {
             $submitted = isset( $input[ $secret_field ] ) ? trim( (string) $input[ $secret_field ] ) : '';
             if ( '' !== $submitted ) {
                 $out[ $secret_field ] = $submitted;
@@ -1059,6 +1059,61 @@ class SFAF_Admin {
                                 </script>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- EVENTBRITE -->
+                <?php $eb_status = SFAF_Eventbrite::status(); ?>
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'calendar', array( 'size' => '20px' ) ); ?></span>
+                        <div class="uc-panel-info">
+                            <h2>Eventbrite</h2>
+                            <p>Connect the Eventbrite account whose events this calendar will read</p>
+                        </div>
+                        <?php // The badge reflects a real verified call, never a stored flag. ?>
+                        <span class="uc-panel-status uc-eventbrite-panel-status <?php echo $eb_status['connected'] ? 'uc-status-connected' : 'uc-status-pending'; ?>"><?php
+                            echo $eb_status['connected'] ? 'Connected' : ( $eb_status['has_token'] ? 'Not verified' : 'Not configured' );
+                        ?></span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="description">Eventbrite uses a single long-lived <strong>private token</strong> from your account's API keys page — there is no OAuth round trip. It is sent as a bearer token on every request.</p>
+                        <div class="uc-field-row">
+                            <label>API base URL</label>
+                            <input type="url" name="uc_settings[eventbrite_api_base]" value="<?php echo esc_attr( $s( 'eventbrite_api_base' ) ); ?>"
+                                   placeholder="<?php echo esc_attr( SFAF_Eventbrite::DEFAULT_API_BASE ); ?>" class="uc-input" />
+                        </div>
+                        <p class="description">Leave blank to use the default shown. In use now: <code><?php echo esc_html( SFAF_Eventbrite::api_base() ); ?></code> &middot; the test calls <code><?php echo esc_html( SFAF_Eventbrite::me_endpoint() ); ?></code></p>
+                        <div class="uc-field-row">
+                            <label>Private token</label>
+                            <?php // Never rendered back to the browser — only whether one is stored. ?>
+                            <input type="password" name="uc_settings[eventbrite_private_token]" value="" autocomplete="new-password"
+                                   placeholder="<?php echo SFAF_Eventbrite::has_token() ? 'Saved — leave blank to keep it' : 'Paste the private token'; ?>"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-eventbrite-connect">Test connection</button>
+                                <span class="uc-conn-pill <?php echo $eb_status['connected'] ? 'is-connected' : ''; ?>"><?php
+                                    if ( $eb_status['connected'] ) {
+                                        $eb_who = ( '' !== $eb_status['name'] ) ? $eb_status['name'] : 'Eventbrite';
+                                        echo 'Connected as ' . esc_html( $eb_who );
+                                        if ( '' !== $eb_status['verified_human'] ) {
+                                            echo ' — verified ' . esc_html( $eb_status['verified_human'] ) . ' ago';
+                                        }
+                                    } else {
+                                        echo 'Not connected';
+                                    }
+                                ?></span>
+                            </div>
+                        </div>
+                        <?php if ( $eb_status['connected'] && '' !== $eb_status['email'] ) : ?>
+                            <p class="description">Account email: <code><?php echo esc_html( $eb_status['email'] ); ?></code></p>
+                        <?php endif; ?>
+                        <p class="description uc-eventbrite-conn-msg" style="display:none;"></p>
+                        <p class="description">This step proves the token authenticates. Reading and importing events comes next.</p>
                     </div>
                 </div>
 
