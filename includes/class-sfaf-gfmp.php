@@ -86,6 +86,8 @@ class SFAF_GFMP {
 
     public function register() {
         add_action( 'wp_ajax_sfaf_gfmp_connect', array( $this, 'ajax_connect' ) );
+        // [PROBE] temporary diagnostic — remove with the rest of the block.
+        add_action( 'wp_ajax_sfaf_gfmp_probe', array( $this, 'ajax_probe' ) );
     }
 
     /* ---------------------------------------------------------------------
@@ -688,6 +690,130 @@ class SFAF_GFMP {
         );
 
         return self::request_json( $token, self::endpoint( $path ) );
+    }
+
+    /* =====================================================================
+     * TEMPORARY DIAGNOSTIC — raw campaign probe.  [PROBE]
+     *
+     * Everything in this block, the ajax_probe hook in register(), the panel
+     * markup in class-sfaf-admin.php and the initGfmpProbe() function in
+     * admin.js are marked [PROBE] and exist to be deleted together in one
+     * commit once the campaign payload has been observed.
+     *
+     * Its whole purpose is to stop guessing. The supplied API specification
+     * has now been wrong or silent four times — the token endpoint, the
+     * raised amounts, the campaign image and the campaign description — so
+     * this reports what the account actually returns, verbatim, and maps
+     * nothing.
+     *
+     * READ-ONLY. Nothing here creates, updates or imports anything, and no
+     * part of the import path calls it.
+     * ================================================================== */
+
+    /** Bodies larger than this are cut, and the cut is always announced. */
+    const PROBE_MAX_BODY = 250000;
+
+    /**
+     * GET a path and hand back the status and body exactly as they arrived.
+     *
+     * Deliberately NOT request_json(): that turns any non-2xx into a WP_Error
+     * and discards the body, and the body of a failure is precisely the data
+     * this is for. Nothing is decoded, judged or filtered here.
+     *
+     * The token is used and never returned.
+     *
+     * @param string $path Path below the data base.
+     * @return array{path:string,url:string,status:int,message:string,content_type:string,length:int,body:string,error:string,truncated:bool}
+     */
+    public static function probe_raw( $path ) {
+        $url = self::endpoint( $path );
+
+        $out = array(
+            'path'         => (string) $path,
+            'url'          => $url,
+            'status'       => 0,
+            'message'      => '',
+            'content_type' => '',
+            'length'       => 0,
+            'body'         => '',
+            'error'        => '',
+            'truncated'    => false,
+        );
+
+        $token = self::get_access_token();
+        if ( is_wp_error( $token ) ) {
+            // Never include the token or the secret in this — only why the
+            // token could not be obtained.
+            $out['error'] = 'Could not obtain an access token: ' . $token->get_error_message();
+            return $out;
+        }
+
+        $response = wp_remote_get( $url, self::auth_args( $token ) );
+        if ( is_wp_error( $response ) ) {
+            $out['error'] = 'Request failed before a response: ' . $response->get_error_message();
+            return $out;
+        }
+
+        $body = (string) wp_remote_retrieve_body( $response );
+
+        $out['status']       = (int) wp_remote_retrieve_response_code( $response );
+        $out['message']      = (string) wp_remote_retrieve_response_message( $response );
+        $out['content_type'] = (string) wp_remote_retrieve_header( $response, 'content-type' );
+        $out['length']       = strlen( $body );
+
+        if ( $out['length'] > self::PROBE_MAX_BODY ) {
+            $out['truncated'] = true;
+            $body             = substr( $body, 0, self::PROBE_MAX_BODY );
+        }
+        $out['body'] = $body;
+
+        return $out;
+    }
+
+    /**
+     * Probe the four campaign endpoints and return every raw result.  [PROBE]
+     *
+     * @param string $campaign_id
+     * @return array[]
+     */
+    public static function probe_campaign( $campaign_id ) {
+        $campaign_id = rawurlencode( trim( (string) $campaign_id ) );
+
+        $paths = array(
+            'campaigns/' . $campaign_id,
+            'campaigns/' . $campaign_id . '/stories',
+            'campaigns/' . $campaign_id . '/faqs',
+            'campaigns/' . $campaign_id . '/overview',
+        );
+
+        $results = array();
+        foreach ( $paths as $path ) {
+            $results[] = self::probe_raw( $path );
+        }
+        return $results;
+    }
+
+    /**
+     * Settings-screen probe.  [PROBE]
+     */
+    public function ajax_probe() {
+        check_ajax_referer( 'uc_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'You do not have permission to do that.' ), 403 );
+        }
+
+        $campaign_id = isset( $_POST['campaign_id'] ) ? sanitize_text_field( wp_unslash( $_POST['campaign_id'] ) ) : '';
+        if ( '' === trim( $campaign_id ) ) {
+            wp_send_json_error( array( 'message' => 'Enter a campaign ID to probe.' ) );
+        }
+
+        wp_send_json_success( array(
+            'campaign_id' => $campaign_id,
+            'base'        => self::api_base(),
+            'max_body'    => self::PROBE_MAX_BODY,
+            'results'     => self::probe_campaign( $campaign_id ),
+        ) );
     }
 
     /**

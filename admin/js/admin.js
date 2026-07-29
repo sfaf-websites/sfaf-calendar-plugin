@@ -16,6 +16,7 @@
         initGofundmeConnect();
         initEventbriteConnect();
         initEventbritePreview();
+        initGfmpProbe();
         initGalaxySync();
     });
 
@@ -485,6 +486,152 @@
             }).always(function() {
                 $btn.prop('disabled', false).text(label);
             });
+        });
+    }
+
+    /**
+     * [PROBE] GoFundMe Pro campaign probe — temporary diagnostic.
+     *
+     * Remove this function, its call in ready(), the panel markup in
+     * class-sfaf-admin.php and the [PROBE] block in class-sfaf-gfmp.php
+     * together once the campaign payload has been observed.
+     *
+     * Prints each endpoint's status and body untouched. Bodies go into
+     * readonly textareas rather than markup: it keeps them byte-for-byte,
+     * makes them selectable for pasting back, and means nothing the API
+     * returns can become HTML on this page.
+     */
+    function initGfmpProbe() {
+        var lastText = '';
+
+        function block(r, maxBody) {
+            var $b = $('<div class="uc-probe-result">');
+            var ok = r.status >= 200 && r.status < 300;
+
+            $b.append($('<h4>').text(r.path));
+            var $meta = $('<div class="uc-probe-meta">');
+            $meta.append($('<div>').text('URL: ' + r.url));
+            if (r.error) {
+                $meta.append($('<div class="uc-probe-err">').text('Error: ' + r.error));
+            } else {
+                $meta.append($('<div>').text(
+                    'HTTP ' + r.status + (r.message ? ' ' + r.message : '') +
+                    '   ·   ' + (r.content_type || 'no content-type') +
+                    '   ·   ' + r.length + ' bytes'
+                ));
+            }
+            if (r.truncated) {
+                $meta.append($('<div class="uc-probe-err">').text(
+                    'TRUNCATED for display: body was ' + r.length + ' bytes, cut at ' + maxBody +
+                    '. Everything after byte ' + maxBody + ' is not shown.'
+                ));
+            }
+            $b.append($meta);
+            $b.addClass(r.error ? 'is-err' : (ok ? 'is-ok' : 'is-bad'));
+
+            if (r.body !== '') {
+                // Pretty-print only when it really is JSON. Key order is
+                // preserved and nothing is dropped; if it does not parse, the
+                // bytes are shown exactly as received.
+                var shown = r.body, note = 'Raw body, exactly as received.';
+                try {
+                    var parsed = JSON.parse(r.body);
+                    shown = JSON.stringify(parsed, null, 2);
+                    note = 'Pretty-printed from valid JSON — key order preserved, nothing filtered. Raw bytes are in the box below.';
+                } catch (e) { /* not JSON: show it raw */ }
+
+                $b.append($('<p class="uc-probe-note">').text(note));
+                $b.append($('<pre class="uc-probe-pre">').text(shown));
+                $b.append($('<label class="uc-probe-rawlabel">').text('Raw body (select all to copy):'));
+                $b.append($('<textarea class="uc-probe-raw" readonly rows="4">').val(r.body));
+            } else if (!r.error) {
+                $b.append($('<p class="uc-probe-note">').text('Empty body.'));
+            }
+
+            return $b;
+        }
+
+        function asText(data) {
+            var lines = ['GoFundMe Pro campaign probe',
+                         'campaign id: ' + data.campaign_id,
+                         'data base:   ' + data.base, ''];
+            $.each(data.results || [], function (_, r) {
+                lines.push('=========================================================');
+                lines.push('PATH:   ' + r.path);
+                lines.push('URL:    ' + r.url);
+                if (r.error) {
+                    lines.push('ERROR:  ' + r.error);
+                } else {
+                    lines.push('STATUS: ' + r.status + (r.message ? ' ' + r.message : ''));
+                    lines.push('TYPE:   ' + (r.content_type || '(none)'));
+                    lines.push('BYTES:  ' + r.length + (r.truncated ? '  [TRUNCATED at ' + data.max_body + ']' : ''));
+                }
+                lines.push('---------------------------------------------------------');
+                lines.push(r.body === '' ? '(empty body)' : r.body);
+                lines.push('');
+            });
+            return lines.join('\n');
+        }
+
+        $(document).on('click', '.uc-gfmp-probe', function (e) {
+            e.preventDefault();
+
+            var $btn  = $(this);
+            var $box  = $btn.closest('.uc-probe-box');
+            var $msg  = $box.find('.uc-probe-msg');
+            var $out  = $box.find('.uc-probe-out');
+            var $copy = $box.find('.uc-probe-copy');
+            var label = $btn.text();
+            var id    = ($box.find('.uc-probe-id').val() || '').trim();
+
+            if (!id) {
+                $msg.removeClass('notice-success').addClass('notice notice-error').text('Enter a campaign ID first.').show();
+                return;
+            }
+
+            $btn.prop('disabled', true).text('Probing…');
+            $msg.hide().removeClass('notice notice-success notice-error').text('');
+            $out.hide().empty();
+            $copy.hide();
+
+            $.post(sfafAdmin.ajaxUrl, {
+                action: 'sfaf_gfmp_probe',
+                nonce: sfafAdmin.nonce,
+                campaign_id: id
+            }).done(function (res) {
+                var data = (res && res.data) || {};
+                if (!res || !res.success) {
+                    $msg.addClass('notice notice-error').text('Probe failed: ' + (data.message || 'Unknown error.')).show();
+                    return;
+                }
+                $.each(data.results || [], function (_, r) { $out.append(block(r, data.max_body)); });
+                lastText = asText(data);
+                $msg.addClass('notice notice-success')
+                    .text('Probed ' + (data.results || []).length + ' endpoint(s) for campaign ' + data.campaign_id +
+                          '. Nothing was imported or changed.')
+                    .show();
+                $out.show();
+                $copy.show();
+            }).fail(function (xhr) {
+                $msg.addClass('notice notice-error')
+                    .text('Probe failed: the request to WordPress itself failed (HTTP ' + xhr.status + ').').show();
+            }).always(function () {
+                $btn.prop('disabled', false).text(label);
+            });
+        });
+
+        $(document).on('click', '.uc-probe-copy', function (e) {
+            e.preventDefault();
+            var $btn = $(this), orig = $btn.text();
+            if (!lastText) { return; }
+            var done = function () { $btn.text('Copied'); setTimeout(function () { $btn.text(orig); }, 1500); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(lastText).then(done, function () { $btn.text('Copy failed'); });
+            } else {
+                var $t = $('<textarea>').val(lastText).appendTo('body').select();
+                try { document.execCommand('copy'); done(); } catch (err) { $btn.text('Copy failed'); }
+                $t.remove();
+            }
         });
     }
 

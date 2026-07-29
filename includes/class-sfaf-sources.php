@@ -564,9 +564,6 @@ class SFAF_Sources {
         /* ---- URLs. ---- */
         $url_map = array(
             self::META_SOURCE_URL => array( 'key' => 'source_url', 'label' => 'Source URL' ),
-            // The SOURCE image only. _uc_image_url is the manual override and
-            // is never written here — that is the whole point of the split.
-            self::META_IMAGE      => array( 'key' => 'image_url',  'label' => 'Source image' ),
         );
         foreach ( $url_map as $meta_key => $spec ) {
             $value = isset( $event[ $spec['key'] ] ) ? trim( (string) $event[ $spec['key'] ] ) : '';
@@ -580,6 +577,42 @@ class SFAF_Sources {
             }
             update_post_meta( $post_id, $meta_key, $value );
             $changed[ $spec['label'] ] = array( 'from' => $current, 'to' => $value );
+        }
+
+        /* ---- The source image: SOURCE-OWNED, so absence counts. ----
+         *
+         * Every other field here follows "empty in, leave alone", because an
+         * empty title or date from the source means "nothing to say" and a
+         * manager may have filled the gap in by hand.
+         *
+         * This one is different. _uc_external_image belongs entirely to the
+         * source — a person's image goes in _uc_image_url, which is never
+         * touched here — so the source no longer offering one is real
+         * information, and leaving a stale URL behind would keep showing an
+         * image the platform has withdrawn. So absence clears it, and the
+         * event falls back through _uc_image_url, then the series image, then
+         * the branded placeholder.
+         *
+         * This is deliberately NOT generalised to description or any other
+         * field. A hand-written description must survive a refetch.
+         */
+        $image         = isset( $event['image_url'] ) ? trim( (string) $event['image_url'] ) : '';
+        $current_image = (string) get_post_meta( $post_id, self::META_IMAGE, true );
+
+        if ( '' === $image ) {
+            if ( '' !== $current_image ) {
+                delete_post_meta( $post_id, self::META_IMAGE );
+                $changed['Source image'] = array(
+                    'from' => $current_image,
+                    'to'   => '(cleared — the source no longer offers one)',
+                );
+            }
+        } else {
+            $image = esc_url_raw( $image );
+            if ( '' !== $image && $current_image !== $image ) {
+                update_post_meta( $post_id, self::META_IMAGE, $image );
+                $changed['Source image'] = array( 'from' => $current_image, 'to' => $image );
+            }
         }
 
         /* ---- Adapter meta extras (GoFundMe URL, goal, raised …). ---- */

@@ -95,6 +95,20 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
         $items        = $result['items'];
         $filtered_ids = array();
 
+        // One-time correction of the descriptions imported from
+        // default_page_appeal, using the campaigns already fetched. Runs
+        // before the import loop, though the order does not matter: with the
+        // mapping removed, an update sends no description and would not have
+        // overwritten them anyway. See cleanup_appeal_descriptions().
+        $cleanup = self::cleanup_appeal_descriptions( $result['items'] );
+        if ( $cleanup['examined'] > 0 ) {
+            $notes[] = sprintf(
+                'One-time cleanup: %d imported description(s) matched the campaign\'s fundraiser-page appeal text and were cleared; %d differed and were left alone as hand-edited. Write a description when approving — it will survive later fetches.',
+                (int) $cleanup['cleared'],
+                (int) $cleanup['kept']
+            );
+        }
+
         // Statuses worth importing. Blank means "take everything".
         //
         // The IDs dropped here are kept and handed back: a campaign that was
@@ -328,11 +342,21 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * @return array{url:string,field:string}
      */
     private function image( $item ) {
-        $candidates = (array) apply_filters(
-            'sfaf_gfmp_image_fields',
-            array( 'team_cover_photo_url', 'logo_url' ),
-            $item
-        );
+        // INTERIM: no candidates, on purpose — campaigns fall through to the
+        // calendar's own branded placeholder.
+        //
+        // team_cover_photo_url returned artwork that is neither the campaign
+        // banner nor any image on the campaign page, and logo_url is the small
+        // logo mark. A wrong image on a public calendar is worse than no image,
+        // so nothing is chosen until the probe shows which field is right.
+        //
+        // The filter is unchanged, so a candidate list can be put back on a
+        // live site the moment we know the answer, without a rebuild:
+        //
+        //     add_filter( 'sfaf_gfmp_image_fields', function () {
+        //         return array( 'the_right_field' );
+        //     } );
+        $candidates = (array) apply_filters( 'sfaf_gfmp_image_fields', array(), $item );
 
         foreach ( $candidates as $field ) {
             $field = (string) $field;
@@ -345,6 +369,96 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
         }
 
         return array( 'url' => '', 'field' => 'none — placeholder will show' );
+    }
+
+    /* ---------------------------------------------------------------------
+     * One-time cleanup of the appeal-text descriptions
+     * ------------------------------------------------------------------- */
+
+    /** Set once the appeal-text cleanup has run. */
+    const CLEANUP_OPTION = 'sfaf_gfmp_appeal_description_cleanup_done';
+
+    /**
+     * Clear descriptions that were imported from default_page_appeal.
+     *
+     * WHY THIS IS NEEDED. Simply removing the mapping is not enough: 2.7.0's
+     * "empty in, leave alone" rule means a refetch now sends no description at
+     * all, which PROTECTS the wrong text already sitting on the events rather
+     * than replacing it. Left alone it would stay there permanently.
+     *
+     * THE HEURISTIC, same as migrate_image_split(): clear the description only
+     * where the stored value is byte-identical to that campaign's current
+     * default_page_appeal. That is what the importer would have written, so an
+     * exact match identifies machine-written text. Anything a person has
+     * touched differs by even a character and is left alone.
+     *
+     * The comparison allows for the fact that import_event() ran the value
+     * through wp_kses_post(), so both the raw and the filtered forms count as
+     * a match.
+     *
+     * Runs once, from fetch(), using the campaigns already in hand — no extra
+     * API calls. Not a new rule: a one-time correction keyed to one specific
+     * bad value.
+     *
+     * @param array $campaigns Raw campaigns from this fetch.
+     * @return array{cleared:int,kept:int,examined:int}
+     */
+    public static function cleanup_appeal_descriptions( $campaigns ) {
+        $out = array( 'cleared' => 0, 'kept' => 0, 'examined' => 0 );
+
+        if ( get_option( self::CLEANUP_OPTION ) ) {
+            return $out;
+        }
+
+        // Every status the importer can see. Trash is left out — a trashed
+        // event is gone as far as anyone is concerned.
+        $statuses = array_values( array_diff( SFAF_Sources::all_statuses(), array( 'trash' ) ) );
+
+        foreach ( $campaigns as $campaign ) {
+            if ( ! is_array( $campaign ) || empty( $campaign['id'] ) ) {
+                continue;
+            }
+            $appeal = ( isset( $campaign['default_page_appeal'] ) && is_string( $campaign['default_page_appeal'] ) )
+                ? $campaign['default_page_appeal']
+                : '';
+            if ( '' === trim( $appeal ) ) {
+                continue;
+            }
+
+            $query = new WP_Query( array(
+                'post_type'              => 'uc_event',
+                'post_status'            => $statuses,
+                'posts_per_page'         => 10,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'ignore_sticky_posts'    => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+                'meta_query'             => array(
+                    'relation' => 'AND',
+                    array( 'key' => SFAF_Sources::META_SOURCE, 'value' => 'gofundme_pro' ),
+                    array( 'key' => SFAF_Sources::META_EXTERNAL_ID, 'value' => (string) $campaign['id'] ),
+                ),
+            ) );
+
+            foreach ( $query->posts as $post_id ) {
+                $content = (string) get_post_field( 'post_content', $post_id );
+                if ( '' === trim( $content ) ) {
+                    continue;
+                }
+                $out['examined']++;
+
+                if ( $content === $appeal || $content === wp_kses_post( $appeal ) ) {
+                    wp_update_post( array( 'ID' => $post_id, 'post_content' => '' ) );
+                    $out['cleared']++;
+                } else {
+                    $out['kept']++;
+                }
+            }
+        }
+
+        update_option( self::CLEANUP_OPTION, '1', false );
+        return $out;
     }
 
     /* ---------------------------------------------------------------------
@@ -425,11 +539,24 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * @return string
      */
     private function description( $item ) {
-        foreach ( array( 'default_page_appeal', 'default_team_appeal', 'default_thank_you_text' ) as $key ) {
-            if ( ! empty( $item[ $key ] ) && is_string( $item[ $key ] ) ) {
-                return $item[ $key ];
-            }
-        }
+        // INTERIM: nothing is mapped, on purpose.
+        //
+        // This used to return default_page_appeal. That is GoFundMe Pro's
+        // default appeal text for INDIVIDUAL fundraiser pages, not a
+        // description of the campaign — on Santa Skivvies it imported
+        // "I'm Bar(e)ing It All for San Francisco AIDS Foundation", which is
+        // personal-page template copy and reads as nonsense on a calendar.
+        //
+        // Campaign has no description field at all, and every other text field
+        // on it (default_team_appeal, default_page_post_body,
+        // classy_mode_appeal, default_thank_you_text …) is likewise a default
+        // for some page or team rather than the campaign's own copy. Guessing
+        // again would just import different wrong text.
+        //
+        // So GoFundMe Pro descriptions are left empty until the campaign probe
+        // shows where the real copy lives. A manager writes one at approval,
+        // and 2.7.0's empty-in-leave-alone rule then protects it from every
+        // later refetch.
         return '';
     }
 

@@ -1022,6 +1022,24 @@ class SFAF_Admin {
                             </div>
                         </div>
                         <p class="description uc-gofundme-conn-msg" style="display:none;"></p>
+
+                        <?php // [PROBE] Temporary diagnostic. Remove this block, the
+                              // [PROBE] block in class-sfaf-gfmp.php and initGfmpProbe()
+                              // in admin.js together once the payload is understood. ?>
+                        <div class="uc-probe-box">
+                            <h3>Campaign probe <span class="uc-probe-tag">diagnostic</span></h3>
+                            <p class="description">Calls four campaign endpoints and prints exactly what comes back — status and body, nothing decoded or filtered. <strong>Read-only:</strong> it imports nothing and changes nothing. Here to replace guesswork about where the campaign's real copy and images live.</p>
+                            <div class="uc-field-row">
+                                <label>Campaign ID</label>
+                                <div class="uc-conn-controls">
+                                    <input type="text" class="uc-input uc-probe-id" placeholder="e.g. 227362" />
+                                    <button type="button" class="button uc-gfmp-probe">Probe campaign</button>
+                                    <button type="button" class="button uc-probe-copy" style="display:none;">Copy all output</button>
+                                </div>
+                            </div>
+                            <p class="description uc-probe-msg" style="display:none;"></p>
+                            <div class="uc-probe-out" style="display:none;"></div>
+                        </div>
                         <div class="uc-field-row">
                             <label>Show progress bar on event cards</label>
                             <label class="uc-toggle"><input type="checkbox" name="uc_settings[gofundme_show_progress]" value="1" <?php checked( $s( 'gofundme_show_progress' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>

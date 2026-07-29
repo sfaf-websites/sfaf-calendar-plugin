@@ -301,3 +301,22 @@
 .uc-eb-notes { padding: 8px 12px; }
 .uc-eb-notes ul { margin: 6px 0 0 18px; list-style: disc; }
 .uc-eb-pre { max-height: 420px; overflow: auto; padding: 12px; border: 1px solid var(--uc-border); border-radius: 10px; background: #f9fafb; font-size: 12px; line-height: 1.5; white-space: pre; }
+
+/* [PROBE] GoFundMe Pro campaign probe — temporary diagnostic, remove with the
+   rest of the [PROBE] blocks. */
+.uc-probe-box { margin-top: 18px; padding: 14px; border: 1px dashed var(--uc-border); border-radius: 10px; background: #fffbeb; }
+.uc-probe-box h3 { margin: 0 0 6px; font-size: 14px; }
+.uc-probe-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: #fde68a; color: #92400e; font-size: 11px; font-weight: 700; }
+.uc-probe-id { max-width: 220px; }
+.uc-probe-out { margin-top: 14px; }
+.uc-probe-result { padding: 12px; margin-bottom: 12px; border: 1px solid var(--uc-border); border-left-width: 4px; border-radius: 8px; background: #fff; }
+.uc-probe-result.is-ok { border-left-color: #10b981; }
+.uc-probe-result.is-bad { border-left-color: #f59e0b; }
+.uc-probe-result.is-err { border-left-color: #ef4444; }
+.uc-probe-result h4 { margin: 0 0 6px; font-size: 13px; font-family: Consolas, Monaco, monospace; }
+.uc-probe-meta { font-size: 12px; color: #4b5563; font-family: Consolas, Monaco, monospace; word-break: break-all; }
+.uc-probe-err { color: #b91c1c; font-weight: 600; }
+.uc-probe-note { margin: 8px 0 4px; font-size: 12px; color: #6B7280; }
+.uc-probe-pre { max-height: 420px; overflow: auto; padding: 10px; border: 1px solid var(--uc-border); border-radius: 8px; background: #f9fafb; font-size: 12px; line-height: 1.45; white-space: pre; }
+.uc-probe-rawlabel { display: block; margin: 8px 0 3px; font-size: 11px; color: #6B7280; }
+.uc-probe-raw { width: 100%; font-family: Consolas, Monaco, monospace; font-size: 11px; white-space: pre; }
