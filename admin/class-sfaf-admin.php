@@ -984,7 +984,7 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong> — both are pre-filled with the documented values and only need changing if a call fails.</p>
+                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong>. GoFundMe Pro support has confirmed the token endpoint below is correct — <strong>leave it as it is</strong>; pro.gofundme.com does not issue tokens. Every request also carries the <code>x-integration-id</code> header they issued, which is what stops their edge security treating this server as a bot.</p>
                         <div class="uc-field-row">
                             <label>Token endpoint URL</label>
                             <input type="url" name="uc_settings[gofundme_token_url]" value="<?php echo esc_attr( $s( 'gofundme_token_url' ) ); ?>"
@@ -995,7 +995,7 @@ class SFAF_Admin {
                             <input type="url" name="uc_settings[gofundme_api_base]" value="<?php echo esc_attr( $s( 'gofundme_api_base' ) ); ?>"
                                    placeholder="<?php echo esc_attr( SFAF_GFMP::DEFAULT_API_BASE ); ?>" class="uc-input" />
                         </div>
-                        <p class="description">Leave blank to use the defaults shown. In use now — token: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code> &middot; data: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code></p>
+                        <p class="description">Leave blank to use the defaults shown. In use now — token: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code> &middot; data: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code> &middot; integration ID: <code><?php echo esc_html( SFAF_GFMP::integration_id() ); ?></code></p>
                         <div class="uc-field-row">
                             <label>Client ID</label>
                             <input type="text" name="uc_settings[gofundme_client_id]" value="<?php echo esc_attr( $s( 'gofundme_client_id' ) ); ?>" class="uc-input" />

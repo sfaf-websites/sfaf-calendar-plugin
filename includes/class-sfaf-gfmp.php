@@ -7,32 +7,39 @@
  * code here yet; this file exists so that "can we authenticate at all?" can be
  * answered on its own before anything is built on top of it.
  *
- * ENDPOINTS — from the official authentication documentation.
+ * ENDPOINTS — confirmed with GoFundMe Pro support, not inferred.
  * ---------------------------------------------------------------------------
  * Two different hosts, which is the thing to keep straight:
  *
  *   TOKEN   POST https://api.classy.org/oauth2/auth
  *                Content-Type: application/x-www-form-urlencoded
+ *                x-integration-id: <integration ID>
  *                grant_type=client_credentials&client_id=…&client_secret=…
  *
  *                -> { "access_token": …, "expires_in": …, "token_type": "bearer" }
  *
  *   DATA    GET  https://pro.gofundme.com/api/2.0/…
  *                Authorization: Bearer <access_token>
+ *                x-integration-id: <integration ID>
  *
  * Credentials go in the body, form-encoded. Not HTTP Basic. No scope parameter.
  *
- * The two hosts are why earlier attempts failed: the OpenAPI spec's server URL
- * (pro.gofundme.com/api/2.0) is the DATA host, and its clientCredentials
- * tokenUrl of "/oauth2/auth" reads as relative to it — but tokens are issued by
- * api.classy.org. Posting to pro.gofundme.com/api/2.0/oauth2/auth hits a path
- * behind the resource-auth middleware, which answers "The access token is
- * missing" — a 401 that looks like a credential problem and is not.
+ * Support has confirmed api.classy.org/oauth2/auth is the correct and only
+ * token endpoint: pro.gofundme.com does NOT serve tokens, so it is not a
+ * fallback to try when a token request fails. That earlier guess produced "The
+ * access token is missing" — a 401 from the resource-auth middleware that
+ * looks like a credential problem and is not. The token URL remains editable
+ * for the unlikely case that support changes it, but it should be left alone.
  *
- * The data host is itself unsettled: the docs example shows
+ * THE CLOUDFLARE 403. Support also confirmed the credentials were never at
+ * fault: their edge security was flagging this server's traffic as a bot. The
+ * fix they gave is the x-integration-id header, which every request now
+ * carries via request_args(). See DEFAULT_INTEGRATION_ID.
+ *
+ * The data host is the one thing still unsettled: the docs example shows
  * api.classy.org/2.0/resource while the spec says pro.gofundme.com/api/2.0. The
- * spec's value is the default, but both URLs are editable in the settings panel
- * so either can be corrected on a live site without a rebuild. Filters
+ * spec's value is the default, and it is editable in the settings panel so it
+ * can be corrected on a live site without a rebuild. Filters
  * (sfaf_gfmp_token_endpoint, sfaf_gfmp_api_base) still override the settings.
  *
  * SECRETS: the client secret is never echoed back to the browser and the access
@@ -48,6 +55,21 @@ class SFAF_GFMP {
 
     /** Default token host — from the authentication documentation. */
     const DEFAULT_TOKEN_URL = 'https://api.classy.org/oauth2/auth';
+
+    /**
+     * Integration ID issued by GoFundMe Pro, sent as x-integration-id.
+     *
+     * Their edge security was flagging this server's traffic as a bot and
+     * answering with a Cloudflare 403 before the credentials were ever
+     * examined. Support's fix is this header, which identifies the request as
+     * a known integration rather than anonymous server traffic.
+     *
+     * A constant with a filter over it rather than a literal in the request,
+     * so a reissued ID is a one-line change or a filter on a live site:
+     *
+     *     add_filter( 'sfaf_gfmp_integration_id', function () { return '…'; } );
+     */
+    const DEFAULT_INTEGRATION_ID = 'NSINTG4F8A2C9D6Q1';
 
     /**
      * Where the token lives.
@@ -118,11 +140,23 @@ class SFAF_GFMP {
     }
 
     /**
+     * The integration ID sent as x-integration-id on every request.
+     *
+     * @return string
+     */
+    public static function integration_id() {
+        return (string) apply_filters( 'sfaf_gfmp_integration_id', self::DEFAULT_INTEGRATION_ID );
+    }
+
+    /**
      * Base arguments for any request to GoFundMe Pro — token or data.
      *
      * Centralised so the two cannot drift: whatever gets a request past
      * Cloudflare for the token endpoint is then automatically also sent on
-     * every campaign call.
+     * every campaign call. x-integration-id is the header GoFundMe Pro support
+     * identified as the fix for their edge security flagging this server as a
+     * bot, and it is set here rather than on the token request alone so no
+     * later data call can be missing it.
      *
      * The agent goes in the 'user-agent' argument rather than the headers
      * array, which is WordPress's own slot for it — setting both would send the
@@ -137,7 +171,8 @@ class SFAF_GFMP {
             'redirection' => 3,
             'user-agent'  => self::user_agent(),
             'headers'     => array(
-                'Accept' => 'application/json',
+                'Accept'           => 'application/json',
+                'x-integration-id' => self::integration_id(),
             ),
         );
 
@@ -305,12 +340,15 @@ class SFAF_GFMP {
         }
 
         return sprintf(
-            'Cloudflare bot protection blocked this request (matched "%s") — the credentials were never checked. '
-            . 'The identifying User-Agent this plugin now sends was not enough to satisfy it. '
-            . 'Next things to try: change the Token endpoint URL in settings (the data host, or a sandbox host, may not be behind the same rule); '
-            . 'ask GoFundMe Pro to allow this server; or tune the agent via the sfaf_gfmp_user_agent filter. '
-            . 'Agent sent: %s',
+            'Bot protection blocked this request (matched "%s") — the credentials were never checked, so this is not a credential problem. '
+            . 'This plugin sends the x-integration-id header GoFundMe Pro support issued for exactly this, plus an identifying User-Agent, '
+            . 'and neither satisfied the edge this time. Next things to try: confirm the integration ID is still current with GoFundMe Pro '
+            . '(override it with the sfaf_gfmp_integration_id filter); ask them to allow this server; or tune the agent via the '
+            . 'sfaf_gfmp_user_agent filter. Do not change the token endpoint — support confirmed %s is the correct one and that '
+            . 'pro.gofundme.com does not serve tokens. Integration ID sent: %s. Agent sent: %s',
             $hit,
+            self::DEFAULT_TOKEN_URL,
+            self::integration_id(),
             self::user_agent()
         );
     }
