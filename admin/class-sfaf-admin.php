@@ -68,14 +68,19 @@ class SFAF_Admin {
     public function sanitize_settings( $input ) {
         $out = array();
 
-        // Plain text fields.
+        // Credentials are taken out of the submission here and written to
+        // their own dedicated option. They are deliberately NOT added to $out:
+        // this array is what replaces uc_settings wholesale, and a credential
+        // that never enters it cannot be dropped by a later save that forgets
+        // about it. See class-sfaf-credentials.php.
+        SFAF_Credentials::absorb( $input );
+
+        // Plain text fields. No credentials in this list — see above.
         $text_fields = array(
-            'multisite_api_key',
-            'gofundme_client_id', 'gofundme_org_id',
             'pardot_business_unit', 'google_calendar_id',
-            'galaxy_api_key', 'galaxy_portal_url', 'galaxy_agency_id',
+            'galaxy_portal_url', 'galaxy_agency_id',
             'galaxy_needs_category', 'galaxy_sync_interval',
-            'webhook_url', 'webhook_secret',
+            'webhook_url',
             'pardot_default_campaign',
             'route_sheet_url',
             'brand_logo',
@@ -112,26 +117,11 @@ class SFAF_Admin {
         $out['brand_card_style'] = ( isset( $input['brand_card_style'] ) && in_array( $input['brand_card_style'], $card_styles, true ) )
             ? $input['brand_card_style'] : 'bordered';
 
-        // Endpoint overrides. Blank means "use the documented default", so an
-        // empty field is stored empty rather than being filled in — that way the
-        // default can change in a later release without a stale copy overriding it.
-        foreach ( array( 'gofundme_token_url', 'gofundme_api_base', 'eventbrite_api_base' ) as $url_field ) {
-            $out[ $url_field ] = isset( $input[ $url_field ] ) ? esc_url_raw( trim( (string) $input[ $url_field ] ) ) : '';
-        }
-
-        // Secrets are write-only: the field submits blank unless it was retyped,
-        // and blank means "keep what is stored" rather than "clear it". Not run
-        // through sanitize_text_field — a secret is an opaque string that must
-        // survive byte-for-byte.
-        $existing = get_option( 'uc_settings', array() );
-        foreach ( array( 'gofundme_client_secret', 'eventbrite_private_token' ) as $secret_field ) {
-            $submitted = isset( $input[ $secret_field ] ) ? trim( (string) $input[ $secret_field ] ) : '';
-            if ( '' !== $submitted ) {
-                $out[ $secret_field ] = $submitted;
-            } else {
-                $out[ $secret_field ] = isset( $existing[ $secret_field ] ) ? $existing[ $secret_field ] : '';
-            }
-        }
+        // Endpoint overrides and secrets used to be handled here, each guarded
+        // by a read-back of the previous uc_settings value. Both now go to the
+        // dedicated credential option via the SFAF_Credentials::absorb() call
+        // at the top of this method, which is what makes them survive a save
+        // that does not mention them.
 
         // Toggles. gofundme_connected is gone: connection state is now derived
         // from whether a real token is on file (SFAF_GFMP::status()), so it can
@@ -744,6 +734,13 @@ class SFAF_Admin {
             return isset( $settings[ $key ] ) ? $settings[ $key ] : $default;
         };
 
+        // Credentials come from their own option, never from uc_settings. The
+        // two write-only ones (Eventbrite private token, GoFundMe Pro client
+        // secret) are never passed through this — their fields stay empty.
+        $c = function ( $key ) {
+            return SFAF_Credentials::is_secret( $key ) ? '' : SFAF_Credentials::get( $key );
+        };
+
         $gf_campaigns     = $s( 'gofundme_campaigns', array() );
         $pardot_campaigns = $s( 'pardot_campaigns', array() );
         $category_map     = $s( 'pardot_category_map', array() );
@@ -965,7 +962,7 @@ class SFAF_Admin {
                         </div>
                         <div class="uc-field-row">
                             <label>API Key</label>
-                            <input type="text" id="uc_multisite_api_key" name="uc_settings[multisite_api_key]" value="<?php echo esc_attr( $s( 'multisite_api_key' ) ); ?>" class="uc-input uc-monospace" placeholder="Generate a key, then paste it into each satellite" />
+                            <input type="text" id="uc_multisite_api_key" name="uc_settings[multisite_api_key]" value="<?php echo esc_attr( $c( 'multisite_api_key' ) ); ?>" class="uc-input uc-monospace" placeholder="Generate a key, then paste it into each satellite" />
                             <button type="button" class="button uc-generate-key">Generate Key</button>
                         </div>
                         <p class="description">When a key is set, the events feed requires the <code>X-SFAF-API-Key</code> header (satellites send it automatically). Leave blank to keep the feed public. This site never pulls from or pushes to other sites.</p>
@@ -987,18 +984,18 @@ class SFAF_Admin {
                         <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong>. GoFundMe Pro support has confirmed the token endpoint below is correct — <strong>leave it as it is</strong>; pro.gofundme.com does not issue tokens. Every request also carries the <code>x-integration-id</code> header they issued, which is what stops their edge security treating this server as a bot.</p>
                         <div class="uc-field-row">
                             <label>Token endpoint URL</label>
-                            <input type="url" name="uc_settings[gofundme_token_url]" value="<?php echo esc_attr( $s( 'gofundme_token_url' ) ); ?>"
+                            <input type="url" name="uc_settings[gofundme_token_url]" value="<?php echo esc_attr( $c( 'gofundme_token_url' ) ); ?>"
                                    placeholder="<?php echo esc_attr( SFAF_GFMP::DEFAULT_TOKEN_URL ); ?>" class="uc-input" />
                         </div>
                         <div class="uc-field-row">
                             <label>API base URL (data)</label>
-                            <input type="url" name="uc_settings[gofundme_api_base]" value="<?php echo esc_attr( $s( 'gofundme_api_base' ) ); ?>"
+                            <input type="url" name="uc_settings[gofundme_api_base]" value="<?php echo esc_attr( $c( 'gofundme_api_base' ) ); ?>"
                                    placeholder="<?php echo esc_attr( SFAF_GFMP::DEFAULT_API_BASE ); ?>" class="uc-input" />
                         </div>
                         <p class="description">Leave blank to use the defaults shown. In use now — token: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code> &middot; data: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code> &middot; integration ID: <code><?php echo esc_html( SFAF_GFMP::integration_id() ); ?></code></p>
                         <div class="uc-field-row">
                             <label>Client ID</label>
-                            <input type="text" name="uc_settings[gofundme_client_id]" value="<?php echo esc_attr( $s( 'gofundme_client_id' ) ); ?>" class="uc-input" />
+                            <input type="text" name="uc_settings[gofundme_client_id]" value="<?php echo esc_attr( $c( 'gofundme_client_id' ) ); ?>" class="uc-input" />
                         </div>
                         <div class="uc-field-row">
                             <label>Client Secret</label>
@@ -1009,7 +1006,7 @@ class SFAF_Admin {
                         </div>
                         <div class="uc-field-row">
                             <label>Organization ID</label>
-                            <input type="text" name="uc_settings[gofundme_org_id]" value="<?php echo esc_attr( $s( 'gofundme_org_id' ) ); ?>" class="uc-input" />
+                            <input type="text" name="uc_settings[gofundme_org_id]" value="<?php echo esc_attr( $c( 'gofundme_org_id' ) ); ?>" class="uc-input" />
                         </div>
                         <p class="description">The Organization ID is not used to obtain a token — it identifies which organization's data to read, in calls such as <code>GET /organizations/{org_id}/campaigns</code>. Set it before the campaign step.</p>
                         <div class="uc-field-row">
@@ -1081,7 +1078,7 @@ class SFAF_Admin {
                         <p class="description">Eventbrite uses a single long-lived <strong>private token</strong> from your account's API keys page — there is no OAuth round trip. It is sent as a bearer token on every request.</p>
                         <div class="uc-field-row">
                             <label>API base URL</label>
-                            <input type="url" name="uc_settings[eventbrite_api_base]" value="<?php echo esc_attr( $s( 'eventbrite_api_base' ) ); ?>"
+                            <input type="url" name="uc_settings[eventbrite_api_base]" value="<?php echo esc_attr( $c( 'eventbrite_api_base' ) ); ?>"
                                    placeholder="<?php echo esc_attr( SFAF_Eventbrite::DEFAULT_API_BASE ); ?>" class="uc-input" />
                         </div>
                         <p class="description">Leave blank to use the default shown. In use now: <code><?php echo esc_html( SFAF_Eventbrite::api_base() ); ?></code> &middot; the test calls <code><?php echo esc_html( SFAF_Eventbrite::me_endpoint() ); ?></code></p>
@@ -1267,7 +1264,7 @@ class SFAF_Admin {
                         <p class="description">Get Connected (v1.9.2) uses Bearer-token auth. Base URL: <code>https://api.galaxydigital.com/api/</code></p>
                         <div class="uc-field-row">
                             <label>API Key (Bearer Token)</label>
-                            <input type="password" name="uc_settings[galaxy_api_key]" value="<?php echo esc_attr( $s( 'galaxy_api_key' ) ); ?>" class="uc-input" />
+                            <input type="password" name="uc_settings[galaxy_api_key]" value="<?php echo esc_attr( $c( 'galaxy_api_key' ) ); ?>" class="uc-input" />
                         </div>
                         <div class="uc-field-row">
                             <label>Portal URL</label>
@@ -1312,7 +1309,7 @@ class SFAF_Admin {
                             <label>Manual Sync</label>
                             <div class="uc-conn-controls">
                                 <button type="button" class="button uc-galaxy-sync">Sync Now</button>
-                                <span class="uc-conn-pill <?php echo $s( 'galaxy_api_key' ) ? 'is-connected' : ''; ?>"><?php echo $s( 'galaxy_api_key' ) ? 'Connected' : 'Not configured'; ?></span>
+                                <span class="uc-conn-pill <?php echo $c( 'galaxy_api_key' ) ? 'is-connected' : ''; ?>"><?php echo $c( 'galaxy_api_key' ) ? 'Connected' : 'Not configured'; ?></span>
                             </div>
                         </div>
                     </div>
@@ -1336,7 +1333,7 @@ class SFAF_Admin {
                         </div>
                         <div class="uc-field-row">
                             <label>Secret Key (HMAC)</label>
-                            <input type="password" name="uc_settings[webhook_secret]" value="<?php echo esc_attr( $s( 'webhook_secret' ) ); ?>" class="uc-input" />
+                            <input type="password" name="uc_settings[webhook_secret]" value="<?php echo esc_attr( $c( 'webhook_secret' ) ); ?>" class="uc-input" />
                         </div>
                         <h3>Event Triggers</h3>
                         <?php

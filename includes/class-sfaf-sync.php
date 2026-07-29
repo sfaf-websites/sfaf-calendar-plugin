@@ -25,9 +25,10 @@ class SFAF_Sync {
         }
         $key = wp_generate_password( 32, false );
 
-        $settings = get_option( 'uc_settings', array() );
-        $settings['multisite_api_key'] = $key;
-        update_option( 'uc_settings', $settings );
+        // The key lives in the dedicated credential store, not in uc_settings —
+        // that option is rebuilt wholesale on every settings save, which is how
+        // credentials kept going missing. See class-sfaf-credentials.php.
+        SFAF_Credentials::set( 'multisite_api_key', $key );
 
         wp_send_json_success( array( 'key' => $key ) );
     }

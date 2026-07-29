@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.5.1
+Stable tag: 2.5.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -50,6 +50,14 @@ Build any of these visually under Events &rsaquo; Shortcode Generator.
 5. Configure integrations under Events > Settings
 
 == Changelog ==
+
+= 2.5.2 =
+* Fixed: platform credentials no longer go missing. Every credential the plugin holds has moved out of the general settings option into its own dedicated, autoloaded store that is never rewritten wholesale. The general settings option is rebuilt from scratch on every save — anything its sanitizer did not explicitly copy across was lost — which is exactly the fragility that had already cost the GoFundMe Pro token an earlier fix. Credentials are no longer stored there at all, so a save that does not mention one cannot erase it.
+* Moved: the Eventbrite private token and API base URL; the GoFundMe Pro client ID, client secret, organization ID, token endpoint and API base; the multi-site API key; the Galaxy Digital API key; and the webhook secret. Existing values are copied across automatically on first load after updating — nothing needs re-entering, and the move never overwrites a value already in the new store, so it is safe if it runs more than once.
+* Fixed: entering a credential, pressing "Test connection", seeing it succeed and then leaving the page without pressing Save Changes used to discard it silently — which looked exactly like a credential being lost on update. A credential that has just proven it works is now saved at that moment.
+* The two write-only fields — the Eventbrite private token and the GoFundMe Pro client secret — stay write-only: never rendered back into the form, never returned to the browser, and blank still means "keep the stored one".
+* Confirmed by audit: nothing in this plugin deletes or resets a credential. There is no uninstall.php and no uninstall hook, so even deleting the plugin leaves stored credentials intact; deactivation only flushes rewrite rules; and the activation routine — which runs again after every update — only creates the RSVP table, registers the post type, seeds sample data once and flushes rewrites. A comment there now says outright that it must never touch credentials.
+* Connection state was already held in its own options (the GoFundMe Pro token and the Eventbrite verification record) and is unaffected. The GoFundMe Pro integration ID is a filterable constant rather than stored data, so there is nothing there to lose either.
 
 = 2.5.1 =
 * GoFundMe Pro: requests now carry the `x-integration-id` header their support issued for this integration. The Cloudflare 403 that blocked every token request was their edge security treating this server's traffic as a bot — support confirmed the endpoint and our credentials were correct all along and the credentials were never actually examined. This header is the fix they specified.

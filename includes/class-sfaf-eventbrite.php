@@ -68,8 +68,7 @@ class SFAF_Eventbrite {
      * @return string Base URL with no trailing slash.
      */
     public static function api_base() {
-        $settings   = get_option( 'uc_settings', array() );
-        $configured = isset( $settings['eventbrite_api_base'] ) ? trim( (string) $settings['eventbrite_api_base'] ) : '';
+        $configured = SFAF_Credentials::get( 'eventbrite_api_base' );
         $url        = ( '' !== $configured ) ? $configured : self::DEFAULT_API_BASE;
         return untrailingslashit( (string) apply_filters( 'sfaf_eventbrite_api_base', $url ) );
     }
@@ -163,8 +162,7 @@ class SFAF_Eventbrite {
      * @return string
      */
     public static function private_token() {
-        $settings = get_option( 'uc_settings', array() );
-        return isset( $settings['eventbrite_private_token'] ) ? trim( (string) $settings['eventbrite_private_token'] ) : '';
+        return SFAF_Credentials::get( 'eventbrite_private_token' );
     }
 
     /** True when a token is on file, without revealing it. */
@@ -914,6 +912,13 @@ class SFAF_Eventbrite {
                 'endpoint' => self::me_endpoint(),
             ) );
         }
+
+        // A token that has just proven it works is persisted here and now.
+        // Otherwise typing it, pressing Test connection, seeing it succeed and
+        // then navigating away without pressing Save Changes would silently
+        // discard it — which looks exactly like a credential being "lost".
+        // A no-op when the token came from storage in the first place.
+        SFAF_Credentials::set( 'eventbrite_private_token', $token );
 
         self::store_verification( $account, $token );
 

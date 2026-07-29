@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place — through the WordPress admin or the /caladmin front-end portal — and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 2.5.1
+ * Version: 2.5.2
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '2.5.1' );
+define( 'SFAF_VERSION', '2.5.2' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -68,6 +68,7 @@ add_action( 'admin_notices', 'sfaf_render_fatal_notice' );
 // of these files is caught here (as a Throwable) rather than taking the whole
 // site down; the plugin deactivates itself and the rest of this file is skipped.
 $sfaf_includes = array(
+    'includes/class-sfaf-credentials.php',
     'includes/sfaf-template-functions.php',
     'includes/class-sfaf-post-types.php',
     'includes/class-sfaf-shortcodes.php',
@@ -100,6 +101,10 @@ try {
  * Initialize the plugin
  */
 function sfaf_init() {
+    // Before anything reads a credential: move any that are still sitting in
+    // uc_settings into their own option. Idempotent, and a no-op once done.
+    SFAF_Credentials::migrate();
+
     $post_types = new SFAF_Post_Types();
     $post_types->register();
 
@@ -378,6 +383,15 @@ register_activation_hook( __FILE__, 'sfaf_activate' );
 /**
  * The real activation work: RSVP table, post type/taxonomies, sample data,
  * portal rewrites, flush. Any fatal in here is caught by sfaf_activate().
+ *
+ * NOTHING HERE MAY TOUCH STORED CREDENTIALS. This runs on every activation,
+ * including the reactivation that follows installing a new version, so any
+ * option reset added here would wipe the connected platforms on every update.
+ * The credential store (sfaf_credentials), the GoFundMe Pro token
+ * (sfaf_gfmp_token), the Eventbrite verification record
+ * (sfaf_eventbrite_status) and uc_settings are all deliberately untouched —
+ * as is the whole plugin, which has no uninstall.php and no
+ * register_uninstall_hook, so even deleting it leaves them intact.
  */
 function sfaf_run_activation() {
     global $wpdb;
@@ -447,8 +461,7 @@ add_action( 'rest_api_init', 'sfaf_register_rest_routes' );
  * key is configured the feed is open so it works out of the box.
  */
 function sfaf_rest_events_permission( $request ) {
-    $settings = get_option( 'uc_settings', array() );
-    $key      = isset( $settings['multisite_api_key'] ) ? (string) $settings['multisite_api_key'] : '';
+    $key = SFAF_Credentials::get( 'multisite_api_key' );
     if ( $key === '' ) {
         return true;
     }

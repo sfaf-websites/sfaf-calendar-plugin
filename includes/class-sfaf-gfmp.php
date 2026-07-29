@@ -100,8 +100,7 @@ class SFAF_GFMP {
      * configured in code.
      */
     public static function token_endpoint() {
-        $settings = get_option( 'uc_settings', array() );
-        $configured = isset( $settings['gofundme_token_url'] ) ? trim( (string) $settings['gofundme_token_url'] ) : '';
+        $configured = SFAF_Credentials::get( 'gofundme_token_url' );
         $url = ( '' !== $configured ) ? $configured : self::DEFAULT_TOKEN_URL;
         return (string) apply_filters( 'sfaf_gfmp_token_endpoint', $url );
     }
@@ -113,8 +112,7 @@ class SFAF_GFMP {
      * the OpenAPI spec disagree about which host serves resources.
      */
     public static function api_base() {
-        $settings = get_option( 'uc_settings', array() );
-        $configured = isset( $settings['gofundme_api_base'] ) ? trim( (string) $settings['gofundme_api_base'] ) : '';
+        $configured = SFAF_Credentials::get( 'gofundme_api_base' );
         $url = ( '' !== $configured ) ? $configured : self::DEFAULT_API_BASE;
         return untrailingslashit( (string) apply_filters( 'sfaf_gfmp_api_base', $url ) );
     }
@@ -192,11 +190,10 @@ class SFAF_GFMP {
      * @return array{client_id:string,client_secret:string,org_id:string}
      */
     public static function credentials() {
-        $settings = get_option( 'uc_settings', array() );
         return array(
-            'client_id'     => isset( $settings['gofundme_client_id'] ) ? trim( (string) $settings['gofundme_client_id'] ) : '',
-            'client_secret' => isset( $settings['gofundme_client_secret'] ) ? trim( (string) $settings['gofundme_client_secret'] ) : '',
-            'org_id'        => isset( $settings['gofundme_org_id'] ) ? trim( (string) $settings['gofundme_org_id'] ) : '',
+            'client_id'     => SFAF_Credentials::get( 'gofundme_client_id' ),
+            'client_secret' => SFAF_Credentials::get( 'gofundme_client_secret' ),
+            'org_id'        => SFAF_Credentials::get( 'gofundme_org_id' ),
         );
     }
 
@@ -494,6 +491,12 @@ class SFAF_GFMP {
                 'endpoint' => self::token_endpoint(),
             ) );
         }
+
+        // Credentials that have just proven they work are persisted here and
+        // now, so a successful test followed by navigating away without
+        // pressing Save Changes does not quietly discard them.
+        SFAF_Credentials::set( 'gofundme_client_id', $client_id );
+        SFAF_Credentials::set( 'gofundme_client_secret', $client_secret );
 
         self::store_token( $token );
 
