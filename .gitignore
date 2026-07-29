@@ -7,6 +7,10 @@ Old Calendar Files/
 # Partial downloads
 *.crdownload
 
+# Chat/session handover transcripts — working notes, not part of the plugin
+*Transcript*.txt
+*transcript*.txt
+
 # OS cruft
 .DS_Store
 Thumbs.db
