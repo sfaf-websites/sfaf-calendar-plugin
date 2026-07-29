@@ -60,6 +60,15 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
     }
 
     /**
+     * Why this source was skipped, for the fetch report.
+     *
+     * @return string
+     */
+    public function inactive_reason() {
+        return 'no private token stored — add one under Settings → Eventbrite';
+    }
+
+    /**
      * Fetch upcoming published events across every organization.
      *
      * @return array|WP_Error {items, notes}
@@ -143,13 +152,36 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
             'timezone'        => isset( $item['start_timezone'] ) ? (string) $item['start_timezone'] : '',
             'location'        => $this->location( $item ),
             'source_url'      => isset( $item['url'] ) ? (string) $item['url'] : '',
-            'image_url'       => isset( $item['logo_url'] ) ? (string) $item['logo_url'] : '',
+            // The full-resolution original, not the cropped display version.
+            // logo.url is Eventbrite's sized crop; logo.original.url is the
+            // image as uploaded, which is what an event card wants to scale
+            // down from rather than up.
+            'image_url'       => $this->image_url( $item ),
         );
     }
 
     /* ---------------------------------------------------------------------
      * Mapping helpers
      * ------------------------------------------------------------------- */
+
+    /**
+     * The event image, preferring the full-resolution original.
+     *
+     * Eventbrite returns both: logo.url is a cropped, sized rendition and
+     * logo.original.url is the image as uploaded. The original is used so the
+     * calendar is scaling a large image down rather than a small one up.
+     *
+     * @param array $item Flattened row.
+     * @return string
+     */
+    private function image_url( $item ) {
+        foreach ( array( 'logo_original', 'logo_url' ) as $key ) {
+            if ( ! empty( $item[ $key ] ) && is_string( $item[ $key ] ) ) {
+                return $item[ $key ];
+            }
+        }
+        return '';
+    }
 
     /**
      * Split an Eventbrite local datetime into the date and time this calendar

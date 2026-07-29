@@ -319,10 +319,25 @@ function sfaf_donate_block( $post_id ) {
     $settings      = get_option( 'uc_settings', array() );
     $show_progress = ! isset( $settings['gofundme_show_progress'] ) || $settings['gofundme_show_progress'] === '1';
 
-    // Demo fundraising numbers (hardcoded percentage as requested).
-    $goal    = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
-    $percent = 65;
-    $raised  = $goal ? round( $goal * $percent / 100 ) : 0;
+    // Real figures when we have them. A campaign imported from GoFundMe Pro
+    // brings its goal, and its raised amount when that was available; those
+    // are used in preference to the placeholder below.
+    //
+    // The 65% is a demo number that predates the integration. It is kept only
+    // for events with no real raised figure, so nothing that used to render
+    // changes — but where real data exists it is never overridden by a
+    // made-up percentage.
+    $goal       = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
+    $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
+    $has_real   = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
+
+    if ( $has_real ) {
+        $raised  = (float) $raised_raw;
+        $percent = $goal > 0 ? (int) min( 100, round( $raised / $goal * 100 ) ) : 0;
+    } else {
+        $percent = 65;
+        $raised  = $goal ? round( $goal * $percent / 100 ) : 0;
+    }
 
     ob_start();
     ?>

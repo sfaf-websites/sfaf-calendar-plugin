@@ -81,6 +81,19 @@ abstract class SFAF_Source_Adapter {
     abstract public function is_active();
 
     /**
+     * Why this source is not active, for the fetch report.
+     *
+     * Concrete rather than abstract so an adapter need not implement it, but
+     * every adapter should: "GoFundMe Pro: not connected" is far less use than
+     * "GoFundMe Pro: no Organization ID stored".
+     *
+     * @return string
+     */
+    public function inactive_reason() {
+        return 'not configured';
+    }
+
+    /**
      * Pull everything this source has to offer.
      *
      * @return array|WP_Error {
@@ -345,10 +358,54 @@ class SFAF_Sources {
             update_post_meta( $post_id, self::META_SOURCE_URL, esc_url_raw( (string) $event['source_url'] ) );
         }
         if ( ! empty( $event['image_url'] ) ) {
-            update_post_meta( $post_id, self::META_IMAGE, esc_url_raw( (string) $event['image_url'] ) );
+            $image = esc_url_raw( (string) $event['image_url'] );
+
+            // Kept under our own key as a record of what the platform supplied.
+            update_post_meta( $post_id, self::META_IMAGE, $image );
+
+            // And written to _uc_image_url, which is the field the whole
+            // calendar actually renders from — sfaf_event_image_url(), the
+            // embed, the SEO tags and the portal's image preview all read it.
+            // Storing it only under META_IMAGE was why imported events showed
+            // the placeholder despite the fetch having the image all along.
+            //
+            // A URL, not a media-library attachment: third-party images stay
+            // remote by design. Events created here still use the media
+            // library's Choose Image, which sets a featured image and takes
+            // priority over this.
+            update_post_meta( $post_id, '_uc_image_url', $image );
+
+            // Mark it as this event's own image so a series image change does
+            // not overwrite what the platform gave us.
+            update_post_meta( $post_id, '_uc_image_override', '1' );
         }
         if ( ! empty( $event['timezone'] ) ) {
             update_post_meta( $post_id, self::META_TIMEZONE, sanitize_text_field( (string) $event['timezone'] ) );
+        }
+
+        // Platform-specific extras, written to meta this calendar already
+        // understands — the GoFundMe Pro adapter uses this to fill in
+        // _uc_gofundme_url and _uc_gofundme_goal so the donate block picks an
+        // imported campaign up with no special-casing anywhere.
+        //
+        // Restricted to _uc_-prefixed keys: an adapter describes an event, it
+        // does not get to write arbitrary post meta.
+        if ( ! empty( $event['meta'] ) && is_array( $event['meta'] ) ) {
+            foreach ( $event['meta'] as $meta_key => $meta_value ) {
+                $meta_key = (string) $meta_key;
+                if ( 0 !== strpos( $meta_key, '_uc_' ) || ! is_scalar( $meta_value ) ) {
+                    continue;
+                }
+                $meta_value = (string) $meta_value;
+                if ( '' === $meta_value ) {
+                    continue;
+                }
+                update_post_meta(
+                    $post_id,
+                    $meta_key,
+                    ( false !== strpos( $meta_key, '_url' ) ) ? esc_url_raw( $meta_value ) : sanitize_text_field( $meta_value )
+                );
+            }
         }
 
         return (int) $post_id;
@@ -367,6 +424,8 @@ class SFAF_Sources {
         $result = array(
             'slug'    => $adapter->slug(),
             'label'   => $adapter->label(),
+            'skipped' => false,
+            'reason'  => '',
             'fetched' => 0,
             'new'     => 0,
             'known'   => 0,
@@ -450,7 +509,29 @@ class SFAF_Sources {
     public static function run_all() {
         $results = array();
 
-        foreach ( self::active_adapters() as $adapter ) {
+        // Every REGISTERED adapter is reported on, not just the active ones.
+        // A source that is switched off says so and why; a source that ran and
+        // found nothing says that instead. Neither should look like the other,
+        // and neither should collapse into a bare "0 fetched".
+        foreach ( self::adapters() as $adapter ) {
+            if ( ! $adapter->is_active() ) {
+                $results[] = array(
+                    'slug'    => $adapter->slug(),
+                    'label'   => $adapter->label(),
+                    'skipped' => true,
+                    'reason'  => (string) $adapter->inactive_reason(),
+                    'fetched' => 0,
+                    'new'     => 0,
+                    'known'   => 0,
+                    'invalid' => 0,
+                    'failed'  => 0,
+                    'error'   => '',
+                    'notes'   => array(),
+                    'new_ids' => array(),
+                );
+                continue;
+            }
+
             try {
                 $results[] = self::run_adapter( $adapter );
             } catch ( \Throwable $e ) {
@@ -459,6 +540,8 @@ class SFAF_Sources {
                 $results[] = array(
                     'slug'    => $adapter->slug(),
                     'label'   => $adapter->label(),
+                    'skipped' => false,
+                    'reason'  => '',
                     'fetched' => 0,
                     'new'     => 0,
                     'known'   => 0,
@@ -481,8 +564,18 @@ class SFAF_Sources {
      * @return string
      */
     public static function summarize( $result ) {
+        if ( ! empty( $result['skipped'] ) ) {
+            return sprintf( '%s: not connected — %s', $result['label'], $result['reason'] );
+        }
+
         if ( '' !== $result['error'] ) {
             return sprintf( '%s: failed — %s', $result['label'], $result['error'] );
+        }
+
+        // A source that ran and found nothing has to say so in its own words:
+        // "0 new" beside "connected" reads very differently from silence.
+        if ( 0 === (int) $result['fetched'] ) {
+            return sprintf( '%s: connected, but the source returned no events at all.', $result['label'] );
         }
 
         $parts = array( sprintf( '%d new', (int) $result['new'] ) );
@@ -511,20 +604,43 @@ class SFAF_Sources {
      * @return int[] Post IDs.
      */
     public static function queue_ids( $status, $limit = 200 ) {
+        // Deliberately NOT ordered by the _uc_event_date meta. Setting
+        // meta_key in WP_Query implies the meta must exist, which would
+        // silently drop every dateless import — and plenty of GoFundMe Pro
+        // campaigns have no date at all, which is exactly the case the manager
+        // needs to see in order to fill it in. Fetch by status, sort below.
         $query = new WP_Query( array(
             'post_type'              => 'uc_event',
             'post_status'            => $status,
             'posts_per_page'         => (int) $limit,
-            'meta_key'               => '_uc_event_date',
-            'orderby'                => 'meta_value',
-            'order'                  => 'ASC',
+            'orderby'                => 'date',
+            'order'                  => 'DESC',
             'no_found_rows'          => true,
             'ignore_sticky_posts'    => true,
             'update_post_meta_cache' => true,
             'update_post_term_cache' => false,
         ) );
 
-        return wp_list_pluck( $query->posts, 'ID' );
+        $ids = wp_list_pluck( $query->posts, 'ID' );
+
+        // Soonest first, with the dateless ones last rather than missing. The
+        // meta cache is primed by the query above, so this costs no queries.
+        usort( $ids, function ( $a, $b ) {
+            $da = (string) get_post_meta( $a, '_uc_event_date', true );
+            $db = (string) get_post_meta( $b, '_uc_event_date', true );
+            if ( '' === $da && '' === $db ) {
+                return $b - $a; // newest import first among the dateless
+            }
+            if ( '' === $da ) {
+                return 1;
+            }
+            if ( '' === $db ) {
+                return -1;
+            }
+            return strcmp( $da, $db );
+        } );
+
+        return $ids;
     }
 
     /** How many events sit in a queue status. */

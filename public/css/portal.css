@@ -229,3 +229,4 @@ body.uc-portal {
 .uc-fetch-ok { border-left-color: #10b981; }
 .uc-fetch-fail { border-left-color: #ef4444; }
 .uc-fetch-notes { margin: 6px 0 0 18px; padding: 0; list-style: disc; font-size: 12px; color: #6B7280; }
+.uc-fetch-skip { border-left-color: #9ca3af; color: #6B7280; }

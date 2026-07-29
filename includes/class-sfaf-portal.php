@@ -741,7 +741,9 @@ class SFAF_Portal {
                     <form method="post" action="<?php echo esc_url( $this->url() ); ?>" class="uc-inline-form">
                         <input type="hidden" name="uc_action" value="fetch_sources" />
                         <?php wp_nonce_field( 'uc_portal_fetch_sources', 'uc_nonce' ); ?>
-                        <button type="submit" class="uc-btn"<?php echo empty( $active_sources ) ? ' disabled' : ''; ?>>Fetch updates</button>
+                        <?php // Enabled whenever any source is built, even if none is connected —
+                              // pressing it then reports what each one is waiting for. ?>
+                        <button type="submit" class="uc-btn"<?php echo empty( SFAF_Sources::adapters() ) ? ' disabled' : ''; ?>>Fetch updates</button>
                     </form>
                 <?php endif; ?>
                 <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
@@ -789,14 +791,25 @@ class SFAF_Portal {
         $results = get_transient( $key );
 
         if ( false === $results ) {
-            // Nothing just ran. Say so only when there is nothing to fetch
-            // from, which is the case worth explaining.
+            // Nothing just ran. When no source is connected, name each one and
+            // say what it is waiting for — "no sources connected" on its own
+            // gives nobody anything to act on.
             if ( empty( $active_sources ) ) {
+                $all = SFAF_Sources::adapters();
                 ?>
                 <div class="uc-card uc-card-muted">
                     <p class="uc-empty">No third-party sources are connected yet. Connect one under
                     <strong>Settings &rsaquo; Integrations</strong> in the WordPress admin, then
                     &ldquo;Fetch updates&rdquo; will pull its events into the Pending queue.</p>
+                    <?php if ( ! empty( $all ) ) : ?>
+                        <ul class="uc-fetch-report">
+                            <?php foreach ( $all as $adapter ) : ?>
+                                <li class="uc-fetch-skip"><?php
+                                    echo esc_html( $adapter->label() . ': ' . $adapter->inactive_reason() );
+                                ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
                 </div>
                 <?php
             }
@@ -805,7 +818,20 @@ class SFAF_Portal {
 
         delete_transient( $key );
 
-        if ( ! is_array( $results ) || empty( $results ) ) {
+        if ( ! is_array( $results ) ) {
+            $results = array();
+        }
+
+        // A run with nothing registered at all still has to say something —
+        // previously this returned silently and the flash message pointed at
+        // results that were never rendered.
+        if ( empty( $results ) ) {
+            ?>
+            <div class="uc-card">
+                <div class="uc-card-head"><h2>Fetch results</h2></div>
+                <p class="uc-empty">No third-party sources are registered in this build, so there was nothing to fetch.</p>
+            </div>
+            <?php
             return;
         }
         ?>
@@ -813,8 +839,16 @@ class SFAF_Portal {
             <div class="uc-card-head"><h2>Fetch results</h2>
                 <a href="<?php echo esc_url( $this->url( 'pending' ) ); ?>">Review pending &rarr;</a></div>
             <ul class="uc-fetch-report">
-                <?php foreach ( $results as $result ) : ?>
-                    <li class="<?php echo ! empty( $result['error'] ) ? 'uc-fetch-fail' : 'uc-fetch-ok'; ?>">
+                <?php foreach ( $results as $result ) :
+                    if ( ! empty( $result['skipped'] ) ) {
+                        $row_class = 'uc-fetch-skip';
+                    } elseif ( ! empty( $result['error'] ) ) {
+                        $row_class = 'uc-fetch-fail';
+                    } else {
+                        $row_class = 'uc-fetch-ok';
+                    }
+                    ?>
+                    <li class="<?php echo esc_attr( $row_class ); ?>">
                         <?php echo esc_html( SFAF_Sources::summarize( $result ) ); ?>
                         <?php if ( ! empty( $result['notes'] ) ) : ?>
                             <ul class="uc-fetch-notes">
@@ -1539,11 +1573,13 @@ class SFAF_Portal {
                 $end      = get_post_meta( $id, '_uc_end_time', true );
                 $location = get_post_meta( $id, '_uc_location', true );
 
-                $when = $date ? date_i18n( 'M j, Y', strtotime( $date ) ) : '—';
+                // A campaign with no date is normal, not broken — say so
+                // rather than showing a bare dash the manager has to decode.
+                $when = $date ? date_i18n( 'M j, Y', strtotime( $date ) ) : 'No date — set it when publishing';
                 if ( $date && $start ) {
                     $when .= ' · ' . $start . ( $end ? '–' . $end : '' );
                 }
-                if ( $prov['timezone'] ) {
+                if ( $date && $prov['timezone'] ) {
                     $when .= ' (' . $prov['timezone'] . ')';
                 }
                 ?>

@@ -425,6 +425,231 @@ class SFAF_GFMP {
         return $token['access_token'];
     }
 
+    /* ---------------------------------------------------------------------
+     * Data calls — campaigns
+     *
+     * LIST   GET {data_base}/organizations/{organization_id}/campaigns
+     *              ?page=N&per_page=100
+     *              Authorization: Bearer <access token>
+     *              x-integration-id: <integration ID>
+     *
+     * Paginated in the Laravel style the spec documents as PaginatedResponse:
+     * the rows are under `data`, and `current_page` / `last_page` say whether
+     * to keep going.
+     * ------------------------------------------------------------------- */
+
+    /** Pages to follow before giving up, unless filtered. */
+    const DEFAULT_MAX_PAGES = 20;
+
+    /** Rows per page to request. */
+    const DEFAULT_PER_PAGE = 100;
+
+    /**
+     * Request arguments carrying the bearer token.
+     *
+     * The one place the Authorization header is built for data calls, layered
+     * over request_args() so the User-Agent, Accept and x-integration-id
+     * headers come along automatically.
+     *
+     * @param string $token Access token.
+     * @param array  $args  Arguments to merge over the defaults.
+     * @return array
+     */
+    public static function auth_args( $token, $args = array() ) {
+        $headers = isset( $args['headers'] ) && is_array( $args['headers'] ) ? $args['headers'] : array();
+        $headers['Authorization'] = 'Bearer ' . trim( (string) $token );
+        $args['headers'] = $headers;
+        return self::request_args( $args );
+    }
+
+    /**
+     * GET a URL with the bearer token and return its decoded JSON.
+     *
+     * Same treatment every other call in this file gets: bot-challenge check
+     * first, then status, then "is this even JSON", with the real status and
+     * endpoint named in any error.
+     *
+     * @param string $token Access token.
+     * @param string $url   Absolute URL.
+     * @return array|WP_Error
+     */
+    private static function request_json( $token, $url ) {
+        $response = wp_remote_get( $url, self::auth_args( $token ) );
+
+        if ( is_wp_error( $response ) ) {
+            return new WP_Error(
+                'sfaf_gfmp_unreachable',
+                sprintf( 'Could not reach %s — %s', $url, $response->get_error_message() )
+            );
+        }
+
+        $status = (int) wp_remote_retrieve_response_code( $response );
+        $raw    = (string) wp_remote_retrieve_body( $response );
+        $body   = json_decode( $raw, true );
+
+        $challenge = self::challenge_detail( $response, $raw );
+        if ( '' !== $challenge ) {
+            return new WP_Error(
+                'sfaf_gfmp_challenge',
+                sprintf( 'HTTP %d from %s — %s', $status, $url, $challenge )
+            );
+        }
+
+        if ( 200 !== $status ) {
+            return new WP_Error(
+                'sfaf_gfmp_http_' . $status,
+                sprintf( 'HTTP %d from %s — %s', $status, $url, self::error_detail( $body, $raw, $status ) )
+            );
+        }
+
+        if ( ! is_array( $body ) ) {
+            return new WP_Error(
+                'sfaf_gfmp_unexpected',
+                sprintf( 'HTTP 200 from %s but the response was not JSON. %s', $url, self::error_detail( $body, $raw, $status ) )
+            );
+        }
+
+        return $body;
+    }
+
+    /**
+     * Build a full data URL.
+     *
+     * @param string $path  Path below the data base.
+     * @param array  $query Query arguments.
+     * @return string
+     */
+    public static function endpoint( $path, $query = array() ) {
+        $url = self::api_base() . '/' . ltrim( (string) $path, '/' );
+        if ( ! empty( $query ) ) {
+            $url = add_query_arg( $query, $url );
+        }
+        return $url;
+    }
+
+    /**
+     * Every campaign belonging to the configured organization.
+     *
+     * @return array|WP_Error {items, pages, truncated, truncated_reason, endpoint, org_id}
+     */
+    public static function fetch_campaigns() {
+        $creds  = self::credentials();
+        $org_id = $creds['org_id'];
+
+        if ( '' === $org_id ) {
+            return new WP_Error(
+                'sfaf_gfmp_missing_org',
+                'No GoFundMe Pro Organization ID is stored. Add it under Settings → GoFundMe Pro — campaign calls are addressed to /organizations/{id}/campaigns and cannot be made without it.'
+            );
+        }
+
+        $token = self::get_access_token();
+        if ( is_wp_error( $token ) ) {
+            return $token;
+        }
+
+        $max_pages = (int) apply_filters( 'sfaf_gfmp_max_pages', self::DEFAULT_MAX_PAGES );
+        if ( $max_pages < 1 ) {
+            $max_pages = 1;
+        }
+        $per_page = (int) apply_filters( 'sfaf_gfmp_per_page', self::DEFAULT_PER_PAGE );
+        if ( $per_page < 1 ) {
+            $per_page = self::DEFAULT_PER_PAGE;
+        }
+
+        $path             = 'organizations/' . rawurlencode( $org_id ) . '/campaigns';
+        $items            = array();
+        $page             = 1;
+        $pages            = 0;
+        $truncated        = false;
+        $truncated_reason = '';
+        $first_endpoint   = self::endpoint( $path, array( 'page' => 1, 'per_page' => $per_page ) );
+
+        do {
+            $url  = self::endpoint( $path, array( 'page' => $page, 'per_page' => $per_page ) );
+            $body = self::request_json( $token, $url );
+            if ( is_wp_error( $body ) ) {
+                return $body;
+            }
+            $pages++;
+
+            if ( isset( $body['data'] ) && is_array( $body['data'] ) ) {
+                foreach ( $body['data'] as $row ) {
+                    if ( is_array( $row ) ) {
+                        $items[] = $row;
+                    }
+                }
+            } elseif ( 1 === $pages ) {
+                $keys = array_keys( $body );
+                return new WP_Error(
+                    'sfaf_gfmp_unexpected',
+                    sprintf(
+                        'HTTP 200 from %s but the response had no "data" list. Keys returned: %s',
+                        $url,
+                        empty( $keys ) ? '(none)' : implode( ', ', $keys )
+                    )
+                );
+            }
+
+            $current   = isset( $body['current_page'] ) ? (int) $body['current_page'] : $page;
+            $last      = isset( $body['last_page'] ) ? (int) $body['last_page'] : $current;
+            $has_more  = ( $current < $last );
+            $page      = $current + 1;
+
+            if ( $has_more && $pages >= $max_pages ) {
+                $truncated        = true;
+                $truncated_reason = sprintf(
+                    'Stopped at the %d-page limit with %d pages still to read. Raise it with the sfaf_gfmp_max_pages filter.',
+                    $max_pages,
+                    $last - $current
+                );
+                break;
+            }
+        } while ( $has_more );
+
+        return array(
+            'items'            => $items,
+            'pages'            => $pages,
+            'truncated'        => $truncated,
+            'truncated_reason' => $truncated_reason,
+            'endpoint'         => $first_endpoint,
+            'org_id'           => $org_id,
+        );
+    }
+
+    /**
+     * Aggregate totals for one campaign — the raised amount for a progress bar.
+     *
+     * A CAVEAT WORTH KNOWING: the supplied API specification defines a
+     * CampaignAggregates schema (raised_amount, progress_bar_amount, …) but
+     * documents no path that returns it. It documents /fundraising-pages/{id}
+     * /overview and /fundraising-teams/{id}/overview, so the campaign
+     * equivalent used here follows that same pattern — but it is not in the
+     * spec, and it may simply not exist on this account.
+     *
+     * So this fails soft on purpose. A failure is not an error the import
+     * reports; it just means no raised figure, and the goal (which does come
+     * from the documented campaign record) is used on its own.
+     *
+     * @param string $token      Access token.
+     * @param string $campaign_id
+     * @return array|WP_Error
+     */
+    public static function fetch_campaign_overview( $token, $campaign_id ) {
+        $campaign_id = trim( (string) $campaign_id );
+        if ( '' === $campaign_id ) {
+            return new WP_Error( 'sfaf_gfmp_missing_campaign', 'A campaign ID is required.' );
+        }
+
+        $path = (string) apply_filters(
+            'sfaf_gfmp_campaign_overview_path',
+            'campaigns/' . rawurlencode( $campaign_id ) . '/overview',
+            $campaign_id
+        );
+
+        return self::request_json( $token, self::endpoint( $path ) );
+    }
+
     /**
      * Connection status for the settings screen.
      *
