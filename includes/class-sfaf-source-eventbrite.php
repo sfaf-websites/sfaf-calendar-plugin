@@ -49,6 +49,24 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
     }
 
     /**
+     * The fields Eventbrite owns on an imported event.
+     *
+     * The only change this release makes to this adapter. It is the same set
+     * of fields the refresh path was already writing, written down so the
+     * editor can lock exactly what a fetch will overwrite instead of the two
+     * being maintained separately and drifting apart.
+     *
+     * Eventbrite supplies a real description and a real logo, so unlike
+     * GoFundMe Pro both are platform-owned here and there are no
+     * manager_fields() to declare.
+     *
+     * @return string[]
+     */
+    public function owned_fields() {
+        return array( 'title', 'description', 'date', 'start_time', 'end_time', 'end_date', 'location', 'image', 'source_url' );
+    }
+
+    /**
      * Active once a private token is stored.
      *
      * Deliberately not "and the connection test has passed" — a token that

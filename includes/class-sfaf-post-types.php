@@ -348,9 +348,62 @@ class SFAF_Post_Types {
     }
 
     /**
-     * Reusable FAQ repeater markup for a given POST field name.
+     * Whether a platform owns this event's FAQ rows.
+     *
+     * Read from the adapter, exactly as the /caladmin portal does, so the two
+     * editors cannot disagree about which rows belong to whom.
+     *
+     * @param int $post_id
+     * @return string Platform label when owned, '' otherwise.
      */
-    private function faq_repeater_html( $name, $faqs ) {
+    private function faq_source_label( $post_id ) {
+        $source = (string) get_post_meta( (int) $post_id, SFAF_Sources::META_SOURCE, true );
+        if ( '' === $source ) {
+            return '';
+        }
+        if ( ! in_array( 'faqs', SFAF_Sources::owned_fields_for( $source ), true ) ) {
+            return '';
+        }
+        return SFAF_Sources::source_label( $source );
+    }
+
+    /**
+     * Reusable FAQ repeater markup for a given POST field name.
+     *
+     * Imported rows are listed read-only and carry no form fields, so nothing
+     * about them is submitted and save_meta() reads them back from the
+     * database instead. See the longer note on SFAF_Portal::faq_repeater().
+     *
+     * @param string $name  POST field name for the editable rows.
+     * @param array  $faqs  All rows, imported and manual.
+     * @param string $label Platform that owns the imported rows, or ''.
+     */
+    private function faq_repeater_html( $name, $faqs, $label = '' ) {
+        if ( '' !== $label ) {
+            $imported = array();
+            $manual   = array();
+            foreach ( $faqs as $f ) {
+                if ( sfaf_faq_is_imported( $f ) ) {
+                    $imported[] = $f;
+                } else {
+                    $manual[] = $f;
+                }
+            }
+            $faqs = $manual;
+
+            echo '<p class="description"><strong>' . (int) count( $imported ) . ' question(s) from ' . esc_html( $label )
+                . '.</strong> These are refreshed from the campaign on every fetch, so they cannot be edited here — an edit would be overwritten. '
+                . 'Change them at ' . esc_html( $label ) . '.</p>';
+            if ( ! empty( $imported ) ) {
+                echo '<ul class="uc-faq-readonly">';
+                foreach ( $imported as $f ) {
+                    echo '<li><strong>' . esc_html( $f['question'] ) . '</strong><br>' . esc_html( $f['answer'] ) . '</li>';
+                }
+                echo '</ul>';
+            }
+            echo '<p class="description" style="margin-top:12px;"><strong>Your own questions</strong> — kept forever, never reordered or removed by a fetch.</p>';
+            echo '<input type="hidden" name="uc_faq_has_manual" value="1" />';
+        }
         ?>
         <div class="uc-repeater" data-repeater="<?php echo esc_attr( $name ); ?>">
             <div class="uc-repeater-rows">
@@ -407,14 +460,14 @@ class SFAF_Post_Types {
             }
             echo '<label class="uc-display-toggle"><input type="checkbox" name="uc_faq_override" value="1" ' . checked( sfaf_faq_is_override( $post->ID ), true, false ) . ' /> Replace the series FAQ with the event-specific FAQ below</label>';
             echo '<p class="description" style="margin-top:12px;"><strong>Event-specific FAQ</strong></p>';
-            $this->faq_repeater_html( 'uc_event_faq', sfaf_get_event_faq( $post->ID ) );
+            $this->faq_repeater_html( 'uc_event_faq', sfaf_get_event_faq( $post->ID ), $this->faq_source_label( $post->ID ) );
             echo '</div>';
             return;
         }
 
         // Standalone event.
         echo '<p class="description" style="margin-top:0;">Frequently asked questions for this event.</p>';
-        $this->faq_repeater_html( 'uc_series_faq', sfaf_normalize_faqs( get_post_meta( $post->ID, '_uc_series_faq', true ) ) );
+        $this->faq_repeater_html( 'uc_series_faq', sfaf_normalize_faqs( get_post_meta( $post->ID, '_uc_series_faq', true ) ), $this->faq_source_label( $post->ID ) );
         echo '</div>';
     }
 
@@ -514,14 +567,47 @@ class SFAF_Post_Types {
         // child (event-specific FAQ + replace toggle) and standalone (own FAQ).
         $sp       = (int) get_post_meta( $post_id, '_uc_series_parent', true );
         $is_child = $sp && $sp !== (int) $post_id;
+
+        // Rows a platform owns are never read from the browser: they carry no
+        // form fields, so they are read back from the database and put in
+        // front of whatever was submitted. sanitize_faq_post() keeps only
+        // question and answer, so a tampered POST cannot claim to be one.
+        $faq_locked = ( '' !== $this->faq_source_label( $post_id ) );
+        $merge_faq  = function ( $meta_key, $posted ) use ( $post_id, $faq_locked ) {
+            $rows = $this->sanitize_faq_post( $posted );
+            if ( ! $faq_locked ) {
+                return $rows;
+            }
+            $keep = array();
+            foreach ( sfaf_normalize_faqs( get_post_meta( $post_id, $meta_key, true ) ) as $row ) {
+                if ( sfaf_faq_is_imported( $row ) ) {
+                    $keep[] = $row;
+                }
+            }
+            return array_merge( $keep, $rows );
+        };
+
+        // An empty repeater submits nothing, which is indistinguishable from
+        // "the box was not on this screen" — hence the marker field.
+        $posted_faq = function ( $field ) {
+            if ( isset( $_POST[ $field ] ) ) {
+                return $_POST[ $field ];
+            }
+            return isset( $_POST['uc_faq_has_manual'] ) ? array() : null;
+        };
+
         if ( $is_child ) {
-            if ( isset( $_POST['uc_event_faq'] ) ) {
-                update_post_meta( $post_id, '_uc_event_faq', $this->sanitize_faq_post( $_POST['uc_event_faq'] ) );
+            $rows = $posted_faq( 'uc_event_faq' );
+            if ( null !== $rows ) {
+                update_post_meta( $post_id, '_uc_event_faq', $merge_faq( '_uc_event_faq', $rows ) );
             }
             update_post_meta( $post_id, '_uc_faq_override', isset( $_POST['uc_faq_override'] ) ? '1' : '0' );
-        } elseif ( ! $sp && isset( $_POST['uc_series_faq'] ) ) {
+        } elseif ( ! $sp ) {
             // Standalone event keeps its FAQ in _uc_series_faq.
-            update_post_meta( $post_id, '_uc_series_faq', $this->sanitize_faq_post( $_POST['uc_series_faq'] ) );
+            $rows = $posted_faq( 'uc_series_faq' );
+            if ( null !== $rows ) {
+                update_post_meta( $post_id, '_uc_series_faq', $merge_faq( '_uc_series_faq', $rows ) );
+            }
         }
 
         // Image override: reset to series image, or flag a per-event image.

@@ -465,35 +465,86 @@ class SFAF_GFMP {
     }
 
     /**
+     * The published rate limit: 300 requests per minute (5/sec) per
+     * application, confirmed by GoFundMe Pro support. A breach answers 429
+     * with a retry_after.
+     *
+     * Recorded as a constant so the numbers the import path budgets against
+     * are written down rather than remembered. An hourly run over ~20
+     * campaigns costs roughly 40 requests (one overview and one FAQ page
+     * each), which is an eighth of one minute's allowance.
+     */
+    const RATE_LIMIT_PER_MINUTE = 300;
+
+    /** How many times a 429 is waited out before giving up. */
+    const RATE_LIMIT_RETRIES = 2;
+
+    /** Never sleep longer than this for a retry_after, whatever it says. */
+    const RATE_LIMIT_MAX_WAIT = 10;
+
+    /**
      * GET a URL with the bearer token and return its decoded JSON.
      *
      * Same treatment every other call in this file gets: bot-challenge check
      * first, then status, then "is this even JSON", with the real status and
      * endpoint named in any error.
      *
+     * A 429 is the one status that is retried rather than reported. Support
+     * confirmed the limit is 300 requests/minute with a retry_after on the
+     * response, so being told to wait is an instruction, not a failure — and
+     * the alternative is a whole source's fetch reporting an error because one
+     * call arrived a second early.
+     *
      * @param string $token Access token.
      * @param string $url   Absolute URL.
      * @return array|WP_Error
      */
     private static function request_json( $token, $url ) {
-        $response = wp_remote_get( $url, self::auth_args( $token ) );
+        $attempts = 0;
 
-        if ( is_wp_error( $response ) ) {
-            return new WP_Error(
-                'sfaf_gfmp_unreachable',
-                sprintf( 'Could not reach %s — %s', $url, $response->get_error_message() )
-            );
-        }
+        do {
+            $response = wp_remote_get( $url, self::auth_args( $token ) );
 
-        $status = (int) wp_remote_retrieve_response_code( $response );
-        $raw    = (string) wp_remote_retrieve_body( $response );
-        $body   = json_decode( $raw, true );
+            if ( is_wp_error( $response ) ) {
+                return new WP_Error(
+                    'sfaf_gfmp_unreachable',
+                    sprintf( 'Could not reach %s — %s', $url, $response->get_error_message() )
+                );
+            }
+
+            $status = (int) wp_remote_retrieve_response_code( $response );
+            if ( 429 !== $status || $attempts >= self::RATE_LIMIT_RETRIES ) {
+                break;
+            }
+
+            $attempts++;
+            $wait = (int) wp_remote_retrieve_header( $response, 'retry-after' );
+            if ( $wait < 1 ) {
+                $wait = 1;
+            }
+            sleep( min( $wait, self::RATE_LIMIT_MAX_WAIT ) );
+        } while ( true );
+
+        $raw  = (string) wp_remote_retrieve_body( $response );
+        $body = json_decode( $raw, true );
 
         $challenge = self::challenge_detail( $response, $raw );
         if ( '' !== $challenge ) {
             return new WP_Error(
                 'sfaf_gfmp_challenge',
                 sprintf( 'HTTP %d from %s — %s', $status, $url, $challenge )
+            );
+        }
+
+        if ( 429 === $status ) {
+            return new WP_Error(
+                'sfaf_gfmp_rate_limited',
+                sprintf(
+                    'HTTP 429 from %s — rate limited after %d retries. The published limit is %d requests/minute per application.',
+                    $url,
+                    self::RATE_LIMIT_RETRIES,
+                    self::RATE_LIMIT_PER_MINUTE
+                )
             );
         }
 
@@ -662,16 +713,29 @@ class SFAF_GFMP {
     /**
      * Aggregate totals for one campaign — the raised amount for a progress bar.
      *
-     * A CAVEAT WORTH KNOWING: the supplied API specification defines a
-     * CampaignAggregates schema (raised_amount, progress_bar_amount, …) but
-     * documents no path that returns it. It documents /fundraising-pages/{id}
-     * /overview and /fundraising-teams/{id}/overview, so the campaign
-     * equivalent used here follows that same pattern — but it is not in the
-     * spec, and it may simply not exist on this account.
+     * GET {data_base}/campaigns/{id}/overview
      *
-     * So this fails soft on purpose. A failure is not an error the import
-     * reports; it just means no raised figure, and the goal (which does come
-     * from the documented campaign record) is used on its own.
+     * THIS ENDPOINT IS SUPPORTED. GoFundMe Pro support confirmed it directly:
+     * its absence from the supplied OpenAPI specification is a gap in their
+     * documentation, which they are fixing, not a missing feature. Earlier
+     * releases hedged about whether it existed at all; it does, it answers on
+     * this path with the token and headers already in use, and the raw probe
+     * proved it in the same request context as the import.
+     *
+     * THE FIELDS IT ACTUALLY RETURNS, observed on campaign 773343:
+     *
+     *     gross_amount        1833      donations before fees
+     *     total_gross_amount  1833      equal to gross_amount on this account
+     *     net_amount          1817.22   after fees
+     *     fees_amount         15.78
+     *     percent_to_goal     1.833     1833 / 100000 — computed from GROSS
+     *
+     * There is NO raised_amount, progress_bar_amount or
+     * total_online_funds_raised. Those are CampaignAggregates names from the
+     * specification and reading them was the actual cause of the "no raised
+     * amounts were available" report: the request succeeded every time and the
+     * body was then searched for keys that were never in it. See
+     * SFAF_Source_GFMP::raised_amount() for which one is mapped and why.
      *
      * @param string $token      Access token.
      * @param string $campaign_id
@@ -690,6 +754,90 @@ class SFAF_GFMP {
         );
 
         return self::request_json( $token, self::endpoint( $path ) );
+    }
+
+    /* ---------------------------------------------------------------------
+     * Campaign FAQs
+     *
+     * GET {data_base}/campaigns/{id}/faqs?page=N&per_page=100
+     *
+     * Confirmed by probe: campaign 773343 returned 11 real FAQs, each with
+     * question, answer, weight, tag and its own id. Paginated in the same
+     * Laravel style as the campaign list — rows under `data`, current_page /
+     * last_page driving the loop — so this follows pagination properly rather
+     * than assuming one page. The probe used per_page 20 and happened to fit
+     * in one page; that is not something to build on.
+     * ------------------------------------------------------------------- */
+
+    /** Rows per FAQ page to request. */
+    const DEFAULT_FAQ_PER_PAGE = 100;
+
+    /** FAQ pages to follow before giving up. */
+    const DEFAULT_FAQ_MAX_PAGES = 10;
+
+    /**
+     * Every FAQ on one campaign.
+     *
+     * `complete` is the thing the caller must respect: it is false when the
+     * page run was cut short, and a run that is not complete must never be
+     * used to conclude that an FAQ has been deleted at the source.
+     *
+     * @param string $token       Access token.
+     * @param string $campaign_id
+     * @return array|WP_Error {items:array[], pages:int, complete:bool}
+     */
+    public static function fetch_campaign_faqs( $token, $campaign_id ) {
+        $campaign_id = trim( (string) $campaign_id );
+        if ( '' === $campaign_id ) {
+            return new WP_Error( 'sfaf_gfmp_missing_campaign', 'A campaign ID is required.' );
+        }
+
+        $per_page = (int) apply_filters( 'sfaf_gfmp_faq_per_page', self::DEFAULT_FAQ_PER_PAGE );
+        if ( $per_page < 1 ) {
+            $per_page = self::DEFAULT_FAQ_PER_PAGE;
+        }
+        $max_pages = (int) apply_filters( 'sfaf_gfmp_faq_max_pages', self::DEFAULT_FAQ_MAX_PAGES );
+        if ( $max_pages < 1 ) {
+            $max_pages = 1;
+        }
+
+        $path     = 'campaigns/' . rawurlencode( $campaign_id ) . '/faqs';
+        $items    = array();
+        $page     = 1;
+        $pages    = 0;
+        $complete = true;
+
+        do {
+            $body = self::request_json( $token, self::endpoint( $path, array( 'page' => $page, 'per_page' => $per_page ) ) );
+            if ( is_wp_error( $body ) ) {
+                return $body;
+            }
+            $pages++;
+
+            if ( isset( $body['data'] ) && is_array( $body['data'] ) ) {
+                foreach ( $body['data'] as $row ) {
+                    if ( is_array( $row ) ) {
+                        $items[] = $row;
+                    }
+                }
+            }
+
+            $current  = isset( $body['current_page'] ) ? (int) $body['current_page'] : $page;
+            $last     = isset( $body['last_page'] ) ? (int) $body['last_page'] : $current;
+            $has_more = ( $current < $last );
+            $page     = $current + 1;
+
+            if ( $has_more && $pages >= $max_pages ) {
+                $complete = false;
+                break;
+            }
+        } while ( $has_more );
+
+        return array(
+            'items'    => $items,
+            'pages'    => $pages,
+            'complete' => $complete,
+        );
     }
 
     /* =====================================================================

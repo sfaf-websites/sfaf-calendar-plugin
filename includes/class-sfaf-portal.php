@@ -353,12 +353,36 @@ class SFAF_Portal {
             $status = 'draft';
         }
 
+        // WHICH FIELDS THIS SAVE IS ALLOWED TO WRITE.
+        //
+        // A locked field renders `disabled`, and a disabled control submits
+        // NOTHING — so without this, saving an imported event would read '' for
+        // its title and description and write both back, replacing a real title
+        // with "(untitled event)" and blanking the description. Every meta
+        // field below is already guarded by isset(), which handles the absent
+        // case correctly; these two are not, because they have fallbacks.
+        //
+        // The list comes from the adapter, so it is the same list the editor
+        // disabled and the same list a fetch overwrites.
+        $src_slug   = $event_id ? (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) : '';
+        $src_owned  = ( '' !== $src_slug ) ? SFAF_Sources::owned_fields_for( $src_slug ) : array();
+        $is_locked  = function ( $field ) use ( $src_owned ) {
+            return in_array( $field, $src_owned, true );
+        };
+
         $postarr = array(
-            'post_type'    => 'uc_event',
-            'post_title'   => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ) ?: '(untitled event)',
-            'post_content' => wp_kses_post( wp_unslash( $_POST['description'] ?? '' ) ),
-            'post_status'  => $status,
+            'post_type'   => 'uc_event',
+            'post_status' => $status,
         );
+        // Locked means locked in both directions: a submitted value for a
+        // locked field is ignored rather than trusted, so tampering with the
+        // form achieves nothing that the next fetch would not undo anyway.
+        if ( ! $is_locked( 'title' ) ) {
+            $postarr['post_title'] = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ) ?: '(untitled event)';
+        }
+        if ( ! $is_locked( 'description' ) ) {
+            $postarr['post_content'] = wp_kses_post( wp_unslash( $_POST['description'] ?? '' ) );
+        }
 
         if ( $is_new ) {
             $postarr['post_author'] = $user->ID;
@@ -382,11 +406,16 @@ class SFAF_Portal {
             'capacity'   => '_uc_capacity',
         );
         foreach ( $text as $field => $key ) {
+            if ( $is_locked( $field ) ) {
+                continue; // the platform's, and a fetch would put it back anyway
+            }
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $event_id, $key, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
             }
         }
-        if ( isset( $_POST['gofundme_url'] ) ) {
+        // The Donate URL is the campaign link on an imported campaign, which a
+        // fetch writes, so it locks under source_url.
+        if ( isset( $_POST['gofundme_url'] ) && ! $is_locked( 'source_url' ) ) {
             update_post_meta( $event_id, '_uc_gofundme_url', esc_url_raw( wp_unslash( $_POST['gofundme_url'] ) ) );
         }
         if ( isset( $_POST['organizer_email'] ) ) {
@@ -408,7 +437,13 @@ class SFAF_Portal {
 
         // Featured image: uploaded attachment wins, pasted URL is the fallback.
         // "Reset to series image" clears the event's own image so it inherits.
-        if ( isset( $_POST['reset_series_image'] ) ) {
+        //
+        // Skipped entirely when the platform owns the image: those controls
+        // are not rendered at all, so the featured_image_id hidden field is
+        // absent and this block would read 0 and strip the thumbnail.
+        if ( $is_locked( 'image' ) ) {
+            // nothing to do — the source's image lives in its own meta key
+        } elseif ( isset( $_POST['reset_series_image'] ) ) {
             delete_post_thumbnail( $event_id );
             delete_post_meta( $event_id, '_uc_image_url' );
             delete_post_meta( $event_id, '_uc_image_override' );
@@ -463,13 +498,58 @@ class SFAF_Portal {
             }
             return $faqs;
         };
+        /*
+         * IMPORTED FAQ ROWS ARE NEVER READ FROM THE BROWSER.
+         *
+         * When a platform owns the FAQ block, its rows render disabled and
+         * without a `name`, so nothing about them is submitted. They are read
+         * back from the database here and put in front of whatever the form
+         * did submit, which is by definition only the manual rows.
+         *
+         * That ordering is the same one sync_faqs() writes — imported first,
+         * manual after — so a save does not reshuffle the block, and a POST
+         * that has been tampered with cannot rewrite, reorder or delete a row
+         * that belongs to the source. $clean_faq keeps only question and
+         * answer, so it cannot smuggle in a source_faq_id either.
+         */
+        $faq_locked = $is_locked( 'faqs' );
+        $merge_faq  = function ( $meta_key, $posted ) use ( $event_id, $faq_locked, $clean_faq ) {
+            $rows = $clean_faq( $posted );
+            if ( ! $faq_locked ) {
+                return $rows;
+            }
+            $keep = array();
+            foreach ( sfaf_normalize_faqs( get_post_meta( $event_id, $meta_key, true ) ) as $row ) {
+                if ( sfaf_faq_is_imported( $row ) ) {
+                    $keep[] = $row;
+                }
+            }
+            return array_merge( $keep, $rows );
+        };
+
+        // A repeater with no rows submits nothing at all, which is
+        // indistinguishable from "the block was not on this form" — so the
+        // locked FAQ block ships a marker field. With it present, an absent
+        // row array means "the manual rows were all deleted" rather than
+        // "leave the meta alone".
+        $posted_faq = function ( $field ) {
+            if ( isset( $_POST[ $field ] ) ) {
+                return $_POST[ $field ];
+            }
+            return isset( $_POST['uc_faq_has_manual'] ) ? array() : null;
+        };
+
         if ( $is_child ) {
-            if ( isset( $_POST['uc_event_faq'] ) ) {
-                update_post_meta( $event_id, '_uc_event_faq', $clean_faq( $_POST['uc_event_faq'] ) );
+            $rows = $posted_faq( 'uc_event_faq' );
+            if ( null !== $rows ) {
+                update_post_meta( $event_id, '_uc_event_faq', $merge_faq( '_uc_event_faq', $rows ) );
             }
             update_post_meta( $event_id, '_uc_faq_override', isset( $_POST['faq_override'] ) ? '1' : '0' );
-        } elseif ( ! $sp_now && isset( $_POST['uc_series_faq'] ) ) {
-            update_post_meta( $event_id, '_uc_series_faq', $clean_faq( $_POST['uc_series_faq'] ) );
+        } elseif ( ! $sp_now ) {
+            $rows = $posted_faq( 'uc_series_faq' );
+            if ( null !== $rows ) {
+                update_post_meta( $event_id, '_uc_series_faq', $merge_faq( '_uc_series_faq', $rows ) );
+            }
         }
 
         // Editing a single occurrence locks it from future series sync;
@@ -885,6 +965,17 @@ class SFAF_Portal {
                             ?></div>
                         <?php endif; ?>
 
+                        <?php // FAQ movement, counted per source. Its own line rather
+                              // than buried in the summary because it is content
+                              // changing on live pages.
+                        if ( ! empty( $result['faq_added'] ) || ! empty( $result['faq_updated'] ) || ! empty( $result['faq_removed'] ) ) : ?>
+                            <div class="uc-fetch-guard uc-fetch-guard-ok">FAQs from this source &mdash;
+                                <?php echo (int) $result['faq_added']; ?> added,
+                                <?php echo (int) $result['faq_updated']; ?> updated,
+                                <?php echo (int) $result['faq_removed']; ?> removed.
+                                Questions typed by hand were not touched.</div>
+                        <?php endif; ?>
+
                         <?php if ( ! empty( $result['notes'] ) ) : ?>
                             <ul class="uc-fetch-notes">
                                 <?php foreach ( $result['notes'] as $note ) : ?>
@@ -1017,12 +1108,75 @@ class SFAF_Portal {
      * Series Manager
      * ================================================================== */
 
-    /** Portal FAQ repeater markup (vanilla repeater handled by portal.js). */
-    private function faq_repeater( $name, $faqs ) {
-        ?>
+    /**
+     * Portal FAQ repeater markup (vanilla repeater handled by portal.js).
+     *
+     * WHY IMPORTED ROWS CARRY NO FORM FIELDS AT ALL. When a platform owns the
+     * FAQ block, its rows are rendered as disabled controls with no `name`, so
+     * the browser submits nothing for them. The save then reads them back from
+     * the database and re-attaches them ahead of whatever was submitted.
+     *
+     * That is deliberately not the usual trick of mirroring disabled fields
+     * into hidden inputs: a disabled input submits nothing, so mirroring is
+     * the only way to keep the rows — and it also hands the browser a way to
+     * rewrite or delete rows it is not allowed to touch. Reading them from the
+     * database instead makes tampering with the POST simply have no effect,
+     * and means the ID on each imported row never has to survive a round trip
+     * through a form.
+     *
+     * @param string  $name   POST field name for the editable rows.
+     * @param array[] $faqs   All rows, imported and manual.
+     * @param array   $source array{locked:bool,label:string,url:string} — the
+     *                        platform that owns the imported rows, if any.
+     */
+    private function faq_repeater( $name, $faqs, $source = array() ) {
+        $locked = ! empty( $source['locked'] );
+        $label  = isset( $source['label'] ) ? (string) $source['label'] : 'the source';
+
+        // Only split when a platform actually owns them. On an ordinary event
+        // every row is editable, exactly as before.
+        $imported = array();
+        $manual   = $faqs;
+        if ( $locked ) {
+            $imported = array();
+            $manual   = array();
+            foreach ( $faqs as $f ) {
+                if ( sfaf_faq_is_imported( $f ) ) {
+                    $imported[] = $f;
+                } else {
+                    $manual[] = $f;
+                }
+            }
+        }
+
+        if ( $locked ) : ?>
+            <div class="uc-locked-faqs">
+                <p class="uc-field-note uc-field-note-locked">
+                    <?php echo $this->icon_lock(); ?>
+                    <span><strong><?php echo (int) count( $imported ); ?> question<?php echo 1 === count( $imported ) ? '' : 's'; ?> from <?php echo esc_html( $label ); ?>.</strong>
+                    These are kept in step with the campaign on every fetch, so they cannot be edited here &mdash; an edit would be overwritten the next time the campaign is read.
+                    <?php if ( ! empty( $source['url'] ) ) : ?>
+                        <a href="<?php echo esc_url( $source['url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $label ); ?> &nearr;</a>
+                    <?php endif; ?>
+                    </span>
+                </p>
+                <?php if ( empty( $imported ) ) : ?>
+                    <p class="uc-muted"><?php echo esc_html( $label ); ?> has no FAQs on this campaign yet.</p>
+                <?php else : ?>
+                    <?php foreach ( $imported as $f ) : ?>
+                        <div class="uc-repeater-row uc-faq-row uc-faq-row-locked">
+                            <input type="text" value="<?php echo esc_attr( $f['question'] ); ?>" disabled aria-label="Question, from <?php echo esc_attr( $label ); ?>, not editable here" />
+                            <textarea rows="2" disabled aria-label="Answer, from <?php echo esc_attr( $label ); ?>, not editable here"><?php echo esc_textarea( $f['answer'] ); ?></textarea>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <p class="uc-hint" style="margin-top:14px;"><strong>Your own questions</strong> &mdash; added here, kept forever, and never reordered or removed by a fetch. They appear after the ones above.</p>
+        <?php endif; ?>
+
         <div class="uc-repeater" data-repeater>
             <div class="uc-repeater-rows">
-                <?php foreach ( $faqs as $i => $f ) : ?>
+                <?php foreach ( $manual as $i => $f ) : ?>
                     <div class="uc-repeater-row uc-faq-row">
                         <input type="text" name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][question]" value="<?php echo esc_attr( $f['question'] ); ?>" placeholder="Question" />
                         <textarea name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][answer]" rows="2" placeholder="Answer"><?php echo esc_textarea( $f['answer'] ); ?></textarea>
@@ -1038,8 +1192,98 @@ class SFAF_Portal {
                     <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                 </div>
             </template>
+            <?php if ( $locked ) : ?>
+                <input type="hidden" name="uc_faq_has_manual" value="1" />
+            <?php endif; ?>
         </div>
         <?php
+    }
+
+    /* =====================================================================
+     * Field ownership — rendering
+     *
+     * Every one of these reads the ADAPTER's declaration. Nothing here knows
+     * that GoFundMe Pro has no image or that Eventbrite has a description;
+     * changing which fields a platform owns is a change to that adapter and
+     * nothing else. See SFAF_Source_Adapter::owned_fields().
+     * ================================================================== */
+
+    /** The lock mark on a platform-owned field. */
+    private function icon_lock() {
+        return '<svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">'
+            . '<path fill="currentColor" d="M17 9V7a5 5 0 0 0-10 0v2H5v12h14V9zm-8-2a3 3 0 0 1 6 0v2H9zm4 9.7V19h-2v-2.3a2 2 0 1 1 2 0z"/></svg>';
+    }
+
+    /**
+     * The mark on a manager-owned field that is still empty.
+     *
+     * A pencil, not an exclamation mark: a GoFundMe Pro campaign arrives
+     * needing these EVERY time, by design, so this is a step in the workflow
+     * and not a fault. "!" and the word "error" would tell a manager something
+     * had gone wrong on every single import.
+     */
+    private function icon_needs() {
+        return '<svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">'
+            . '<path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg>';
+    }
+
+    /**
+     * State of one editor field for an imported event.
+     *
+     * @param string $field   Editor field name.
+     * @param array  $owned   Adapter's owned_fields().
+     * @param array  $manager Adapter's manager_fields().
+     * @param int    $event_id
+     * @return string 'locked' | 'attention' | 'normal'
+     */
+    private function field_state( $field, $owned, $manager, $event_id ) {
+        if ( in_array( $field, $owned, true ) ) {
+            return 'locked';
+        }
+        if ( in_array( $field, $manager, true ) && ! SFAF_Sources::field_is_filled( $event_id, $field ) ) {
+            return 'attention';
+        }
+        return 'normal';
+    }
+
+    /** The extra class a field wrapper carries for its state. */
+    private function field_class( $state ) {
+        if ( 'locked' === $state ) {
+            return ' uc-field-locked';
+        }
+        if ( 'attention' === $state ) {
+            return ' uc-field-attention';
+        }
+        return '';
+    }
+
+    /**
+     * The badge beside a field's label.
+     *
+     * NEVER COLOUR ALONE. Each state pairs its colour with an icon and with
+     * words, so it survives colour blindness, greyscale printing and a
+     * high-contrast theme. The absence of a badge is what "this is finished"
+     * looks like — a green tick on every completed field would be noise.
+     *
+     * @param string $state
+     * @param string $label Platform name, for the locked wording.
+     * @return string
+     */
+    private function field_badge( $state, $label ) {
+        if ( 'locked' === $state ) {
+            return '<span class="uc-field-flag uc-flag-locked">' . $this->icon_lock()
+                . '<span>From ' . esc_html( $label ) . ' &middot; not editable</span></span>';
+        }
+        if ( 'attention' === $state ) {
+            return '<span class="uc-field-flag uc-flag-attention">' . $this->icon_needs()
+                . '<span>Needs you</span></span>';
+        }
+        return '';
+    }
+
+    /** `disabled` for a locked control, and nothing otherwise. */
+    private function field_disabled( $state ) {
+        return ( 'locked' === $state ) ? ' disabled' : '';
     }
 
     private function save_series_from_post( $user ) {
@@ -1280,16 +1524,46 @@ class SFAF_Portal {
         // Imported events: say where this came from, link back to it, and be
         // explicit about which fields belong to the platform and which are
         // ours to set.
-        $prov = $event_id ? SFAF_Sources::provenance( $event_id ) : array( 'source' => '' );
+        $prov = $event_id ? SFAF_Sources::provenance( $event_id ) : array( 'source' => '', 'label' => '', 'source_url' => '' );
+
+        // The adapter's own declaration drives everything below: which fields
+        // are locked, which are waiting for a person, and the sentence
+        // explaining why. Nothing here names a platform or a field.
+        $owned      = ( $event_id && '' !== $prov['source'] ) ? SFAF_Sources::owned_fields_for( $prov['source'] ) : array();
+        $mgr_fields = ( $event_id && '' !== $prov['source'] ) ? SFAF_Sources::manager_fields_for( $prov['source'] ) : array();
+        $adapter    = ( '' !== $prov['source'] ) ? SFAF_Sources::adapter( $prov['source'] ) : null;
+        $mgr_note   = $adapter ? (string) $adapter->manager_fields_note() : '';
+        $missing    = $event_id ? SFAF_Sources::missing_manager_fields( $event_id ) : array();
+        $st         = function ( $field ) use ( $owned, $mgr_fields, $event_id ) {
+            return $this->field_state( $field, $owned, $mgr_fields, $event_id );
+        };
+
         if ( $event_id && '' !== $prov['source'] ) : ?>
             <div class="uc-flash uc-flash-info uc-import-banner">
                 <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ); ?></span>
-                Imported from <?php echo esc_html( $prov['label'] ); ?>. The title, description, times, location and image come from there.
+                Imported from <?php echo esc_html( $prov['label'] ); ?>. Fields marked
+                <?php echo $this->icon_lock(); ?> <strong>not editable</strong> are kept in step with <?php echo esc_html( $prov['label'] ); ?> and are overwritten on every fetch &mdash; change those at the source.
                 Set the <strong>category, organizer and series</strong> below, then press Publish to put it on the calendar.
                 <?php if ( $prov['source_url'] ) : ?>
                     <a href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $prov['label'] ); ?> &nearr;</a>
                 <?php endif; ?>
             </div>
+
+            <?php // What this platform cannot supply, said once, up front, with
+                  // the source page one click away so filling it in is copy and
+                  // paste rather than a hunt.
+            if ( ! empty( $missing ) ) : ?>
+                <div class="uc-flash uc-flash-attention">
+                    <?php echo $this->icon_needs(); ?>
+                    <strong>This event still needs <?php echo esc_html( SFAF_Sources::field_phrase( $missing ) ); ?>.</strong>
+                    <?php if ( '' !== $mgr_note ) : ?>
+                        <?php echo esc_html( $mgr_note ); ?>
+                    <?php endif; ?>
+                    <?php if ( $prov['source_url'] ) : ?>
+                        <a class="uc-btn uc-btn-sm uc-btn-source" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Open the campaign page &nearr;</a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <?php
             // "Removed at source" is a draft this plugin made, not a human one.
@@ -1315,8 +1589,10 @@ class SFAF_Portal {
 
             <div class="uc-form-grid">
                 <div class="uc-form-main">
-                    <label class="uc-field">Title
-                        <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>" required />
+                    <?php $s_title = $st( 'title' ); ?>
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_title ) ); ?>">
+                        <span class="uc-field-label">Title <?php echo $this->field_badge( $s_title, $prov['label'] ); ?></span>
+                        <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>"<?php echo $this->field_disabled( $s_title ); ?> <?php echo ( 'locked' === $s_title ) ? '' : 'required'; ?> />
                     </label>
 
                     <?php
@@ -1328,37 +1604,75 @@ class SFAF_Portal {
                     $ev_parent  = $event_id ? (int) get_post_meta( $event_id, '_uc_series_parent', true ) : 0;
                     $ev_in_series = $ev_parent && $ev_parent !== (int) $event_id;
                     ?>
-                    <div class="uc-field uc-image-field">
-                        <span class="uc-field-label">Featured Image <span class="uc-img-source-tag"><?php echo esc_html( $src_labels[ $img_source ] ); ?></span></span>
+                    <?php
+                    $s_image = $st( 'image' );
+                    $s_desc  = $st( 'description' );
+                    ?>
+                    <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $s_image ) ); ?>">
+                        <span class="uc-field-label">Featured Image
+                            <span class="uc-img-source-tag"><?php echo esc_html( $src_labels[ $img_source ] ); ?></span>
+                            <?php echo $this->field_badge( $s_image, $prov['label'] ); ?>
+                        </span>
+                        <?php if ( 'attention' === $s_image && '' !== $mgr_note ) : ?>
+                            <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></p>
+                        <?php endif; ?>
                         <input type="hidden" name="featured_image_id" id="uc-featured-image-id" value="<?php echo (int) $thumb_id; ?>" />
                         <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
                             <img src="<?php echo esc_url( $preview ); ?>" alt="" id="uc-image-preview-img" />
                         </div>
-                        <div class="uc-image-buttons">
-                            <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
-                            <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo ( $img_source === 'event' ) ? '' : ' style="display:none;"'; ?>>Remove</button>
-                        </div>
-                        <?php if ( $img_source === 'event' && $ev_in_series ) : ?>
-                            <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
+                        <?php if ( 'locked' === $s_image ) : ?>
+                            <?php // The platform's image refreshes on every fetch, so the
+                                  // picker is disabled: nothing typed here would survive.
+                                  // The override that used to live here has moved to the
+                                  // source itself, which is where it now belongs. ?>
+                            <p class="uc-hint"><?php echo esc_html( $prov['label'] ); ?> supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.</p>
+                        <?php else : ?>
+                            <div class="uc-image-buttons">
+                                <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
+                                <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo ( $img_source === 'event' ) ? '' : ' style="display:none;"'; ?>>Remove</button>
+                            </div>
+                            <?php if ( $img_source === 'event' && $ev_in_series ) : ?>
+                                <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
+                            <?php endif; ?>
+                            <label class="uc-field uc-image-url-field">Or enter image URL
+                                <input type="url" name="image_url" id="uc-image-url" value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
+                            </label>
+                            <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
                         <?php endif; ?>
-                        <label class="uc-field uc-image-url-field">Or enter image URL
-                            <input type="url" name="image_url" id="uc-image-url" value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
-                        </label>
-                        <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
                     </div>
 
-                    <label class="uc-field">Description
-                        <textarea name="description" rows="8"><?php echo esc_textarea( $post ? $post->post_content : '' ); ?></textarea>
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_desc ) ); ?>">
+                        <span class="uc-field-label">Description <?php echo $this->field_badge( $s_desc, $prov['label'] ); ?></span>
+                        <?php if ( 'attention' === $s_desc && '' !== $mgr_note ) : ?>
+                            <span class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></span>
+                        <?php endif; ?>
+                        <textarea name="description" rows="8"<?php echo $this->field_disabled( $s_desc ); ?>><?php echo esc_textarea( $post ? $post->post_content : '' ); ?></textarea>
                     </label>
 
+                    <?php
+                    $s_date  = $st( 'date' );
+                    $s_start = $st( 'start_time' );
+                    $s_end   = $st( 'end_time' );
+                    ?>
                     <div class="uc-field-row">
-                        <label class="uc-field">Date<input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>" /></label>
-                        <label class="uc-field">Start<input type="time" name="start_time" value="<?php echo esc_attr( $g( '_uc_start_time' ) ); ?>" /></label>
-                        <label class="uc-field">End<input type="time" name="end_time" value="<?php echo esc_attr( $g( '_uc_end_time' ) ); ?>" /></label>
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>">
+                            <span class="uc-field-label">Date <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
+                            <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
+                        </label>
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
+                            <span class="uc-field-label">Start <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
+                            <input type="time" name="start_time" value="<?php echo esc_attr( $g( '_uc_start_time' ) ); ?>"<?php echo $this->field_disabled( $s_start ); ?> />
+                        </label>
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_end ) ); ?>">
+                            <span class="uc-field-label">End <?php echo $this->field_badge( $s_end, $prov['label'] ); ?></span>
+                            <input type="time" name="end_time" value="<?php echo esc_attr( $g( '_uc_end_time' ) ); ?>"<?php echo $this->field_disabled( $s_end ); ?> />
+                        </label>
                     </div>
 
-                    <label class="uc-field">Location
-                        <input type="text" name="location" value="<?php echo esc_attr( $g( '_uc_location' ) ); ?>" placeholder="e.g., Strut - 470 Castro St" />
+                    <?php $s_loc = $st( 'location' ); ?>
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_loc ) ); ?>">
+                        <span class="uc-field-label">Location <?php echo $this->field_badge( $s_loc, $prov['label'] ); ?></span>
+                        <input type="text" name="location" value="<?php echo esc_attr( $g( '_uc_location' ) ); ?>" placeholder="e.g., Strut - 470 Castro St"<?php echo $this->field_disabled( $s_loc ); ?> />
                     </label>
 
                     <div class="uc-field-row">
@@ -1391,7 +1705,17 @@ class SFAF_Portal {
                                     <?php endforeach; ?>
                                 </select>
                             </label>
-                            <label class="uc-field">Series end date<input type="date" name="end_date" value="<?php echo esc_attr( $g( '_uc_end_date' ) ); ?>" /></label>
+                            <?php // _uc_end_date is the event's end date at the source AND
+                                  // the series end date here — one meta key doing two jobs,
+                                  // which predates the import framework. A fetch writes it,
+                                  // so on an imported event it locks like any other
+                                  // platform-owned field rather than looking settable and
+                                  // being replaced on the next run.
+                            $s_enddate = $st( 'end_date' ); ?>
+                            <label class="uc-field<?php echo esc_attr( $this->field_class( $s_enddate ) ); ?>">
+                                <span class="uc-field-label">Series end date <?php echo $this->field_badge( $s_enddate, $prov['label'] ); ?></span>
+                                <input type="date" name="end_date" value="<?php echo esc_attr( $g( '_uc_end_date' ) ); ?>"<?php echo $this->field_disabled( $s_enddate ); ?> />
+                            </label>
                         </div>
                         <p class="uc-hint">Set a cadence and end date to auto-generate the series on save.</p>
                     </fieldset>
@@ -1404,9 +1728,19 @@ class SFAF_Portal {
                         <label class="uc-field">Capacity (0 = unlimited)<input type="number" name="capacity" min="0" value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>" /></label>
                     </div>
 
+                    <?php
+                    // The Donate box's URL is the campaign link for an imported
+                    // campaign, and a fetch writes it. So it locks with
+                    // source_url rather than looking editable and being
+                    // silently replaced on the next run.
+                    $s_url = $st( 'source_url' );
+                    ?>
                     <div class="uc-side-box">
                         <h3>Donate</h3>
-                        <label class="uc-field">GoFundMe URL<input type="url" name="gofundme_url" value="<?php echo esc_attr( $g( '_uc_gofundme_url' ) ); ?>" placeholder="https://gofund.me/…" /></label>
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>">
+                            <span class="uc-field-label">GoFundMe URL <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
+                            <input type="url" name="gofundme_url" value="<?php echo esc_attr( $g( '_uc_gofundme_url' ) ); ?>" placeholder="https://gofund.me/…"<?php echo $this->field_disabled( $s_url ); ?> />
+                        </label>
                     </div>
 
                     <div class="uc-side-box">
@@ -1437,38 +1771,64 @@ class SFAF_Portal {
                     <h3>FAQ</h3>
                     <p class="uc-hint">This is a series parent. Edit the shared FAQ in the <a href="<?php echo esc_url( $this->url( 'series/edit/' . $event_id ) ); ?>">Series Manager</a>.</p>
                 </div>
-            <?php elseif ( $ev_is_child ) :
-                $series   = sfaf_get_series_faq( $event_id );
-                $evfaq    = sfaf_get_event_faq( $event_id );
-                ?>
-                <div class="uc-card">
-                    <h3>FAQ</h3>
-                    <p class="uc-hint"><strong>Series FAQ (inherited)</strong></p>
-                    <?php if ( empty( $series ) ) : ?>
-                        <p class="uc-muted">No series FAQ yet.</p>
-                    <?php else : foreach ( $series as $f ) : ?>
-                        <p><strong><?php echo esc_html( $f['question'] ); ?></strong><br><?php echo esc_html( $f['answer'] ); ?></p>
-                    <?php endforeach; endif; ?>
-                    <label class="uc-check"><input type="checkbox" name="faq_override" value="1" <?php checked( sfaf_faq_is_override( $event_id ) ); ?> /> Replace the series FAQ with the event-specific FAQ below</label>
-                    <p class="uc-hint" style="margin-top:12px;"><strong>Event-specific FAQ</strong></p>
-                    <?php $this->faq_repeater( 'uc_event_faq', $evfaq ); ?>
-                </div>
             <?php else :
-                $faqs = $event_id ? sfaf_normalize_faqs( get_post_meta( $event_id, '_uc_series_faq', true ) ) : array();
-                ?>
-                <div class="uc-card">
-                    <h3>FAQ</h3>
-                    <p class="uc-hint">Frequently asked questions for this event.</p>
-                    <?php $this->faq_repeater( 'uc_series_faq', $faqs ); ?>
-                </div>
+                // The platform that owns this event's FAQ rows, if any. Read
+                // from the adapter, exactly like every other locked field.
+                $faq_source = array(
+                    'locked' => in_array( 'faqs', $owned, true ),
+                    'label'  => $prov['label'],
+                    'url'    => $prov['source_url'],
+                );
+
+                if ( $ev_is_child ) :
+                    $series = sfaf_get_series_faq( $event_id );
+                    $evfaq  = sfaf_get_event_faq( $event_id );
+                    ?>
+                    <div class="uc-card">
+                        <h3>FAQ</h3>
+                        <p class="uc-hint"><strong>Series FAQ (inherited)</strong></p>
+                        <?php if ( empty( $series ) ) : ?>
+                            <p class="uc-muted">No series FAQ yet.</p>
+                        <?php else : foreach ( $series as $f ) : ?>
+                            <p><strong><?php echo esc_html( $f['question'] ); ?></strong><br><?php echo esc_html( $f['answer'] ); ?></p>
+                        <?php endforeach; endif; ?>
+                        <label class="uc-check"><input type="checkbox" name="faq_override" value="1" <?php checked( sfaf_faq_is_override( $event_id ) ); ?> /> Replace the series FAQ with the event-specific FAQ below</label>
+                        <p class="uc-hint" style="margin-top:12px;"><strong>Event-specific FAQ</strong></p>
+                        <?php $this->faq_repeater( 'uc_event_faq', $evfaq, $faq_source ); ?>
+                    </div>
+                <?php else :
+                    $faqs = $event_id ? sfaf_normalize_faqs( get_post_meta( $event_id, '_uc_series_faq', true ) ) : array();
+                    ?>
+                    <div class="uc-card">
+                        <h3>FAQ</h3>
+                        <p class="uc-hint">Frequently asked questions for this event.</p>
+                        <?php $this->faq_repeater( 'uc_series_faq', $faqs, $faq_source ); ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
 
             <div class="uc-form-actions">
                 <button type="submit" name="save_mode" value="draft" class="uc-btn">Save Draft</button>
+                <?php
+                // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
+                // campaign before its image and description are written — a
+                // date announcement that has to go out today, for one. So this
+                // names what is missing and then does exactly what was asked.
+                // The confirmation is generated from the same
+                // missing_manager_fields() the queue icon uses, so the two can
+                // never name different things.
+                $confirm = ! empty( $missing )
+                    ? sprintf(
+                        'This event still needs %s. %s cannot supply that, so it stays empty on the live page until somebody writes it here. Publish anyway?',
+                        SFAF_Sources::field_phrase( $missing ),
+                        $prov['label'] ? $prov['label'] : 'The source'
+                    )
+                    : '';
+                ?>
                 <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
                     <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
                 <?php else : ?>
-                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary">Publish</button>
+                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"<?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
                 <?php endif; ?>
             </div>
         </form>
@@ -1707,12 +2067,37 @@ class SFAF_Portal {
                     $when .= ' (' . $prov['timezone'] . ')';
                 }
                 ?>
-                <tr>
+                <?php
+                // Fields this platform will never supply and a person has not
+                // filled in yet. Amber and a pencil, never red and never "!":
+                // a GoFundMe Pro campaign arrives needing these EVERY time by
+                // design, so it is a step in the job, not a fault. The icon
+                // disappears once they are all filled, which makes a queue with
+                // no icons mean "all of these are ready to publish".
+                $needs   = SFAF_Sources::missing_manager_fields( $id );
+                $needs_t = ! empty( $needs ) ? 'Needs ' . SFAF_Sources::field_phrase( $needs ) : '';
+                ?>
+                <tr<?php echo $needs_t ? ' class="uc-row-needs"' : ''; ?>>
                     <td><span class="uc-source-badge"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span></td>
                     <td>
                         <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
+                        <?php if ( $needs_t ) : ?>
+                            <?php // Reachable by hover AND by keyboard focus, so it works
+                                  // on a phone and for anyone not using a mouse. The
+                                  // aria-label names the fields rather than saying that
+                                  // something is missing, so a screen reader user gets the
+                                  // same information a sighted one does. ?>
+                            <span class="uc-needs-flag" tabindex="0" role="img"
+                                  aria-label="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>"
+                                  title="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>">
+                                <?php echo $this->icon_needs(); ?>
+                                <span class="uc-needs-tip"><?php echo esc_html( $needs_t ); ?></span>
+                            </span>
+                        <?php endif; ?>
                         <?php if ( $prov['source_url'] ) : ?>
-                            <br /><a class="uc-source-link" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">View on <?php echo esc_html( $prov['label'] ? $prov['label'] : 'source' ); ?> &nearr;</a>
+                            <br /><a class="uc-source-link<?php echo $needs_t ? ' uc-source-link-strong' : ''; ?>" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php
+                                echo $needs_t ? 'Open campaign page to copy them &nearr;' : 'View on ' . esc_html( $prov['label'] ? $prov['label'] : 'source' ) . ' &nearr;';
+                            ?></a>
                         <?php endif; ?>
                     </td>
                     <td><?php echo esc_html( $when ); ?></td>

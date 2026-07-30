@@ -8,6 +8,7 @@
         initSidebar();
         initRepeaters();
         initImagePicker();
+        initConfirmButtons();
     });
 
     /* Event form: featured image picker (wp.media) + URL fallback */
@@ -119,6 +120,23 @@
                     if (row) {
                         row.remove();
                     }
+                }
+            });
+        });
+    }
+
+    /* Publish confirmation for events still missing manager-owned fields.
+     *
+     * A WARNING, NOT A BLOCK. There are real reasons to publish before the
+     * image and description are written, so this names what is missing and
+     * then gets out of the way. The message is rendered server-side from the
+     * same list the pending queue's icon uses, so the two always agree. */
+    function initConfirmButtons() {
+        document.querySelectorAll('[data-uc-confirm]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                var message = btn.getAttribute('data-uc-confirm');
+                if (message && !window.confirm(message)) {
+                    e.preventDefault();
                 }
             });
         });

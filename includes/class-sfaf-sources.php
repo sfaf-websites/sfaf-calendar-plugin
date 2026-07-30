@@ -124,6 +124,66 @@ abstract class SFAF_Source_Adapter {
     public function fetch_one( $external_id ) {
         return null;
     }
+
+    /* ---------------------------------------------------------------------
+     * Field ownership — declared once, consumed twice
+     *
+     * An adapter says which of an event's fields belong to its platform. That
+     * single declaration does two jobs:
+     *
+     *   1. update_event() writes ONLY the fields named here. A field an
+     *      adapter does not claim is never touched by a fetch, no matter what
+     *      normalize() puts in the payload.
+     *   2. The editor renders exactly these fields disabled, with a lock and
+     *      an "Edit on <platform>" link.
+     *
+     * They cannot drift, because there is no second list to keep in step. A
+     * field added to owned_fields() becomes both refreshed and locked in the
+     * same commit; one removed becomes both left alone and editable. The old
+     * arrangement — a hardcoded map in the framework and a hardcoded sentence
+     * in the editor — could tell a manager a field was theirs to edit while
+     * the next fetch quietly overwrote it.
+     *
+     * THE FIELD NAMES are the editor's, not the payload's:
+     *
+     *   title, description, image, date, start_time, end_time, end_date,
+     *   location, source_url, faqs
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Fields this platform owns and a fetch will overwrite.
+     *
+     * Defaults to none: an adapter that declares nothing writes nothing and
+     * locks nothing, which is the safe direction to fail in.
+     *
+     * @return string[]
+     */
+    public function owned_fields() {
+        return array();
+    }
+
+    /**
+     * Fields this platform cannot supply, which a manager owns permanently.
+     *
+     * These arrive empty on every import by design and must be excluded from
+     * every fetch, now and from any later cron. The editor highlights them
+     * while they are empty so nobody has to remember which ones they are.
+     *
+     * @return string[]
+     */
+    public function manager_fields() {
+        return array();
+    }
+
+    /**
+     * One sentence explaining why manager_fields() are empty, shown in the
+     * editor beside them. Without it the next person assumes the import broke.
+     *
+     * @return string
+     */
+    public function manager_fields_note() {
+        return '';
+    }
 }
 
 class SFAF_Sources {
@@ -147,6 +207,19 @@ class SFAF_Sources {
     const META_UPDATED_AT  = '_uc_source_updated_at';
     const META_REMOVED_AT  = '_uc_source_removed_at';
     const META_REMOVED_WHY = '_uc_source_removed_reason';
+
+    /**
+     * The key an imported FAQ row carries its ID-at-the-source in.
+     *
+     * A row WITH this key was written by an import and belongs to the
+     * platform. A row WITHOUT it was typed by a person and is never touched.
+     * That one distinction is the whole of the FAQ ownership model.
+     *
+     * Named for "the source", not for GoFundMe Pro: an event has exactly one
+     * source, so the ID is unambiguous without repeating the platform on
+     * every row, and a later platform that supplies FAQs needs no new key.
+     */
+    const FAQ_SOURCE_ID = 'source_faq_id';
 
     /**
      * Where an event goes when it has disappeared at the source.
@@ -376,16 +449,27 @@ class SFAF_Sources {
      * The caller has already established this event is new; this does not
      * check again.
      *
-     * @param array $event Common event shape.
+     * @param array $event      Common event shape.
+     * @param array $faq_counts Set by reference to {added, updated, removed}.
      * @return int|WP_Error New post ID.
      */
-    public static function import_event( $event ) {
+    public static function import_event( $event, &$faq_counts = null ) {
         $title = isset( $event['title'] ) ? trim( (string) $event['title'] ) : '';
         if ( '' === $title ) {
             $title = '(untitled imported event)';
         }
 
-        $description = isset( $event['description'] ) ? (string) $event['description'] : '';
+        // Fields the adapter says a manager owns permanently are not written
+        // here and never will be. For GoFundMe Pro that is the image and the
+        // description, which their API does not expose at all — see
+        // SFAF_Source_GFMP::manager_fields(). Previously this "worked"
+        // because the adapter happened to send empty values; now the
+        // framework refuses them whatever the adapter sends.
+        $manager = self::manager_fields_for( isset( $event['external_source'] ) ? $event['external_source'] : '' );
+
+        $description = in_array( 'description', $manager, true )
+            ? ''
+            : ( isset( $event['description'] ) ? (string) $event['description'] : '' );
 
         $post_id = wp_insert_post( array(
             'post_type'    => 'uc_event',
@@ -424,7 +508,7 @@ class SFAF_Sources {
         if ( ! empty( $event['source_url'] ) ) {
             update_post_meta( $post_id, self::META_SOURCE_URL, esc_url_raw( (string) $event['source_url'] ) );
         }
-        if ( ! empty( $event['image_url'] ) ) {
+        if ( ! empty( $event['image_url'] ) && ! in_array( 'image', $manager, true ) ) {
             // The source's image goes in its OWN key and nowhere else.
             //
             // _uc_image_url is the manual override — it is what the "Or enter
@@ -470,7 +554,123 @@ class SFAF_Sources {
             }
         }
 
+        // FAQs from the platform. A brand-new event has no manual rows to
+        // protect, so this is simply "write what the source sent".
+        $faq_counts = self::sync_faqs( $post_id, $event, true );
+
         return (int) $post_id;
+    }
+
+    /* ---------------------------------------------------------------------
+     * Field ownership, read from the adapter
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Fields the platform behind this source owns and refreshes.
+     *
+     * @param string $source Adapter slug.
+     * @return string[]
+     */
+    public static function owned_fields_for( $source ) {
+        $adapter = self::adapter( (string) $source );
+        return $adapter ? array_map( 'strval', (array) $adapter->owned_fields() ) : array();
+    }
+
+    /**
+     * Fields a manager owns permanently on events from this source.
+     *
+     * @param string $source Adapter slug.
+     * @return string[]
+     */
+    public static function manager_fields_for( $source ) {
+        $adapter = self::adapter( (string) $source );
+        return $adapter ? array_map( 'strval', (array) $adapter->manager_fields() ) : array();
+    }
+
+    /**
+     * Human labels for the fields a manager still has to fill in.
+     *
+     * The pending-queue indicator, the editor's highlight and the publish
+     * confirmation all ask this one question, so they can never disagree
+     * about what is missing.
+     *
+     * @param int $post_id
+     * @return string[] e.g. array( 'image', 'description' ) → 'an image', 'a description'
+     */
+    public static function missing_manager_fields( $post_id ) {
+        $post_id = (int) $post_id;
+        $source  = (string) get_post_meta( $post_id, self::META_SOURCE, true );
+        if ( '' === $source ) {
+            return array();
+        }
+
+        $missing = array();
+        foreach ( self::manager_fields_for( $source ) as $field ) {
+            if ( ! self::field_is_filled( $post_id, $field ) ) {
+                $missing[] = $field;
+            }
+        }
+        return $missing;
+    }
+
+    /**
+     * Whether a manager-owned field has been filled in on this event.
+     *
+     * The image counts as filled by EITHER a featured image or a pasted URL,
+     * because either one is what the single-event page will show. It
+     * deliberately does not count the source's own image: for a source that
+     * declares the image manager-owned there is never going to be one.
+     *
+     * @param int    $post_id
+     * @param string $field
+     * @return bool
+     */
+    public static function field_is_filled( $post_id, $field ) {
+        $post_id = (int) $post_id;
+
+        switch ( (string) $field ) {
+            case 'image':
+                return has_post_thumbnail( $post_id ) || '' !== (string) get_post_meta( $post_id, '_uc_image_url', true );
+            case 'description':
+                return '' !== trim( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ) );
+            case 'title':
+                return '' !== trim( (string) get_post_field( 'post_title', $post_id ) );
+            case 'location':
+                return '' !== trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+            case 'date':
+                return '' !== trim( (string) get_post_meta( $post_id, '_uc_event_date', true ) );
+        }
+        return true;
+    }
+
+    /**
+     * The same list phrased for a person: "an image and a description".
+     *
+     * @param string[] $fields
+     * @return string
+     */
+    public static function field_phrase( $fields ) {
+        $words = array(
+            'image'       => 'an image',
+            'description' => 'a description',
+            'title'       => 'a title',
+            'location'    => 'a location',
+            'date'        => 'a date',
+        );
+
+        $out = array();
+        foreach ( (array) $fields as $field ) {
+            $out[] = isset( $words[ $field ] ) ? $words[ $field ] : $field;
+        }
+
+        if ( empty( $out ) ) {
+            return '';
+        }
+        if ( 1 === count( $out ) ) {
+            return $out[0];
+        }
+        $last = array_pop( $out );
+        return implode( ', ', $out ) . ' and ' . $last;
     }
 
     /**
@@ -494,11 +694,21 @@ class SFAF_Sources {
      * empty date back on the next fetch would erase that work. The same
      * applies to description and location.
      *
+     * WHAT IS ALLOWED TO BE WRITTEN is not decided here any more. The
+     * adapter's owned_fields() decides, and the editor locks the same list, so
+     * "a fetch will overwrite this" and "you cannot type in this" are one
+     * statement rather than two that can disagree. manager_fields() are
+     * refused outright whatever the payload contains.
+     *
      * @param int   $post_id
-     * @param array $event Common event shape.
-     * @return array|WP_Error {changed: array<string,array{from:string,to:string}>}
+     * @param array $event   Common event shape.
+     * @param array $context {clean_fetch: bool} — whether this run is entitled
+     *                       to conclude that something missing from it has
+     *                       really gone. Governs FAQ row removal exactly as it
+     *                       governs event removal.
+     * @return array|WP_Error {changed: array<string,array{from:string,to:string}>, faqs: array}
      */
-    public static function update_event( $post_id, $event ) {
+    public static function update_event( $post_id, $event, $context = array() ) {
         $post_id = (int) $post_id;
         $post    = get_post( $post_id );
 
@@ -512,18 +722,38 @@ class SFAF_Sources {
             );
         }
 
+        $source  = isset( $event['external_source'] ) ? (string) $event['external_source'] : '';
+        $owned   = self::owned_fields_for( $source );
+        $manager = self::manager_fields_for( $source );
+
+        /**
+         * Whether a fetch may write this field.
+         *
+         * An adapter that declares nothing at all keeps the pre-2.8.0
+         * behaviour of writing whatever it sends — a third-party adapter
+         * registered through the sfaf_source_adapters filter must not stop
+         * working because it has not been taught about this declaration.
+         * A manager-owned field is refused either way.
+         */
+        $may_write = function ( $field ) use ( $owned, $manager ) {
+            if ( in_array( $field, $manager, true ) ) {
+                return false;
+            }
+            return empty( $owned ) || in_array( $field, $owned, true );
+        };
+
         $changed = array();
 
         /* ---- Post fields. post_status is deliberately not among them. ---- */
         $postarr = array( 'ID' => $post_id );
 
-        $title = isset( $event['title'] ) ? trim( (string) $event['title'] ) : '';
+        $title = ( $may_write( 'title' ) && isset( $event['title'] ) ) ? trim( (string) $event['title'] ) : '';
         if ( '' !== $title && $title !== $post->post_title ) {
             $postarr['post_title'] = $title;
             $changed['Title']      = array( 'from' => $post->post_title, 'to' => $title );
         }
 
-        $description = isset( $event['description'] ) ? (string) $event['description'] : '';
+        $description = ( $may_write( 'description' ) && isset( $event['description'] ) ) ? (string) $event['description'] : '';
         if ( '' !== trim( $description ) ) {
             $new_content = wp_kses_post( $description );
             if ( $new_content !== $post->post_content ) {
@@ -540,15 +770,21 @@ class SFAF_Sources {
         }
 
         /* ---- Platform meta, each skipped when the source said nothing. ---- */
+        // 'owns' is the editor-facing field name this meta belongs to. The
+        // timezone has no control in the editor and rides with the date,
+        // which every adapter that supplies times owns anyway.
         $meta_map = array(
-            '_uc_event_date'    => array( 'key' => 'start_date', 'label' => 'Date' ),
-            '_uc_start_time'    => array( 'key' => 'start_time', 'label' => 'Start time' ),
-            '_uc_end_time'      => array( 'key' => 'end_time',   'label' => 'End time' ),
-            '_uc_end_date'      => array( 'key' => 'end_date',   'label' => 'End date' ),
-            '_uc_location'      => array( 'key' => 'location',   'label' => 'Location' ),
-            self::META_TIMEZONE => array( 'key' => 'timezone',   'label' => 'Timezone' ),
+            '_uc_event_date'    => array( 'key' => 'start_date', 'label' => 'Date',       'owns' => 'date' ),
+            '_uc_start_time'    => array( 'key' => 'start_time', 'label' => 'Start time', 'owns' => 'start_time' ),
+            '_uc_end_time'      => array( 'key' => 'end_time',   'label' => 'End time',   'owns' => 'end_time' ),
+            '_uc_end_date'      => array( 'key' => 'end_date',   'label' => 'End date',   'owns' => 'end_date' ),
+            '_uc_location'      => array( 'key' => 'location',   'label' => 'Location',   'owns' => 'location' ),
+            self::META_TIMEZONE => array( 'key' => 'timezone',   'label' => 'Timezone',   'owns' => 'date' ),
         );
         foreach ( $meta_map as $meta_key => $spec ) {
+            if ( ! $may_write( $spec['owns'] ) ) {
+                continue;
+            }
             $value = isset( $event[ $spec['key'] ] ) ? trim( (string) $event[ $spec['key'] ] ) : '';
             if ( '' === $value ) {
                 continue; // empty in, leave alone
@@ -566,6 +802,9 @@ class SFAF_Sources {
             self::META_SOURCE_URL => array( 'key' => 'source_url', 'label' => 'Source URL' ),
         );
         foreach ( $url_map as $meta_key => $spec ) {
+            if ( ! $may_write( 'source_url' ) ) {
+                continue;
+            }
             $value = isset( $event[ $spec['key'] ] ) ? trim( (string) $event[ $spec['key'] ] ) : '';
             if ( '' === $value ) {
                 continue;
@@ -595,23 +834,31 @@ class SFAF_Sources {
          *
          * This is deliberately NOT generalised to description or any other
          * field. A hand-written description must survive a refetch.
+         *
+         * AND IT DOES NOT RUN AT ALL for a source that declares the image
+         * manager-owned. On GoFundMe Pro the image is a person's work, not the
+         * platform's — the platform has none to offer — so the "absence
+         * clears it" rule above would be actively destructive here. This is
+         * the reason that exclusion is a declaration and not a coincidence.
          */
-        $image         = isset( $event['image_url'] ) ? trim( (string) $event['image_url'] ) : '';
-        $current_image = (string) get_post_meta( $post_id, self::META_IMAGE, true );
+        if ( $may_write( 'image' ) ) {
+            $image         = isset( $event['image_url'] ) ? trim( (string) $event['image_url'] ) : '';
+            $current_image = (string) get_post_meta( $post_id, self::META_IMAGE, true );
 
-        if ( '' === $image ) {
-            if ( '' !== $current_image ) {
-                delete_post_meta( $post_id, self::META_IMAGE );
-                $changed['Source image'] = array(
-                    'from' => $current_image,
-                    'to'   => '(cleared — the source no longer offers one)',
-                );
-            }
-        } else {
-            $image = esc_url_raw( $image );
-            if ( '' !== $image && $current_image !== $image ) {
-                update_post_meta( $post_id, self::META_IMAGE, $image );
-                $changed['Source image'] = array( 'from' => $current_image, 'to' => $image );
+            if ( '' === $image ) {
+                if ( '' !== $current_image ) {
+                    delete_post_meta( $post_id, self::META_IMAGE );
+                    $changed['Source image'] = array(
+                        'from' => $current_image,
+                        'to'   => '(cleared — the source no longer offers one)',
+                    );
+                }
+            } else {
+                $image = esc_url_raw( $image );
+                if ( '' !== $image && $current_image !== $image ) {
+                    update_post_meta( $post_id, self::META_IMAGE, $image );
+                    $changed['Source image'] = array( 'from' => $current_image, 'to' => $image );
+                }
             }
         }
 
@@ -646,9 +893,170 @@ class SFAF_Sources {
             }
         }
 
+        /* ---- FAQs. ---- */
+        $faqs = array( 'added' => 0, 'updated' => 0, 'removed' => 0 );
+        if ( $may_write( 'faqs' ) ) {
+            $faqs = self::sync_faqs( $post_id, $event, ! empty( $context['clean_fetch'] ) );
+            foreach ( array( 'added' => 'FAQs added', 'updated' => 'FAQs updated', 'removed' => 'FAQs removed' ) as $k => $label ) {
+                if ( $faqs[ $k ] > 0 ) {
+                    $changed[ $label ] = array( 'from' => '', 'to' => (string) $faqs[ $k ] );
+                }
+            }
+        }
+
         update_post_meta( $post_id, self::META_UPDATED_AT, time() );
 
-        return array( 'changed' => $changed );
+        return array( 'changed' => $changed, 'faqs' => $faqs );
+    }
+
+    /* ---------------------------------------------------------------------
+     * FAQ synchronisation
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Bring an event's FAQ rows into line with what the source sent.
+     *
+     * ============================================================
+     * THIS IS A DELIBERATE EXCEPTION TO THE LOCAL-FIELDS RULE.
+     * DO NOT "FIX" IT BACK.
+     * ============================================================
+     *
+     * Everywhere else in this file, a fetch protects what a person has typed:
+     * "empty in, leave alone", a hand-written description survives, a chosen
+     * image wins. FAQs imported from a platform are different on purpose,
+     * because the platform's FAQ is the answer of record — if the source
+     * changes its refund policy and this calendar keeps showing the old one
+     * because somebody once corrected a typo in it, the calendar is lying to
+     * attendees. So an imported row IS overwritten from source, local edits
+     * to it and all.
+     *
+     * The protection is scoped rather than removed: source wins over its OWN
+     * rows only, identified by the source_faq_id stored on each of them.
+     *
+     *   - Stored ID present in the response  → question, answer and position
+     *                                          refreshed from source. Local
+     *                                          edits to that row are lost.
+     *                                          Intended.
+     *   - Response ID with no stored row     → added.
+     *   - Stored ID absent from the response → removed, but ONLY under the
+     *                                          clean-fetch guard below.
+     *   - Row with NO source_faq_id          → a person wrote it. Never
+     *                                          touched, never reordered away,
+     *                                          never removed. Appended after
+     *                                          the imported rows.
+     *
+     * THE CLEAN-FETCH GUARD is the same one that governs taking an event off
+     * the calendar (see handle_removals): "missing from the response" and "the
+     * request went wrong" look identical from here, and guessing wrong throws
+     * away content. Rows are removed only when the caller confirms a complete
+     * run, the adapter confirms it read the whole FAQ list, and that list is
+     * not empty. An empty list never removes anything — same rule as the event
+     * removal step, and for the same reason. The cost is that a campaign which
+     * genuinely deletes every FAQ keeps them here until one is added back; that
+     * is the direction worth failing in.
+     *
+     * @param int   $post_id
+     * @param array $event       Common event shape, optionally carrying faqs / faqs_clean.
+     * @param bool  $clean_fetch Whether the run may conclude something has gone.
+     * @return array {added:int, updated:int, removed:int}
+     */
+    public static function sync_faqs( $post_id, $event, $clean_fetch ) {
+        $counts = array( 'added' => 0, 'updated' => 0, 'removed' => 0 );
+
+        // No 'faqs' key at all means this fetch has nothing to say about FAQs
+        // — either the adapter does not do them or the lookup failed. Either
+        // way the event's rows are left exactly as they are.
+        if ( ! isset( $event['faqs'] ) || ! is_array( $event['faqs'] ) ) {
+            return $counts;
+        }
+
+        $post_id  = (int) $post_id;
+        $meta_key = sfaf_event_faq_meta_key( $post_id );
+        $existing = sfaf_normalize_faqs( get_post_meta( $post_id, $meta_key, true ) );
+
+        // Incoming rows, sanitized exactly as a hand-typed row is by the two
+        // editors, so an imported row and a manual one are indistinguishable
+        // once stored and render identically.
+        $incoming = array();
+        foreach ( $event['faqs'] as $row ) {
+            if ( ! is_array( $row ) || empty( $row[ self::FAQ_SOURCE_ID ] ) ) {
+                continue;
+            }
+            $question = sanitize_text_field( isset( $row['question'] ) ? $row['question'] : '' );
+            $answer   = sanitize_textarea_field( isset( $row['answer'] ) ? $row['answer'] : '' );
+
+            // A row that sanitizes down to nothing would be dropped again by
+            // sfaf_normalize_faqs() on the next read, and so be counted as
+            // "added" on every fetch forever. Skip it here instead.
+            if ( '' === $question && '' === $answer ) {
+                continue;
+            }
+
+            $incoming[] = array(
+                'question'          => $question,
+                'answer'            => $answer,
+                self::FAQ_SOURCE_ID => sanitize_text_field( (string) $row[ self::FAQ_SOURCE_ID ] ),
+            );
+        }
+
+        $incoming_ids = array();
+        foreach ( $incoming as $row ) {
+            $incoming_ids[ $row[ self::FAQ_SOURCE_ID ] ] = true;
+        }
+
+        // Split what is already stored into the platform's rows and people's.
+        $stored_by_id = array();
+        $manual       = array();
+        foreach ( $existing as $row ) {
+            $id = isset( $row[ self::FAQ_SOURCE_ID ] ) ? (string) $row[ self::FAQ_SOURCE_ID ] : '';
+            if ( '' === $id ) {
+                $manual[] = $row;
+            } else {
+                $stored_by_id[ $id ] = $row;
+            }
+        }
+
+        $may_remove = $clean_fetch && ! empty( $event['faqs_clean'] ) && ! empty( $incoming );
+
+        // Imported rows first, in the source's order.
+        $out = array();
+        foreach ( $incoming as $row ) {
+            $id = $row[ self::FAQ_SOURCE_ID ];
+            if ( isset( $stored_by_id[ $id ] ) ) {
+                $was = $stored_by_id[ $id ];
+                if ( $was['question'] !== $row['question'] || $was['answer'] !== $row['answer'] ) {
+                    $counts['updated']++;
+                }
+            } else {
+                $counts['added']++;
+            }
+            $out[] = $row;
+        }
+
+        // Rows the source no longer lists.
+        foreach ( $stored_by_id as $id => $row ) {
+            if ( isset( $incoming_ids[ $id ] ) ) {
+                continue;
+            }
+            if ( $may_remove ) {
+                $counts['removed']++;
+                continue;
+            }
+            $out[] = $row; // guard says no — keep it
+        }
+
+        // People's rows last, untouched and in their own order.
+        foreach ( $manual as $row ) {
+            $out[] = $row;
+        }
+
+        // Ordering alone is a real change worth writing, so compare the whole
+        // list rather than only the counters.
+        if ( $out !== $existing ) {
+            update_post_meta( $post_id, $meta_key, $out );
+        }
+
+        return $counts;
     }
 
     /** A short, single-line version of a value, for change reports. */
@@ -700,6 +1108,9 @@ class SFAF_Sources {
             'reappeared'   => 0,
             'removal_ran'  => false,
             'removal_skip' => '',
+            'faq_added'    => 0,
+            'faq_updated'  => 0,
+            'faq_removed'  => 0,
             'error'        => (string) $error,
             'notes'        => array(),
             'images'       => array(),
@@ -727,6 +1138,9 @@ class SFAF_Sources {
             'reappeared'    => 0,
             'removal_ran'   => false,
             'removal_skip'  => '',
+            'faq_added'     => 0,
+            'faq_updated'   => 0,
+            'faq_removed'   => 0,
             'error'         => '',
             'notes'         => array(),
             'images'        => array(),
@@ -755,6 +1169,14 @@ class SFAF_Sources {
         // shared across two organizations, say.
         $seen     = array();
         $seen_ids = array();
+
+        // Whether this run may conclude that something missing from it has
+        // really gone. It is the adapter's own word, decided before the loop
+        // so every event in the run is judged by the same standard, and it is
+        // the first half of the test handle_removals() applies. The second
+        // half — that the run produced at least one usable event — is true by
+        // construction for any event we are actually updating.
+        $clean_fetch = is_array( $response ) && ! empty( $response['complete'] );
 
         foreach ( $items as $item ) {
             $result['fetched']++;
@@ -809,11 +1231,17 @@ class SFAF_Sources {
                     );
                 }
 
-                $update = self::update_event( $existing, $event );
+                $update = self::update_event( $existing, $event, array( 'clean_fetch' => $clean_fetch ) );
                 if ( is_wp_error( $update ) ) {
                     $result['failed']++;
                     $result['notes'][] = sprintf( 'Could not refresh #%d: %s', $existing, $update->get_error_message() );
                     continue;
+                }
+
+                if ( ! empty( $update['faqs'] ) ) {
+                    $result['faq_added']   += (int) $update['faqs']['added'];
+                    $result['faq_updated'] += (int) $update['faqs']['updated'];
+                    $result['faq_removed'] += (int) $update['faqs']['removed'];
                 }
 
                 if ( empty( $update['changed'] ) ) {
@@ -825,7 +1253,8 @@ class SFAF_Sources {
                 continue;
             }
 
-            $post_id = self::import_event( $event );
+            $faq_counts = array();
+            $post_id    = self::import_event( $event, $faq_counts );
             if ( is_wp_error( $post_id ) ) {
                 $result['failed']++;
                 $result['notes'][] = sprintf(
@@ -838,6 +1267,9 @@ class SFAF_Sources {
 
             $result['new']++;
             $result['new_ids'][] = (int) $post_id;
+            if ( ! empty( $faq_counts['added'] ) ) {
+                $result['faq_added'] += (int) $faq_counts['added'];
+            }
         }
 
         self::handle_removals( $adapter, $response, $seen_ids, $result );
@@ -1007,6 +1439,18 @@ class SFAF_Sources {
             $parts[] = sprintf( '%d could not be saved', (int) $result['failed'] );
         }
 
+        // FAQ movement is counted separately from event movement: an event
+        // whose only change was its FAQ rows still says so.
+        $faq = array();
+        foreach ( array( 'faq_added' => 'added', 'faq_updated' => 'updated', 'faq_removed' => 'removed' ) as $key => $word ) {
+            if ( ! empty( $result[ $key ] ) ) {
+                $faq[] = sprintf( '%d %s', (int) $result[ $key ], $word );
+            }
+        }
+        if ( ! empty( $faq ) ) {
+            $parts[] = sprintf( 'FAQs: %s', implode( ', ', $faq ) );
+        }
+
         return sprintf( '%s: %s (of %d fetched)', $result['label'], implode( ', ', $parts ), (int) $result['fetched'] );
     }
 
@@ -1158,7 +1602,11 @@ class SFAF_Sources {
             return new WP_Error( 'sfaf_sources_unusable', 'The source returned something this adapter could not read.' );
         }
 
-        $update = self::update_event( $post_id, $event );
+        // A single-event re-fetch that succeeded IS a complete answer about
+        // that one event, so it carries the same authority over its FAQ rows
+        // as a clean bulk run. The adapter still has to confirm it read the
+        // whole FAQ list (faqs_clean) before anything is removed.
+        $update = self::update_event( $post_id, $event, array( 'clean_fetch' => true ) );
         if ( is_wp_error( $update ) ) {
             return $update;
         }

@@ -49,6 +49,60 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
     }
 
     /**
+     * The fields GoFundMe Pro owns on an imported event.
+     *
+     * ONE LIST, TWO CONSUMERS. SFAF_Sources::update_event() writes only what
+     * is named here, and the editor locks exactly what is named here. They
+     * cannot drift into disagreement, because there is nothing to keep in
+     * step — adding or removing a field changes both at once.
+     *
+     * Note what is NOT here: image and description. See manager_fields().
+     *
+     * @return string[]
+     */
+    public function owned_fields() {
+        return array( 'title', 'date', 'start_time', 'end_time', 'end_date', 'location', 'source_url', 'faqs' );
+    }
+
+    /**
+     * Fields a manager owns permanently on a GoFundMe Pro event.
+     *
+     * THIS IS THE EXPLICIT VERSION OF SOMETHING THAT USED TO WORK BY ACCIDENT.
+     *
+     * GoFundMe Pro support has confirmed that the campaign banner image and
+     * the About-section copy live in their design/theme layer and are NOT
+     * exposed on the public API. It is a gap on their side, not a field we
+     * have failed to find: there is no theme_id on the campaign object, no
+     * story to read (/campaigns/{id}/stories returns 0), and page scraping is
+     * not something this plugin does.
+     *
+     * So a person writes both, once, before approving the campaign from the
+     * pending queue — and NOTHING in the import path may ever write them.
+     * Until now that held only because description() happened to return ''
+     * and _uc_image_url happened to outrank the source image. Both of those
+     * are one well-meaning "fix the gap" commit away from silently
+     * overwriting a manager's copy on the next fetch. Naming them here makes
+     * the exclusion a rule the framework enforces rather than a coincidence.
+     *
+     * IF YOU ARE HERE TO ADD AN IMAGE OR DESCRIPTION MAPPING: check with
+     * GoFundMe Pro first. As of this release they do not expose either.
+     *
+     * @return string[]
+     */
+    public function manager_fields() {
+        return array( 'image', 'description' );
+    }
+
+    /**
+     * Why the manager-owned fields arrive empty, in the editor's own words.
+     *
+     * @return string
+     */
+    public function manager_fields_note() {
+        return 'GoFundMe Pro does not provide a campaign image or description through its API — they live in the campaign\'s page design, which is not exposed. Whatever you enter here is kept and is never overwritten by a fetch.';
+    }
+
+    /**
      * Active once there are credentials and an organization to address.
      *
      * The org ID is part of the test because campaign calls are literally
@@ -137,11 +191,14 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             }
         }
 
-        // Raised amounts, best effort. One extra call per campaign, so it is
-        // both filterable off and capped — and a failure is silent by design,
-        // since the endpoint is not in the supplied spec.
+        // Raised amounts and FAQs — one extra call each per campaign, both
+        // filterable off. Against a 300 requests/minute ceiling this is a
+        // rounding error: ~20 campaigns is ~40 requests.
         if ( apply_filters( 'sfaf_gfmp_fetch_raised', true ) ) {
             $items = $this->attach_raised( $items, $notes );
+        }
+        if ( apply_filters( 'sfaf_gfmp_fetch_faqs', true ) ) {
+            $items = $this->attach_faqs( $items, $notes );
         }
 
         // Clean enough to conclude that a missing campaign has really gone?
@@ -182,18 +239,23 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             return $campaign;
         }
 
-        // A single refresh is worth one extra call for the raised figure.
-        if ( apply_filters( 'sfaf_gfmp_fetch_raised', true ) ) {
-            $token = SFAF_GFMP::get_access_token();
-            if ( ! is_wp_error( $token ) ) {
+        // A single refresh is worth the two extra calls.
+        $token = SFAF_GFMP::get_access_token();
+        if ( ! is_wp_error( $token ) ) {
+            if ( apply_filters( 'sfaf_gfmp_fetch_raised', true ) ) {
                 $overview = SFAF_GFMP::fetch_campaign_overview( $token, $external_id );
                 if ( ! is_wp_error( $overview ) ) {
-                    foreach ( array( 'raised_amount', 'progress_bar_amount', 'total_online_funds_raised' ) as $key ) {
-                        if ( isset( $overview[ $key ] ) && is_numeric( $overview[ $key ] ) ) {
-                            $campaign['sfaf_raised_amount'] = (float) $overview[ $key ];
-                            break;
-                        }
+                    $raised = self::raised_amount( $overview );
+                    if ( null !== $raised ) {
+                        $campaign['sfaf_raised_amount'] = $raised;
                     }
+                }
+            }
+            if ( apply_filters( 'sfaf_gfmp_fetch_faqs', true ) ) {
+                $faqs = SFAF_GFMP::fetch_campaign_faqs( $token, $external_id );
+                if ( ! is_wp_error( $faqs ) ) {
+                    $campaign['sfaf_faqs']       = $faqs['items'];
+                    $campaign['sfaf_faqs_clean'] = ! empty( $faqs['complete'] );
                 }
             }
         }
@@ -202,7 +264,58 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
     }
 
     /**
+     * The raised figure from a campaign overview response.
+     *
+     * WHICH FIELD, AND WHY IT IS gross_amount.
+     *
+     * The overview returns gross_amount, total_gross_amount, net_amount,
+     * fees_amount and percent_to_goal. Campaign 773343 returned gross 1833,
+     * net 1817.22, fees 15.78 and percent_to_goal 1.833 against a 100,000
+     * goal — and 1833/100000 is exactly 1.833%, while 1817.22/100000 is not.
+     * GoFundMe Pro's own progress figure is therefore computed from GROSS, so
+     * mapping gross_amount is what makes this calendar's bar agree with the
+     * number a donor sees on the campaign page. Mapping net would quietly
+     * show a smaller total here than the source shows there, and nobody
+     * looking at the two would be able to explain the difference.
+     *
+     * total_gross_amount was identical on this account, but it is the less
+     * specific of the two and its relationship to gross_amount is not
+     * documented, so it is only a fallback for a response that omits
+     * gross_amount rather than the first choice.
+     *
+     * net_amount is deliberately last: it is a real figure and better than
+     * nothing, but it answers a different question (what reached the
+     * organisation) than a public progress bar asks (what has been given).
+     *
+     * @param array $overview Decoded overview response.
+     * @return float|null
+     */
+    public static function raised_amount( $overview ) {
+        if ( ! is_array( $overview ) ) {
+            return null;
+        }
+        // Some accounts wrap the payload; unwrap before reading.
+        if ( isset( $overview['data'] ) && is_array( $overview['data'] ) ) {
+            $overview = $overview['data'];
+        }
+        foreach ( array( 'gross_amount', 'total_gross_amount', 'net_amount' ) as $key ) {
+            if ( isset( $overview[ $key ] ) && is_numeric( $overview[ $key ] ) ) {
+                return (float) $overview[ $key ];
+            }
+        }
+        return null;
+    }
+
+    /**
      * Look up the raised amount for each campaign, tolerating failure.
+     *
+     * THE CAP. This was 100, which was never the problem it looked like — the
+     * organisation has around 20 campaigns, so it never engaged. It is raised
+     * to 500 now that the real ceiling is known to be 300 requests per minute
+     * per application: an hourly run over 20 campaigns is about 40 requests,
+     * so the cap has nothing to do with rate limiting and is only a guard
+     * against an unbounded loop if the campaign list ever returns something
+     * absurd. It did NOT contribute to the missing raised amounts.
      *
      * @param array $items Campaign rows.
      * @param array $notes Collected by reference — one summary line, not one per campaign.
@@ -211,13 +324,14 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
     private function attach_raised( $items, &$notes ) {
         $token = SFAF_GFMP::get_access_token();
         if ( is_wp_error( $token ) ) {
+            $notes[] = 'Raised amounts were not looked up: ' . $token->get_error_message();
             return $items;
         }
 
-        $limit = (int) apply_filters( 'sfaf_gfmp_raised_lookup_limit', 100 );
-        $done  = 0;
-        $ok    = 0;
-        $tried = 0;
+        $limit  = (int) apply_filters( 'sfaf_gfmp_raised_lookup_limit', 500 );
+        $done   = 0;
+        $ok     = 0;
+        $failed = array();
 
         foreach ( $items as $i => $row ) {
             if ( $done >= $limit ) {
@@ -229,30 +343,170 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             }
 
             $done++;
-            $tried++;
             $overview = SFAF_GFMP::fetch_campaign_overview( $token, $id );
+
+            // PER CAMPAIGN, NOT PER ENDPOINT. Earlier releases reported a
+            // single "this account did not answer the overview endpoint",
+            // which was false — the endpoint is supported and answers fine,
+            // and the real cause of the empty result was reading key names
+            // that are not in the response (see raised_amount()). A lookup
+            // that genuinely fails now names the campaign it failed for.
             if ( is_wp_error( $overview ) ) {
+                $failed[] = sprintf( '%s (%s)', $this->campaign_label( $row ), $overview->get_error_message() );
                 continue;
             }
 
-            foreach ( array( 'raised_amount', 'progress_bar_amount', 'total_online_funds_raised' ) as $key ) {
-                if ( isset( $overview[ $key ] ) && is_numeric( $overview[ $key ] ) ) {
-                    $items[ $i ]['sfaf_raised_amount'] = (float) $overview[ $key ];
-                    $ok++;
-                    break;
-                }
+            $raised = self::raised_amount( $overview );
+            if ( null === $raised ) {
+                $keys     = array_keys( is_array( $overview ) ? $overview : array() );
+                $failed[] = sprintf(
+                    '%s (the overview answered but carried no amount; fields returned: %s)',
+                    $this->campaign_label( $row ),
+                    empty( $keys ) ? '(none)' : implode( ', ', $keys )
+                );
+                continue;
             }
+
+            $items[ $i ]['sfaf_raised_amount'] = $raised;
+            $ok++;
         }
 
-        if ( $tried > 0 && 0 === $ok ) {
-            $notes[] = 'No raised amounts were available — the campaign overview endpoint is not in the supplied API spec and this account did not answer it. '
-                . 'Goals were still imported; the progress bar will show a goal without a raised figure.';
+        if ( ! empty( $failed ) ) {
+            $notes[] = sprintf(
+                'Raised amount unavailable for %d of %d campaign(s): %s. The others imported normally.',
+                count( $failed ),
+                $done,
+                implode( '; ', array_slice( $failed, 0, 5 ) ) . ( count( $failed ) > 5 ? '; …' : '' )
+            );
         }
         if ( $done >= $limit && count( $items ) > $limit ) {
             $notes[] = sprintf( 'Raised amounts were looked up for the first %d campaigns only (sfaf_gfmp_raised_lookup_limit).', $limit );
         }
 
         return $items;
+    }
+
+    /**
+     * Look up each campaign's FAQs, tolerating failure.
+     *
+     * A campaign whose FAQ call fails gets NO sfaf_faqs key at all, which the
+     * framework reads as "this fetch has nothing to say about FAQs" and leaves
+     * the event's existing rows completely alone. That is the difference
+     * between a failed lookup and a campaign that really has no FAQs, and it
+     * is why the key is absent rather than an empty array.
+     *
+     * @param array $items Campaign rows.
+     * @param array $notes Collected by reference.
+     * @return array
+     */
+    private function attach_faqs( $items, &$notes ) {
+        $token = SFAF_GFMP::get_access_token();
+        if ( is_wp_error( $token ) ) {
+            $notes[] = 'FAQs were not looked up: ' . $token->get_error_message();
+            return $items;
+        }
+
+        $limit  = (int) apply_filters( 'sfaf_gfmp_faq_lookup_limit', 500 );
+        $done   = 0;
+        $failed = array();
+
+        foreach ( $items as $i => $row ) {
+            if ( $done >= $limit ) {
+                break;
+            }
+            $id = isset( $row['id'] ) ? (string) $row['id'] : '';
+            if ( '' === $id ) {
+                continue;
+            }
+
+            $done++;
+            $faqs = SFAF_GFMP::fetch_campaign_faqs( $token, $id );
+            if ( is_wp_error( $faqs ) ) {
+                $failed[] = sprintf( '%s (%s)', $this->campaign_label( $row ), $faqs->get_error_message() );
+                continue;
+            }
+
+            $items[ $i ]['sfaf_faqs']       = $faqs['items'];
+            $items[ $i ]['sfaf_faqs_clean'] = ! empty( $faqs['complete'] );
+        }
+
+        if ( ! empty( $failed ) ) {
+            $notes[] = sprintf(
+                'FAQs could not be read for %d of %d campaign(s): %s. Their existing FAQ rows were left untouched.',
+                count( $failed ),
+                $done,
+                implode( '; ', array_slice( $failed, 0, 5 ) ) . ( count( $failed ) > 5 ? '; …' : '' )
+            );
+        }
+
+        return $items;
+    }
+
+    /** A campaign's name for a report line, falling back to its ID. */
+    private function campaign_label( $row ) {
+        foreach ( array( 'name', 'internal_name' ) as $key ) {
+            if ( ! empty( $row[ $key ] ) && is_string( $row[ $key ] ) ) {
+                return $row[ $key ];
+            }
+        }
+        return isset( $row['id'] ) ? '#' . $row['id'] : '(unnamed campaign)';
+    }
+
+    /**
+     * Map one campaign's FAQ rows to the framework's FAQ shape.
+     *
+     * WEIGHT DRIVES ORDER. GoFundMe Pro returns a weight per FAQ and that is
+     * the order they appear in on the campaign page, so it is sorted on here
+     * rather than trusting the order the API happened to return them in.
+     * Ties keep the order they arrived in, which is what a stable sort of
+     * equal weights should do.
+     *
+     * `tag` is deliberately dropped: this calendar's FAQ block has a question
+     * and an answer and nowhere sensible to put a category, and inventing a
+     * place for it would be a display change nobody asked for.
+     *
+     * @param array $rows Raw FAQ rows.
+     * @return array[] Each array( question, answer, source_faq_id ).
+     */
+    private function map_faqs( $rows ) {
+        $mapped = array();
+
+        foreach ( (array) $rows as $index => $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+            $question = isset( $row['question'] ) && is_string( $row['question'] ) ? trim( $row['question'] ) : '';
+            $answer   = isset( $row['answer'] ) && is_string( $row['answer'] ) ? trim( $row['answer'] ) : '';
+            $faq_id   = isset( $row['id'] ) && is_scalar( $row['id'] ) ? (string) $row['id'] : '';
+
+            // No ID means nothing downstream can ever match this row again on
+            // a later fetch, so it would be imported afresh every time. Skip.
+            if ( '' === $faq_id || ( '' === $question && '' === $answer ) ) {
+                continue;
+            }
+
+            $mapped[] = array(
+                'question'      => $question,
+                'answer'        => $answer,
+                'source_faq_id' => $faq_id,
+                'weight'        => isset( $row['weight'] ) && is_numeric( $row['weight'] ) ? (float) $row['weight'] : 0,
+                'order'         => $index,
+            );
+        }
+
+        usort( $mapped, function ( $a, $b ) {
+            if ( $a['weight'] === $b['weight'] ) {
+                return $a['order'] - $b['order'];
+            }
+            return ( $a['weight'] < $b['weight'] ) ? -1 : 1;
+        } );
+
+        // weight and order have done their job; they are not stored.
+        foreach ( $mapped as $i => $row ) {
+            unset( $mapped[ $i ]['weight'], $mapped[ $i ]['order'] );
+        }
+
+        return array_values( $mapped );
     }
 
     /**
@@ -299,7 +553,18 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             $meta['_uc_gofundme_raised_at'] = (string) time();
         }
 
-        return array(
+        // FAQs, and whether this fetch is entitled to conclude anything about
+        // FAQ rows that are missing from it. The key is absent — not empty —
+        // when the lookup failed or was switched off, which is what tells the
+        // framework to leave the event's existing rows completely alone.
+        $faqs       = null;
+        $faqs_clean = false;
+        if ( isset( $item['sfaf_faqs'] ) && is_array( $item['sfaf_faqs'] ) ) {
+            $faqs       = $this->map_faqs( $item['sfaf_faqs'] );
+            $faqs_clean = ! empty( $item['sfaf_faqs_clean'] );
+        }
+
+        $event = array(
             'external_source' => $this->slug(),
             'external_id'     => (string) $item['id'],
             'title'           => $title,
@@ -318,6 +583,13 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             'image_field'     => $image['field'],
             'meta'            => $meta,
         );
+
+        if ( null !== $faqs ) {
+            $event['faqs']       = $faqs;
+            $event['faqs_clean'] = $faqs_clean;
+        }
+
+        return $event;
     }
 
     /**

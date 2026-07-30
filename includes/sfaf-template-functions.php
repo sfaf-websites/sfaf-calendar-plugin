@@ -320,13 +320,24 @@ function sfaf_donate_block( $post_id ) {
     $show_progress = ! isset( $settings['gofundme_show_progress'] ) || $settings['gofundme_show_progress'] === '1';
 
     // Real figures when we have them. A campaign imported from GoFundMe Pro
-    // brings its goal, and its raised amount when that was available; those
-    // are used in preference to the placeholder below.
+    // brings its goal and, as of 2.8.0, a real raised amount on every fetch
+    // (gross_amount from the campaign overview).
     //
-    // The 65% is a demo number that predates the integration. It is kept only
-    // for events with no real raised figure, so nothing that used to render
-    // changes — but where real data exists it is never overridden by a
-    // made-up percentage.
+    // THE 65% PLACEHOLDER IS STILL REACHABLE, and this release deliberately
+    // does not change that. It predates the integration and renders a
+    // fabricated "$X raised" from a made-up percentage, which is worth being
+    // uneasy about — but two real paths still land on it:
+    //
+    //   1. An event where somebody pasted a GoFundMe URL into the Donate box
+    //      by hand. Nothing ever writes _uc_gofundme_raised for those, and
+    //      they are the majority of donate blocks on the calendar today.
+    //   2. An imported campaign whose overview lookup failed on this run —
+    //      now rare and reported per campaign, but possible.
+    //
+    // Case 1 is not GoFundMe Pro's to fix and changing what those events
+    // render is a visible change to live pages that nobody asked for, so it
+    // is left exactly as it was and flagged here instead. Where real data
+    // exists it is never overridden by the placeholder.
     $goal       = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
     $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
     $has_real   = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
@@ -670,9 +681,54 @@ function sfaf_normalize_faqs( $raw ) {
         if ( $q === '' && $a === '' ) {
             continue;
         }
-        $out[] = array( 'question' => $q, 'answer' => $a );
+        $row = array( 'question' => $q, 'answer' => $a );
+
+        // The ID an imported row carries at its platform. It MUST survive this
+        // function: it is the only thing that tells an imported row from one a
+        // person typed, and this rebuilds every row from scratch — so dropping
+        // it here would silently reclassify every imported FAQ as hand-written
+        // the first time anything read the meta. See
+        // SFAF_Sources::sync_faqs().
+        if ( ! empty( $f[ SFAF_Sources::FAQ_SOURCE_ID ] ) ) {
+            $row[ SFAF_Sources::FAQ_SOURCE_ID ] = (string) $f[ SFAF_Sources::FAQ_SOURCE_ID ];
+        }
+
+        $out[] = $row;
     }
     return $out;
+}
+
+/**
+ * Which meta key holds the FAQ rows a given event's editor writes.
+ *
+ * The naming is a legacy of the series manager sharing one repeater:
+ *
+ *   - A series CHILD keeps its own rows in _uc_event_faq, on top of (or
+ *     instead of) the inherited series FAQ.
+ *   - A STANDALONE event — which every imported event is — keeps its rows in
+ *     _uc_series_faq, despite not being a series.
+ *   - A series PARENT keeps the shared rows in _uc_series_faq too, edited in
+ *     the Series Manager.
+ *
+ * Resolved in one place so the importer writes to exactly the key the editor
+ * reads, whichever of those three an event happens to be.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_faq_meta_key( $post_id ) {
+    $parent = (int) get_post_meta( (int) $post_id, '_uc_series_parent', true );
+    return ( $parent && $parent !== (int) $post_id ) ? '_uc_event_faq' : '_uc_series_faq';
+}
+
+/**
+ * Whether an FAQ row came from a platform rather than a person.
+ *
+ * @param array $row
+ * @return bool
+ */
+function sfaf_faq_is_imported( $row ) {
+    return is_array( $row ) && ! empty( $row[ SFAF_Sources::FAQ_SOURCE_ID ] );
 }
 
 /** All series parent event IDs (events that are their own _uc_series_parent). */

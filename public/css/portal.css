@@ -248,3 +248,61 @@ body.uc-portal {
 .uc-fetch-images summary { cursor: pointer; color: #6B7280; }
 .uc-fetch-images table { margin-top: 8px; }
 .uc-break { word-break: break-all; }
+
+/* ---------------------------------------------------------------------------
+ * Field ownership states — locked, needs-attention, normal.
+ *
+ * NEVER COLOUR ALONE. Every state pairs its colour with an icon and with
+ * words, so the meaning survives colour blindness, greyscale printing and a
+ * forced-colours theme. "Normal" has no treatment at all: the absence of a
+ * badge is what finished looks like, and a green tick on every completed
+ * field would be noise on a form of twenty of them.
+ *
+ * Amber, never red, for the fields waiting on a person. A GoFundMe Pro
+ * campaign arrives needing its image and description EVERY time by design, so
+ * red would report a fault on every single import and quickly stop meaning
+ * anything.
+ * ------------------------------------------------------------------------ */
+/* No margin here: .uc-field is a flex column with its own 6px gap, and the
+ * image box (above) adds its own spacing where it needs it. */
+.uc-field > .uc-field-label { font-size: 13px; font-weight: 600; display: block; }
+.uc-state-icon { vertical-align: -2px; flex: 0 0 auto; }
+
+.uc-field-flag { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
+    padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; vertical-align: middle; }
+.uc-flag-locked { background: #F3F4F6; color: #4B5563; border: 1px solid #D1D5DB; }
+.uc-flag-attention { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+
+.uc-field-locked input, .uc-field-locked textarea, .uc-field-locked select {
+    background: #F9FAFB; color: #4B5563; border-color: #D1D5DB; cursor: not-allowed; }
+.uc-field-attention { border-left: 3px solid #f59e0b; padding-left: 10px; margin-left: -13px; }
+.uc-field-attention input, .uc-field-attention textarea { border-color: #f59e0b; background: #fffbeb; }
+
+.uc-field-note { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0 8px;
+    padding: 7px 10px; border-radius: 6px; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.uc-field-note-locked { background: #F3F4F6; color: #4B5563; }
+.uc-field-note-attention { background: #fffbeb; color: #92400e; }
+
+.uc-flash-attention { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.uc-btn-source { background: #92400e; color: #fff; border-color: #92400e; margin-left: auto; }
+.uc-btn-source:hover { background: #7c2d12; color: #fff; }
+
+/* Locked FAQ rows from the platform. */
+.uc-locked-faqs { border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px; background: #F9FAFB; }
+.uc-faq-row-locked input, .uc-faq-row-locked textarea {
+    background: #fff; color: #4B5563; border-color: #E5E7EB; cursor: not-allowed; }
+
+/* Pending-queue indicator. Hover AND focus, so it is usable by keyboard, on a
+ * phone and by anyone not using a mouse. The aria-label on the wrapper names
+ * the fields, so a screen reader gets the same sentence the tooltip shows. */
+.uc-row-needs td { background: #fffdf5; }
+.uc-needs-flag { position: relative; display: inline-flex; color: #b45309; margin-left: 6px; cursor: help; }
+.uc-needs-flag:focus { outline: 2px solid #f59e0b; outline-offset: 2px; border-radius: 3px; }
+.uc-needs-tip { position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+    white-space: nowrap; background: #1F2937; color: #fff; padding: 4px 8px; border-radius: 5px;
+    font-size: 11px; font-weight: 500; opacity: 0; visibility: hidden; transition: opacity .12s; z-index: 20; }
+.uc-needs-flag:hover .uc-needs-tip, .uc-needs-flag:focus .uc-needs-tip { opacity: 1; visibility: visible; }
+.uc-source-link-strong { color: #b45309; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) { .uc-needs-tip { transition: none; } }
