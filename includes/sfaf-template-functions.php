@@ -85,6 +85,7 @@ function sfaf_icon_paths() {
     return array(
         // Interface icons — 2px stroke, round caps/joins, no fill.
         'clock'     => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+        'help'      => '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/>',
         'pin'       => '<path d="M12 21c4.3-4.7 6.5-8.2 6.5-11a6.5 6.5 0 0 0-13 0c0 2.8 2.2 6.3 6.5 11z"/><circle cx="12" cy="10" r="2.5"/>',
         'calendar'  => '<rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/>',
         'bell'      => '<path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/>',
@@ -307,8 +308,30 @@ function sfaf_social_share_buttons( $post_id, $compact = false ) {
 }
 
 /**
- * Donate / GoFundMe block: mock progress bar + outbound button.
- * Only renders when a campaign URL is set and the feature is enabled.
+ * Donate / GoFundMe block: progress bar (only with real figures) + outbound
+ * button. Only renders when a campaign URL is set and the feature is enabled.
+ *
+ * NO INVENTED FUNDRAISING NUMBERS. EVER.
+ * ---------------------------------------------------------------------------
+ * Until 2.9.0 this block fell back to a hardcoded 65% when it had no raised
+ * figure, and then multiplied the goal by it to print "$65,000 raised". That
+ * number was a design placeholder from before the GoFundMe Pro integration
+ * existed. It was not an estimate, a projection or a rounding: it was made up,
+ * and it was rendered to donors, on a nonprofit's public pages, next to a real
+ * goal, in a way nobody reading it could tell from a real total.
+ *
+ * How it got there does not matter. It is gone.
+ *
+ * The rule now: a raised amount is displayed if and only if a real one has
+ * been stored, and the progress bar is drawn if and only if there is a real
+ * amount AND a goal to measure it against. There is no fallback percentage, no
+ * assumed figure, and no bar drawn from one. An event with a goal and no
+ * raised figure shows the goal by itself, which is a true statement; an event
+ * with neither shows the Donate button alone.
+ *
+ * _uc_gofundme_raised is only ever written by the GoFundMe Pro importer from
+ * the campaign's own gross_amount (see SFAF_Source_GFMP::raised_amount), so
+ * "we have a figure" and "the platform told us the figure" are the same thing.
  */
 function sfaf_donate_block( $post_id ) {
     $url = get_post_meta( $post_id, '_uc_gofundme_url', true );
@@ -319,51 +342,33 @@ function sfaf_donate_block( $post_id ) {
     $settings      = get_option( 'uc_settings', array() );
     $show_progress = ! isset( $settings['gofundme_show_progress'] ) || $settings['gofundme_show_progress'] === '1';
 
-    // Real figures when we have them. A campaign imported from GoFundMe Pro
-    // brings its goal and, as of 2.8.0, a real raised amount on every fetch
-    // (gross_amount from the campaign overview).
-    //
-    // THE 65% PLACEHOLDER IS STILL REACHABLE, and this release deliberately
-    // does not change that. It predates the integration and renders a
-    // fabricated "$X raised" from a made-up percentage, which is worth being
-    // uneasy about — but two real paths still land on it:
-    //
-    //   1. An event where somebody pasted a GoFundMe URL into the Donate box
-    //      by hand. Nothing ever writes _uc_gofundme_raised for those, and
-    //      they are the majority of donate blocks on the calendar today.
-    //   2. An imported campaign whose overview lookup failed on this run —
-    //      now rare and reported per campaign, but possible.
-    //
-    // Case 1 is not GoFundMe Pro's to fix and changing what those events
-    // render is a visible change to live pages that nobody asked for, so it
-    // is left exactly as it was and flagged here instead. Where real data
-    // exists it is never overridden by the placeholder.
     $goal       = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
     $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
-    $has_real   = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
+    $has_raised = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
+    $raised     = $has_raised ? (float) $raised_raw : 0.0;
 
-    if ( $has_real ) {
-        $raised  = (float) $raised_raw;
-        $percent = $goal > 0 ? (int) min( 100, round( $raised / $goal * 100 ) ) : 0;
-    } else {
-        $percent = 65;
-        $raised  = $goal ? round( $goal * $percent / 100 ) : 0;
-    }
+    // A bar needs two real numbers. Without both there is nothing honest to
+    // draw, so nothing is drawn.
+    $has_bar = ( $show_progress && $has_raised && $goal > 0 );
+    $percent = $has_bar ? (int) min( 100, round( $raised / $goal * 100 ) ) : 0;
 
     ob_start();
     ?>
     <div class="uc-donate-block">
-        <?php if ( $show_progress ) : ?>
+        <?php if ( $has_bar ) : ?>
             <div class="uc-donate-progress">
                 <div class="uc-donate-stats">
-                    <?php if ( $goal ) : ?>
-                        <span class="uc-donate-raised">$<?php echo number_format( $raised ); ?> raised</span>
-                        <span class="uc-donate-goal">of $<?php echo number_format( $goal ); ?> goal</span>
-                    <?php else : ?>
-                        <span class="uc-donate-raised"><?php echo (int) $percent; ?>% to goal</span>
-                    <?php endif; ?>
+                    <span class="uc-donate-raised">$<?php echo number_format( $raised ); ?> raised</span>
+                    <span class="uc-donate-goal">of $<?php echo number_format( $goal ); ?> goal</span>
                 </div>
                 <div class="uc-donate-bar"><div class="uc-donate-fill" style="width: <?php echo (int) $percent; ?>%"></div></div>
+            </div>
+        <?php elseif ( $show_progress && $goal > 0 ) : ?>
+            <?php // A goal with no total behind it. State the goal and stop. ?>
+            <div class="uc-donate-progress uc-donate-goal-only">
+                <div class="uc-donate-stats">
+                    <span class="uc-donate-goal">$<?php echo number_format( $goal ); ?> goal</span>
+                </div>
             </div>
         <?php endif; ?>
         <a class="uc-donate-btn" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo sfaf_icon( 'heart' ); ?> Donate</a>

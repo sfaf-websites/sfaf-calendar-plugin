@@ -56,12 +56,20 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * cannot drift into disagreement, because there is nothing to keep in
      * step — adding or removing a field changes both at once.
      *
-     * Note what is NOT here: image and description. See manager_fields().
+     * Note what is NOT here: image, description, category and organizer. See
+     * manager_fields().
+     *
+     * 'donate_url' IS here because normalize() sends _uc_gofundme_url in its
+     * meta extras, so a fetch really does overwrite the Donate box on a
+     * campaign. That is the test for this list: not "does the platform have a
+     * version of this field" but "does update_event() write the meta key that
+     * editor control writes". Eventbrite does not send it and so does not
+     * declare it, which is why the two adapters differ here.
      *
      * @return string[]
      */
     public function owned_fields() {
-        return array( 'title', 'date', 'start_time', 'end_time', 'end_date', 'location', 'source_url', 'faqs' );
+        return array( 'title', 'date', 'start_time', 'end_time', 'end_date', 'location', 'source_url', 'donate_url', 'faqs' );
     }
 
     /**
@@ -87,10 +95,16 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * IF YOU ARE HERE TO ADD AN IMAGE OR DESCRIPTION MAPPING: check with
      * GoFundMe Pro first. As of this release they do not expose either.
      *
+     * Category and Organizer are a different case with the same answer. They
+     * are this calendar's own taxonomies, so no platform supplies them and
+     * none ever will, and an event is not really ready to publish without
+     * them. They are listed here so the editor asks for them in the same
+     * place, in the same way, as the two GoFundMe Pro genuinely cannot give.
+     *
      * @return string[]
      */
     public function manager_fields() {
-        return array( 'image', 'description' );
+        return array( 'image', 'description', 'category', 'organizer' );
     }
 
     /**
@@ -99,7 +113,7 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * @return string
      */
     public function manager_fields_note() {
-        return 'GoFundMe Pro does not provide a campaign image or description through its API — they live in the campaign\'s page design, which is not exposed. Whatever you enter here is kept and is never overwritten by a fetch.';
+        return 'GoFundMe Pro does not provide a campaign image or description through its API. They live in the campaign\'s page design, which is not exposed. Whatever you enter here is kept and is never overwritten by a fetch.';
     }
 
     /**
@@ -122,10 +136,10 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
     public function inactive_reason() {
         $creds = SFAF_GFMP::credentials();
         if ( '' === $creds['client_id'] || '' === $creds['client_secret'] ) {
-            return 'no client ID and secret stored — add them under Settings → GoFundMe Pro';
+            return 'no client ID and secret stored, add them under Settings → GoFundMe Pro';
         }
         if ( '' === $creds['org_id'] ) {
-            return 'no Organization ID stored — campaign calls are addressed to /organizations/{id}/campaigns and need it';
+            return 'no Organization ID stored: campaign calls are addressed to /organizations/{id}/campaigns and need it';
         }
         return 'not configured';
     }
@@ -157,7 +171,7 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
         $cleanup = self::cleanup_appeal_descriptions( $result['items'] );
         if ( $cleanup['examined'] > 0 ) {
             $notes[] = sprintf(
-                'One-time cleanup: %d imported description(s) matched the campaign\'s fundraiser-page appeal text and were cleared; %d differed and were left alone as hand-edited. Write a description when approving — it will survive later fetches.',
+                'One-time cleanup: %d imported description(s) matched the campaign\'s fundraiser-page appeal text and were cleared; %d differed and were left alone as hand-edited. Write a description when approving. It will survive later fetches.',
                 (int) $cleanup['cleared'],
                 (int) $cleanup['kept']
             );
@@ -640,7 +654,7 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             }
         }
 
-        return array( 'url' => '', 'field' => 'none — placeholder will show' );
+        return array( 'url' => '', 'field' => 'none, placeholder will show' );
     }
 
     /* ---------------------------------------------------------------------

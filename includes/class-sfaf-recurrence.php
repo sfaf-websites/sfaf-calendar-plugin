@@ -227,6 +227,13 @@ class SFAF_Recurrence {
         update_post_meta( $child_id, '_uc_series_id', $parent_id );
         update_post_meta( $child_id, '_uc_manually_edited', '0' );
 
+        // If the series carries a default FAQ set, copy it onto this brand-new
+        // occurrence. This is the point of the feature: the manager sets it
+        // once on the series instead of remembering to pick a set for the
+        // fifty-second weekly occurrence. Only ever applied to an occurrence
+        // with no FAQs of its own, so re-generating never stacks duplicates.
+        SFAF_FAQ_Sets::apply_series_default( $child_id, $parent_id );
+
         return $child_id;
     }
 
@@ -445,7 +452,7 @@ class SFAF_Recurrence {
             <?php elseif ( $recurrence && $end_date ) : ?>
                 <?php $count = count( $this->get_series_children( $post->ID ) ); ?>
                 <?php if ( $is_parent && $count ) : ?>
-                    <p>This event repeats <strong><?php echo esc_html( $recurrence ); ?></strong> &mdash; <strong><?php echo (int) ( $count + 1 ); ?></strong> events through <?php echo esc_html( $end_date ); ?>.</p>
+                    <p>This event repeats <strong><?php echo esc_html( $recurrence ); ?></strong>: <strong><?php echo (int) ( $count + 1 ); ?></strong> events through <?php echo esc_html( $end_date ); ?>.</p>
                 <?php else : ?>
                     <p>On save this will generate a repeating series through <?php echo esc_html( $end_date ); ?>.</p>
                 <?php endif; ?>

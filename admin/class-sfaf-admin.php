@@ -388,11 +388,11 @@ class SFAF_Admin {
                                     }
                                 ?></a></td>
                                 <td><a href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( get_the_title( $pid ) ); ?></strong></a></td>
-                                <td><?php echo ! is_wp_error( $cats ) && $cats ? esc_html( implode( ', ', $cats ) ) : '—'; ?></td>
-                                <td><?php echo ! is_wp_error( $orgs ) && $orgs ? esc_html( implode( ', ', $orgs ) ) : '—'; ?></td>
-                                <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : '—'; ?></td>
+                                <td><?php echo ! is_wp_error( $cats ) && $cats ? esc_html( implode( ', ', $cats ) ) : 'None'; ?></td>
+                                <td><?php echo ! is_wp_error( $orgs ) && $orgs ? esc_html( implode( ', ', $orgs ) ) : 'None'; ?></td>
+                                <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : 'None'; ?></td>
                                 <td><?php echo (int) sfaf_series_count( $pid ); ?></td>
-                                <td><?php echo $next ? esc_html( date_i18n( 'M j, Y', strtotime( $next ) ) ) : '—'; ?></td>
+                                <td><?php echo $next ? esc_html( date_i18n( 'M j, Y', strtotime( $next ) ) ) : 'Not set'; ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -454,13 +454,13 @@ class SFAF_Admin {
 
                 <div class="uc-meta-row">
                     <div class="uc-meta-field"><label>Category</label>
-                        <select name="series_category" class="uc-input"><option value="0">— none —</option>
+                        <select name="series_category" class="uc-input"><option value="0">None</option>
                             <?php if ( ! is_wp_error( $cats ) ) foreach ( $cats as $c ) : ?>
                                 <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $curcat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
                             <?php endforeach; ?>
                         </select></div>
                     <div class="uc-meta-field"><label>Organizer</label>
-                        <select name="series_organizer" class="uc-input"><option value="0">— none —</option>
+                        <select name="series_organizer" class="uc-input"><option value="0">None</option>
                             <?php if ( ! is_wp_error( $orgs ) ) foreach ( $orgs as $o ) : ?>
                                 <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $curorg, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
                             <?php endforeach; ?>
@@ -515,8 +515,8 @@ class SFAF_Admin {
                     <div class="uc-gen-field">
                         <label for="uc-gen-type">Shortcode Type</label>
                         <select id="uc-gen-type" class="uc-gen-input">
-                            <option value="sfaf_calendar">[sfaf_calendar] — Full calendar</option>
-                            <option value="upcoming_events">[upcoming_events] — Compact widget</option>
+                            <option value="sfaf_calendar">[sfaf_calendar]: Full calendar</option>
+                            <option value="upcoming_events">[upcoming_events]: Compact widget</option>
                         </select>
                     </div>
 
@@ -613,7 +613,7 @@ class SFAF_Admin {
 
             <div class="uc-admin-card uc-embed-note">
                 <p>
-                    <strong>This block works on any site or page</strong> — another WordPress site, or a
+                    <strong>This block works on any site or page</strong>: another WordPress site, or a
                     platform where you can only add an HTML block. Nothing is installed on the other
                     site and no events are copied to it. The block asks this calendar for its events
                     each time someone opens the page, so what visitors see is always current, and every
@@ -780,9 +780,9 @@ class SFAF_Admin {
                                 <?php
                                 $pg_style = $s( 'display_pagination', 'load_more' );
                                 $pg_opts  = array(
-                                    'load_more' => 'Load More button — fetches the next batch and appends it',
-                                    'pages'     => 'Next / Previous pages — numbered page links below the list',
-                                    'infinite'  => 'Infinite scroll — loads more automatically near the bottom',
+                                    'load_more' => 'Load More button: fetches the next batch and appends it',
+                                    'pages'     => 'Next / Previous pages: numbered page links below the list',
+                                    'infinite'  => 'Infinite scroll: loads more automatically near the bottom',
                                 );
                                 foreach ( $pg_opts as $val => $label ) :
                                 ?>
@@ -866,7 +866,7 @@ class SFAF_Admin {
                     <div class="uc-panel-body">
                         <div class="uc-routing-row">
                             <span class="uc-status-dot uc-dot-green"></span>
-                            <div class="uc-routing-info"><strong>Save to database</strong><span>Always on — every RSVP is stored.</span></div>
+                            <div class="uc-routing-info"><strong>Save to database</strong><span>Always on. Every RSVP is stored.</span></div>
                             <label class="uc-toggle uc-toggle-disabled"><input type="checkbox" checked disabled /><span class="uc-toggle-slider"></span></label>
                         </div>
 
@@ -981,7 +981,7 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong>. GoFundMe Pro support has confirmed the token endpoint below is correct — <strong>leave it as it is</strong>; pro.gofundme.com does not issue tokens. Every request also carries the <code>x-integration-id</code> header they issued, which is what stops their edge security treating this server as a bot.</p>
+                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong>. GoFundMe Pro support has confirmed the token endpoint below is correct, so <strong>leave it as it is</strong>; pro.gofundme.com does not issue tokens. Every request also carries the <code>x-integration-id</code> header they issued, which is what stops their edge security treating this server as a bot.</p>
                         <div class="uc-field-row">
                             <label>Token endpoint URL</label>
                             <input type="url" name="uc_settings[gofundme_token_url]" value="<?php echo esc_attr( $c( 'gofundme_token_url' ) ); ?>"
@@ -992,7 +992,7 @@ class SFAF_Admin {
                             <input type="url" name="uc_settings[gofundme_api_base]" value="<?php echo esc_attr( $c( 'gofundme_api_base' ) ); ?>"
                                    placeholder="<?php echo esc_attr( SFAF_GFMP::DEFAULT_API_BASE ); ?>" class="uc-input" />
                         </div>
-                        <p class="description">Leave blank to use the defaults shown. In use now — token: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code> &middot; data: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code> &middot; integration ID: <code><?php echo esc_html( SFAF_GFMP::integration_id() ); ?></code></p>
+                        <p class="description">Leave blank to use the defaults shown. In use now. Token: <code><?php echo esc_html( SFAF_GFMP::token_endpoint() ); ?></code> &middot; data: <code><?php echo esc_html( SFAF_GFMP::api_base() ); ?></code> &middot; integration ID: <code><?php echo esc_html( SFAF_GFMP::integration_id() ); ?></code></p>
                         <div class="uc-field-row">
                             <label>Client ID</label>
                             <input type="text" name="uc_settings[gofundme_client_id]" value="<?php echo esc_attr( $c( 'gofundme_client_id' ) ); ?>" class="uc-input" />
@@ -1001,14 +1001,14 @@ class SFAF_Admin {
                             <label>Client Secret</label>
                             <?php // Never rendered back to the browser — only whether one is stored. ?>
                             <input type="password" name="uc_settings[gofundme_client_secret]" value="" autocomplete="new-password"
-                                   placeholder="<?php echo SFAF_GFMP::has_secret() ? 'Saved — leave blank to keep it' : 'Paste the client secret'; ?>"
+                                   placeholder="<?php echo SFAF_GFMP::has_secret() ? 'Saved. Leave blank to keep it' : 'Paste the client secret'; ?>"
                                    class="uc-input" />
                         </div>
                         <div class="uc-field-row">
                             <label>Organization ID</label>
                             <input type="text" name="uc_settings[gofundme_org_id]" value="<?php echo esc_attr( $c( 'gofundme_org_id' ) ); ?>" class="uc-input" />
                         </div>
-                        <p class="description">The Organization ID is not used to obtain a token — it identifies which organization's data to read, in calls such as <code>GET /organizations/{org_id}/campaigns</code>. Set it before the campaign step.</p>
+                        <p class="description">The Organization ID is not used to obtain a token. It identifies which organization's data to read, in calls such as <code>GET /organizations/{org_id}/campaigns</code>. Set it before the campaign step.</p>
                         <div class="uc-field-row">
                             <label>Connection</label>
                             <div class="uc-conn-controls">
@@ -1016,7 +1016,7 @@ class SFAF_Admin {
                                 <button type="button" class="button uc-gofundme-connect">Test connection</button>
                                 <span class="uc-conn-pill <?php echo $gf_status['connected'] ? 'is-connected' : ''; ?>"><?php
                                     echo $gf_status['connected']
-                                        ? 'Connected — token valid for ' . esc_html( $gf_status['expires_human'] )
+                                        ? 'Connected. Token valid for ' . esc_html( $gf_status['expires_human'] )
                                         : 'Not connected';
                                 ?></span>
                             </div>
@@ -1028,7 +1028,7 @@ class SFAF_Admin {
                               // in admin.js together once the payload is understood. ?>
                         <div class="uc-probe-box">
                             <h3>Campaign probe <span class="uc-probe-tag">diagnostic</span></h3>
-                            <p class="description">Calls four campaign endpoints and prints exactly what comes back — status and body, nothing decoded or filtered. <strong>Read-only:</strong> it imports nothing and changes nothing. Here to replace guesswork about where the campaign's real copy and images live.</p>
+                            <p class="description">Calls four campaign endpoints and prints exactly what comes back: status and body, nothing decoded or filtered. <strong>Read-only:</strong> it imports nothing and changes nothing. Here to replace guesswork about where the campaign's real copy and images live.</p>
                             <div class="uc-field-row">
                                 <label>Campaign ID</label>
                                 <div class="uc-conn-controls">
@@ -1093,7 +1093,7 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description">Eventbrite uses a single long-lived <strong>private token</strong> from your account's API keys page — there is no OAuth round trip. It is sent as a bearer token on every request.</p>
+                        <p class="description">Eventbrite uses a single long-lived <strong>private token</strong> from your account's API keys page. There is no OAuth round trip. It is sent as a bearer token on every request.</p>
                         <div class="uc-field-row">
                             <label>API base URL</label>
                             <input type="url" name="uc_settings[eventbrite_api_base]" value="<?php echo esc_attr( $c( 'eventbrite_api_base' ) ); ?>"
@@ -1104,7 +1104,7 @@ class SFAF_Admin {
                             <label>Private token</label>
                             <?php // Never rendered back to the browser — only whether one is stored. ?>
                             <input type="password" name="uc_settings[eventbrite_private_token]" value="" autocomplete="new-password"
-                                   placeholder="<?php echo SFAF_Eventbrite::has_token() ? 'Saved — leave blank to keep it' : 'Paste the private token'; ?>"
+                                   placeholder="<?php echo SFAF_Eventbrite::has_token() ? 'Saved. Leave blank to keep it' : 'Paste the private token'; ?>"
                                    class="uc-input" />
                         </div>
                         <div class="uc-field-row">
@@ -1116,7 +1116,7 @@ class SFAF_Admin {
                                         $eb_who = ( '' !== $eb_status['name'] ) ? $eb_status['name'] : 'Eventbrite';
                                         echo 'Connected as ' . esc_html( $eb_who );
                                         if ( '' !== $eb_status['verified_human'] ) {
-                                            echo ' — verified ' . esc_html( $eb_status['verified_human'] ) . ' ago';
+                                            echo ', verified ' . esc_html( $eb_status['verified_human'] ) . ' ago';
                                         }
                                     } else {
                                         echo 'Not connected';
@@ -1144,7 +1144,7 @@ class SFAF_Admin {
                                 </select>
                             </div>
                         </div>
-                        <p class="description">Reads the account's organizations, then every event under each one, and shows what came back. <strong>Nothing is imported</strong> — this is a look at the data before anything is mapped to events on this site.</p>
+                        <p class="description">Reads the account's organizations, then every event under each one, and shows what came back. <strong>Nothing is imported</strong>. This is a look at the data before anything is mapped to events on this site.</p>
                         <p class="description uc-eventbrite-fetch-msg" style="display:none;"></p>
                         <div class="uc-eventbrite-preview-out" style="display:none;"></div>
 
@@ -1208,7 +1208,7 @@ class SFAF_Admin {
                         <div class="uc-field-row uc-field-row-top">
                             <label>Global Default Campaign</label>
                             <div style="flex:1;">
-                                <input type="text" name="uc_settings[pardot_default_campaign]" value="<?php echo esc_attr( $s( 'pardot_default_campaign' ) ); ?>" class="uc-input" placeholder="Campaign ID — all RSVPs go here regardless" />
+                                <input type="text" name="uc_settings[pardot_default_campaign]" value="<?php echo esc_attr( $s( 'pardot_default_campaign' ) ); ?>" class="uc-input" placeholder="Campaign ID, all RSVPs go here regardless" />
                                 <p class="description">Every RSVP is assigned to this campaign, no matter the category or event.</p>
                             </div>
                         </div>
@@ -1295,7 +1295,7 @@ class SFAF_Admin {
                         <div class="uc-field-row">
                             <label>Import Needs as Category</label>
                             <select name="uc_settings[galaxy_needs_category]" class="uc-input">
-                                <option value="">— Select category —</option>
+                                <option value="">Select a category</option>
                                 <option value="__create__" <?php selected( $s( 'galaxy_needs_category' ), '__create__' ); ?>>Auto-create "Volunteer Opportunities"</option>
                                 <?php if ( ! is_wp_error( $event_categories ) ) : foreach ( $event_categories as $cat ) : ?>
                                     <option value="<?php echo (int) $cat->term_id; ?>" <?php selected( $s( 'galaxy_needs_category' ), (string) $cat->term_id ); ?>><?php echo esc_html( $cat->name ); ?></option>

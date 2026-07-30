@@ -44,7 +44,7 @@ class SFAF_List_Columns {
                         echo '<br><span class="uc-col-muted">' . esc_html( date( 'g:i A', strtotime( $time ) ) ) . '</span>';
                     }
                 } else {
-                    echo '<span class="uc-col-muted">—</span>';
+                    echo '<span class="uc-col-muted">None</span>';
                 }
                 break;
 
@@ -69,7 +69,7 @@ class SFAF_List_Columns {
                         echo '<br><span class="uc-col-muted">edited</span>';
                     }
                 } else {
-                    echo '<span class="uc-col-muted">—</span>';
+                    echo '<span class="uc-col-muted">None</span>';
                 }
                 break;
 

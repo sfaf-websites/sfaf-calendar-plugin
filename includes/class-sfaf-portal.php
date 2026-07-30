@@ -168,6 +168,7 @@ class SFAF_Portal {
             case 'rsvps':    $this->render_rsvps( $user ); break;
             case 'pending':  $this->render_pending( $user ); break;
             case 'users':    $this->render_users( $user ); break;
+            case 'faq-sets': $this->render_faq_sets( $user ); break;
             default:         $this->render_dashboard( $user );
         }
     }
@@ -271,6 +272,68 @@ class SFAF_Portal {
                     $this->redirect( 'pending' );
                 }
                 $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'import_review' ) );
+                break;
+
+            /* ---- FAQ sets. ------------------------------------------------
+             *
+             * These live outside the event form rather than inside it. HTML
+             * forms cannot nest, and applying a set is its own post-and-
+             * redirect that must not carry the whole editor's fields with it,
+             * so the controls sit in their own panel above the form. Same
+             * reasoning as the "Refresh from source" panel. */
+            case 'faq_set_apply':
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $result = SFAF_FAQ_Sets::apply(
+                    $event_id,
+                    isset( $_POST['faq_set_id'] ) ? sanitize_text_field( wp_unslash( $_POST['faq_set_id'] ) ) : '',
+                    ( isset( $_POST['faq_set_mode'] ) && 'replace' === $_POST['faq_set_mode'] ) ? 'replace' : 'append'
+                );
+                set_transient(
+                    'sfaf_faq_set_result_' . $user->ID . '_' . $event_id,
+                    is_wp_error( $result ) ? array( 'error' => $result->get_error_message() ) : $result,
+                    5 * MINUTE_IN_SECONDS
+                );
+                $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'faq_set_applied' ) );
+                break;
+
+            case 'faq_set_create':
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $created = SFAF_FAQ_Sets::create_from_event(
+                    $event_id,
+                    isset( $_POST['faq_set_name'] ) ? wp_unslash( $_POST['faq_set_name'] ) : ''
+                );
+                set_transient(
+                    'sfaf_faq_set_result_' . $user->ID . '_' . $event_id,
+                    is_wp_error( $created )
+                        ? array( 'error' => $created->get_error_message() )
+                        : array( 'created' => (string) $created ),
+                    5 * MINUTE_IN_SECONDS
+                );
+                $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'faq_set_saved' ) );
+                break;
+
+            case 'faq_set_save':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_FAQ_Sets::save(
+                    isset( $_POST['faq_set_id'] ) ? sanitize_text_field( wp_unslash( $_POST['faq_set_id'] ) ) : '',
+                    isset( $_POST['faq_set_name'] ) ? wp_unslash( $_POST['faq_set_name'] ) : '',
+                    isset( $_POST['faq_set_rows'] ) ? wp_unslash( $_POST['faq_set_rows'] ) : array()
+                );
+                $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_saved' ) );
+                break;
+
+            case 'faq_set_delete':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_FAQ_Sets::delete( isset( $_POST['faq_set_id'] ) ? sanitize_text_field( wp_unslash( $_POST['faq_set_id'] ) ) : '' );
+                $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_deleted' ) );
                 break;
 
             case 'set_user_role':
@@ -405,9 +468,17 @@ class SFAF_Portal {
             'end_date'   => '_uc_end_date',
             'capacity'   => '_uc_capacity',
         );
+        // Recurrence is the source's on an imported event: the dropdown is
+        // rendered disabled and without a name, and this refuses it outright
+        // so a hand-built POST cannot set a cadence the source did not.
+        $is_imported = ( '' !== $src_slug );
+
         foreach ( $text as $field => $key ) {
             if ( $is_locked( $field ) ) {
                 continue; // the platform's, and a fetch would put it back anyway
+            }
+            if ( $is_imported && ( 'recurrence' === $field || 'end_date' === $field ) ) {
+                continue; // set at the source; see the note in the editor
             }
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $event_id, $key, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
@@ -645,7 +716,7 @@ class SFAF_Portal {
     <meta charset="<?php bloginfo( 'charset' ); ?>" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
-    <title><?php echo esc_html( $title ); ?> — SFAF Calendar</title>
+    <title><?php echo esc_html( $title ); ?> - SFAF Calendar</title>
     <link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
     <style>:root{--uc-primary:<?php echo esc_html( $primary ); ?>;--uc-accent:<?php echo esc_html( $accent ); ?>;}</style>
     <?php
@@ -680,6 +751,7 @@ class SFAF_Portal {
             'dashboard' => array( 'Dashboard', '', 'home' ),
             'events'    => array( 'Events', 'events', 'calendar' ),
             'series'    => array( 'Series', 'series', 'repeat' ),
+            'faq-sets'  => array( 'FAQ Sets', 'faq-sets', 'help' ),
         );
         if ( $this->can_view_all( $user ) ) {
             $nav['rsvps'] = array( 'RSVPs', 'rsvps', 'check' );
@@ -745,11 +817,14 @@ class SFAF_Portal {
             'user_added'     => 'User added to the calendar system.',
             'user_removed'   => 'User removed from the calendar system.',
             'series_saved'   => 'Series saved and propagated to its occurrences.',
-            'fetched'        => 'Fetch complete — see the results below.',
+            'fetched'        => 'Fetch complete. See the results below.',
             'import_dismissed' => 'Event dismissed. It stays in the Dismissed list and will not be fetched again.',
             'import_restored'  => 'Event restored to Pending.',
             'import_review'    => 'Assign a category, organizer and series, then press Publish to put this event on the calendar.',
-            'refreshed'        => 'Refreshed from the source — see below for what changed.',
+            'refreshed'        => 'Refreshed from the source. See below for what changed.',
+            'faq_set_applied'  => 'FAQ set applied.',
+            'faq_set_saved'    => 'FAQ set saved.',
+            'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
         );
         $key = sanitize_key( $_GET['msg'] );
         if ( isset( $map[ $key ] ) ) {
@@ -954,13 +1029,13 @@ class SFAF_Portal {
                               // the thing worth being loudest about — it is the step
                               // that takes live events off the calendar.
                         if ( ! empty( $result['removal_skip'] ) ) : ?>
-                            <div class="uc-fetch-guard">Removal check skipped &mdash; <?php echo esc_html( $result['removal_skip'] ); ?>. No event was unpublished by this source.</div>
+                            <div class="uc-fetch-guard">Removal check skipped. <?php echo esc_html( $result['removal_skip'] ); ?>. No event was unpublished by this source.</div>
                         <?php elseif ( ! empty( $result['removal_ran'] ) ) : ?>
                             <div class="uc-fetch-guard uc-fetch-guard-ok">Removal check ran on a complete result set<?php
                                 if ( (int) $result['unpublished'] > 0 ) {
-                                    echo ' — ' . (int) $result['ended'] . ' closed at source, ' . (int) $result['vanished'] . ' gone entirely.';
+                                    echo ': ' . (int) $result['ended'] . ' closed at source, ' . (int) $result['vanished'] . ' gone entirely.';
                                 } else {
-                                    echo ' — nothing had gone.';
+                                    echo ', nothing had gone.';
                                 }
                             ?></div>
                         <?php endif; ?>
@@ -969,7 +1044,7 @@ class SFAF_Portal {
                               // than buried in the summary because it is content
                               // changing on live pages.
                         if ( ! empty( $result['faq_added'] ) || ! empty( $result['faq_updated'] ) || ! empty( $result['faq_removed'] ) ) : ?>
-                            <div class="uc-fetch-guard uc-fetch-guard-ok">FAQs from this source &mdash;
+                            <div class="uc-fetch-guard uc-fetch-guard-ok">FAQs from this source:
                                 <?php echo (int) $result['faq_added']; ?> added,
                                 <?php echo (int) $result['faq_updated']; ?> updated,
                                 <?php echo (int) $result['faq_removed']; ?> removed.
@@ -997,7 +1072,7 @@ class SFAF_Portal {
                                         <tr>
                                             <td><?php echo esc_html( $img['title'] ); ?></td>
                                             <td><code><?php echo esc_html( $img['field'] ); ?></code></td>
-                                            <td class="uc-break"><?php echo $img['url'] ? esc_html( $img['url'] ) : '&mdash;'; ?></td>
+                                            <td class="uc-break"><?php echo $img['url'] ? esc_html( $img['url'] ) : 'None'; ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                     </tbody>
@@ -1077,11 +1152,11 @@ class SFAF_Portal {
                 ?>
                 <tr>
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
-                    <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">—</span>'; ?></td>
-                    <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                    <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
                     <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( ucfirst( $st ) ); ?></span></td>
-                    <td><?php echo sfaf_is_in_series( $id ) ? esc_html( sfaf_get_series_name( $id ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                    <td><?php echo sfaf_is_in_series( $id ) ? esc_html( sfaf_get_series_name( $id ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php
                         $src = get_post_meta( $id, '_uc_source_site', true );
                         echo $src ? esc_html( wp_parse_url( $src, PHP_URL_HOST ) ?: $src ) : '<span class="uc-muted">Local</span>';
@@ -1154,7 +1229,7 @@ class SFAF_Portal {
                 <p class="uc-field-note uc-field-note-locked">
                     <?php echo $this->icon_lock(); ?>
                     <span><strong><?php echo (int) count( $imported ); ?> question<?php echo 1 === count( $imported ) ? '' : 's'; ?> from <?php echo esc_html( $label ); ?>.</strong>
-                    These are kept in step with the campaign on every fetch, so they cannot be edited here &mdash; an edit would be overwritten the next time the campaign is read.
+                    These are kept in step with the campaign on every fetch, so they cannot be edited here. An edit would be overwritten the next time the campaign is read.
                     <?php if ( ! empty( $source['url'] ) ) : ?>
                         <a href="<?php echo esc_url( $source['url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $label ); ?> &nearr;</a>
                     <?php endif; ?>
@@ -1171,7 +1246,7 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-            <p class="uc-hint" style="margin-top:14px;"><strong>Your own questions</strong> &mdash; added here, kept forever, and never reordered or removed by a fetch. They appear after the ones above.</p>
+            <p class="uc-hint" style="margin-top:14px;"><strong>Your own questions.</strong> Added here, kept forever, and never reordered or removed by a fetch. They appear after the ones above.</p>
         <?php endif; ?>
 
         <div class="uc-repeater" data-repeater>
@@ -1330,6 +1405,13 @@ class SFAF_Portal {
         }
         update_post_meta( $parent_id, '_uc_series_faq', $faqs );
 
+        // The set each new occurrence is given. Stored before generation runs
+        // below, so a series saved with a default set applies it to the
+        // occurrences that same save creates.
+        if ( isset( $_POST['series_faq_set'] ) ) {
+            SFAF_FAQ_Sets::set_series_default( $parent_id, sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ) ) );
+        }
+
         $rec = new SFAF_Recurrence();
         $rec->maybe_generate( $parent_id );
 
@@ -1374,11 +1456,11 @@ class SFAF_Portal {
                                 }
                             ?></a></td>
                             <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html( get_the_title( $pid ) ); ?></a></td>
-                            <td><?php echo ( ! is_wp_error( $cats ) && $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">—</span>'; ?></td>
-                            <td><?php echo ( ! is_wp_error( $orgs ) && $orgs ) ? esc_html( implode( ', ', $orgs ) ) : '<span class="uc-muted">—</span>'; ?></td>
-                            <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                            <td><?php echo ( ! is_wp_error( $cats ) && $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                            <td><?php echo ( ! is_wp_error( $orgs ) && $orgs ) ? esc_html( implode( ', ', $orgs ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                            <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : '<span class="uc-muted">None</span>'; ?></td>
                             <td><?php echo (int) sfaf_series_count( $pid ); ?></td>
-                            <td><?php echo $next ? esc_html( date_i18n( 'M j', strtotime( $next ) ) ) : '<span class="uc-muted">—</span>'; ?></td>
+                            <td><?php echo $next ? esc_html( date_i18n( 'M j', strtotime( $next ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -1454,14 +1536,14 @@ class SFAF_Portal {
 
                 <div class="uc-field-row">
                     <label class="uc-field">Category
-                        <select name="series_category"><option value="0">— none —</option>
+                        <select name="series_category"><option value="0">None</option>
                             <?php if ( ! is_wp_error( $cats ) ) foreach ( $cats as $c ) : ?>
                                 <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $curcat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
                     <label class="uc-field">Organizer
-                        <select name="series_organizer"><option value="0">— none —</option>
+                        <select name="series_organizer"><option value="0">None</option>
                             <?php if ( ! is_wp_error( $orgs ) ) foreach ( $orgs as $o ) : ?>
                                 <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $curorg, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
                             <?php endforeach; ?>
@@ -1472,6 +1554,43 @@ class SFAF_Portal {
                 <h3>Series FAQ</h3>
                 <p class="uc-hint">These FAQs appear on every event in this series.</p>
                 <?php $this->faq_repeater( 'uc_series_faq', $faqs ); ?>
+
+                <?php
+                /*
+                 * THE DEFAULT SET IS THE PART THAT ACTUALLY SOLVES THE PROBLEM.
+                 *
+                 * A dropdown on the event editor only helps a manager who
+                 * remembers to use it. This is applied by
+                 * SFAF_Recurrence::create_child() the moment an occurrence is
+                 * generated, so nobody has to remember anything.
+                 *
+                 * The warning about putting questions in one place or the
+                 * other is real: occurrences inherit the Series FAQ above AND
+                 * receive this set, so the same question in both appears
+                 * twice. Only the exact-duplicate check in
+                 * SFAF_FAQ_Sets::apply() catches that, and only when the
+                 * wording matches.
+                 */
+                $faq_sets = SFAF_FAQ_Sets::all();
+                $default  = SFAF_FAQ_Sets::series_default( $parent_id );
+                ?>
+                <h3>Default FAQ set for new occurrences</h3>
+                <?php if ( empty( $faq_sets ) ) : ?>
+                    <p class="uc-hint">No saved sets yet. Create one from the FAQ panel on any event, then choose it here.</p>
+                <?php else : ?>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Apply automatically to each new occurrence</span>
+                        <select name="series_faq_set">
+                            <option value="">None</option>
+                            <?php foreach ( $faq_sets as $set ) : ?>
+                                <option value="<?php echo esc_attr( $set['id'] ); ?>" <?php selected( $default, $set['id'] ); ?>><?php
+                                    echo esc_html( $set['name'] . ' (' . count( $set['rows'] ) . ')' );
+                                ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <p class="uc-hint">Copied onto every occurrence this series generates from now on, so nobody has to remember to pick it. Existing occurrences are not changed. Occurrences already inherit the Series FAQ above, so put a question in one place or the other, not both.</p>
+                <?php endif; ?>
             </div>
 
             <div class="uc-form-actions">
@@ -1542,7 +1661,7 @@ class SFAF_Portal {
             <div class="uc-flash uc-flash-info uc-import-banner">
                 <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ); ?></span>
                 Imported from <?php echo esc_html( $prov['label'] ); ?>. Fields marked
-                <?php echo $this->icon_lock(); ?> <strong>not editable</strong> are kept in step with <?php echo esc_html( $prov['label'] ); ?> and are overwritten on every fetch &mdash; change those at the source.
+                <?php echo $this->icon_lock(); ?> <strong>not editable</strong> are kept in step with <?php echo esc_html( $prov['label'] ); ?> and are overwritten on every fetch. Change those at the source.
                 Set the <strong>category, organizer and series</strong> below, then press Publish to put it on the calendar.
                 <?php if ( $prov['source_url'] ) : ?>
                     <a href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $prov['label'] ); ?> &nearr;</a>
@@ -1581,6 +1700,15 @@ class SFAF_Portal {
 
             <?php $this->render_refresh_panel( $user, $event_id, $prov ); ?>
         <?php endif; ?>
+
+        <?php
+        // FAQ sets. Above the form, not inside it: forms cannot nest and these
+        // post and redirect on their own. Only on a saved event, since there
+        // are no stored FAQs to save or apply to before that.
+        if ( $event_id ) {
+            $this->render_faq_set_panel( $user, $event_id );
+        }
+        ?>
 
         <form method="post" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
             <input type="hidden" name="uc_action" value="save_event" />
@@ -1675,19 +1803,30 @@ class SFAF_Portal {
                         <input type="text" name="location" value="<?php echo esc_attr( $g( '_uc_location' ) ); ?>" placeholder="e.g., Strut - 470 Castro St"<?php echo $this->field_disabled( $s_loc ); ?> />
                     </label>
 
+                    <?php
+                    // Category and Organizer are this calendar's own taxonomies.
+                    // No platform supplies them, so on an imported event they
+                    // arrive empty every time and both adapters declare them
+                    // manager-owned. That makes them amber here until set, and
+                    // ordinary the moment they are.
+                    $s_cat = $st( 'category' );
+                    $s_org = $st( 'organizer' );
+                    ?>
                     <div class="uc-field-row">
-                        <label class="uc-field">Category
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cat ) ); ?>">
+                            <span class="uc-field-label">Category <?php echo $this->field_badge( $s_cat, $prov['label'] ); ?></span>
                             <select name="category">
-                                <option value="0">— none —</option>
+                                <option value="0">None</option>
                                 <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) :
                                     if ( $role === 'contributor' && ! empty( $allowed ) && ! in_array( $c->term_id, $allowed, true ) ) { continue; } ?>
                                     <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $cur_cat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
                                 <?php endforeach; endif; ?>
                             </select>
                         </label>
-                        <label class="uc-field">Organizer
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_org ) ); ?>">
+                            <span class="uc-field-label">Organizer <?php echo $this->field_badge( $s_org, $prov['label'] ); ?></span>
                             <select name="organizer">
-                                <option value="0">— none —</option>
+                                <option value="0">None</option>
                                 <?php if ( ! is_wp_error( $orgs ) ) : foreach ( $orgs as $o ) : ?>
                                     <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $cur_org, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
                                 <?php endforeach; endif; ?>
@@ -1695,29 +1834,54 @@ class SFAF_Portal {
                         </label>
                     </div>
 
-                    <fieldset class="uc-fieldset">
+                    <?php
+                    /*
+                     * RECURRENCE IS THE SOURCE'S ON AN IMPORTED EVENT.
+                     *
+                     * A platform decides whether and how its event repeats, and
+                     * a fetch brings that shape back every time. So the cadence
+                     * is not ours to set here, and the dropdown is disabled on
+                     * anything with a source rather than looking settable and
+                     * quietly doing nothing.
+                     *
+                     * DUAL USE OF _uc_end_date, NAMED HERE SO IT IS NOT A
+                     * SURPRISE: that one meta key is both the event's end date
+                     * at the source (written by SFAF_Sources::update_event) and
+                     * this box's "Series end date" for recurrence generation
+                     * (read by SFAF_Recurrence). Splitting them is a data
+                     * migration and is deliberately NOT part of this release.
+                     * Whoever next touches recurrence should split them, and
+                     * until then remember that setting a series end date on an
+                     * imported event writes the same key a fetch overwrites.
+                     *
+                     * Like the locked FAQ rows, the disabled control carries no
+                     * `name`, so a tampered POST has nothing to submit, and the
+                     * save skips the field outright rather than trusting one.
+                     */
+                    $rec_locked = ( $event_id && '' !== $prov['source'] );
+                    $s_enddate  = $rec_locked ? 'locked' : $st( 'end_date' );
+                    ?>
+                    <fieldset class="uc-fieldset<?php echo $rec_locked ? ' uc-fieldset-locked' : ''; ?>">
                         <legend>Recurrence</legend>
                         <div class="uc-field-row">
-                            <label class="uc-field">Repeats
-                                <select name="recurrence">
+                            <label class="uc-field<?php echo esc_attr( $this->field_class( $rec_locked ? 'locked' : 'normal' ) ); ?>">
+                                <span class="uc-field-label">Repeats <?php echo $this->field_badge( $rec_locked ? 'locked' : 'normal', $prov['label'] ); ?></span>
+                                <select<?php echo $rec_locked ? ' disabled' : ' name="recurrence"'; ?>>
                                     <?php foreach ( array( '' => 'Does not repeat', 'daily' => 'Daily', 'weekly' => 'Weekly', 'biweekly' => 'Every 2 weeks', 'monthly' => 'Monthly' ) as $k => $lbl ) : ?>
                                         <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $g( '_uc_recurrence' ), $k ); ?>><?php echo esc_html( $lbl ); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </label>
-                            <?php // _uc_end_date is the event's end date at the source AND
-                                  // the series end date here — one meta key doing two jobs,
-                                  // which predates the import framework. A fetch writes it,
-                                  // so on an imported event it locks like any other
-                                  // platform-owned field rather than looking settable and
-                                  // being replaced on the next run.
-                            $s_enddate = $st( 'end_date' ); ?>
                             <label class="uc-field<?php echo esc_attr( $this->field_class( $s_enddate ) ); ?>">
                                 <span class="uc-field-label">Series end date <?php echo $this->field_badge( $s_enddate, $prov['label'] ); ?></span>
-                                <input type="date" name="end_date" value="<?php echo esc_attr( $g( '_uc_end_date' ) ); ?>"<?php echo $this->field_disabled( $s_enddate ); ?> />
+                                <input type="date"<?php echo ( 'locked' === $s_enddate ) ? ' disabled' : ' name="end_date"'; ?> value="<?php echo esc_attr( $g( '_uc_end_date' ) ); ?>" />
                             </label>
                         </div>
-                        <p class="uc-hint">Set a cadence and end date to auto-generate the series on save.</p>
+                        <?php if ( $rec_locked ) : ?>
+                            <p class="uc-hint">Recurrence is managed on <?php echo esc_html( $prov['label'] ? $prov['label'] : 'the source platform' ); ?>. Change how this event repeats there and the next fetch brings it across.</p>
+                        <?php else : ?>
+                            <p class="uc-hint">Set a cadence and end date to auto-generate the series on save.</p>
+                        <?php endif; ?>
                     </fieldset>
                 </div>
 
@@ -1923,8 +2087,8 @@ class SFAF_Portal {
                         $date   = get_post_meta( $id, '_uc_event_date', true ); ?>
                         <tr>
                             <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
-                            <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '—'; ?></td>
-                            <td><?php echo esc_html( $author ? $author->display_name : '—' ); ?></td>
+                            <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : 'Not set'; ?></td>
+                            <td><?php echo esc_html( $author ? $author->display_name : 'Unknown' ); ?></td>
                             <td><?php echo esc_html( get_the_date( 'M j, Y', $id ) ); ?></td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
@@ -1985,7 +2149,7 @@ class SFAF_Portal {
                 <?php if ( ! empty( $result['error'] ) ) : ?>
                     <div class="uc-flash uc-flash-error">Refresh failed: <?php echo esc_html( $result['error'] ); ?></div>
                 <?php elseif ( empty( $result['changed'] ) ) : ?>
-                    <div class="uc-flash">Nothing had changed at the source — this event is already up to date.</div>
+                    <div class="uc-flash">Nothing had changed at the source. This event is already up to date.</div>
                 <?php else : ?>
                     <div class="uc-flash">Updated <?php echo (int) count( $result['changed'] ); ?> field(s) from <?php echo esc_html( isset( $result['label'] ) ? $result['label'] : 'the source' ); ?>:</div>
                     <table class="uc-table uc-refresh-diff">
@@ -2006,6 +2170,166 @@ class SFAF_Portal {
         <?php
     }
 
+    /* =====================================================================
+     * FAQ sets
+     * ================================================================== */
+
+    /**
+     * Apply a saved FAQ set to this event, or save its FAQs as a new one.
+     *
+     * ITS OWN FORMS, ABOVE THE EDITOR. HTML forms cannot nest, and the FAQ
+     * block sits inside the main event form, so the controls cannot live
+     * beside it. They also must not carry the whole editor's fields on a
+     * post-and-redirect. Same arrangement as the "Refresh from source" panel.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_faq_set_panel( $user, $event_id ) {
+        $sets = SFAF_FAQ_Sets::all();
+
+        $key    = 'sfaf_faq_set_result_' . $user->ID . '_' . (int) $event_id;
+        $result = get_transient( $key );
+        if ( false !== $result ) {
+            delete_transient( $key );
+        }
+
+        // Which of the three storage cases this event is, so the panel can say
+        // where the rows will actually land instead of leaving it a mystery.
+        $parent    = (int) get_post_meta( $event_id, '_uc_series_parent', true );
+        $is_child  = $parent && $parent !== (int) $event_id;
+        $is_parent = $parent && $parent === (int) $event_id;
+        ?>
+        <div class="uc-card uc-faq-set-panel">
+            <div class="uc-card-head"><h2><?php echo sfaf_icon( 'help' ); ?> FAQ sets</h2>
+                <a href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">Manage sets</a></div>
+
+            <?php if ( is_array( $result ) ) : ?>
+                <?php if ( ! empty( $result['error'] ) ) : ?>
+                    <div class="uc-flash uc-flash-error"><?php echo esc_html( $result['error'] ); ?></div>
+                <?php elseif ( ! empty( $result['created'] ) ) : ?>
+                    <div class="uc-flash">Saved as a set. It is now available on every event.</div>
+                <?php else : ?>
+                    <div class="uc-flash">
+                        Applied &ldquo;<?php echo esc_html( $result['name'] ); ?>&rdquo;:
+                        <?php echo (int) $result['added']; ?> question(s) added<?php
+                        if ( ! empty( $result['replaced'] ) ) { echo ', ' . (int) $result['replaced'] . ' of your own replaced'; }
+                        if ( ! empty( $result['skipped'] ) ) { echo ', ' . (int) $result['skipped'] . ' skipped as already present'; }
+                        ?>.
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ( $is_parent ) : ?>
+                <p class="uc-hint">This is a series parent, so a set applied here lands in the shared Series FAQ and every occurrence inherits it.</p>
+            <?php elseif ( $is_child ) : ?>
+                <p class="uc-hint">This is one occurrence, so a set applied here lands in this occurrence&rsquo;s own questions. The series FAQ still appears above them unless &ldquo;Replace the series FAQ&rdquo; is ticked below, which this does not change for you.</p>
+            <?php endif; ?>
+
+            <div class="uc-faq-set-actions">
+                <?php if ( empty( $sets ) ) : ?>
+                    <p class="uc-muted">No saved sets yet. Write this event&rsquo;s FAQs below, save the event, then use &ldquo;Save these as a set&rdquo; to reuse them on the next one.</p>
+                <?php else : ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form">
+                        <input type="hidden" name="uc_action" value="faq_set_apply" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_faq_set_apply', 'uc_nonce' ); ?>
+                        <label class="uc-field uc-field-inline">
+                            <span class="uc-field-label">Apply a saved set</span>
+                            <select name="faq_set_id">
+                                <?php foreach ( $sets as $set ) : ?>
+                                    <option value="<?php echo esc_attr( $set['id'] ); ?>"><?php
+                                        echo esc_html( $set['name'] . ' (' . count( $set['rows'] ) . ')' );
+                                    ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label class="uc-check"><input type="radio" name="faq_set_mode" value="append" checked /> Add to the questions already here</label>
+                        <label class="uc-check"><input type="radio" name="faq_set_mode" value="replace" /> Replace my own questions with the set</label>
+                        <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary">Apply</button>
+                        <p class="uc-hint">Rows are copied. Editing the set later does not change this event, and deleting the set never touches it. Questions imported from a platform are left exactly where they are either way.</p>
+                    </form>
+                <?php endif; ?>
+
+                <?php if ( $event_id ) : ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form">
+                        <input type="hidden" name="uc_action" value="faq_set_create" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_faq_set_create', 'uc_nonce' ); ?>
+                        <label class="uc-field uc-field-inline">
+                            <span class="uc-field-label">Save these FAQs as a set</span>
+                            <input type="text" name="faq_set_name" placeholder="e.g. Cycle to Zero standard questions" required />
+                        </label>
+                        <button type="submit" class="uc-btn uc-btn-sm">Save as a set</button>
+                        <p class="uc-hint">Saves the questions currently stored on this event. Save the event first if you have just edited them.</p>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Manage saved sets: rename, edit rows, delete.
+     *
+     * There is no "new set" form here on purpose. Sets are born from a real
+     * event that already has the questions on it, which is both less typing
+     * and less of a blank page to face.
+     *
+     * @param WP_User $user
+     */
+    private function render_faq_sets( $user ) {
+        if ( ! $this->can_view_all( $user ) ) {
+            $this->render_dashboard( $user );
+            return;
+        }
+        $this->chrome_open( $user, 'faq-sets' );
+        $sets = SFAF_FAQ_Sets::all();
+        ?>
+        <div class="uc-page-head"><h1>FAQ Sets</h1></div>
+
+        <div class="uc-card">
+            <p class="uc-help">
+                A set is a reusable group of questions and answers. Applying one <strong>copies</strong> its rows onto an event,
+                so editing a set here never changes an event that already used it, and deleting a set never removes questions from anything.
+                Create a set from the FAQ panel on any event.
+            </p>
+        </div>
+
+        <?php if ( empty( $sets ) ) : ?>
+            <div class="uc-card">
+                <p class="uc-empty">No sets yet. Open an event with FAQs you would reuse, and press &ldquo;Save these FAQs as a set&rdquo;.</p>
+            </div>
+        <?php else : ?>
+            <?php foreach ( $sets as $set ) : ?>
+                <div class="uc-card">
+                    <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>" class="uc-form">
+                        <input type="hidden" name="uc_action" value="faq_set_save" />
+                        <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
+                        <?php wp_nonce_field( 'uc_portal_faq_set_save', 'uc_nonce' ); ?>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Set name</span>
+                            <input type="text" name="faq_set_name" value="<?php echo esc_attr( $set['name'] ); ?>" required />
+                        </label>
+                        <?php $this->faq_repeater( 'faq_set_rows', $set['rows'] ); ?>
+                        <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Save set</button>
+                        </div>
+                    </form>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>"
+                          onsubmit="return confirm('Delete this set? Events that already used it keep their questions, because the rows were copied when it was applied.');">
+                        <input type="hidden" name="uc_action" value="faq_set_delete" />
+                        <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
+                        <?php wp_nonce_field( 'uc_portal_faq_set_delete', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-link-danger">Delete this set</button>
+                    </form>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+        <?php
+        $this->chrome_close();
+    }
+
     /**
      * The imported-event queue: Pending and Dismissed, as two sub-sections.
      *
@@ -2016,7 +2340,7 @@ class SFAF_Portal {
         $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
         ?>
         <h2 class="uc-section-title">
-            Imported &mdash; pending review
+            Imported, pending review
             <?php if ( $pending ) : ?><span class="uc-count-badge"><?php echo count( $pending ); ?></span><?php endif; ?>
         </h2>
         <div class="uc-card">
@@ -2059,7 +2383,7 @@ class SFAF_Portal {
 
                 // A campaign with no date is normal, not broken — say so
                 // rather than showing a bare dash the manager has to decode.
-                $when = $date ? date_i18n( 'M j, Y', strtotime( $date ) ) : 'No date — set it when publishing';
+                $when = $date ? date_i18n( 'M j, Y', strtotime( $date ) ) : 'No date. Set it when publishing';
                 if ( $date && $start ) {
                     $when .= ' · ' . $start . ( $end ? '–' . $end : '' );
                 }
@@ -2101,7 +2425,7 @@ class SFAF_Portal {
                         <?php endif; ?>
                     </td>
                     <td><?php echo esc_html( $when ); ?></td>
-                    <td><?php echo esc_html( $location ? $location : '—' ); ?></td>
+                    <td><?php echo esc_html( $location ? $location : 'Not set' ); ?></td>
                     <td class="uc-row-actions">
                         <div class="uc-actions">
                             <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
@@ -2158,7 +2482,7 @@ class SFAF_Portal {
                 <input type="hidden" name="uc_action" value="add_user" />
                 <?php wp_nonce_field( 'uc_portal_add_user', 'uc_nonce' ); ?>
                 <select name="user_id" required>
-                    <option value="">— select WordPress user —</option>
+                    <option value="">Select a WordPress user</option>
                     <?php foreach ( $non_members as $u ) : ?>
                         <option value="<?php echo (int) $u->ID; ?>"><?php echo esc_html( $u->display_name . ' (' . $u->user_email . ')' ); ?></option>
                     <?php endforeach; ?>

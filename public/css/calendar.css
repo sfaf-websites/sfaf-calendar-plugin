@@ -172,6 +172,9 @@
 .uc-donate-stats { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
 .uc-donate-raised { font-weight: 700; color: var(--uc-green); }
 .uc-donate-goal { color: var(--uc-muted); }
+/* Goal with no real raised figure behind it: no bar, so no trailing gap, and
+   the goal sits on its own rather than pushed to the right by space-between. */
+.uc-donate-goal-only .uc-donate-stats { justify-content: flex-start; margin-bottom: 0; }
 .uc-donate-bar { height: 8px; background: #dcfce7; border-radius: 99px; overflow: hidden; }
 .uc-donate-fill { height: 100%; background: linear-gradient(90deg, var(--uc-green), #34d399); border-radius: 99px; transition: width 0.6s ease; }
 .uc-donate-btn { display: inline-block; margin-top: 4px; padding: 9px 22px; border-radius: 8px; background: var(--uc-green); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; transition: background 0.2s; }

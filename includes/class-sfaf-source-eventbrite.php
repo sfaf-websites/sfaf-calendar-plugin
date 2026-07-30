@@ -51,19 +51,51 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
     /**
      * The fields Eventbrite owns on an imported event.
      *
-     * The only change this release makes to this adapter. It is the same set
-     * of fields the refresh path was already writing, written down so the
-     * editor can lock exactly what a fetch will overwrite instead of the two
-     * being maintained separately and drifting apart.
+     * NO 'image' HERE, AND THAT IS THE POINT. 2.8.0 listed it and was wrong.
+     * Eventbrite owns _uc_external_image, which it refreshes on every fetch
+     * and which has no control in the editor at all. The editor's image
+     * control writes _uc_image_url and the featured image: the MANUAL
+     * OVERRIDE, which a fetch has never touched and must never touch (see the
+     * source-image note in SFAF_Sources::update_event). Locking it removed a
+     * working feature, the ability to put a decent banner on an event whose
+     * Eventbrite logo is a small square mark, and protected nothing.
      *
-     * Eventbrite supplies a real description and a real logo, so unlike
-     * GoFundMe Pro both are platform-owned here and there are no
-     * manager_fields() to declare.
+     * The test to apply before adding anything to this list is not "does the
+     * platform have a version of this field" but "does update_event() write
+     * the meta key this editor control writes". Nobody owns an override.
+     *
+     * NO 'donate_url' either, for exactly the same reason: the Donate box
+     * writes _uc_gofundme_url, and this adapter never sends it. GoFundMe Pro
+     * does, so GoFundMe Pro declares it and Eventbrite does not.
      *
      * @return string[]
      */
     public function owned_fields() {
-        return array( 'title', 'description', 'date', 'start_time', 'end_time', 'end_date', 'location', 'image', 'source_url' );
+        return array( 'title', 'description', 'date', 'start_time', 'end_time', 'end_date', 'location', 'source_url' );
+    }
+
+    /**
+     * Fields a manager owns permanently on an Eventbrite event.
+     *
+     * Category and Organizer are this calendar's own taxonomies. No platform
+     * supplies them, no platform can, and an event is not really ready to
+     * publish without them, so they arrive empty on every import and are
+     * highlighted until somebody sets them. Eventbrite has an organizer of its
+     * own, but it is Eventbrite's record rather than a term in our Organizers
+     * taxonomy, and guessing a mapping between the two would create
+     * duplicate terms nobody asked for.
+     *
+     * @return string[]
+     */
+    public function manager_fields() {
+        return array( 'category', 'organizer' );
+    }
+
+    /**
+     * @return string
+     */
+    public function manager_fields_note() {
+        return 'Category and Organizer are this calendar\'s own, not Eventbrite\'s. Set them here once and a fetch will never change them.';
     }
 
     /**
@@ -83,7 +115,7 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
      * @return string
      */
     public function inactive_reason() {
-        return 'no private token stored — add one under Settings → Eventbrite';
+        return 'no private token stored, add one under Settings → Eventbrite';
     }
 
     /**

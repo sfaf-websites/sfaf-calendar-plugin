@@ -260,7 +260,7 @@ class SFAF_Post_Types {
             <div class="uc-meta-field">
                 <label for="uc_gofundme_select"><?php echo sfaf_icon( 'heart' ); ?> GoFundMe Campaign</label>
                 <select id="uc_gofundme_select" class="uc-gofundme-select">
-                    <option value="" data-goal="">— Select a saved campaign —</option>
+                    <option value="" data-goal="">Select a saved campaign</option>
                     <?php foreach ( $gf_campaigns as $c ) : ?>
                         <option value="<?php echo esc_attr( $c['url'] ); ?>" data-goal="<?php echo esc_attr( $c['goal'] ); ?>" <?php selected( $gofundme_url, $c['url'] ); ?>>
                             <?php echo esc_html( $c['name'] ); ?>
@@ -392,7 +392,7 @@ class SFAF_Post_Types {
             $faqs = $manual;
 
             echo '<p class="description"><strong>' . (int) count( $imported ) . ' question(s) from ' . esc_html( $label )
-                . '.</strong> These are refreshed from the campaign on every fetch, so they cannot be edited here — an edit would be overwritten. '
+                . '.</strong> These are refreshed from the campaign on every fetch, so they cannot be edited here. An edit would be overwritten. '
                 . 'Change them at ' . esc_html( $label ) . '.</p>';
             if ( ! empty( $imported ) ) {
                 echo '<ul class="uc-faq-readonly">';
@@ -401,7 +401,7 @@ class SFAF_Post_Types {
                 }
                 echo '</ul>';
             }
-            echo '<p class="description" style="margin-top:12px;"><strong>Your own questions</strong> — kept forever, never reordered or removed by a fetch.</p>';
+            echo '<p class="description" style="margin-top:12px;"><strong>Your own questions.</strong> Kept forever, never reordered or removed by a fetch.</p>';
             echo '<input type="hidden" name="uc_faq_has_manual" value="1" />';
         }
         ?>

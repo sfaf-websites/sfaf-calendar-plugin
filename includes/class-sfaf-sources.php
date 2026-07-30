@@ -283,7 +283,7 @@ class SFAF_Sources {
 
     public static function register_statuses() {
         register_post_status( self::STATUS_PENDING, array(
-            'label'                     => 'Imported — pending review',
+            'label'                     => 'Imported, pending review',
             'public'                    => false,
             'publicly_queryable'        => false,
             'internal'                  => false,
@@ -639,8 +639,24 @@ class SFAF_Sources {
                 return '' !== trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
             case 'date':
                 return '' !== trim( (string) get_post_meta( $post_id, '_uc_event_date', true ) );
+            case 'category':
+                return self::has_term( $post_id, 'uc_event_category' );
+            case 'organizer':
+                return self::has_term( $post_id, 'uc_organizer' );
         }
         return true;
+    }
+
+    /**
+     * Whether an event has at least one term in a taxonomy.
+     *
+     * @param int    $post_id
+     * @param string $taxonomy
+     * @return bool
+     */
+    private static function has_term( $post_id, $taxonomy ) {
+        $terms = wp_get_object_terms( (int) $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+        return ! is_wp_error( $terms ) && ! empty( $terms );
     }
 
     /**
@@ -656,6 +672,8 @@ class SFAF_Sources {
             'title'       => 'a title',
             'location'    => 'a location',
             'date'        => 'a date',
+            'category'    => 'a category',
+            'organizer'   => 'an organizer',
         );
 
         $out = array();
@@ -850,7 +868,7 @@ class SFAF_Sources {
                     delete_post_meta( $post_id, self::META_IMAGE );
                     $changed['Source image'] = array(
                         'from' => $current_image,
-                        'to'   => '(cleared — the source no longer offers one)',
+                        'to'   => '(cleared: the source no longer offers one)',
                     );
                 }
             } else {
@@ -871,6 +889,12 @@ class SFAF_Sources {
                 }
                 // Never let an adapter's extras reach the manual image field.
                 if ( '_uc_image_url' === $meta_key || '_uc_image_override' === $meta_key ) {
+                    continue;
+                }
+                // The Donate box has an editor control, so it is gated by the
+                // declaration like any other visible field. Without this an
+                // adapter could write a box the editor left editable.
+                if ( '_uc_gofundme_url' === $meta_key && ! $may_write( 'donate_url' ) ) {
                     continue;
                 }
                 $meta_value = trim( (string) $meta_value );
@@ -1226,7 +1250,7 @@ class SFAF_Sources {
                     delete_post_meta( $existing, self::META_REMOVED_WHY );
                     $result['reappeared']++;
                     $result['notes'][] = sprintf(
-                        'Back at the source: "%s" reappeared and has been refreshed, but is left as a draft — republish it by hand if it should go live again.',
+                        'Back at the source: "%s" reappeared and has been refreshed, but is left as a draft. Republish it by hand if it should go live again.',
                         isset( $event['title'] ) ? $event['title'] : $event['external_id']
                     );
                 }
@@ -1355,7 +1379,7 @@ class SFAF_Sources {
             $result['unpublished']++;
             $result[ $why ]++;
             $result['notes'][] = sprintf(
-                '%s: "%s" %s and has been made a draft — it is off the calendar but kept, and can be republished.',
+                '%s: "%s" %s and has been made a draft. It is off the calendar but kept, and can be republished.',
                 ( 'ended' === $why ) ? 'Closed at source' : 'Gone from source',
                 get_the_title( $post_id ),
                 ( 'ended' === $why )
@@ -1405,11 +1429,11 @@ class SFAF_Sources {
      */
     public static function summarize( $result ) {
         if ( ! empty( $result['skipped'] ) ) {
-            return sprintf( '%s: not connected — %s', $result['label'], $result['reason'] );
+            return sprintf( '%s: not connected. %s', $result['label'], $result['reason'] );
         }
 
         if ( '' !== $result['error'] ) {
-            return sprintf( '%s: failed — %s', $result['label'], $result['error'] );
+            return sprintf( '%s: failed. %s', $result['label'], $result['error'] );
         }
 
         // A source that ran and found nothing has to say so in its own words:
@@ -1581,7 +1605,7 @@ class SFAF_Sources {
         if ( ! $adapter->is_active() ) {
             return new WP_Error(
                 'sfaf_sources_inactive',
-                sprintf( '%s is not connected — %s.', $adapter->label(), $adapter->inactive_reason() )
+                sprintf( '%s is not connected. %s', $adapter->label(), $adapter->inactive_reason() )
             );
         }
 

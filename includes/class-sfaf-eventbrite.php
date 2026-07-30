@@ -218,7 +218,7 @@ class SFAF_Eventbrite {
         if ( is_wp_error( $response ) ) {
             return new WP_Error(
                 'sfaf_eventbrite_unreachable',
-                sprintf( 'Could not reach %s — %s', $url, $response->get_error_message() )
+                sprintf( 'Could not reach %s: %s', $url, $response->get_error_message() )
             );
         }
 
@@ -232,14 +232,14 @@ class SFAF_Eventbrite {
         if ( '' !== $challenge ) {
             return new WP_Error(
                 'sfaf_eventbrite_challenge',
-                sprintf( 'HTTP %d from %s — %s', $status, $url, $challenge )
+                sprintf( 'HTTP %d from %s: %s', $status, $url, $challenge )
             );
         }
 
         if ( 200 !== $status ) {
             return new WP_Error(
                 'sfaf_eventbrite_http_' . $status,
-                sprintf( 'HTTP %d from %s — %s', $status, $url, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d from %s: %s', $status, $url, self::error_detail( $body, $raw, $status ) )
             );
         }
 
@@ -414,7 +414,7 @@ class SFAF_Eventbrite {
         }
 
         return sprintf(
-            'Bot protection blocked this request (matched "%s") — the token was never checked, so this is not a credential problem. '
+            'Bot protection blocked this request (matched "%s"). The token was never checked, so this is not a credential problem. '
             . 'Next things to try: confirm the API base URL in settings; ask Eventbrite to allow this server; '
             . 'or tune the agent via the sfaf_eventbrite_user_agent filter. Agent sent: %s',
             $hit,
@@ -446,14 +446,14 @@ class SFAF_Eventbrite {
             if ( ! empty( $parts ) ) {
                 // Eventbrite sends both a code (NOT_AUTHORIZED) and a sentence;
                 // showing both saves a trip to the documentation.
-                return implode( ' — ', array_unique( $parts ) );
+                return implode( '; ', array_unique( $parts ) );
             }
         }
 
         $raw = trim( wp_strip_all_tags( $raw ) );
         if ( '' === $raw ) {
             if ( 404 === $status || 405 === $status ) {
-                return 'No response body. A 404/405 here usually means the API base URL is wrong — the default is ' . self::DEFAULT_API_BASE . '.';
+                return 'No response body. A 404/405 here usually means the API base URL is wrong. The default is ' . self::DEFAULT_API_BASE . '.';
             }
             return 'No response body.';
         }

@@ -39,7 +39,7 @@
         chooseBtn.addEventListener('click', function (e) {
             e.preventDefault();
             if (typeof wp === 'undefined' || !wp.media) {
-                window.alert('Media library is unavailable here — paste an image URL instead.');
+                window.alert('Media library is unavailable here. Paste an image URL instead.');
                 return;
             }
             if (frame) { frame.open(); return; }

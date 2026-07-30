@@ -285,8 +285,30 @@ body.uc-portal {
 
 .uc-flash-attention { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d;
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.uc-btn-source { background: #92400e; color: #fff; border-color: #92400e; margin-left: auto; }
-.uc-btn-source:hover { background: #7c2d12; color: #fff; }
+/* CONTRAST FIX (2.9.0). This rule already said `color: #fff`, and it lost.
+ *
+ * `.uc-portal a` (0,1,1) outranks `.uc-btn-source` (0,1,0), so every anchor
+ * wearing this class was painted with the portal link colour #0E818C over the
+ * #92400e background: a measured 1.53:1, far below the 4.5:1 AA floor for
+ * normal text and genuinely unreadable.
+ *
+ * The fix is specificity, not a new colour. `.uc-portal a.uc-btn-source`
+ * (0,2,1) beats the link rule, so the white this always intended actually
+ * applies: 7.09:1 on the base background and 9.37:1 on hover, both AA and AAA.
+ *
+ * SCOPED ON PURPOSE. `.uc-btn-source` is used on exactly one element, the
+ * "Open the campaign page" link, so this cannot disturb any other button. The
+ * same specificity clash does affect other portal anchors that carry .uc-btn,
+ * but harmlessly: the only other one is "Log out", which lands on teal-on-
+ * white at 4.63:1 and still passes. `.uc-btn-primary` on an anchor would be
+ * 3.34:1 and would NOT pass, but nothing in the portal renders that
+ * combination today. If one is ever added, give it the same treatment here
+ * rather than reaching for a different colour.
+ */
+.uc-btn-source,
+.uc-portal a.uc-btn-source { background: #92400e; color: #fff; border-color: #92400e; margin-left: auto; }
+.uc-btn-source:hover,
+.uc-portal a.uc-btn-source:hover { background: #7c2d12; color: #fff; border-color: #7c2d12; }
 
 /* Locked FAQ rows from the platform. */
 .uc-locked-faqs { border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px; background: #F9FAFB; }
@@ -306,3 +328,17 @@ body.uc-portal {
 .uc-source-link-strong { color: #b45309; font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) { .uc-needs-tip { transition: none; } }
+
+/* ---------------------------------------------------------------------------
+ * FAQ sets panel (event editor) and the sets screen.
+ * ------------------------------------------------------------------------ */
+.uc-faq-set-panel .uc-card-head h2 { display: inline-flex; align-items: center; gap: 7px; }
+.uc-faq-set-actions { display: flex; flex-wrap: wrap; gap: 22px; }
+.uc-faq-set-actions > form { flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.uc-field-inline { width: 100%; }
+.uc-faq-set-actions .uc-hint { margin: 0; }
+
+/* A locked recurrence fieldset reads as one unit, so the whole box is tinted
+ * rather than each control being outlined separately. */
+.uc-fieldset-locked { background: #F9FAFB; border-color: #D1D5DB; }
+.uc-fieldset-locked legend { color: #4B5563; }

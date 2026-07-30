@@ -245,7 +245,7 @@ class SFAF_GFMP {
         if ( is_wp_error( $response ) ) {
             return new WP_Error(
                 'sfaf_gfmp_unreachable',
-                sprintf( 'Could not reach %s — %s', $endpoint, $response->get_error_message() )
+                sprintf( 'Could not reach %s: %s', $endpoint, $response->get_error_message() )
             );
         }
 
@@ -259,14 +259,14 @@ class SFAF_GFMP {
         if ( '' !== $challenge ) {
             return new WP_Error(
                 'sfaf_gfmp_challenge',
-                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, $challenge )
+                sprintf( 'HTTP %d from %s: %s', $status, $endpoint, $challenge )
             );
         }
 
         if ( $status < 200 || $status >= 300 ) {
             return new WP_Error(
                 'sfaf_gfmp_http_' . $status,
-                sprintf( 'HTTP %d from %s — %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d from %s: %s', $status, $endpoint, self::error_detail( $body, $raw, $status ) )
             );
         }
 
@@ -339,11 +339,11 @@ class SFAF_GFMP {
         }
 
         return sprintf(
-            'Bot protection blocked this request (matched "%s") — the credentials were never checked, so this is not a credential problem. '
+            'Bot protection blocked this request (matched "%s"). The credentials were never checked, so this is not a credential problem. '
             . 'This plugin sends the x-integration-id header GoFundMe Pro support issued for exactly this, plus an identifying User-Agent, '
             . 'and neither satisfied the edge this time. Next things to try: confirm the integration ID is still current with GoFundMe Pro '
             . '(override it with the sfaf_gfmp_integration_id filter); ask them to allow this server; or tune the agent via the '
-            . 'sfaf_gfmp_user_agent filter. Do not change the token endpoint — support confirmed %s is the correct one and that '
+            . 'sfaf_gfmp_user_agent filter. Do not change the token endpoint: support confirmed %s is the correct one and that '
             . 'pro.gofundme.com does not serve tokens. Integration ID sent: %s. Agent sent: %s',
             $hit,
             self::DEFAULT_TOKEN_URL,
@@ -375,7 +375,7 @@ class SFAF_GFMP {
         $raw = trim( wp_strip_all_tags( $raw ) );
         if ( '' === $raw ) {
             if ( 404 === $status || 405 === $status ) {
-                return 'No response body. A 404/405 here usually means the token endpoint address is wrong — see the note in class-sfaf-gfmp.php.';
+                return 'No response body. A 404/405 here usually means the token endpoint address is wrong. See the note in class-sfaf-gfmp.php.';
             }
             return 'No response body.';
         }
@@ -508,7 +508,7 @@ class SFAF_GFMP {
             if ( is_wp_error( $response ) ) {
                 return new WP_Error(
                     'sfaf_gfmp_unreachable',
-                    sprintf( 'Could not reach %s — %s', $url, $response->get_error_message() )
+                    sprintf( 'Could not reach %s: %s', $url, $response->get_error_message() )
                 );
             }
 
@@ -532,7 +532,7 @@ class SFAF_GFMP {
         if ( '' !== $challenge ) {
             return new WP_Error(
                 'sfaf_gfmp_challenge',
-                sprintf( 'HTTP %d from %s — %s', $status, $url, $challenge )
+                sprintf( 'HTTP %d from %s: %s', $status, $url, $challenge )
             );
         }
 
@@ -540,7 +540,7 @@ class SFAF_GFMP {
             return new WP_Error(
                 'sfaf_gfmp_rate_limited',
                 sprintf(
-                    'HTTP 429 from %s — rate limited after %d retries. The published limit is %d requests/minute per application.',
+                    'HTTP 429 from %s: rate limited after %d retries. The published limit is %d requests/minute per application.',
                     $url,
                     self::RATE_LIMIT_RETRIES,
                     self::RATE_LIMIT_PER_MINUTE
@@ -551,7 +551,7 @@ class SFAF_GFMP {
         if ( 200 !== $status ) {
             return new WP_Error(
                 'sfaf_gfmp_http_' . $status,
-                sprintf( 'HTTP %d from %s — %s', $status, $url, self::error_detail( $body, $raw, $status ) )
+                sprintf( 'HTTP %d from %s: %s', $status, $url, self::error_detail( $body, $raw, $status ) )
             );
         }
 
@@ -592,7 +592,7 @@ class SFAF_GFMP {
         if ( '' === $org_id ) {
             return new WP_Error(
                 'sfaf_gfmp_missing_org',
-                'No GoFundMe Pro Organization ID is stored. Add it under Settings → GoFundMe Pro — campaign calls are addressed to /organizations/{id}/campaigns and cannot be made without it.'
+                'No GoFundMe Pro Organization ID is stored. Add it under Settings → GoFundMe Pro. Campaign calls are addressed to /organizations/{id}/campaigns and cannot be made without it.'
             );
         }
 
@@ -1040,12 +1040,12 @@ class SFAF_GFMP {
         self::store_token( $token );
 
         $org_note = ( '' === $stored['org_id'] )
-            ? ' The token request does not use the Organization ID, but campaign calls will — add it before the next step.'
+            ? ' The token request does not use the Organization ID, but campaign calls will, so add it before the next step.'
             : '';
 
         wp_send_json_success( array(
             'message'  => sprintf(
-                'Connected — token obtained, expires in %s (client_credentials grant). Data calls will use %s.%s',
+                'Connected. Token obtained, expires in %s (client_credentials grant). Data calls will use %s.%s',
                 human_time_diff( time(), $token['expires_at'] ),
                 self::api_base(),
                 $org_note

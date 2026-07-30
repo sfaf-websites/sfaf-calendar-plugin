@@ -358,8 +358,8 @@
                 field($card, 'Address', ev.venue_address || '(no address on the venue)');
             } else {
                 field($card, 'Venue', ev.venue_id
-                    ? '(not expanded — venue_id ' + ev.venue_id + ')'
-                    : (ev.online_event ? '(none — online event)' : '(none)'));
+                    ? '(not expanded, venue_id ' + ev.venue_id + ')'
+                    : (ev.online_event ? '(none, online event)' : '(none)'));
             }
 
             if (ev.logo_expanded) {
@@ -418,7 +418,7 @@
                 var $row = el('div', 'uc-eb-org');
                 $row.append(el('strong', null, org.name || '(unnamed)'));
                 $row.append(el('span', null, '  id ' + org.id));
-                $row.append(el('span', null, '  —  ' + org.count + ' event' + (org.count === 1 ? '' : 's')
+                $row.append(el('span', null, ', ' + org.count + ' event' + (org.count === 1 ? '' : 's')
                     + ' over ' + org.pages + ' page' + (org.pages === 1 ? '' : 's')));
                 if (org.endpoint) { field($row, 'Endpoint', org.endpoint); }
                 if (org.error) {
@@ -537,7 +537,7 @@
                 try {
                     var parsed = JSON.parse(r.body);
                     shown = JSON.stringify(parsed, null, 2);
-                    note = 'Pretty-printed from valid JSON — key order preserved, nothing filtered. Raw bytes are in the box below.';
+                    note = 'Pretty-printed from valid JSON. Key order preserved, nothing filtered. Raw bytes are in the box below.';
                 } catch (e) { /* not JSON: show it raw */ }
 
                 $b.append($('<p class="uc-probe-note">').text(note));

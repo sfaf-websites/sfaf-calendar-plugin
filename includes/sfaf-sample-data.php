@@ -126,7 +126,7 @@ function sfaf_install_sample_data() {
             'content'    => "TransLife hosts a weekly mental-health series creating space for trans and gender-expansive folks to connect, build community, and access wellness resources. Facilitated by peer counselors with lived experience.",
         ),
         array(
-            'title'        => 'Cycle to Zero 2026 — Training Ride: Golden Gate Park',
+            'title'        => 'Cycle to Zero 2026 Training Ride: Golden Gate Park',
             'category'     => 'Fundraising',
             'organizer'    => 'Endurance Series',
             'venue'        => 'Golden Gate Park',
@@ -156,7 +156,7 @@ function sfaf_install_sample_data() {
             'end_date'   => $plus( $tue, '+5 weeks' ),
             'rsvp'       => false,
             'capacity'   => 0,
-            'excerpt'    => 'Free, confidential HIV/STI testing and sexual-health services at Magnet — drop in, no appointment needed.',
+            'excerpt'    => 'Free, confidential HIV/STI testing and sexual-health services at Magnet. Drop in, no appointment needed.',
             'content'    => "Magnet at Strut offers free and confidential HIV and STI testing, PrEP/PEP services, and sexual-health care in a welcoming, sex-positive environment. Drop-in services are available Tuesday through Saturday, 10:00 AM to 7:00 PM. No appointment necessary.",
         ),
         array(
@@ -189,7 +189,7 @@ function sfaf_install_sample_data() {
             'rsvp'       => true,
             'capacity'   => 12,
             'excerpt'    => 'A bilingual (Spanish/English) peer support group for the Latino community. Grupo de apoyo bilingüe.',
-            'content'    => "Programa Latino hosts a biweekly bilingual (Spanish/English) support group — un grupo de apoyo bilingüe — for Latino community members living with or affected by HIV. Facilitated by bilingual peer counselors in a confidential, welcoming space.",
+            'content'    => "Programa Latino hosts a biweekly bilingual (Spanish/English) support group, un grupo de apoyo bilingüe, for Latino community members living with or affected by HIV. Facilitated by bilingual peer counselors in a confidential, welcoming space.",
         ),
     );
 
