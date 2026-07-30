@@ -90,9 +90,42 @@ class SFAF_Embed {
      * URLs (shared with the generator screen)
      * ------------------------------------------------------------------- */
 
-    /** URL of the embed script that remote sites load. */
+    /**
+     * URL of the embed script that remote sites load.
+     *
+     * NO ?ver= HERE, ON PURPOSE, and it is the fix for a real defect.
+     *
+     * This URL is baked into a snippet somebody copies once and pastes into a
+     * page on another site. A version in it is therefore not a cache-buster at
+     * all: it is a permanent pin to whatever the plugin happened to be on the
+     * day the snippet was copied. The host page then kept loading an old
+     * embed.js, and because the script derived its stylesheet URL from its own
+     * src, an old calendar.css with it. New markup, old CSS, and a month grid
+     * that arrived on sfaf.org with no styling for any of it.
+     *
+     * Unversioned, the browser revalidates on its normal schedule and a
+     * released change reaches every embedded page without anyone re-pasting
+     * anything. Freshness comes from HTTP caching, which is the mechanism that
+     * can actually see a new release; a hardcoded string cannot.
+     *
+     * NOTE FOR ANY BLOCK PASTED BEFORE 2.10.1: it still carries the old pinned
+     * URL and will keep loading a cached old script until that cache expires.
+     * Re-copying the block from the generator replaces it for good.
+     */
     public static function script_url() {
-        return SFAF_PLUGIN_URL . 'public/js/embed.js?ver=' . SFAF_VERSION;
+        return SFAF_PLUGIN_URL . 'public/js/embed.js';
+    }
+
+    /**
+     * URL of the stylesheet the embed needs, as the RUNNING plugin sees it.
+     *
+     * Sent in every payload so a possibly-stale embed.js does not have to guess
+     * from its own src. Versioned, because this one is resolved fresh on every
+     * request rather than frozen into a snippet, so here a version really is a
+     * cache-buster.
+     */
+    public static function style_url() {
+        return SFAF_PLUGIN_URL . 'public/css/calendar.css?ver=' . SFAF_VERSION;
     }
 
     /** URL of the embed endpoint itself. */
@@ -188,6 +221,12 @@ class SFAF_Embed {
         } else {
             $payload['cached'] = true;
         }
+
+        // Stamped after the cache, never from it. A payload cached under the
+        // previous release would otherwise hand out that release's stylesheet
+        // URL for the rest of its TTL, which is a smaller version of exactly
+        // the staleness this whole fix is about.
+        $payload['css_url'] = self::style_url();
 
         $response = new WP_REST_Response( $payload, 200 );
 
@@ -328,6 +367,10 @@ class SFAF_Embed {
 
         $payload['per_page']     = $params['per_page'];
         $payload['calendar_url'] = self::calendar_url();
+        // The authoritative stylesheet URL. embed.js derives one from its own
+        // src as a first guess; this is the one the running plugin actually
+        // serves, and it wins. See adoptStylesheet() in embed.js.
+        $payload['css_url']      = self::style_url();
         $payload['cached']       = false;
 
         // The card style chosen under branding, as a bare slug ('minimal',

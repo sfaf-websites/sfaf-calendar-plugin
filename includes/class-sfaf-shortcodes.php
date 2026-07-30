@@ -279,10 +279,17 @@ class SFAF_Shortcodes {
             'ignore_sticky_posts'    => true,
             'update_post_meta_cache' => true,
             'update_post_term_cache' => true,
-            'meta_key'               => '_uc_event_date',
-            'orderby'                => array( 'meta_value' => 'ASC', 'ID' => 'ASC' ),
+            /*
+             * A NAMED meta_query clause, ordered by name, and deliberately no
+             * 'meta_key' alongside it. Setting meta_key AND a meta_query clause
+             * on the same key makes WP_Query join wp_postmeta twice for that
+             * key; ordering then refers to whichever join it picks, and a
+             * second clause (the series filter below) can multiply rows. The
+             * named form is unambiguous: one join, one sort, no duplicates.
+             */
+            'orderby'                => array( 'event_date' => 'ASC', 'ID' => 'ASC' ),
             'meta_query'             => array(
-                array(
+                'event_date' => array(
                     'key'     => '_uc_event_date',
                     'value'   => array( $grid['start'], $grid['end'] ),
                     'compare' => 'BETWEEN',
@@ -327,10 +334,36 @@ class SFAF_Shortcodes {
             $by_day[ $day ] = $ids;
         }
 
+        /*
+         * TWO COUNTS, BECAUSE THEY ARE TWO DIFFERENT QUESTIONS.
+         *
+         * 'total' is everything the grid draws, which includes the leading and
+         * trailing days borrowed from the neighbouring months. 'in_month' is
+         * only the days that belong to the month named in the heading.
+         *
+         * The caption used to report 'total' while saying "this month", which
+         * was wrong by up to twelve days. It also sat next to the block's own
+         * "N upcoming events", and the two disagreeing looked like a bug when
+         * it is not one: that number counts every published event from today
+         * forward, across all future months, while this one counts a single
+         * month including days already past. A calendar opened at the end of
+         * July can legitimately show one event beside a total of thirty-eight,
+         * because the other thirty-seven are in August and later. Both are now
+         * labelled so the difference is readable rather than alarming.
+         */
+        $prefix   = substr( $grid['first'], 0, 7 );
+        $in_month = 0;
+        foreach ( $by_day as $day => $ids ) {
+            if ( substr( $day, 0, 7 ) === $prefix ) {
+                $in_month += count( $ids );
+            }
+        }
+
         return array(
-            'grid'   => $grid,
-            'events' => $by_day,
-            'total'  => count( $query->posts ),
+            'grid'     => $grid,
+            'events'   => $by_day,
+            'total'    => count( $query->posts ),
+            'in_month' => $in_month,
         );
     }
 
@@ -369,23 +402,48 @@ class SFAF_Shortcodes {
              data-rows="<?php echo (int) $grid['rows']; ?>"
              data-today="<?php echo esc_attr( $today ); ?>">
 
+            <?php
+            // Compact header: what month this is on the left, controls on the
+            // right. The date range underneath is the grid's real span, which
+            // is what explains the greyed cells at each end.
+            $range = date_i18n( 'j M', strtotime( $grid['start'] . ' 12:00:00' ) )
+                . ' to ' . date_i18n( 'j M', strtotime( $grid['end'] . ' 12:00:00' ) );
+            ?>
             <div class="uc-month-head">
-                <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
-                        aria-label="Previous month">&larr;</button>
-                <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
-                <button type="button" class="uc-month-nav uc-month-next" data-goto="<?php echo esc_attr( $grid['next'] ); ?>"
-                        aria-label="Next month">&rarr;</button>
-                <button type="button" class="uc-month-today" data-goto="<?php echo esc_attr( current_time( 'Y-m' ) ); ?>">Today</button>
+                <div class="uc-month-heading">
+                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
+                    <p class="uc-month-range">
+                        <?php echo esc_html( $range ); ?>
+                        <span class="uc-month-count"><?php
+                            echo esc_html( sprintf(
+                                _n( '%d event', '%d events', (int) $data['in_month'] ),
+                                (int) $data['in_month']
+                            ) );
+                        ?></span>
+                    </p>
+                </div>
+
+                <?php // Previous / Today / Next as one segmented control. ?>
+                <div class="uc-month-nav-group" role="group" aria-label="Change month">
+                    <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
+                            aria-label="Previous month"><span aria-hidden="true">&lsaquo;</span></button>
+                    <button type="button" class="uc-month-nav uc-month-today" data-goto="<?php echo esc_attr( current_time( 'Y-m' ) ); ?>">Today</button>
+                    <button type="button" class="uc-month-nav uc-month-next" data-goto="<?php echo esc_attr( $grid['next'] ); ?>"
+                            aria-label="Next month"><span aria-hidden="true">&rsaquo;</span></button>
+                </div>
             </div>
 
+            <?php // The wrapper carries the outer border and radius: a
+                  // border-collapse table cannot round its own corners. ?>
+            <div class="uc-month-wrap">
             <table class="uc-month-grid" role="grid">
                 <caption class="uc-visually-hidden"><?php
-                    printf(
-                        /* translators: month name, number of events */
-                        esc_html( '%1$s. %2$d events this month. Use the arrow keys to move between days.' ),
-                        esc_html( $grid['label'] ),
-                        (int) $data['total']
-                    );
+                    echo esc_html( sprintf(
+                        /* translators: 1: month name, 2: event count phrase */
+                        '%1$s, %2$s. Use the arrow keys to move between days.',
+                        $grid['label'],
+                        sprintf( _n( '%d event this month', '%d events this month', (int) $data['in_month'] ), (int) $data['in_month'] )
+                    ) );
                 ?></caption>
                 <thead>
                     <tr>
@@ -442,10 +500,24 @@ class SFAF_Shortcodes {
                                 tabindex="<?php echo (int) $tabindex; ?>"
                                 role="gridcell"
                                 aria-label="<?php echo esc_attr( $label ); ?>">
-                                <span class="uc-day-num" aria-hidden="true"><?php echo (int) $day_num; ?><?php
-                                    if ( $is_today ) { echo '<span class="uc-day-today-mark">Today</span>'; }
-                                ?></span>
+                                <span class="uc-day-num" aria-hidden="true"><?php echo (int) $day_num; ?></span>
                                 <?php if ( ! empty( $ids ) ) : ?>
+                                    <?php
+                                    /*
+                                     * DOTS ARE THE MOBILE TREATMENT ONLY.
+                                     *
+                                     * They are rendered here because the phone
+                                     * layout needs them and re-fetching a month
+                                     * on resize would be absurd, but CSS hides
+                                     * them above 640px. Before 2.10.1 the
+                                     * stylesheet that did the hiding never
+                                     * reached the embed, so they showed up at
+                                     * desktop width as a stray dot after every
+                                     * date. If you are changing this, the rule
+                                     * to check is `.uc-day-dots { display:none }`
+                                     * in the desktop block, not this markup.
+                                     */
+                                    ?>
                                     <span class="uc-day-dots" aria-hidden="true"><?php
                                         foreach ( $ids as $id ) {
                                             $cats  = wp_get_post_terms( $id, 'uc_event_category' );
@@ -461,19 +533,14 @@ class SFAF_Shortcodes {
                                             ?>
                                             <li class="uc-day-event">
                                                 <a href="<?php echo esc_url( get_permalink( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
+                                                    <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
                                                     <?php if ( '' !== $start ) : ?>
                                                         <span class="uc-day-event-time"><?php echo esc_html( date_i18n( 'g:ia', strtotime( $start ) ) ); ?></span>
                                                     <?php endif; ?>
-                                                    <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
                                                 </a>
                                             </li>
                                         <?php endforeach; ?>
                                     </ul>
-                                <?php else : ?>
-                                    <?php // Empty days are ordinary here: whole months have no
-                                          // Friday or Sunday events. A deliberate dash reads as
-                                          // "nothing on", where a blank cell reads as broken. ?>
-                                    <span class="uc-day-none" aria-hidden="true">&middot;</span>
                                 <?php endif; ?>
                             </td>
                         <?php endforeach; ?>
@@ -481,6 +548,19 @@ class SFAF_Shortcodes {
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
+
+            <?php
+            // A month with nothing in it is common and is not a failure: whole
+            // months here have no Friday or Sunday events, and a calendar
+            // opened at the end of a month can be genuinely bare. Saying so
+            // outright is what stops forty-two empty cells reading as a broken
+            // grid, and it is also what a failed month must NOT look like,
+            // which is why the error box is separate and says something else.
+            if ( 0 === (int) $data['in_month'] ) :
+                ?>
+                <p class="uc-month-empty">Nothing scheduled in <?php echo esc_html( $grid['label'] ); ?>. Use the arrows to look at another month.</p>
+            <?php endif; ?>
 
             <?php // Mobile: the grid above collapses to date + dots, and the
                   // selected day's events render here as full list cards. ?>
@@ -586,8 +666,8 @@ class SFAF_Shortcodes {
      */
     private function render_view_toggle( $view ) {
         $options = array(
-            'list'     => array( 'List', 'menu' ),
-            'calendar' => array( 'Calendar', 'calendar' ),
+            'list'     => array( 'Show events as a list', 'menu' ),
+            'calendar' => array( 'Show events on a calendar', 'calendar' ),
         );
 
         ob_start();
@@ -596,11 +676,25 @@ class SFAF_Shortcodes {
             <?php foreach ( $options as $key => $opt ) :
                 $active = ( $key === $view );
                 ?>
+                <?php
+                /*
+                 * ICONS ONLY, WITH REAL NAMES. The label is on aria-label and
+                 * title rather than on screen, so the control stays compact
+                 * without becoming a mystery to a screen reader or to anyone
+                 * hovering it.
+                 *
+                 * The pressed state is not colour: the active button is filled
+                 * AND inset, and carries aria-pressed. In greyscale, in a
+                 * forced-colours theme, and to assistive technology it still
+                 * reads as the one that is on.
+                 */
+                ?>
                 <button type="button" class="uc-view-btn<?php echo $active ? ' active' : ''; ?>"
                         data-view="<?php echo esc_attr( $key ); ?>"
+                        title="<?php echo esc_attr( $opt[0] ); ?>"
+                        aria-label="<?php echo esc_attr( $opt[0] ); ?>"
                         aria-pressed="<?php echo $active ? 'true' : 'false'; ?>">
-                    <?php echo sfaf_icon( $opt[1], array( 'size' => '16px' ) ); ?>
-                    <span><?php echo esc_html( $opt[0] ); ?></span>
+                    <?php echo sfaf_icon( $opt[1], array( 'size' => '17px' ) ); ?>
                 </button>
             <?php endforeach; ?>
         </div>
@@ -876,8 +970,20 @@ class SFAF_Shortcodes {
             <?php endif; ?>
 
             <div class="uc-view-bar">
+                <?php
+                /*
+                 * "upcoming" is doing real work in this sentence. This counts
+                 * every published event from today forward, across all months;
+                 * the month grid below counts one month, including days that
+                 * have already been. Those two numbers disagreeing is correct,
+                 * and the wording is what stops it looking like a fault: a
+                 * calendar opened on the last day of July can honestly show one
+                 * event in July beside thirty-eight still to come.
+                 */
+                ?>
                 <div class="uc-event-count">
-                    <span class="uc-count-number"><?php echo (int) $events['total']; ?></span> upcoming events
+                    <span class="uc-count-number"><?php echo (int) $events['total']; ?></span>
+                    <?php echo esc_html( _n( 'event coming up', 'events coming up', (int) $events['total'] ) ); ?>
                 </div>
                 <?php if ( $toggle ) { echo $this->render_view_toggle( $view ); } ?>
             </div>
