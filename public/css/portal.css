@@ -212,7 +212,11 @@ body.uc-portal {
 
 .uc-section-title { display: flex; align-items: center; gap: 8px; margin: 26px 0 10px; font-size: 16px; font-weight: 700; }
 .uc-section-title:first-of-type { margin-top: 0; }
-.uc-count-badge { display: inline-block; min-width: 20px; padding: 1px 8px; border-radius: 99px; background: var(--uc-primary, #0E818C); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+/* Dark on SFAF yellow, 12.22:1. It was white on yellow at 1.38:1, which is
+ * unreadable — the `#0E818C` fallback beside var(--uc-primary) never applied,
+ * because --uc-primary is always defined a few lines above. Used on the two
+ * pending-queue count chips and nowhere else. */
+.uc-count-badge { display: inline-block; min-width: 20px; padding: 1px 8px; border-radius: 99px; background: var(--uc-primary, #FFD900); color: #1a1d21; font-size: 12px; font-weight: 700; text-align: center; }
 
 .uc-source-badge { display: inline-block; padding: 2px 9px; border-radius: 99px; background: #e0f2f1; color: #0E818C; font-size: 11px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
 .uc-source-link { font-size: 12px; color: #6B7280; text-decoration: none; }
@@ -320,7 +324,10 @@ body.uc-portal {
  * the fields, so a screen reader gets the same sentence the tooltip shows. */
 .uc-row-needs td { background: #fffdf5; }
 .uc-needs-flag { position: relative; display: inline-flex; color: #b45309; margin-left: 6px; cursor: help; }
-.uc-needs-flag:focus { outline: 2px solid #f59e0b; outline-offset: 2px; border-radius: 3px; }
+/* 5.02:1, up from 2.15:1. This is the keyboard focus indicator on the
+ * needs-attention icon, so it is the one ring a keyboard user has to be able to
+ * see; #f59e0b failed even the 3:1 non-text floor. Same amber family, darker. */
+.uc-needs-flag:focus { outline: 2px solid #b45309; outline-offset: 2px; border-radius: 3px; }
 .uc-needs-tip { position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
     white-space: nowrap; background: #1F2937; color: #fff; padding: 4px 8px; border-radius: 5px;
     font-size: 11px; font-weight: 500; opacity: 0; visibility: hidden; transition: opacity .12s; z-index: 20; }

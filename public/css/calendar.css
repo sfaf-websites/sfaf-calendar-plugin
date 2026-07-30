@@ -63,19 +63,39 @@
 .uc-event-list { display: flex; flex-direction: column; gap: 14px; }
 
 /* Event card */
-.uc-event-card { display: flex; gap: 18px; padding: 20px; background: #fff; border-radius: 12px; border: 1px solid var(--uc-border); position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; }
+/* ---------------------------------------------------------------------------
+ * LIST CARD (2.10.0 redesign)
+ *
+ * One card per row, full width, with the image as a banner strip across the
+ * top rather than a 150px block cropped on the left.
+ *
+ * The crop was the bug. The branded placeholder is a 1600x900 SVG with
+ * preserveAspectRatio="slice", so forcing it into a 4:3 box cut both sides off
+ * the centred label and rendered "Program Groups" as "gram Gro". Roughly half
+ * of imported GoFundMe Pro events will never have a real image, because their
+ * API does not expose one, so that placeholder is the normal case rather than
+ * a rare fallback. At full width in its own 16:9 ratio nothing is sliced and it
+ * reads as a deliberate branded banner.
+ * ------------------------------------------------------------------------ */
+.uc-event-card { display: block; padding: 0; background: #fff; border-radius: 12px; border: 1px solid var(--uc-border); position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; }
 .uc-event-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.06); transform: translateY(-1px); }
 
-.uc-card-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 12px 0 0 12px; }
+.uc-card-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 12px 0 0 12px; z-index: 2; }
 
-/* Date block */
-.uc-card-date { min-width: 60px; text-align: center; padding-top: 4px; margin-left: 8px; flex-shrink: 0; }
-.uc-card-month { display: block; font-size: 12px; font-weight: 700; color: var(--uc-teal-text); text-transform: uppercase; letter-spacing: 0.5px; }
-.uc-card-day { display: block; font-size: 28px; font-weight: 800; color: var(--uc-text); line-height: 1.1; }
-.uc-card-weekday { display: block; font-size: 11px; color: var(--uc-muted); }
+/* Banner strip. 16/9 matches the placeholder's own ratio exactly, so it is
+   never sliced; a real photo is cover-cropped to the same shape. */
+.uc-card-banner { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 260px; overflow: hidden; background: var(--uc-bg); }
+.uc-card-banner > a { display: block; width: 100%; height: 100%; }
+.uc-card-banner img, .uc-card-banner svg, .uc-card-banner .uc-thumb-svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Date chip, floated on the banner so the banner keeps its full width. */
+.uc-card-datechip { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: block; min-width: 58px; padding: 6px 10px 7px; text-align: center; background: rgba(255,255,255,0.96); border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }
+.uc-card-month { display: block; font-size: 11px; font-weight: 700; color: var(--uc-teal-text); text-transform: uppercase; letter-spacing: 0.5px; }
+.uc-card-day { display: block; font-size: 24px; font-weight: 800; color: var(--uc-text); line-height: 1.1; }
+.uc-card-weekday { display: block; font-size: 10px; color: var(--uc-secondary); text-transform: uppercase; letter-spacing: .04em; }
 
 /* Card content */
-.uc-card-content { flex: 1; min-width: 0; }
+.uc-card-content { padding: 16px 20px 20px; min-width: 0; }
 
 .uc-card-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .uc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--badge-color, var(--uc-teal)) 12%, transparent); color: var(--badge-color, var(--uc-teal)); }
@@ -87,9 +107,13 @@
 
 .uc-card-excerpt { font-size: 14px; color: var(--uc-secondary); margin: 0 0 10px; line-height: 1.5; }
 
-.uc-card-meta { display: flex; gap: 16px; font-size: 13px; color: var(--uc-muted); flex-wrap: wrap; }
-.uc-meta-item { white-space: nowrap; }
-.uc-meta-organizer { color: var(--uc-teal-text); }
+/* Meta row. Date and time lead: on an events calendar that is the thing a
+   visitor is deciding on, ahead of organizer. It is also the only item allowed
+   to be visually stronger than the rest, for the same reason. */
+.uc-card-meta { display: flex; gap: 16px; font-size: 13px; color: var(--uc-secondary); flex-wrap: wrap; align-items: center; }
+.uc-meta-item { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.uc-meta-when { font-weight: 700; color: var(--uc-text); }
+.uc-meta-organizer { color: var(--uc-teal-text); white-space: normal; }
 
 /* RSVP section */
 .uc-card-rsvp { margin-top: 14px; padding: 12px 14px; background: var(--uc-bg); border-radius: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -229,8 +253,6 @@
 @media (max-width: 600px) {
     .uc-filters { flex-direction: column; align-items: stretch; }
     .uc-search { width: 100%; }
-    .uc-event-card { flex-direction: column; gap: 12px; }
-    .uc-card-date { display: flex; gap: 8px; align-items: baseline; min-width: auto; text-align: left; margin-left: 12px; }
     .uc-card-day { font-size: 20px; }
     .uc-card-meta { flex-direction: column; gap: 4px; }
     .uc-single-grid { grid-template-columns: 1fr; }
@@ -260,9 +282,9 @@
 .uc-galaxy-btn { padding: 8px 18px; border-radius: 8px; background: var(--uc-purple); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .uc-galaxy-btn:hover { filter: brightness(0.95); color: #fff; }
 
-/* Event card thumbnail + branded SVG placeholder */
-.uc-card-thumb { width: 150px; flex-shrink: 0; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--uc-bg); }
-.uc-card-thumb img, .uc-card-thumb svg, .uc-thumb-svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Compact / single-event thumbnails. The list card's own image is the
+   full-width banner at the top of this file; .uc-card-thumb is gone with the
+   cropped left-hand block it styled. */
 .uc-compact-thumb { width: 56px; height: 56px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--uc-bg); }
 .uc-compact-thumb img, .uc-compact-thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
 .uc-single-image { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
@@ -278,10 +300,6 @@
 .uc-faq-a { display: none; padding: 0 16px 16px; font-size: 14px; color: var(--uc-secondary); line-height: 1.6; }
 .uc-faq-item.open .uc-faq-a { display: block; }
 .uc-faq-a p { margin: 0 0 0.8em; }
-
-@media (max-width: 600px) {
-    .uc-card-thumb { width: 100%; }
-}
 
 /* Pagination */
 .uc-pagination { margin: 24px 0 8px; display: flex; justify-content: center; align-items: center; }
@@ -322,3 +340,140 @@ a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: cent
 /* Numbered pagination renders as buttons in an embed rather than links. */
 .uc-pagination-pages button.uc-page-link,
 .uc-pagination-pages button.uc-page-num { cursor: pointer; font-family: inherit; }
+
+/* ===========================================================================
+ * VIEW TOGGLE, MONTH GRID AND SIDEBAR (2.10.0)
+ *
+ * Shared by the shortcode on this site and the cross-domain embed, because
+ * both render from SFAF_Shortcodes. One stylesheet, one set of rules, no
+ * chance of the two drifting apart visually.
+ * ======================================================================== */
+
+.uc-visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.uc-view-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.uc-view-toggle { display: inline-flex; border: 1px solid var(--uc-border); border-radius: 10px; overflow: hidden; background: #fff; }
+.uc-view-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; background: none;
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--uc-secondary); cursor: pointer; }
+.uc-view-btn + .uc-view-btn { border-left: 1px solid var(--uc-border); }
+.uc-view-btn:hover { color: var(--uc-teal-text); }
+/* Active state is not colour alone: the pressed button is filled AND carries
+   aria-pressed, so it survives greyscale and reaches a screen reader. */
+.uc-view-btn.active { background: var(--uc-teal); color: var(--uc-dark); }
+.uc-view-btn:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; }
+
+/* ---------- Month grid ---------- */
+.uc-month { position: relative; }
+.uc-month-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.uc-month-label { flex: 1; margin: 0; font-size: 18px; font-weight: 800; color: var(--uc-text); }
+.uc-month-nav, .uc-month-today { padding: 7px 12px; border: 1px solid var(--uc-border); border-radius: 8px;
+    background: #fff; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--uc-secondary); cursor: pointer; }
+.uc-month-nav:hover, .uc-month-today:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+.uc-month-nav:focus-visible, .uc-month-today:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+
+.uc-month-grid { width: 100%; border-collapse: collapse; table-layout: fixed; background: #fff;
+    border: 1px solid var(--uc-border); border-radius: 12px; overflow: hidden; }
+.uc-month-grid th { padding: 9px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--uc-secondary); background: var(--uc-bg); border-bottom: 1px solid var(--uc-border); }
+.uc-month-grid th abbr { text-decoration: none; border: none; }
+.uc-day-name-min { display: none; }
+
+/* VARIABLE ROW HEIGHT. No fixed height and no max-height: a cell with three
+   events makes its row taller and the rest of that week grows with it, which
+   is what a table row does anyway. Nothing is ever truncated or hidden, and
+   the row count comes from the server, so six-week months simply have a sixth
+   row rather than losing their last days. */
+.uc-month-grid td { vertical-align: top; padding: 6px 6px 8px; border: 1px solid var(--uc-border);
+    height: 84px; width: 14.285%; }
+.uc-month-grid td:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; }
+
+.uc-day-num { display: block; font-size: 12px; font-weight: 700; color: var(--uc-text); margin-bottom: 4px; }
+
+/* Today: a filled pill plus the word "Today", never the colour by itself. */
+.uc-day-today .uc-day-num { color: var(--uc-dark); }
+.uc-day-today-mark { display: inline-block; margin-left: 5px; padding: 1px 6px; border-radius: 99px;
+    background: var(--uc-yellow); color: var(--uc-dark); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+
+/* Out of month: dimmed AND hatched, so it reads as not-this-month in greyscale
+   and in a forced-colours theme too. Their events still show. */
+.uc-day-out { background: repeating-linear-gradient(135deg, #fbfbfc, #fbfbfc 6px, #f4f5f7 6px, #f4f5f7 12px); }
+.uc-day-out .uc-day-num { color: var(--uc-muted); font-weight: 600; }
+
+/* An empty day is normal here: whole months have no Friday or Sunday events.
+   A faint centred dot says nothing-on, where a blank cell says broken. */
+.uc-day-none { display: block; text-align: center; color: var(--uc-border); font-size: 18px; line-height: 1; padding-top: 10px; }
+
+.uc-day-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.uc-day-event a { display: block; padding: 3px 5px; border-left: 3px solid var(--cat-color, var(--uc-teal));
+    border-radius: 4px; background: color-mix(in srgb, var(--cat-color, var(--uc-teal)) 10%, #fff);
+    font-size: 11px; line-height: 1.3; color: var(--uc-text); text-decoration: none; }
+.uc-day-event a:hover { background: color-mix(in srgb, var(--cat-color, var(--uc-teal)) 20%, #fff); }
+.uc-day-event-time { display: block; font-weight: 700; color: var(--uc-secondary); font-size: 10px; }
+.uc-day-event-title { display: block; font-weight: 600; }
+
+.uc-day-dots { display: none; }
+.uc-day-selected { box-shadow: inset 0 0 0 2px var(--uc-teal-text); }
+
+/* Loading and failure. A failed month must never look like an empty one. */
+.uc-month-loading { position: relative; }
+.uc-month-loading .uc-month-grid { opacity: .45; }
+.uc-month-loading::after { content: "Loading"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    padding: 8px 16px; border-radius: 8px; background: rgba(26,29,33,.88); color: #fff; font-size: 13px; font-weight: 600; }
+.uc-month-error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+    padding: 10px 14px; border-radius: 8px; background: #fef3c7; color: #92400e; font-size: 13px; font-weight: 600; }
+.uc-month-retry { padding: 5px 12px; border: 1px solid #92400e; border-radius: 6px; background: #fff;
+    color: #92400e; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+/* Day panel: hidden on desktop, where the events are already in the cells. */
+.uc-month-day-panel { display: none; }
+
+/* ---------- Sidebar ---------- */
+.uc-sidebar { font-family: var(--uc-font-heading); max-width: 380px; }
+.uc-sidebar-list { display: flex; flex-direction: column; gap: 2px; }
+.uc-sidebar-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 8px; border-radius: 8px;
+    border-left: 3px solid var(--cat-color, var(--uc-teal)); text-decoration: none; color: inherit; background: #fff; }
+.uc-sidebar-row:hover { background: var(--uc-bg); }
+.uc-sidebar-date { flex: 0 0 38px; text-align: center; }
+.uc-sidebar-mon { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--uc-teal-text); }
+.uc-sidebar-day { display: block; font-size: 19px; font-weight: 800; line-height: 1.05; color: var(--uc-text); }
+.uc-sidebar-body { min-width: 0; }
+.uc-sidebar-title { display: block; font-size: 13px; font-weight: 700; color: var(--uc-text); line-height: 1.35; }
+.uc-sidebar-time { display: block; font-size: 12px; color: var(--uc-secondary); margin-top: 2px; }
+.uc-sidebar-empty { margin: 0; padding: 16px 8px; font-size: 13px; color: var(--uc-secondary); }
+.uc-sidebar-all { display: inline-block; margin-top: 10px; padding: 8px 2px; font-size: 13px; font-weight: 700; color: var(--uc-teal-text); text-decoration: none; }
+.uc-sidebar-all:hover { text-decoration: underline; }
+
+/* ---------- Mobile: the Outlook pattern ----------
+ *
+ * Seven columns do not work at phone width, so each cell drops to its date
+ * number and one dot per event, and the tapped day events render in full
+ * underneath the grid. No expand/collapse gesture: at three events on the
+ * busiest day it would be effort spent on the fiddliest part of the pattern.
+ */
+@media (max-width: 640px) {
+    .uc-month-grid td { height: auto; min-height: 46px; padding: 5px 2px; text-align: center; }
+    .uc-day-name-full { display: none; }
+    .uc-day-name-min { display: inline; }
+    .uc-day-events { display: none; }
+    .uc-day-none { display: none; }
+    .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
+    .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
+    .uc-day-today-mark { display: block; margin: 2px auto 0; }
+
+    .uc-month-day-panel { display: block; margin-top: 16px; }
+    .uc-day-panel-title { margin: 0 0 8px; font-size: 14px; font-weight: 800; color: var(--uc-text); }
+    .uc-day-panel-empty { margin: 0; font-size: 13px; color: var(--uc-secondary); }
+    /* In the panel the same event blocks get room to breathe. */
+    .uc-month-day-panel .uc-day-events { display: flex; gap: 6px; }
+    .uc-month-day-panel .uc-day-event a { padding: 10px 12px; font-size: 14px; text-align: left; }
+    .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
+
+    .uc-card-banner { aspect-ratio: 16 / 9; max-height: 200px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .uc-event-card { transition: none; }
+    .uc-event-card:hover { transform: none; }
+}

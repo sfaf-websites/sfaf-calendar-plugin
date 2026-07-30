@@ -669,38 +669,50 @@
         var $preview = $('#uc-embed-preview');
         var previewTimer = null;
 
-        /** Slugs and names of the ticked boxes in one group. */
-        function checked(selector) {
-            var slugs = [];
-            var names = [];
-            $(selector + ':checked').each(function () {
-                slugs.push($(this).val());
-                names.push($(this).attr('data-name') || $(this).val());
-            });
-            return { slugs: slugs, names: names };
-        }
-
-        /** Everything the block needs, read off the form. */
+        /**
+         * Everything the block needs, read off the form.
+         *
+         * Display mode and filter are independent: any of the three modes
+         * combines with any filter, which is why they are two controls rather
+         * than a list of preset block types.
+         */
         function currentChoices() {
-            var $series = $('#uc-embed-series');
+            var view = $('.uc-embed-view:checked').val() || 'list';
+            var type = $('#uc-embed-filter-type').val() || '';
             var perPage = parseInt($('#uc-embed-per-page').val(), 10);
+            var count = parseInt($('#uc-embed-count').val(), 10);
+
+            var $which = type ? $('#uc-embed-' + type) : $();
+            var value = $which.length ? ($which.val() || '') : '';
+            var name = $which.length ? ($which.find('option:selected').attr('data-name') || '') : '';
 
             return {
-                categories: checked('.uc-embed-category'),
-                organizers: checked('.uc-embed-organizer'),
-                seriesId: $series.val() || '',
-                seriesName: $series.find('option:selected').attr('data-name') || '',
+                view: view,
+                toggle: $('#uc-embed-toggle').is(':checked'),
+                filterType: value ? type : '',
+                filterValue: value,
+                filterName: name,
                 perPage: (perPage > 0 ? perPage : 12),
+                count: (count > 0 ? count : 10),
                 showFilters: $('#uc-embed-filters').is(':checked')
             };
         }
 
-        /** Join names the way a sentence would: "A, B and C". */
-        function readableList(names) {
-            if (names.length < 2) {
-                return names.join('');
-            }
-            return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+        /** Show only the fields that apply to the current mode and filter. */
+        function syncVisibility(choices) {
+            $screen.find('[data-when-view]').each(function () {
+                var allowed = ($(this).attr('data-when-view') || '').split(/\s+/);
+                $(this).prop('hidden', allowed.indexOf(choices.view) === -1);
+            });
+
+            // Keyed off the SELECT's own value, not the resolved filter: the
+            // "which one" list has to stay on screen while a taxonomy is
+            // chosen but empty, or picking "One organizer" with no organizers
+            // yet would hide the box explaining that.
+            var type = $('#uc-embed-filter-type').val() || '';
+            $screen.find('[data-when-filter]').each(function () {
+                $(this).prop('hidden', $(this).attr('data-when-filter') !== type);
+            });
         }
 
         /**
@@ -709,49 +721,60 @@
          * be able to tell what it shows without decoding a series ID.
          */
         function summarize(choices) {
-            var cats = choices.categories.names;
-            var orgs = choices.organizers.names;
-            var what;
+            var what = choices.filterName
+                ? ({
+                    organizer: 'events from ' + choices.filterName,
+                    series: 'the ' + choices.filterName + ' series',
+                    category: choices.filterName + ' events'
+                })[choices.filterType]
+                : 'all upcoming events';
 
-            if (choices.seriesName) {
-                what = 'the ' + choices.seriesName + ' series';
-                if (cats.length) {
-                    what += ', ' + readableList(cats) + ' only';
-                }
-            } else if (cats.length) {
-                what = readableList(cats) + ' events';
+            var how;
+            if (choices.view === 'sidebar') {
+                how = 'the next ' + choices.count + ' dates, as a narrow sidebar';
+            } else if (choices.view === 'calendar') {
+                how = 'as a month calendar' + (choices.toggle ? ', with a list toggle' : '');
             } else {
-                what = 'all upcoming events';
+                how = 'as a list, ' + choices.perPage + ' at a time' + (choices.toggle ? ', with a calendar toggle' : '');
             }
 
-            if (orgs.length) {
-                what += ' from ' + readableList(orgs);
+            var summary = 'SFAF Calendar: ' + what + ', ' + how;
+            if (choices.view !== 'sidebar') {
+                summary += (choices.showFilters ? ', with search and category filters' : ', without visitor filters');
             }
-
-            var summary = 'SFAF Calendar: ' + what +
-                ', ' + choices.perPage + ' at a time' +
-                (choices.showFilters ? ', with search and category filters' : ', without visitor filters');
 
             // Nothing here may close the comment early.
             return summary.replace(/--+/g, '-').replace(/[<>]/g, '');
         }
 
+        /** The data attributes a block carries, in one place for code + preview. */
+        function attrsFor(choices) {
+            var attrs = { 'data-view': choices.view };
+
+            if (choices.filterType && choices.filterValue) {
+                attrs['data-' + choices.filterType] = choices.filterValue;
+            }
+            if (choices.view === 'sidebar') {
+                attrs['data-count'] = String(choices.count);
+            } else {
+                attrs['data-per-page'] = String(choices.perPage);
+                attrs['data-show-filters'] = choices.showFilters ? 'yes' : 'no';
+                attrs['data-toggle'] = choices.toggle ? 'yes' : 'no';
+            }
+            return attrs;
+        }
+
         function buildBlock(choices) {
+            var attrs = attrsFor(choices);
             var lines = [];
             lines.push('<!-- ' + summarize(choices) + ' -->');
             lines.push('<div class="sfaf-calendar-embed" data-sfaf-calendar');
-
-            if (choices.categories.slugs.length) {
-                lines.push('     data-category="' + choices.categories.slugs.join(',') + '"');
+            for (var key in attrs) {
+                if (Object.prototype.hasOwnProperty.call(attrs, key)) {
+                    lines.push('     ' + key + '="' + attrs[key] + '"');
+                }
             }
-            if (choices.organizers.slugs.length) {
-                lines.push('     data-organizer="' + choices.organizers.slugs.join(',') + '"');
-            }
-            if (choices.seriesId) {
-                lines.push('     data-series="' + choices.seriesId + '"');
-            }
-            lines.push('     data-per-page="' + choices.perPage + '"');
-            lines.push('     data-show-filters="' + (choices.showFilters ? 'yes' : 'no') + '"></div>');
+            lines[lines.length - 1] = lines[lines.length - 1] + '></div>';
             lines.push('<script src="' + scriptUrl + '" async><\/script>');
 
             return lines.join('\n');
@@ -765,16 +788,11 @@
 
             var block = $('<div class="sfaf-calendar-embed"></div>');
             block.attr('data-sfaf-calendar', '');
-            block.attr('data-per-page', choices.perPage);
-            block.attr('data-show-filters', choices.showFilters ? 'yes' : 'no');
-            if (choices.categories.slugs.length) {
-                block.attr('data-category', choices.categories.slugs.join(','));
-            }
-            if (choices.organizers.slugs.length) {
-                block.attr('data-organizer', choices.organizers.slugs.join(','));
-            }
-            if (choices.seriesId) {
-                block.attr('data-series', choices.seriesId);
+            var attrs = attrsFor(choices);
+            for (var key in attrs) {
+                if (Object.prototype.hasOwnProperty.call(attrs, key)) {
+                    block.attr(key, attrs[key]);
+                }
             }
 
             $preview.empty().append(block);
@@ -783,6 +801,7 @@
 
         function update() {
             var choices = currentChoices();
+            syncVisibility(choices);
             $code.val(buildBlock(choices));
 
             // The preview costs a request, so let a run of clicks settle first.

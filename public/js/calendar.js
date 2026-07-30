@@ -15,7 +15,259 @@
         initAddToCalendar();
         initFAQ();
         initPagination();
+        initViews();
     });
+
+    /* -----------------------------------------------------------------------
+     * View toggle and month grid, on this site.
+     *
+     * The MARKUP is identical to the embed's, because both come out of
+     * SFAF_Shortcodes. Only the transport differs: here a month is fetched
+     * through admin-ajax with a nonce, where the embed uses the public REST
+     * route because it cannot obtain one from another origin. Keeping the two
+     * behaviours in step is a matter of keeping these two functions honest;
+     * everything they operate on is server-rendered once.
+     * -------------------------------------------------------------------- */
+
+    function initViews() {
+        $('.uc-calendar').each(function () {
+            var $block = $(this);
+            restoreView($block);
+            bindMonthGrid($block);
+        });
+
+        $(document).on('click', '.uc-view-btn', function () {
+            var $block = $(this).closest('.uc-calendar');
+            showView($block, $(this).attr('data-view') || 'list', true);
+        });
+
+        $(document).on('click', '.uc-month [data-goto]', function () {
+            loadMonth($(this).closest('.uc-calendar'), $(this).attr('data-goto'));
+        });
+
+        // Tap a day: show it below the grid. A click on an event link inside
+        // the cell is a navigation and is left alone.
+        $(document).on('click', '.uc-month td.uc-day', function (e) {
+            if ($(e.target).closest('a').length) {
+                return;
+            }
+            selectDay($(this).closest('.uc-calendar'), $(this).attr('data-day'));
+        });
+
+        $(document).on('keydown', '.uc-month td.uc-day', function (e) {
+            var $cells = $(this).closest('.uc-month').find('td.uc-day');
+            var index = $cells.index(this);
+            var next = -1;
+
+            if (e.key === 'ArrowRight') { next = index + 1; }
+            else if (e.key === 'ArrowLeft') { next = index - 1; }
+            else if (e.key === 'ArrowDown') { next = index + 7; }
+            else if (e.key === 'ArrowUp') { next = index - 7; }
+            else if (e.key === 'Home') { next = index - (index % 7); }
+            else if (e.key === 'End') { next = index - (index % 7) + 6; }
+            else if (e.key === 'Enter' || e.key === ' ') {
+                selectDay($(this).closest('.uc-calendar'), $(this).attr('data-day'));
+                e.preventDefault();
+                return;
+            } else { return; }
+
+            if (next >= 0 && next < $cells.length) {
+                $cells.attr('tabindex', '-1');
+                $cells.eq(next).attr('tabindex', '0').focus();
+                e.preventDefault();
+            }
+        });
+    }
+
+    /** Storage key scoped to this block's filters, so blocks stay independent. */
+    function viewKey($block) {
+        return 'sfafView:' + [
+            $block.attr('data-filter-category') || '',
+            $block.attr('data-filter-organizer') || '',
+            $block.attr('data-filter-series') || '',
+            $block.attr('data-filter-venue') || '',
+            $block.attr('data-view') || ''
+        ].join('|');
+    }
+
+    function restoreView($block) {
+        var stored = '';
+        try {
+            stored = window.localStorage.getItem(viewKey($block)) || '';
+        } catch (err) { stored = ''; }
+        if (stored === 'list' || stored === 'calendar') {
+            showView($block, stored, false);
+        } else {
+            syncDayPanel($block);
+        }
+    }
+
+    function showView($block, view, remember) {
+        $block.find('.uc-panel-list').prop('hidden', view !== 'list');
+        $block.find('.uc-panel-calendar').prop('hidden', view !== 'calendar');
+        $block.removeClass('uc-view-list uc-view-calendar').addClass('uc-view-' + view);
+        $block.attr('data-view', view);
+
+        $block.find('.uc-view-btn').each(function () {
+            var on = ($(this).attr('data-view') === view);
+            $(this).toggleClass('active', on).attr('aria-pressed', on ? 'true' : 'false');
+        });
+
+        if (remember) {
+            try { window.localStorage.setItem(viewKey($block), view); } catch (err) { /* private mode */ }
+        }
+        if (view === 'calendar') {
+            syncDayPanel($block);
+        }
+    }
+
+    function bindMonthGrid($block) {
+        syncDayPanel($block);
+        prefetchMonths($block);
+    }
+
+    function monthParams($block, month) {
+        return {
+            action: 'uc_load_month',
+            nonce: ucData.nonce,
+            month: month,
+            category: $block.attr('data-filter-category') || '',
+            organizer: $block.attr('data-filter-organizer') || '',
+            series: $block.attr('data-filter-series') || '',
+            venue: $block.attr('data-filter-venue') || ''
+        };
+    }
+
+    var monthCache = {};
+
+    function loadMonth($block, month) {
+        var $panel = $block.find('.uc-panel-calendar');
+        if (!$panel.length || !month) {
+            return;
+        }
+        var key = viewKey($block) + '#' + month;
+        if (monthCache[key]) {
+            $panel.html(monthCache[key]);
+            bindMonthGrid($block);
+            return;
+        }
+
+        var $grid = $block.find('.uc-month');
+        $grid.addClass('uc-month-loading').attr('aria-busy', 'true');
+
+        $.post(ucData.ajaxUrl, monthParams($block, month))
+            .done(function (res) {
+                if (!res || !res.success || !res.data || typeof res.data.html !== 'string') {
+                    showMonthError($block, month);
+                    return;
+                }
+                monthCache[key] = res.data.html;
+                $panel.html(res.data.html);
+                bindMonthGrid($block);
+            })
+            .fail(function () {
+                showMonthError($block, month);
+            });
+    }
+
+    /* A failed month must never look like an empty one: whole months here
+       genuinely have no Friday or Sunday events, so silence would be a lie. */
+    function showMonthError($block, month) {
+        var $grid = $block.find('.uc-month');
+        $grid.removeClass('uc-month-loading').removeAttr('aria-busy');
+        $grid.find('.uc-month-error').remove();
+
+        var $box = $('<div class="uc-month-error" role="alert"><span>That month could not be loaded.</span></div>');
+        $('<button type="button" class="uc-month-retry">Try again</button>')
+            .on('click', function () {
+                $box.remove();
+                loadMonth($block, month);
+            })
+            .appendTo($box);
+        $grid.prepend($box);
+    }
+
+    /** Warm the neighbouring months quietly, after first paint. */
+    function prefetchMonths($block) {
+        var $grid = $block.find('.uc-month');
+        if (!$grid.length) {
+            return;
+        }
+        $.each([$grid.attr('data-prev'), $grid.attr('data-next')], function (_, month) {
+            var key = viewKey($block) + '#' + month;
+            if (!month || monthCache[key]) {
+                return;
+            }
+            $.post(ucData.ajaxUrl, monthParams($block, month)).done(function (res) {
+                if (res && res.success && res.data && typeof res.data.html === 'string') {
+                    monthCache[key] = res.data.html;
+                }
+            });
+        });
+    }
+
+    function selectDay($block, day) {
+        var $grid = $block.find('.uc-month');
+        if (!$grid.length || !day) {
+            return;
+        }
+        $grid.attr('data-selected', day);
+        $grid.find('td.uc-day').each(function () {
+            var on = ($(this).attr('data-day') === day);
+            $(this).toggleClass('uc-day-selected', on).attr('aria-selected', on ? 'true' : 'false');
+        });
+        renderDayPanel($block, day);
+    }
+
+    function renderDayPanel($block, day) {
+        var $grid = $block.find('.uc-month');
+        var $panel = $grid.find('.uc-month-day-panel');
+        var $cell = $grid.find('td.uc-day[data-day="' + day + '"]');
+        if (!$panel.length || !$cell.length) {
+            return;
+        }
+        $panel.empty();
+        $panel.append($('<h4 class="uc-day-panel-title"></h4>')
+            .text(($cell.attr('aria-label') || '').split('.')[0]));
+
+        var $events = $cell.find('.uc-day-events');
+        if (!$events.length || !$events.children().length) {
+            $panel.append('<p class="uc-day-panel-empty">Nothing scheduled on this day.</p>');
+            return;
+        }
+        $panel.append($events.clone());
+    }
+
+    /** Never open on a blank day: today if it has events, else the next that does. */
+    function syncDayPanel($block) {
+        var $grid = $block.find('.uc-month');
+        if (!$grid.length) {
+            return;
+        }
+        var already = $grid.attr('data-selected');
+        if (already) {
+            renderDayPanel($block, already);
+            return;
+        }
+        var today = $grid.attr('data-today') || '';
+        var $todayCell = $grid.find('td.uc-day[data-day="' + today + '"]');
+        var day = '';
+
+        if ($todayCell.length && parseInt($todayCell.attr('data-count') || '0', 10) > 0) {
+            day = today;
+        } else {
+            $grid.find('td.uc-day').each(function () {
+                var d = $(this).attr('data-day');
+                if (parseInt($(this).attr('data-count') || '0', 10) > 0) {
+                    if (!day) { day = d; }
+                    if (d >= today) { day = d; return false; }
+                }
+            });
+        }
+        if (day) {
+            selectDay($block, day);
+        }
+    }
 
     /**
      * Pagination: Load More button + Infinite scroll.

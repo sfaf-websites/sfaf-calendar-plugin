@@ -625,73 +625,125 @@ class SFAF_Admin {
                 <div class="uc-admin-card uc-embed-options">
                     <h2>What should this calendar show?</h2>
 
+                    <?php
+                    /*
+                     * DISPLAY MODE AND FILTER ARE INDEPENDENT CONTROLS.
+                     *
+                     * Not a list of preset block types: every combination is
+                     * valid and useful, so offering "Programa Latino sidebar"
+                     * and "Programa Latino calendar" as separate presets would
+                     * mean nine presets today and more with every new filter.
+                     * Two controls produce all of them, and a Programa Latino
+                     * sidebar and a TransLife sidebar are just two snippets
+                     * from the same screen.
+                     */
+                    ?>
                     <div class="uc-embed-field">
-                        <span class="uc-embed-label">Categories</span>
-                        <?php if ( empty( $categories ) ) : ?>
-                            <p class="description">No event categories yet.</p>
-                        <?php else : ?>
-                            <div class="uc-checkbox-grid">
-                                <?php foreach ( $categories as $cat ) : ?>
-                                    <label class="uc-check">
-                                        <input type="checkbox" class="uc-embed-category"
-                                               value="<?php echo esc_attr( $cat->slug ); ?>"
-                                               data-name="<?php echo esc_attr( $cat->name ); ?>" />
-                                        <span class="uc-check-dot" style="background: <?php echo esc_attr( sfaf_category_color( $cat->term_id ) ); ?>"></span>
-                                        <?php echo esc_html( $cat->name ); ?>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <p class="description">Leave all unticked to show every category.</p>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="uc-embed-field">
-                        <span class="uc-embed-label">Organizers</span>
-                        <?php if ( empty( $organizers ) ) : ?>
-                            <p class="description">No organizers yet.</p>
-                        <?php else : ?>
-                            <div class="uc-checkbox-grid">
-                                <?php foreach ( $organizers as $org ) : ?>
-                                    <label class="uc-check">
-                                        <input type="checkbox" class="uc-embed-organizer"
-                                               value="<?php echo esc_attr( $org->slug ); ?>"
-                                               data-name="<?php echo esc_attr( $org->name ); ?>" />
-                                        <?php echo esc_html( $org->name ); ?>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <p class="description">Leave all unticked to show every organizer.</p>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="uc-embed-field">
-                        <label class="uc-embed-label" for="uc-embed-series">Recurring series</label>
-                        <select id="uc-embed-series" class="uc-input">
-                            <option value="">Not limited to one series</option>
-                            <?php foreach ( $series as $parent_id => $title ) : ?>
-                                <option value="<?php echo (int) $parent_id; ?>"
-                                        data-name="<?php echo esc_attr( $title ); ?>">
-                                    <?php echo esc_html( $title ); ?>
-                                </option>
+                        <span class="uc-embed-label">Display mode</span>
+                        <div class="uc-radio-stack">
+                            <?php
+                            $modes = array(
+                                'list'     => 'List: one card per event, with images and details',
+                                'calendar' => 'Calendar: a month grid',
+                                'sidebar'  => 'Sidebar: a narrow column of upcoming dates',
+                            );
+                            foreach ( $modes as $val => $label ) :
+                                ?>
+                                <label class="uc-radio-opt">
+                                    <input type="radio" name="uc_embed_view" class="uc-embed-view"
+                                           value="<?php echo esc_attr( $val ); ?>" <?php checked( 'list', $val ); ?> />
+                                    <?php echo esc_html( $label ); ?>
+                                </label>
                             <?php endforeach; ?>
-                        </select>
-                        <p class="description">
-                            <?php if ( empty( $series ) ) : ?>
-                                No recurring series exist yet.
-                            <?php else : ?>
-                                Pins the block to one recurring group and its occurrences.
-                            <?php endif; ?>
-                        </p>
+                        </div>
                     </div>
 
+                    <div class="uc-embed-field" data-when-view="list calendar">
+                        <span class="uc-embed-label">Visitor view toggle</span>
+                        <label class="uc-check">
+                            <input type="checkbox" id="uc-embed-toggle" checked />
+                            Let visitors switch between list and calendar
+                        </label>
+                        <p class="description">The mode chosen above is what the block opens on. A visitor who switches keeps their choice for this block only.</p>
+                    </div>
+
+                    <div class="uc-embed-field" data-when-view="sidebar">
+                        <label class="uc-embed-label" for="uc-embed-count">How many to show</label>
+                        <input type="number" id="uc-embed-count" class="uc-input uc-input-narrow"
+                               value="10" min="1" max="50" />
+                        <p class="description">The next N dates. Occurrences, so a weekly group appears once per date. Fewer are shown if fewer exist.</p>
+                    </div>
+
+                    <?php
+                    /*
+                     * ORGANIZER FIRST. On a programme page that is the filter
+                     * that matches how the work is actually organised: Programa
+                     * Latino runs five distinct series, so filtering by series
+                     * would show a fifth of their programming, and category
+                     * cuts across organizers entirely.
+                     */
+                    ?>
                     <div class="uc-embed-field">
+                        <label class="uc-embed-label" for="uc-embed-filter-type">Limit to</label>
+                        <select id="uc-embed-filter-type" class="uc-input">
+                            <option value="">Everything</option>
+                            <option value="organizer" selected>One organizer</option>
+                            <option value="series">One recurring series</option>
+                            <option value="category">One category</option>
+                        </select>
+                        <p class="description">Organizer is usually the right one for a programme page: a team&rsquo;s work is often several series and several categories.</p>
+                    </div>
+
+                    <div class="uc-embed-field" data-when-filter="organizer">
+                        <label class="uc-embed-label" for="uc-embed-organizer">Which organizer</label>
+                        <select id="uc-embed-organizer" class="uc-input uc-embed-which">
+                            <?php if ( empty( $organizers ) ) : ?>
+                                <option value="">No organizers yet</option>
+                            <?php else : ?>
+                                <?php foreach ( $organizers as $org ) : ?>
+                                    <option value="<?php echo esc_attr( $org->slug ); ?>"
+                                            data-name="<?php echo esc_attr( $org->name ); ?>"><?php echo esc_html( $org->name ); ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+
+                    <div class="uc-embed-field" data-when-filter="series" hidden>
+                        <label class="uc-embed-label" for="uc-embed-series">Which series</label>
+                        <select id="uc-embed-series" class="uc-input uc-embed-which">
+                            <?php if ( empty( $series ) ) : ?>
+                                <option value="">No recurring series yet</option>
+                            <?php else : ?>
+                                <?php foreach ( $series as $parent_id => $title ) : ?>
+                                    <option value="<?php echo (int) $parent_id; ?>"
+                                            data-name="<?php echo esc_attr( $title ); ?>"><?php echo esc_html( $title ); ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+
+                    <div class="uc-embed-field" data-when-filter="category" hidden>
+                        <label class="uc-embed-label" for="uc-embed-category">Which category</label>
+                        <select id="uc-embed-category" class="uc-input uc-embed-which">
+                            <?php if ( empty( $categories ) ) : ?>
+                                <option value="">No categories yet</option>
+                            <?php else : ?>
+                                <?php foreach ( $categories as $cat ) : ?>
+                                    <option value="<?php echo esc_attr( $cat->slug ); ?>"
+                                            data-name="<?php echo esc_attr( $cat->name ); ?>"><?php echo esc_html( $cat->name ); ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+
+                    <div class="uc-embed-field" data-when-view="list calendar">
                         <label class="uc-embed-label" for="uc-embed-per-page">Events per page</label>
                         <input type="number" id="uc-embed-per-page" class="uc-input uc-input-narrow"
                                value="<?php echo (int) $per_page; ?>" min="1" max="100" />
-                        <p class="description">Visitors load the next batch with a button.</p>
+                        <p class="description">Visitors load the next batch with a button. Applies to the list; the calendar shows a whole month.</p>
                     </div>
 
-                    <div class="uc-embed-field uc-embed-field-inline">
+                    <div class="uc-embed-field uc-embed-field-inline" data-when-view="list calendar">
                         <label class="uc-embed-label" for="uc-embed-filters">Let visitors search and filter</label>
                         <label class="uc-toggle">
                             <input type="checkbox" id="uc-embed-filters" checked />

@@ -59,6 +59,19 @@ class SFAF_Embed {
         add_action( 'deleted_post', array( $this, 'flush_cache_on_delete' ), 10, 2 );
         add_action( 'trashed_post', array( $this, 'flush_cache_on_status_change' ) );
         add_action( 'untrashed_post', array( $this, 'flush_cache_on_status_change' ) );
+        add_action( 'transition_post_status', array( $this, 'flush_cache_on_transition' ), 10, 3 );
+
+        // META-ONLY CHANGES, which is how a fetch usually moves a date.
+        //
+        // SFAF_Sources::update_event() calls wp_update_post() only when a post
+        // FIELD changed; a refreshed date, time or location is written straight
+        // through update_post_meta(), which fires none of the hooks above. The
+        // month grid is built entirely from _uc_event_date, so without these an
+        // imported event could move to another day at the source and the grid
+        // would keep it on the old one until the TTL ran out.
+        add_action( 'updated_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
+        add_action( 'added_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
+        add_action( 'deleted_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
         add_action( 'created_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
         add_action( 'edited_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
         add_action( 'delete_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
@@ -130,8 +143,30 @@ class SFAF_Embed {
                 'show_filters' => array( 'type' => 'string',  'default' => 'yes',   'sanitize_callback' => 'sanitize_text_field' ),
                 'layout'       => array( 'type' => 'string',  'default' => 'cards', 'sanitize_callback' => 'sanitize_text_field' ),
                 // block = the whole calendar, items = just the cards for one
-                // page. Empty picks for you: block for page 1, items after.
+                // page, month = just the month grid. Empty picks for you:
+                // block for page 1, items after.
                 'mode'         => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
+
+                /*
+                 * 2.10.0: display mode, month and sidebar count.
+                 *
+                 * DELIBERATELY ADDED TO THIS ROUTE RATHER THAN A NEW ONE.
+                 * Every CORS mechanism in this file is gated on
+                 * is_embed_request(), which compares the route string exactly:
+                 *
+                 *     $request->get_route() === '/sfaf-calendar/v1/embed'
+                 *
+                 * A second route would have matched none of the three, so
+                 * preflight, response headers and the rest_pre_serve_request
+                 * fallback would all have skipped it and every month
+                 * navigation from another domain would have been blocked by
+                 * the browser with a CORS error. Same route, more parameters,
+                 * same headers: nothing about the cross-origin path changes.
+                 */
+                'view'         => array( 'type' => 'string',  'default' => 'list',  'sanitize_callback' => 'sanitize_text_field' ),
+                'toggle'       => array( 'type' => 'string',  'default' => 'yes',   'sanitize_callback' => 'sanitize_text_field' ),
+                'month'        => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
+                'count'        => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'absint' ),
             ),
         ) );
     }
@@ -191,11 +226,19 @@ class SFAF_Embed {
 
         $page = max( 1, absint( $request->get_param( 'page' ) ) );
 
-        // Load-more appends cards, so it asks for items. Numbered pagination
-        // replaces the whole thing, so it asks for a block on any page.
+        // Load-more appends cards, so it asks for items. Month navigation
+        // replaces just the grid. Numbered pagination replaces the whole thing,
+        // so it asks for a block on any page.
         $mode = (string) $request->get_param( 'mode' );
-        if ( ! in_array( $mode, array( 'block', 'items' ), true ) ) {
+        if ( ! in_array( $mode, array( 'block', 'items', 'month' ), true ) ) {
             $mode = ( $page > 1 ) ? 'items' : 'block';
+        }
+
+        // A sidebar count is capped for the same reason per_page is: this is a
+        // public endpoint and an unbounded number is free work for anyone.
+        $count = absint( $request->get_param( 'count' ) );
+        if ( $count <= 0 ) {
+            $count = 10;
         }
 
         return array(
@@ -208,6 +251,12 @@ class SFAF_Embed {
             'show_filters' => (string) $request->get_param( 'show_filters' ),
             'layout'       => $layout,
             'mode'         => $mode,
+            'view'         => $this->shortcodes->normalize_view( $request->get_param( 'view' ) ),
+            'toggle'       => (string) $request->get_param( 'toggle' ),
+            // Normalized here, not in the renderer, so an unparseable month
+            // cannot make two visitors share a cache key for different months.
+            'month'        => $this->shortcodes->normalize_month( $request->get_param( 'month' ) ),
+            'count'        => min( 50, $count ),
         );
     }
 
@@ -222,7 +271,20 @@ class SFAF_Embed {
         sfaf_set_embed_context( true );
 
         try {
-            if ( $params['mode'] === 'items' ) {
+            if ( $params['mode'] === 'month' ) {
+                // Month navigation replaces the grid only. Everything around it
+                // (filter bar, toggle, list panel) is already on the page and
+                // must not be rebuilt underneath the visitor.
+                $payload = array(
+                    'mode'      => 'month',
+                    'html'      => $this->shortcodes->render_month_grid( $params['month'], $params ),
+                    'month'     => $params['month'],
+                    'total'     => 0,
+                    'page'      => 1,
+                    'max_pages' => 1,
+                    'has_more'  => false,
+                );
+            } elseif ( $params['mode'] === 'items' ) {
                 $events  = $this->shortcodes->render_events(
                     $params['per_page'],
                     $params['page'],
@@ -724,15 +786,64 @@ class SFAF_Embed {
     }
 
     /**
+     * The parameters that actually change what a given mode renders.
+     *
+     * WHY NOT JUST HASH EVERYTHING. A month grid does not care about per_page,
+     * page, layout or the filter bar, but those travel on every request. Keying
+     * on the whole set would give the same September grid a different cache
+     * entry for every block on the site that happens to page differently, which
+     * is exactly the "a hundred visitors, a hundred queries" case the cache
+     * exists to prevent. Trimming to the fields that matter means one entry per
+     * month-and-filter, shared by every block asking for it.
+     *
+     * @param array $params
+     * @return array
+     */
+    private function cache_identity( $params ) {
+        // The filter set is common to every mode.
+        $identity = array(
+            'mode'      => $params['mode'],
+            'category'  => $params['category'],
+            'organizer' => $params['organizer'],
+            'venue'     => $params['venue'],
+            'series'    => $params['series'],
+        );
+
+        if ( 'month' === $params['mode'] ) {
+            $identity['month'] = $params['month'];
+            return $identity;
+        }
+
+        if ( 'sidebar' === $params['view'] ) {
+            $identity['view']  = 'sidebar';
+            $identity['count'] = $params['count'];
+            return $identity;
+        }
+
+        $identity['view']         = $params['view'];
+        $identity['toggle']       = $params['toggle'];
+        $identity['month']        = $params['month'];
+        $identity['per_page']     = $params['per_page'];
+        $identity['page']         = $params['page'];
+        $identity['layout']       = $params['layout'];
+        $identity['show_filters'] = $params['show_filters'];
+
+        return $identity;
+    }
+
+    /**
      * Transient name for one parameter set.
      *
      * The current date is part of the key because "upcoming" is relative to
      * today: without it, a response rendered yesterday would keep listing an
-     * event that has since passed until its TTL ran out.
+     * event that has since passed until its TTL ran out. It matters for the
+     * month grid too, which marks today.
+     *
+     * The generation counter is the invalidation mechanism: see flush_cache().
      */
     private function cache_key( $params ) {
         $identity = array(
-            'params'  => $params,
+            'params'  => $this->cache_identity( $params ),
             'day'     => current_time( 'Y-m-d' ),
             'version' => $this->cache_version(),
         );
@@ -788,6 +899,66 @@ class SFAF_Embed {
 
     /** Flush when an event is trashed or restored. */
     public function flush_cache_on_status_change( $post_id ) {
+        if ( get_post_type( $post_id ) !== 'uc_event' ) {
+            return;
+        }
+        $this->flush_cache();
+    }
+
+    /**
+     * Flush on any status transition for an event.
+     *
+     * save_post covers most of it, but not everything: publishing a scheduled
+     * post, an import moving a vanished event to draft, or a status set through
+     * wp_update_post() with no other change can all land here first. A post
+     * appearing on or disappearing from the public calendar is precisely what a
+     * cached month must not survive.
+     *
+     * @param string  $new_status
+     * @param string  $old_status
+     * @param WP_Post $post
+     */
+    public function flush_cache_on_transition( $new_status, $old_status, $post ) {
+        if ( ! $post instanceof WP_Post || 'uc_event' !== $post->post_type ) {
+            return;
+        }
+        if ( $new_status === $old_status ) {
+            return;
+        }
+        $this->flush_cache();
+    }
+
+    /**
+     * Flush when a rendering-relevant meta value changes on an event.
+     *
+     * Scoped twice over, because meta writes are frequent and a flush is not
+     * free: the post must be a uc_event, and the key must be one the cards or
+     * the grid actually read. A private bookkeeping key like
+     * _uc_source_updated_at is written on every single fetch and changes
+     * nothing a visitor sees, so it must not throw the cache away.
+     *
+     * @param int    $meta_id
+     * @param int    $post_id
+     * @param string $meta_key
+     * @param mixed  $meta_value
+     */
+    public function flush_cache_on_meta( $meta_id, $post_id, $meta_key = '', $meta_value = null ) {
+        static $keys = null;
+        if ( null === $keys ) {
+            $keys = array_flip( array(
+                '_uc_event_date', '_uc_start_time', '_uc_end_time', '_uc_end_date',
+                '_uc_location', '_uc_recurrence', '_uc_capacity',
+                '_uc_image_url', '_uc_image_override', '_uc_external_image', '_thumbnail_id',
+                '_uc_series_parent', '_uc_series_id', '_uc_series_image_id', '_uc_series_image_url',
+                '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised',
+                '_uc_rsvp_enabled', '_uc_show_rsvp', '_uc_show_donate',
+                '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+            ) );
+        }
+
+        if ( ! isset( $keys[ (string) $meta_key ] ) ) {
+            return;
+        }
         if ( get_post_type( $post_id ) !== 'uc_event' ) {
             return;
         }

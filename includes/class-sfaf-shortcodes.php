@@ -8,6 +8,8 @@ class SFAF_Shortcodes {
         add_shortcode( 'upcoming_events', array( $this, 'render_upcoming' ) );
         add_action( 'wp_ajax_uc_load_events', array( $this, 'ajax_load_events' ) );
         add_action( 'wp_ajax_nopriv_uc_load_events', array( $this, 'ajax_load_events' ) );
+        add_action( 'wp_ajax_uc_load_month', array( $this, 'ajax_load_month' ) );
+        add_action( 'wp_ajax_nopriv_uc_load_month', array( $this, 'ajax_load_month' ) );
     }
 
     /* ---------------------------------------------------------------------
@@ -147,6 +149,466 @@ class SFAF_Shortcodes {
     }
 
     /* ---------------------------------------------------------------------
+     * View modes
+     *
+     * ONE RENDERER, THREE VIEWS. The shortcode and the cross-domain embed have
+     * always shared render_calendar_block() and render_events(); the embed
+     * endpoint calls those methods rather than owning a copy. Adding the month
+     * grid and the sidebar here means both get them at once and neither can
+     * drift, which is why this build needed no refactor to satisfy "share the
+     * rendering code".
+     *
+     *   list      the vertical card list (default)
+     *   calendar  month grid
+     *   sidebar   compact, count-limited, for narrow placements
+     * ------------------------------------------------------------------- */
+
+    /** The three display modes, and the fallback for anything unrecognised. */
+    public function normalize_view( $raw ) {
+        $view = strtolower( trim( (string) $raw ) );
+        return in_array( $view, array( 'list', 'calendar', 'sidebar' ), true ) ? $view : 'list';
+    }
+
+    /**
+     * The month a grid is showing, as Y-m.
+     *
+     * TIMEZONE. "This month" is resolved with current_time(), which is the
+     * SITE's clock, never the server's and never the visitor's. See
+     * month_grid_data() for the fuller note on why day assignment cannot be
+     * allowed anywhere near a browser.
+     *
+     * @param string $raw
+     * @return string
+     */
+    public function normalize_month( $raw ) {
+        $raw = trim( (string) $raw );
+        if ( preg_match( '/^(\d{4})-(\d{2})$/', $raw, $m ) ) {
+            $month = (int) $m[2];
+            if ( $month >= 1 && $month <= 12 ) {
+                return $raw;
+            }
+        }
+        return current_time( 'Y-m' );
+    }
+
+    /**
+     * Every calendar day the grid for one month must contain.
+     *
+     * ROW COUNT IS COMPUTED, NEVER FIXED. A month starting late in the week and
+     * running 30 or 31 days spans SIX rows, not five: May 2026, August 2026 and
+     * January 2027 all do. A hardcoded five-row grid drops the last days of
+     * those months on the floor. The grid runs from the Sunday on or before the
+     * 1st to the Saturday on or after the last day, and the row count falls out
+     * of the length of that range.
+     *
+     * DATE ARITHMETIC IS DONE IN UTC ON PURPOSE. These are calendar days, not
+     * moments: stepping "+1 day" through a timezone that observes DST can land
+     * on the same date twice or skip one, which would duplicate or lose a
+     * column. UTC has no transitions, so a whole-day step is always a whole day.
+     * The dates themselves are site-local; only the arithmetic is neutral.
+     *
+     * @param string $month Y-m.
+     * @return array{days:string[],rows:int,first:string,last:string,start:string,end:string,label:string,prev:string,next:string}
+     */
+    public function month_grid_days( $month ) {
+        $month = $this->normalize_month( $month );
+        $utc   = new DateTimeZone( 'UTC' );
+
+        $first = new DateTimeImmutable( $month . '-01', $utc );
+        $last  = $first->modify( 'last day of this month' );
+
+        // Sunday first, matching the day-name order the calendar already uses.
+        $start = $first->modify( '-' . (int) $first->format( 'w' ) . ' days' );
+        $end   = $last->modify( '+' . ( 6 - (int) $last->format( 'w' ) ) . ' days' );
+
+        $days   = array();
+        $cursor = $start;
+        // A guard, not a limit: six rows is 42 cells and the loop cannot
+        // legitimately exceed that. It exists so a malformed date can never
+        // spin here.
+        for ( $i = 0; $i < 43 && $cursor <= $end; $i++ ) {
+            $days[] = $cursor->format( 'Y-m-d' );
+            $cursor = $cursor->modify( '+1 day' );
+        }
+
+        return array(
+            'days'  => $days,
+            'rows'  => (int) ceil( count( $days ) / 7 ),
+            'first' => $first->format( 'Y-m-d' ),
+            'last'  => $last->format( 'Y-m-d' ),
+            'start' => $start->format( 'Y-m-d' ),
+            'end'   => $end->format( 'Y-m-d' ),
+            'label' => $first->format( 'F Y' ),
+            'prev'  => $first->modify( '-1 month' )->format( 'Y-m' ),
+            'next'  => $first->modify( '+1 month' )->format( 'Y-m' ),
+        );
+    }
+
+    /**
+     * Events for one month grid, bucketed by the day they fall on.
+     *
+     * TIMEZONE, THE WHOLE ANSWER. _uc_event_date is stored as a plain Y-m-d
+     * string that is ALREADY the site-local calendar day: the GoFundMe Pro
+     * adapter converts the campaign's UTC timestamp with wp_date() before
+     * storing it, Eventbrite supplies local wall-clock, and a person typing
+     * into the editor is typing a date in this office's terms. So the day an
+     * event belongs to is not computed here at all, it is read.
+     *
+     * That is what makes the grid safe. Nothing converts, nothing calls
+     * strtotime() against the server's timezone, and no browser Date object is
+     * ever involved: an 8pm event on the 5th appears on the 5th for a visitor
+     * in Sydney exactly as it does for one in San Francisco. "Today" comes from
+     * current_time(), which is the site's clock for the same reason.
+     *
+     * Occurrences are separate posts, each with its own _uc_event_date, so this
+     * is one date-range query with no expansion step.
+     *
+     * @param string $month   Y-m.
+     * @param array  $filters Normalized filters.
+     * @return array{grid:array,events:array<string,int[]>,total:int}
+     */
+    public function month_grid_data( $month, $filters ) {
+        $grid    = $this->month_grid_days( $month );
+        $filters = $this->normalize_filters( $filters );
+
+        $args = array(
+            'post_type'              => 'uc_event',
+            'post_status'            => 'publish',
+            'posts_per_page'         => 300,
+            'no_found_rows'          => true,
+            'ignore_sticky_posts'    => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => true,
+            'meta_key'               => '_uc_event_date',
+            'orderby'                => array( 'meta_value' => 'ASC', 'ID' => 'ASC' ),
+            'meta_query'             => array(
+                array(
+                    'key'     => '_uc_event_date',
+                    'value'   => array( $grid['start'], $grid['end'] ),
+                    'compare' => 'BETWEEN',
+                    'type'    => 'DATE',
+                ),
+            ),
+        );
+
+        foreach ( array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer', 'venue' => 'uc_venue' ) as $key => $taxonomy ) {
+            if ( '' !== $filters[ $key ] ) {
+                $args['tax_query'][] = array(
+                    'taxonomy' => $taxonomy,
+                    'field'    => 'slug',
+                    'terms'    => explode( ',', $filters[ $key ] ),
+                );
+            }
+        }
+        if ( $filters['series'] > 0 ) {
+            $args['meta_query'][] = array( 'key' => '_uc_series_parent', 'value' => $filters['series'] );
+        }
+
+        $query  = new WP_Query( $args );
+        $by_day = array();
+        foreach ( $query->posts as $post ) {
+            $day = (string) get_post_meta( $post->ID, '_uc_event_date', true );
+            if ( '' === $day ) {
+                continue;
+            }
+            $by_day[ $day ][] = (int) $post->ID;
+        }
+
+        // Within a day, earliest start first. A dateless start sorts last.
+        foreach ( $by_day as $day => $ids ) {
+            usort( $ids, function ( $a, $b ) {
+                $ta = (string) get_post_meta( $a, '_uc_start_time', true );
+                $tb = (string) get_post_meta( $b, '_uc_start_time', true );
+                if ( '' === $ta && '' === $tb ) { return $a - $b; }
+                if ( '' === $ta ) { return 1; }
+                if ( '' === $tb ) { return -1; }
+                return strcmp( $ta, $tb );
+            } );
+            $by_day[ $day ] = $ids;
+        }
+
+        return array(
+            'grid'   => $grid,
+            'events' => $by_day,
+            'total'  => count( $query->posts ),
+        );
+    }
+
+    /**
+     * The month grid itself.
+     *
+     * A REAL TABLE, not a grid of divs. A month is tabular data — seven named
+     * columns, one row per week — and a table gives a screen reader the column
+     * headers, row structure and navigation commands for free. Day cells carry
+     * a roving tabindex so the whole month is reachable with the arrow keys.
+     *
+     * VARIABLE ROW HEIGHT falls out of using a table: a cell with three events
+     * makes its row taller, and the other cells in that row grow with it,
+     * because that is what table rows do. No "+N more" truncation, no fixed
+     * cell height, and no clipping.
+     *
+     * @param string $month
+     * @param array  $filters
+     * @return string
+     */
+    public function render_month_grid( $month, $filters ) {
+        $data  = $this->month_grid_data( $month, $filters );
+        $grid  = $data['grid'];
+        $today = current_time( 'Y-m-d' );
+        $prefix = substr( $grid['first'], 0, 7 );
+
+        $day_names  = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
+        $day_short  = array( 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' );
+        $day_letter = array( 'S', 'M', 'T', 'W', 'T', 'F', 'S' );
+
+        ob_start();
+        ?>
+        <div class="uc-month" data-month="<?php echo esc_attr( $prefix ); ?>"
+             data-prev="<?php echo esc_attr( $grid['prev'] ); ?>"
+             data-next="<?php echo esc_attr( $grid['next'] ); ?>"
+             data-rows="<?php echo (int) $grid['rows']; ?>"
+             data-today="<?php echo esc_attr( $today ); ?>">
+
+            <div class="uc-month-head">
+                <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
+                        aria-label="Previous month">&larr;</button>
+                <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
+                <button type="button" class="uc-month-nav uc-month-next" data-goto="<?php echo esc_attr( $grid['next'] ); ?>"
+                        aria-label="Next month">&rarr;</button>
+                <button type="button" class="uc-month-today" data-goto="<?php echo esc_attr( current_time( 'Y-m' ) ); ?>">Today</button>
+            </div>
+
+            <table class="uc-month-grid" role="grid">
+                <caption class="uc-visually-hidden"><?php
+                    printf(
+                        /* translators: month name, number of events */
+                        esc_html( '%1$s. %2$d events this month. Use the arrow keys to move between days.' ),
+                        esc_html( $grid['label'] ),
+                        (int) $data['total']
+                    );
+                ?></caption>
+                <thead>
+                    <tr>
+                        <?php foreach ( $day_names as $i => $name ) : ?>
+                            <th scope="col">
+                                <abbr title="<?php echo esc_attr( $name ); ?>">
+                                    <span class="uc-day-name-full" aria-hidden="true"><?php echo esc_html( $day_short[ $i ] ); ?></span>
+                                    <span class="uc-day-name-min" aria-hidden="true"><?php echo esc_html( $day_letter[ $i ] ); ?></span>
+                                    <span class="uc-visually-hidden"><?php echo esc_html( $name ); ?></span>
+                                </abbr>
+                            </th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $first_focus = true;
+                    foreach ( array_chunk( $grid['days'], 7 ) as $week ) :
+                        ?>
+                        <tr>
+                        <?php foreach ( $week as $day ) :
+                            $ids       = isset( $data['events'][ $day ] ) ? $data['events'][ $day ] : array();
+                            $in_month  = ( substr( $day, 0, 7 ) === $prefix );
+                            $is_today  = ( $day === $today );
+                            $day_num   = (int) substr( $day, 8, 2 );
+                            $readable  = date_i18n( 'l j F Y', strtotime( $day . ' 12:00:00' ) );
+
+                            $classes = array( 'uc-day' );
+                            if ( ! $in_month ) { $classes[] = 'uc-day-out'; }
+                            if ( $is_today )   { $classes[] = 'uc-day-today'; }
+                            if ( empty( $ids ) ) { $classes[] = 'uc-day-empty'; }
+
+                            // Roving tabindex: one cell in the grid is in the tab
+                            // order, the arrow keys move focus between the rest.
+                            $tabindex = 0;
+                            if ( $first_focus && ( $is_today || $day === $grid['first'] ) ) {
+                                $tabindex    = 0;
+                                $first_focus = false;
+                            } else {
+                                $tabindex = -1;
+                            }
+
+                            // Never colour alone: today and out-of-month days each
+                            // carry a word for screen readers and a shape in CSS.
+                            $label = $readable . '. ' . ( empty( $ids )
+                                ? 'No events'
+                                : count( $ids ) . ( 1 === count( $ids ) ? ' event' : ' events' ) );
+                            if ( $is_today )  { $label = 'Today, ' . $label; }
+                            if ( ! $in_month ) { $label .= '. Outside ' . $grid['label']; }
+                            ?>
+                            <td class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
+                                data-day="<?php echo esc_attr( $day ); ?>"
+                                data-count="<?php echo (int) count( $ids ); ?>"
+                                tabindex="<?php echo (int) $tabindex; ?>"
+                                role="gridcell"
+                                aria-label="<?php echo esc_attr( $label ); ?>">
+                                <span class="uc-day-num" aria-hidden="true"><?php echo (int) $day_num; ?><?php
+                                    if ( $is_today ) { echo '<span class="uc-day-today-mark">Today</span>'; }
+                                ?></span>
+                                <?php if ( ! empty( $ids ) ) : ?>
+                                    <span class="uc-day-dots" aria-hidden="true"><?php
+                                        foreach ( $ids as $id ) {
+                                            $cats  = wp_get_post_terms( $id, 'uc_event_category' );
+                                            $color = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? sfaf_category_color( $cats[0]->term_id ) : '#16BECF';
+                                            echo '<span class="uc-day-dot" style="background:' . esc_attr( $color ) . '"></span>';
+                                        }
+                                    ?></span>
+                                    <ul class="uc-day-events">
+                                        <?php foreach ( $ids as $id ) :
+                                            $start = (string) get_post_meta( $id, '_uc_start_time', true );
+                                            $cats  = wp_get_post_terms( $id, 'uc_event_category' );
+                                            $color = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? sfaf_category_color( $cats[0]->term_id ) : '#16BECF';
+                                            ?>
+                                            <li class="uc-day-event">
+                                                <a href="<?php echo esc_url( get_permalink( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
+                                                    <?php if ( '' !== $start ) : ?>
+                                                        <span class="uc-day-event-time"><?php echo esc_html( date_i18n( 'g:ia', strtotime( $start ) ) ); ?></span>
+                                                    <?php endif; ?>
+                                                    <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php else : ?>
+                                    <?php // Empty days are ordinary here: whole months have no
+                                          // Friday or Sunday events. A deliberate dash reads as
+                                          // "nothing on", where a blank cell reads as broken. ?>
+                                    <span class="uc-day-none" aria-hidden="true">&middot;</span>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <?php // Mobile: the grid above collapses to date + dots, and the
+                  // selected day's events render here as full list cards. ?>
+            <div class="uc-month-day-panel" aria-live="polite"></div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Sidebar view: the next N occurrences, for a narrow column.
+     *
+     * OCCURRENCES, NOT PROGRAMS. A weekly group appearing four times in ten
+     * rows is expected: each occurrence is its own post with its own date, and
+     * collapsing them would hide the next actual date somebody can turn up to.
+     *
+     * @param array $filters
+     * @param int   $count
+     * @return string
+     */
+    public function render_sidebar( $filters, $count ) {
+        $count  = max( 1, min( 50, (int) $count ) );
+        $events = $this->render_events( $count, 1, $filters, 'sidebar' );
+
+        // "See all" points at the calendar on this site, carrying the same
+        // filter so the visitor lands on the programme they were looking at.
+        $filters = $this->normalize_filters( $filters );
+        $all_url = SFAF_Embed::calendar_url();
+        $qs      = array_filter( array(
+            'uc_category'  => $filters['category'],
+            'uc_organizer' => $filters['organizer'],
+            'uc_venue'     => $filters['venue'],
+            'uc_series'    => $filters['series'] ? $filters['series'] : '',
+        ) );
+        if ( ! empty( $qs ) ) {
+            $all_url = add_query_arg( $qs, $all_url );
+        }
+
+        ob_start();
+        ?>
+        <div class="uc-sidebar" data-count="<?php echo (int) $count; ?>">
+            <div class="uc-sidebar-list">
+                <?php if ( '' !== $events['html'] ) : ?>
+                    <?php echo $events['html']; ?>
+                <?php else : ?>
+                    <?php // REQUIRED EMPTY STATE. A programme on hiatus must not
+                          // leave a blank box on a live page: say so, and still
+                          // offer the way through to everything else. ?>
+                    <p class="uc-sidebar-empty">No upcoming dates scheduled just now.</p>
+                <?php endif; ?>
+            </div>
+            <a class="uc-sidebar-all" href="<?php echo esc_url( $all_url ); ?>">See all events &rarr;</a>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * One sidebar row: date, title, start time. No image, no description.
+     *
+     * @param int $post_id
+     * @return string
+     */
+    private function render_sidebar_row( $post_id ) {
+        $date  = (string) get_post_meta( $post_id, '_uc_event_date', true );
+        $start = (string) get_post_meta( $post_id, '_uc_start_time', true );
+        $ts    = $date ? strtotime( $date . ' 12:00:00' ) : 0;
+
+        $cats  = wp_get_post_terms( $post_id, 'uc_event_category' );
+        $color = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? sfaf_category_color( $cats[0]->term_id ) : '#16BECF';
+
+        ob_start();
+        ?>
+        <a class="uc-sidebar-row" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>"
+           style="--cat-color: <?php echo esc_attr( $color ); ?>">
+            <span class="uc-sidebar-date">
+                <?php if ( $ts ) : ?>
+                    <span class="uc-sidebar-mon"><?php echo esc_html( date_i18n( 'M', $ts ) ); ?></span>
+                    <span class="uc-sidebar-day"><?php echo esc_html( date_i18n( 'j', $ts ) ); ?></span>
+                <?php else : ?>
+                    <span class="uc-sidebar-mon">TBC</span>
+                <?php endif; ?>
+            </span>
+            <span class="uc-sidebar-body">
+                <span class="uc-sidebar-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></span>
+                <?php if ( '' !== $start ) : ?>
+                    <span class="uc-sidebar-time"><?php echo esc_html( date_i18n( 'g:i A', strtotime( $start ) ) ); ?></span>
+                <?php endif; ?>
+            </span>
+        </a>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * The visitor-facing list / calendar toggle.
+     *
+     * Not shown in sidebar mode: a 250px column has no room for a month grid,
+     * so offering one would be a broken promise.
+     *
+     * @param string $view Which view is active.
+     * @return string
+     */
+    private function render_view_toggle( $view ) {
+        $options = array(
+            'list'     => array( 'List', 'menu' ),
+            'calendar' => array( 'Calendar', 'calendar' ),
+        );
+
+        ob_start();
+        ?>
+        <div class="uc-view-toggle" role="group" aria-label="Choose how events are displayed">
+            <?php foreach ( $options as $key => $opt ) :
+                $active = ( $key === $view );
+                ?>
+                <button type="button" class="uc-view-btn<?php echo $active ? ' active' : ''; ?>"
+                        data-view="<?php echo esc_attr( $key ); ?>"
+                        aria-pressed="<?php echo $active ? 'true' : 'false'; ?>">
+                    <?php echo sfaf_icon( $opt[1], array( 'size' => '16px' ) ); ?>
+                    <span><?php echo esc_html( $opt[0] ); ?></span>
+                </button>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /* ---------------------------------------------------------------------
      * Rendering
      * ------------------------------------------------------------------- */
 
@@ -172,7 +634,13 @@ class SFAF_Shortcodes {
         ob_start();
         while ( $query->have_posts() ) {
             $query->the_post();
-            echo ( $render === 'compact' ) ? $this->render_compact_card( get_the_ID() ) : $this->render_event_card( get_the_ID() );
+            if ( 'compact' === $render ) {
+                echo $this->render_compact_card( get_the_ID() );
+            } elseif ( 'sidebar' === $render ) {
+                echo $this->render_sidebar_row( get_the_ID() );
+            } else {
+                echo $this->render_event_card( get_the_ID() );
+            }
         }
         wp_reset_postdata();
 
@@ -260,6 +728,13 @@ class SFAF_Shortcodes {
             'per_page'     => '',
             'show_filters' => 'yes',
             'layout'       => 'cards',
+            // The same three display modes the embed offers, from the same
+            // renderer. view="calendar" opens on the month grid, view="sidebar"
+            // renders the narrow column, count="10" sizes it.
+            'view'         => 'list',
+            'toggle'       => 'yes',
+            'month'        => '',
+            'count'        => '',
         ), $atts );
 
         $block = $this->render_calendar_block( $atts );
@@ -288,13 +763,40 @@ class SFAF_Shortcodes {
             'show_filters' => 'yes',
             'layout'       => 'cards',
             'page'         => 0,
+            'view'         => 'list',
+            'toggle'       => 'yes',
+            'month'        => '',
+            'count'        => 0,
         ) );
 
-        $filters  = $this->normalize_filters( $args );
+        $filters = $this->normalize_filters( $args );
+        $view    = $this->normalize_view( $args['view'] );
+
+        // Sidebar is a different shape entirely: no filter bar, no pagination,
+        // no toggle, a count rather than a page size. It returns early rather
+        // than threading "unless sidebar" through everything below.
+        if ( 'sidebar' === $view ) {
+            $count = (int) $args['count'];
+            if ( $count <= 0 ) {
+                $count = 10;
+            }
+            return array(
+                'html'      => $this->render_sidebar( $filters, $count ),
+                'total'     => 0,
+                'page'      => 1,
+                'per_page'  => $count,
+                'max_pages' => 1,
+                'has_more'  => false,
+                'view'      => 'sidebar',
+            );
+        }
+
         $compact  = ( $args['layout'] === 'compact' );
         $per_page = $this->resolve_per_page( $args['per_page'] );
         $paginate = ( $per_page > 0 );
         $style    = $this->pagination_style();
+        $toggle   = $this->show_filters( $args['toggle'] );
+        $month    = $this->normalize_month( $args['month'] );
 
         if ( (int) $args['page'] > 0 ) {
             $paged = max( 1, (int) $args['page'] );
@@ -311,7 +813,7 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <div class="uc-calendar<?php echo $compact ? ' uc-calendar-compact' : ''; ?>"
+        <div class="uc-calendar<?php echo $compact ? ' uc-calendar-compact' : ''; ?> uc-view-<?php echo esc_attr( $view ); ?>"
              data-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-render="<?php echo $compact ? 'compact' : 'card'; ?>"
              data-per-page="<?php echo (int) $per_page; ?>"
@@ -321,6 +823,8 @@ class SFAF_Shortcodes {
              data-filter-venue="<?php echo esc_attr( $filters['venue'] ); ?>"
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
+             data-view="<?php echo esc_attr( $view ); ?>"
+             data-month="<?php echo esc_attr( $month ); ?>"
              data-max-pages="<?php echo (int) $max; ?>">
 
             <?php if ( $this->show_filters( $args['show_filters'] ) ) : ?>
@@ -371,25 +875,50 @@ class SFAF_Shortcodes {
             </div>
             <?php endif; ?>
 
-            <div class="uc-event-count">
-                <span class="uc-count-number"><?php echo (int) $events['total']; ?></span> upcoming events
-            </div>
-
-            <div class="uc-event-list">
-                <?php if ( $events['html'] !== '' ) : ?>
-                    <?php echo $events['html']; ?>
-                <?php else : ?>
-                    <div class="uc-no-events">
-                        <p>No upcoming events found.</p>
-                    </div>
-                <?php endif; ?>
+            <div class="uc-view-bar">
+                <div class="uc-event-count">
+                    <span class="uc-count-number"><?php echo (int) $events['total']; ?></span> upcoming events
+                </div>
+                <?php if ( $toggle ) { echo $this->render_view_toggle( $view ); } ?>
             </div>
 
             <?php
-            if ( $paginate ) {
-                echo $this->render_pagination( $style, $paged, $max );
-            }
+            /*
+             * BOTH PANELS ARE RENDERED, and the toggle just shows one.
+             *
+             * The month grid is one extra date-range query, and rendering it
+             * here means flipping the toggle is instant instead of a round trip
+             * to another domain. Month NAVIGATION still fetches, because that is
+             * genuinely new data. When the toggle is switched off, only the
+             * chosen view is built, so a calendar-only embed does not pay for a
+             * list it will never show.
+             */
+            $want_list = ( $toggle || 'list' === $view );
+            $want_grid = ( $toggle || 'calendar' === $view );
             ?>
+
+            <div class="uc-view-panel uc-panel-list"<?php echo ( 'list' === $view ) ? '' : ' hidden'; ?>>
+                <?php if ( $want_list ) : ?>
+                    <div class="uc-event-list">
+                        <?php if ( $events['html'] !== '' ) : ?>
+                            <?php echo $events['html']; ?>
+                        <?php else : ?>
+                            <div class="uc-no-events">
+                                <p>No upcoming events found.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php
+                    if ( $paginate ) {
+                        echo $this->render_pagination( $style, $paged, $max );
+                    }
+                    ?>
+                <?php endif; ?>
+            </div>
+
+            <div class="uc-view-panel uc-panel-calendar"<?php echo ( 'calendar' === $view ) ? '' : ' hidden'; ?>>
+                <?php if ( $want_grid ) { echo $this->render_month_grid( $month, $filters ); } ?>
+            </div>
 
             <?php if ( ! $embed ) : ?>
             <div class="uc-subscribe">
@@ -408,6 +937,7 @@ class SFAF_Shortcodes {
             'per_page'  => $per_page,
             'max_pages' => $max,
             'has_more'  => ( $paginate && $paged < $max ),
+            'view'      => $view,
         );
     }
 
@@ -499,6 +1029,46 @@ class SFAF_Shortcodes {
     }
 
     /**
+     * AJAX: one month's grid, for month navigation on this site.
+     *
+     * The embed uses the public REST route for the same thing, because it
+     * cannot obtain a WordPress nonce from another origin. Both call
+     * render_month_grid(), so the markup is identical and only the transport
+     * differs.
+     *
+     * Cached in a transient keyed by month and filters, so a hundred visitors
+     * browsing to September is one query, not a hundred. Its generation counter
+     * is the embed's, which means every existing invalidation hook already
+     * covers this path too.
+     */
+    public function ajax_load_month() {
+        check_ajax_referer( 'uc_nonce', 'nonce' );
+
+        $month   = $this->normalize_month( isset( $_POST['month'] ) ? wp_unslash( $_POST['month'] ) : '' );
+        $filters = array();
+        foreach ( array( 'category', 'organizer', 'series', 'venue' ) as $key ) {
+            $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
+        }
+
+        $key    = 'sfaf_month_' . md5( wp_json_encode( array(
+            'month'   => $month,
+            'filters' => $this->normalize_filters( $filters ),
+            'day'     => current_time( 'Y-m-d' ),
+            'version' => (int) get_option( SFAF_Embed::CACHE_VERSION_OPTION, 1 ),
+        ) ) );
+        $cached = get_transient( $key );
+
+        if ( is_string( $cached ) && '' !== $cached ) {
+            wp_send_json_success( array( 'html' => $cached, 'month' => $month, 'cached' => true ) );
+        }
+
+        $html = $this->render_month_grid( $month, $filters );
+        set_transient( $key, $html, 10 * MINUTE_IN_SECONDS );
+
+        wp_send_json_success( array( 'html' => $html, 'month' => $month, 'cached' => false ) );
+    }
+
+    /**
      * Render a full event card
      */
     private function render_event_card( $post_id ) {
@@ -531,18 +1101,48 @@ class SFAF_Shortcodes {
         // Action buttons (each helper respects its display toggle).
         $actions = sfaf_add_to_calendar( $post_id ) . sfaf_reminders_button( $post_id ) . sfaf_social_share_buttons( $post_id, true );
 
+        // Date and time as one phrase, because that is how it is read: "Sat 15
+        // Aug, 6:00 PM". It leads the meta row on an events calendar, ahead of
+        // organizer, because it is the thing a visitor is actually deciding on.
+        $when = $date_ts ? date_i18n( 'D j M', $date_ts ) : '';
+        if ( $start_time ) {
+            $when .= ( '' !== $when ? ', ' : '' ) . date_i18n( 'g:i A', strtotime( $start_time ) );
+            if ( $end_time ) {
+                $when .= ' to ' . date_i18n( 'g:i A', strtotime( $end_time ) );
+            }
+        }
+
         ob_start();
         ?>
         <div class="uc-event-card" data-category="<?php echo esc_attr( $cat_slug ); ?>">
-            <div class="uc-card-accent" style="background: <?php echo esc_attr( $cat_color ); ?>"></div>
-
-            <div class="uc-card-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'medium' ); ?></div>
-
-            <div class="uc-card-date">
-                <span class="uc-card-month"><?php echo esc_html( $month ); ?></span>
-                <span class="uc-card-day"><?php echo esc_html( $day ); ?></span>
-                <span class="uc-card-weekday"><?php echo esc_html( $weekday ); ?></span>
+            <?php
+            /*
+             * FULL-WIDTH BANNER, NOT A CROPPED BLOCK.
+             *
+             * The old card put a 150px 4:3 thumbnail on the left. The branded
+             * placeholder is a 1600x900 SVG with preserveAspectRatio="slice",
+             * so squeezing it into 4:3 cut both sides off the centred label and
+             * rendered "Program Groups" as "gram Gro". Roughly half of imported
+             * GoFundMe Pro events will never have a real image, because their
+             * API does not expose one, so that placeholder is not an edge case.
+             *
+             * At full card width in its own 16:9 ratio the SVG fits exactly,
+             * nothing is sliced, and the placeholder reads as a deliberate
+             * branded banner rather than a failed image.
+             */
+            ?>
+            <div class="uc-card-banner">
+                <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" tabindex="-1" aria-hidden="true">
+                    <?php echo sfaf_event_thumbnail( $post_id, 'large' ); ?>
+                </a>
+                <span class="uc-card-datechip">
+                    <span class="uc-card-month"><?php echo esc_html( $month ); ?></span>
+                    <span class="uc-card-day"><?php echo esc_html( $day ); ?></span>
+                    <span class="uc-card-weekday"><?php echo esc_html( $weekday ); ?></span>
+                </span>
             </div>
+
+            <div class="uc-card-accent" style="background: <?php echo esc_attr( $cat_color ); ?>"></div>
 
             <div class="uc-card-content">
                 <div class="uc-card-badges">
@@ -566,8 +1166,8 @@ class SFAF_Shortcodes {
                 <p class="uc-card-excerpt"><?php echo esc_html( wp_trim_words( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ), 25 ) ); ?></p>
 
                 <div class="uc-card-meta">
-                    <?php if ( $start_time ) : ?>
-                        <span class="uc-meta-item"><?php echo sfaf_icon( 'clock' ); ?> <?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?><?php echo $end_time ? ' - ' . esc_html( date( 'g:i A', strtotime( $end_time ) ) ) : ''; ?></span>
+                    <?php if ( '' !== $when ) : ?>
+                        <span class="uc-meta-item uc-meta-when"><?php echo sfaf_icon( 'clock' ); ?> <?php echo esc_html( $when ); ?></span>
                     <?php endif; ?>
                     <?php if ( $location ) : ?>
                         <span class="uc-meta-item"><?php echo sfaf_icon( 'pin' ); ?> <?php echo esc_html( $location ); ?></span>

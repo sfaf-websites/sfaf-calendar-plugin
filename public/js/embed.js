@@ -95,7 +95,7 @@
      * The filters a block asks for, read off its data attributes. Attribute
      * names match the shortcode's attribute names on purpose.
      */
-    function paramsFor(container, page, mode) {
+    function paramsFor(container, page, mode, extra) {
         var params = {
             category: container.getAttribute('data-category') || '',
             organizer: container.getAttribute('data-organizer') || '',
@@ -104,9 +104,20 @@
             per_page: container.getAttribute('data-per-page') || '',
             show_filters: container.getAttribute('data-show-filters') || '',
             layout: container.getAttribute('data-layout') || '',
+            view: viewFor(container),
+            toggle: container.getAttribute('data-toggle') || '',
+            count: container.getAttribute('data-count') || '',
             page: page || 1,
             mode: mode || ''
         };
+
+        if (extra) {
+            for (var k in extra) {
+                if (Object.prototype.hasOwnProperty.call(extra, k)) {
+                    params[k] = extra[k];
+                }
+            }
+        }
 
         var query = [];
         for (var key in params) {
@@ -115,6 +126,63 @@
             }
         }
         return query.join('&');
+    }
+
+    /* -----------------------------------------------------------------------
+     * Remembering the visitor's chosen view
+     *
+     * SCOPED PER BLOCK. Two embeds on one page are usually two different
+     * programmes, and choosing Calendar on one must not silently flip the
+     * other. The key is built from what makes a block distinct — its filters
+     * and configured mode — so the same block on the same page keeps its
+     * setting across visits while a different block keeps its own.
+     *
+     * Every storage call is wrapped: Safari in private mode throws on
+     * localStorage, and a thrown exception here would stop the block rendering
+     * at all. A forgotten preference is not worth a blank box on someone
+     * else's page.
+     * -------------------------------------------------------------------- */
+
+    function viewKey(container) {
+        return 'sfafView:' + [
+            container.getAttribute('data-category') || '',
+            container.getAttribute('data-organizer') || '',
+            container.getAttribute('data-series') || '',
+            container.getAttribute('data-venue') || '',
+            container.getAttribute('data-view') || ''
+        ].join('|');
+    }
+
+    function storedView(container) {
+        try {
+            var v = window.localStorage.getItem(viewKey(container));
+            return (v === 'list' || v === 'calendar') ? v : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function rememberView(container, view) {
+        try {
+            window.localStorage.setItem(viewKey(container), view);
+        } catch (e) { /* private mode: not worth failing over */ }
+    }
+
+    /**
+     * The view a block should open in.
+     *
+     * Sidebar is a configuration, not a visitor choice, so it is never
+     * overridden. Otherwise a remembered choice wins over the configured
+     * default, which itself defaults to list: real months have entire weeks
+     * with no Friday or Sunday events, and an empty-looking grid is a poor
+     * first impression.
+     */
+    function viewFor(container) {
+        var configured = container.getAttribute('data-view') || 'list';
+        if (configured === 'sidebar') {
+            return 'sidebar';
+        }
+        return storedView(container) || (configured === 'calendar' ? 'calendar' : 'list');
     }
 
     /**
@@ -172,11 +240,11 @@
      * Ask for a page of events, falling back to the alternate endpoint shape
      * once before giving up.
      */
-    function request(container, page, mode, onDone, onFail) {
+    function request(container, page, mode, onDone, onFail, extra) {
         var override = container.getAttribute('data-endpoint') ||
             (SCRIPT && SCRIPT.getAttribute('data-endpoint')) || '';
         var candidates = override ? [override] : (workingEndpoint ? [workingEndpoint] : ENDPOINTS.slice());
-        var query = paramsFor(container, page, mode);
+        var query = paramsFor(container, page, mode, extra);
 
         (function attempt(index) {
             if (index >= candidates.length) {
@@ -258,7 +326,7 @@
 
     /** The rendered calendar inside a block, once the server markup has landed. */
     function inner(container) {
-        return container.querySelector('.uc-calendar, .uc-upcoming-widget');
+        return container.querySelector('.uc-calendar, .uc-upcoming-widget, .uc-sidebar');
     }
 
     /** The element cards live in. */
@@ -298,6 +366,12 @@
             container.setAttribute('data-active-category', 'all');
             container.setAttribute('data-active-search', '');
             bind(container);
+            // Warm the neighbouring months once the block is on screen, so the
+            // first arrow click is instant. After first paint, never before.
+            var grid = gridOf(container);
+            if (grid) {
+                prefetchAround(container, grid.getAttribute('data-month') || '');
+            }
             if (scrollIntoView) {
                 var top = container.getBoundingClientRect().top;
                 if (top < 0) {
@@ -392,6 +466,372 @@
         bindPagination(container, block);
         bindFilters(container);
         bindSearch(container);
+        bindViewToggle(container, block);
+        bindMonth(container);
+    }
+
+    /* -----------------------------------------------------------------------
+     * View toggle
+     * -------------------------------------------------------------------- */
+
+    function panelOf(container, name) {
+        return container.querySelector('.uc-panel-' + name);
+    }
+
+    /** Show one panel, hide the other, and keep the buttons in step. */
+    function showView(container, view, remember) {
+        var block = inner(container);
+        if (!block) {
+            return;
+        }
+
+        var list = panelOf(container, 'list');
+        var cal = panelOf(container, 'calendar');
+        if (list) { list.hidden = (view !== 'list'); }
+        if (cal) { cal.hidden = (view !== 'calendar'); }
+
+        block.setAttribute('data-view', view);
+        block.className = block.className.replace(/\buc-view-(list|calendar)\b/g, '').trim() + ' uc-view-' + view;
+
+        // aria-pressed is the state a screen reader announces, so it has to
+        // move with the visual active class rather than being set once.
+        var buttons = container.querySelectorAll('.uc-view-btn');
+        for (var i = 0; i < buttons.length; i++) {
+            var on = (buttons[i].getAttribute('data-view') === view);
+            buttons[i].classList.toggle('active', on);
+            buttons[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+
+        if (remember) {
+            rememberView(container, view);
+        }
+        if (view === 'calendar') {
+            syncDayPanel(container);
+        }
+    }
+
+    function bindViewToggle(container, block) {
+        var buttons = container.querySelectorAll('.uc-view-btn');
+        for (var i = 0; i < buttons.length; i++) {
+            (function (button) {
+                button.addEventListener('click', function () {
+                    showView(container, button.getAttribute('data-view') || 'list', true);
+                });
+            })(buttons[i]);
+        }
+        // The server rendered whichever view it was told to; a remembered
+        // choice may differ, and this is where the two are reconciled.
+        showView(container, viewFor(container), false);
+    }
+
+    /* -----------------------------------------------------------------------
+     * Month grid
+     * -------------------------------------------------------------------- */
+
+    function gridOf(container) {
+        return container.querySelector('.uc-month');
+    }
+
+    /** Prefetched month HTML, keyed by block and month. */
+    var monthCache = {};
+
+    function monthCacheKey(container, month) {
+        return viewKey(container) + '#' + month;
+    }
+
+    /**
+     * Swap in a month's grid.
+     *
+     * A VISIBLE loading state, unlike the silent prefetch: this one is a
+     * response to a click, so the visitor is waiting and should be told.
+     */
+    function loadMonth(container, month) {
+        var grid = gridOf(container);
+        var panel = panelOf(container, 'calendar');
+        if (!panel || !month) {
+            return;
+        }
+
+        var cached = monthCache[monthCacheKey(container, month)];
+        if (cached) {
+            panel.innerHTML = cached;
+            bindMonth(container);
+            prefetchAround(container, month);
+            return;
+        }
+
+        if (grid) {
+            grid.classList.add('uc-month-loading');
+            grid.setAttribute('aria-busy', 'true');
+        }
+
+        request(container, 1, 'month', function (data) {
+            panel.innerHTML = data.html;
+            monthCache[monthCacheKey(container, month)] = data.html;
+            bindMonth(container);
+            prefetchAround(container, month);
+        }, function () {
+            // FAILURE MUST NOT LOOK LIKE AN EMPTY MONTH. A blank grid is
+            // indistinguishable from a month with nothing on, which is common
+            // in real data, so say what happened and offer a way to retry.
+            var g = gridOf(container);
+            if (g) {
+                g.classList.remove('uc-month-loading');
+                g.removeAttribute('aria-busy');
+            }
+            showMonthError(container, month);
+        }, { month: month });
+    }
+
+    function showMonthError(container, month) {
+        var grid = gridOf(container);
+        if (!grid) {
+            return;
+        }
+        var old = grid.querySelector('.uc-month-error');
+        if (old && old.parentNode) {
+            old.parentNode.removeChild(old);
+        }
+
+        var box = document.createElement('div');
+        box.className = 'uc-month-error';
+        box.setAttribute('role', 'alert');
+
+        var text = document.createElement('span');
+        text.textContent = 'That month could not be loaded.';
+        box.appendChild(text);
+
+        var retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'uc-month-retry';
+        retry.textContent = 'Try again';
+        retry.addEventListener('click', function () {
+            if (box.parentNode) { box.parentNode.removeChild(box); }
+            loadMonth(container, month);
+        });
+        box.appendChild(retry);
+
+        grid.insertBefore(box, grid.firstChild);
+    }
+
+    /**
+     * Warm the months either side, quietly.
+     *
+     * No loading state and no error handling on purpose: nobody asked for
+     * these, so a failure should be invisible and the click that needs them
+     * will simply fetch normally.
+     */
+    function prefetchAround(container, month) {
+        var grid = gridOf(container);
+        if (!grid) {
+            return;
+        }
+        var neighbours = [grid.getAttribute('data-prev'), grid.getAttribute('data-next')];
+        for (var i = 0; i < neighbours.length; i++) {
+            (function (target) {
+                if (!target || monthCache[monthCacheKey(container, target)]) {
+                    return;
+                }
+                request(container, 1, 'month', function (data) {
+                    monthCache[monthCacheKey(container, target)] = data.html;
+                }, function () { /* silent by design */ }, { month: target });
+            })(neighbours[i]);
+        }
+    }
+
+    function bindMonth(container) {
+        var grid = gridOf(container);
+        if (!grid) {
+            return;
+        }
+
+        var navs = grid.querySelectorAll('[data-goto]');
+        for (var i = 0; i < navs.length; i++) {
+            (function (button) {
+                button.addEventListener('click', function () {
+                    loadMonth(container, button.getAttribute('data-goto'));
+                });
+            })(navs[i]);
+        }
+
+        bindGridKeys(container, grid);
+        bindDaySelection(container, grid);
+        syncDayPanel(container);
+    }
+
+    /* -----------------------------------------------------------------------
+     * Grid keyboard navigation
+     *
+     * A roving tabindex: exactly one cell is in the tab order, and the arrow
+     * keys move focus (and the tab stop) around the month. This is what makes
+     * a 42-cell grid usable without tabbing through every day.
+     * -------------------------------------------------------------------- */
+
+    function cellsOf(grid) {
+        return grid.querySelectorAll('td.uc-day');
+    }
+
+    function focusCell(grid, cells, index) {
+        if (index < 0 || index >= cells.length) {
+            return;
+        }
+        for (var i = 0; i < cells.length; i++) {
+            cells[i].setAttribute('tabindex', i === index ? '0' : '-1');
+        }
+        cells[index].focus();
+    }
+
+    function bindGridKeys(container, grid) {
+        var cells = cellsOf(grid);
+        if (!cells.length) {
+            return;
+        }
+
+        grid.addEventListener('keydown', function (event) {
+            var current = -1;
+            for (var i = 0; i < cells.length; i++) {
+                if (cells[i] === document.activeElement) {
+                    current = i;
+                    break;
+                }
+            }
+            if (current < 0) {
+                return;
+            }
+
+            var next = -1;
+            switch (event.key) {
+                case 'ArrowRight': next = current + 1; break;
+                case 'ArrowLeft':  next = current - 1; break;
+                case 'ArrowDown':  next = current + 7; break;
+                case 'ArrowUp':    next = current - 7; break;
+                case 'Home':       next = current - (current % 7); break;
+                case 'End':        next = current - (current % 7) + 6; break;
+                case 'Enter':
+                case ' ':
+                    selectDay(container, cells[current].getAttribute('data-day'));
+                    event.preventDefault();
+                    return;
+                default: return;
+            }
+
+            if (next >= 0 && next < cells.length) {
+                focusCell(grid, cells, next);
+                event.preventDefault();
+            }
+        });
+    }
+
+    /* -----------------------------------------------------------------------
+     * Mobile: tap a date, see that day below the grid
+     *
+     * Seven columns do not fit a phone, so the grid collapses to a date number
+     * and one dot per event (CSS), and the chosen day's events render underneath
+     * as ordinary list cards. Never opens blank: today when today has events,
+     * otherwise the next day that does.
+     * -------------------------------------------------------------------- */
+
+    function bindDaySelection(container, grid) {
+        var cells = cellsOf(grid);
+        for (var i = 0; i < cells.length; i++) {
+            (function (cell) {
+                cell.addEventListener('click', function (event) {
+                    // A click straight on an event link is a navigation, not a
+                    // day selection.
+                    var node = event.target;
+                    while (node && node !== cell) {
+                        if (node.tagName === 'A') { return; }
+                        node = node.parentNode;
+                    }
+                    selectDay(container, cell.getAttribute('data-day'));
+                });
+            })(cells[i]);
+        }
+    }
+
+    /** The first day at or after `from` that has events, or ''. */
+    function firstDayWithEvents(grid, from) {
+        var cells = cellsOf(grid);
+        var fallback = '';
+        for (var i = 0; i < cells.length; i++) {
+            var day = cells[i].getAttribute('data-day');
+            var count = parseInt(cells[i].getAttribute('data-count') || '0', 10);
+            if (count > 0) {
+                if (!fallback) { fallback = day; }
+                if (!from || day >= from) { return day; }
+            }
+        }
+        return fallback;
+    }
+
+    function selectDay(container, day) {
+        var grid = gridOf(container);
+        if (!grid || !day) {
+            return;
+        }
+        grid.setAttribute('data-selected', day);
+
+        var cells = cellsOf(grid);
+        for (var i = 0; i < cells.length; i++) {
+            var on = (cells[i].getAttribute('data-day') === day);
+            cells[i].classList.toggle('uc-day-selected', on);
+            // Not colour alone: the state is in the accessibility tree too.
+            cells[i].setAttribute('aria-selected', on ? 'true' : 'false');
+        }
+        renderDayPanel(container, grid, day);
+    }
+
+    /**
+     * Copy the chosen day's event blocks into the panel below the grid.
+     *
+     * Cloned from markup already on the page rather than fetched: the month
+     * response carries every event it contains, so a tap costs no request.
+     */
+    function renderDayPanel(container, grid, day) {
+        var panel = grid.querySelector('.uc-month-day-panel');
+        if (!panel) {
+            return;
+        }
+        var cell = grid.querySelector('td.uc-day[data-day="' + day + '"]');
+        panel.innerHTML = '';
+        if (!cell) {
+            return;
+        }
+
+        var heading = document.createElement('h4');
+        heading.className = 'uc-day-panel-title';
+        heading.textContent = (cell.getAttribute('aria-label') || '').split('.')[0];
+        panel.appendChild(heading);
+
+        var events = cell.querySelector('.uc-day-events');
+        if (!events || !events.children.length) {
+            var none = document.createElement('p');
+            none.className = 'uc-day-panel-empty';
+            none.textContent = 'Nothing scheduled on this day.';
+            panel.appendChild(none);
+            return;
+        }
+        panel.appendChild(events.cloneNode(true));
+    }
+
+    /** Pick a sensible day when the grid first appears, so it is never blank. */
+    function syncDayPanel(container) {
+        var grid = gridOf(container);
+        if (!grid) {
+            return;
+        }
+        var already = grid.getAttribute('data-selected');
+        if (already) {
+            renderDayPanel(container, grid, already);
+            return;
+        }
+        var today = grid.getAttribute('data-today') || '';
+        var todayCell = grid.querySelector('td.uc-day[data-day="' + today + '"]');
+        var count = todayCell ? parseInt(todayCell.getAttribute('data-count') || '0', 10) : 0;
+        var day = (count > 0) ? today : firstDayWithEvents(grid, today);
+        if (day) {
+            selectDay(container, day);
+        }
     }
 
     function bindPagination(container, block) {
