@@ -7,6 +7,12 @@ Old Calendar Files/
 # Partial downloads
 *.crdownload
 
+# Per-developer Claude Code overrides. Every "always allow" click during a
+# session is appended here, so it grows into a long unreviewed list that is
+# personal to one machine. .claude/settings.json is the curated, committed
+# file; this one is deliberately not shared.
+.claude/settings.local.json
+
 # Working notes, transcripts and handover documents dropped in the project
 # root. These are not part of the plugin and must never be committed — one of
 # them turned out to contain a live credential and had to be scrubbed from
