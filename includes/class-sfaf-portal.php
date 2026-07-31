@@ -129,9 +129,12 @@ class SFAF_Portal {
             $this->dispatch_post( sanitize_key( $_POST['uc_action'] ) );
         }
 
-        // CSV export streams and exits.
+        // CSV exports stream and exit.
         if ( isset( $segments[0], $segments[1] ) && $segments[0] === 'rsvps' && $segments[1] === 'export' ) {
             $this->export_rsvps_csv();
+        }
+        if ( isset( $segments[0], $segments[1] ) && $segments[0] === 'optins' && $segments[1] === 'export' ) {
+            $this->export_optins_csv();
         }
 
         if ( ! is_user_logged_in() ) {
@@ -165,11 +168,13 @@ class SFAF_Portal {
                     $this->render_series_list( $user );
                 }
                 break;
-            case 'rsvps':    $this->render_rsvps( $user ); break;
-            case 'pending':  $this->render_pending( $user ); break;
-            case 'users':    $this->render_users( $user ); break;
-            case 'faq-sets': $this->render_faq_sets( $user ); break;
-            default:         $this->render_dashboard( $user );
+            case 'rsvps':      $this->render_rsvps( $user ); break;
+            case 'optins':     $this->render_optins( $user ); break;
+            case 'pending':    $this->render_pending( $user ); break;
+            case 'automation': $this->render_automation( $user ); break;
+            case 'users':      $this->render_users( $user ); break;
+            case 'faq-sets':   $this->render_faq_sets( $user ); break;
+            default:           $this->render_dashboard( $user );
         }
     }
 
@@ -228,6 +233,23 @@ class SFAF_Portal {
                 $results = SFAF_Sources::run_all();
                 set_transient( 'sfaf_fetch_report_' . $user->ID, $results, 10 * MINUTE_IN_SECONDS );
                 $this->redirect( '', array( 'msg' => 'fetched' ) );
+                break;
+
+            /* ---- The scheduled runner. --------------------------------------
+             *
+             * "Run now" goes through exactly the same SFAF_Cron::run() that
+             * real cron calls, lock and log included. Testing a different code
+             * path from the one that runs at 6am would test nothing. */
+            case 'run_cron_now':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_Cron::run( 'manual' );
+                $this->redirect( 'automation', array( 'msg' => 'cron_ran' ) );
+                break;
+
+            case 'clear_cron_log':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_Cron::clear_log();
+                $this->redirect( 'automation', array( 'msg' => 'cron_log_cleared' ) );
                 break;
 
             case 'import_dismiss':
@@ -623,6 +645,58 @@ class SFAF_Portal {
             }
         }
 
+        /*
+         * THE PER-EVENT NOTIFICATION LIST.
+         *
+         * Guarded by the marker field, not by isset() on the controls: an
+         * unticked checkbox and an empty checkbox group both submit nothing, so
+         * without the marker "the creator opted out" and "this form did not
+         * carry the block at all" would be the same POST. The block is not
+         * rendered on imported events, and this must leave their meta alone
+         * rather than clearing it.
+         */
+        if ( isset( $_POST['notify_list_present'] ) && ! $is_imported ) {
+            // Stored as an opt-OUT so that the absence of any setting means the
+            // creator is on the list, which is the documented default.
+            if ( isset( $_POST['notify_author'] ) ) {
+                delete_post_meta( $event_id, SFAF_Reminders::NOTIFY_AUTHOR_OPTOUT_META );
+            } else {
+                update_post_meta( $event_id, SFAF_Reminders::NOTIFY_AUTHOR_OPTOUT_META, '1' );
+            }
+
+            $uids = isset( $_POST['notify_users'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['notify_users'] ) ) : array();
+            $uids = array_values( array_unique( array_filter( $uids ) ) );
+            update_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, $uids );
+
+            // Free-text addresses. Validated, not trusted: anything that is not
+            // an address is dropped AND named back to the person who typed it,
+            // because a typo that disappears in silence looks like a save.
+            $valid    = array();
+            $rejected = array();
+            $raw      = isset( $_POST['notify_emails'] ) ? (string) wp_unslash( $_POST['notify_emails'] ) : '';
+            foreach ( preg_split( '/[\r\n,;]+/', $raw ) as $line ) {
+                $line = trim( $line );
+                if ( '' === $line ) {
+                    continue;
+                }
+                $clean = sanitize_email( $line );
+                if ( $clean && is_email( $clean ) ) {
+                    $valid[ strtolower( $clean ) ] = $clean;
+                } else {
+                    $rejected[] = $line;
+                }
+            }
+            update_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, array_values( $valid ) );
+
+            if ( ! empty( $rejected ) ) {
+                set_transient(
+                    'sfaf_notify_rejected_' . $user->ID . '_' . $event_id,
+                    array_slice( $rejected, 0, 10 ),
+                    5 * MINUTE_IN_SECONDS
+                );
+            }
+        }
+
         // Editing a single occurrence locks it from future series sync;
         // otherwise (parent/standalone) generate or refresh the series.
         $series_parent = (int) get_post_meta( $event_id, '_uc_series_parent', true );
@@ -684,6 +758,40 @@ class SFAF_Portal {
             fputcsv( $out, array(
                 $this->csv( $title ), $this->csv( $r->name ), $this->csv( $r->email ),
                 $this->csv( $r->phone ), $this->csv( $r->status ), $this->csv( $r->created_at ),
+            ) );
+        }
+        fclose( $out );
+        exit;
+    }
+
+    private function export_optins_csv() {
+        if ( ! is_user_logged_in() || ! $this->can_view_all( wp_get_current_user() ) ) {
+            wp_die( 'Denied' );
+        }
+        $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_portal_export' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+        $rows   = SFAF_Optins::all( array( 'search' => $search, 'limit' => 10000 ) );
+
+        header( 'Content-Type: text/csv' );
+        header( 'Content-Disposition: attachment; filename="email-optins-' . current_time( 'Y-m-d' ) . '.csv"' );
+
+        $out = fopen( 'php://output', 'w' );
+        // The two evidence columns are deliberately next to the address: an
+        // export that loses "when" and "from which form" is not evidence of
+        // consent, it is just a mailing list.
+        fputcsv( $out, array( 'Email', 'Name', 'Consented At', 'Consented At (GMT)', 'Source Form', 'Event' ) );
+        foreach ( $rows as $r ) {
+            fputcsv( $out, array(
+                $this->csv( $r->email ),
+                $this->csv( $r->name ),
+                $this->csv( $r->consented_at ),
+                $this->csv( $r->created_gmt ),
+                $this->csv( $r->source_form ),
+                $this->csv( $r->event_title ),
             ) );
         }
         fclose( $out );
@@ -754,11 +862,13 @@ class SFAF_Portal {
             'faq-sets'  => array( 'FAQ Sets', 'faq-sets', 'help' ),
         );
         if ( $this->can_view_all( $user ) ) {
-            $nav['rsvps'] = array( 'RSVPs', 'rsvps', 'check' );
+            $nav['rsvps']  = array( 'RSVPs', 'rsvps', 'check' );
+            $nav['optins'] = array( 'Email Opt-ins', 'optins', 'mail' );
         }
         if ( $is_admin ) {
-            $nav['pending']  = array( 'Pending', 'pending', 'clock' );
-            $nav['users']    = array( 'Users', 'users', 'users' );
+            $nav['pending']    = array( 'Pending', 'pending', 'clock' );
+            $nav['automation'] = array( 'Automation', 'automation', 'bolt' );
+            $nav['users']      = array( 'Users', 'users', 'users' );
         }
         ?>
         <div class="uc-portal-layout">
@@ -825,6 +935,8 @@ class SFAF_Portal {
             'faq_set_applied'  => 'FAQ set applied.',
             'faq_set_saved'    => 'FAQ set saved.',
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
+            'cron_ran'         => 'Run complete. The newest entry in the log below is what it did.',
+            'cron_log_cleared' => 'Run log cleared.',
         );
         $key = sanitize_key( $_GET['msg'] );
         if ( isset( $map[ $key ] ) ) {
@@ -1971,6 +2083,21 @@ class SFAF_Portal {
                 <?php endif; ?>
             <?php endif; ?>
 
+            <?php
+            /*
+             * WHO ELSE GETS THIS EVENT'S REMINDER.
+             *
+             * Native events only. An imported event's reminders are the
+             * platform's job — this plugin does not send for them — so showing
+             * a notification list on one would offer a setting that does
+             * nothing. Same rule as SFAF_Reminders, read from the same
+             * provenance, so the two cannot disagree.
+             */
+            if ( $event_id && '' === $prov['source'] ) {
+                $this->render_notify_box( $user, $event_id );
+            }
+            ?>
+
             <div class="uc-form-actions">
                 <button type="submit" name="save_mode" value="draft" class="uc-btn">Save Draft</button>
                 <?php
@@ -1996,6 +2123,330 @@ class SFAF_Portal {
                 <?php endif; ?>
             </div>
         </form>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — the per-event notification list
+     * ================================================================== */
+
+    /**
+     * Who else receives this event's morning-of reminder.
+     *
+     * A NOTIFICATION LIST AND NOTHING MORE. Being on it does not grant the
+     * right to edit the event, is not ownership, and changes no permission
+     * anywhere. It exists so staff can see what participants are being sent.
+     *
+     * The creator comes from post_author, which WordPress already stores, so
+     * there is no second copy of "who made this" to drift out of step with the
+     * first. What IS stored is the opposite: a single flag recording that the
+     * creator took themselves off, because "not opted out" is the default and
+     * an absent flag should mean exactly that.
+     */
+    private function render_notify_box( $user, $event_id ) {
+        $post = get_post( $event_id );
+        if ( ! $post ) {
+            return;
+        }
+
+        $author        = get_userdata( $post->post_author );
+        $author_on     = ! SFAF_Reminders::author_opted_out( $event_id );
+        $chosen_users  = array_map( 'intval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, true ) );
+        $extra_emails  = (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true );
+        $resolved      = SFAF_Reminders::notify_list( $event_id );
+        $reminders_on  = SFAF_Reminders::enabled();
+
+        // Anyone with a calendar-portal role is pickable. WordPress users with
+        // no role here are deliberately not offered: this is a list of the
+        // people who work on the calendar, not of every account on the site.
+        $portal_users = get_users( array(
+            'meta_key'     => '_uc_calendar_role',
+            'meta_compare' => 'EXISTS',
+            'orderby'      => 'display_name',
+            'order'        => 'ASC',
+            'number'       => 200,
+        ) );
+
+        // Addresses the last save could not use. Reported rather than dropped
+        // in silence, because a typo that vanishes without comment reads as
+        // "saved" to the person who typed it.
+        $rejected_key = 'sfaf_notify_rejected_' . $user->ID . '_' . $event_id;
+        $rejected     = get_transient( $rejected_key );
+        if ( $rejected ) {
+            delete_transient( $rejected_key );
+        }
+        ?>
+        <div class="uc-card">
+            <h3>Reminder notifications</h3>
+            <p class="uc-hint">
+                Everyone who has registered for this event gets the morning-of reminder automatically.
+                This is who <em>else</em> receives a copy, so staff can see what participants are sent.
+                It changes nothing about who can edit this event.
+            </p>
+
+            <?php if ( ! $reminders_on ) : ?>
+                <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
+            <?php endif; ?>
+
+            <?php if ( is_array( $rejected ) && ! empty( $rejected ) ) : ?>
+                <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>
+                    Not a valid email address, so <?php echo esc_html( 1 === count( $rejected ) ? 'it was' : 'they were' ); ?> not saved:
+                    <?php echo esc_html( implode( ', ', $rejected ) ); ?>
+                </span></p>
+            <?php endif; ?>
+
+            <input type="hidden" name="notify_list_present" value="1" />
+
+            <?php if ( $author && is_email( $author->user_email ) ) : ?>
+                <label class="uc-check">
+                    <input type="checkbox" name="notify_author" value="1" <?php checked( $author_on ); ?> />
+                    Send to <strong><?php echo esc_html( $author->display_name ); ?></strong> (created this event, <?php echo esc_html( $author->user_email ); ?>)
+                </label>
+                <p class="uc-hint">Untick to take yourself, or whoever created this, off the list. The event is unaffected.</p>
+            <?php else : ?>
+                <p class="uc-muted">This event's creator has no usable email address on file.</p>
+            <?php endif; ?>
+
+            <p class="uc-hint" style="margin-top:14px;"><strong>Other calendar users</strong></p>
+            <?php if ( empty( $portal_users ) ) : ?>
+                <p class="uc-muted">No other calendar users yet.</p>
+            <?php else : ?>
+                <div class="uc-notify-users">
+                    <?php foreach ( $portal_users as $pu ) :
+                        if ( $author && (int) $pu->ID === (int) $author->ID ) { continue; } ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="notify_users[]" value="<?php echo (int) $pu->ID; ?>" <?php checked( in_array( (int) $pu->ID, $chosen_users, true ) ); ?> />
+                            <?php echo esc_html( $pu->display_name ); ?> <span class="uc-muted">(<?php echo esc_html( $pu->user_email ); ?>)</span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <label class="uc-field" style="margin-top:14px;">
+                <span class="uc-field-label">Anyone else</span>
+                <textarea name="notify_emails" rows="3" placeholder="supervisor@example.org&#10;co-host@example.org"><?php echo esc_textarea( implode( "\n", array_map( 'strval', $extra_emails ) ) ); ?></textarea>
+            </label>
+            <p class="uc-hint">One address per line, for people outside the calendar system: a supervisor, a co-host. Anything that is not a valid address is rejected on save and named above.</p>
+
+            <p class="uc-hint" style="margin-top:14px;"><strong>Currently on the list</strong></p>
+            <?php if ( empty( $resolved ) ) : ?>
+                <p class="uc-muted">Nobody. Only people who register will get the reminder.</p>
+            <?php else : ?>
+                <ul class="uc-notify-list">
+                    <?php foreach ( $resolved as $email => $label ) : ?>
+                        <li><?php echo esc_html( $label ); ?>: <?php echo esc_html( $email ); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <p class="uc-hint">Saved as of the last save. Change the boxes above and save to update it.</p>
+            <?php endif; ?>
+
+            <?php
+            // What actually went out, if anything has. The ledger is the record
+            // of record for "did they get it?", so it is shown where the
+            // question gets asked.
+            $sent = SFAF_Reminders::log_for_event( $event_id );
+            if ( ! empty( $sent ) ) : ?>
+                <p class="uc-hint" style="margin-top:14px;"><strong>Reminder log for this event</strong></p>
+                <table class="uc-table">
+                    <thead><tr><th>Recipient</th><th>Type</th><th>Result</th><th>When</th></tr></thead>
+                    <tbody>
+                        <?php foreach ( $sent as $row ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( $row->email ); ?></td>
+                                <td><?php echo esc_html( $row->recipient_type ); ?></td>
+                                <td><?php echo esc_html( $row->result ); ?></td>
+                                <td><?php echo esc_html( $row->sent_at ? $row->sent_at : $row->claimed_at ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /* =====================================================================
+     * Rendering — automation (the scheduled runner)
+     * ================================================================== */
+
+    private function render_automation( $user ) {
+        if ( ! $this->is_admin_role( $user ) ) {
+            $this->chrome_open( $user, 'automation' );
+            echo '<div class="uc-card"><p class="uc-empty">Only calendar administrators can see the automation settings.</p></div>';
+            $this->chrome_close();
+            return;
+        }
+
+        $this->chrome_open( $user, 'automation' );
+
+        $health   = SFAF_Cron::health();
+        $log      = SFAF_Cron::log();
+        $next     = wp_next_scheduled( SFAF_Cron::HOOK );
+        $locked   = SFAF_Cron::lock_held_since();
+        $wp_off   = SFAF_Cron::wp_cron_disabled();
+        $fetch_on = SFAF_Cron::auto_fetch_enabled();
+        ?>
+        <div class="uc-page-head">
+            <h1>Automation</h1>
+            <div class="uc-head-actions">
+                <form method="post" action="<?php echo esc_url( $this->url( 'automation' ) ); ?>" class="uc-inline-form">
+                    <input type="hidden" name="uc_action" value="run_cron_now" />
+                    <?php wp_nonce_field( 'uc_portal_run_cron_now', 'uc_nonce' ); ?>
+                    <button type="submit" class="uc-btn uc-btn-primary">Run now</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="uc-card">
+            <h2>Status</h2>
+            <table class="uc-table">
+                <tbody>
+                    <tr>
+                        <th>Health</th>
+                        <td class="uc-cron-<?php echo esc_attr( $health['state'] ); ?>"><?php echo esc_html( $health['message'] ); ?></td>
+                    </tr>
+                    <tr>
+                        <th>Schedule</th>
+                        <td>Hourly. <?php echo $next ? 'Next due ' . esc_html( SFAF_Cron::local_time( $next ) ) . '.' : 'Not currently scheduled.'; ?></td>
+                    </tr>
+                    <tr>
+                        <th>Trigger</th>
+                        <td>
+                            <?php if ( $wp_off ) : ?>
+                                <code>DISABLE_WP_CRON</code> is set, so runs come only from a real system cron hitting the URL below. This is the intended setup.
+                            <?php else : ?>
+                                <code>DISABLE_WP_CRON</code> is <strong>not</strong> set, so WordPress is still firing scheduled tasks off visitor traffic. That means a 6am reminder does not go out until somebody visits the site. Set up a system cron and add the constant. The readme has the steps.
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Cron URL</th>
+                        <td><code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code></td>
+                    </tr>
+                    <tr>
+                        <th>Lock</th>
+                        <td><?php echo $locked
+                            ? 'Held since ' . esc_html( SFAF_Cron::local_time( $locked ) ) . '. A run is in progress, or one was interrupted and the lock will be broken automatically.'
+                            : 'Free.'; ?></td>
+                    </tr>
+                    <tr>
+                        <th>Reminder emails</th>
+                        <td><?php echo SFAF_Reminders::enabled() ? 'On.' : 'Off.'; ?> Sent at 6:00am site time on the day of the event, to registrations and this event&rsquo;s notification list. Native events only: imported events are never sent for.</td>
+                    </tr>
+                    <tr>
+                        <th>Automated fetching</th>
+                        <td><?php echo $fetch_on
+                            ? 'On. Third-party sources are fetched on every run.'
+                            : 'Off. Sources are only fetched when somebody presses "Fetch updates" on the dashboard. Leave it off until the unpublish-on-removal behaviour has been watched through one real removal at source.'; ?></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="uc-hint">
+                An external pinger may report a timeout even when the run finished: <code>wp-cron.php</code> keeps
+                working after the connection drops. The log below is the source of truth, not the pinger's status code.
+            </p>
+        </div>
+
+        <div class="uc-card">
+            <div class="uc-card-head">
+                <h2>Run log</h2>
+                <?php if ( ! empty( $log ) ) : ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'automation' ) ); ?>" class="uc-inline-form">
+                        <input type="hidden" name="uc_action" value="clear_cron_log" />
+                        <?php wp_nonce_field( 'uc_portal_clear_cron_log', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-btn uc-btn-sm">Clear</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+            <?php if ( empty( $log ) ) : ?>
+                <p class="uc-empty">Nothing has run yet. Press &ldquo;Run now&rdquo; to try it.</p>
+            <?php else : ?>
+                <table class="uc-table">
+                    <thead><tr><th>Started</th><th>Trigger</th><th>Status</th><th>Took</th><th>What ran</th></tr></thead>
+                    <tbody>
+                        <?php foreach ( $log as $entry ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( SFAF_Cron::local_time( isset( $entry['started_ts'] ) ? $entry['started_ts'] : 0 ) ); ?></td>
+                                <td><?php echo esc_html( isset( $entry['trigger'] ) ? $entry['trigger'] : '' ); ?></td>
+                                <td class="uc-cron-<?php echo esc_attr( isset( $entry['status'] ) ? $entry['status'] : '' ); ?>"><?php echo esc_html( isset( $entry['status'] ) ? $entry['status'] : '' ); ?></td>
+                                <td><?php echo esc_html( isset( $entry['duration'] ) ? $entry['duration'] . 's' : '' ); ?></td>
+                                <td>
+                                    <?php foreach ( (array) ( isset( $entry['tasks'] ) ? $entry['tasks'] : array() ) as $task ) : ?>
+                                        <div class="uc-cron-task">
+                                            <strong><?php echo esc_html( isset( $task['label'] ) ? $task['label'] : $task['task'] ); ?>:</strong>
+                                            <?php echo esc_html( isset( $task['summary'] ) ? $task['summary'] : '' ); ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p class="uc-hint">The newest <?php echo (int) SFAF_Cron::LOG_MAX; ?> runs are kept; older entries are pruned automatically.</p>
+            <?php endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /* =====================================================================
+     * Rendering — email opt-ins
+     * ================================================================== */
+
+    private function render_optins( $user ) {
+        if ( ! $this->can_view_all( $user ) ) {
+            $this->chrome_open( $user, 'optins' );
+            echo '<div class="uc-card"><p class="uc-empty">You don\'t have permission to view email opt-ins.</p></div>';
+            $this->chrome_close();
+            return;
+        }
+
+        $this->chrome_open( $user, 'optins' );
+        $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+        $rows   = SFAF_Optins::all( array( 'search' => $search ) );
+        $export = wp_nonce_url( $this->url( 'optins/export' ) . ( $search ? '?s=' . rawurlencode( $search ) : '' ), 'uc_portal_export' );
+        ?>
+        <div class="uc-page-head">
+            <h1>Email Opt-ins</h1>
+            <div class="uc-head-actions">
+                <a class="uc-btn" href="<?php echo esc_url( $export ); ?>">Export CSV</a>
+            </div>
+        </div>
+
+        <div class="uc-card">
+            <p class="uc-hint">
+                People who ticked &ldquo;Receive monthly email updates from SFAF&rdquo; on an RSVP form.
+                Each row is one act of consent, with the moment it was given and the form it came from,
+                so whoever wires this to a mailing platform later can evidence both.
+                <strong>Nothing is sent from here and nothing is pushed anywhere.</strong> This is a record.
+            </p>
+            <form method="get" class="uc-inline-form">
+                <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email" />
+                <button type="submit" class="uc-btn uc-btn-sm">Search</button>
+            </form>
+        </div>
+
+        <div class="uc-card">
+            <?php if ( empty( $rows ) ) : ?>
+                <p class="uc-empty">No opt-ins recorded<?php echo $search ? ' for that search' : ' yet'; ?>.</p>
+            <?php else : ?>
+                <table class="uc-table">
+                    <thead><tr><th>Email</th><th>Name</th><th>Consented</th><th>Form</th><th>Event</th></tr></thead>
+                    <tbody>
+                        <?php foreach ( $rows as $row ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( $row->email ); ?></td>
+                                <td><?php echo esc_html( $row->name ); ?></td>
+                                <td><?php echo esc_html( $row->consented_at ); ?></td>
+                                <td><?php echo esc_html( $row->source_form ); ?></td>
+                                <td><?php echo $row->event_title ? esc_html( $row->event_title ) : '--'; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
         <?php
         $this->chrome_close();
     }

@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 2.10.1
+ * Version: 2.11.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,17 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '2.10.1' );
+define( 'SFAF_VERSION', '2.11.0' );
+
+/**
+ * Schema version for the plugin's own tables.
+ *
+ * Bumped whenever a CREATE TABLE below changes. Checked on every load so a
+ * plugin updated by overwriting its folder — which never fires the activation
+ * hook — still gets its new tables, instead of throwing "table doesn't exist"
+ * the first time the runner looks for one.
+ */
+define( 'SFAF_DB_VERSION', '2' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -74,6 +84,9 @@ $sfaf_includes = array(
     'includes/class-sfaf-shortcodes.php',
     'includes/class-sfaf-embed.php',
     'includes/class-sfaf-rsvp.php',
+    'includes/class-sfaf-optins.php',
+    'includes/class-sfaf-reminders.php',
+    'includes/class-sfaf-cron.php',
     'includes/class-sfaf-recurrence.php',
     'includes/class-sfaf-list-columns.php',
     'includes/class-sfaf-sync.php',
@@ -107,6 +120,9 @@ function sfaf_init() {
     // uc_settings into their own option. Idempotent, and a no-op once done.
     SFAF_Credentials::migrate();
 
+    // Tables, for the install that was updated by overwriting the folder.
+    sfaf_maybe_install_tables();
+
     $post_types = new SFAF_Post_Types();
     $post_types->register();
 
@@ -120,6 +136,13 @@ function sfaf_init() {
 
     $rsvp = new SFAF_RSVP();
     $rsvp->register();
+
+    // Morning-of reminders, and the single hourly runner that drives them.
+    $reminders = new SFAF_Reminders();
+    $reminders->register();
+
+    $cron = new SFAF_Cron();
+    $cron->register();
 
     $recurrence = new SFAF_Recurrence();
     $recurrence->register();
@@ -389,8 +412,9 @@ function sfaf_activate() {
 register_activation_hook( __FILE__, 'sfaf_activate' );
 
 /**
- * The real activation work: RSVP table, post type/taxonomies, sample data,
- * portal rewrites, flush. Any fatal in here is caught by sfaf_activate().
+ * The real activation work: tables, the hourly runner, post type/taxonomies,
+ * sample data, portal rewrites, flush. Any fatal here is caught by
+ * sfaf_activate().
  *
  * NOTHING HERE MAY TOUCH STORED CREDENTIALS. This runs on every activation,
  * including the reactivation that follows installing a new version, so any
@@ -402,25 +426,12 @@ register_activation_hook( __FILE__, 'sfaf_activate' );
  * register_uninstall_hook, so even deleting it leaves them intact.
  */
 function sfaf_run_activation() {
-    global $wpdb;
-    $table = $wpdb->prefix . 'uc_rsvps';
-    $charset = $wpdb->get_charset_collate();
+    sfaf_install_tables();
 
-    $sql = "CREATE TABLE $table (
-        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-        event_id bigint(20) unsigned NOT NULL,
-        name varchar(200) NOT NULL,
-        email varchar(200) NOT NULL,
-        phone varchar(50) DEFAULT '',
-        status varchar(20) DEFAULT 'confirmed',
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        KEY event_id (event_id),
-        KEY email (email)
-    ) $charset;";
-
-    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-    dbDelta( $sql );
+    // The hourly runner. Scheduling it here means a fresh install is already
+    // ticking over; sfaf_init() re-checks on every load so an unscheduled event
+    // (a database restore, say) puts itself back rather than staying gone.
+    SFAF_Cron::ensure_scheduled();
 
     // Register the post type and taxonomies directly so their rewrite rules
     // exist before we flush. (Calling register() only adds init hooks, which
@@ -439,9 +450,111 @@ function sfaf_run_activation() {
 }
 
 /**
+ * Create or update this plugin's own tables.
+ *
+ * dbDelta is additive: it adds missing tables, columns and indexes and never
+ * drops anything, so this is safe to run repeatedly and safe on an install that
+ * already has data.
+ */
+function sfaf_install_tables() {
+    global $wpdb;
+    $charset = $wpdb->get_charset_collate();
+
+    $rsvps = $wpdb->prefix . 'uc_rsvps';
+    $sql   = array();
+
+    // RSVPs. `status` is a plain string, not an enum: 'confirmed' (a real
+    // registration, and the only value counted towards capacity),
+    // 'subscribed' (pressed "Get Reminders", holds no place) and, since
+    // 2.11.0, 'cancelled' (released their place through a reminder's cancel
+    // link — kept rather than deleted so the history survives).
+    $sql[] = "CREATE TABLE $rsvps (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        event_id bigint(20) unsigned NOT NULL,
+        name varchar(200) NOT NULL,
+        email varchar(200) NOT NULL,
+        phone varchar(50) DEFAULT '',
+        status varchar(20) DEFAULT 'confirmed',
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY event_id (event_id),
+        KEY email (email)
+    ) $charset;";
+
+    // THE REMINDER LEDGER, AND THE UNIQUE KEY THAT IS THE SEND-ONCE GUARANTEE.
+    //
+    // event_recipient is UNIQUE, and a send is claimed by inserting the row
+    // before the mail goes out. A second attempt for the same pair — an
+    // overlapping run, a manual re-run, a run resumed after a crash — fails
+    // that insert and is skipped. The guarantee lives in the database, not in
+    // any code path that could be bypassed.
+    //
+    // The key is on a sha256 of the lowercased address rather than the address
+    // itself: a fixed 64 characters indexes cleanly on every MySQL version,
+    // where a composite key over varchar(200) in utf8mb4 can exceed the older
+    // 767-byte index limit. The readable address is kept alongside it.
+    $reminders = $wpdb->prefix . 'uc_reminder_log';
+    $sql[] = "CREATE TABLE $reminders (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        event_id bigint(20) unsigned NOT NULL,
+        email varchar(200) NOT NULL,
+        recipient_hash char(64) NOT NULL,
+        recipient_type varchar(20) NOT NULL DEFAULT 'rsvp',
+        token char(32) NOT NULL,
+        claimed_at datetime NULL,
+        sent_at datetime NULL,
+        result varchar(20) NOT NULL DEFAULT 'claimed',
+        PRIMARY KEY (id),
+        UNIQUE KEY event_recipient (event_id, recipient_hash),
+        UNIQUE KEY token (token),
+        KEY event_id (event_id)
+    ) $charset;";
+
+    // Marketing opt-ins. One row per consent, never updated in place: the
+    // point is a record of when and where each consent was given.
+    $optins = $wpdb->prefix . 'uc_optins';
+    $sql[] = "CREATE TABLE $optins (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        email varchar(200) NOT NULL,
+        name varchar(200) NOT NULL DEFAULT '',
+        event_id bigint(20) unsigned NOT NULL DEFAULT 0,
+        source_form varchar(40) NOT NULL DEFAULT '',
+        consented_at datetime NULL,
+        created_gmt datetime NULL,
+        PRIMARY KEY (id),
+        KEY email (email),
+        KEY event_id (event_id)
+    ) $charset;";
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    foreach ( $sql as $statement ) {
+        dbDelta( $statement );
+    }
+
+    update_option( 'sfaf_db_version', SFAF_DB_VERSION );
+}
+
+/**
+ * Run the installer when the stored schema version is behind the code's.
+ *
+ * The activation hook does not fire when a plugin is updated by overwriting
+ * its folder, which is exactly how this one is deployed, so relying on it
+ * alone would leave the new tables missing on every upgraded site.
+ */
+function sfaf_maybe_install_tables() {
+    if ( get_option( 'sfaf_db_version' ) === SFAF_DB_VERSION ) {
+        return;
+    }
+    sfaf_install_tables();
+}
+
+/**
  * Deactivation hook
  */
 function sfaf_deactivate() {
+    // A switched-off plugin must not leave a scheduled event behind firing at
+    // a hook nothing listens to.
+    SFAF_Cron::unschedule();
     flush_rewrite_rules();
 }
 register_deactivation_hook( __FILE__, 'sfaf_deactivate' );
@@ -539,6 +652,8 @@ function sfaf_rest_submit_rsvp( $request ) {
         'name'     => sanitize_text_field( $request->get_param( 'name' ) ),
         'email'    => sanitize_email( $request->get_param( 'email' ) ),
         'phone'    => sanitize_text_field( $request->get_param( 'phone' ) ),
+        // Absent means no. Consent has to arrive explicitly.
+        'optin'    => (bool) $request->get_param( 'optin' ),
     ) );
     return new WP_REST_Response( $result, $result['success'] ? 200 : 400 );
 }

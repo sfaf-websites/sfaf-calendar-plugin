@@ -461,9 +461,20 @@
                         '<div><label for="uc-rsvp-name">Full Name *</label>' +
                             '<input type="text" id="uc-rsvp-name" placeholder="Your name" /></div>' +
                         '<div><label for="uc-rsvp-email">Email *</label>' +
-                            '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" /></div>' +
+                            '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" />' +
+                            // Said next to the field it applies to, in plain
+                            // words, because this is the address the morning-of
+                            // reminder will go to.
+                            '<p class="uc-rsvp-note">Event reminders and updates will be sent to this email address.</p></div>' +
                         '<div><label for="uc-rsvp-phone">Phone (optional)</label>' +
                             '<input type="tel" id="uc-rsvp-phone" placeholder="(555) 000-0000" /></div>' +
+                        // SEPARATE FROM THE RSVP, AND NEVER PRE-TICKED.
+                        // Registering for an event is not consent to a mailing
+                        // list, so this is its own decision and it starts off.
+                        '<label class="uc-rsvp-optin">' +
+                            '<input type="checkbox" id="uc-rsvp-optin" value="1" />' +
+                            '<span>Receive monthly email updates from SFAF with events, news and updates.</span>' +
+                        '</label>' +
                         '<div class="uc-rsvp-error" id="uc-rsvp-error" style="display:none;"></div>' +
                         '<button class="uc-rsvp-submit" id="uc-rsvp-submit-btn">Register Now</button>' +
                         '<button class="uc-rsvp-cancel" id="uc-rsvp-cancel-btn">Cancel</button>' +
@@ -491,8 +502,10 @@
             var title = card.find('.uc-card-title').text().trim();
             $('#uc-rsvp-event-title').text(title);
 
-            // Reset form
+            // Reset form. The opt-in is cleared with everything else: it must
+            // never carry a previous visitor's tick into a fresh form.
             $('#uc-rsvp-name, #uc-rsvp-email, #uc-rsvp-phone').val('');
+            $('#uc-rsvp-optin').prop('checked', false);
             $('#uc-rsvp-error').hide();
             $('#uc-rsvp-submit-btn').prop('disabled', false).text('Register Now');
             $('.uc-rsvp-form-view').show();
@@ -532,6 +545,7 @@
         var name  = $('#uc-rsvp-name').val().trim();
         var email = $('#uc-rsvp-email').val().trim();
         var phone = $('#uc-rsvp-phone').val().trim();
+        var optin = $('#uc-rsvp-optin').is(':checked') ? '1' : '';
 
         // Validation
         if (!name || !email) {
@@ -556,7 +570,8 @@
                 event_id: currentEventId,
                 name:     name,
                 email:    email,
-                phone:    phone
+                phone:    phone,
+                optin:    optin
             },
             success: function(response) {
                 if (response.success) {

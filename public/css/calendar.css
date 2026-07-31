@@ -268,10 +268,15 @@
 .uc-rsvp-success p { font-size: 16px; color: var(--uc-text); font-weight: 600; }
 .uc-rsvp-error { color: var(--uc-warm); font-size: 13px; text-align: center; }
 
-/* Subscribe bar */
-.uc-subscribe { display: flex; align-items: center; gap: 8px; margin-top: 24px; padding: 16px 0; border-top: 1px solid var(--uc-border); font-size: 13px; color: var(--uc-muted); }
-.uc-subscribe-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 12px; text-decoration: none; transition: all 0.2s; }
-.uc-subscribe-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+/* The subscribe bar (.uc-subscribe / .uc-subscribe-btn) was removed in 2.11.0
+   along with its markup: calendar feed subscription is out of scope, and the
+   three buttons pointed at a query string nothing handled. Per-event "Add to
+   Calendar" is a different feature and is still here. */
+
+/* RSVP form: consent and disclaimer */
+.uc-rsvp-note { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--uc-secondary); }
+.uc-rsvp-optin { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 2px; font-size: 13px; line-height: 1.45; color: var(--uc-text); cursor: pointer; }
+.uc-rsvp-optin input { margin: 2px 0 0; flex: 0 0 auto; }
 
 /* No events */
 .uc-no-events { padding: 40px; text-align: center; color: var(--uc-muted); }

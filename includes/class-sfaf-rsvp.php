@@ -25,6 +25,10 @@ class SFAF_RSVP {
             'name'     => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
             'email'    => isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '',
             'phone'    => isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '',
+            // Present and truthy only when the box was actually ticked. An
+            // absent field is a "no", which is the safe reading and the one an
+            // unchecked checkbox actually produces.
+            'optin'    => ! empty( $_POST['optin'] ),
         ) );
 
         wp_send_json( $result );
@@ -87,6 +91,13 @@ class SFAF_RSVP {
         ), array( '%d', '%s', '%s', '%s', '%s', '%s' ) );
 
         if ( $inserted ) {
+            // The marketing opt-in, if it was ticked. Recorded separately from
+            // the RSVP on purpose: they are two different consents, and the
+            // RSVP row must never be the evidence for a mailing list.
+            if ( ! empty( $data['optin'] ) ) {
+                SFAF_Optins::record( $data['email'], $data['name'], $data['event_id'], 'rsvp' );
+            }
+
             // Fire action for integrations (email, Google Sheets, Pardot, etc.)
             do_action( 'uc_rsvp_submitted', $wpdb->insert_id, $data );
 

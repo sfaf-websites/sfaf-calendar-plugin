@@ -349,3 +349,22 @@ body.uc-portal {
  * rather than each control being outlined separately. */
 .uc-fieldset-locked { background: #F9FAFB; border-color: #D1D5DB; }
 .uc-fieldset-locked legend { color: #4B5563; }
+
+/* ---------------------------------------------------------------------------
+ * Per-event notification list, and the automation screen.
+ * ------------------------------------------------------------------------ */
+
+/* A picker that stays a fixed height whether there are three calendar users or
+ * thirty, so the Publish button does not move down the page as staff are added. */
+.uc-notify-users { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 18px;
+    max-height: 220px; overflow-y: auto; padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 8px; background: #fff; }
+.uc-notify-list { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: var(--p-text); }
+
+/* Run status. Colour is never the only signal — the word itself is the value in
+ * the cell — so this reads the same to anyone who cannot separate the hues. */
+.uc-cron-ok { color: #15803d; font-weight: 600; }
+.uc-cron-partial, .uc-cron-stale { color: #92400e; font-weight: 600; }
+.uc-cron-failed, .uc-cron-failing { color: #b91c1c; font-weight: 600; }
+.uc-cron-skipped, .uc-cron-never { color: var(--p-muted); font-weight: 600; }
+.uc-cron-task { font-size: 13px; line-height: 1.5; margin-bottom: 4px; }
+.uc-cron-task:last-child { margin-bottom: 0; }

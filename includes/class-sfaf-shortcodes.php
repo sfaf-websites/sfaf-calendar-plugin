@@ -901,8 +901,8 @@ class SFAF_Shortcodes {
         $events = $this->render_events( $per_page, $paged, $filters, $compact ? 'compact' : 'card' );
         $max    = $paginate ? $events['max_pages'] : 1;
 
-        // The whole-calendar .ics subscribe links point back to this site, so an
-        // embed on another origin would send visitors here — drop them there.
+        // Controls that cannot work from another origin are dropped in an
+        // embed rather than rendered dead. See the organizer filter below.
         $embed = sfaf_is_embed_context();
 
         ob_start();
@@ -1026,14 +1026,23 @@ class SFAF_Shortcodes {
                 <?php if ( $want_grid ) { echo $this->render_month_grid( $month, $filters ); } ?>
             </div>
 
-            <?php if ( ! $embed ) : ?>
-            <div class="uc-subscribe">
-                <span>Subscribe:</span>
-                <a href="<?php echo esc_url( home_url( '?uc_ical=1' ) ); ?>" class="uc-subscribe-btn">+ Google Calendar</a>
-                <a href="<?php echo esc_url( home_url( '?uc_ical=1' ) ); ?>" class="uc-subscribe-btn">+ iCalendar</a>
-                <a href="<?php echo esc_url( home_url( '?uc_ical=1' ) ); ?>" class="uc-subscribe-btn">+ Outlook</a>
-            </div>
-            <?php endif; ?>
+            <?php
+            /*
+             * WHOLE-CALENDAR SUBSCRIPTION IS OUT OF SCOPE, AND THE BUTTONS ARE
+             * GONE RATHER THAN LEFT LOOKING AVAILABLE.
+             *
+             * Three "Subscribe" buttons used to sit here pointing at
+             * ?uc_ical=1. Nothing has ever handled that query string, so all
+             * three quietly loaded the homepage. A control that does nothing is
+             * worse than no control: it makes a promise the calendar cannot
+             * keep, and it does it on the one screen where somebody is looking
+             * for exactly that feature.
+             *
+             * PER-EVENT "Add to Calendar" is unaffected and stays exactly as it
+             * is — sfaf_add_to_calendar(), the Google link and the .ics
+             * download at /?uc_ics=ID. That one works.
+             */
+            ?>
         </div>
         <?php
         return array(

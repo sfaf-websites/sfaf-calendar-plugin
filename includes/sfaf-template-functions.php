@@ -471,7 +471,8 @@ function sfaf_rsvp_block( $post_id ) {
  *
  * @param string $text     Template text.
  * @param int    $event_id Event ID.
- * @param array  $data     RSVP data (name, email...).
+ * @param array  $data     RSVP data (name, email...) plus, for the morning-of
+ *                         reminder, a per-recipient cancel_url.
  */
 function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     $date     = get_post_meta( $event_id, '_uc_event_date', true );
@@ -480,13 +481,41 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     $organizers = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'names' ) );
     $organizer  = ( ! is_wp_error( $organizers ) && ! empty( $organizers ) ) ? implode( ', ', $organizers ) : '';
 
+    // Start and end as one readable phrase. An event with no end time says just
+    // the start rather than inventing one, and an event with neither says
+    // nothing at all instead of printing an empty dash.
+    $start_raw = (string) get_post_meta( $event_id, '_uc_start_time', true );
+    $end_raw   = (string) get_post_meta( $event_id, '_uc_end_time', true );
+    $fmt       = get_option( 'time_format' ) ? get_option( 'time_format' ) : 'g:i a';
+    $start_fmt = $start_raw ? date_i18n( $fmt, strtotime( $start_raw ) ) : '';
+    $end_fmt   = $end_raw ? date_i18n( $fmt, strtotime( $end_raw ) ) : '';
+    if ( $start_fmt && $end_fmt ) {
+        $time_range = $start_fmt . ' to ' . $end_fmt;
+    } else {
+        $time_range = $start_fmt;
+    }
+
+    // The cancel link is a whole sentence, not a bare URL, so a template can
+    // drop it in without having to word it — and it collapses to nothing for a
+    // recipient who has no registration to cancel (staff on the notification
+    // list), rather than offering them a link that would only confuse.
+    $cancel_url  = isset( $data['cancel_url'] ) ? (string) $data['cancel_url'] : '';
+    $cancel_line = $cancel_url ? "Can't make it? Release your place: " . $cancel_url : '';
+
     $replacements = array(
-        '{event_name}'     => get_the_title( $event_id ),
-        '{attendee_name}'  => isset( $data['name'] ) ? $data['name'] : '',
-        '{event_date}'     => $date_fmt,
-        '{event_time}'     => get_post_meta( $event_id, '_uc_start_time', true ),
-        '{event_location}' => get_post_meta( $event_id, '_uc_location', true ),
-        '{organizer_name}' => $organizer,
+        '{event_name}'       => get_the_title( $event_id ),
+        '{attendee_name}'    => isset( $data['name'] ) ? $data['name'] : '',
+        '{event_date}'       => $date_fmt,
+        '{event_time}'       => $start_fmt ? $start_fmt : $start_raw,
+        '{event_end_time}'   => $end_fmt,
+        '{event_time_range}' => $time_range,
+        '{event_location}'   => get_post_meta( $event_id, '_uc_location', true ),
+        // Cast: get_permalink() returns false for a post that has gone, and
+        // strtr wants strings.
+        '{event_url}'        => (string) get_permalink( $event_id ),
+        '{organizer_name}'   => $organizer,
+        '{cancel_url}'       => $cancel_url,
+        '{cancel_link}'      => $cancel_line,
     );
 
     return strtr( $text, $replacements );

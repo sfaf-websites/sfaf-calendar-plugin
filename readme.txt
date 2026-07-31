@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.10.1
+Stable tag: 2.11.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -22,6 +22,8 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * Date, time, location, and recurrence fields
 * RSVP system with capacity tracking
 * Per-event social share, donate button, add-to-calendar (.ics + Google), and reminder signup
+* Morning-of reminder emails on the day of the event, with a per-event notification list
+* An hourly scheduled runner with a run lock, a run log and failure notices
 * Styled single event template (auto-loaded, theme-overridable)
 * Per-event display toggles and confirmation/organizer email overrides
 * Category filter buttons and search on the public calendar
@@ -49,7 +51,89 @@ Build any of these visually under Events &rsaquo; Shortcode Generator.
 4. Add `[sfaf_calendar]` to any page to display the calendar
 5. Configure integrations under Events > Settings
 
+== Scheduled Tasks (required for reminders) ==
+
+Reminder emails go out at 6:00am on the day of the event. WordPress cannot do
+that on its own, and this is the single most important thing to set up before
+launch.
+
+**Why WordPress cannot do it on its own.** WP-Cron is not a scheduler. It is a
+check that runs when somebody visits the site. On a calendar with no traffic at
+6am, a 6am job simply does not happen; it waits until the first visitor, which
+might be 10am, or the next day. The fix is a real system cron job.
+
+**Setting it up on Bluehost (cPanel).**
+
+1. In cPanel, open **Advanced > Cron Jobs**.
+2. Under "Add New Cron Job", set Common Settings to **Once Per Hour** (`0 * * * *`).
+3. In the Command box, put:
+
+       wget -q -O /dev/null "https://YOURSITE.org/wp-cron.php?doing_wp_cron" >/dev/null 2>&1
+
+   Replace YOURSITE.org with the real domain. The exact URL for this install is
+   shown in the calendar portal under **Automation > Cron URL**. Copy it from
+   there rather than typing it.
+4. Click "Add New Cron Job".
+5. Edit `wp-config.php` and add this line **above** the
+   `/* That's all, stop editing! */` comment:
+
+       define( 'DISABLE_WP_CRON', true );
+
+   This stops WordPress firing scheduled tasks off visitor traffic, so the
+   system cron is the only thing that triggers a run and the same work cannot
+   happen twice.
+6. Go to **/caladmin > Automation** and press **Run now**. A new entry should
+   appear at the top of the run log. Come back after the next hour and check a
+   second entry appeared on its own.
+
+**An external pinger works too** (cron-job.org, UptimeRobot and similar). Point
+it at the same URL, hourly. Note that a pinger may report a timeout or a failure
+even when the run completed: `wp-cron.php` calls `ignore_user_abort()` and keeps
+working after the connection is dropped. **The run log in the portal is the
+source of truth, not the pinger's status code.**
+
+**Do not add more than one trigger.** One cron job or one pinger, not both. The
+run lock will stop two runs overlapping, but a second trigger only ever produces
+log entries saying a run stood down.
+
+**Email deliverability.** Mail is sent through `wp_mail()`, so an SMTP plugin or
+a `wp_mail` filter can take delivery over without any code change, and nothing
+in the plugin depends on a particular provider. **WordPress mail sent through
+Bluehost's own server has poor deliverability** and will often be filtered as
+spam or dropped outright. Configure a transactional email service (SendGrid,
+Postmark, Mailgun, Amazon SES or similar) before launch. The From name, From
+address and Reply-To are settings under **Events > Settings > Email Templates**,
+not constants in code, so pointing them at a real sending domain is a form
+change and nothing more.
+
+**Automated fetching is switched off by default and should stay off for now.**
+A fetch can take an event off the calendar when its source stops returning it,
+and that behaviour has never been watched through a real removal. Switch it on
+by hand, under Events > Settings > Scheduled Tasks, only after one real removal
+has been seen go through correctly. Until then use "Fetch updates" on the
+portal dashboard, which runs the same fetch with somebody watching.
+
 == Changelog ==
+
+= 2.11.0 =
+* Morning-of reminder emails. One reminder per event, at 6:00am site time on the day, to everyone with an RSVP for it, everyone who pressed "Get Reminders" on it, and the event's own notification list. It carries the title, the date, the start and end time, the location, a link to the event page, and a link that releases the recipient's place.
+* Native events only. Events imported from GoFundMe Pro, Eventbrite or any adapter added later are excluded outright, and no reminder settings are shown on them. Those platforms hold the registration and send their own reminders; a second email from here would be a duplicate about a registration this site does not own. The check is on whether an event has a source at all, not on a named platform, so a new adapter is excluded the day it exists rather than the day somebody remembers to add it.
+* Sending once is guaranteed by the database, not by the code being careful. A send is claimed by inserting a row into a ledger with a unique key on (event, recipient) BEFORE the mail goes out, so a second attempt from an overlapping run, a manual re-run or a run resumed after a crash fails that insert and is skipped. Two further layers sit on top: a run lock that stops two runs overlapping at all, and a per-event marker set once an event's pass finishes. Any one of the three would do it; all three are there because the failure mode is somebody's inbox.
+* A send that fails is recorded as failed and not retried. `wp_mail()` returning false does not reliably mean nothing was delivered, so a retry risks the exact duplicate the whole design exists to prevent. Failures are counted in the run log where somebody can see them.
+* Somebody who registers after the morning's send does not get a late reminder. They just signed up; they know the event is today.
+* An event that starts before 6am is handled rather than skipped: its reminder moves to 00:00 that day and goes out on the first run after midnight, so it still arrives before the event. An event with no start time keeps the 6:00 slot, because "no time set" must not be read as "starts at midnight".
+* The reminder's "Can't make it?" link releases the recipient's place so it goes back to the count. The link is tokenised per recipient per event, is not guessable, and needs no account. Opening it never cancels anything on its own: it shows a page that asks, and the button on that page is what acts, because mail clients and security scanners fetch the links in an email without a person ever clicking one. A cancelled registration is kept and marked cancelled rather than deleted, so the history survives.
+* One hourly scheduled runner for every unattended job, rather than each feature scheduling its own. It works the same whether it is triggered by a real system cron, by WordPress's visitor-triggered pseudo-cron, or by a "Run now" button in the portal.
+* A run lock, so a slow run cannot be overlapped by the next one and process the same work twice. A lock abandoned by a fatal is broken automatically after fifteen minutes, so a crash cannot stop the runner permanently and silently.
+* A run log: start time, what ran, per-task counts, completion status and duration, newest first, viewable in the calendar portal under Automation. The newest sixty runs are kept and older entries are pruned on every write, so it cannot grow forever. This is unattended work, and when something happens at 3am the log is the only thing that can say what did it.
+* Failure is visible rather than silent. An admin notice appears after three consecutive failed runs, and separately when no run has completed for three hours, which is the case a failure counter cannot catch: a cron that simply stops produces no failures at all. Both also show on the Automation screen with the cron URL to check.
+* Automated fetching, off by default. The setting exists and is deliberately left disabled: the unpublish-on-removal guard built in 2.7.0 has never been exercised against an actual removal at source, and running that unattended before it has been watched once is how live events disappear overnight. Switch it on by hand after that test. "Fetch updates" on the dashboard is unchanged.
+* Per-event notification list, on native events, in the portal. Who else receives the event's reminder, so staff can see what participants are sent. The person who created the event is on it automatically, taken from the author WordPress already stores rather than a second copy that could drift; they can take themselves off. Other calendar users are added from a picker, and anyone outside the calendar system by typing their address. An address that is not valid is rejected and named back rather than dropped in silence. The resulting list is shown in plain text, along with what actually went out. It is a notification list and nothing else: it grants no permission and changes nothing about who can edit the event.
+* The RSVP form now says, next to the email field, that event reminders and updates will be sent to that address.
+* A separate, unticked opt-in on the RSVP form for monthly email updates from SFAF. It is never pre-ticked, and RSVPing never subscribes anybody as a side effect. Each consent is recorded as its own row with the moment it was given and the form it came from, viewable and exportable from the portal under Email Opt-ins. There is no integration in this release and nothing is pushed anywhere: whoever wires this to a mailing platform later will be asked when and where each address consented, and that is far harder to reconstruct afterwards than to record now.
+* Mail is sent through `wp_mail()` and no email provider is hardcoded anywhere. From name, From address and Reply-To are settings. WordPress mail through Bluehost has poor deliverability; a transactional service must be configured before launch. See the Scheduled Tasks section above.
+* Removed the three "Subscribe" buttons (Google Calendar, iCalendar, Outlook) from the bottom of the calendar. All three pointed at a query string nothing has ever handled, so all three quietly loaded the homepage. Whole-calendar feed subscription is out of scope, and a control that makes a promise the calendar cannot keep is worse than no control, particularly on the one screen where somebody is looking for exactly that feature. Per-event "Add to Calendar", the Google link and the .ics download are a different feature and are untouched.
+* Reminder emails require the hourly cron job described under Scheduled Tasks above. Without it they will not go out on time, or at all.
 
 = 2.10.1 =
 * Fixed: the month calendar arrived on sfaf.org as unstyled markup. The cause was not the design, it was the address the stylesheet was requested from. The embed snippet is copy-pasted HTML carrying a script URL with the plugin version baked into it, and the script derived its stylesheet URL from its own address, version and all. So a block pasted at an earlier version kept asking for that version's script and stylesheet forever, and the browser kept serving what it had cached under those exact URLs. The markup came from the server and was current; the CSS and JavaScript were months old, and every rule for the month grid lives in the newer stylesheet. That is why day names read "Sun S Sunday", why a stray dot followed every date, and why links were underlined and cells had no borders: those are the host theme's defaults showing through where our rules never arrived.

@@ -85,18 +85,22 @@ class SFAF_Admin {
             'route_sheet_url',
             'brand_logo',
             'email_rsvp_subject', 'email_reminder_subject',
+            // Morning-of reminder + the provider-neutral sender identity.
+            // These are settings rather than constants precisely so an email
+            // provider can be chosen later without editing any code.
+            'email_dayof_subject', 'email_from_name',
         );
         foreach ( $text_fields as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_text_field( $input[ $field ] ) : '';
         }
 
         // Email addresses.
-        foreach ( array( 'email_rsvp_replyto', 'route_organizer_email' ) as $field ) {
+        foreach ( array( 'email_rsvp_replyto', 'route_organizer_email', 'email_from_address', 'email_reply_to' ) as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_email( $input[ $field ] ) : '';
         }
 
         // Textareas.
-        foreach ( array( 'email_rsvp_body', 'email_reminder_body' ) as $field ) {
+        foreach ( array( 'email_rsvp_body', 'email_reminder_body', 'email_dayof_body' ) as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_textarea_field( $input[ $field ] ) : '';
         }
 
@@ -135,6 +139,10 @@ class SFAF_Admin {
             'webhook_event_deleted', 'webhook_event_rsvp',
             'route_email_organizer', 'route_pardot',
             'route_google_sheet', 'route_confirmation_email',
+            // Scheduled tasks. auto_fetch_enabled is absent-means-off, which is
+            // what makes unattended fetching off by default and off after any
+            // save that does not deliberately tick it.
+            'reminders_enabled', 'auto_fetch_enabled',
         );
         foreach ( $toggles as $toggle ) {
             $out[ $toggle ] = isset( $input[ $toggle ] ) ? '1' : '0';
@@ -957,6 +965,62 @@ class SFAF_Admin {
                     </div>
                 </div>
 
+                <!-- SCHEDULED TASKS -->
+                <div class="uc-integration-panel uc-panel-open">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'bolt', array( 'size' => '20px' ) ); ?></span>
+                        <div class="uc-panel-info">
+                            <h2>Scheduled Tasks</h2>
+                            <p>The hourly runner: morning-of reminders, and automated fetching</p>
+                        </div>
+                        <span class="uc-panel-status <?php echo SFAF_Cron::wp_cron_disabled() ? 'uc-status-active' : ''; ?>"><?php echo SFAF_Cron::wp_cron_disabled() ? 'System cron' : 'WP pseudo-cron'; ?></span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <?php $health = SFAF_Cron::health(); ?>
+                        <p class="description"><strong>Status:</strong> <?php echo esc_html( $health['message'] ); ?>
+                            The full run log and a &ldquo;Run now&rdquo; button live in the
+                            <a href="<?php echo esc_url( home_url( '/caladmin/automation' ) ); ?>">calendar portal under Automation</a>.</p>
+
+                        <?php if ( ! SFAF_Cron::wp_cron_disabled() ) : ?>
+                            <p class="description" style="color:#92400e;">
+                                <strong>WordPress is still firing scheduled tasks off visitor traffic.</strong>
+                                That means a 6:00am reminder does not go out until somebody happens to visit the site.
+                                Add a system cron job hitting <code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code> hourly,
+                                and set <code>define( 'DISABLE_WP_CRON', true );</code> in <code>wp-config.php</code>.
+                                The readme has the exact steps.
+                            </p>
+                        <?php endif; ?>
+
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot <?php echo SFAF_Reminders::enabled() ? 'uc-dot-green' : 'uc-dot-gray'; ?>"></span>
+                            <div class="uc-routing-info">
+                                <strong>Send morning-of reminders</strong>
+                                <span>6:00am site time on the day of the event, to everyone registered plus the event's notification list. Native events only: imported events are never sent for, because their platform sends its own.</span>
+                            </div>
+                            <?php // Absent-means-off would switch reminders off for any site that
+                                  // saves settings before this panel exists, so the default when
+                                  // the key has never been written is ON. ?>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[reminders_enabled]" value="1" <?php checked( SFAF_Reminders::enabled() ); ?> /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot <?php echo SFAF_Cron::auto_fetch_enabled() ? 'uc-dot-green' : 'uc-dot-gray'; ?>"></span>
+                            <div class="uc-routing-info">
+                                <strong>Fetch from third-party sources automatically</strong>
+                                <span>
+                                    <strong>Leave this off for now.</strong> A fetch can take an event off the calendar when
+                                    it stops being returned by its source, and that behaviour has never been watched through
+                                    a real removal. Running it unattended before then is how live events disappear overnight.
+                                    Switch it on by hand once one removal has been seen go through correctly.
+                                    &ldquo;Fetch updates&rdquo; on the dashboard runs it manually in the meantime.
+                                </span>
+                            </div>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[auto_fetch_enabled]" value="1" <?php checked( $s( 'auto_fetch_enabled' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- EMAIL TEMPLATES -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
@@ -968,7 +1032,44 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="uc-token-ref">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_location}</code> <code>{organizer_name}</code></p>
+                        <p class="uc-token-ref">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_end_time}</code> <code>{event_time_range}</code> <code>{event_location}</code> <code>{event_url}</code> <code>{organizer_name}</code> <code>{cancel_link}</code> <code>{cancel_url}</code></p>
+
+                        <h3>Sender</h3>
+                        <p class="description">
+                            Mail goes out through <code>wp_mail()</code>, so an SMTP plugin or a transactional
+                            service can take delivery over without any code change. These three are settings and
+                            not constants for exactly that reason. Nothing in the plugin hardcodes a provider.
+                            <strong>WordPress mail through Bluehost has poor deliverability;</strong> configure a
+                            transactional service before launch or reminders will land in spam.
+                        </p>
+                        <div class="uc-field-row">
+                            <label>From name</label>
+                            <input type="text" name="uc_settings[email_from_name]" value="<?php echo esc_attr( $s( 'email_from_name' ) ); ?>" class="uc-input" placeholder="San Francisco AIDS Foundation" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>From address</label>
+                            <input type="email" name="uc_settings[email_from_address]" value="<?php echo esc_attr( $s( 'email_from_address' ) ); ?>" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Reply-To</label>
+                            <input type="email" name="uc_settings[email_reply_to]" value="<?php echo esc_attr( $s( 'email_reply_to' ) ); ?>" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+
+                        <h3>Morning-of Reminder</h3>
+                        <p class="description">
+                            Sent once per event, at 6:00am site time on the day. Leave either field blank to use
+                            the shipped default. <code>{cancel_link}</code> renders a whole sentence offering to
+                            release the recipient's place, and collapses to nothing for staff on a notification
+                            list, who have no registration to cancel.
+                        </p>
+                        <div class="uc-field-row">
+                            <label>Subject</label>
+                            <input type="text" name="uc_settings[email_dayof_subject]" value="<?php echo esc_attr( $s( 'email_dayof_subject' ) ); ?>" class="uc-input" placeholder="Today: {event_name}" />
+                        </div>
+                        <div class="uc-field-row uc-field-row-top">
+                            <label>Body</label>
+                            <textarea name="uc_settings[email_dayof_body]" rows="8" class="uc-input uc-textarea" placeholder="<?php echo esc_attr( SFAF_Reminders::default_body() ); ?>"><?php echo esc_textarea( $s( 'email_dayof_body' ) ); ?></textarea>
+                        </div>
 
                         <h3>RSVP Confirmation</h3>
                         <div class="uc-field-row">
