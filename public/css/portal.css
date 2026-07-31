@@ -399,3 +399,51 @@ body.uc-portal {
 .uc-activity-list li:last-child { border-bottom: 0; }
 .uc-activity-when { flex: 0 0 110px; color: var(--p-muted); }
 .uc-activity-what { min-width: 0; }
+
+/* Inline email validation. Same two signals, same wording, same JavaScript as
+ * the public forms and the WordPress admin: see public/js/sfaf-email.js. */
+.uc-portal input.uc-invalid,
+.uc-portal textarea.uc-invalid { border-color: #dc2626; box-shadow: 0 0 0 1px #dc2626; }
+.uc-portal input.uc-invalid:focus,
+.uc-portal textarea.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
+.uc-portal .uc-field-error { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: #b91c1c; font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+ * Sortable table headings and list paging (Events list).
+ * ------------------------------------------------------------------------ */
+
+/* The heading is the click target, so it has to look like one. The active
+ * column is marked by a character as well as by weight and colour, because
+ * weight alone is not a signal anybody can rely on. */
+.uc-table th.uc-sortable { padding: 0; }
+.uc-table th.uc-sortable > a { display: block; padding: 12px; color: inherit; text-decoration: none;
+    font-weight: inherit; white-space: nowrap; }
+.uc-table th.uc-sortable > a:hover { background: var(--p-bg, #F7F8FA); color: var(--p-text); }
+.uc-table th.uc-sortable > a:focus-visible { outline: 2px solid var(--p-accent, #16BECF); outline-offset: -2px; }
+.uc-table th.uc-sorted > a { color: var(--p-text); font-weight: 800; }
+.uc-sort-mark { font-size: 10px; }
+
+/* Present but invisible: the sort state has to be readable by a screen reader
+ * without printing a sentence into every column heading. */
+.screen-reader-text { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+.uc-list-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; margin-top: 14px; }
+.uc-list-total { margin: 10px 0 0; }
+.uc-list-pages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.uc-page-num { display: inline-block; min-width: 30px; padding: 5px 8px; text-align: center;
+    border: 1px solid var(--p-border); border-radius: 6px; font-size: 13px; text-decoration: none; color: inherit; }
+.uc-page-num:hover { background: var(--p-bg, #F7F8FA); }
+.uc-page-current { background: var(--uc-primary, #FFD900); border-color: var(--uc-primary, #FFD900);
+    color: #373433; font-weight: 700; }
+
+/* Working indicator on a slow action (Fetch updates, Run now). */
+.uc-btn[disabled] { opacity: .65; cursor: progress; }
+.uc-spinner { display: inline-block; width: 13px; height: 13px; margin-right: 7px; vertical-align: -2px;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    animation: uc-spin .7s linear infinite; }
+@keyframes uc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .uc-spinner { animation-duration: 2.4s; } }
+.uc-action-error { margin: 10px 0 0; padding: 10px 14px; border-radius: 8px;
+    background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 600; }

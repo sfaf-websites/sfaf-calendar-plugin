@@ -8,6 +8,7 @@ class SFAF_Admin {
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'admin_init', array( $this, 'handle_series_save' ) );
         add_action( 'admin_init', array( $this, 'handle_series_action' ) );
+        add_action( 'admin_init', array( $this, 'handle_cron_action' ) );
     }
 
     /**
@@ -113,6 +114,25 @@ class SFAF_Admin {
         );
 
         // Settings / Integrations
+        /*
+         * AUTOMATION IS AN ADMINISTRATOR SCREEN, NOT AN EVENT MANAGER ONE.
+         *
+         * It lived in /caladmin until 2.13.0, gated on the plugin's own
+         * "calendar admin" role. That was the wrong gate for the wrong
+         * audience: the run log, the cron URL and "Run now" are facts about
+         * how the server is configured, and the people who manage events can
+         * neither act on them nor fix them. manage_options is the capability
+         * that actually corresponds to "may change how this site runs".
+         */
+        add_submenu_page(
+            'edit.php?post_type=uc_event',
+            'Automation',
+            'Automation',
+            'manage_options',
+            'uc-automation',
+            array( $this, 'render_automation_page' )
+        );
+
         add_submenu_page(
             'edit.php?post_type=uc_event',
             'Settings & Integrations',
@@ -121,6 +141,181 @@ class SFAF_Admin {
             'uc-settings',
             array( $this, 'render_settings_page' )
         );
+    }
+
+    /**
+     * Run now / Clear log, handled before any output so they can redirect.
+     *
+     * "Run now" goes through exactly the same SFAF_Cron::run() that real cron
+     * calls, lock and log included. Testing a different code path from the one
+     * that runs at 6am would test nothing.
+     */
+    public function handle_cron_action() {
+        if ( empty( $_POST['uc_cron_action'] ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+        $nonce = isset( $_POST['uc_cron_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_cron_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_cron_action' ) ) {
+            return;
+        }
+
+        $action = sanitize_key( $_POST['uc_cron_action'] );
+        $base   = SFAF_Cron::admin_url();
+
+        if ( 'run_now' === $action ) {
+            SFAF_Cron::run( 'manual' );
+            wp_safe_redirect( add_query_arg( 'ran', '1', $base ) );
+            exit;
+        }
+        if ( 'clear_log' === $action ) {
+            SFAF_Cron::clear_log();
+            wp_safe_redirect( add_query_arg( 'cleared', '1', $base ) );
+            exit;
+        }
+    }
+
+    /**
+     * The scheduled runner: health, configuration and the run log.
+     *
+     * Moved wholesale from SFAF_Portal in 2.13.0. The content is the same; the
+     * chrome is WordPress's and the gate is manage_options.
+     */
+    public function render_automation_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to view this page.' );
+        }
+
+        $health   = SFAF_Cron::health();
+        $log      = SFAF_Cron::log();
+        $next     = wp_next_scheduled( SFAF_Cron::HOOK );
+        $locked   = SFAF_Cron::lock_held_since();
+        $wp_off   = SFAF_Cron::wp_cron_disabled();
+        $fetch_on = SFAF_Cron::auto_fetch_enabled();
+        $alert_to = SFAF_Cron::alert_recipient();
+        ?>
+        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Automation</h1>
+                    <p class="uc-subtitle">The hourly scheduled runner: reminder emails and, when switched on, source fetching</p>
+                </div>
+                <form method="post" class="uc-cron-run-form">
+                    <?php wp_nonce_field( 'uc_cron_action', 'uc_cron_nonce' ); ?>
+                    <input type="hidden" name="uc_cron_action" value="run_now" />
+                    <?php // Slow: it does the real work synchronously, so the
+                          // button says it is working rather than sitting there
+                          // looking unpressed. ?>
+                    <button type="submit" class="button button-primary" data-uc-busy="Running&hellip;">Run now</button>
+                </form>
+            </div>
+
+            <?php if ( ! empty( $_GET['ran'] ) ) : ?>
+                <div class="notice notice-success"><p>Run complete. The newest entry in the log below is what it did.</p></div>
+            <?php endif; ?>
+            <?php if ( ! empty( $_GET['cleared'] ) ) : ?>
+                <div class="notice notice-success"><p>Run log cleared.</p></div>
+            <?php endif; ?>
+
+            <div class="uc-admin-card">
+                <h2>Status</h2>
+                <table class="uc-admin-table uc-cron-status">
+                    <tbody>
+                        <tr>
+                            <th>Health</th>
+                            <td class="uc-cron-<?php echo esc_attr( $health['state'] ); ?>"><?php echo esc_html( $health['message'] ); ?></td>
+                        </tr>
+                        <tr>
+                            <th>Schedule</th>
+                            <td>Hourly. <?php echo $next ? 'Next due ' . esc_html( SFAF_Cron::local_time( $next ) ) . '.' : 'Not currently scheduled.'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>Trigger</th>
+                            <td>
+                                <?php if ( $wp_off ) : ?>
+                                    <code>DISABLE_WP_CRON</code> is set, so runs come only from a real system cron hitting the URL below. This is the intended setup.
+                                <?php else : ?>
+                                    <code>DISABLE_WP_CRON</code> is <strong>not</strong> set, so WordPress is still firing scheduled tasks off visitor traffic. That means a 6am reminder does not go out until somebody visits the site. Set up a system cron and add the constant. The readme has the steps.
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Cron URL</th>
+                            <td><code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code></td>
+                        </tr>
+                        <tr>
+                            <th>Lock</th>
+                            <td><?php echo $locked
+                                ? 'Held since ' . esc_html( SFAF_Cron::local_time( $locked ) ) . '. A run is in progress, or one was interrupted and the lock will be broken automatically.'
+                                : 'Free.'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>Alert email</th>
+                            <td>
+                                <?php if ( $alert_to ) : ?>
+                                    Failures and recoveries are emailed to <code><?php echo esc_html( $alert_to ); ?></code>.
+                                <?php else : ?>
+                                    No alert address is set, so nothing is emailed when the runner stops.
+                                <?php endif; ?>
+                                <a href="<?php echo esc_url( add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-settings' ), admin_url( 'edit.php' ) ) ); ?>">Change it under Settings.</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Reminder emails</th>
+                            <td><?php echo SFAF_Reminders::enabled() ? 'On.' : 'Off.'; ?> Sent at 6:00am site time on the day of the event, to registrations and the event&rsquo;s notification list. Native events only: imported events are never sent for.</td>
+                        </tr>
+                        <tr>
+                            <th>Automated fetching</th>
+                            <td><?php echo $fetch_on
+                                ? 'On. Third-party sources are fetched on every run.'
+                                : 'Off. Sources are only fetched when somebody presses "Fetch updates" on the calendar portal\'s Pending screen. Leave it off until the unpublish-on-removal behaviour has been watched through one real removal at source.'; ?></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="description">
+                    An external pinger may report a timeout even when the run finished: <code>wp-cron.php</code> keeps
+                    working after the connection drops. The log below is the source of truth, not the pinger's status code.
+                </p>
+            </div>
+
+            <div class="uc-admin-card">
+                <h2>Run log</h2>
+                <?php if ( empty( $log ) ) : ?>
+                    <p class="uc-no-data">Nothing has run yet. Press &ldquo;Run now&rdquo; to try it.</p>
+                <?php else : ?>
+                    <table class="uc-admin-table">
+                        <thead><tr><th>Started</th><th>Trigger</th><th>Status</th><th>Took</th><th>What ran</th></tr></thead>
+                        <tbody>
+                            <?php foreach ( $log as $entry ) : ?>
+                                <tr>
+                                    <td><?php echo esc_html( SFAF_Cron::local_time( isset( $entry['started_ts'] ) ? $entry['started_ts'] : 0 ) ); ?></td>
+                                    <td><?php echo esc_html( isset( $entry['trigger'] ) ? $entry['trigger'] : '' ); ?></td>
+                                    <td class="uc-cron-<?php echo esc_attr( isset( $entry['status'] ) ? $entry['status'] : '' ); ?>"><?php echo esc_html( isset( $entry['status'] ) ? $entry['status'] : '' ); ?></td>
+                                    <td><?php echo esc_html( isset( $entry['duration'] ) ? $entry['duration'] . 's' : '' ); ?></td>
+                                    <td>
+                                        <?php foreach ( (array) ( isset( $entry['tasks'] ) ? $entry['tasks'] : array() ) as $task ) : ?>
+                                            <div class="uc-cron-task">
+                                                <strong><?php echo esc_html( isset( $task['label'] ) ? $task['label'] : $task['task'] ); ?>:</strong>
+                                                <?php echo esc_html( isset( $task['summary'] ) ? $task['summary'] : '' ); ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p class="description">The newest <?php echo (int) SFAF_Cron::LOG_MAX; ?> runs are kept; older entries are pruned automatically.</p>
+                    <form method="post" style="margin-top:12px;">
+                        <?php wp_nonce_field( 'uc_cron_action', 'uc_cron_nonce' ); ?>
+                        <input type="hidden" name="uc_cron_action" value="clear_log" />
+                        <button type="submit" class="button">Clear the log</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
     }
 
     public function register_settings() {
@@ -157,7 +352,7 @@ class SFAF_Admin {
         }
 
         // Email addresses.
-        foreach ( array( 'email_rsvp_replyto', 'route_organizer_email', 'email_from_address', 'email_reply_to' ) as $field ) {
+        foreach ( array( 'email_rsvp_replyto', 'route_organizer_email', 'email_from_address', 'email_reply_to', 'cron_alert_email' ) as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_email( $input[ $field ] ) : '';
         }
 
@@ -333,7 +528,7 @@ class SFAF_Admin {
                                     <td><strong><?php echo esc_html( $rsvp->name ); ?></strong></td>
                                     <td><?php echo esc_html( $rsvp->email ); ?></td>
                                     <td><?php echo esc_html( $rsvp->phone ); ?></td>
-                                    <td><span class="uc-status uc-status-<?php echo esc_attr( $rsvp->status ); ?>"><?php echo esc_html( ucfirst( $rsvp->status ) ); ?></span></td>
+                                    <td><span class="uc-status uc-status-<?php echo esc_attr( $rsvp->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $rsvp->status ) ); ?></span></td>
                                     <td><?php echo esc_html( date( 'M j, Y g:i A', strtotime( $rsvp->created_at ) ) ); ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -466,7 +661,7 @@ class SFAF_Admin {
                                 <tr>
                                     <td><a href="<?php echo esc_url( get_edit_post_link( $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                                     <td><?php echo $d ? esc_html( date_i18n( 'M j, Y', strtotime( $d ) ) ) : 'Not set'; ?></td>
-                                    <td><?php echo esc_html( ucfirst( get_post_status( $id ) ) ); ?></td>
+                                    <td><?php echo esc_html( sfaf_status_label( get_post_status( $id ) ) ); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -1309,8 +1504,8 @@ class SFAF_Admin {
                     <div class="uc-panel-body">
                         <?php $health = SFAF_Cron::health(); ?>
                         <p class="description"><strong>Status:</strong> <?php echo esc_html( $health['message'] ); ?>
-                            The full run log and a &ldquo;Run now&rdquo; button live in the
-                            <a href="<?php echo esc_url( home_url( '/caladmin/automation' ) ); ?>">calendar portal under Automation</a>.</p>
+                            The full run log and a &ldquo;Run now&rdquo; button are on the
+                            <a href="<?php echo esc_url( SFAF_Cron::admin_url() ); ?>">Automation screen</a>.</p>
 
                         <?php if ( ! SFAF_Cron::wp_cron_disabled() ) : ?>
                             <p class="description" style="color:#92400e;">
@@ -1348,6 +1543,28 @@ class SFAF_Admin {
                             </div>
                             <label class="uc-toggle"><input type="checkbox" name="uc_settings[auto_fetch_enabled]" value="1" <?php checked( $s( 'auto_fetch_enabled' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>
                         </div>
+
+                        <h3>Failure alerts</h3>
+                        <p class="description">
+                            An admin notice only works on somebody who is logged in and looking, which is exactly what
+                            nobody is doing at 3am. These two conditions are also emailed: three failed runs in a row,
+                            and no completed run for three hours. You get one message when it breaks, at most one a day
+                            while it stays broken, and one when it starts working again.
+                            <strong>Separate from the event email settings on purpose:</strong> this is about the
+                            server, not about the events.
+                        </p>
+                        <div class="uc-field-row">
+                            <label for="uc_cron_alert_email">Alert address</label>
+                            <input type="email" id="uc_cron_alert_email" name="uc_settings[cron_alert_email]"
+                                   value="<?php echo esc_attr( $s( 'cron_alert_email' ) ); ?>"
+                                   class="uc-input"
+                                   placeholder="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>" />
+                        </div>
+                        <p class="description">
+                            Leave blank to use this site's administration email
+                            (<code><?php echo esc_html( get_option( 'admin_email' ) ); ?></code>).
+                            Alerts currently go to <code><?php echo esc_html( SFAF_Cron::alert_recipient() ?: 'nobody' ); ?></code>.
+                        </p>
                     </div>
                 </div>
 

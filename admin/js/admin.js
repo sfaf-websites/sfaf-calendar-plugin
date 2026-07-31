@@ -18,7 +18,35 @@
         initEventbritePreview();
         initGfmpProbe();
         initGalaxySync();
+        initBusyButtons();
     });
+
+    /**
+     * Buttons whose action takes real time on the server.
+     *
+     * "Run now" does the whole scheduled run synchronously, which can be
+     * several seconds of sending mail. As a plain submit it looked identical
+     * before and during, so people pressed it twice. This is a plain form POST
+     * still, so the page navigates when it finishes and there is no success or
+     * failure state to restore: the button only has to stop accepting a second
+     * press and say that it is working.
+     */
+    function initBusyButtons() {
+        $('button[data-uc-busy]').each(function () {
+            var $btn = $(this);
+            var $form = $btn.closest('form');
+            if (!$form.length) {
+                return;
+            }
+            $form.on('submit', function () {
+                if ($btn.prop('disabled')) {
+                    return false;
+                }
+                $btn.prop('disabled', true).attr('aria-busy', 'true')
+                    .html('<span class="uc-spinner" aria-hidden="true"></span>' + $btn.attr('data-uc-busy'));
+            });
+        });
+    }
 
     /**
      * WP color pickers (Branding)

@@ -158,6 +158,66 @@ function sfaf_icon( $name, $args = array() ) {
 }
 
 /**
+ * A post status as a person would say it.
+ *
+ * WordPress stores statuses as machine slugs and the portal was printing them
+ * with ucfirst(), which produced "Publish" and "Future" in a column headed
+ * Status. "Publish" is an instruction, not a state, and "Future" tells nobody
+ * that the event is scheduled to appear.
+ *
+ * The plugin's own two statuses take the wording they were registered with in
+ * SFAF_Sources::register_statuses(), so the queue screens and this label can
+ * never disagree about what an imported event is called. Anything unrecognised
+ * falls back to the registered object's label, and only then to a tidied slug,
+ * so a status added later reads properly without touching this function.
+ *
+ * @param string $status Raw status slug.
+ * @return string
+ */
+function sfaf_status_label( $status ) {
+    $status = (string) $status;
+
+    $known = array(
+        'publish'      => 'Published',
+        'draft'        => 'Draft',
+        'pending'      => 'Pending',
+        'future'       => 'Scheduled',
+        'private'      => 'Private',
+        'trash'        => 'Trash',
+        'auto-draft'   => 'Not started',
+        'inherit'      => 'Revision',
+        'uc_imported'  => 'Imported, pending review',
+        'uc_dismissed' => 'Dismissed',
+    );
+    if ( isset( $known[ $status ] ) ) {
+        return $known[ $status ];
+    }
+
+    $object = get_post_status_object( $status );
+    if ( $object && ! empty( $object->label ) ) {
+        return $object->label;
+    }
+    return ucfirst( str_replace( array( '_', '-' ), ' ', $status ) );
+}
+
+/**
+ * How an RSVP row's status reads. Same idea, different vocabulary: these are
+ * this plugin's own values in its own table, not WordPress post statuses.
+ *
+ * @param string $status
+ * @return string
+ */
+function sfaf_rsvp_status_label( $status ) {
+    $known = array(
+        'confirmed'  => 'Registered',
+        'subscribed' => 'Reminders only',
+        'cancelled'  => 'Cancelled',
+    );
+    $status = (string) $status;
+    return isset( $known[ $status ] ) ? $known[ $status ] : ucfirst( str_replace( '_', ' ', $status ) );
+}
+
+/**
  * Whether a per-event display feature should be shown.
  * Defaults to true when the meta has never been saved (new events).
  *

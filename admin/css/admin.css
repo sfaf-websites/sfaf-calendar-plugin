@@ -320,3 +320,34 @@
 .uc-probe-pre { max-height: 420px; overflow: auto; padding: 10px; border: 1px solid var(--uc-border); border-radius: 8px; background: #f9fafb; font-size: 12px; line-height: 1.45; white-space: pre; }
 .uc-probe-rawlabel { display: block; margin: 8px 0 3px; font-size: 11px; color: #6B7280; }
 .uc-probe-raw { width: 100%; font-family: Consolas, Monaco, monospace; font-size: 11px; white-space: pre; }
+
+/* Inline email validation, shared with the portal and the public forms.
+ * See public/js/sfaf-email.js. */
+.uc-admin-wrap input.uc-invalid,
+.uc-meta-box input.uc-invalid { border-color: #dc2626; box-shadow: 0 0 0 1px #dc2626; }
+.uc-admin-wrap input.uc-invalid:focus,
+.uc-meta-box input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
+.uc-field-error { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: #b91c1c; font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+ * Automation screen (moved here from /caladmin in 2.13.0).
+ * ------------------------------------------------------------------------ */
+.uc-cron-run-form { margin-left: auto; }
+.uc-cron-status th { width: 190px; text-align: left; vertical-align: top; white-space: nowrap; }
+.uc-cron-status td { vertical-align: top; }
+.uc-cron-task { font-size: 13px; line-height: 1.5; margin-bottom: 4px; }
+.uc-cron-task:last-child { margin-bottom: 0; }
+
+/* Run status. The word is the value in the cell, so colour is never the only
+ * thing carrying the meaning. */
+.uc-cron-ok { color: #15803d; font-weight: 600; }
+.uc-cron-partial, .uc-cron-stale { color: #92400e; font-weight: 600; }
+.uc-cron-failed, .uc-cron-failing { color: #b91c1c; font-weight: 600; }
+.uc-cron-skipped, .uc-cron-never { color: #6B7280; font-weight: 600; }
+
+/* Working indicator on a slow submit. */
+.uc-spinner { display: inline-block; width: 12px; height: 12px; margin-right: 7px; vertical-align: -1px;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    animation: uc-spin .7s linear infinite; }
+@keyframes uc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .uc-spinner { animation-duration: 2.4s; } }

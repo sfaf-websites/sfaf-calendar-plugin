@@ -9,7 +9,105 @@
         initRepeaters();
         initImagePicker();
         initConfirmButtons();
+        initAsyncActions();
     });
+
+    /**
+     * Slow actions that need to say they are working.
+     *
+     * "Fetch updates" is several seconds of remote HTTP. As a plain form POST
+     * it gave no sign it had started, so people pressed it again; and when it
+     * failed the browser showed an error page or nothing at all, with no way
+     * back to the screen they were on.
+     *
+     * The form is taken over here rather than replaced: the markup still posts
+     * normally without JavaScript, and the server still stores its report in
+     * the same transient the redirect target reads either way. What this adds
+     * is a disabled button with a spinner while it runs, a real navigation on
+     * success, and a visible message with the button restored on failure.
+     */
+    function initAsyncActions() {
+        document.querySelectorAll('form[data-uc-async]').forEach(function (form) {
+            var url = form.getAttribute('data-uc-ajax');
+            var action = form.getAttribute('data-uc-action');
+            var nonce = form.getAttribute('data-uc-ajax-nonce');
+            if (!url || !action || !nonce || !window.fetch) {
+                return; // leave the plain POST in place
+            }
+            var button = form.querySelector('button[type="submit"], button:not([type])');
+            if (!button) {
+                return;
+            }
+            var busyText = form.getAttribute('data-uc-busy') || 'Working…';
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (button.disabled) {
+                    return;
+                }
+                var restore = button.innerHTML;
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+                button.innerHTML = '<span class="uc-spinner" aria-hidden="true"></span>' + busyText;
+                clearActionError(form);
+
+                var body = new URLSearchParams();
+                body.append('action', action);
+                body.append('nonce', nonce);
+
+                function fail(message) {
+                    // Never silently put the button back: a restored button
+                    // with nothing said reads as "nothing happened", which is
+                    // exactly the wrong conclusion.
+                    button.disabled = false;
+                    button.removeAttribute('aria-busy');
+                    button.innerHTML = restore;
+                    showActionError(form, message);
+                }
+
+                fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString()
+                }).then(function (res) {
+                    return res.json().catch(function () {
+                        throw new Error('The server replied with something unreadable (HTTP ' + res.status + ').');
+                    });
+                }).then(function (json) {
+                    if (json && json.success && json.data && json.data.redirect) {
+                        window.location.href = json.data.redirect;
+                        return;
+                    }
+                    var msg = (json && json.data && json.data.message)
+                        ? json.data.message
+                        : 'That did not complete, and the server did not say why.';
+                    fail(msg);
+                }).catch(function (err) {
+                    fail((err && err.message) ? err.message : 'The request could not be completed. Check your connection and try again.');
+                });
+            });
+        });
+    }
+
+    function showActionError(form, message) {
+        var node = form.parentNode.querySelector('.uc-action-error[data-uc-for-form="1"]');
+        if (!node) {
+            node = document.createElement('p');
+            node.className = 'uc-action-error';
+            node.setAttribute('data-uc-for-form', '1');
+            node.setAttribute('role', 'alert');
+            form.parentNode.appendChild(node);
+        }
+        node.textContent = message;
+    }
+
+    function clearActionError(form) {
+        var node = form.parentNode.querySelector('.uc-action-error[data-uc-for-form="1"]');
+        if (node) {
+            node.remove();
+        }
+    }
 
     /* Event form: featured image picker (wp.media) + URL fallback */
     function initImagePicker() {

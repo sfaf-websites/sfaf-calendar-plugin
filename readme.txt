@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.12.0
+Stable tag: 2.13.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -71,7 +71,7 @@ might be 10am, or the next day. The fix is a real system cron job.
        wget -q -O /dev/null "https://YOURSITE.org/wp-cron.php?doing_wp_cron" >/dev/null 2>&1
 
    Replace YOURSITE.org with the real domain. The exact URL for this install is
-   shown in the calendar portal under **Automation > Cron URL**. Copy it from
+   shown in the WordPress admin under **Events > Automation > Cron URL**. Copy it from
    there rather than typing it.
 4. Click "Add New Cron Job".
 5. Edit `wp-config.php` and add this line **above** the
@@ -82,14 +82,14 @@ might be 10am, or the next day. The fix is a real system cron job.
    This stops WordPress firing scheduled tasks off visitor traffic, so the
    system cron is the only thing that triggers a run and the same work cannot
    happen twice.
-6. Go to **/caladmin > Automation** and press **Run now**. A new entry should
+6. Go to **Events > Automation** in the WordPress admin and press **Run now**. A new entry should
    appear at the top of the run log. Come back after the next hour and check a
    second entry appeared on its own.
 
 **An external pinger works too** (cron-job.org, UptimeRobot and similar). Point
 it at the same URL, hourly. Note that a pinger may report a timeout or a failure
 even when the run completed: `wp-cron.php` calls `ignore_user_abort()` and keeps
-working after the connection is dropped. **The run log in the portal is the
+working after the connection is dropped. **The run log under Events > Automation is the
 source of truth, not the pinger's status code.**
 
 **Do not add more than one trigger.** One cron job or one pinger, not both. The
@@ -114,6 +114,22 @@ has been seen go through correctly. Until then use "Fetch updates" on the
 portal's Pending screen, which runs the same fetch with somebody watching.
 
 == Changelog ==
+
+= 2.13.0 =
+* The portal's Events list sorts on Event, Date, RSVPs and Status. Click a heading to sort by it, click again to reverse it. The active column carries an arrow and an aria-sort attribute, so which column is sorted and in which direction is readable both by eye and by a screen reader, rather than being implied by the order of the rows. Category, Series and Source do not sort, and that is deliberate: an event can hold more than one category so there is no single answer, Series is another post's title, and Source reads "Local" on nearly every row.
+* Sorting is in the URL, so a sorted view can be linked, bookmarked and shared. It survives filtering (the filter form carries it) and it survives paging (every page link carries it), and changing the sort returns you to page one rather than leaving you on page four of a different ordering.
+* The Events list is paged, 25 to a page. It was previously capped at 50 with no pager at all, which silently dropped every event past the fiftieth: not a truncation anybody was told about, and indistinguishable from not having those events.
+* Statuses read as words. The Status column printed WordPress's own slugs through ucfirst(), so an event that was live said "Publish", which is an instruction rather than a state, and a scheduled one said "Future", which tells nobody anything. Published, Draft, Pending, Scheduled, Private and Trash now, plus the plugin's two import statuses in the wording the import queue already used. Fixed everywhere it leaked, not only on the Events list: the orphan repair screen, the WordPress admin series screens, and the RSVP lists, which had the same problem with their own values and now read Registered, Reminders only and Cancelled.
+* Email validation is inline, specific and persistent. The old behaviour was the browser's floating bubble: it appeared on submit, hovered over the page and vanished the moment the pointer moved, leaving no mark on the field. There is now a red border on the offending field until it is corrected, and the message sits below the field in the flow where it stays put. The field is marked aria-invalid and the message is wired to it with aria-describedby, so it is announced and not merely drawn.
+* The message says what is actually wrong. "kgkg.ff.com" is a real domain and not an email address, so it says to include an @, not that the value is "invalid": being told something is invalid is being told nothing you did not already know. Missing local part, missing domain, a domain with no dot, more than one @, and spaces each get their own sentence.
+* One validator, every email field in the plugin: the RSVP form, the reminder signup form, the per-event Reply-To, the per-event notification list (checked line by line, naming the offending lines), the event Organizer email, and the six address fields in Settings and the event meta boxes. Server-side rejections render in exactly the same shape as the client-side ones, so the two are indistinguishable to somebody reading them. Without JavaScript the browser's own validation is left in place rather than removed.
+* "Fetch updates" says it is working. It is several seconds of remote HTTP, and as a plain form post it looked identical before, during and after, so people pressed it twice. The button now disables, shows a spinner, and either navigates on success or restores itself with a visible message on failure. It never restores itself silently: a button that comes back with nothing said reads as "nothing happened", which is exactly the wrong conclusion. The form still posts normally without JavaScript.
+* Automation moved out of the calendar portal and into the WordPress admin, at Events > Automation. The run log, cron health, the cron URL and "Run now" are facts about how the server is configured; the people who manage events can neither act on them nor fix them. It is gated on manage_options rather than on the plugin's own calendar-admin role, which is the capability that actually corresponds to "may change how this site runs". The old /caladmin/automation address redirects, so nothing that linked to it breaks.
+* The scheduled-tasks card and the cron health line are gone from the portal Dashboard for the same reason: a warning nobody on that screen can act on only teaches people to ignore warnings. Everything else on the Dashboard is unchanged.
+* Cron failures are emailed, not only shown as an admin notice. An admin notice needs somebody logged in and looking, which is precisely what nobody is doing at three in the morning. The two conditions that were already detected, three consecutive failed runs and no completed run for three hours, now also send mail, saying what was detected, when the last successful run was, and linking to the Automation screen.
+* The health check does not run inside the runner it monitors. That is the whole difficulty with alerting on a dead cron: anything the runner would have sent does not send either, because the runner is what is broken. It hangs off `wp_loaded` instead, which fires on every request this site serves, including an admin page load, a visitor on the calendar and WordPress's own pseudo-cron, none of which depend on the runner having run. It costs one autoloaded option read per request and does real work at most every fifteen minutes.
+* Alerts do not repeat themselves into uselessness. One message on the transition into a bad state, then at most one a day while it lasts, so a runner dead for a week produces seven emails and not a hundred and sixty. A recovery message is sent when it starts working again, so nobody has to go and check. A send that fails is retried at the next check rather than being counted as delivered.
+* An alert address setting, defaulting to the site administration email, kept separate from the event email settings: this is about whether the server is working, and the person who fields that is very often not the person who fields a question about an event.
 
 = 2.12.0 =
 * Fixed the occurrence-delete bug, which is the one that mattered. Removing a single occurrence from a recurring series did not stick: nothing recorded that the date had gone, so the next time the series was saved the generator saw a gap and filled it back in. A weekly group cancelled for a public holiday quietly un-cancelled itself the moment anybody touched the series. Cancellations are now recorded against the series as dates, so they survive the occurrence being gone, any number of later saves, a change of cadence and a change of end date.
@@ -143,7 +159,7 @@ portal's Pending screen, which runs the same fetch with somebody watching.
 * The reminder's "Can't make it?" link releases the recipient's place so it goes back to the count. The link is tokenised per recipient per event, is not guessable, and needs no account. Opening it never cancels anything on its own: it shows a page that asks, and the button on that page is what acts, because mail clients and security scanners fetch the links in an email without a person ever clicking one. A cancelled registration is kept and marked cancelled rather than deleted, so the history survives.
 * One hourly scheduled runner for every unattended job, rather than each feature scheduling its own. It works the same whether it is triggered by a real system cron, by WordPress's visitor-triggered pseudo-cron, or by a "Run now" button in the portal.
 * A run lock, so a slow run cannot be overlapped by the next one and process the same work twice. A lock abandoned by a fatal is broken automatically after fifteen minutes, so a crash cannot stop the runner permanently and silently.
-* A run log: start time, what ran, per-task counts, completion status and duration, newest first, viewable in the calendar portal under Automation. The newest sixty runs are kept and older entries are pruned on every write, so it cannot grow forever. This is unattended work, and when something happens at 3am the log is the only thing that can say what did it.
+* A run log: start time, what ran, per-task counts, completion status and duration, newest first, viewable under Events > Automation in the WordPress admin (it lived in the calendar portal until 2.13.0). The newest sixty runs are kept and older entries are pruned on every write, so it cannot grow forever. This is unattended work, and when something happens at 3am the log is the only thing that can say what did it.
 * Failure is visible rather than silent. An admin notice appears after three consecutive failed runs, and separately when no run has completed for three hours, which is the case a failure counter cannot catch: a cron that simply stops produces no failures at all. Both also show on the Automation screen with the cron URL to check.
 * Automated fetching, off by default. The setting exists and is deliberately left disabled: the unpublish-on-removal guard built in 2.7.0 has never been exercised against an actual removal at source, and running that unattended before it has been watched once is how live events disappear overnight. Switch it on by hand after that test. "Fetch updates" on the dashboard is unchanged.
 * Per-event notification list, on native events, in the portal. Who else receives the event's reminder, so staff can see what participants are sent. The person who created the event is on it automatically, taken from the author WordPress already stores rather than a second copy that could drift; they can take themselves off. Other calendar users are added from a picker, and anyone outside the calendar system by typing their address. An address that is not valid is rejected and named back rather than dropped in silence. The resulting list is shown in plain text, along with what actually went out. It is a notification list and nothing else: it grants no permission and changes nothing about who can edit the event.

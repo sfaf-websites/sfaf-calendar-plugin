@@ -25,6 +25,53 @@ class SFAF_Portal {
         self::add_rewrite_rules();
         add_filter( 'query_vars', array( $this, 'query_vars' ) );
         add_action( 'template_redirect', array( $this, 'maybe_render' ), 0 );
+
+        // "Fetch updates" over AJAX, so the button can report finishing and
+        // report failing rather than the page simply sitting there. The plain
+        // POST route is still in dispatch_post() and still works without
+        // JavaScript.
+        add_action( 'wp_ajax_sfaf_portal_fetch', array( $this, 'ajax_fetch_sources' ) );
+    }
+
+    /**
+     * Run a source fetch and say what happened.
+     *
+     * A fetch is several seconds of remote HTTP with nothing on screen, and
+     * the old form POST gave no sign it had started, no sign it had finished,
+     * and no sign when it failed: the page simply reloaded, or did not.
+     *
+     * The report still goes into the same per-user transient the redirect
+     * target reads, so there is exactly one piece of report-rendering code and
+     * the AJAX and non-AJAX routes cannot drift apart.
+     */
+    public function ajax_fetch_sources() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( array( 'message' => 'You are signed out. Sign in again and retry.' ), 403 );
+        }
+        // $die = false, so an expired nonce comes back as a readable sentence
+        // rather than a bare "-1" the browser cannot parse as JSON. A page left
+        // open overnight is the ordinary way to reach this.
+        if ( ! check_ajax_referer( 'sfaf_portal_fetch', 'nonce', false ) ) {
+            wp_send_json_error( array( 'message' => 'This page has been open a while and its security token expired. Reload and try again.' ), 403 );
+        }
+
+        $user = wp_get_current_user();
+        if ( ! $this->is_admin_role( $user ) ) {
+            wp_send_json_error( array( 'message' => 'You do not have permission to fetch from sources.' ), 403 );
+        }
+
+        try {
+            $results = SFAF_Sources::run_all();
+        } catch ( \Throwable $e ) {
+            // Contained and reported. run_all() already contains a single
+            // adapter's failure, so reaching here means the framework broke.
+            wp_send_json_error( array( 'message' => 'The fetch stopped unexpectedly: ' . $e->getMessage() ) );
+        }
+
+        set_transient( 'sfaf_fetch_report_' . $user->ID, $results, 10 * MINUTE_IN_SECONDS );
+        wp_send_json_success( array(
+            'redirect' => add_query_arg( 'msg', 'fetched', $this->url( 'pending' ) ),
+        ) );
     }
 
     public static function add_rewrite_rules() {
@@ -175,7 +222,12 @@ class SFAF_Portal {
             case 'rsvps':      $this->render_rsvps( $user ); break;
             case 'optins':     $this->render_optins( $user ); break;
             case 'pending':    $this->render_pending( $user ); break;
-            case 'automation': $this->render_automation( $user ); break;
+            case 'automation':
+                // Moved to the WordPress admin in 2.13.0. Kept as a redirect
+                // rather than deleted, because this URL has been linked from
+                // notices, the readme and anybody's bookmarks.
+                wp_safe_redirect( SFAF_Cron::admin_url(), 301 );
+                exit;
             case 'users':      $this->render_users( $user ); break;
             case 'faq-sets':   $this->render_faq_sets( $user ); break;
             default:           $this->render_dashboard( $user );
@@ -320,22 +372,9 @@ class SFAF_Portal {
                 $this->redirect( 'pending', array( 'msg' => 'fetched' ) );
                 break;
 
-            /* ---- The scheduled runner. --------------------------------------
-             *
-             * "Run now" goes through exactly the same SFAF_Cron::run() that
-             * real cron calls, lock and log included. Testing a different code
-             * path from the one that runs at 6am would test nothing. */
-            case 'run_cron_now':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                SFAF_Cron::run( 'manual' );
-                $this->redirect( 'automation', array( 'msg' => 'cron_ran' ) );
-                break;
-
-            case 'clear_cron_log':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                SFAF_Cron::clear_log();
-                $this->redirect( 'automation', array( 'msg' => 'cron_log_cleared' ) );
-                break;
+            /* The scheduled runner's controls (Run now, Clear log) moved to
+             * the WordPress admin in 2.13.0 along with the rest of Automation.
+             * See SFAF_Admin::handle_cron_action(). */
 
             case 'import_dismiss':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -975,7 +1014,8 @@ class SFAF_Portal {
             wp_print_footer_scripts();
             wp_print_media_templates();
         }
-        ?><script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
+        ?><script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/sfaf-email.js?ver=' . SFAF_VERSION ); ?>"></script>
+<script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
 </body></html><?php
     }
 
@@ -997,9 +1037,13 @@ class SFAF_Portal {
             $nav['optins'] = array( 'Email Opt-ins', 'optins', 'mail' );
         }
         if ( $is_admin ) {
-            $nav['pending']    = array( 'Pending', 'pending', 'clock' );
-            $nav['automation'] = array( 'Automation', 'automation', 'bolt' );
-            $nav['users']      = array( 'Users', 'users', 'users' );
+            // Automation moved out of this portal in 2.13.0. The run log, cron
+            // health and "Run now" are server administration, not event
+            // management, and they are gated on manage_options rather than on
+            // a calendar role. They live under Events > Automation in the
+            // WordPress admin now.
+            $nav['pending'] = array( 'Pending', 'pending', 'clock' );
+            $nav['users']   = array( 'Users', 'users', 'users' );
         }
         ?>
         <div class="uc-portal-layout">
@@ -1066,8 +1110,6 @@ class SFAF_Portal {
             'faq_set_applied'  => 'FAQ set applied.',
             'faq_set_saved'    => 'FAQ set saved.',
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
-            'cron_ran'         => 'Run complete. The newest entry in the log below is what it did.',
-            'cron_log_cleared' => 'Run log cleared.',
             'occurrence_cancelled'     => 'That occurrence is cancelled. It will not come back the next time the series is saved. You can restore it from the series screen.',
             'occurrence_cancel_failed' => 'That occurrence could not be cancelled. See the message on the series screen.',
             'occurrence_restored'      => 'Occurrence restored.',
@@ -1197,13 +1239,23 @@ class SFAF_Portal {
             foreach ( SFAF_Recurrence::find_orphans() as $ids ) {
                 $orphan_count += count( $ids );
             }
-            $health = SFAF_Cron::health();
-            $needs  = ( $imports || $pending || $orphan_count || 'ok' !== $health['state'] );
+            /*
+             * NOTHING ABOUT THE SCHEDULED RUNNER APPEARS HERE ANY MORE.
+             *
+             * Cron health, the run log and "Run now" moved to the WordPress
+             * admin in 2.13.0. Leaving a health line here would have been worse
+             * than useless: it is not something an event manager can act on,
+             * there is no longer a screen in this portal to send them to, and a
+             * warning with no available action just teaches people to ignore
+             * warnings. An administrator sees it on the admin notice, on the
+             * Automation screen, and now by email.
+             */
+            $needs = ( $imports || $pending || $orphan_count );
             ?>
             <div class="uc-card">
                 <div class="uc-card-head"><h2>Needs attention</h2></div>
                 <?php if ( ! $needs ) : ?>
-                    <p class="uc-empty">Nothing is waiting. Imports are clear, the scheduled runner is healthy, and no series is broken.</p>
+                    <p class="uc-empty">Nothing is waiting. Imports are clear and no series is broken.</p>
                 <?php else : ?>
                     <ul class="uc-attention-list">
                         <?php if ( $imports ) : ?>
@@ -1228,26 +1280,8 @@ class SFAF_Portal {
                                 <a href="<?php echo esc_url( $this->url( 'series/orphans' ) ); ?>">Repair &rarr;</a>
                             </li>
                         <?php endif; ?>
-                        <?php if ( 'ok' !== $health['state'] ) : ?>
-                            <li class="uc-cron-<?php echo esc_attr( $health['state'] ); ?>">
-                                <?php echo esc_html( $health['message'] ); ?>
-                                <a href="<?php echo esc_url( $this->url( 'automation' ) ); ?>">Automation &rarr;</a>
-                            </li>
-                        <?php endif; ?>
                     </ul>
                 <?php endif; ?>
-            </div>
-
-            <div class="uc-card">
-                <div class="uc-card-head">
-                    <h2>Scheduled tasks</h2>
-                    <a href="<?php echo esc_url( $this->url( 'automation' ) ); ?>">Automation &rarr;</a>
-                </div>
-                <p class="uc-cron-<?php echo esc_attr( $health['state'] ); ?>"><?php echo esc_html( $health['message'] ); ?></p>
-                <p class="uc-hint">
-                    Reminder emails are <?php echo SFAF_Reminders::enabled() ? 'on' : 'off'; ?>.
-                    Automated fetching is <?php echo SFAF_Cron::auto_fetch_enabled() ? 'on' : 'off'; ?>.
-                </p>
             </div>
         <?php endif; ?>
 
@@ -1292,7 +1326,7 @@ class SFAF_Portal {
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                     <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
-                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( ucfirst( $st ) ); ?></span></td>
+                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -1338,19 +1372,9 @@ class SFAF_Portal {
             );
         }
 
-        // The runner.
-        if ( $this->is_admin_role( $user ) ) {
-            foreach ( array_slice( SFAF_Cron::log(), 0, 3 ) as $entry ) {
-                $rows[] = array(
-                    'when' => isset( $entry['started_ts'] ) ? (int) $entry['started_ts'] : 0,
-                    'text' => sprintf(
-                        'Scheduled run (%s): %s',
-                        isset( $entry['trigger'] ) ? $entry['trigger'] : 'cron',
-                        isset( $entry['status'] ) ? $entry['status'] : ''
-                    ),
-                );
-            }
-        }
+        // Scheduled runs are deliberately NOT listed here. They are server
+        // administration and moved out of this portal in 2.13.0; the run log
+        // lives under Events > Automation in the WordPress admin.
 
         usort( $rows, function ( $a, $b ) {
             return $b['when'] - $a['when'];
@@ -1513,6 +1537,74 @@ class SFAF_Portal {
      * Rendering — events list
      * ================================================================== */
 
+    /**
+     * Columns the Events list can sort on, with the direction a first click
+     * should produce.
+     *
+     * NOT EVERY COLUMN, AND THE OMISSIONS ARE DELIBERATE. Category is a
+     * taxonomy an event can hold more than one of, so "sorted by category" has
+     * no single answer; Series is derived from another post's title; Source is
+     * "Local" on nearly every row. Sorting any of those would need a join whose
+     * result nobody could predict, which is worse than a column that plainly
+     * does not sort.
+     *
+     * @return array<string,string> column key => first-click direction
+     */
+    private function sortable_columns() {
+        return array(
+            'title'  => 'asc',   // alphabetical is what a first click should mean
+            'date'   => 'desc',  // newest first, matching the default view
+            'rsvps'  => 'desc',  // "which are filling up" is the useful question
+            'status' => 'asc',
+        );
+    }
+
+    /**
+     * One sortable column heading.
+     *
+     * The indicator is a character AND an aria-sort attribute, not colour or
+     * weight: a column header that only looks different is no indicator at all
+     * to a screen reader, and the whole point is being able to tell at a glance
+     * which of eight columns the table is ordered by.
+     */
+    private function sort_header( $column, $label, $sort, $filters ) {
+        $sortable = $this->sortable_columns();
+        if ( ! isset( $sortable[ $column ] ) ) {
+            return '<th>' . esc_html( $label ) . '</th>';
+        }
+
+        $active = ( $sort['orderby'] === $column );
+        // Clicking the active column flips it; clicking a new one starts at
+        // that column's natural direction rather than always at ascending.
+        $next   = $active ? ( 'asc' === $sort['order'] ? 'desc' : 'asc' ) : $sortable[ $column ];
+
+        // Every filter travels with the sort, and the page resets to 1: a sort
+        // that silently kept you on page 4 of a different ordering would show
+        // rows nobody asked for.
+        $args = array_filter( array(
+            's'       => $filters['s'],
+            'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'status'  => $filters['status'],
+            'from'    => $filters['from'],
+            'to'      => $filters['to'],
+            'orderby' => $column,
+            'order'   => $next,
+        ), function ( $v ) { return '' !== $v && null !== $v; } );
+
+        $url  = add_query_arg( $args, $this->url( 'events' ) );
+        $mark = $active ? ( 'asc' === $sort['order'] ? ' ▲' : ' ▼' ) : '';
+        $aria = $active ? ( 'asc' === $sort['order'] ? 'ascending' : 'descending' ) : 'none';
+
+        return '<th class="uc-sortable' . ( $active ? ' uc-sorted' : '' ) . '" aria-sort="' . esc_attr( $aria ) . '">'
+            . '<a href="' . esc_url( $url ) . '">' . esc_html( $label )
+            . '<span class="uc-sort-mark" aria-hidden="true">' . $mark . '</span>'
+            . '<span class="screen-reader-text">'
+            . esc_html( $active
+                ? ( 'asc' === $sort['order'] ? ', sorted ascending. Activate to sort descending.' : ', sorted descending. Activate to sort ascending.' )
+                : ', not sorted. Activate to sort.' )
+            . '</span></a></th>';
+    }
+
     private function render_events( $user ) {
         $this->chrome_open( $user, 'events' );
         $filters = array(
@@ -1522,7 +1614,32 @@ class SFAF_Portal {
             'from'     => isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '',
             'to'       => isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '',
         );
+
+        // SORT LIVES IN THE URL so a view can be linked, bookmarked and shared,
+        // and so it survives paging and filtering without a session or a cookie
+        // holding state the address bar does not admit to.
+        $sortable = $this->sortable_columns();
+        $orderby  = isset( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : 'date';
+        if ( ! isset( $sortable[ $orderby ] ) ) {
+            $orderby = 'date';
+        }
+        $order = ( isset( $_GET['order'] ) && 'asc' === strtolower( sanitize_key( $_GET['order'] ) ) ) ? 'asc' : 'desc';
+        if ( ! isset( $_GET['order'] ) ) {
+            $order = $sortable[ $orderby ];
+        }
+        $sort  = array( 'orderby' => $orderby, 'order' => $order );
+        $paged = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+
         $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+
+        $ids = $this->query_events( $user, array_merge( $filters, array(
+            'orderby'  => $orderby,
+            'order'    => $order,
+            'paged'    => $paged,
+            'per_page' => 25,
+        ) ) );
+        $total = $this->last_query_total;
+        $pages = $this->last_query_pages;
         ?>
         <div class="uc-page-head">
             <h1><?php echo $this->can_view_all( $user ) ? 'All Events' : 'My Events'; ?></h1>
@@ -1539,23 +1656,83 @@ class SFAF_Portal {
             </select>
             <select name="status">
                 <option value="">Any status</option>
-                <?php foreach ( array( 'publish' => 'Published', 'pending' => 'Pending', 'draft' => 'Draft' ) as $k => $lbl ) : ?>
-                    <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $filters['status'], $k ); ?>><?php echo esc_html( $lbl ); ?></option>
+                <?php foreach ( array( 'publish', 'pending', 'draft', 'future' ) as $k ) : ?>
+                    <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $filters['status'], $k ); ?>><?php echo esc_html( sfaf_status_label( $k ) ); ?></option>
                 <?php endforeach; ?>
             </select>
             <input type="date" name="from" value="<?php echo esc_attr( $filters['from'] ); ?>" title="From date" />
             <input type="date" name="to" value="<?php echo esc_attr( $filters['to'] ); ?>" title="To date" />
+            <?php
+            // The sort rides along as hidden fields, so filtering does not
+            // silently throw away the ordering somebody just chose.
+            ?>
+            <input type="hidden" name="orderby" value="<?php echo esc_attr( $orderby ); ?>" />
+            <input type="hidden" name="order" value="<?php echo esc_attr( $order ); ?>" />
             <button class="uc-btn" type="submit">Filter</button>
         </form>
 
         <div class="uc-card">
-            <?php $this->events_table( $this->query_events( $user, $filters ), $user ); ?>
+            <?php $this->events_table( $ids, $user, $sort, $filters ); ?>
+            <?php $this->events_pagination( $paged, $pages, $total, $sort, $filters ); ?>
         </div>
         <?php
         $this->chrome_close();
     }
 
-    private function events_table( $ids, $user ) {
+    /**
+     * Page links that carry the whole view with them.
+     *
+     * The list used to be capped at 50 with no paging at all, which silently
+     * dropped every event past the fiftieth: not a truncation anybody was told
+     * about, and indistinguishable from not having those events.
+     */
+    private function events_pagination( $paged, $pages, $total, $sort, $filters ) {
+        if ( $pages < 2 ) {
+            if ( $total ) {
+                echo '<p class="uc-hint uc-list-total">' . (int) $total . ' ' . esc_html( _n( 'event', 'events', $total ) ) . '.</p>';
+            }
+            return;
+        }
+
+        $base = array_filter( array(
+            's'       => $filters['s'],
+            'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'status'  => $filters['status'],
+            'from'    => $filters['from'],
+            'to'      => $filters['to'],
+            'orderby' => $sort['orderby'],
+            'order'   => $sort['order'],
+        ), function ( $v ) { return '' !== $v && null !== $v; } );
+
+        $link = function ( $page ) use ( $base ) {
+            return add_query_arg( array_merge( $base, array( 'paged' => (int) $page ) ), $this->url( 'events' ) );
+        };
+        ?>
+        <div class="uc-list-pagination">
+            <p class="uc-hint uc-list-total">
+                <?php echo (int) $total; ?> <?php echo esc_html( _n( 'event', 'events', $total ) ); ?>.
+                Page <?php echo (int) $paged; ?> of <?php echo (int) $pages; ?>.
+            </p>
+            <div class="uc-list-pages">
+                <?php if ( $paged > 1 ) : ?>
+                    <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $link( $paged - 1 ) ); ?>" rel="prev">&larr; Previous</a>
+                <?php endif; ?>
+                <?php for ( $p = 1; $p <= $pages; $p++ ) : ?>
+                    <?php if ( $p === $paged ) : ?>
+                        <span class="uc-page-num uc-page-current" aria-current="page"><?php echo (int) $p; ?></span>
+                    <?php else : ?>
+                        <a class="uc-page-num" href="<?php echo esc_url( $link( $p ) ); ?>"><?php echo (int) $p; ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+                <?php if ( $paged < $pages ) : ?>
+                    <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $link( $paged + 1 ) ); ?>" rel="next">Next &rarr;</a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    private function events_table( $ids, $user, $sort = null, $filters = null ) {
         if ( empty( $ids ) ) {
             echo '<p class="uc-empty">No events found.</p>';
             return;
@@ -1564,9 +1741,23 @@ class SFAF_Portal {
         // queries and all RSVP counts in one, so the loop below is cache-only.
         _prime_post_caches( $ids, true, true );
         sfaf_prime_rsvp_counts( $ids );
+
+        // Called without a sort from screens that are not the Events list.
+        $plain = ( null === $sort );
         ?>
         <table class="uc-table">
-            <thead><tr><th>Event</th><th>Date</th><th>Category</th><th>RSVPs</th><th>Status</th><th>Series</th><th>Source</th><th class="uc-col-actions">Actions</th></tr></thead>
+            <thead><tr>
+                <?php if ( $plain ) : ?>
+                    <th>Event</th><th>Date</th><th>Category</th><th>RSVPs</th><th>Status</th>
+                <?php else :
+                    echo $this->sort_header( 'title', 'Event', $sort, $filters );
+                    echo $this->sort_header( 'date', 'Date', $sort, $filters );
+                    echo '<th>Category</th>';
+                    echo $this->sort_header( 'rsvps', 'RSVPs', $sort, $filters );
+                    echo $this->sort_header( 'status', 'Status', $sort, $filters );
+                endif; ?>
+                <th>Series</th><th>Source</th><th class="uc-col-actions">Actions</th>
+            </tr></thead>
             <tbody>
             <?php foreach ( $ids as $id ) :
                 $date = get_post_meta( $id, '_uc_event_date', true );
@@ -1578,7 +1769,7 @@ class SFAF_Portal {
                     <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
-                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( ucfirst( $st ) ); ?></span></td>
+                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
                     <td><?php
                         if ( sfaf_is_orphaned_occurrence( $id ) ) {
                             echo '<a class="uc-tlink uc-link-danger" href="' . esc_url( $this->url( 'series/orphans' ) ) . '">Series missing</a>';
@@ -2505,16 +2696,23 @@ class SFAF_Portal {
                         ?>
                         <div class="uc-side-box">
                             <h3>Replies to</h3>
-                            <?php if ( $reply_rejected ) : ?>
-                                <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>
-                                    Not a valid email address, so it was not saved: <?php echo esc_html( $reply_rejected ); ?>
-                                </span></p>
-                            <?php endif; ?>
                             <label class="uc-field">
                                 <span class="uc-field-label">Reply-To address</span>
-                                <input type="email" name="event_replyto"
+                                <?php
+                                // A server-side rejection renders in exactly the
+                                // shape the client-side validator uses, so the
+                                // two are indistinguishable to the person
+                                // reading them and to a screen reader.
+                                ?>
+                                <input type="email" name="event_replyto" id="uc-event-replyto"
                                        value="<?php echo esc_attr( '' !== $reply_current ? $reply_current : $reply_resolved ); ?>"
+                                       <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
                                        placeholder="events@sfaf.org" />
+                                <?php if ( $reply_rejected ) : ?>
+                                    <p class="uc-field-error" id="uc-event-replyto-error" data-uc-for="uc-event-replyto" role="alert">
+                                        <?php echo esc_html( 'Not an email address, so it was not saved: ' . $reply_rejected ); ?>
+                                    </p>
+                                <?php endif; ?>
                             </label>
                             <p class="uc-hint">
                                 Where a reply to this event's reminder email lands. One address. A shared or group
@@ -2703,13 +2901,6 @@ class SFAF_Portal {
                 <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
             <?php endif; ?>
 
-            <?php if ( is_array( $rejected ) && ! empty( $rejected ) ) : ?>
-                <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>
-                    Not a valid email address, so <?php echo esc_html( 1 === count( $rejected ) ? 'it was' : 'they were' ); ?> not saved:
-                    <?php echo esc_html( implode( ', ', $rejected ) ); ?>
-                </span></p>
-            <?php endif; ?>
-
             <input type="hidden" name="notify_list_present" value="1" />
 
             <?php if ( $author && is_email( $author->user_email ) ) : ?>
@@ -2737,11 +2928,29 @@ class SFAF_Portal {
                 </div>
             <?php endif; ?>
 
+            <?php
+            /*
+             * data-uc-email-list hands this to the shared validator, which
+             * checks it line by line and names the offending lines rather than
+             * saying the box as a whole is wrong. Same red border, same message
+             * position and same aria wiring as a single email input.
+             */
+            $notify_invalid = ( is_array( $rejected ) && ! empty( $rejected ) );
+            ?>
             <label class="uc-field" style="margin-top:14px;">
                 <span class="uc-field-label">Anyone else</span>
-                <textarea name="notify_emails" rows="3" placeholder="supervisor@example.org&#10;co-host@example.org"><?php echo esc_textarea( implode( "\n", array_map( 'strval', $extra_emails ) ) ); ?></textarea>
+                <textarea name="notify_emails" id="uc-notify-emails" rows="3"
+                          data-uc-email-list="1"
+                          <?php echo $notify_invalid ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-notify-emails-error"' : ''; ?>
+                          placeholder="supervisor@example.org&#10;co-host@example.org"><?php echo esc_textarea( implode( "\n", array_map( 'strval', $extra_emails ) ) ); ?></textarea>
             </label>
-            <p class="uc-hint">One address per line, for people outside the calendar system: a supervisor, a co-host. Anything that is not a valid address is rejected on save and named above.</p>
+            <?php if ( $notify_invalid ) : ?>
+                <p class="uc-field-error" id="uc-notify-emails-error" data-uc-for="uc-notify-emails" role="alert">
+                    <?php echo esc_html( 1 === count( $rejected ) ? 'This is not an email address, so it was not saved: ' : 'These are not email addresses, so they were not saved: ' ); ?>
+                    <?php echo esc_html( implode( ', ', $rejected ) ); ?>
+                </p>
+            <?php endif; ?>
+            <p class="uc-hint">One address per line, for people outside the calendar system: a supervisor, a co-host. Anything that is not an address is rejected on save and named here.</p>
 
             <p class="uc-hint" style="margin-top:14px;"><strong>Currently on the list</strong></p>
             <?php if ( empty( $resolved ) ) : ?>
@@ -2991,7 +3200,7 @@ class SFAF_Portal {
                             <tr>
                                 <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                                 <td><?php echo $d ? esc_html( date_i18n( 'M j, Y', strtotime( $d ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                                <td><span class="uc-pill uc-pill-<?php echo esc_attr( get_post_status( $id ) ); ?>"><?php echo esc_html( ucfirst( get_post_status( $id ) ) ); ?></span></td>
+                                <td><span class="uc-pill uc-pill-<?php echo esc_attr( get_post_status( $id ) ); ?>"><?php echo esc_html( sfaf_status_label( get_post_status( $id ) ) ); ?></span></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -3082,130 +3291,6 @@ class SFAF_Portal {
             <?php endif; ?>
         </div>
         <?php
-    }
-
-    /* =====================================================================
-     * Rendering — automation (the scheduled runner)
-     * ================================================================== */
-
-    private function render_automation( $user ) {
-        if ( ! $this->is_admin_role( $user ) ) {
-            $this->chrome_open( $user, 'automation' );
-            echo '<div class="uc-card"><p class="uc-empty">Only calendar administrators can see the automation settings.</p></div>';
-            $this->chrome_close();
-            return;
-        }
-
-        $this->chrome_open( $user, 'automation' );
-
-        $health   = SFAF_Cron::health();
-        $log      = SFAF_Cron::log();
-        $next     = wp_next_scheduled( SFAF_Cron::HOOK );
-        $locked   = SFAF_Cron::lock_held_since();
-        $wp_off   = SFAF_Cron::wp_cron_disabled();
-        $fetch_on = SFAF_Cron::auto_fetch_enabled();
-        ?>
-        <div class="uc-page-head">
-            <h1>Automation</h1>
-            <div class="uc-head-actions">
-                <form method="post" action="<?php echo esc_url( $this->url( 'automation' ) ); ?>" class="uc-inline-form">
-                    <input type="hidden" name="uc_action" value="run_cron_now" />
-                    <?php wp_nonce_field( 'uc_portal_run_cron_now', 'uc_nonce' ); ?>
-                    <button type="submit" class="uc-btn uc-btn-primary">Run now</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="uc-card">
-            <h2>Status</h2>
-            <table class="uc-table">
-                <tbody>
-                    <tr>
-                        <th>Health</th>
-                        <td class="uc-cron-<?php echo esc_attr( $health['state'] ); ?>"><?php echo esc_html( $health['message'] ); ?></td>
-                    </tr>
-                    <tr>
-                        <th>Schedule</th>
-                        <td>Hourly. <?php echo $next ? 'Next due ' . esc_html( SFAF_Cron::local_time( $next ) ) . '.' : 'Not currently scheduled.'; ?></td>
-                    </tr>
-                    <tr>
-                        <th>Trigger</th>
-                        <td>
-                            <?php if ( $wp_off ) : ?>
-                                <code>DISABLE_WP_CRON</code> is set, so runs come only from a real system cron hitting the URL below. This is the intended setup.
-                            <?php else : ?>
-                                <code>DISABLE_WP_CRON</code> is <strong>not</strong> set, so WordPress is still firing scheduled tasks off visitor traffic. That means a 6am reminder does not go out until somebody visits the site. Set up a system cron and add the constant. The readme has the steps.
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Cron URL</th>
-                        <td><code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code></td>
-                    </tr>
-                    <tr>
-                        <th>Lock</th>
-                        <td><?php echo $locked
-                            ? 'Held since ' . esc_html( SFAF_Cron::local_time( $locked ) ) . '. A run is in progress, or one was interrupted and the lock will be broken automatically.'
-                            : 'Free.'; ?></td>
-                    </tr>
-                    <tr>
-                        <th>Reminder emails</th>
-                        <td><?php echo SFAF_Reminders::enabled() ? 'On.' : 'Off.'; ?> Sent at 6:00am site time on the day of the event, to registrations and this event&rsquo;s notification list. Native events only: imported events are never sent for.</td>
-                    </tr>
-                    <tr>
-                        <th>Automated fetching</th>
-                        <td><?php echo $fetch_on
-                            ? 'On. Third-party sources are fetched on every run.'
-                            : 'Off. Sources are only fetched when somebody presses "Fetch updates" on the dashboard. Leave it off until the unpublish-on-removal behaviour has been watched through one real removal at source.'; ?></td>
-                    </tr>
-                </tbody>
-            </table>
-            <p class="uc-hint">
-                An external pinger may report a timeout even when the run finished: <code>wp-cron.php</code> keeps
-                working after the connection drops. The log below is the source of truth, not the pinger's status code.
-            </p>
-        </div>
-
-        <div class="uc-card">
-            <div class="uc-card-head">
-                <h2>Run log</h2>
-                <?php if ( ! empty( $log ) ) : ?>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'automation' ) ); ?>" class="uc-inline-form">
-                        <input type="hidden" name="uc_action" value="clear_cron_log" />
-                        <?php wp_nonce_field( 'uc_portal_clear_cron_log', 'uc_nonce' ); ?>
-                        <button type="submit" class="uc-btn uc-btn-sm">Clear</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-            <?php if ( empty( $log ) ) : ?>
-                <p class="uc-empty">Nothing has run yet. Press &ldquo;Run now&rdquo; to try it.</p>
-            <?php else : ?>
-                <table class="uc-table">
-                    <thead><tr><th>Started</th><th>Trigger</th><th>Status</th><th>Took</th><th>What ran</th></tr></thead>
-                    <tbody>
-                        <?php foreach ( $log as $entry ) : ?>
-                            <tr>
-                                <td><?php echo esc_html( SFAF_Cron::local_time( isset( $entry['started_ts'] ) ? $entry['started_ts'] : 0 ) ); ?></td>
-                                <td><?php echo esc_html( isset( $entry['trigger'] ) ? $entry['trigger'] : '' ); ?></td>
-                                <td class="uc-cron-<?php echo esc_attr( isset( $entry['status'] ) ? $entry['status'] : '' ); ?>"><?php echo esc_html( isset( $entry['status'] ) ? $entry['status'] : '' ); ?></td>
-                                <td><?php echo esc_html( isset( $entry['duration'] ) ? $entry['duration'] . 's' : '' ); ?></td>
-                                <td>
-                                    <?php foreach ( (array) ( isset( $entry['tasks'] ) ? $entry['tasks'] : array() ) as $task ) : ?>
-                                        <div class="uc-cron-task">
-                                            <strong><?php echo esc_html( isset( $task['label'] ) ? $task['label'] : $task['task'] ); ?>:</strong>
-                                            <?php echo esc_html( isset( $task['summary'] ) ? $task['summary'] : '' ); ?>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <p class="uc-hint">The newest <?php echo (int) SFAF_Cron::LOG_MAX; ?> runs are kept; older entries are pruned automatically.</p>
-            <?php endif; ?>
-        </div>
-        <?php
-        $this->chrome_close();
     }
 
     /* =====================================================================
@@ -3309,7 +3394,7 @@ class SFAF_Portal {
                             <td><strong><?php echo esc_html( $r->name ); ?></strong></td>
                             <td><?php echo esc_html( $r->email ); ?></td>
                             <td><?php echo esc_html( $r->phone ); ?></td>
-                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( ucfirst( $r->status ) ); ?></span></td>
+                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $r->status ) ); ?></span></td>
                             <td><?php echo esc_html( date_i18n( 'M j, Y g:i A', strtotime( $r->created_at ) ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -3342,7 +3427,21 @@ class SFAF_Portal {
         <div class="uc-page-head">
             <h1>Pending Events</h1>
             <div class="uc-head-actions">
-                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form">
+                <?php
+                /*
+                 * PROGRESSIVE, NOT AJAX-ONLY. The form still posts to the same
+                 * dispatch_post() action it always did, so with JavaScript off
+                 * it behaves exactly as before. portal.js takes it over when it
+                 * can, which is what buys the spinner and, more importantly, a
+                 * visible failure instead of a page that just sits there.
+                 */
+                ?>
+                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form"
+                      data-uc-async="fetch"
+                      data-uc-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+                      data-uc-action="sfaf_portal_fetch"
+                      data-uc-ajax-nonce="<?php echo esc_attr( wp_create_nonce( 'sfaf_portal_fetch' ) ); ?>"
+                      data-uc-busy="Fetching&hellip;">
                     <input type="hidden" name="uc_action" value="fetch_sources" />
                     <?php wp_nonce_field( 'uc_portal_fetch_sources', 'uc_nonce' ); ?>
                     <?php // Enabled whenever any source is built, even if none is connected.
@@ -3851,6 +3950,16 @@ class SFAF_Portal {
      * Data helpers
      * ================================================================== */
 
+    /**
+     * Totals from the last query_events() call, for the pager.
+     *
+     * Kept as properties rather than returned, because query_events() has four
+     * call sites and only one of them pages. Set on every call so a stale value
+     * from an earlier query can never be read as this one's.
+     */
+    private $last_query_total = 0;
+    private $last_query_pages = 1;
+
     private function query_events( $user, $args = array() ) {
         // NB: we deliberately do NOT use fields=>ids here. A normal query primes
         // the post, postmeta and term caches for the whole result set in a couple
@@ -3876,6 +3985,59 @@ class SFAF_Portal {
             unset( $q['meta_key'] );
             $q['orderby'] = 'modified';
             $q['order']   = 'DESC';
+        }
+
+        /*
+         * COLUMN SORTING, AND THE TWO THAT NEED SQL.
+         *
+         * title and date are ordinary WP_Query orderby values. status and rsvps
+         * are not: WP_Query has no orderby for post_status, and the RSVP count
+         * lives in this plugin's own table. Both are done with a posts_clauses
+         * filter added around this one query and removed straight afterwards,
+         * so nothing global is left behind for the next query to trip over.
+         *
+         * The count is joined as a grouped subquery rather than a correlated
+         * one, so it is a single scan of the RSVP table however many events are
+         * on the page, and it is a LEFT JOIN with COALESCE so an event with no
+         * registrations sorts as zero instead of dropping out of the list.
+         */
+        $dir     = ( isset( $args['order'] ) && 'asc' === strtolower( (string) $args['order'] ) ) ? 'ASC' : 'DESC';
+        $orderby = isset( $args['orderby'] ) ? (string) $args['orderby'] : '';
+        $clause_filter = null;
+
+        if ( 'title' === $orderby ) {
+            unset( $q['meta_key'] );
+            $q['orderby'] = 'title';
+            $q['order']   = $dir;
+        } elseif ( 'date' === $orderby ) {
+            $q['orderby'] = 'meta_value';
+            $q['order']   = $dir;
+        } elseif ( 'status' === $orderby || 'rsvps' === $orderby ) {
+            unset( $q['meta_key'] );
+            $q['orderby'] = 'none';
+            global $wpdb;
+            $rsvp_table = $wpdb->prefix . 'uc_rsvps';
+            $clause_filter = function ( $clauses ) use ( $orderby, $dir, $wpdb, $rsvp_table ) {
+                if ( 'rsvps' === $orderby ) {
+                    $clauses['join']   .= " LEFT JOIN ( SELECT event_id, COUNT(*) AS uc_c FROM {$rsvp_table}"
+                        . " WHERE status = 'confirmed' GROUP BY event_id ) uc_rc"
+                        . " ON uc_rc.event_id = {$wpdb->posts}.ID ";
+                    // A stable tiebreak, so two events on the same count keep a
+                    // fixed order between pages instead of shuffling.
+                    $clauses['orderby'] = "COALESCE(uc_rc.uc_c, 0) {$dir}, {$wpdb->posts}.ID DESC";
+                } else {
+                    $clauses['orderby'] = "{$wpdb->posts}.post_status {$dir}, {$wpdb->posts}.post_title ASC";
+                }
+                return $clauses;
+            };
+            add_filter( 'posts_clauses', $clause_filter );
+        }
+
+        // Paging. found_posts is only computed when asked for, so the screens
+        // that do not page keep their cheaper query.
+        if ( ! empty( $args['paged'] ) ) {
+            $q['paged']         = max( 1, (int) $args['paged'] );
+            $q['no_found_rows'] = false;
         }
 
         // Status.
@@ -3907,6 +4069,16 @@ class SFAF_Portal {
         }
 
         $query = new WP_Query( $q );
+
+        // Removed immediately: a posts_clauses filter left attached would
+        // rewrite the ORDER BY of every later query on the page.
+        if ( $clause_filter ) {
+            remove_filter( 'posts_clauses', $clause_filter );
+        }
+
+        $this->last_query_total = (int) $query->found_posts;
+        $this->last_query_pages = max( 1, (int) $query->max_num_pages );
+
         return wp_list_pluck( $query->posts, 'ID' );
     }
 

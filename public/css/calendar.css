@@ -627,3 +627,16 @@ a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: cent
     .uc-event-card { transition: none; }
     .uc-event-card:hover { transform: none; }
 }
+
+/* ---------------------------------------------------------------------------
+ * Inline email validation (public forms). See public/js/sfaf-email.js.
+ *
+ * The mark on the field and the message below it are two separate signals on
+ * purpose: colour alone fails for anyone who cannot see it, and a message
+ * alone leaves six identical inputs with no indication of which one is meant.
+ * ------------------------------------------------------------------------ */
+.uc-rsvp-form input.uc-invalid,
+.uc-calendar input.uc-invalid,
+input.uc-invalid { border-color: #dc2626 !important; box-shadow: 0 0 0 1px #dc2626; }
+input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
+.uc-field-error { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: #b91c1c; font-weight: 600; }

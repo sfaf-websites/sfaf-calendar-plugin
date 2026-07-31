@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 2.12.0
+ * Version: 2.13.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '2.12.0' );
+define( 'SFAF_VERSION', '2.13.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -199,10 +199,20 @@ function sfaf_enqueue_frontend_assets() {
         array(),
         SFAF_VERSION
     );
+    // Shared inline email validation. A dependency of calendar.js rather than
+    // part of it, because the portal and wp-admin need the same behaviour and
+    // neither of them loads calendar.js.
+    wp_enqueue_script(
+        'sfaf-email',
+        SFAF_PLUGIN_URL . 'public/js/sfaf-email.js',
+        array(),
+        SFAF_VERSION,
+        true
+    );
     wp_enqueue_script(
         'sfaf-calendar-public',
         SFAF_PLUGIN_URL . 'public/js/calendar.js',
-        array( 'jquery' ),
+        array( 'jquery', 'sfaf-email' ),
         SFAF_VERSION,
         true
     );
@@ -219,7 +229,7 @@ add_action( 'wp_enqueue_scripts', 'sfaf_enqueue_frontend_assets' );
  */
 function sfaf_enqueue_admin_assets( $hook ) {
     $screen         = get_current_screen();
-    $plugin_pages   = array( 'uc-rsvps', 'uc-settings', 'uc-shortcode-generator', 'uc-embed', 'uc-series' );
+    $plugin_pages   = array( 'uc-rsvps', 'uc-settings', 'uc-shortcode-generator', 'uc-embed', 'uc-series', 'uc-automation' );
     $is_plugin_page = isset( $_GET['page'] ) && in_array( $_GET['page'], $plugin_pages, true );
     $is_event_edit  = $screen && $screen->post_type === 'uc_event';
 
@@ -238,9 +248,16 @@ function sfaf_enqueue_admin_assets( $hook ) {
         SFAF_VERSION
     );
     wp_enqueue_script(
+        'sfaf-email',
+        SFAF_PLUGIN_URL . 'public/js/sfaf-email.js',
+        array(),
+        SFAF_VERSION,
+        true
+    );
+    wp_enqueue_script(
         'sfaf-calendar-admin',
         SFAF_PLUGIN_URL . 'admin/js/admin.js',
-        array( 'jquery', 'wp-color-picker' ),
+        array( 'jquery', 'wp-color-picker', 'sfaf-email' ),
         SFAF_VERSION,
         true
     );

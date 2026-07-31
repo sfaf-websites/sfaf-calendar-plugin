@@ -507,6 +507,9 @@
             $('#uc-rsvp-name, #uc-rsvp-email, #uc-rsvp-phone').val('');
             $('#uc-rsvp-optin').prop('checked', false);
             $('#uc-rsvp-error').hide();
+            // A cleared field is not an invalid field. Reopening the modal must
+            // not show last time's complaint about an empty box.
+            if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-rsvp-email')); }
             $('#uc-rsvp-submit-btn').prop('disabled', false).text('Register Now');
             $('.uc-rsvp-form-view').show();
             $('#uc-rsvp-success').hide();
@@ -547,13 +550,25 @@
         var phone = $('#uc-rsvp-phone').val().trim();
         var optin = $('#uc-rsvp-optin').is(':checked') ? '1' : '';
 
-        // Validation
-        if (!name || !email) {
-            $('#uc-rsvp-error').text('Please fill in your name and email.').show();
+        /*
+         * Validation. The email field is judged by the shared validator, which
+         * marks the field itself and leaves a specific message under it that
+         * stays put — rather than the old "Please enter a valid email address"
+         * in a box above the button, which named neither the field nor the
+         * problem. Name is still checked here because it is not an email.
+         */
+        if (!name) {
+            $('#uc-rsvp-error').text('Please fill in your name.').show();
+            $('#uc-rsvp-name').focus();
             return;
         }
-        if (email.indexOf('@') === -1 || email.indexOf('.') === -1) {
-            $('#uc-rsvp-error').text('Please enter a valid email address.').show();
+        if (window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-rsvp-email'))) {
+            $('#uc-rsvp-error').hide();
+            $('#uc-rsvp-email').focus();
+            return;
+        }
+        if (!email) {
+            $('#uc-rsvp-error').text('Please fill in your email.').show();
             return;
         }
 
@@ -646,6 +661,7 @@
             $('#uc-reminder-event-title').text($(this).data('event-title') || '');
             $('#uc-reminder-email').val('');
             $('#uc-reminder-error').hide();
+            if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-reminder-email')); }
             $('#uc-reminder-submit-btn').prop('disabled', false).text('Notify Me');
             $('.uc-reminder-form-view').show();
             $('#uc-reminder-success').hide();
@@ -664,8 +680,15 @@
 
         function submitReminder() {
             var email = $('#uc-reminder-email').val().trim();
-            if (!email || email.indexOf('@') === -1 || email.indexOf('.') === -1) {
-                $('#uc-reminder-error').text('Please enter a valid email address.').show();
+            // Same shared validator as the RSVP form, so the two never disagree
+            // about what counts as an address or how they say so.
+            if (window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-reminder-email'))) {
+                $('#uc-reminder-error').hide();
+                $('#uc-reminder-email').focus();
+                return;
+            }
+            if (!email) {
+                $('#uc-reminder-error').text('Please enter your email address.').show();
                 return;
             }
 
