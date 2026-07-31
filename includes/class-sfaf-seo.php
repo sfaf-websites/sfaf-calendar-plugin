@@ -132,7 +132,7 @@ class SFAF_SEO {
 
         // Recurring series → reference the parent as a superEvent.
         if ( sfaf_is_in_series( $id ) ) {
-            $parent = sfaf_get_series_parent( $id );
+            $parent = sfaf_series_parent_id( $id );
             $schema['superEvent'] = array(
                 '@type' => 'EventSeries',
                 'name'  => get_the_title( $parent ),

@@ -368,3 +368,34 @@ body.uc-portal {
 .uc-cron-skipped, .uc-cron-never { color: var(--p-muted); font-weight: 600; }
 .uc-cron-task { font-size: 13px; line-height: 1.5; margin-bottom: 4px; }
 .uc-cron-task:last-child { margin-bottom: 0; }
+
+/* ---------------------------------------------------------------------------
+ * Series lifecycle: edit scope, removal choices, orphan repair.
+ * ------------------------------------------------------------------------ */
+
+/* Scope is a decision with consequences, so the options are given room rather
+ * than compressed into a row of radios somebody skims past. */
+.uc-scope-options { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.uc-scope-options .uc-radio-opt { display: flex; align-items: flex-start; gap: 9px; padding: 9px 12px;
+    border: 1px solid var(--p-border); border-radius: 8px; background: #fff; font-size: 14px; cursor: pointer; }
+.uc-scope-options .uc-radio-opt:hover { border-color: var(--p-accent, #16BECF); }
+.uc-scope-options input { margin: 3px 0 0; flex: 0 0 auto; }
+
+/* Two removal choices, side by side and equally legible: the destructive one
+ * must not be the only one that catches the eye, and it must not be hidden. */
+.uc-removal-options { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 16px; }
+.uc-removal-options > form { flex: 1 1 320px; min-width: 280px; padding: 16px 18px;
+    border: 1px solid var(--p-border); border-radius: 10px; background: #fff; }
+.uc-removal-options h3 { margin: 0 0 6px; font-size: 15px; }
+.uc-removal-options .uc-hint { margin: 0 0 12px; }
+
+.uc-card-danger { border-color: #fecaca; }
+.uc-card-danger h3 { color: #b91c1c; }
+
+/* Dashboard: what needs a person, and what has happened. Read-only lists. */
+.uc-attention-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.9; }
+.uc-activity-list { margin: 0; padding: 0; list-style: none; font-size: 13.5px; }
+.uc-activity-list li { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--p-border); }
+.uc-activity-list li:last-child { border-bottom: 0; }
+.uc-activity-when { flex: 0 0 110px; color: var(--p-muted); }
+.uc-activity-what { min-width: 0; }

@@ -335,7 +335,18 @@ class SFAF_Post_Types {
                 </div>
                 <div class="uc-meta-field">
                     <label for="uc_email_replyto">Reply-To</label>
-                    <input type="email" id="uc_email_replyto" name="uc_email_replyto" value="<?php echo esc_attr( $replyto ); ?>" placeholder="events@sfaf.org" />
+                    <?php
+                    // ONE reply-to per event, used by the confirmation email
+                    // and, since 2.12.0, by the morning-of reminder as well.
+                    // Left blank it falls back to whoever created the event and
+                    // then to the site default, so replies always reach a real
+                    // person. See SFAF_Reminders::reply_to_for().
+                    $reply_resolved = SFAF_Reminders::reply_to_for( $post->ID );
+                    ?>
+                    <input type="email" id="uc_email_replyto" name="uc_email_replyto"
+                           value="<?php echo esc_attr( '' !== $replyto ? $replyto : $reply_resolved ); ?>"
+                           placeholder="events@sfaf.org" />
+                    <p class="description" style="margin:4px 0 0;">Where replies to this event's emails go. Blank falls back to the event's creator, then to the site default.</p>
                 </div>
             </div>
             <div class="uc-meta-field">

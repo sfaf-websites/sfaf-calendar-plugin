@@ -60,7 +60,7 @@ class SFAF_List_Columns {
 
             case 'uc_series':
                 if ( sfaf_is_in_series( $post_id ) ) {
-                    $parent = sfaf_get_series_parent( $post_id );
+                    $parent = sfaf_series_parent_id( $post_id );
                     $name   = get_the_title( $parent );
                     $is_par = $parent === (int) $post_id;
                     echo '<a href="' . esc_url( get_edit_post_link( $parent ) ) . '">' . esc_html( $name ) . '</a>';

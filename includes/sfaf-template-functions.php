@@ -527,6 +527,9 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
 
 /**
  * The series parent ID for an event (the parent points at itself). 0 if standalone.
+ *
+ * This is the RAW stored value and may point at a post that no longer exists.
+ * Anything that renders needs sfaf_series_parent_id() instead.
  */
 function sfaf_get_series_parent( $post_id ) {
     $parent = get_post_meta( $post_id, '_uc_series_parent', true );
@@ -534,10 +537,44 @@ function sfaf_get_series_parent( $post_id ) {
 }
 
 /**
- * True when the event belongs to a series with more than one occurrence.
+ * The series parent ID, but only when it actually resolves to a live event.
+ *
+ * A DELETED PARENT MUST NOT REACH THE PAGE. When one is deleted its
+ * occurrences keep pointing at the missing ID, and every display helper built
+ * on the raw value then rendered something broken: a series link with an empty
+ * title and an empty href, which is a visible dead link on a public page. This
+ * is the one function the display layer asks, so a missing parent degrades to
+ * "not in a series" everywhere at once rather than in each caller separately.
+ *
+ * Repairing the data is a separate, deliberate act in the Series Manager. See
+ * SFAF_Recurrence::find_orphans().
+ *
+ * @return int Parent ID, or 0 when standalone OR orphaned.
+ */
+function sfaf_series_parent_id( $post_id ) {
+    $parent = sfaf_get_series_parent( $post_id );
+    if ( ! $parent ) {
+        return 0;
+    }
+    return SFAF_Recurrence::parent_exists( $parent ) ? $parent : 0;
+}
+
+/**
+ * Whether this event points at a series parent that has gone.
+ */
+function sfaf_is_orphaned_occurrence( $post_id ) {
+    $parent = sfaf_get_series_parent( $post_id );
+    if ( ! $parent || $parent === (int) $post_id ) {
+        return false;
+    }
+    return ! SFAF_Recurrence::parent_exists( $parent );
+}
+
+/**
+ * True when the event belongs to a LIVE series with more than one occurrence.
  */
 function sfaf_is_in_series( $post_id ) {
-    $parent = sfaf_get_series_parent( $post_id );
+    $parent = sfaf_series_parent_id( $post_id );
     if ( ! $parent ) {
         return false;
     }
@@ -545,10 +582,10 @@ function sfaf_is_in_series( $post_id ) {
 }
 
 /**
- * Display name of a series (its parent event's title).
+ * Display name of a series (its parent event's title). '' when orphaned.
  */
 function sfaf_get_series_name( $post_id ) {
-    $parent = sfaf_get_series_parent( $post_id );
+    $parent = sfaf_series_parent_id( $post_id );
     return $parent ? get_the_title( $parent ) : '';
 }
 
@@ -602,10 +639,18 @@ function sfaf_series_link( $post_id ) {
     if ( ! sfaf_is_in_series( $post_id ) ) {
         return '';
     }
-    $parent = sfaf_get_series_parent( $post_id );
-    $name   = get_the_title( $parent );
+    $parent = sfaf_series_parent_id( $post_id );
+    $name   = $parent ? get_the_title( $parent ) : '';
+    $url    = $parent ? get_permalink( $parent ) : '';
 
-    return '<a class="uc-series-link" href="' . esc_url( get_permalink( $parent ) ) . '">'
+    // Belt and braces on top of sfaf_is_in_series(). A parent can be live but
+    // unroutable (no permalink yet on a draft), and an anchor with an empty
+    // href and an empty label is worse than no anchor at all.
+    if ( ! $url || '' === $name ) {
+        return '';
+    }
+
+    return '<a class="uc-series-link" href="' . esc_url( $url ) . '">'
         . sfaf_icon( 'repeat' ) . ' Part of series: ' . esc_html( $name ) . '</a>';
 }
 
@@ -616,7 +661,7 @@ function sfaf_series_list_html( $post_id ) {
     if ( ! sfaf_is_in_series( $post_id ) ) {
         return '';
     }
-    $parent = sfaf_get_series_parent( $post_id );
+    $parent = sfaf_series_parent_id( $post_id );
     $events = sfaf_get_series_events( $parent, true );
 
     // Drop the event we're currently viewing.
@@ -799,7 +844,7 @@ function sfaf_series_count( $parent_id ) {
 
 /** Canonical series FAQ for an event (from its series parent, or itself). */
 function sfaf_get_series_faq( $post_id ) {
-    $parent = sfaf_get_series_parent( $post_id );
+    $parent = sfaf_series_parent_id( $post_id );
     $source = $parent ? $parent : $post_id;
     return sfaf_normalize_faqs( get_post_meta( $source, '_uc_series_faq', true ) );
 }
@@ -822,7 +867,7 @@ function sfaf_faq_is_override( $post_id ) {
  * @return array[] List of array( 'question' => string, 'answer' => string ).
  */
 function sfaf_get_faqs( $post_id ) {
-    $parent   = sfaf_get_series_parent( $post_id );
+    $parent   = sfaf_series_parent_id( $post_id );
     $is_self  = ( $parent === (int) $post_id ); // series parent editing itself
     $series   = sfaf_get_series_faq( $post_id );
     $event    = $is_self ? array() : sfaf_get_event_faq( $post_id );
@@ -1033,7 +1078,7 @@ function sfaf_event_image_url( $post_id ) {
     if ( $external ) {
         return $external;
     }
-    $series = sfaf_series_image_url( sfaf_get_series_parent( $post_id ) );
+    $series = sfaf_series_image_url( sfaf_series_parent_id( $post_id ) );
     if ( $series ) {
         return $series;
     }
@@ -1053,7 +1098,7 @@ function sfaf_event_image_source( $post_id ) {
     if ( get_post_meta( $post_id, '_uc_external_image', true ) ) {
         return 'source';
     }
-    if ( sfaf_series_image_url( sfaf_get_series_parent( $post_id ) ) ) {
+    if ( sfaf_series_image_url( sfaf_series_parent_id( $post_id ) ) ) {
         return 'series';
     }
     if ( get_post_meta( $post_id, '_uc_remote_image_url', true ) ) {

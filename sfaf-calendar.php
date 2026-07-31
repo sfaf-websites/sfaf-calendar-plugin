@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 2.11.0
+ * Version: 2.12.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '2.11.0' );
+define( 'SFAF_VERSION', '2.12.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '2.11.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '2' );
+define( 'SFAF_DB_VERSION', '3' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -468,9 +468,17 @@ function sfaf_install_tables() {
     // 'subscribed' (pressed "Get Reminders", holds no place) and, since
     // 2.11.0, 'cancelled' (released their place through a reminder's cancel
     // link — kept rather than deleted so the history survives).
+    //
+    // event_title is the SNAPSHOT taken when an event is permanently deleted
+    // (SFAF_RSVP::snapshot_event_title). The rows deliberately outlive their
+    // event — attendance history is worth keeping and is the only evidence a
+    // person ever registered — but they used to outlive it unreadable, because
+    // the list joins on the post and rendered a blank Event column once the
+    // post had gone. Written once, at the last moment the title can be known.
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         event_id bigint(20) unsigned NOT NULL,
+        event_title varchar(255) NOT NULL DEFAULT '',
         name varchar(200) NOT NULL,
         email varchar(200) NOT NULL,
         phone varchar(50) DEFAULT '',
@@ -497,6 +505,7 @@ function sfaf_install_tables() {
     $sql[] = "CREATE TABLE $reminders (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         event_id bigint(20) unsigned NOT NULL,
+        event_title varchar(255) NOT NULL DEFAULT '',
         email varchar(200) NOT NULL,
         recipient_hash char(64) NOT NULL,
         recipient_type varchar(20) NOT NULL DEFAULT 'rsvp',

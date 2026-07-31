@@ -12,6 +12,81 @@ class SFAF_RSVP {
 
         // Route a confirmed RSVP to email / (mocked) integrations.
         add_action( 'uc_rsvp_submitted', array( $this, 'route_submission' ), 10, 2 );
+
+        // Keep the attendance record readable after its event is deleted.
+        add_action( 'before_delete_post', array( __CLASS__, 'snapshot_event_title' ) );
+    }
+
+    /**
+     * ATTENDANCE RECORDS OUTLIVE THE EVENT, ON PURPOSE.
+     *
+     * Deleting an event is a decision about what appears on the calendar. It
+     * is not a decision to forget that thirty people came, and for a public
+     * health nonprofit that history is worth something: who attended what, how
+     * full a group ran, whether a series was working. Those rows are also the
+     * only evidence that a person ever registered, which matters if they ever
+     * ask.
+     *
+     * So the rows stay. What was wrong was not that they survived, but that
+     * they survived UNREADABLE: the RSVP list joins on the post, and with the
+     * post gone the Event column rendered blank. A blank cell is not history,
+     * it is a bug that looks like a bug.
+     *
+     * The title is therefore copied onto the rows at the moment the event is
+     * deleted, which is the last moment it can be known. Rows orphaned before
+     * 2.12.0 have no snapshot to recover, and render as "Deleted event (#id)"
+     * rather than as nothing.
+     *
+     * The reminder ledger gets the same treatment for the same reason: it is
+     * the record of what was actually sent to whom.
+     */
+    public static function snapshot_event_title( $post_id ) {
+        global $wpdb;
+
+        $post = get_post( $post_id );
+        if ( ! $post || 'uc_event' !== $post->post_type ) {
+            return;
+        }
+        $title = $post->post_title !== '' ? $post->post_title : '(untitled event)';
+
+        $wpdb->update(
+            $wpdb->prefix . 'uc_rsvps',
+            array( 'event_title' => $title ),
+            array( 'event_id' => (int) $post_id ),
+            array( '%s' ),
+            array( '%d' )
+        );
+
+        $wpdb->update(
+            $wpdb->prefix . 'uc_reminder_log',
+            array( 'event_title' => $title ),
+            array( 'event_id' => (int) $post_id ),
+            array( '%s' ),
+            array( '%d' )
+        );
+    }
+
+    /**
+     * The name to show for a row whose event may or may not still exist.
+     *
+     * @param object $row A uc_rsvps or uc_reminder_log row, optionally with a
+     *                    joined event_title from the posts table.
+     * @return string
+     */
+    public static function event_label( $row ) {
+        // The live post title, when the join found one.
+        if ( ! empty( $row->post_title ) ) {
+            return (string) $row->post_title;
+        }
+        $live = isset( $row->event_id ) ? get_the_title( $row->event_id ) : '';
+        if ( $live ) {
+            return $live;
+        }
+        // The snapshot taken when the event was deleted.
+        if ( ! empty( $row->event_title ) ) {
+            return $row->event_title . ' (deleted)';
+        }
+        return sprintf( 'Deleted event (#%d)', isset( $row->event_id ) ? (int) $row->event_id : 0 );
     }
 
     /**
@@ -271,7 +346,11 @@ class SFAF_RSVP {
             $params[] = $search;
         }
 
-        $sql = "SELECT r.*, p.post_title as event_title
+        // Aliased to post_title, NOT to event_title: the table now has its own
+        // event_title column holding the snapshot taken when an event was
+        // deleted, and aliasing the join over the top of it would null the
+        // snapshot out in exactly the case it exists for. See event_label().
+        $sql = "SELECT r.*, p.post_title AS post_title
                 FROM $table r
                 LEFT JOIN {$wpdb->posts} p ON r.event_id = p.ID
                 $where
@@ -308,7 +387,7 @@ class SFAF_RSVP {
         fputcsv( $output, array( 'Event', 'Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
 
         foreach ( $rsvps as $rsvp ) {
-            $event_title = isset( $rsvp->event_title ) ? $rsvp->event_title : get_the_title( $rsvp->event_id );
+            $event_title = self::event_label( $rsvp );
             fputcsv( $output, array(
                 $this->csv_escape( $event_title ),
                 $this->csv_escape( $rsvp->name ),

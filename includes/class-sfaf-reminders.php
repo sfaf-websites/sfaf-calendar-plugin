@@ -82,6 +82,77 @@ class SFAF_Reminders {
     }
 
     /* =====================================================================
+     * Reply-To
+     * ================================================================== */
+
+    /**
+     * Where a reply to this event's reminder should land.
+     *
+     * ONE ADDRESS, NOT A LIST. Several Reply-To headers are handled
+     * inconsistently by mail clients and some drop all but the first, so a
+     * group mailbox is the reliable way to get replies in front of more than
+     * one person. Free text, because it may well not be on the sending domain.
+     *
+     * REUSES _uc_email_replyto, which predates this: it is the per-event
+     * override the RSVP confirmation email has always read, it is already
+     * copied down to occurrences by SFAF_Recurrence, and it already has an
+     * editor in the WordPress admin. A second field would have meant two
+     * answers to "where do replies go" with nothing to say which one won.
+     *
+     * Resolution order, most specific first:
+     *   1. the event's own address
+     *   2. the address of whoever created the event
+     *   3. the site-wide default in Settings
+     *
+     * Step 2 is what stops an event set up and forgotten from sending replies
+     * into a no-reply void. The sending domain is never assumed or built here;
+     * every part of this is a setting or a real user's address.
+     *
+     * @return string '' when nothing resolves.
+     */
+    public static function reply_to_for( $event_id ) {
+        $own = trim( (string) get_post_meta( (int) $event_id, '_uc_email_replyto', true ) );
+        if ( $own && is_email( $own ) ) {
+            return $own;
+        }
+
+        $post = get_post( (int) $event_id );
+        if ( $post ) {
+            $author = get_userdata( $post->post_author );
+            if ( $author && is_email( $author->user_email ) ) {
+                return $author->user_email;
+            }
+        }
+
+        $settings = get_option( 'uc_settings', array() );
+        $fallback = isset( $settings['email_reply_to'] ) ? trim( (string) $settings['email_reply_to'] ) : '';
+        return ( $fallback && is_email( $fallback ) ) ? $fallback : '';
+    }
+
+    /**
+     * Which of the three sources reply_to_for() would use, so the editor can
+     * say where replies currently go instead of showing a bare address.
+     *
+     * @return string 'event' | 'author' | 'setting' | 'none'
+     */
+    public static function reply_to_source( $event_id ) {
+        $own = trim( (string) get_post_meta( (int) $event_id, '_uc_email_replyto', true ) );
+        if ( $own && is_email( $own ) ) {
+            return 'event';
+        }
+        $post = get_post( (int) $event_id );
+        if ( $post ) {
+            $author = get_userdata( $post->post_author );
+            if ( $author && is_email( $author->user_email ) ) {
+                return 'author';
+            }
+        }
+        $settings = get_option( 'uc_settings', array() );
+        $fallback = isset( $settings['email_reply_to'] ) ? trim( (string) $settings['email_reply_to'] ) : '';
+        return ( $fallback && is_email( $fallback ) ) ? 'setting' : 'none';
+    }
+
+    /* =====================================================================
      * The run
      * ================================================================== */
 
@@ -470,8 +541,11 @@ class SFAF_Reminders {
                 : sprintf( 'From: %s', $from_email );
         }
 
-        $reply_to = isset( $settings['email_reply_to'] ) ? trim( (string) $settings['email_reply_to'] ) : '';
-        if ( $reply_to && is_email( $reply_to ) ) {
+        // Per event, falling back to the creator and then to the site default.
+        // See reply_to_for(): replies to a reminder reach the person running
+        // the event, not a mailbox nobody reads.
+        $reply_to = self::reply_to_for( $event_id );
+        if ( $reply_to ) {
             $headers[] = 'Reply-To: ' . $reply_to;
         }
 

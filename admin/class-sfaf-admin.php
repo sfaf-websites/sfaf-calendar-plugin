@@ -7,6 +7,68 @@ class SFAF_Admin {
         add_action( 'admin_menu', array( $this, 'add_menu_pages' ) );
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'admin_init', array( $this, 'handle_series_save' ) );
+        add_action( 'admin_init', array( $this, 'handle_series_action' ) );
+    }
+
+    /**
+     * Series lifecycle actions from the WP admin: removal, promotion, orphan
+     * repair, restoring a cancelled date.
+     *
+     * Separate from handle_series_save() because these are not saves. They
+     * rearrange or remove whole groups of events, so each one is nonced to the
+     * specific series it acts on and each one checks edit_post first.
+     */
+    public function handle_series_action() {
+        if ( empty( $_POST['uc_series_action'] ) ) {
+            return;
+        }
+        $id     = isset( $_POST['series_id_post'] ) ? intval( $_POST['series_id_post'] ) : 0;
+        $action = sanitize_key( $_POST['uc_series_action'] );
+        $nonce  = isset( $_POST['uc_series_action_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_series_action_nonce'] ) ) : '';
+
+        if ( ! $id || ! wp_verify_nonce( $nonce, 'uc_series_action_' . $id ) ) {
+            return;
+        }
+        // Orphan groups point at an ID that no longer exists, so there is no
+        // post to check against; those two need the broader capability.
+        $orphan_action = in_array( $action, array( 'orphans_rebuild', 'orphans_release' ), true );
+        if ( $orphan_action ? ! current_user_can( 'edit_others_posts' ) : ! current_user_can( 'edit_post', $id ) ) {
+            return;
+        }
+
+        $base = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
+
+        switch ( $action ) {
+            case 'remove_whole':
+                SFAF_Recurrence::delete_series( $id );
+                wp_safe_redirect( add_query_arg( 'removed', '1', $base ) );
+                exit;
+
+            case 'remove_promote':
+                $new = SFAF_Recurrence::promote_next( $id, false );
+                wp_safe_redirect( $new
+                    ? add_query_arg( array( 'series' => $new, 'promoted' => '1' ), $base )
+                    : add_query_arg( array( 'series' => $id, 'remove' => '1' ), $base ) );
+                exit;
+
+            case 'restore_date':
+                $date = isset( $_POST['occurrence_date'] ) ? sanitize_text_field( wp_unslash( $_POST['occurrence_date'] ) ) : '';
+                SFAF_Recurrence::restore_date( $id, $date );
+                wp_safe_redirect( add_query_arg( array( 'series' => $id, 'restored' => '1' ), $base ) );
+                exit;
+
+            case 'orphans_rebuild':
+                $new = SFAF_Recurrence::rebuild_orphan_group( $id );
+                wp_safe_redirect( $new
+                    ? add_query_arg( array( 'series' => $new, 'rebuilt' => '1' ), $base )
+                    : add_query_arg( 'orphans', '1', $base ) );
+                exit;
+
+            case 'orphans_release':
+                SFAF_Recurrence::release_orphan_group( $id );
+                wp_safe_redirect( add_query_arg( array( 'orphans' => '1', 'released' => '1' ), $base ) );
+                exit;
+        }
     }
 
     public function add_menu_pages() {
@@ -265,7 +327,7 @@ class SFAF_Admin {
                                 <tr>
                                     <td>
                                         <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=uc_event&page=uc-rsvps&event_id=' . $rsvp->event_id ) ); ?>">
-                                            <?php echo esc_html( $rsvp->event_title ?? get_the_title( $rsvp->event_id ) ); ?>
+                                            <?php echo esc_html( SFAF_RSVP::event_label( $rsvp ) ); ?>
                                         </a>
                                     </td>
                                     <td><strong><?php echo esc_html( $rsvp->name ); ?></strong></td>
@@ -289,11 +351,143 @@ class SFAF_Admin {
 
     public function render_series_page() {
         $series_id = isset( $_GET['series'] ) ? intval( $_GET['series'] ) : 0;
+        if ( ! empty( $_GET['orphans'] ) ) {
+            $this->render_orphans();
+            return;
+        }
         if ( $series_id && ( $p = get_post( $series_id ) ) && $p->post_type === 'uc_event' ) {
+            // Reached by pressing Trash or Delete on a series parent anywhere
+            // in WordPress: SFAF_Recurrence aborts that removal and sends the
+            // request here, because a parent may not go silently.
+            if ( ! empty( $_GET['remove'] ) ) {
+                $this->render_series_remove( $series_id );
+                return;
+            }
             $this->render_series_edit( $series_id );
         } else {
             $this->render_series_list();
         }
+    }
+
+    /**
+     * The two choices a series parent removal has to make.
+     *
+     * Deliberately the same two, in the same words, as the /caladmin portal's
+     * screen. A manager who learns this in one place must not meet a different
+     * set of options in the other.
+     */
+    private function render_series_remove( $parent_id ) {
+        $children = SFAF_Recurrence::children_of( $parent_id );
+        $total    = count( $children ) + 1;
+        $base     = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
+        ?>
+        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header"><div>
+                <h1>Remove series</h1>
+                <p class="uc-subtitle"><?php echo esc_html( get_the_title( $parent_id ) ); ?></p>
+            </div></div>
+            <div class="uc-admin-card">
+                <?php if ( empty( $children ) ) : ?>
+                    <p>This series has no other occurrences, so removing it removes one event and nothing else.</p>
+                <?php else : ?>
+                    <p>
+                        This event is the series itself as well as its first occurrence, and
+                        <strong><?php echo (int) count( $children ); ?></strong> other
+                        <?php echo esc_html( _n( 'occurrence depends', 'occurrences depend', count( $children ) ) ); ?> on it.
+                        Removing it on its own would leave <?php echo esc_html( _n( 'that occurrence', 'those occurrences', count( $children ) ) ); ?>
+                        published and pointing at nothing: not listed in the Series Manager, not editable as a group, and
+                        showing a broken series link on the public page. That is why this page exists rather than the
+                        removal simply happening.
+                    </p>
+                <?php endif; ?>
+
+                <form method="post" action="<?php echo esc_url( $base ); ?>" style="margin-bottom:24px;">
+                    <?php wp_nonce_field( 'uc_series_action_' . $parent_id, 'uc_series_action_nonce' ); ?>
+                    <input type="hidden" name="uc_series_action" value="remove_whole" />
+                    <input type="hidden" name="series_id_post" value="<?php echo (int) $parent_id; ?>" />
+                    <h2>Remove the whole series</h2>
+                    <p class="description">
+                        All <?php echo (int) $total; ?> events go, this one and every occurrence. They go to the
+                        WordPress trash and can be restored from there.
+                    </p>
+                    <?php submit_button( sprintf( 'Remove all %d events', $total ), 'delete', 'submit', false ); ?>
+                </form>
+
+                <?php if ( ! empty( $children ) ) : ?>
+                    <form method="post" action="<?php echo esc_url( $base ); ?>">
+                        <?php wp_nonce_field( 'uc_series_action_' . $parent_id, 'uc_series_action_nonce' ); ?>
+                        <input type="hidden" name="uc_series_action" value="remove_promote" />
+                        <input type="hidden" name="series_id_post" value="<?php echo (int) $parent_id; ?>" />
+                        <h2>Remove only this one and keep the series</h2>
+                        <p class="description">
+                            The next occurrence becomes the series and the rest follow it. The series settings, the FAQ,
+                            the image and the list of cancelled dates all move across. Nothing is orphaned.
+                        </p>
+                        <?php submit_button( 'Promote the next occurrence', 'primary', 'submit', false ); ?>
+                    </form>
+                <?php endif; ?>
+
+                <p style="margin-top:24px;"><a href="<?php echo esc_url( $base ); ?>">Cancel and go back to Series</a></p>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Occurrences whose series parent has gone. Listed, never auto-repaired.
+     */
+    private function render_orphans() {
+        $groups = SFAF_Recurrence::find_orphans();
+        $base   = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
+        ?>
+        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header"><div>
+                <h1>Orphaned occurrences</h1>
+                <p class="uc-subtitle">Events that still say they are part of a series that no longer exists</p>
+            </div></div>
+
+            <?php if ( empty( $groups ) ) : ?>
+                <div class="uc-admin-card"><p class="uc-no-data">Nothing is orphaned.</p></div>
+            <?php else : ?>
+                <div class="uc-admin-card">
+                    <p>
+                        Until one of the choices below is made, these events cannot be managed as a group and series
+                        settings cannot reach them. Nothing here happens on its own, because rebuilding a series and
+                        cutting one loose are both real decisions about somebody's programme.
+                    </p>
+                </div>
+                <?php foreach ( $groups as $missing => $ids ) : ?>
+                    <div class="uc-admin-card">
+                        <h2><?php echo (int) count( $ids ); ?> <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $ids ) ) ); ?>, pointing at missing event #<?php echo (int) $missing; ?></h2>
+                        <table class="uc-admin-table">
+                            <thead><tr><th>Event</th><th>Date</th><th>Status</th></tr></thead>
+                            <tbody>
+                            <?php foreach ( $ids as $id ) : $d = get_post_meta( $id, '_uc_event_date', true ); ?>
+                                <tr>
+                                    <td><a href="<?php echo esc_url( get_edit_post_link( $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
+                                    <td><?php echo $d ? esc_html( date_i18n( 'M j, Y', strtotime( $d ) ) ) : 'Not set'; ?></td>
+                                    <td><?php echo esc_html( ucfirst( get_post_status( $id ) ) ); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <form method="post" action="<?php echo esc_url( $base ); ?>" style="display:inline-block;margin-right:18px;">
+                            <?php wp_nonce_field( 'uc_series_action_' . $missing, 'uc_series_action_nonce' ); ?>
+                            <input type="hidden" name="uc_series_action" value="orphans_rebuild" />
+                            <input type="hidden" name="series_id_post" value="<?php echo (int) $missing; ?>" />
+                            <?php submit_button( 'Rebuild as a series', 'primary', 'submit', false ); ?>
+                        </form>
+                        <form method="post" action="<?php echo esc_url( $base ); ?>" style="display:inline-block;">
+                            <?php wp_nonce_field( 'uc_series_action_' . $missing, 'uc_series_action_nonce' ); ?>
+                            <input type="hidden" name="uc_series_action" value="orphans_release" />
+                            <input type="hidden" name="series_id_post" value="<?php echo (int) $missing; ?>" />
+                            <?php submit_button( 'Convert to standalone events', 'secondary', 'submit', false ); ?>
+                        </form>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     /** Process the Series edit save on admin_init (before any output). */
@@ -350,9 +544,13 @@ class SFAF_Admin {
         }
         update_post_meta( $parent_id, '_uc_series_faq', $faqs );
 
-        // Propagate shared fields to non-overridden occurrences.
+        // Propagate shared fields, as far as the chosen scope says. Same
+        // vocabulary as every other editor; see SFAF_Recurrence::scopes().
+        $scope = SFAF_Recurrence::clean_scope(
+            isset( $_POST['uc_series_apply'] ) ? wp_unslash( $_POST['uc_series_apply'] ) : 'this'
+        );
         $rec = new SFAF_Recurrence();
-        $rec->maybe_generate( $parent_id );
+        $rec->maybe_generate( $parent_id, $scope, 'future' === $scope ? current_time( 'Y-m-d' ) : '' );
 
         wp_safe_redirect( add_query_arg(
             array( 'post_type' => 'uc_event', 'page' => 'uc-series', 'series' => $parent_id, 'updated' => '1' ),
@@ -369,14 +567,48 @@ class SFAF_Admin {
             _prime_post_caches( $parents, true, true );
         }
         ?>
+        <?php
+        $orphan_groups = SFAF_Recurrence::find_orphans();
+        $orphan_count  = 0;
+        foreach ( $orphan_groups as $oids ) {
+            $orphan_count += count( $oids );
+        }
+        $base = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
+        ?>
         <div class="wrap uc-admin-wrap">
-            <div class="uc-admin-header"><div><h1>Series</h1><p class="uc-subtitle">Manage shared properties for recurring event series</p></div></div>
+            <div class="uc-admin-header"><div><h1>Series</h1><p class="uc-subtitle">Recurring event series: shared properties, cancelled dates, and removal</p></div></div>
+
+            <?php if ( ! empty( $_GET['removed'] ) ) : ?>
+                <div class="notice notice-success"><p>Series removed, including every occurrence. They are in the trash if you need them back.</p></div>
+            <?php endif; ?>
+            <?php if ( ! empty( $_GET['promoted'] ) ) : ?>
+                <div class="notice notice-success"><p>The next occurrence is now the series. Every other occurrence follows it, and nothing was orphaned.</p></div>
+            <?php endif; ?>
+            <?php if ( ! empty( $_GET['restored'] ) ) : ?>
+                <div class="notice notice-success"><p>Occurrence restored.</p></div>
+            <?php endif; ?>
+            <?php if ( ! empty( $_GET['rebuilt'] ) ) : ?>
+                <div class="notice notice-success"><p>Those occurrences are a series again. Each is marked as individually edited, so the first save will not rewrite them.</p></div>
+            <?php endif; ?>
+
+            <?php if ( $orphan_count ) : ?>
+                <div class="notice notice-warning">
+                    <p>
+                        <strong><?php echo (int) $orphan_count; ?></strong>
+                        <?php echo esc_html( _n( 'occurrence has', 'occurrences have', $orphan_count ) ); ?>
+                        lost the series <?php echo esc_html( _n( 'it belonged to', 'they belonged to', $orphan_count ) ); ?>
+                        and cannot be managed as a group.
+                        <a href="<?php echo esc_url( add_query_arg( 'orphans', '1', $base ) ); ?>">Repair <?php echo esc_html( _n( 'it', 'them', $orphan_count ) ); ?></a>
+                    </p>
+                </div>
+            <?php endif; ?>
+
             <div class="uc-admin-card">
                 <?php if ( empty( $parents ) ) : ?>
                     <p class="uc-no-data">No event series yet. Create a recurring event (set a recurrence + series end date) to start a series.</p>
                 <?php else : ?>
                     <table class="uc-admin-table">
-                        <thead><tr><th>Image</th><th>Series</th><th>Category</th><th>Organizer</th><th>Recurrence</th><th>Occurrences</th><th>Next date</th></tr></thead>
+                        <thead><tr><th>Image</th><th>Series</th><th>Category</th><th>Organizer</th><th>Recurrence</th><th>Occurrences</th><th>Cancelled</th><th>Next date</th><th>Actions</th></tr></thead>
                         <tbody>
                         <?php foreach ( $parents as $pid ) :
                             $cats = wp_get_post_terms( $pid, 'uc_event_category', array( 'fields' => 'names' ) );
@@ -400,7 +632,17 @@ class SFAF_Admin {
                                 <td><?php echo ! is_wp_error( $orgs ) && $orgs ? esc_html( implode( ', ', $orgs ) ) : 'None'; ?></td>
                                 <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : 'None'; ?></td>
                                 <td><?php echo (int) sfaf_series_count( $pid ); ?></td>
+                                <td><?php
+                                    $cancelled = SFAF_Recurrence::cancelled_dates( $pid );
+                                    echo $cancelled
+                                        ? '<a href="' . esc_url( $edit ) . '">' . (int) count( $cancelled ) . '</a>'
+                                        : 'None';
+                                ?></td>
                                 <td><?php echo $next ? esc_html( date_i18n( 'M j, Y', strtotime( $next ) ) ) : 'Not set'; ?></td>
+                                <td>
+                                    <a href="<?php echo esc_url( $edit ); ?>">Edit</a> |
+                                    <a href="<?php echo esc_url( SFAF_Recurrence::admin_remove_url( $pid ) ); ?>" class="uc-link-danger">Remove</a>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -497,8 +739,96 @@ class SFAF_Admin {
                     </script>
                 </div>
 
+                <?php
+                // Scope, from SFAF_Recurrence::scopes(), so this control and
+                // the portal's offer exactly the same three choices with
+                // exactly the same meanings.
+                if ( SFAF_Recurrence::child_count( $parent_id ) ) : ?>
+                    <h2>Apply this save to</h2>
+                    <div class="uc-radio-stack">
+                        <?php foreach ( array_keys( SFAF_Recurrence::scopes() ) as $scope ) : ?>
+                            <label class="uc-radio-opt">
+                                <input type="radio" name="uc_series_apply" value="<?php echo esc_attr( $scope ); ?>" <?php checked( 'this' === $scope ); ?> />
+                                <?php echo esc_html( SFAF_Recurrence::scope_label( $scope, current_time( 'Y-m-d' ) ) ); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="description">
+                        The series record itself is always saved. This is how far the change travels down to the
+                        occurrences. Occurrences edited individually keep their own details unless they fall inside
+                        the scope you pick.
+                    </p>
+                <?php endif; ?>
+
                 <div class="uc-save-bar"><?php submit_button( 'Save Series', 'primary', 'submit', false ); ?></div>
             </form>
+
+            <?php
+            // Outside the form: each of these posts on its own, and HTML forms
+            // cannot nest.
+            $this->render_cancelled_panel( $parent_id );
+            ?>
+
+            <div class="uc-admin-card">
+                <h2>Remove this series</h2>
+                <p class="description">
+                    This event is the series as well as its first occurrence, so removing it is not the same as
+                    removing an ordinary event. The next screen states what would happen and offers the choices.
+                </p>
+                <p><a class="button" href="<?php echo esc_url( SFAF_Recurrence::admin_remove_url( $parent_id ) ); ?>">Remove series&hellip;</a></p>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Cancelled dates for a series, with a way to put each one back.
+     *
+     * Same panel, same wording and same behaviour as the portal's. A
+     * cancellation a manager cannot see looks identical to an occurrence that
+     * quietly failed to generate; one they cannot undo turns a mis-click into
+     * a support request.
+     */
+    private function render_cancelled_panel( $parent_id ) {
+        $cancelled = SFAF_Recurrence::cancelled_dates( $parent_id );
+        $base      = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
+        ?>
+        <div class="uc-admin-card">
+            <h2>Cancelled occurrences</h2>
+            <?php if ( empty( $cancelled ) ) : ?>
+                <p class="description">
+                    None. Removing a single occurrence cancels that date: it will not be recreated the next time this
+                    series is saved, and it will be listed here so it can be put back.
+                </p>
+            <?php else : ?>
+                <p class="description">
+                    These dates are deliberately skipped. Saving this series, changing how often it repeats or moving
+                    its end date will not bring them back.
+                </p>
+                <table class="uc-admin-table">
+                    <thead><tr><th>Date</th><th>Still in the pattern?</th><th>Action</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $cancelled as $date ) :
+                        $in_pattern = SFAF_Recurrence::date_in_pattern( $parent_id, $date );
+                        $stamp      = strtotime( $date );
+                        ?>
+                        <tr>
+                            <td><?php echo esc_html( $stamp ? date_i18n( 'l, M j, Y', $stamp ) : $date ); ?></td>
+                            <td><?php echo $in_pattern ? 'Yes' : 'No. The cadence or end date has changed since, so there is nothing to bring back.'; ?></td>
+                            <td>
+                                <form method="post" action="<?php echo esc_url( $base ); ?>">
+                                    <?php wp_nonce_field( 'uc_series_action_' . $parent_id, 'uc_series_action_nonce' ); ?>
+                                    <input type="hidden" name="uc_series_action" value="restore_date" />
+                                    <input type="hidden" name="series_id_post" value="<?php echo (int) $parent_id; ?>" />
+                                    <input type="hidden" name="occurrence_date" value="<?php echo esc_attr( $date ); ?>" />
+                                    <button type="submit" class="button button-small"><?php echo $in_pattern ? 'Restore' : 'Forget'; ?></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         </div>
         <?php
     }
