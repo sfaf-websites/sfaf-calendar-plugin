@@ -59,17 +59,27 @@ class SFAF_List_Columns {
                 break;
 
             case 'uc_series':
-                if ( sfaf_is_in_series( $post_id ) ) {
-                    $parent = sfaf_series_parent_id( $post_id );
-                    $name   = get_the_title( $parent );
-                    $is_par = $parent === (int) $post_id;
-                    echo '<a href="' . esc_url( get_edit_post_link( $parent ) ) . '">' . esc_html( $name ) . '</a>';
-                    echo $is_par ? ' <span class="uc-col-muted">(parent)</span>' : '';
-                    if ( get_post_meta( $post_id, '_uc_manually_edited', true ) === '1' ) {
-                        echo '<br><span class="uc-col-muted">edited</span>';
-                    }
+                // No "(parent)" marker and no "edited" marker any more. Neither
+                // has anything to mean: no event is a series, and nothing
+                // regenerates, so nothing has to be defended from being
+                // rewritten. What is left is the series it belongs to, and the
+                // recurrence group that made it — two different facts, shown as
+                // two different things. See SFAF_Recurrence's header note.
+                $series = SFAF_Series::for_event( $post_id );
+                if ( $series ) {
+                    $url = add_query_arg(
+                        array( 'post_type' => 'uc_event', 'page' => 'uc-series', 'series' => $series->term_id ),
+                        admin_url( 'edit.php' )
+                    );
+                    echo '<a href="' . esc_url( $url ) . '">' . esc_html( $series->name ) . '</a>';
                 } else {
                     echo '<span class="uc-col-muted">None</span>';
+                }
+                $pattern = SFAF_Recurrence::pattern_of( $post_id );
+                if ( '' !== $pattern ) {
+                    echo '<br><span class="uc-col-muted">'
+                        . esc_html( SFAF_Recurrence::pattern_label( $pattern, get_post_meta( $post_id, '_uc_event_date', true ) ) )
+                        . '</span>';
                 }
                 break;
 

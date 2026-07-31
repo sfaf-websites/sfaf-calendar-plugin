@@ -51,14 +51,6 @@ class SFAF_FAQ_Sets {
     /** Where the sets live. Autoload off: only the FAQ screens read them. */
     const OPTION = 'sfaf_faq_sets';
 
-    /**
-     * The set a series applies to each new occurrence, stored on the parent.
-     *
-     * This is the part that actually solves the problem, rather than a
-     * dropdown that solves it only when somebody remembers to use it.
-     */
-    const SERIES_META = '_uc_series_default_faq_set';
-
     /** Hard ceiling on rows in a set, so a runaway paste cannot bloat the option. */
     const MAX_ROWS = 50;
 
@@ -215,15 +207,11 @@ class SFAF_FAQ_Sets {
      */
     public static function create_from_event( $post_id, $name ) {
         $post_id = (int) $post_id;
-        $key     = sfaf_event_faq_meta_key( $post_id );
-        $rows    = sfaf_normalize_faqs( get_post_meta( $post_id, $key, true ) );
 
-        // A series child shows the inherited series FAQ too, unless it is
-        // overriding. Saving "these FAQs" from such an event should mean what
-        // is on screen, so the inherited rows come along.
-        if ( '_uc_event_faq' === $key && ! sfaf_faq_is_override( $post_id ) ) {
-            $rows = array_merge( sfaf_get_series_faq( $post_id ), $rows );
-        }
+        // What is on the event IS what is on screen. Nothing is inherited from
+        // anywhere, so there is nothing to merge in before saving — see the
+        // note above sfaf_faq_meta_key().
+        $rows = sfaf_get_faqs( $post_id );
 
         if ( empty( $rows ) ) {
             return new WP_Error( 'sfaf_faq_set_nothing', 'This event has no FAQs to save yet.' );
@@ -253,28 +241,11 @@ class SFAF_FAQ_Sets {
         unset( $raw[ $id ] );
         update_option( self::OPTION, $raw, false );
 
-        self::clear_series_default( $id );
+        // The only thing that can still name a deleted set is a series holding
+        // it as its default for new events. One term-meta query, not a sweep
+        // over every event.
+        SFAF_Series::clear_faq_set( $id );
         return true;
-    }
-
-    /** Forget a deleted set on any series that had chosen it as its default. */
-    private static function clear_series_default( $set_id ) {
-        $query = new WP_Query( array(
-            'post_type'              => 'uc_event',
-            'post_status'            => SFAF_Sources::all_statuses(),
-            'posts_per_page'         => 500,
-            'fields'                 => 'ids',
-            'no_found_rows'          => true,
-            'update_post_meta_cache' => true,
-            'update_post_term_cache' => false,
-            'meta_query'             => array(
-                array( 'key' => self::SERIES_META, 'value' => (string) $set_id ),
-            ),
-        ) );
-
-        foreach ( $query->posts as $post_id ) {
-            delete_post_meta( $post_id, self::SERIES_META );
-        }
     }
 
     /* ---------------------------------------------------------------------
@@ -284,25 +255,9 @@ class SFAF_FAQ_Sets {
     /**
      * Copy a set's rows onto an event.
      *
-     * THE THREE STORAGE CASES, all handled by sfaf_event_faq_meta_key():
-     *
-     *   STANDALONE event (and every imported event is one) -> _uc_series_faq.
-     *       Rows land in the event's own block. Nothing else to think about.
-     *
-     *   SERIES PARENT -> _uc_series_faq, the shared block every occurrence in
-     *       the series inherits at display time. Applying a set to the parent
-     *       therefore reaches every occurrence at once, which is almost always
-     *       what somebody applying a set to a series means.
-     *
-     *   SERIES CHILD -> _uc_event_faq, that one occurrence's extra questions.
-     *       _uc_faq_override is DELIBERATELY NOT TOUCHED here. That flag
-     *       decides whether the inherited series FAQ is shown above these rows
-     *       or replaced by them, which is a display decision a person made,
-     *       and silently flipping it while "applying a set" would change what
-     *       every visitor sees on that page for reasons the manager never
-     *       asked for. So a set applied to an occurrence adds to what is
-     *       inherited unless the manager has already chosen to replace it, and
-     *       the editor says so next to the control.
+     * ONE DESTINATION. Rows land in the event's own FAQ block and there is
+     * nowhere else they could go — which is the whole of what used to be three
+     * storage cases and a note about not touching an override flag.
      *
      * IMPORTED ROWS ARE NEVER DISTURBED, in any mode. They stay at the front
      * in the source's order, because that is the order sync_faqs() will put
@@ -329,8 +284,8 @@ class SFAF_FAQ_Sets {
         }
 
         $replace  = ( 'replace' === $mode );
-        $key      = sfaf_event_faq_meta_key( $post_id );
-        $existing = sfaf_normalize_faqs( get_post_meta( $post_id, $key, true ) );
+        $key      = sfaf_faq_meta_key();
+        $existing = sfaf_get_faqs( $post_id );
 
         $imported = array();
         $manual   = array();
@@ -387,58 +342,57 @@ class SFAF_FAQ_Sets {
      * ------------------------------------------------------------------- */
 
     /**
-     * The set a series applies to each new occurrence, or ''.
+     * The set a series applies to each event created into it, or ''.
      *
-     * @param int $parent_id
+     * Stored on the series TERM, which is why this is a one-line delegation
+     * rather than a meta read: a series is not a post any more, and this class
+     * has no business knowing how a series stores anything.
+     *
+     * @param int $term_id
      * @return string
      */
-    public static function series_default( $parent_id ) {
-        return (string) get_post_meta( (int) $parent_id, self::SERIES_META, true );
+    public static function series_default( $term_id ) {
+        return SFAF_Series::default_faq_set( $term_id );
     }
 
     /**
-     * Choose (or clear) the set a series applies to new occurrences.
+     * Choose (or clear) the set a series applies to new events.
      *
-     * @param int    $parent_id
+     * @param int    $term_id
      * @param string $set_id '' to clear.
      */
-    public static function set_series_default( $parent_id, $set_id ) {
-        $parent_id = (int) $parent_id;
-        $set_id    = trim( (string) $set_id );
-
-        if ( '' === $set_id || ! self::get( $set_id ) ) {
-            delete_post_meta( $parent_id, self::SERIES_META );
-            return;
-        }
-        update_post_meta( $parent_id, self::SERIES_META, $set_id );
+    public static function set_series_default( $term_id, $set_id ) {
+        SFAF_Series::update_faq_set( $term_id, $set_id );
     }
 
     /**
-     * Apply a series' default set to a newly created occurrence.
+     * Apply a series' default set to an event just created into it.
      *
-     * Called from SFAF_Recurrence::create_child(), which is the only place a
-     * new occurrence comes into existence. This is the whole point of the
-     * feature: the manager should not have to remember to pick a set for the
-     * fifty-second weekly occurrence.
+     * INHERITANCE-LIKE CONVENIENCE AT THE ONE MOMENT IT HELPS. The rows are
+     * COPIED, at creation, and are then the event's own: the manager gets a
+     * pre-filled block they can edit or clear, and the event is never tied to
+     * something it may later need to differ from. That is the difference
+     * between this and the inheritance that used to live in the display layer,
+     * which meant editing a series rewrote what visitors saw on events that had
+     * already happened.
      *
-     * Only runs on an occurrence that has no FAQs of its own, so re-generating
-     * a series never stacks the same questions up again. apply() would catch
-     * duplicates anyway; this avoids the work entirely.
+     * Only runs on an event with no FAQs of its own, so nothing ever stacks up
+     * duplicates. apply() would catch them anyway; this avoids the work.
      *
-     * @param int $child_id
-     * @param int $parent_id
+     * @param int $post_id
+     * @param int $term_id Series the event was created into.
      * @return bool Whether anything was applied.
      */
-    public static function apply_series_default( $child_id, $parent_id ) {
-        $set_id = self::series_default( $parent_id );
+    public static function apply_series_default( $post_id, $term_id ) {
+        $set_id = self::series_default( $term_id );
         if ( '' === $set_id ) {
             return false;
         }
-        if ( ! empty( sfaf_normalize_faqs( get_post_meta( (int) $child_id, '_uc_event_faq', true ) ) ) ) {
+        if ( ! empty( sfaf_get_faqs( $post_id ) ) ) {
             return false;
         }
 
-        $result = self::apply( $child_id, $set_id, 'append' );
+        $result = self::apply( $post_id, $set_id, 'append' );
         return ! is_wp_error( $result ) && $result['added'] > 0;
     }
 }

@@ -76,6 +76,11 @@ class SFAF_Post_Types {
             'rewrite'      => array( 'slug' => 'event-venue' ),
             'show_in_rest' => true,
         ) );
+
+        // Series. Registered here alongside the others because that is what it
+        // now is: a way of grouping events, exactly like category and
+        // organizer, and not a kind of event. See class-sfaf-series.php.
+        SFAF_Series::register_taxonomy();
     }
 
     public function add_meta_boxes() {
@@ -152,8 +157,9 @@ class SFAF_Post_Types {
         $start_time = get_post_meta( $post->ID, '_uc_start_time', true );
         $end_time   = get_post_meta( $post->ID, '_uc_end_time', true );
         $location   = get_post_meta( $post->ID, '_uc_location', true );
-        $recurrence = get_post_meta( $post->ID, '_uc_recurrence', true );
-        $end_date   = get_post_meta( $post->ID, '_uc_end_date', true );
+        $series_id  = SFAF_Series::id_for_event( $post->ID );
+        $all_series = SFAF_Series::all();
+        $group      = SFAF_Recurrence::group_of( $post->ID );
         ?>
         <div class="uc-meta-box">
             <div class="uc-meta-row">
@@ -177,21 +183,67 @@ class SFAF_Post_Types {
                 </div>
             </div>
             <div class="uc-meta-row">
-                <div class="uc-meta-field">
-                    <label for="uc_recurrence">Recurrence</label>
-                    <select id="uc_recurrence" name="uc_recurrence">
-                        <option value="" <?php selected( $recurrence, '' ); ?>>Does not repeat</option>
-                        <option value="daily" <?php selected( $recurrence, 'daily' ); ?>>Daily</option>
-                        <option value="weekly" <?php selected( $recurrence, 'weekly' ); ?>>Weekly</option>
-                        <option value="biweekly" <?php selected( $recurrence, 'biweekly' ); ?>>Every 2 Weeks</option>
-                        <option value="monthly" <?php selected( $recurrence, 'monthly' ); ?>>Monthly</option>
+                <div class="uc-meta-field" style="flex: 2;">
+                    <label for="uc_series">Series</label>
+                    <select id="uc_series" name="uc_series">
+                        <option value="0">Not part of a series</option>
+                        <?php foreach ( $all_series as $term ) : ?>
+                            <option value="<?php echo (int) $term->term_id; ?>" <?php selected( $series_id, $term->term_id ); ?>>
+                                <?php echo esc_html( $term->name ); ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
-                </div>
-                <div class="uc-meta-field">
-                    <label for="uc_end_date">Series End Date (if recurring)</label>
-                    <input type="date" id="uc_end_date" name="uc_end_date" value="<?php echo esc_attr( $end_date ); ?>" />
+                    <p class="description">
+                        A series is an umbrella for grouping and filtering &mdash; it holds events, it is not one, and
+                        it may hold different kinds of event. Create and edit series under
+                        <a href="<?php echo esc_url( add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) ) ); ?>">Series</a>.
+                    </p>
                 </div>
             </div>
+
+            <?php
+            /*
+             * REPEAT IS A GENERATOR, AND IT RUNS ONCE.
+             *
+             * Choosing a pattern here creates that many separate events, each
+             * complete in itself, and then forgets the pattern. Nothing
+             * regenerates: editing or deleting one of them afterwards is an
+             * ordinary edit or an ordinary delete, and nothing brings it back.
+             *
+             * Hidden once this event already belongs to a group, because
+             * generating from it again would double every date it produced the
+             * first time.
+             */
+            if ( '' === $group ) : ?>
+                <div class="uc-meta-row">
+                    <div class="uc-meta-field">
+                        <label for="uc_repeat">Repeat this event</label>
+                        <select id="uc_repeat" name="uc_repeat">
+                            <option value="">Does not repeat</option>
+                            <?php foreach ( SFAF_Recurrence::patterns() as $key => $label ) : ?>
+                                <option value="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="uc-meta-field">
+                        <label for="uc_repeat_until">Repeat until</label>
+                        <input type="date" id="uc_repeat_until" name="uc_repeat_until" value="" />
+                    </div>
+                </div>
+                <p class="description">
+                    On save this creates one separate event per date, all sharing a recurrence group so they can be
+                    edited together later. It happens once. Nothing regenerates afterwards.
+                </p>
+            <?php else : ?>
+                <?php $upcoming = count( SFAF_Recurrence::bulk_targets( $post->ID ) ); ?>
+                <p class="description">
+                    <strong>Part of a recurrence group.</strong>
+                    <?php echo esc_html( SFAF_Recurrence::pattern_label( SFAF_Recurrence::pattern_of( $post->ID ), $date ) ); ?>
+                    &middot; <?php echo (int) $upcoming; ?> upcoming
+                    <?php echo esc_html( _n( 'occurrence', 'occurrences', $upcoming ) ); ?>.
+                    This event is its own record: editing or deleting it affects nothing else.
+                </p>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -439,46 +491,21 @@ class SFAF_Post_Types {
     }
 
     /**
-     * FAQ box. Parent → managed in Series Manager. Child → inherited series FAQ
-     * (read-only) + editable event-specific FAQ + replace toggle. Standalone →
-     * its own FAQ.
+     * FAQ box.
+     *
+     * ONE BLOCK, ALWAYS. Whatever this event is, its questions live on it and
+     * are edited here. There is no inherited block above these rows, no replace
+     * toggle deciding which of two blocks a visitor sees, and no "manage this
+     * elsewhere" for some events but not others — all three of which existed
+     * only because a series used to be an event that other events read from.
+     *
+     * Reuse comes from saved sets and from a series' default set, both of which
+     * COPY rows onto the event at a moment somebody chose. See SFAF_FAQ_Sets.
      */
     public function render_faq_meta_box( $post ) {
-        $series_parent = (int) get_post_meta( $post->ID, '_uc_series_parent', true );
-        $is_parent     = $series_parent && $series_parent === (int) $post->ID;
-        $is_child      = $series_parent && $series_parent !== (int) $post->ID;
-
         echo '<div class="uc-meta-box">';
-
-        if ( $is_parent ) {
-            $url = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series', 'series' => $post->ID ), admin_url( 'edit.php' ) );
-            echo '<p class="description">This event is a series parent. Edit the shared <strong>Series FAQ</strong> in the <a href="' . esc_url( $url ) . '">Series Manager &rarr;</a></p>';
-            echo '</div>';
-            return;
-        }
-
-        if ( $is_child ) {
-            $series = sfaf_get_series_faq( $post->ID );
-            echo '<p class="description" style="margin-top:0;"><strong>Series FAQ (inherited)</strong></p>';
-            if ( empty( $series ) ) {
-                echo '<p class="uc-muted-inline">No series FAQ yet. Manage it in the Series Manager.</p>';
-            } else {
-                echo '<ul class="uc-faq-readonly">';
-                foreach ( $series as $f ) {
-                    echo '<li><strong>' . esc_html( $f['question'] ) . '</strong><br>' . esc_html( $f['answer'] ) . '</li>';
-                }
-                echo '</ul>';
-            }
-            echo '<label class="uc-display-toggle"><input type="checkbox" name="uc_faq_override" value="1" ' . checked( sfaf_faq_is_override( $post->ID ), true, false ) . ' /> Replace the series FAQ with the event-specific FAQ below</label>';
-            echo '<p class="description" style="margin-top:12px;"><strong>Event-specific FAQ</strong></p>';
-            $this->faq_repeater_html( 'uc_event_faq', sfaf_get_event_faq( $post->ID ), $this->faq_source_label( $post->ID ) );
-            echo '</div>';
-            return;
-        }
-
-        // Standalone event.
         echo '<p class="description" style="margin-top:0;">Frequently asked questions for this event.</p>';
-        $this->faq_repeater_html( 'uc_series_faq', sfaf_normalize_faqs( get_post_meta( $post->ID, '_uc_series_faq', true ) ), $this->faq_source_label( $post->ID ) );
+        $this->faq_repeater_html( 'uc_faqs', sfaf_get_faqs( $post->ID ), $this->faq_source_label( $post->ID ) );
         echo '</div>';
     }
 
@@ -527,13 +554,17 @@ class SFAF_Post_Types {
         }
 
         // Plain text fields.
+        //
+        // uc_recurrence and uc_end_date are gone from this list on purpose.
+        // The cadence is no longer a stored property that anything re-reads —
+        // it is an instruction to the generator, handled at the bottom of this
+        // method — and _uc_end_date now means only what a source says an event's
+        // end date is, which this editor has no business writing.
         $text_fields = array(
             'uc_event_date'  => '_uc_event_date',
             'uc_start_time'  => '_uc_start_time',
             'uc_end_time'    => '_uc_end_time',
             'uc_location'    => '_uc_location',
-            'uc_recurrence'  => '_uc_recurrence',
-            'uc_end_date'    => '_uc_end_date',
             'uc_capacity'    => '_uc_capacity',
             'uc_email_subject' => '_uc_email_subject',
         );
@@ -574,11 +605,6 @@ class SFAF_Post_Types {
         $pardot = array_values( array_filter( array_map( 'sanitize_text_field', $pardot ) ) );
         update_post_meta( $post_id, '_uc_pardot_campaigns', $pardot );
 
-        // FAQ. Parent FAQ is managed in the Series Manager; here we handle
-        // child (event-specific FAQ + replace toggle) and standalone (own FAQ).
-        $sp       = (int) get_post_meta( $post_id, '_uc_series_parent', true );
-        $is_child = $sp && $sp !== (int) $post_id;
-
         // Rows a platform owns are never read from the browser: they carry no
         // form fields, so they are read back from the database and put in
         // front of whatever was submitted. sanitize_faq_post() keeps only
@@ -607,18 +633,9 @@ class SFAF_Post_Types {
             return isset( $_POST['uc_faq_has_manual'] ) ? array() : null;
         };
 
-        if ( $is_child ) {
-            $rows = $posted_faq( 'uc_event_faq' );
-            if ( null !== $rows ) {
-                update_post_meta( $post_id, '_uc_event_faq', $merge_faq( '_uc_event_faq', $rows ) );
-            }
-            update_post_meta( $post_id, '_uc_faq_override', isset( $_POST['uc_faq_override'] ) ? '1' : '0' );
-        } elseif ( ! $sp ) {
-            // Standalone event keeps its FAQ in _uc_series_faq.
-            $rows = $posted_faq( 'uc_series_faq' );
-            if ( null !== $rows ) {
-                update_post_meta( $post_id, '_uc_series_faq', $merge_faq( '_uc_series_faq', $rows ) );
-            }
+        $rows = $posted_faq( 'uc_faqs' );
+        if ( null !== $rows ) {
+            update_post_meta( $post_id, sfaf_faq_meta_key(), $merge_faq( sfaf_faq_meta_key(), $rows ) );
         }
 
         // Image override: reset to series image, or flag a per-event image.
@@ -644,6 +661,42 @@ class SFAF_Post_Types {
         );
         foreach ( $toggles as $post_key => $meta_key ) {
             update_post_meta( $post_id, $meta_key, isset( $_POST[ $post_key ] ) ? '1' : '0' );
+        }
+
+        // Which series this event belongs to. A plain term assignment: nothing
+        // is inherited from it and nothing about the event changes because of
+        // it, beyond the image fallback and the badge.
+        if ( isset( $_POST['uc_series'] ) ) {
+            $was = SFAF_Series::id_for_event( $post_id );
+            $now = (int) $_POST['uc_series'];
+            SFAF_Series::set_for_event( $post_id, $now );
+
+            // Moving INTO a series applies that series' default FAQ set, and
+            // only when the event has no questions of its own. Copied, once,
+            // never linked.
+            if ( $now && $now !== $was ) {
+                SFAF_FAQ_Sets::apply_series_default( $post_id, $now );
+            }
+        }
+
+        /*
+         * GENERATE, ONCE.
+         *
+         * SFAF_Recurrence::generate() refuses a seed that already carries a
+         * group, so a resubmitted form cannot double the dates. Everything it
+         * makes is an ordinary event from the moment it exists.
+         */
+        $pattern = isset( $_POST['uc_repeat'] ) ? SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['uc_repeat'] ) ) : '';
+        $until   = isset( $_POST['uc_repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_repeat_until'] ) ) : '';
+        if ( '' !== $pattern && '' !== $until ) {
+            $made = SFAF_Recurrence::generate( $post_id, $pattern, $until );
+            if ( ! empty( $made['created'] ) ) {
+                set_transient(
+                    'sfaf_generated_' . get_current_user_id() . '_' . $post_id,
+                    count( $made['created'] ),
+                    5 * MINUTE_IN_SECONDS
+                );
+            }
         }
     }
 }

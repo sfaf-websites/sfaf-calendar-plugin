@@ -135,13 +135,21 @@ class SFAF_Shortcodes {
             }
         }
 
-        // Series: given a series parent ID, return that parent's occurrences.
-        // Every occurrence stores the parent ID in _uc_series_parent, and the
-        // parent points at itself, so one clause covers parent and children.
-        if ( $filters['series'] > 0 ) {
-            $args['meta_query'][] = array(
-                'key'   => '_uc_series_parent',
-                'value' => $filters['series'],
+        // Series.
+        //
+        // THE SNIPPET CONTRACT IS UNCHANGED. series="123" still takes a single
+        // integer and still means "only this series", exactly as every embed
+        // snippet and shortcode on sfaf.org already says. What changed is what
+        // the integer is looked up in: it used to be a post ID matched against
+        // _uc_series_parent, and it is now resolved by SFAF_Series::resolve(),
+        // which tries the old parent ID first and the term ID second. That is
+        // what lets existing embed code keep working without being regenerated.
+        $series_term = SFAF_Series::resolve( $filters['series'] );
+        if ( $series_term > 0 ) {
+            $args['tax_query'][] = array(
+                'taxonomy' => SFAF_Series::TAXONOMY,
+                'field'    => 'term_id',
+                'terms'    => $series_term,
             );
         }
 
@@ -307,8 +315,15 @@ class SFAF_Shortcodes {
                 );
             }
         }
-        if ( $filters['series'] > 0 ) {
-            $args['meta_query'][] = array( 'key' => '_uc_series_parent', 'value' => $filters['series'] );
+        // Same resolution as list_query_args(); see the note there on why the
+        // number in an existing snippet keeps meaning what it always meant.
+        $series_term = SFAF_Series::resolve( $filters['series'] );
+        if ( $series_term > 0 ) {
+            $args['tax_query'][] = array(
+                'taxonomy' => SFAF_Series::TAXONOMY,
+                'field'    => 'term_id',
+                'terms'    => $series_term,
+            );
         }
 
         $query  = new WP_Query( $args );

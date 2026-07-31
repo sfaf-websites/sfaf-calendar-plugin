@@ -586,143 +586,117 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
  * ---------------------------------------------------------------------- */
 
 /**
- * The series parent ID for an event (the parent points at itself). 0 if standalone.
+ * The series an event belongs to, as a term ID. 0 when it belongs to none.
  *
- * This is the RAW stored value and may point at a post that no longer exists.
- * Anything that renders needs sfaf_series_parent_id() instead.
+ * A SERIES CANNOT GO MISSING ANY MORE. Under the old model this had a second
+ * function beside it (sfaf_series_parent_id) whose entire job was to notice
+ * that the parent post had been deleted and degrade to "not in a series", plus
+ * sfaf_is_orphaned_occurrence() to name that state, plus two repair screens to
+ * get out of it. A term relationship is removed with the term, so an event is
+ * either in a series or it is not and there is no third condition to detect.
+ *
+ * @param int $post_id
+ * @return int
  */
-function sfaf_get_series_parent( $post_id ) {
-    $parent = get_post_meta( $post_id, '_uc_series_parent', true );
-    return $parent ? (int) $parent : 0;
+function sfaf_event_series_id( $post_id ) {
+    return SFAF_Series::id_for_event( $post_id );
 }
 
 /**
- * The series parent ID, but only when it actually resolves to a live event.
+ * True when the event belongs to a series.
  *
- * A DELETED PARENT MUST NOT REACH THE PAGE. When one is deleted its
- * occurrences keep pointing at the missing ID, and every display helper built
- * on the raw value then rendered something broken: a series link with an empty
- * title and an empty href, which is a visible dead link on a public page. This
- * is the one function the display layer asks, so a missing parent degrades to
- * "not in a series" everywhere at once rather than in each caller separately.
+ * NO MINIMUM COUNT. The old version required more than one occurrence, because
+ * a "series" of one was really just an event wearing a parent flag. A series is
+ * now a container somebody deliberately created and wrote a description for, so
+ * an event is part of it from the first date — and a series with no dates at
+ * all is valid too.
  *
- * Repairing the data is a separate, deliberate act in the Series Manager. See
- * SFAF_Recurrence::find_orphans().
- *
- * @return int Parent ID, or 0 when standalone OR orphaned.
- */
-function sfaf_series_parent_id( $post_id ) {
-    $parent = sfaf_get_series_parent( $post_id );
-    if ( ! $parent ) {
-        return 0;
-    }
-    return SFAF_Recurrence::parent_exists( $parent ) ? $parent : 0;
-}
-
-/**
- * Whether this event points at a series parent that has gone.
- */
-function sfaf_is_orphaned_occurrence( $post_id ) {
-    $parent = sfaf_get_series_parent( $post_id );
-    if ( ! $parent || $parent === (int) $post_id ) {
-        return false;
-    }
-    return ! SFAF_Recurrence::parent_exists( $parent );
-}
-
-/**
- * True when the event belongs to a LIVE series with more than one occurrence.
+ * @param int $post_id
+ * @return bool
  */
 function sfaf_is_in_series( $post_id ) {
-    $parent = sfaf_series_parent_id( $post_id );
-    if ( ! $parent ) {
-        return false;
-    }
-    return count( sfaf_get_series_events( $parent ) ) > 1;
+    return SFAF_Series::id_for_event( $post_id ) > 0;
 }
 
 /**
- * Display name of a series (its parent event's title). '' when orphaned.
+ * Display name of the series an event is in, or ''.
  */
 function sfaf_get_series_name( $post_id ) {
-    $parent = sfaf_series_parent_id( $post_id );
-    return $parent ? get_the_title( $parent ) : '';
+    return SFAF_Series::name_for_event( $post_id );
 }
 
 /**
- * Published events in a series (parent + children), ordered by date.
+ * Published events in a series, ordered by date.
  *
- * @param int  $parent_id     Series parent ID.
+ * @param int  $term_id       Series term ID.
  * @param bool $upcoming_only Limit to today-and-later.
  * @return int[] Post IDs.
  */
-function sfaf_get_series_events( $parent_id, $upcoming_only = false ) {
-    // Memoize per parent (+ upcoming flag) for the request: the event list and
-    // series views call this once per row/card, which would otherwise fire a
-    // separate query for every event in the same series.
+function sfaf_get_series_events( $term_id, $upcoming_only = false ) {
+    // Memoized per series (+ upcoming flag) for the request: the event list and
+    // the single-event page ask this once per card, which would otherwise fire
+    // a separate query for every event in the same series.
     static $cache = array();
-    $key = (int) $parent_id . '|' . ( $upcoming_only ? '1' : '0' );
-    if ( isset( $cache[ $key ] ) ) {
-        return $cache[ $key ];
+    $key = (int) $term_id . '|' . ( $upcoming_only ? '1' : '0' );
+    if ( ! isset( $cache[ $key ] ) ) {
+        $cache[ $key ] = SFAF_Series::events( (int) $term_id, array(
+            'upcoming' => (bool) $upcoming_only,
+            'status'   => array( 'publish' ),
+            'limit'    => 50,
+        ) );
     }
-    $args = array(
-        'post_type'      => 'uc_event',
-        'post_status'    => 'publish',
-        'posts_per_page' => 50,
-        'fields'         => 'ids',
-        'meta_key'       => '_uc_event_date',
-        'orderby'        => 'meta_value',
-        'order'          => 'ASC',
-        'no_found_rows'  => true,
-        'meta_query'     => array(
-            'relation' => 'AND',
-            array( 'key' => '_uc_series_parent', 'value' => $parent_id ),
-        ),
-    );
-    if ( $upcoming_only ) {
-        $args['meta_query'][] = array(
-            'key'     => '_uc_event_date',
-            'value'   => current_time( 'Y-m-d' ),
-            'compare' => '>=',
-            'type'    => 'DATE',
-        );
-    }
-    $q = new WP_Query( $args );
-    $cache[ $key ] = $q->posts;
     return $cache[ $key ];
 }
 
 /**
- * "Part of series: Name" link (links to the series parent). '' if standalone.
+ * "Part of series: Name" — the badge on a card and on the single event page.
+ *
+ * WHERE IT NOW POINTS, AND WHY. It used to link to the series PARENT POST,
+ * which no longer exists. The two candidates were a filtered calendar view and
+ * the taxonomy term archive; this is the term archive.
+ *
+ * The filtered calendar view was the tempting one and it is the wrong choice
+ * for a reason that has nothing to do with taste: the plugin does not know
+ * which page holds a [sfaf_calendar] shortcode. There may be several, there may
+ * be none, and the answer can change without the plugin hearing about it — so
+ * the link would be a guess that breaks quietly. A term archive is a real URL
+ * WordPress routes and canonicalises, it exists whether or not anybody has
+ * built a calendar page, and it is the only destination that can show what the
+ * series IS: the description and image a series carries, which a filtered list
+ * of dates has nowhere to put. Section 2 asks for a series with no events at
+ * all to still be readable; only the archive can do that.
+ *
+ * The badge itself is unchanged — same class, same icon, same words.
+ *
+ * @param int $post_id
+ * @return string
  */
 function sfaf_series_link( $post_id ) {
-    if ( ! sfaf_is_in_series( $post_id ) ) {
+    $term = SFAF_Series::for_event( $post_id );
+    if ( ! $term ) {
         return '';
     }
-    $parent = sfaf_series_parent_id( $post_id );
-    $name   = $parent ? get_the_title( $parent ) : '';
-    $url    = $parent ? get_permalink( $parent ) : '';
+    $url = SFAF_Series::url( $term->term_id );
 
-    // Belt and braces on top of sfaf_is_in_series(). A parent can be live but
-    // unroutable (no permalink yet on a draft), and an anchor with an empty
-    // href and an empty label is worse than no anchor at all.
-    if ( ! $url || '' === $name ) {
+    // An anchor with an empty href and an empty label is worse than no anchor,
+    // so a series that cannot produce a link renders nothing.
+    if ( '' === $url || '' === $term->name ) {
         return '';
     }
 
     return '<a class="uc-series-link" href="' . esc_url( $url ) . '">'
-        . sfaf_icon( 'repeat' ) . ' Part of series: ' . esc_html( $name ) . '</a>';
+        . sfaf_icon( 'repeat' ) . ' Part of series: ' . esc_html( $term->name ) . '</a>';
 }
 
 /**
  * "Upcoming in this series" list for the single event template.
  */
 function sfaf_series_list_html( $post_id ) {
-    if ( ! sfaf_is_in_series( $post_id ) ) {
+    $term_id = SFAF_Series::id_for_event( $post_id );
+    if ( ! $term_id ) {
         return '';
     }
-    $parent = sfaf_series_parent_id( $post_id );
-    $events = sfaf_get_series_events( $parent, true );
+    $events = sfaf_get_series_events( $term_id, true );
 
     // Drop the event we're currently viewing.
     $events = array_values( array_filter( $events, function( $id ) use ( $post_id ) {
@@ -801,12 +775,39 @@ function sfaf_galaxy_block( $post_id ) {
 }
 
 /* -------------------------------------------------------------------------
- * Series + event FAQ helpers
+ * FAQ helpers
  *
- * Canonical series FAQ lives on the series parent in _uc_series_faq (edited in
- * the Series Manager). Each event may add its own _uc_event_faq, which appends
- * to the series FAQ — or replaces it when _uc_faq_override is set.
+ * ONE KEY. FAQs live on the event, in _uc_faqs, and that is the whole storage
+ * model. There is no inheritance, no override flag, and no display logic
+ * deciding whether a series' questions appear above an event's or instead of
+ * them.
+ *
+ * WHAT THIS REPLACES. Until 3.0.0 the same questions could be in three places:
+ * _uc_series_faq on the parent (shared), _uc_event_faq on an occurrence (its
+ * own), and _uc_faq_override deciding which of the two a visitor saw — and, to
+ * make it properly confusing, a STANDALONE event kept its own questions in
+ * _uc_series_faq despite not being a series, because the Series Manager and the
+ * event editor shared one repeater. Answering "what FAQs does this event have"
+ * meant knowing which of three shapes the event was.
+ *
+ * REUSE COMES FROM SAVED SETS, which are copies and have been since 2.9.0, and
+ * from a series naming a default set applied when an event is created into it.
+ * Both put real rows on the event at a moment somebody chose; neither leaves a
+ * live link that could rewrite an event later. See SFAF_FAQ_Sets.
  * ---------------------------------------------------------------------- */
+
+/**
+ * The one meta key FAQ rows live in, on the event.
+ *
+ * A function rather than a bare constant because every reader and writer in the
+ * plugin goes through it, which is what made collapsing three keys into one a
+ * change to this line instead of a search across the codebase.
+ *
+ * @return string
+ */
+function sfaf_faq_meta_key() {
+    return '_uc_faqs';
+}
 
 /** Normalize a stored FAQ array, dropping empty rows. */
 function sfaf_normalize_faqs( $raw ) {
@@ -838,29 +839,6 @@ function sfaf_normalize_faqs( $raw ) {
 }
 
 /**
- * Which meta key holds the FAQ rows a given event's editor writes.
- *
- * The naming is a legacy of the series manager sharing one repeater:
- *
- *   - A series CHILD keeps its own rows in _uc_event_faq, on top of (or
- *     instead of) the inherited series FAQ.
- *   - A STANDALONE event — which every imported event is — keeps its rows in
- *     _uc_series_faq, despite not being a series.
- *   - A series PARENT keeps the shared rows in _uc_series_faq too, edited in
- *     the Series Manager.
- *
- * Resolved in one place so the importer writes to exactly the key the editor
- * reads, whichever of those three an event happens to be.
- *
- * @param int $post_id
- * @return string
- */
-function sfaf_event_faq_meta_key( $post_id ) {
-    $parent = (int) get_post_meta( (int) $post_id, '_uc_series_parent', true );
-    return ( $parent && $parent !== (int) $post_id ) ? '_uc_event_faq' : '_uc_series_faq';
-}
-
-/**
  * Whether an FAQ row came from a platform rather than a person.
  *
  * @param array $row
@@ -870,70 +848,19 @@ function sfaf_faq_is_imported( $row ) {
     return is_array( $row ) && ! empty( $row[ SFAF_Sources::FAQ_SOURCE_ID ] );
 }
 
-/** All series parent event IDs (events that are their own _uc_series_parent). */
-function sfaf_get_series_parents() {
-    $q = new WP_Query( array(
-        'post_type'      => 'uc_event',
-        'post_status'    => array( 'publish', 'pending', 'draft', 'future', 'private' ),
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'no_found_rows'  => true,
-        'meta_query'     => array( array( 'key' => '_uc_series_parent', 'compare' => 'EXISTS' ) ),
-    ) );
-    $parents = array();
-    foreach ( $q->posts as $id ) {
-        if ( (int) get_post_meta( $id, '_uc_series_parent', true ) === (int) $id ) {
-            $parents[] = (int) $id;
-        }
-    }
-    return $parents;
-}
-
-/** Number of occurrences in a series (parent + children, any status). */
-function sfaf_series_count( $parent_id ) {
-    $q = new WP_Query( array(
-        'post_type'      => 'uc_event',
-        'post_status'    => array( 'publish', 'pending', 'draft', 'future', 'private' ),
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'no_found_rows'  => true,
-        'meta_query'     => array( array( 'key' => '_uc_series_parent', 'value' => $parent_id ) ),
-    ) );
-    return count( $q->posts );
-}
-
-/** Canonical series FAQ for an event (from its series parent, or itself). */
-function sfaf_get_series_faq( $post_id ) {
-    $parent = sfaf_series_parent_id( $post_id );
-    $source = $parent ? $parent : $post_id;
-    return sfaf_normalize_faqs( get_post_meta( $source, '_uc_series_faq', true ) );
-}
-
-/** Event-specific FAQ entries. */
-function sfaf_get_event_faq( $post_id ) {
-    return sfaf_normalize_faqs( get_post_meta( $post_id, '_uc_event_faq', true ) );
-}
-
-/** Whether this event replaces (vs appends to) the series FAQ. */
-function sfaf_faq_is_override( $post_id ) {
-    return get_post_meta( $post_id, '_uc_faq_override', true ) === '1';
+/** Number of events in a series, any status. */
+function sfaf_series_count( $term_id ) {
+    return SFAF_Series::total_count( $term_id );
 }
 
 /**
- * Effective FAQ for display: series FAQ + event-specific FAQ (or event-only
- * when the event sets the replace override). The series parent itself shows
- * just the series FAQ.
+ * An event's FAQ rows. There is exactly one place to look.
  *
+ * @param int $post_id
  * @return array[] List of array( 'question' => string, 'answer' => string ).
  */
 function sfaf_get_faqs( $post_id ) {
-    $parent   = sfaf_series_parent_id( $post_id );
-    $is_self  = ( $parent === (int) $post_id ); // series parent editing itself
-    $series   = sfaf_get_series_faq( $post_id );
-    $event    = $is_self ? array() : sfaf_get_event_faq( $post_id );
-    $override = $is_self ? false : sfaf_faq_is_override( $post_id );
-
-    return $override ? $event : array_merge( $series, $event );
+    return sfaf_normalize_faqs( get_post_meta( (int) $post_id, sfaf_faq_meta_key(), true ) );
 }
 
 /**
@@ -1034,33 +961,24 @@ function sfaf_event_placeholder_svg( $post_id ) {
 }
 
 /**
- * Series-level image URL set on the series parent (attachment or manual URL).
+ * Series-level image URL, from the series term (attachment or manual URL).
+ *
+ * Memoized per series: every card in a list resolves its image through the same
+ * series, so without this each one re-queries the attachment.
+ *
+ * @param int $term_id
+ * @return string
  */
-function sfaf_series_image_url( $parent_id ) {
-    if ( ! $parent_id ) {
+function sfaf_series_image_url( $term_id ) {
+    $term_id = (int) $term_id;
+    if ( ! $term_id ) {
         return '';
     }
-    // Memoize per parent: every child card/row resolves its image through the
-    // same series parent, so without this each card re-queries the attachment.
     static $cache = array();
-    $parent_id = (int) $parent_id;
-    if ( isset( $cache[ $parent_id ] ) ) {
-        return $cache[ $parent_id ];
+    if ( ! isset( $cache[ $term_id ] ) ) {
+        $cache[ $term_id ] = SFAF_Series::image_url( $term_id );
     }
-    $resolved = '';
-    $att      = get_post_meta( $parent_id, '_uc_series_image_id', true );
-    if ( $att ) {
-        $url = wp_get_attachment_image_url( (int) $att, 'large' );
-        if ( $url ) {
-            $resolved = $url;
-        }
-    }
-    if ( ! $resolved ) {
-        $url      = get_post_meta( $parent_id, '_uc_series_image_url', true );
-        $resolved = $url ? $url : '';
-    }
-    $cache[ $parent_id ] = $resolved;
-    return $resolved;
+    return $cache[ $term_id ];
 }
 
 /**
@@ -1118,7 +1036,7 @@ function sfaf_category_color( $term_id ) {
  * Effective image URL for an event, in priority order:
  * 1) the event's own featured image or _uc_image_url (both set by hand)
  * 2) _uc_external_image — whatever the third-party source last supplied
- * 3) the series-level image (_uc_series_image_* on the series parent)
+ * 3) the series-level image (term meta on the event's series)
  * 4) _uc_remote_image_url (synced from another site)
  * 5) '' (caller falls back to the SVG placeholder)
  *
@@ -1138,7 +1056,7 @@ function sfaf_event_image_url( $post_id ) {
     if ( $external ) {
         return $external;
     }
-    $series = sfaf_series_image_url( sfaf_series_parent_id( $post_id ) );
+    $series = sfaf_series_image_url( SFAF_Series::id_for_event( $post_id ) );
     if ( $series ) {
         return $series;
     }
@@ -1158,7 +1076,7 @@ function sfaf_event_image_source( $post_id ) {
     if ( get_post_meta( $post_id, '_uc_external_image', true ) ) {
         return 'source';
     }
-    if ( sfaf_series_image_url( sfaf_series_parent_id( $post_id ) ) ) {
+    if ( sfaf_series_image_url( SFAF_Series::id_for_event( $post_id ) ) ) {
         return 'series';
     }
     if ( get_post_meta( $post_id, '_uc_remote_image_url', true ) ) {

@@ -68,15 +68,30 @@ class SFAF_Sync {
             'start_time'      => get_post_meta( $post_id, '_uc_start_time', true ),
             'end_time'        => get_post_meta( $post_id, '_uc_end_time', true ),
             'location'        => get_post_meta( $post_id, '_uc_location', true ),
-            'recurrence'      => get_post_meta( $post_id, '_uc_recurrence', true ),
+            'recurrence'      => SFAF_Recurrence::pattern_of( $post_id ),
             'capacity'        => get_post_meta( $post_id, '_uc_capacity', true ),
             'rsvp_enabled'    => get_post_meta( $post_id, '_uc_rsvp_enabled', true ),
             'gofundme_url'    => get_post_meta( $post_id, '_uc_gofundme_url', true ),
             'gofundme_goal'   => get_post_meta( $post_id, '_uc_gofundme_goal', true ),
-            'series_id'       => get_post_meta( $post_id, '_uc_series_id', true ),
-            'series_parent'   => get_post_meta( $post_id, '_uc_series_parent', true ),
-            'series_name'     => ( $sp = (int) get_post_meta( $post_id, '_uc_series_parent', true ) ) ? get_the_title( $sp ) : '',
-            'series_image'    => ( $sp = (int) get_post_meta( $post_id, '_uc_series_parent', true ) ) ? sfaf_series_image_url( $sp ) : '',
+            /*
+             * SERIES, AND THE KEYS KEPT FOR SATELLITES THAT PREDATE 3.0.0.
+             *
+             * series_id and series_parent used to be post IDs; a series is a
+             * term now and there is no parent. Both keys stay in the payload,
+             * carrying the term ID, because a satellite reading them only ever
+             * used them to answer "are these two events part of the same
+             * thing", and the term ID answers that identically. Dropping the
+             * keys would have broken every satellite at once; changing what
+             * they mean under the same names would be worse.
+             *
+             * recurrence_group is the new, separate fact: which events were
+             * generated together. See SFAF_Recurrence.
+             */
+            'series_id'       => SFAF_Series::id_for_event( $post_id ),
+            'series_parent'   => SFAF_Series::id_for_event( $post_id ),
+            'series_name'     => SFAF_Series::name_for_event( $post_id ),
+            'series_image'    => sfaf_series_image_url( SFAF_Series::id_for_event( $post_id ) ),
+            'recurrence_group'=> SFAF_Recurrence::group_of( $post_id ),
             'show'            => array(
                 'rsvp'      => get_post_meta( $post_id, '_uc_show_rsvp', true ),
                 'donate'    => get_post_meta( $post_id, '_uc_show_donate', true ),

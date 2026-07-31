@@ -80,6 +80,7 @@ add_action( 'admin_notices', 'sfaf_render_fatal_notice' );
 $sfaf_includes = array(
     'includes/class-sfaf-credentials.php',
     'includes/sfaf-template-functions.php',
+    'includes/class-sfaf-series.php',
     'includes/class-sfaf-post-types.php',
     'includes/class-sfaf-shortcodes.php',
     'includes/class-sfaf-embed.php',
@@ -97,6 +98,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-source-eventbrite.php',
     'includes/class-sfaf-source-gfmp.php',
     'includes/class-sfaf-seo.php',
+    'includes/class-sfaf-migrate.php',
     'includes/class-sfaf-portal.php',
     'includes/sfaf-sample-data.php',
     'admin/class-sfaf-admin.php',
@@ -178,6 +180,11 @@ function sfaf_init() {
 
     $seo = new SFAF_SEO();
     $seo->register();
+
+    // The 3.0.0 data migration. Registers its admin notice and screen only —
+    // it never writes on its own. See class-sfaf-migrate.php for why the write
+    // is a button somebody presses and not something that happens on upgrade.
+    SFAF_Migrate::register();
 
     if ( is_admin() ) {
         $admin = new SFAF_Admin();
@@ -292,15 +299,26 @@ add_action( 'admin_enqueue_scripts', 'sfaf_enqueue_admin_assets' );
  * Load the plugin's single event template unless the theme provides one.
  */
 function sfaf_template_include( $template ) {
+    // event => the plugin's own template file, theme override first in both
+    // cases. The series archive is here because the "Part of series" badge now
+    // links to it — see sfaf_series_link().
+    $ours = array();
     if ( is_singular( 'uc_event' ) ) {
-        $theme_template = locate_template( array( 'single-uc_event.php' ) );
-        if ( $theme_template ) {
-            return $theme_template;
-        }
-        $plugin_template = SFAF_PLUGIN_DIR . 'templates/single-uc_event.php';
-        if ( file_exists( $plugin_template ) ) {
-            return $plugin_template;
-        }
+        $ours = array( 'single-uc_event.php' );
+    } elseif ( is_tax( SFAF_Series::TAXONOMY ) ) {
+        $ours = array( 'taxonomy-uc_series.php' );
+    }
+    if ( empty( $ours ) ) {
+        return $template;
+    }
+
+    $theme_template = locate_template( $ours );
+    if ( $theme_template ) {
+        return $theme_template;
+    }
+    $plugin_template = SFAF_PLUGIN_DIR . 'templates/' . $ours[0];
+    if ( file_exists( $plugin_template ) ) {
+        return $plugin_template;
     }
     return $template;
 }
@@ -452,7 +470,9 @@ function sfaf_run_activation() {
 
     // Register the post type and taxonomies directly so their rewrite rules
     // exist before we flush. (Calling register() only adds init hooks, which
-    // won't fire again during activation.)
+    // won't fire again during activation.) register_taxonomies() includes
+    // uc_series, whose archive is where the "Part of series" badge points, so
+    // this is what makes that URL resolve on a fresh activation.
     $post_types = new SFAF_Post_Types();
     $post_types->register_post_type();
     $post_types->register_taxonomies();

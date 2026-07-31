@@ -992,7 +992,10 @@ class SFAF_Embed {
                 '_uc_event_date', '_uc_start_time', '_uc_end_time', '_uc_end_date',
                 '_uc_location', '_uc_recurrence', '_uc_capacity',
                 '_uc_image_url', '_uc_image_override', '_uc_external_image', '_thumbnail_id',
-                '_uc_series_parent', '_uc_series_id', '_uc_series_image_id', '_uc_series_image_url',
+                // A series is a term now, so a change to one arrives on the
+                // taxonomy hooks rather than here. What is left of the old
+                // group is the recurrence marker, which nothing renders.
+                '_uc_faqs',
                 '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised',
                 '_uc_rsvp_enabled', '_uc_show_rsvp', '_uc_show_donate',
                 '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
@@ -1013,7 +1016,11 @@ class SFAF_Embed {
      * badge on every card that carries it, and the filter bar as well.
      */
     public function flush_cache_for_term( $term_id, $tt_id = 0, $taxonomy = '' ) {
-        if ( ! in_array( $taxonomy, array( 'uc_event_category', 'uc_organizer', 'uc_venue' ), true ) ) {
+        // uc_series is in this list because a series now carries the name on
+        // the "Part of series" badge and the image an event falls back to, so
+        // renaming one or changing its image changes what a card renders.
+        $watched = array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY );
+        if ( ! in_array( $taxonomy, $watched, true ) ) {
             return;
         }
         $this->flush_cache();

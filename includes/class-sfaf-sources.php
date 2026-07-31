@@ -1063,9 +1063,21 @@ class SFAF_Sources {
             return $counts;
         }
 
-        $post_id  = (int) $post_id;
-        $meta_key = sfaf_event_faq_meta_key( $post_id );
-        $existing = sfaf_normalize_faqs( get_post_meta( $post_id, $meta_key, true ) );
+        $post_id = (int) $post_id;
+
+        /*
+         * ONE KEY, AND THE ID MATCHING IS UNAFFECTED BY THAT.
+         *
+         * Imported rows are identified by the source_faq_id they carry, never
+         * by which meta key they sit in, so collapsing three keys into one
+         * changed nothing about how a refresh finds the row it has to update.
+         * What it did remove is the question this used to have to answer first
+         * — "is this event a series child, a parent or standalone?" — which
+         * decided the key and could be answered differently by the importer
+         * and the editor.
+         */
+        $meta_key = sfaf_faq_meta_key();
+        $existing = sfaf_get_faqs( $post_id );
 
         // Incoming rows, sanitized exactly as a hand-typed row is by the two
         // editors, so an imported row and a manual one are indistinguishable

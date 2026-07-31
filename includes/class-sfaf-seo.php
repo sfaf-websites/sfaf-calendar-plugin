@@ -130,13 +130,15 @@ class SFAF_SEO {
             );
         }
 
-        // Recurring series → reference the parent as a superEvent.
-        if ( sfaf_is_in_series( $id ) ) {
-            $parent = sfaf_series_parent_id( $id );
+        // Part of a series → reference it as a superEvent. The series is a term
+        // now, so the URL is its archive: the same address the "Part of series"
+        // badge links to, which is what schema.org means by a superEvent's url.
+        $series = SFAF_Series::for_event( $id );
+        if ( $series ) {
             $schema['superEvent'] = array(
                 '@type' => 'EventSeries',
-                'name'  => get_the_title( $parent ),
-                'url'   => get_permalink( $parent ),
+                'name'  => $series->name,
+                'url'   => SFAF_Series::url( $series->term_id ),
             );
         }
 

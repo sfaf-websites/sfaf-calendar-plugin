@@ -16,7 +16,12 @@ while ( have_posts() ) :
     $start_time = get_post_meta( $post_id, '_uc_start_time', true );
     $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
     $location   = get_post_meta( $post_id, '_uc_location', true );
-    $recurrence = get_post_meta( $post_id, '_uc_recurrence', true );
+
+    // The pattern that GENERATED this event, kept only so the page can say
+    // "repeats weekly". It is a fact about where the event came from, not a
+    // rule anything still follows: this event is complete in itself and
+    // nothing regenerates it. See SFAF_Recurrence.
+    $recurrence = SFAF_Recurrence::pattern_of( $post_id );
 
     $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
     $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
@@ -26,12 +31,9 @@ while ( have_posts() ) :
 
     $date_ts = $date ? strtotime( $date ) : false;
 
-    $recurrence_labels = array(
-        'daily'    => 'Repeats daily',
-        'weekly'   => 'Repeats weekly',
-        'biweekly' => 'Repeats every 2 weeks',
-        'monthly'  => 'Repeats monthly',
-    );
+    $recurrence_label = $recurrence
+        ? SFAF_Recurrence::pattern_label( $recurrence, $date )
+        : '';
 
     $settings   = get_option( 'uc_settings', array() );
     $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
@@ -53,8 +55,8 @@ while ( have_posts() ) :
                         $c = get_term_meta( $cat->term_id, '_uc_category_color', true ) ?: '#16BECF'; ?>
                         <span class="uc-badge" style="--badge-color: <?php echo esc_attr( $c ); ?>"><?php echo esc_html( $cat->name ); ?></span>
                     <?php endforeach; ?>
-                    <?php if ( $recurrence && isset( $recurrence_labels[ $recurrence ] ) ) : ?>
-                        <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
+                    <?php if ( '' !== $recurrence_label ) : ?>
+                        <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_label ); ?></span>
                     <?php endif; ?>
                     <?php if ( sfaf_is_galaxy_need( $post_id ) ) : ?>
                         <span class="uc-badge uc-badge-volunteer"><?php echo sfaf_icon( 'handshake' ); ?> Volunteer</span>
@@ -97,7 +99,8 @@ while ( have_posts() ) :
                     // Galaxy Digital volunteer signup (imported needs only).
                     echo sfaf_galaxy_block( $post_id );
 
-                    // Frequently asked questions (series-level, inherited by children).
+                    // Frequently asked questions. This event's own, and the only
+                    // ones there are — see sfaf_faq_meta_key().
                     echo sfaf_faq_accordion_html( $post_id );
 
                     // Other events in this series.
