@@ -588,11 +588,86 @@ class SFAF_Sources {
     }
 
     /**
+     * THE ONE DESCRIPTION OF "HAS THIS FIELD BEEN FILLED IN".
+     *
+     * Each entry answers the question twice over, because it genuinely has two
+     * halves and they used to be written down in two different places:
+     *
+     *   'phrase'  how the field is named to a person.
+     *   'inputs'  the POST field names the editor submits, which are exactly
+     *             the names SFAF_Portal::save_event_from_post() reads back.
+     *   field_is_filled() below is the storage half, read on page load and by
+     *             the pending queue.
+     *
+     * WHY THE CONTROL NAMES BELONG HERE. The publish warning, the amber field
+     * highlight and the queue icon all came off missing_manager_fields(), so
+     * they agreed with each other — and all three were still wrong, because
+     * every one of them was computed once, server-side, from the state at page
+     * load, and nothing re-ran while the manager typed. Filling in the image
+     * and the description therefore did not clear the warning: the page had
+     * been rendered before either of them existed, and the Publish button was
+     * carrying a sentence written before the form was touched.
+     *
+     * Naming the controls next to the storage is what lets the browser ask the
+     * SAME question the server asks, off this one list, instead of a second
+     * list in JavaScript that would drift the first time a field was renamed.
+     *
+     * A control counts as filled when its trimmed value is neither empty nor
+     * "0" — "0" is the None option on the category and organizer selects and
+     * the no-attachment value of the featured-image field, and is not a
+     * description, a title or a location anybody means to type.
+     *
+     * @return array<string,array{phrase:string,inputs:string[]}>
+     */
+    public static function completeness_fields() {
+        return array(
+            'image'       => array( 'phrase' => 'an image',     'inputs' => array( 'featured_image_id', 'image_url' ) ),
+            'description' => array( 'phrase' => 'a description', 'inputs' => array( 'description' ) ),
+            'title'       => array( 'phrase' => 'a title',       'inputs' => array( 'title' ) ),
+            'location'    => array( 'phrase' => 'a location',    'inputs' => array( 'location' ) ),
+            'date'        => array( 'phrase' => 'a date',        'inputs' => array( 'date' ) ),
+            'category'    => array( 'phrase' => 'a category',    'inputs' => array( 'category' ) ),
+            'organizer'   => array( 'phrase' => 'an organizer',  'inputs' => array( 'organizer' ) ),
+        );
+    }
+
+    /**
+     * The live-check payload for one event's editor: every manager-owned field
+     * with the controls that fill it and whether storage says it is filled now.
+     *
+     * Handed to the browser so the warning, the highlight and the confirmation
+     * can be recomputed as the manager types, from this list and no other.
+     *
+     * @param int $post_id
+     * @return array
+     */
+    public static function completeness_payload( $post_id ) {
+        $post_id = (int) $post_id;
+        $source  = (string) get_post_meta( $post_id, self::META_SOURCE, true );
+        $fields  = self::completeness_fields();
+        $out     = array();
+
+        foreach ( self::manager_fields_for( $source ) as $field ) {
+            if ( ! isset( $fields[ $field ] ) ) {
+                continue;
+            }
+            $out[] = array(
+                'field'  => $field,
+                'phrase' => $fields[ $field ]['phrase'],
+                'inputs' => array_values( $fields[ $field ]['inputs'] ),
+                'filled' => (bool) self::field_is_filled( $post_id, $field ),
+            );
+        }
+        return $out;
+    }
+
+    /**
      * Human labels for the fields a manager still has to fill in.
      *
      * The pending-queue indicator, the editor's highlight and the publish
      * confirmation all ask this one question, so they can never disagree
-     * about what is missing.
+     * about what is missing. See completeness_fields() for the half of the
+     * answer that lets the browser ask it too.
      *
      * @param int $post_id
      * @return string[] e.g. array( 'image', 'description' ) → 'an image', 'a description'
@@ -666,19 +741,13 @@ class SFAF_Sources {
      * @return string
      */
     public static function field_phrase( $fields ) {
-        $words = array(
-            'image'       => 'an image',
-            'description' => 'a description',
-            'title'       => 'a title',
-            'location'    => 'a location',
-            'date'        => 'a date',
-            'category'    => 'a category',
-            'organizer'   => 'an organizer',
-        );
+        // The wording comes off completeness_fields() rather than a second
+        // list here, so the browser and the server name a field identically.
+        $words = self::completeness_fields();
 
         $out = array();
         foreach ( (array) $fields as $field ) {
-            $out[] = isset( $words[ $field ] ) ? $words[ $field ] : $field;
+            $out[] = isset( $words[ $field ]['phrase'] ) ? $words[ $field ]['phrase'] : $field;
         }
 
         if ( empty( $out ) ) {

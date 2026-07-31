@@ -9,6 +9,7 @@
         initRepeaters();
         initImagePicker();
         initConfirmButtons();
+        initCompleteness();
         initAsyncActions();
     });
 
@@ -151,6 +152,10 @@
                 idInput.value = att.id;
                 var src = (att.sizes && att.sizes.medium) ? att.sizes.medium.url : att.url;
                 show(src);
+                // Setting .value in script fires neither input nor change, so
+                // the live completeness check has to be told by hand. Without
+                // this, choosing an image left the field amber.
+                if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
             });
             frame.open();
         });
@@ -169,6 +174,7 @@
                 idInput.value = '';
                 if (urlInput) { urlInput.value = ''; }
                 hide();
+                if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
             });
         }
     }
@@ -227,10 +233,16 @@
      *
      * A WARNING, NOT A BLOCK. There are real reasons to publish before the
      * image and description are written, so this names what is missing and
-     * then gets out of the way. The message is rendered server-side from the
-     * same list the pending queue's icon uses, so the two always agree. */
+     * then gets out of the way.
+     *
+     * The attribute is read AT CLICK TIME and the listener is bound to any
+     * button that could ever carry one, because initCompleteness() adds and
+     * removes data-uc-confirm while the manager works. Binding only to the
+     * buttons that already had the attribute would have frozen the warning at
+     * page load — which is the bug this pair of functions exists to fix. */
     function initConfirmButtons() {
-        document.querySelectorAll('[data-uc-confirm]').forEach(function (btn) {
+        var sel = '[data-uc-confirm], [data-uc-confirm-template]';
+        document.querySelectorAll(sel).forEach(function (btn) {
             btn.addEventListener('click', function (e) {
                 var message = btn.getAttribute('data-uc-confirm');
                 if (message && !window.confirm(message)) {
@@ -238,5 +250,148 @@
                 }
             });
         });
+    }
+
+    /* ---------------------------------------------------------------------
+     * The live completeness check.
+     *
+     * ONE LIST, ASKED CONTINUOUSLY. The fields, their wording and the controls
+     * that fill them all come from SFAF_Sources::completeness_fields() and are
+     * handed over as JSON; nothing about which field is which is written down
+     * again here. Everything this touches — the amber highlight on a field, the
+     * banner at the top of the form, and the sentence on the Publish button —
+     * is recomputed from that one answer, so the three cannot say different
+     * things and none of them can go stale while somebody types.
+     *
+     * Before this existed all three were rendered once, server-side, from the
+     * state at page load. Entering an image and a description therefore left
+     * every one of them still asking for both.
+     * ------------------------------------------------------------------- */
+    function initCompleteness() {
+        var node = document.getElementById('uc-completeness-data');
+        if (!node) {
+            return;
+        }
+        var fields;
+        try {
+            fields = JSON.parse(node.textContent || '[]');
+        } catch (err) {
+            return; // leave the server-rendered state exactly as it is
+        }
+        if (!fields.length) {
+            return;
+        }
+
+        var form = node.closest ? node.closest('form') : null;
+        if (!form) {
+            return;
+        }
+        var banner = document.querySelector('[data-uc-missing-banner]');
+        var text = document.querySelector('[data-uc-missing-text]');
+        var publish = form.querySelector('[data-uc-confirm-template]');
+
+        /* A control counts as filled when its trimmed value is neither empty
+         * nor "0" — "0" is the None option on the category and organizer
+         * selects and the no-attachment value of the featured-image field.
+         * Same rule as SFAF_Sources::completeness_fields() documents. */
+        function controlFilled(el) {
+            if (!el || el.disabled) {
+                return false;
+            }
+            var v = (el.value || '').trim();
+            return v !== '' && v !== '0';
+        }
+
+        /* A field is filled when ANY of its controls is: the image is filled by
+         * a chosen attachment OR a pasted URL, exactly as field_is_filled()
+         * treats it server-side. */
+        function fieldFilled(entry) {
+            var i;
+            var controls = [];
+            for (i = 0; i < entry.inputs.length; i++) {
+                controls = controls.concat(
+                    Array.prototype.slice.call(
+                        form.querySelectorAll('[name="' + entry.inputs[i] + '"]')
+                    )
+                );
+            }
+            // A field whose controls are not on this form at all keeps whatever
+            // the server decided, rather than being declared empty by absence.
+            if (!controls.length) {
+                return !!entry.filled;
+            }
+            for (i = 0; i < controls.length; i++) {
+                if (controlFilled(controls[i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /* "an image, a description and a category" — the same joining as
+         * SFAF_Sources::field_phrase(). */
+        function phrase(list) {
+            if (!list.length) {
+                return '';
+            }
+            if (list.length === 1) {
+                return list[0];
+            }
+            return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+        }
+
+        function toggle(el, hidden) {
+            if (!el) {
+                return;
+            }
+            if (hidden) {
+                el.setAttribute('hidden', 'hidden');
+            } else {
+                el.removeAttribute('hidden');
+            }
+        }
+
+        function refresh() {
+            var missing = [];
+
+            fields.forEach(function (entry) {
+                var filled = fieldFilled(entry);
+                if (!filled) {
+                    missing.push(entry.phrase);
+                }
+                var wrap = form.querySelector('[data-uc-field="' + entry.field + '"]');
+                if (!wrap) {
+                    return;
+                }
+                wrap.classList.toggle('uc-field-attention', !filled);
+                toggle(wrap.querySelector('[data-uc-attention-badge]'), filled);
+                toggle(wrap.querySelector('[data-uc-attention-note]'), filled);
+            });
+
+            if (text) {
+                text.textContent = phrase(missing);
+            }
+            toggle(banner, missing.length === 0);
+
+            if (publish) {
+                if (missing.length) {
+                    publish.setAttribute(
+                        'data-uc-confirm',
+                        publish.getAttribute('data-uc-confirm-template').replace('%s', phrase(missing))
+                    );
+                } else {
+                    publish.removeAttribute('data-uc-confirm');
+                }
+            }
+        }
+
+        /* input covers typing, change covers the selects and the media picker
+         * (which sets the hidden field's value and fires nothing on its own —
+         * hence the explicit refresh from initImagePicker). */
+        form.addEventListener('input', refresh);
+        form.addEventListener('change', refresh);
+        window.sfafRefreshCompleteness = refresh;
+
+        refresh();
     }
 })();

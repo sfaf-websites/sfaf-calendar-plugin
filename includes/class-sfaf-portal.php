@@ -1954,18 +1954,25 @@ class SFAF_Portal {
     /**
      * State of one editor field for an imported event.
      *
+     * FOUR STATES, NOT THREE. 'filled' is a manager-owned field that has been
+     * filled in — the same rendering as 'normal', but it remembers that this
+     * field is one of the ones the completeness check watches. Without that
+     * distinction the markup could not carry a hidden "Needs you" badge for
+     * the live check to reveal when somebody clears the control again, and the
+     * highlight would go back to being frozen at page load.
+     *
      * @param string $field   Editor field name.
      * @param array  $owned   Adapter's owned_fields().
      * @param array  $manager Adapter's manager_fields().
      * @param int    $event_id
-     * @return string 'locked' | 'attention' | 'normal'
+     * @return string 'locked' | 'attention' | 'filled' | 'normal'
      */
     private function field_state( $field, $owned, $manager, $event_id ) {
         if ( in_array( $field, $owned, true ) ) {
             return 'locked';
         }
-        if ( in_array( $field, $manager, true ) && ! SFAF_Sources::field_is_filled( $event_id, $field ) ) {
-            return 'attention';
+        if ( in_array( $field, $manager, true ) ) {
+            return SFAF_Sources::field_is_filled( $event_id, $field ) ? 'filled' : 'attention';
         }
         return 'normal';
     }
@@ -1982,12 +1989,34 @@ class SFAF_Portal {
     }
 
     /**
+     * The attribute that hands a field wrapper to the live completeness check.
+     *
+     * Only on the fields that check watches, so the JavaScript has nothing to
+     * guess at and an ordinary field is untouched.
+     *
+     * @param string $field
+     * @param string $state
+     * @return string
+     */
+    private function field_watch_attr( $field, $state ) {
+        if ( 'attention' !== $state && 'filled' !== $state ) {
+            return '';
+        }
+        return ' data-uc-field="' . esc_attr( $field ) . '"';
+    }
+
+    /**
      * The badge beside a field's label.
      *
      * NEVER COLOUR ALONE. Each state pairs its colour with an icon and with
      * words, so it survives colour blindness, greyscale printing and a
      * high-contrast theme. The absence of a badge is what "this is finished"
      * looks like — a green tick on every completed field would be noise.
+     *
+     * A manager-owned field that is already filled still renders its badge,
+     * hidden. Nothing about that is visible until the live check un-hides it,
+     * and it is what lets the check work in both directions: filling a field
+     * clears the badge, emptying it again brings the badge back.
      *
      * @param string $state
      * @param string $label Platform name, for the locked wording.
@@ -1998,8 +2027,9 @@ class SFAF_Portal {
             return '<span class="uc-field-flag uc-flag-locked">' . $this->icon_lock()
                 . '<span>From ' . esc_html( $label ) . ' &middot; not editable</span></span>';
         }
-        if ( 'attention' === $state ) {
-            return '<span class="uc-field-flag uc-flag-attention">' . $this->icon_needs()
+        if ( 'attention' === $state || 'filled' === $state ) {
+            return '<span class="uc-field-flag uc-flag-attention" data-uc-attention-badge'
+                . ( 'filled' === $state ? ' hidden' : '' ) . '>' . $this->icon_needs()
                 . '<span>Needs you</span></span>';
         }
         return '';
@@ -2428,18 +2458,23 @@ class SFAF_Portal {
             <?php // What this platform cannot supply, said once, up front, with
                   // the source page one click away so filling it in is copy and
                   // paste rather than a hunt.
-            if ( ! empty( $missing ) ) : ?>
-                <div class="uc-flash uc-flash-attention">
-                    <?php echo $this->icon_needs(); ?>
-                    <strong>This event still needs <?php echo esc_html( SFAF_Sources::field_phrase( $missing ) ); ?>.</strong>
-                    <?php if ( '' !== $mgr_note ) : ?>
-                        <?php echo esc_html( $mgr_note ); ?>
-                    <?php endif; ?>
-                    <?php if ( $prov['source_url'] ) : ?>
-                        <a class="uc-btn uc-btn-sm uc-btn-source" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Open the campaign page &nearr;</a>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
+                  //
+                  // ALWAYS RENDERED, hidden when nothing is missing, so the
+                  // live check has something to write into. It used to be
+                  // rendered only when something was missing, which meant the
+                  // banner could not appear or disappear while the manager
+                  // worked — the whole reason filling the image and the
+                  // description left the warning standing. ?>
+            <div class="uc-flash uc-flash-attention" data-uc-missing-banner<?php echo empty( $missing ) ? ' hidden' : ''; ?>>
+                <?php echo $this->icon_needs(); ?>
+                <strong>This event still needs <span data-uc-missing-text><?php echo esc_html( SFAF_Sources::field_phrase( $missing ) ); ?></span>.</strong>
+                <?php if ( '' !== $mgr_note ) : ?>
+                    <?php echo esc_html( $mgr_note ); ?>
+                <?php endif; ?>
+                <?php if ( $prov['source_url'] ) : ?>
+                    <a class="uc-btn uc-btn-sm uc-btn-source" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Open the campaign page &nearr;</a>
+                <?php endif; ?>
+            </div>
 
             <?php
             // "Removed at source" is a draft this plugin made, not a human one.
@@ -2475,7 +2510,7 @@ class SFAF_Portal {
             <div class="uc-form-grid">
                 <div class="uc-form-main">
                     <?php $s_title = $st( 'title' ); ?>
-                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_title ) ); ?>">
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_title ) ); ?>"<?php echo $this->field_watch_attr( 'title', $s_title ); ?>>
                         <span class="uc-field-label">Title <?php echo $this->field_badge( $s_title, $prov['label'] ); ?></span>
                         <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>"<?php echo $this->field_disabled( $s_title ); ?> <?php echo ( 'locked' === $s_title ) ? '' : 'required'; ?> />
                     </label>
@@ -2493,13 +2528,13 @@ class SFAF_Portal {
                     $s_image = $st( 'image' );
                     $s_desc  = $st( 'description' );
                     ?>
-                    <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $s_image ) ); ?>">
+                    <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $s_image ) ); ?>"<?php echo $this->field_watch_attr( 'image', $s_image ); ?>>
                         <span class="uc-field-label">Featured Image
                             <span class="uc-img-source-tag"><?php echo esc_html( $src_labels[ $img_source ] ); ?></span>
                             <?php echo $this->field_badge( $s_image, $prov['label'] ); ?>
                         </span>
-                        <?php if ( 'attention' === $s_image && '' !== $mgr_note ) : ?>
-                            <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></p>
+                        <?php if ( ( 'attention' === $s_image || 'filled' === $s_image ) && '' !== $mgr_note ) : ?>
+                            <p class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $s_image ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></p>
                         <?php endif; ?>
                         <input type="hidden" name="featured_image_id" id="uc-featured-image-id" value="<?php echo (int) $thumb_id; ?>" />
                         <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
@@ -2526,10 +2561,10 @@ class SFAF_Portal {
                         <?php endif; ?>
                     </div>
 
-                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_desc ) ); ?>">
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_desc ) ); ?>"<?php echo $this->field_watch_attr( 'description', $s_desc ); ?>>
                         <span class="uc-field-label">Description <?php echo $this->field_badge( $s_desc, $prov['label'] ); ?></span>
-                        <?php if ( 'attention' === $s_desc && '' !== $mgr_note ) : ?>
-                            <span class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></span>
+                        <?php if ( ( 'attention' === $s_desc || 'filled' === $s_desc ) && '' !== $mgr_note ) : ?>
+                            <span class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $s_desc ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></span>
                         <?php endif; ?>
                         <textarea name="description" rows="8"<?php echo $this->field_disabled( $s_desc ); ?>><?php echo esc_textarea( $post ? $post->post_content : '' ); ?></textarea>
                     </label>
@@ -2540,7 +2575,7 @@ class SFAF_Portal {
                     $s_end   = $st( 'end_time' );
                     ?>
                     <div class="uc-field-row">
-                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>">
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
                             <span class="uc-field-label">Date <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
                             <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
                         </label>
@@ -2555,7 +2590,7 @@ class SFAF_Portal {
                     </div>
 
                     <?php $s_loc = $st( 'location' ); ?>
-                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_loc ) ); ?>">
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_loc ) ); ?>"<?php echo $this->field_watch_attr( 'location', $s_loc ); ?>>
                         <span class="uc-field-label">Location <?php echo $this->field_badge( $s_loc, $prov['label'] ); ?></span>
                         <input type="text" name="location" value="<?php echo esc_attr( $g( '_uc_location' ) ); ?>" placeholder="e.g., Strut - 470 Castro St"<?php echo $this->field_disabled( $s_loc ); ?> />
                     </label>
@@ -2570,7 +2605,7 @@ class SFAF_Portal {
                     $s_org = $st( 'organizer' );
                     ?>
                     <div class="uc-field-row">
-                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cat ) ); ?>">
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cat ) ); ?>"<?php echo $this->field_watch_attr( 'category', $s_cat ); ?>>
                             <span class="uc-field-label">Category <?php echo $this->field_badge( $s_cat, $prov['label'] ); ?></span>
                             <select name="category">
                                 <option value="0">None</option>
@@ -2580,7 +2615,7 @@ class SFAF_Portal {
                                 <?php endforeach; endif; ?>
                             </select>
                         </label>
-                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_org ) ); ?>">
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_org ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $s_org ); ?>>
                             <span class="uc-field-label">Organizer <?php echo $this->field_badge( $s_org, $prov['label'] ); ?></span>
                             <select name="organizer">
                                 <option value="0">None</option>
@@ -2817,21 +2852,39 @@ class SFAF_Portal {
                 // campaign before its image and description are written — a
                 // date announcement that has to go out today, for one. So this
                 // names what is missing and then does exactly what was asked.
-                // The confirmation is generated from the same
-                // missing_manager_fields() the queue icon uses, so the two can
-                // never name different things.
+                //
+                // The sentence is a TEMPLATE, and the live check fills in the
+                // %s and sets or removes data-uc-confirm as the manager works.
+                // Baking the finished sentence in here is what made the button
+                // warn about an image that had just been chosen: it was written
+                // when the page was rendered and nothing rewrote it.
+                $confirm_tpl = sprintf(
+                    'This event still needs %%s. %s cannot supply that, so it stays empty on the live page until somebody writes it here. Publish anyway?',
+                    $prov['label'] ? $prov['label'] : 'The source'
+                );
                 $confirm = ! empty( $missing )
-                    ? sprintf(
-                        'This event still needs %s. %s cannot supply that, so it stays empty on the live page until somebody writes it here. Publish anyway?',
-                        SFAF_Sources::field_phrase( $missing ),
-                        $prov['label'] ? $prov['label'] : 'The source'
-                    )
+                    ? str_replace( '%s', SFAF_Sources::field_phrase( $missing ), $confirm_tpl )
                     : '';
+                $watched = $event_id ? SFAF_Sources::completeness_payload( $event_id ) : array();
                 ?>
                 <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
                     <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
                 <?php else : ?>
-                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"<?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
+                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"
+                            <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
+                            <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
+                <?php endif; ?>
+                <?php
+                // The list the live check watches, straight off
+                // SFAF_Sources::completeness_fields(). Emitted inside the form
+                // so it cannot outlive it, and only when there is something to
+                // watch.
+                if ( ! empty( $watched ) ) : ?>
+                    <script type="application/json" id="uc-completeness-data"><?php
+                        // JSON_HEX_TAG so a "<" can never close this block early,
+                        // whatever a future field phrase turns out to contain.
+                        echo wp_json_encode( $watched, JSON_HEX_TAG | JSON_HEX_AMP );
+                    ?></script>
                 <?php endif; ?>
             </div>
         </form>

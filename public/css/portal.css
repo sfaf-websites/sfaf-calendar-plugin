@@ -272,6 +272,12 @@ body.uc-portal {
 .uc-field > .uc-field-label { font-size: 13px; font-weight: 600; display: block; }
 .uc-state-icon { vertical-align: -2px; flex: 0 0 auto; }
 
+/* [hidden] HAS TO WIN. The badge and the note below both set an explicit
+ * `display`, which outranks the browser's own `[hidden] { display: none }` —
+ * so the live completeness check would set the attribute and nothing would
+ * disappear. Everything the check hides and reveals goes through this. */
+.uc-portal [hidden] { display: none !important; }
+
 .uc-field-flag { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
     padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; vertical-align: middle; }
 .uc-flag-locked { background: #F3F4F6; color: #4B5563; border: 1px solid #D1D5DB; }
