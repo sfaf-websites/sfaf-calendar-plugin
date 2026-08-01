@@ -202,6 +202,14 @@ class SFAF_Series {
             return 0;
         }
 
+        // Memoized for the request. The list view, the month grid and the
+        // filter bar all resolve the same number on one page load, and this is
+        // a term-meta query rather than a cached lookup.
+        static $cache = array();
+        if ( isset( $cache[ $id ] ) ) {
+            return $cache[ $id ];
+        }
+
         $legacy = get_terms( array(
             'taxonomy'   => self::TAXONOMY,
             'hide_empty' => false,
@@ -212,10 +220,12 @@ class SFAF_Series {
             ),
         ) );
         if ( ! is_wp_error( $legacy ) && ! empty( $legacy ) ) {
-            return (int) $legacy[0];
+            $cache[ $id ] = (int) $legacy[0];
+            return $cache[ $id ];
         }
 
-        return self::exists( $id ) ? $id : 0;
+        $cache[ $id ] = self::exists( $id ) ? $id : 0;
+        return $cache[ $id ];
     }
 
     /**
