@@ -8,9 +8,15 @@
         initSidebar();
         initRepeaters();
         initImagePicker();
+        // ORDER MATTERS between these three. Both the scope confirmation and
+        // the completeness confirmation bind a click listener to the same save
+        // buttons, and listeners on one element fire in the order they were
+        // registered. The scope one has to go first: a manager who decides not
+        // to update twelve events should never then be asked about a missing
+        // image on an event they have just decided not to save.
+        initEditScope();
         initConfirmButtons();
         initCompleteness();
-        initEditScope();
         initAsyncActions();
     });
 
@@ -482,11 +488,25 @@
             });
         }
 
+        /* The block a pencil belongs to, closest first.
+         *
+         * .uc-side-box and .uc-card are in this list as well as .uc-field
+         * because the sidebar boxes (RSVP, Display) and the FAQ block are
+         * coherent groups a manager edits as one thing — a pencil per checkbox
+         * in a list of five display toggles would be noise. Without them those
+         * controls matched nothing, and a control that matches nothing never
+         * gets a pencil and so can never be unlocked. */
+        var WRAPPERS = ['uc-field', 'uc-side-box', 'uc-card'];
+
         function fieldWrapOf(el) {
             var node = el.parentElement;
             while (node && node !== form) {
-                if (node.classList && (node.classList.contains('uc-field') || node.classList.contains('uc-card'))) {
-                    return node;
+                if (node.classList) {
+                    for (var i = 0; i < WRAPPERS.length; i++) {
+                        if (node.classList.contains(WRAPPERS[i])) {
+                            return node;
+                        }
+                    }
                 }
                 node = node.parentElement;
             }
@@ -507,7 +527,14 @@
             var seen = [];
             eachEditable(function (el) {
                 var wrap = fieldWrapOf(el);
-                if (!wrap || seen.indexOf(wrap) !== -1) {
+                if (!wrap) {
+                    // Nothing to hang a pencil on, so this control is left
+                    // open rather than locked. A field nobody can ever unlock
+                    // is worse than one that was never locked.
+                    setLocked(el, false);
+                    return;
+                }
+                if (seen.indexOf(wrap) !== -1) {
                     return;
                 }
 
@@ -596,9 +623,10 @@
             });
         }
 
-        /* The scope confirmation runs BEFORE the completeness one, because it
-         * is the more consequential of the two: a manager who decides not to
-         * update twelve events never needs to be asked about a missing image. */
+        /* Registered here, and initEditScope() is called before
+         * initConfirmButtons() so this runs first. stopImmediatePropagation()
+         * then keeps the completeness confirmation from asking a second
+         * question about a save the manager has already called off. */
         Array.prototype.forEach.call(form.querySelectorAll('[data-uc-scope-confirm]'), function (btn) {
             btn.addEventListener('click', function (e) {
                 var message = btn.getAttribute('data-uc-scope-confirm-text');
@@ -606,7 +634,7 @@
                     e.preventDefault();
                     e.stopImmediatePropagation();
                 }
-            }, true);
+            });
         });
     }
 })();

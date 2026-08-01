@@ -586,30 +586,24 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
  * ---------------------------------------------------------------------- */
 
 /**
- * The series an event belongs to, as a term ID. 0 when it belongs to none.
- *
- * A SERIES CANNOT GO MISSING ANY MORE. Under the old model this had a second
- * function beside it (sfaf_series_parent_id) whose entire job was to notice
- * that the parent post had been deleted and degrade to "not in a series", plus
- * sfaf_is_orphaned_occurrence() to name that state, plus two repair screens to
- * get out of it. A term relationship is removed with the term, so an event is
- * either in a series or it is not and there is no third condition to detect.
- *
- * @param int $post_id
- * @return int
- */
-function sfaf_event_series_id( $post_id ) {
-    return SFAF_Series::id_for_event( $post_id );
-}
-
-/**
  * True when the event belongs to a series.
  *
- * NO MINIMUM COUNT. The old version required more than one occurrence, because
- * a "series" of one was really just an event wearing a parent flag. A series is
- * now a container somebody deliberately created and wrote a description for, so
- * an event is part of it from the first date — and a series with no dates at
- * all is valid too.
+ * A SERIES CANNOT GO MISSING ANY MORE. This used to need a second function
+ * beside it (sfaf_series_parent_id) whose entire job was to notice that the
+ * parent post had been deleted and degrade to "not in a series", plus
+ * sfaf_is_orphaned_occurrence() to name that state, plus two repair screens to
+ * get out of it. A term relationship is removed with its term, so an event is
+ * either in a series or it is not and there is no third condition to detect.
+ *
+ * NO MINIMUM COUNT, either. The old version required more than one occurrence,
+ * because a "series" of one was really just an event wearing a parent flag. A
+ * series is now a container somebody deliberately created and wrote a
+ * description for, so an event is part of it from its first date.
+ *
+ * KEPT ALONGSIDE SFAF_Series, which is what the plugin itself asks. This and
+ * sfaf_get_series_name() are the theme-facing pair: same names, same
+ * signatures and same return shapes as before 3.0.0, so a theme template that
+ * calls either of them keeps working across the model change.
  *
  * @param int $post_id
  * @return bool
@@ -846,11 +840,6 @@ function sfaf_normalize_faqs( $raw ) {
  */
 function sfaf_faq_is_imported( $row ) {
     return is_array( $row ) && ! empty( $row[ SFAF_Sources::FAQ_SOURCE_ID ] );
-}
-
-/** Number of events in a series, any status. */
-function sfaf_series_count( $term_id ) {
-    return SFAF_Series::total_count( $term_id );
 }
 
 /**

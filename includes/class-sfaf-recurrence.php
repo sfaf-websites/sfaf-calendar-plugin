@@ -74,13 +74,21 @@ class SFAF_Recurrence {
         '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
         '_uc_image_url',
         // FAQs travel with the copy. One key, no inheritance — see
-        // sfaf_event_faqs().
+        // sfaf_faq_meta_key().
         '_uc_faqs',
     );
 
-    /** Taxonomies copied onto each generated occurrence, series included. */
+    /**
+     * Taxonomies copied onto each generated occurrence, series included.
+     *
+     * 'uc_series' is written out rather than referenced as
+     * SFAF_Series::TAXONOMY, following the same precedent the old
+     * $series_meta property set: a static property initializer is a constant
+     * expression, and keeping it literal means this class cannot depend on
+     * another one having loaded first.
+     */
     private static $copied_taxonomies = array(
-        'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY,
+        'uc_event_category', 'uc_organizer', 'uc_venue', 'uc_series',
     );
 
     public function register() {

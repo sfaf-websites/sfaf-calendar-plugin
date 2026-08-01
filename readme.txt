@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.13.0
+Stable tag: 3.0.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -114,6 +114,28 @@ has been seen go through correctly. Until then use "Fetch updates" on the
 portal's Pending screen, which runs the same fetch with somebody watching.
 
 == Changelog ==
+
+= 3.0.0 =
+
+**This release changes the data model and needs a one-time migration.** After updating, an admin notice links to Events → Series migration, which shows a dry run of exactly what would happen and writes nothing until the button is pressed. Take a database backup first.
+
+**A series is a container, not an event.** Until now the series parent post was simultaneously the series template and its own first occurrence, and that single fact caused most of the calendar's structural problems: series turned up in the Events list, events existed only as a series, deleting a parent orphaned every occurrence, deleting one occurrence needed a cancelled-dates list on the parent so it would not come back on the next save, and FAQs lived in three different meta keys. A series is now a taxonomy term, exactly like a category or an organizer. It has no date, never appears on the calendar, is never returned by an event query, and cannot be an event because a term cannot be a post. A series may hold different kinds of event — an educational session one week, a social the next — and a series with no events at all is valid and useful: people can read what it is about and see that dates may be added.
+
+**An event is an event.** Every date, including the first, is an ordinary event post. Events say which series they belong to; nothing inherits live from a parent.
+
+**Recurrence is a generator, not a template.** Choosing a pattern when creating an event produces that many separate, independent events, all stamped with a shared recurrence group, and then forgets the pattern. Nothing regenerates. Editing one is an ordinary edit; deleting one removes one date and nothing brings it back. Weekly, monthly, every two weeks, daily, and "the same weekday of the month" — the second Friday, the fourth Tuesday — derived from the date you chose.
+
+**Two groupings, doing different jobs.** A SERIES is the umbrella, used for filtering, embeds and browsing, and is never a target for bulk edits because it may hold different kinds of event. A RECURRENCE GROUP is the set generated together from one pattern, identical by default, and is what a bulk edit targets.
+
+**Edit scope: two buttons, chosen before editing.** At the top of the event editor: "Edit this event" and "Edit all upcoming occurrences". Every field is locked until one is chosen, so nothing can be edited before you have decided how it saves. Each field then opens behind its own pencil, everything is saved once at the end, and a banner that stays visible while the form scrolls states the scope and the count. Saving asks "Update 12 events?" first. "All upcoming" excludes anything whose date has passed — past events are the historical record. Date carries no pencil in that mode, because the dates are the only thing making the occurrences distinct; capacity loses its pencil when any of the target dates already has RSVPs against it, because places are held per date.
+
+**FAQs live in one place.** One key, on the event. No inheritance, no override flag, no display logic deciding whether a series' questions appear above an event's or instead of them. Reuse comes from saved FAQ sets, which have been copies since 2.9.0, and from a series naming a default set applied when an event is created into it — inheritance-like convenience at the one moment it helps, without tying the event to something it may need to differ from.
+
+**Nothing changes for a visitor.** The same events on the same dates in all three display modes and in the embed; every event permalink unchanged, including the old series parent's, which keeps its ID, slug and URL and is now an ordinary event; existing embed code keeps working without being regenerated, because a series filter still takes one integer and the old parent ID still resolves to the same series; RSVP and reminder links resolve to the same events. The one visible change is where "Part of series" links to: it went to the parent post, which no longer exists, and now goes to the series' own page, which shows its description, image and dates. The badge itself looks the same.
+
+**Removed rather than left dormant:** series regeneration, cancelled-date tracking, promote-to-parent, orphan detection and both orphan repair screens, the series removal screen that asked whether to delete everything or promote the next occurrence, the individually-edited flag that existed only to protect occurrences from regeneration, and the three-way edit scope in both editors.
+
+**Fixed:** on a GoFundMe Pro event, entering an image and a description did not clear the pre-publish warning. The warning, the amber field highlight and the Publish confirmation all read the same list, so they agreed with each other — and all three were computed once, server-side, when the page was rendered, and nothing re-ran while you typed. The sentence on the Publish button had been written before the form was touched. All three now recompute as you work, from a single description of each field that names both how it is stored and which control fills it in.
 
 = 2.13.0 =
 * The portal's Events list sorts on Event, Date, RSVPs and Status. Click a heading to sort by it, click again to reverse it. The active column carries an arrow and an aria-sort attribute, so which column is sorted and in which direction is readable both by eye and by a screen reader, rather than being implied by the order of the rows. Category, Series and Source do not sort, and that is deliberate: an event can hold more than one category so there is no single answer, Series is another post's title, and Source reads "Local" on nearly every row.
