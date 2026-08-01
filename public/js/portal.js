@@ -10,6 +10,7 @@
         initImagePicker();
         initConfirmButtons();
         initCompleteness();
+        initEditScope();
         initAsyncActions();
     });
 
@@ -393,5 +394,219 @@
         window.sfafRefreshCompleteness = refresh;
 
         refresh();
+    }
+
+    /* ---------------------------------------------------------------------
+     * Edit scope: choose before editing.
+     *
+     * The lock is server-rendered — the fieldset arrives `disabled` — so
+     * nothing is editable before this runs rather than merely after it. What
+     * happens here is the unlocking, and it is deliberately in this order:
+     *
+     *   1. a scope is chosen. The fieldset opens, but every field is still
+     *      individually read-only.
+     *   2. a pencil is pressed. That one field becomes editable.
+     *   3. everything changed is saved once, at the end, under the scope from
+     *      step 1 — not per field.
+     *
+     * In "all upcoming" mode the fields that cannot meaningfully apply to many
+     * events get no pencil at all, from the list the server sends. The banner
+     * states the scope and the count and stays put while the form scrolls,
+     * because the manager needs to know what the save will do at the moment
+     * they press the button, not only at the moment they chose.
+     * ------------------------------------------------------------------- */
+    function initEditScope() {
+        var choice = document.querySelector('[data-uc-scope-choice]');
+        if (!choice) {
+            return; // a one-off event: nothing to choose between
+        }
+        var form = choice.closest ? choice.closest('form') : null;
+        if (!form) {
+            return;
+        }
+
+        var fields = form.querySelector('[data-uc-scope-fields]');
+        var input = form.querySelector('[data-uc-scope-input]');
+        var banner = document.querySelector('[data-uc-scope-banner]');
+        var bannerText = document.querySelector('[data-uc-scope-banner-text]');
+        var changeBtn = document.querySelector('[data-uc-scope-change]');
+        var count = parseInt(choice.getAttribute('data-uc-scope-count'), 10) || 0;
+
+        var locked = {};
+        var lockedNode = document.getElementById('uc-scope-locked');
+        if (lockedNode) {
+            try { locked = JSON.parse(lockedNode.textContent || '{}'); } catch (err) { locked = {}; }
+        }
+
+        /* Which editor control belongs to which field name, for the pencils and
+         * for the no-pencil list. Only the fields that can be locked out of a
+         * bulk edit need naming; everything else just gets a pencil. */
+        var CONTROLS = {
+            date: ['date'],
+            capacity: ['capacity']
+        };
+
+        function controlsFor(names) {
+            var out = [];
+            names.forEach(function (n) {
+                out = out.concat(Array.prototype.slice.call(form.querySelectorAll('[name="' + n + '"]')));
+            });
+            return out;
+        }
+
+        /* readonly, not disabled: a disabled control submits nothing, so
+         * locking a field that way would silently blank it on save. A readonly
+         * field still posts the value it already had, which is exactly right
+         * for a field nobody chose to change. Selects and checkboxes have no
+         * readonly, so they get a class the stylesheet makes inert. */
+        function setLocked(el, isLocked) {
+            if (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio') {
+                el.classList.toggle('uc-inert', isLocked);
+                if (isLocked) { el.setAttribute('aria-disabled', 'true'); }
+                else { el.removeAttribute('aria-disabled'); }
+                return;
+            }
+            el.readOnly = !!isLocked;
+        }
+
+        function eachEditable(fn) {
+            var all = form.querySelectorAll('input, textarea, select');
+            Array.prototype.forEach.call(all, function (el) {
+                if (el.type === 'hidden' || el.type === 'submit' || el.type === 'button') {
+                    return;
+                }
+                if (el.hasAttribute('disabled')) {
+                    return; // a platform owns this one; not ours to unlock
+                }
+                fn(el);
+            });
+        }
+
+        function fieldWrapOf(el) {
+            var node = el.parentElement;
+            while (node && node !== form) {
+                if (node.classList && (node.classList.contains('uc-field') || node.classList.contains('uc-card'))) {
+                    return node;
+                }
+                node = node.parentElement;
+            }
+            return null;
+        }
+
+        /* One pencil per wrapper, added after a scope is chosen. Pressing it
+         * unlocks that field and takes the pencil away — there is nothing to
+         * press twice. */
+        function addPencils(scope) {
+            var noPencil = [];
+            if (scope === 'all_upcoming') {
+                Object.keys(locked).forEach(function (field) {
+                    noPencil = noPencil.concat(controlsFor(CONTROLS[field] || [field]));
+                });
+            }
+
+            var seen = [];
+            eachEditable(function (el) {
+                var wrap = fieldWrapOf(el);
+                if (!wrap || seen.indexOf(wrap) !== -1) {
+                    return;
+                }
+
+                if (noPencil.indexOf(el) !== -1) {
+                    // No pencil at all, and a reason in place of one. A control
+                    // that silently refuses to open reads as broken.
+                    var field = null;
+                    Object.keys(locked).forEach(function (f) {
+                        if (controlsFor(CONTROLS[f] || [f]).indexOf(el) !== -1) { field = f; }
+                    });
+                    wrap.classList.add('uc-field-nobulk');
+                    var why = document.createElement('p');
+                    why.className = 'uc-field-note uc-field-note-locked';
+                    why.textContent = field ? locked[field] : 'Not available when editing several occurrences.';
+                    wrap.appendChild(why);
+                    seen.push(wrap);
+                    return;
+                }
+
+                seen.push(wrap);
+                var pencil = document.createElement('button');
+                pencil.type = 'button';
+                pencil.className = 'uc-pencil';
+                pencil.setAttribute('aria-label', 'Edit this field');
+                pencil.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">'
+                    + '<path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg>';
+                pencil.addEventListener('click', function () {
+                    Array.prototype.forEach.call(wrap.querySelectorAll('input, textarea, select'), function (c) {
+                        if (!c.hasAttribute('disabled')) { setLocked(c, false); }
+                    });
+                    wrap.classList.remove('uc-field-pencil-locked');
+                    pencil.remove();
+                    var first = wrap.querySelector('input:not([type=hidden]), textarea, select');
+                    if (first) { first.focus(); }
+                });
+                wrap.classList.add('uc-field-pencil-locked');
+                wrap.appendChild(pencil);
+            });
+        }
+
+        function choose(scope) {
+            input.value = scope;
+
+            if (fields) {
+                fields.removeAttribute('disabled');
+            }
+            // Everything starts locked behind its own pencil, including in
+            // "this event" mode: the affordance is the same either way, so the
+            // form does not behave differently depending on a choice made
+            // seconds earlier.
+            eachEditable(function (el) { setLocked(el, true); });
+            addPencils(scope);
+
+            choice.setAttribute('hidden', 'hidden');
+            if (banner && bannerText) {
+                bannerText.textContent = (scope === 'all_upcoming')
+                    ? 'Editing all ' + count + ' upcoming occurrences.'
+                    : 'Editing this event only.';
+                banner.classList.toggle('uc-scope-banner-all', scope === 'all_upcoming');
+                banner.removeAttribute('hidden');
+            }
+
+            // The confirmation on the save buttons, naming the count. This is
+            // the click that can rewrite a term's worth of programming.
+            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-scope-confirm]'), function (btn) {
+                if (scope === 'all_upcoming') {
+                    btn.setAttribute('data-uc-scope-confirm-text', 'Update ' + count + ' events?');
+                } else {
+                    btn.removeAttribute('data-uc-scope-confirm-text');
+                }
+            });
+        }
+
+        Array.prototype.forEach.call(choice.querySelectorAll('[data-uc-scope]'), function (btn) {
+            btn.addEventListener('click', function () {
+                choose(btn.getAttribute('data-uc-scope'));
+            });
+        });
+
+        if (changeBtn) {
+            // Reloading is the honest way back: fields that have already been
+            // unlocked and typed into cannot be un-typed, and re-locking them
+            // while keeping the text would misrepresent what would be saved.
+            changeBtn.addEventListener('click', function () {
+                window.location.reload();
+            });
+        }
+
+        /* The scope confirmation runs BEFORE the completeness one, because it
+         * is the more consequential of the two: a manager who decides not to
+         * update twelve events never needs to be asked about a missing image. */
+        Array.prototype.forEach.call(form.querySelectorAll('[data-uc-scope-confirm]'), function (btn) {
+            btn.addEventListener('click', function (e) {
+                var message = btn.getAttribute('data-uc-scope-confirm-text');
+                if (message && !window.confirm(message)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+        });
     }
 })();

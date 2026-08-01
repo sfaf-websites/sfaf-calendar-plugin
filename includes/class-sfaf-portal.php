@@ -209,12 +209,13 @@ class SFAF_Portal {
                 }
                 break;
             case 'series':
+                // /series/remove and /series/orphans are gone. Both existed
+                // only to manage a series being an event; neither problem can
+                // occur now. Old links land on the list rather than 404ing.
                 if ( isset( $segments[1] ) && $segments[1] === 'edit' ) {
                     $this->render_series_edit( $user, isset( $segments[2] ) ? intval( $segments[2] ) : 0 );
-                } elseif ( isset( $segments[1] ) && $segments[1] === 'remove' ) {
-                    $this->render_series_remove( $user, isset( $segments[2] ) ? intval( $segments[2] ) : 0 );
-                } elseif ( isset( $segments[1] ) && $segments[1] === 'orphans' ) {
-                    $this->render_orphans( $user );
+                } elseif ( isset( $segments[1] ) && $segments[1] === 'new' ) {
+                    $this->render_series_edit( $user, 0 );
                 } else {
                     $this->render_series_list( $user );
                 }
@@ -250,99 +251,46 @@ class SFAF_Portal {
 
         switch ( $action ) {
             case 'save_event':
-                $id    = $this->save_event_from_post( $user );
-                $scope = SFAF_Recurrence::clean_scope( isset( $_POST['uc_series_apply'] ) ? wp_unslash( $_POST['uc_series_apply'] ) : 'this' );
-                $msg   = ( 'this' === $scope ) ? 'saved' : ( 'all' === $scope ? 'scope_all' : 'scope_future' );
-                $this->redirect( 'events/edit/' . $id, array( 'msg' => $msg ) );
+                $result = $this->save_event_from_post( $user );
+                $this->redirect( 'events/edit/' . $result['id'], array( 'msg' => $result['msg'] ) );
                 break;
 
             /* ---- Removing things. -------------------------------------------
              *
-             * Three different removals wear the same word in ordinary speech
-             * and mean very different things here, so they are three actions
-             * and not one with a flag:
+             * TWO ACTIONS NOW, AND ONE OF THEM IS ORDINARY.
              *
-             *   trash_event        a standalone event goes away
-             *   cancel_occurrence  one week of a series is cancelled, for good
-             *   remove_series      the whole thing goes, or the parent moves on
+             *   trash_event   an event goes away. Any event. That is all it does.
+             *   remove_series the grouping goes; every event in it stays.
              *
-             * The dangerous one is the third, which used to be reachable by
-             * pressing "Remove" on a row that looked like any other. */
+             * There used to be a third — cancel_occurrence — plus a screen
+             * asking whether removing a series meant removing everything or
+             * promoting the next occurrence. Both existed because deleting an
+             * event could damage other events: a parent orphaned its children,
+             * and a deleted occurrence came back on the next save unless the
+             * date was recorded as cancelled. Nothing regenerates any more, so
+             * deleting an event deletes an event and nothing brings it back. */
             case 'trash_event':
                 $event_id = intval( $_POST['event_id'] );
                 $post     = get_post( $event_id );
                 if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
                     $this->redirect( 'events', array( 'msg' => 'trashed' ) );
                 }
-
-                // A series parent never gets removed by this route. Send the
-                // manager to the screen that states the consequence.
-                if ( SFAF_Recurrence::is_series_parent( $event_id ) && SFAF_Recurrence::child_count( $event_id ) ) {
-                    $this->redirect( 'series/remove/' . $event_id );
-                }
-
-                // An occurrence is a cancellation, and cancellations stick.
-                $parent = sfaf_get_series_parent( $event_id );
-                if ( $parent && $parent !== $event_id ) {
-                    $result = SFAF_Recurrence::cancel_occurrence( $event_id );
-                    $this->redirect( 'events', array( 'msg' => $result['ok'] ? 'occurrence_cancelled' : 'occurrence_cancel_failed' ) );
-                }
-
                 wp_trash_post( $event_id );
                 $this->redirect( 'events', array( 'msg' => 'trashed' ) );
                 break;
 
             case 'remove_series':
-                $parent_id = intval( $_POST['series_id'] );
-                $post      = get_post( $parent_id );
-                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
-                    wp_die( 'Denied' );
-                }
-                $mode = isset( $_POST['removal_mode'] ) ? sanitize_key( $_POST['removal_mode'] ) : '';
-                if ( 'whole' === $mode ) {
-                    SFAF_Recurrence::delete_series( $parent_id );
-                    $this->redirect( 'series', array( 'msg' => 'series_removed' ) );
-                } elseif ( 'promote' === $mode ) {
-                    // The old parent is trashed here, not demoted: the manager
-                    // asked to remove it, so keeping it as an occurrence would
-                    // be ignoring what they said.
-                    $new = SFAF_Recurrence::promote_next( $parent_id, false );
-                    if ( $new ) {
-                        $this->redirect( 'series/edit/' . $new, array( 'msg' => 'series_promoted' ) );
-                    }
-                    $this->redirect( 'series/remove/' . $parent_id, array( 'msg' => 'series_promote_failed' ) );
-                }
-                $this->redirect( 'series/remove/' . $parent_id );
-                break;
-
-            case 'restore_occurrence':
-                $parent_id = intval( $_POST['series_id'] );
-                $post      = get_post( $parent_id );
-                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
-                    wp_die( 'Denied' );
-                }
-                $date     = isset( $_POST['occurrence_date'] ) ? sanitize_text_field( wp_unslash( $_POST['occurrence_date'] ) ) : '';
-                $restored = SFAF_Recurrence::restore_date( $parent_id, $date );
-                $this->redirect( 'series/edit/' . $parent_id, array( 'msg' => $restored ? 'occurrence_restored' : 'occurrence_forgotten' ) );
-                break;
-
-            case 'rebuild_orphans':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
-                $new = SFAF_Recurrence::rebuild_orphan_group( intval( $_POST['missing_parent'] ) );
-                if ( $new ) {
-                    $this->redirect( 'series/edit/' . $new, array( 'msg' => 'orphans_rebuilt' ) );
-                }
-                $this->redirect( 'series/orphans', array( 'msg' => 'orphans_none' ) );
-                break;
-
-            case 'release_orphans':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
-                SFAF_Recurrence::release_orphan_group( intval( $_POST['missing_parent'] ) );
-                $this->redirect( 'series/orphans', array( 'msg' => 'orphans_released' ) );
+                $term_id = intval( $_POST['series_id'] );
+                $freed   = SFAF_Series::delete( $term_id );
+                $this->redirect( 'series', array( 'msg' => 'series_removed', 'freed' => $freed ) );
                 break;
 
             case 'save_series':
                 $id = $this->save_series_from_post( $user );
+                if ( ! $id ) {
+                    $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
+                }
                 $this->redirect( 'series/edit/' . $id, array( 'msg' => 'series_saved' ) );
                 break;
 
@@ -605,26 +553,23 @@ class SFAF_Portal {
         }
 
         // Meta.
+        //
+        // 'recurrence' and 'end_date' are gone from this list. The cadence is
+        // an instruction to the generator now, handled once at the bottom of
+        // this method, and _uc_end_date means only what a source says an
+        // event's end date is — which this editor has no business writing.
         $text = array(
             'date'       => '_uc_event_date',
             'start_time' => '_uc_start_time',
             'end_time'   => '_uc_end_time',
             'location'   => '_uc_location',
-            'recurrence' => '_uc_recurrence',
-            'end_date'   => '_uc_end_date',
             'capacity'   => '_uc_capacity',
         );
-        // Recurrence is the source's on an imported event: the dropdown is
-        // rendered disabled and without a name, and this refuses it outright
-        // so a hand-built POST cannot set a cadence the source did not.
         $is_imported = ( '' !== $src_slug );
 
         foreach ( $text as $field => $key ) {
             if ( $is_locked( $field ) ) {
                 continue; // the platform's, and a fetch would put it back anyway
-            }
-            if ( $is_imported && ( 'recurrence' === $field || 'end_date' === $field ) ) {
-                continue; // set at the source; see the note in the editor
             }
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $event_id, $key, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
@@ -728,10 +673,24 @@ class SFAF_Portal {
             wp_set_object_terms( $event_id, $org ? array( $org ) : array(), 'uc_organizer' );
         }
 
-        // FAQ. Child → event-specific FAQ + replace toggle; standalone → own FAQ.
-        // (Series parents manage their FAQ in the Series Manager.)
-        $sp_now   = (int) get_post_meta( $event_id, '_uc_series_parent', true );
-        $is_child = $sp_now && $sp_now !== (int) $event_id;
+        /*
+         * SERIES. A term assignment and nothing else.
+         *
+         * Moving an event INTO a series applies that series' default FAQ set,
+         * and only when the event has no questions of its own. That is the one
+         * moment inheritance-like behaviour helps, and the rows it puts there
+         * are copies the manager can edit or clear — nothing stays linked.
+         */
+        if ( isset( $_POST['series'] ) ) {
+            $series_was = SFAF_Series::id_for_event( $event_id );
+            $series_now = intval( $_POST['series'] );
+            SFAF_Series::set_for_event( $event_id, $series_now );
+            if ( $series_now && $series_now !== $series_was ) {
+                SFAF_FAQ_Sets::apply_series_default( $event_id, $series_now );
+            }
+        }
+
+        // FAQ. One block, one key, on the event.
         $clean_faq = function ( $raw ) {
             $faqs = array();
             foreach ( (array) wp_unslash( $raw ) as $row ) {
@@ -783,17 +742,9 @@ class SFAF_Portal {
             return isset( $_POST['uc_faq_has_manual'] ) ? array() : null;
         };
 
-        if ( $is_child ) {
-            $rows = $posted_faq( 'uc_event_faq' );
-            if ( null !== $rows ) {
-                update_post_meta( $event_id, '_uc_event_faq', $merge_faq( '_uc_event_faq', $rows ) );
-            }
-            update_post_meta( $event_id, '_uc_faq_override', isset( $_POST['faq_override'] ) ? '1' : '0' );
-        } elseif ( ! $sp_now ) {
-            $rows = $posted_faq( 'uc_series_faq' );
-            if ( null !== $rows ) {
-                update_post_meta( $event_id, '_uc_series_faq', $merge_faq( '_uc_series_faq', $rows ) );
-            }
+        $rows = $posted_faq( 'uc_faqs' );
+        if ( null !== $rows ) {
+            update_post_meta( $event_id, sfaf_faq_meta_key(), $merge_faq( sfaf_faq_meta_key(), $rows ) );
         }
 
         /*
@@ -849,35 +800,164 @@ class SFAF_Portal {
         }
 
         /*
-         * HOW FAR THIS SAVE TRAVELS.
+         * GENERATE, ONCE.
          *
-         * The scope comes from the same SFAF_Recurrence::scopes() the WP admin
-         * meta box builds its radios from, so the two editors cannot offer
-         * different choices or mean different things by the same word. Absent
-         * (a standalone event, or a form without the control) means 'this',
-         * which is the old behaviour.
+         * A new event that asked to repeat produces its other dates here, as
+         * separate complete events sharing a recurrence group. generate()
+         * refuses a seed that already carries a group, so a back-button
+         * resubmit cannot double them, and nothing ever runs this again.
          */
-        $scope = SFAF_Recurrence::clean_scope(
-            isset( $_POST['uc_series_apply'] ) ? wp_unslash( $_POST['uc_series_apply'] ) : 'this'
-        );
-
-        $series_parent = (int) get_post_meta( $event_id, '_uc_series_parent', true );
-        $rec           = new SFAF_Recurrence();
-
-        if ( $series_parent && $series_parent !== (int) $event_id ) {
-            // An occurrence. Always flagged as individually edited so later
-            // series saves leave it alone, and then pushed outwards when asked.
-            update_post_meta( $event_id, '_uc_manually_edited', '1' );
-            if ( 'this' !== $scope && SFAF_Recurrence::parent_exists( $series_parent ) ) {
-                $rec->apply_occurrence_to_series( $event_id, $scope );
-            }
-        } else {
-            // The parent, or a standalone event about to become one. 'future'
-            // counts from today, which is what the label on the control says.
-            $rec->maybe_generate( $event_id, $scope, 'future' === $scope ? current_time( 'Y-m-d' ) : '' );
+        $generated = 0;
+        $pattern   = isset( $_POST['repeat'] ) ? SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['repeat'] ) ) : '';
+        $until     = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
+        if ( ! $is_imported && '' !== $pattern && '' !== $until ) {
+            $made      = SFAF_Recurrence::generate( $event_id, $pattern, $until );
+            $generated = count( $made['created'] );
         }
 
-        return $event_id;
+        /*
+         * HOW FAR THIS SAVE TRAVELS.
+         *
+         * THE TARGET IS THE RECURRENCE GROUP, NOT THE SERIES, and only its
+         * upcoming members. Re-derived here from the group rather than taken
+         * from the form: the two buttons are an affordance, and a POST claiming
+         * "all upcoming" for an event with no group, or reaching for a past
+         * date, gets exactly the same treatment as one that never asked.
+         */
+        $scope   = ( isset( $_POST['edit_scope'] ) && 'all_upcoming' === sanitize_key( $_POST['edit_scope'] ) )
+            ? 'all_upcoming'
+            : 'this';
+        $written = 1;
+
+        if ( 'all_upcoming' === $scope && SFAF_Recurrence::has_bulk_scope( $event_id ) ) {
+            $targets = SFAF_Recurrence::bulk_targets( $event_id );
+            $written = $this->apply_to_group( $event_id, $targets );
+        } else {
+            $scope = 'this';
+        }
+
+        if ( $generated ) {
+            $msg = 'generated_' . $generated;
+        } elseif ( 'all_upcoming' === $scope ) {
+            $msg = 'bulk_' . $written;
+        } else {
+            $msg = 'saved';
+        }
+
+        return array( 'id' => $event_id, 'msg' => $msg, 'written' => $written );
+    }
+
+    /**
+     * Copy one event's details onto the other upcoming events in its
+     * recurrence group.
+     *
+     * READ BACK FROM THE SAVED EVENT, NOT FROM $_POST. The event has already
+     * been saved by the time this runs, so this copies what was actually
+     * stored — which means every sanitizer, every locked-field refusal and
+     * every imported-row merge above has already been applied, and there is no
+     * second, subtly different parse of the same form to drift out of step.
+     *
+     * WHAT IS NEVER COPIED:
+     *
+     *   THE DATE. It is the only thing that makes the occurrences distinct, and
+     *   one date written across twelve of them would collapse the group onto a
+     *   single day.
+     *
+     *   CAPACITY, WHERE RSVPS EXIST. Places are held against one date, so a
+     *   single capacity written across the set can land under the confirmed
+     *   count on a date nobody is looking at. bulk_locked_fields() decides, and
+     *   the editor hides the pencil on exactly what it names.
+     *
+     *   ANYTHING A TARGET'S OWN SOURCE OWNS. A generated event has no source,
+     *   so this should never trigger — but if an imported event ever ends up in
+     *   a group, a bulk edit must not write a field the next fetch will
+     *   overwrite anyway.
+     *
+     *   THE SLUG. Permalinks are live URLs and are not a detail of an edit.
+     *
+     * @param int   $source_id
+     * @param int[] $targets   Including $source_id.
+     * @return int Number of events written, the source included.
+     */
+    private function apply_to_group( $source_id, $targets ) {
+        $source_id = (int) $source_id;
+        $source    = get_post( $source_id );
+        if ( ! $source ) {
+            return 1;
+        }
+
+        $locked = SFAF_Recurrence::bulk_locked_fields( $targets );
+
+        $meta_keys = array(
+            '_uc_start_time', '_uc_end_time', '_uc_location',
+            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal',
+            '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
+            '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
+            '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+            '_uc_image_url', '_uc_image_override',
+            sfaf_faq_meta_key(),
+        );
+        if ( ! isset( $locked['capacity'] ) ) {
+            $meta_keys[] = '_uc_capacity';
+        }
+
+        $taxonomies = array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY );
+        $thumb      = get_post_thumbnail_id( $source_id );
+        $written    = 1;
+
+        foreach ( $targets as $target_id ) {
+            $target_id = (int) $target_id;
+            if ( $target_id === $source_id ) {
+                continue;
+            }
+            $target = get_post( $target_id );
+            if ( ! $target || 'uc_event' !== $target->post_type ) {
+                continue;
+            }
+
+            $target_source = (string) get_post_meta( $target_id, SFAF_Sources::META_SOURCE, true );
+            $target_owned  = ( '' !== $target_source ) ? SFAF_Sources::owned_fields_for( $target_source ) : array();
+
+            $postarr = array( 'ID' => $target_id );
+            if ( ! in_array( 'title', $target_owned, true ) ) {
+                $postarr['post_title'] = $source->post_title;
+            }
+            if ( ! in_array( 'description', $target_owned, true ) ) {
+                $postarr['post_content'] = $source->post_content;
+                $postarr['post_excerpt'] = $source->post_excerpt;
+            }
+            $postarr['post_status'] = $source->post_status;
+            wp_update_post( $postarr );
+
+            foreach ( $meta_keys as $key ) {
+                if ( in_array( 'faqs', $target_owned, true ) && sfaf_faq_meta_key() === $key ) {
+                    continue;
+                }
+                $value = get_post_meta( $source_id, $key, true );
+                if ( '' === $value || array() === $value ) {
+                    delete_post_meta( $target_id, $key );
+                } else {
+                    update_post_meta( $target_id, $key, $value );
+                }
+            }
+
+            foreach ( $taxonomies as $tax ) {
+                $terms = wp_get_object_terms( $source_id, $tax, array( 'fields' => 'ids' ) );
+                if ( ! is_wp_error( $terms ) ) {
+                    wp_set_object_terms( $target_id, $terms, $tax );
+                }
+            }
+
+            if ( $thumb ) {
+                set_post_thumbnail( $target_id, $thumb );
+            } else {
+                delete_post_thumbnail( $target_id );
+            }
+
+            $written++;
+        }
+
+        return $written;
     }
 
     /* =====================================================================
@@ -1101,7 +1181,9 @@ class SFAF_Portal {
             'user_saved'     => 'User permissions updated.',
             'user_added'     => 'User added to the calendar system.',
             'user_removed'   => 'User removed from the calendar system.',
-            'series_saved'   => 'Series saved and propagated to its occurrences.',
+            'series_saved'   => 'Series saved. Nothing about the events in it changed — a series groups them, it does not overwrite them.',
+            'series_failed'  => 'That series could not be saved. Give it a name and try again.',
+            'series_removed' => 'Series removed. Every event that was in it is still on the calendar, on the same date and at the same address — only the grouping has gone.',
             'fetched'        => 'Fetch complete. See the results below.',
             'import_dismissed' => 'Event dismissed. It stays in the Dismissed list and will not be fetched again.',
             'import_restored'  => 'Event restored to Pending.',
@@ -1110,20 +1192,38 @@ class SFAF_Portal {
             'faq_set_applied'  => 'FAQ set applied.',
             'faq_set_saved'    => 'FAQ set saved.',
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
-            'occurrence_cancelled'     => 'That occurrence is cancelled. It will not come back the next time the series is saved. You can restore it from the series screen.',
-            'occurrence_cancel_failed' => 'That occurrence could not be cancelled. See the message on the series screen.',
-            'occurrence_restored'      => 'Occurrence restored.',
-            'occurrence_forgotten'     => 'That date is no longer part of the series pattern, so there was nothing to restore. It has been taken off the cancelled list.',
-            'series_removed'           => 'Series removed, including every occurrence. They are in the WordPress trash if you need them back.',
-            'series_promoted'          => 'The next occurrence is now the series. Every other occurrence follows it, and nothing was orphaned.',
-            'series_promote_failed'    => 'There was no other occurrence to promote.',
-            'orphans_rebuilt'          => 'Those occurrences are a series again. Each one is marked as individually edited, so the first save will not rewrite them.',
-            'orphans_released'         => 'Those occurrences are now ordinary standalone events.',
-            'orphans_none'             => 'Nothing to repair. That group may already have been dealt with.',
-            'scope_future'             => 'Saved. Later occurrences were updated; earlier ones keep what they had.',
-            'scope_all'                => 'Saved and applied to every occurrence in the series, past ones included.',
         );
         $key = sanitize_key( $_GET['msg'] );
+
+        /*
+         * Two messages carry a count, so they are built rather than looked up.
+         *
+         *   bulk_N       "Saved. 12 upcoming occurrences updated."
+         *   generated_N  "Created, plus 11 more dates."
+         *
+         * The count is the point of both: a manager who has just changed a
+         * term's worth of programming should be told how much of it moved, in
+         * the same number the confirmation dialog asked about.
+         */
+        if ( 0 === strpos( $key, 'bulk_' ) ) {
+            $n = (int) substr( $key, 5 );
+            echo '<div class="uc-flash">' . esc_html( sprintf(
+                'Saved. %d upcoming %s updated. Past occurrences were not touched.',
+                $n,
+                _n( 'occurrence was', 'occurrences were', $n )
+            ) ) . '</div>';
+            return;
+        }
+        if ( 0 === strpos( $key, 'generated_' ) ) {
+            $n = (int) substr( $key, 10 );
+            echo '<div class="uc-flash">' . esc_html( sprintf(
+                'Saved, and %d further %s created. Each one is a separate event you can edit or delete on its own — nothing regenerates them.',
+                $n,
+                _n( 'date was', 'dates were', $n )
+            ) ) . '</div>';
+            return;
+        }
+
         if ( isset( $map[ $key ] ) ) {
             echo '<div class="uc-flash">' . esc_html( $map[ $key ] ) . '</div>';
         }
@@ -1235,10 +1335,12 @@ class SFAF_Portal {
             <?php
             // Things that want a person, said plainly and linked to the screen
             // that can deal with them. Silence here means nothing is waiting.
-            $orphan_count = 0;
-            foreach ( SFAF_Recurrence::find_orphans() as $ids ) {
-                $orphan_count += count( $ids );
-            }
+            /*
+             * NOTHING ABOUT ORPHANS APPEARS HERE ANY MORE, because nothing can
+             * be orphaned. An occurrence used to be able to outlive the series
+             * post it pointed at; a series is a term now, and a term
+             * relationship goes with the term.
+             */
             /*
              * NOTHING ABOUT THE SCHEDULED RUNNER APPEARS HERE ANY MORE.
              *
@@ -1250,12 +1352,12 @@ class SFAF_Portal {
              * warnings. An administrator sees it on the admin notice, on the
              * Automation screen, and now by email.
              */
-            $needs = ( $imports || $pending || $orphan_count );
+            $needs = ( $imports || $pending );
             ?>
             <div class="uc-card">
                 <div class="uc-card-head"><h2>Needs attention</h2></div>
                 <?php if ( ! $needs ) : ?>
-                    <p class="uc-empty">Nothing is waiting. Imports are clear and no series is broken.</p>
+                    <p class="uc-empty">Nothing is waiting. Imports are clear.</p>
                 <?php else : ?>
                     <ul class="uc-attention-list">
                         <?php if ( $imports ) : ?>
@@ -1270,14 +1372,6 @@ class SFAF_Portal {
                                 <strong><?php echo (int) $pending; ?></strong>
                                 <?php echo esc_html( _n( 'event was', 'events were', $pending ) ); ?> submitted for review.
                                 <a href="<?php echo esc_url( $this->url( 'pending' ) ); ?>">Review submissions &rarr;</a>
-                            </li>
-                        <?php endif; ?>
-                        <?php if ( $orphan_count ) : ?>
-                            <li>
-                                <strong><?php echo (int) $orphan_count; ?></strong>
-                                <?php echo esc_html( _n( 'occurrence has', 'occurrences have', $orphan_count ) ); ?>
-                                lost the series <?php echo esc_html( _n( 'it belonged to', 'they belonged to', $orphan_count ) ); ?>.
-                                <a href="<?php echo esc_url( $this->url( 'series/orphans' ) ); ?>">Repair &rarr;</a>
                             </li>
                         <?php endif; ?>
                     </ul>
@@ -1771,15 +1865,21 @@ class SFAF_Portal {
                     <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
                     <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
                     <td><?php
-                        if ( sfaf_is_orphaned_occurrence( $id ) ) {
-                            echo '<a class="uc-tlink uc-link-danger" href="' . esc_url( $this->url( 'series/orphans' ) ) . '">Series missing</a>';
-                        } elseif ( sfaf_is_in_series( $id ) ) {
-                            echo esc_html( sfaf_get_series_name( $id ) );
-                            if ( SFAF_Recurrence::is_series_parent( $id ) ) {
-                                echo ' <span class="uc-muted">(series)</span>';
-                            }
+                        // NO SERIES EVER APPEARS IN THIS TABLE. It is a list of
+                        // uc_event posts and a series is a term, so that is now
+                        // structural rather than something this loop has to
+                        // check for. What a row can say is which series it
+                        // belongs to — and, separately, that it came from a
+                        // recurrence group.
+                        $row_series = SFAF_Series::for_event( $id );
+                        if ( $row_series ) {
+                            echo '<a class="uc-tlink" href="' . esc_url( $this->url( 'series/edit/' . $row_series->term_id ) ) . '">'
+                                . esc_html( $row_series->name ) . '</a>';
                         } else {
                             echo '<span class="uc-muted">None</span>';
+                        }
+                        if ( '' !== SFAF_Recurrence::group_of( $id ) ) {
+                            echo '<br><span class="uc-muted">Repeating</span>';
                         }
                     ?></td>
                     <td><?php
@@ -1788,37 +1888,26 @@ class SFAF_Portal {
                     ?></td>
                     <?php
                     /*
-                     * THREE DIFFERENT REMOVALS, AND THE ROW HAS TO SAY WHICH
-                     * ONE THIS IS.
+                     * ONE REMOVAL, AND IT MEANS WHAT IT SAYS.
                      *
-                     * Until 2.12.0 every row offered the same "Remove this
-                     * event?" and the same handler. On an occurrence that
-                     * silently un-did itself on the next series save; on a
-                     * series parent it orphaned every other occurrence. The
-                     * word, the warning and the destination all now depend on
-                     * what the row actually is.
+                     * There used to be three, because removing an event could
+                     * damage other events: removing a series parent orphaned
+                     * every occurrence, and removing an occurrence had to be
+                     * recorded as a cancellation or the next series save put it
+                     * straight back. Nothing regenerates now and no event is a
+                     * series, so this removes one event and nothing else.
                      */
-                    $is_parent_row = SFAF_Recurrence::is_series_parent( $id ) && SFAF_Recurrence::child_count( $id );
-                    $raw_parent    = (int) get_post_meta( $id, '_uc_series_parent', true );
-                    $is_child_row  = ( $raw_parent && $raw_parent !== (int) $id && SFAF_Recurrence::parent_exists( $raw_parent ) );
                     ?>
                     <td class="uc-row-actions">
                         <div class="uc-actions">
                             <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
-                            <?php if ( $is_parent_row ) : ?>
-                                <a class="uc-action-link uc-link-danger" href="<?php echo esc_url( $this->url( 'series/remove/' . $id ) ); ?>"
-                                   title="This event is the series itself. Removing it needs a decision about the other occurrences.">Remove series&hellip;</a>
-                            <?php else : ?>
-                                <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>"
-                                      onsubmit="return confirm('<?php echo $is_child_row
-                                          ? 'Cancel this occurrence? It will not come back the next time the series is saved. You can restore it from the series screen.'
-                                          : 'Remove this event?'; ?>');">
-                                    <input type="hidden" name="uc_action" value="trash_event" />
-                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
-                                    <button type="submit" class="uc-link-danger"><?php echo $is_child_row ? 'Cancel occurrence' : 'Remove'; ?></button>
-                                </form>
-                            <?php endif; ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>"
+                                  onsubmit="return confirm('Remove this event? Nothing else changes and nothing brings it back.');">
+                                <input type="hidden" name="uc_action" value="trash_event" />
+                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
+                                <button type="submit" class="uc-link-danger">Remove</button>
+                            </form>
                         </div>
                     </td>
                 </tr>
@@ -2040,157 +2129,95 @@ class SFAF_Portal {
         return ( 'locked' === $state ) ? ' disabled' : '';
     }
 
+    /**
+     * Create or update a series.
+     *
+     * @param WP_User $user
+     * @return int Term ID, or 0 on failure.
+     */
     private function save_series_from_post( $user ) {
-        $parent_id = isset( $_POST['series_id_post'] ) ? intval( $_POST['series_id_post'] ) : 0;
-        $post      = $parent_id ? get_post( $parent_id ) : null;
-        if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+        if ( ! $this->can_view_all( $user ) ) {
             wp_die( 'Denied' );
         }
+        $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
 
-        wp_update_post( array(
-            'ID'           => $parent_id,
-            'post_title'   => sanitize_text_field( wp_unslash( $_POST['series_name'] ?? '' ) ) ?: get_the_title( $parent_id ),
-            'post_content' => wp_kses_post( wp_unslash( $_POST['series_desc'] ?? '' ) ),
-        ) );
-        update_post_meta( $parent_id, '_uc_location', sanitize_text_field( wp_unslash( $_POST['series_location'] ?? '' ) ) );
-        update_post_meta( $parent_id, '_uc_start_time', sanitize_text_field( wp_unslash( $_POST['series_start'] ?? '' ) ) );
-        update_post_meta( $parent_id, '_uc_end_time', sanitize_text_field( wp_unslash( $_POST['series_end'] ?? '' ) ) );
-        wp_set_object_terms( $parent_id, ( $c = intval( $_POST['series_category'] ?? 0 ) ) ? array( $c ) : array(), 'uc_event_category' );
-        wp_set_object_terms( $parent_id, ( $o = intval( $_POST['series_organizer'] ?? 0 ) ) ? array( $o ) : array(), 'uc_organizer' );
-
-        $img_id = intval( $_POST['series_image_id'] ?? 0 );
-        if ( $img_id ) {
-            update_post_meta( $parent_id, '_uc_series_image_id', $img_id );
-        } else {
-            delete_post_meta( $parent_id, '_uc_series_image_id' );
-        }
-        $img_url = esc_url_raw( wp_unslash( $_POST['series_image_url'] ?? '' ) );
-        if ( $img_url ) {
-            update_post_meta( $parent_id, '_uc_series_image_url', $img_url );
-        } else {
-            delete_post_meta( $parent_id, '_uc_series_image_url' );
-        }
-
-        $faqs = array();
-        if ( isset( $_POST['uc_series_faq'] ) && is_array( $_POST['uc_series_faq'] ) ) {
-            foreach ( wp_unslash( $_POST['uc_series_faq'] ) as $row ) {
-                $q = isset( $row['question'] ) ? sanitize_text_field( $row['question'] ) : '';
-                $a = isset( $row['answer'] ) ? sanitize_textarea_field( $row['answer'] ) : '';
-                if ( $q === '' && $a === '' ) {
-                    continue;
-                }
-                $faqs[] = array( 'question' => $q, 'answer' => $a );
-            }
-        }
-        update_post_meta( $parent_id, '_uc_series_faq', $faqs );
-
-        // The set each new occurrence is given. Stored before generation runs
-        // below, so a series saved with a default set applies it to the
-        // occurrences that same save creates.
-        if ( isset( $_POST['series_faq_set'] ) ) {
-            SFAF_FAQ_Sets::set_series_default( $parent_id, sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ) ) );
-        }
-
-        // Same scope vocabulary as every other editor. "Later occurrences"
-        // from a series-wide save counts from today.
-        $scope = SFAF_Recurrence::clean_scope(
-            isset( $_POST['uc_series_apply'] ) ? wp_unslash( $_POST['uc_series_apply'] ) : 'this'
+        $args = array(
+            'description' => wp_unslash( $_POST['series_desc'] ?? '' ),
+            'image_id'    => intval( $_POST['series_image_id'] ?? 0 ),
+            'image_url'   => wp_unslash( $_POST['series_image_url'] ?? '' ),
+            'faq_set'     => sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ?? '' ) ),
         );
+        $name = wp_unslash( $_POST['series_name'] ?? '' );
 
-        $rec = new SFAF_Recurrence();
-        $rec->maybe_generate( $parent_id, $scope, 'future' === $scope ? current_time( 'Y-m-d' ) : '' );
+        if ( $term_id ) {
+            $result = SFAF_Series::update( $term_id, $name, $args );
+            return is_wp_error( $result ) ? 0 : $term_id;
+        }
 
-        return $parent_id;
+        $created = SFAF_Series::create( $name, $args );
+        return is_wp_error( $created ) ? 0 : (int) $created;
     }
 
+    /**
+     * The Series screen.
+     *
+     * ONE ROW PER SERIES, showing the name, how many upcoming events it holds
+     * and its next date. No series ever appears on the Events screen and no
+     * event ever appears here, and that is now structural rather than
+     * something every query has to remember.
+     */
     private function render_series_list( $user ) {
         $this->chrome_open( $user, 'series' );
-        $parents = sfaf_get_series_parents();
-        if ( ! $this->can_view_all( $user ) ) {
-            $parents = array_values( array_filter( $parents, function ( $pid ) use ( $user ) {
-                return (int) get_post_field( 'post_author', $pid ) === (int) $user->ID;
-            } ) );
-        }
-        if ( ! empty( $parents ) ) {
-            _prime_post_caches( $parents, true, true );
-        }
-        ?>
-        <?php
-        // Orphans are surfaced here, at the top of the screen that owns
-        // series, rather than repaired quietly on load. See render_orphans().
-        $orphan_groups = $this->can_view_all( $user ) ? SFAF_Recurrence::find_orphans() : array();
-        $orphan_count  = 0;
-        foreach ( $orphan_groups as $ids ) {
-            $orphan_count += count( $ids );
-        }
+        $series = SFAF_Series::all();
         ?>
         <div class="uc-page-head">
             <h1>Series</h1>
-            <div class="uc-head-actions">
-                <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
-            </div>
+            <?php if ( $this->can_view_all( $user ) ) : ?>
+                <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Series</a>
+            <?php endif; ?>
         </div>
-        <p class="uc-hint" style="margin-top:-8px;">
-            A series is created by giving an event a recurrence and a series end date. Everything about the whole
-            group lives here: the shared details, how often it repeats, which dates are cancelled, and removing it.
-            To cancel a single date, remove that occurrence from the <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>">Events</a> screen.
+
+        <p class="uc-help">
+            A series is an umbrella for grouping and filtering &mdash; closer to a category than to an event. It has no
+            date, never appears on the calendar, and may hold different kinds of event: the same group might run an
+            educational session one week and a social the next. A series with no dates yet is perfectly normal.
         </p>
 
-        <?php if ( $orphan_count ) : ?>
-            <div class="uc-flash uc-flash-warn">
-                <strong><?php echo (int) $orphan_count; ?></strong>
-                <?php echo esc_html( _n( 'occurrence has', 'occurrences have', $orphan_count ) ); ?>
-                lost the series <?php echo esc_html( _n( 'it belonged to', 'they belonged to', $orphan_count ) ); ?>.
-                <?php echo esc_html( _n( 'It is', 'They are', $orphan_count ) ); ?> still published but cannot be managed as a group.
-                <a href="<?php echo esc_url( $this->url( 'series/orphans' ) ); ?>">Repair <?php echo esc_html( _n( 'it', 'them', $orphan_count ) ); ?> &rarr;</a>
-            </div>
-        <?php endif; ?>
-
         <div class="uc-card">
-            <?php if ( empty( $parents ) ) : ?>
-                <p class="uc-empty">No event series yet. Create a recurring event (recurrence + series end date) to start one.</p>
+            <?php if ( empty( $series ) ) : ?>
+                <p class="uc-empty">No series yet. Create one, then choose it on any event.</p>
             <?php else : ?>
                 <table class="uc-table">
-                    <thead><tr><th></th><th>Series</th><th>Category</th><th>Organizer</th><th>Recurrence</th><th>Occurrences</th><th>Cancelled</th><th>Next</th><th class="uc-col-actions">Actions</th></tr></thead>
+                    <thead><tr><th></th><th>Series</th><th>Upcoming events</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
                     <tbody>
-                    <?php foreach ( $parents as $pid ) :
-                        $cats = wp_get_post_terms( $pid, 'uc_event_category', array( 'fields' => 'names' ) );
-                        $orgs = wp_get_post_terms( $pid, 'uc_organizer', array( 'fields' => 'names' ) );
-                        $rec  = get_post_meta( $pid, '_uc_recurrence', true );
-                        $up   = sfaf_get_series_events( $pid, true );
-                        $next = ! empty( $up ) ? get_post_meta( $up[0], '_uc_event_date', true ) : '';
-                        $edit = $this->url( 'series/edit/' . $pid );
+                    <?php foreach ( $series as $term ) :
+                        $edit  = $this->url( 'series/edit/' . $term->term_id );
+                        $count = SFAF_Series::upcoming_count( $term->term_id );
+                        $next  = SFAF_Series::next_date( $term->term_id );
+                        $img   = SFAF_Series::image_url( $term->term_id, 'medium' );
                         ?>
                         <tr>
                             <td class="uc-series-thumb"><a href="<?php echo esc_url( $edit ); ?>"><?php
-                                $simg = sfaf_event_image_url( $pid );
-                                if ( $simg ) {
-                                    echo '<img src="' . esc_url( $simg ) . '" alt="" />';
+                                if ( $img ) {
+                                    echo '<img src="' . esc_url( $img ) . '" alt="" />';
                                 } else {
                                     echo '<span class="uc-series-thumb-none" aria-hidden="true">' . sfaf_icon( 'calendar', array( 'size' => '18px' ) ) . '</span>';
                                 }
                             ?></a></td>
-                            <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html( get_the_title( $pid ) ); ?></a></td>
-                            <td><?php echo ( ! is_wp_error( $cats ) && $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                            <td><?php echo ( ! is_wp_error( $orgs ) && $orgs ) ? esc_html( implode( ', ', $orgs ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                            <td><?php echo $rec ? esc_html( ucfirst( $rec ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                            <td><?php echo (int) sfaf_series_count( $pid ); ?></td>
+                            <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( $term->name ); ?></strong></a></td>
+                            <td><?php echo (int) $count; ?></td>
                             <td><?php
-                                // Visible at a glance, because a series with a
-                                // cancelled week looks exactly like one that
-                                // failed to generate until somebody says which.
-                                $cancelled = SFAF_Recurrence::cancelled_dates( $pid );
-                                if ( $cancelled ) {
-                                    echo '<a class="uc-tlink" href="' . esc_url( $edit ) . '">' . (int) count( $cancelled ) . '</a>';
-                                } else {
-                                    echo '<span class="uc-muted">None</span>';
-                                }
+                                // "No dates yet" rather than a dash. An empty
+                                // series is a normal state, not a fault, and a
+                                // dash makes a manager go looking for the fault.
+                                echo $next
+                                    ? esc_html( date_i18n( 'M j, Y', strtotime( $next ) ) )
+                                    : '<span class="uc-muted">No dates yet</span>';
                             ?></td>
-                            <td><?php echo $next ? esc_html( date_i18n( 'M j', strtotime( $next ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
                                     <a class="uc-action-link" href="<?php echo esc_url( $edit ); ?>">Edit</a>
-                                    <a class="uc-action-link uc-link-danger" href="<?php echo esc_url( $this->url( 'series/remove/' . $pid ) ); ?>">Remove</a>
+                                    <a class="uc-action-link" href="<?php echo esc_url( SFAF_Series::url( $term->term_id ) ); ?>" target="_blank" rel="noopener">View</a>
                                 </div>
                             </td>
                         </tr>
@@ -2203,46 +2230,63 @@ class SFAF_Portal {
         $this->chrome_close();
     }
 
-    private function render_series_edit( $user, $parent_id ) {
-        $post = $parent_id ? get_post( $parent_id ) : null;
-        if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+    /**
+     * Create or edit one series.
+     *
+     * WHAT A SERIES CARRIES: a name, a description, an image and a default FAQ
+     * set. It deliberately no longer holds a default time, location, category
+     * or organizer. Those were the template every occurrence was generated
+     * from, and there is no generation from a series any more — a series may
+     * hold different kinds of event, so a "default category" would have been
+     * actively wrong rather than merely unused.
+     *
+     * @param WP_User $user
+     * @param int     $term_id 0 to create.
+     */
+    private function render_series_edit( $user, $term_id ) {
+        if ( ! $this->can_view_all( $user ) ) {
             $this->chrome_open( $user, 'series' );
-            echo '<div class="uc-card"><p class="uc-empty">Series not found or you don\'t have permission to edit it.</p></div>';
+            echo '<div class="uc-card"><p class="uc-empty">You don\'t have permission to manage series.</p></div>';
+            $this->chrome_close();
+            return;
+        }
+        $term = $term_id ? SFAF_Series::get( $term_id ) : null;
+        if ( $term_id && ! $term ) {
+            $this->chrome_open( $user, 'series' );
+            echo '<div class="uc-card"><p class="uc-empty">Series not found.</p></div>';
             $this->chrome_close();
             return;
         }
 
-        $cats    = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
-        $orgs    = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) );
-        $curcat  = ( wp_get_post_terms( $parent_id, 'uc_event_category', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0];
-        $curorg  = ( wp_get_post_terms( $parent_id, 'uc_organizer', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0];
-        $img_id  = (int) get_post_meta( $parent_id, '_uc_series_image_id', true );
-        $img_url = get_post_meta( $parent_id, '_uc_series_image_url', true );
+        $img_id  = $term_id ? (int) get_term_meta( $term_id, SFAF_Series::META_IMAGE_ID, true ) : 0;
+        $img_url = $term_id ? (string) get_term_meta( $term_id, SFAF_Series::META_IMAGE_URL, true ) : '';
         $preview = $img_id ? wp_get_attachment_image_url( $img_id, 'medium' ) : $img_url;
-        $faqs    = sfaf_normalize_faqs( get_post_meta( $parent_id, '_uc_series_faq', true ) );
+        $set     = $term_id ? SFAF_Series::default_faq_set( $term_id ) : '';
+        $sets    = SFAF_FAQ_Sets::all();
 
         $this->load_media = true;
         wp_enqueue_media();
+
         $this->chrome_open( $user, 'series' );
         ?>
         <div class="uc-page-head">
-            <h1>Edit Series</h1>
+            <h1><?php echo $term ? 'Edit Series' : 'New Series'; ?></h1>
             <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-btn">&larr; Back</a>
         </div>
-        <p class="uc-hint" style="margin-top:-8px;">Shared properties flow down to occurrences that haven't been individually overridden.</p>
 
-        <form method="post" action="<?php echo esc_url( $this->url( 'series/edit/' . $parent_id ) ); ?>" class="uc-form">
+        <form method="post" action="<?php echo esc_url( $this->url( $term_id ? 'series/edit/' . $term_id : 'series/new' ) ); ?>" class="uc-form">
             <input type="hidden" name="uc_action" value="save_series" />
-            <input type="hidden" name="series_id_post" value="<?php echo (int) $parent_id; ?>" />
+            <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_series', 'uc_nonce' ); ?>
 
             <div class="uc-card">
-                <label class="uc-field">Series name
-                    <input type="text" name="series_name" value="<?php echo esc_attr( get_the_title( $parent_id ) ); ?>" />
+                <label class="uc-field">
+                    <span class="uc-field-label">Series name</span>
+                    <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" required />
                 </label>
 
                 <div class="uc-field uc-image-field">
-                    <span class="uc-field-label">Featured image (series default)</span>
+                    <span class="uc-field-label">Image</span>
                     <input type="hidden" name="series_image_id" id="uc-featured-image-id" value="<?php echo (int) $img_id; ?>" />
                     <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
                         <img src="<?php echo esc_url( $preview ); ?>" alt="" id="uc-image-preview-img" />
@@ -2254,126 +2298,85 @@ class SFAF_Portal {
                     <label class="uc-field uc-image-url-field">Or enter image URL
                         <input type="url" name="series_image_url" id="uc-image-url" value="<?php echo esc_attr( $img_url ); ?>" placeholder="https://…/image.jpg" />
                     </label>
+                    <p class="uc-hint">Shown on the series page, and used by any event in the series with no image of its own.</p>
                 </div>
 
-                <label class="uc-field">Default description
-                    <textarea name="series_desc" rows="5"><?php echo esc_textarea( get_post_field( 'post_content', $parent_id ) ); ?></textarea>
+                <label class="uc-field">
+                    <span class="uc-field-label">Description</span>
+                    <textarea name="series_desc" rows="6"><?php echo esc_textarea( $term ? $term->description : '' ); ?></textarea>
+                    <span class="uc-hint">What this series is. Shown on the series page, including while it has no dates scheduled.</span>
                 </label>
 
-                <div class="uc-field-row">
-                    <label class="uc-field">Default location<input type="text" name="series_location" value="<?php echo esc_attr( get_post_meta( $parent_id, '_uc_location', true ) ); ?>" /></label>
-                    <label class="uc-field">Default start<input type="time" name="series_start" value="<?php echo esc_attr( get_post_meta( $parent_id, '_uc_start_time', true ) ); ?>" /></label>
-                    <label class="uc-field">Default end<input type="time" name="series_end" value="<?php echo esc_attr( get_post_meta( $parent_id, '_uc_end_time', true ) ); ?>" /></label>
-                </div>
-
-                <div class="uc-field-row">
-                    <label class="uc-field">Category
-                        <select name="series_category"><option value="0">None</option>
-                            <?php if ( ! is_wp_error( $cats ) ) foreach ( $cats as $c ) : ?>
-                                <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $curcat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <label class="uc-field">Organizer
-                        <select name="series_organizer"><option value="0">None</option>
-                            <?php if ( ! is_wp_error( $orgs ) ) foreach ( $orgs as $o ) : ?>
-                                <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $curorg, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                </div>
-
-                <h3>Series FAQ</h3>
-                <p class="uc-hint">These FAQs appear on every event in this series.</p>
-                <?php $this->faq_repeater( 'uc_series_faq', $faqs ); ?>
-
-                <?php
-                /*
-                 * THE DEFAULT SET IS THE PART THAT ACTUALLY SOLVES THE PROBLEM.
-                 *
-                 * A dropdown on the event editor only helps a manager who
-                 * remembers to use it. This is applied by
-                 * SFAF_Recurrence::create_child() the moment an occurrence is
-                 * generated, so nobody has to remember anything.
-                 *
-                 * The warning about putting questions in one place or the
-                 * other is real: occurrences inherit the Series FAQ above AND
-                 * receive this set, so the same question in both appears
-                 * twice. Only the exact-duplicate check in
-                 * SFAF_FAQ_Sets::apply() catches that, and only when the
-                 * wording matches.
-                 */
-                $faq_sets = SFAF_FAQ_Sets::all();
-                $default  = SFAF_FAQ_Sets::series_default( $parent_id );
-                ?>
-                <h3>Default FAQ set for new occurrences</h3>
-                <?php if ( empty( $faq_sets ) ) : ?>
-                    <p class="uc-hint">No saved sets yet. Create one from the FAQ panel on any event, then choose it here.</p>
-                <?php else : ?>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Apply automatically to each new occurrence</span>
-                        <select name="series_faq_set">
-                            <option value="">None</option>
-                            <?php foreach ( $faq_sets as $set ) : ?>
-                                <option value="<?php echo esc_attr( $set['id'] ); ?>" <?php selected( $default, $set['id'] ); ?>><?php
-                                    echo esc_html( $set['name'] . ' (' . count( $set['rows'] ) . ')' );
-                                ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <p class="uc-hint">Copied onto every occurrence this series generates from now on, so nobody has to remember to pick it. Existing occurrences are not changed. Occurrences already inherit the Series FAQ above, so put a question in one place or the other, not both.</p>
-                <?php endif; ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Default FAQ set</span>
+                    <select name="series_faq_set">
+                        <option value="">None</option>
+                        <?php foreach ( $sets as $s ) : ?>
+                            <option value="<?php echo esc_attr( $s['id'] ); ?>" <?php selected( $set, $s['id'] ); ?>>
+                                <?php echo esc_html( $s['name'] ); ?> (<?php echo (int) count( $s['rows'] ); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="uc-hint">
+                        Copied onto each event created into this series, so nobody has to remember to pick it. The rows
+                        become that event's own and can be edited or cleared. Existing events are not changed.
+                    </span>
+                </label>
             </div>
 
-            <?php
-            /*
-             * Scope on the series editor is the same control, from the same
-             * source, as the one on the event editor and in WP admin. Here the
-             * cutoff is today: "later occurrences" from a series-wide edit can
-             * only sensibly mean the ones that have not happened.
-             */
-            if ( SFAF_Recurrence::child_count( $parent_id ) ) : ?>
-                <div class="uc-card">
-                    <h3>Apply this save to</h3>
-                    <div class="uc-scope-options">
-                        <?php foreach ( array_keys( SFAF_Recurrence::scopes() ) as $scope ) : ?>
-                            <label class="uc-radio-opt">
-                                <input type="radio" name="uc_series_apply" value="<?php echo esc_attr( $scope ); ?>" <?php checked( 'this' === $scope ); ?> />
-                                <span><?php echo esc_html( SFAF_Recurrence::scope_label( $scope, current_time( 'Y-m-d' ) ) ); ?></span>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                    <p class="uc-hint">
-                        The series record itself is always saved. This is how far the change travels down to the
-                        occurrences. Occurrences edited individually keep their own details unless they fall inside
-                        the scope you pick.
-                    </p>
-                </div>
-            <?php endif; ?>
-
             <div class="uc-form-actions">
-                <button type="submit" class="uc-btn uc-btn-primary">Save Series</button>
+                <button type="submit" class="uc-btn uc-btn-primary"><?php echo $term ? 'Save Series' : 'Create Series'; ?></button>
             </div>
         </form>
 
-        <?php
-        // Outside the form: these panels post on their own, and HTML forms
-        // cannot nest. Same reasoning as the FAQ set and refresh panels.
-        $this->render_cancelled_panel( $parent_id );
-        ?>
+        <?php if ( $term ) : ?>
+            <?php
+            // Outside the form: this posts on its own, and HTML forms cannot
+            // nest. Same reasoning as the FAQ set and refresh panels.
+            $total    = SFAF_Series::total_count( $term_id );
+            $upcoming = SFAF_Series::upcoming_count( $term_id );
+            ?>
+            <div class="uc-card">
+                <h3>Events in this series</h3>
+                <?php if ( ! $total ) : ?>
+                    <p class="uc-hint">None yet. Choose this series on any event, or create an event into it.</p>
+                <?php else : ?>
+                    <p class="uc-hint">
+                        <strong><?php echo (int) $total; ?></strong> <?php echo esc_html( _n( 'event', 'events', $total ) ); ?>,
+                        <strong><?php echo (int) $upcoming; ?></strong> upcoming.
+                    </p>
+                    <ul class="uc-series-list">
+                        <?php foreach ( SFAF_Series::events( $term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 25 ) ) as $eid ) :
+                            $d = get_post_meta( $eid, '_uc_event_date', true ); ?>
+                            <li>
+                                <a href="<?php echo esc_url( $this->url( 'events/edit/' . $eid ) ); ?>">
+                                    <span class="uc-series-date"><?php echo $d ? esc_html( date_i18n( 'M j, Y', strtotime( $d ) ) ) : ''; ?></span>
+                                    <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
 
-        <div class="uc-card uc-card-danger">
-            <h3>Remove this series</h3>
-            <p class="uc-hint">
-                This event is the series as well as its first occurrence, so removing it is not the same as removing
-                an ordinary event. The next screen states what would happen and offers the choices.
-            </p>
-            <a class="uc-btn uc-link-danger" href="<?php echo esc_url( $this->url( 'series/remove/' . $parent_id ) ); ?>">Remove series&hellip;</a>
-        </div>
+            <div class="uc-card uc-card-danger">
+                <h3>Remove this series</h3>
+                <p class="uc-hint">
+                    This removes the grouping and nothing else. Every event in it stays on the calendar, on the same
+                    date, at the same address, and simply stops saying it is part of a series.
+                </p>
+                <form method="post" action="<?php echo esc_url( $this->url( 'series' ) ); ?>">
+                    <input type="hidden" name="uc_action" value="remove_series" />
+                    <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                    <?php wp_nonce_field( 'uc_portal_remove_series', 'uc_nonce' ); ?>
+                    <button type="submit" class="uc-btn uc-link-danger"
+                            data-uc-confirm="Remove the series &quot;<?php echo esc_attr( $term->name ); ?>&quot;? The <?php echo (int) $total; ?> events in it stay on the calendar, unchanged.">Remove series</button>
+                </form>
+            </div>
+        <?php endif; ?>
         <?php
         $this->chrome_close();
     }
-
     /* =====================================================================
      * Rendering — event form
      * ================================================================== */
@@ -2409,20 +2412,27 @@ class SFAF_Portal {
         </div>
 
         <?php
-        $raw_parent   = $event_id ? sfaf_get_series_parent( $event_id ) : 0;
-        $is_occurrence = ( $raw_parent && $raw_parent !== (int) $event_id );
-        $is_orphan     = $is_occurrence && ! SFAF_Recurrence::parent_exists( $raw_parent );
+        /*
+         * WHAT THIS EVENT IS PART OF — two different facts, said separately.
+         *
+         * A SERIES is an umbrella and has no bearing on how this save behaves:
+         * it may hold an educational session one week and a social the next, so
+         * a series-wide edit would be wrong and is not offered.
+         *
+         * A RECURRENCE GROUP is the set of events generated together from one
+         * pattern, identical by default, and IS what a bulk edit targets. See
+         * the header of class-sfaf-recurrence.php.
+         */
+        $series_term  = $event_id ? SFAF_Series::for_event( $event_id ) : null;
+        $bulk_targets = $event_id ? SFAF_Recurrence::bulk_targets( $event_id ) : array();
+        $has_bulk     = $event_id && count( $bulk_targets ) > 1;
+        $bulk_locked  = $has_bulk ? SFAF_Recurrence::bulk_locked_fields( $bulk_targets ) : array();
         ?>
-        <?php if ( $is_orphan ) : ?>
-            <div class="uc-flash uc-flash-warn">
-                <strong>This occurrence has lost its series.</strong> The event it belonged to no longer exists, so
-                series settings cannot reach it and it cannot be edited as part of a group.
-                <a href="<?php echo esc_url( $this->url( 'series/orphans' ) ); ?>">Repair it in the Series Manager &rarr;</a>
-            </div>
-        <?php elseif ( $is_occurrence ) : ?>
+        <?php if ( $series_term ) : ?>
             <div class="uc-flash uc-flash-info">
-                This is one occurrence in a series. By default, saving affects only this occurrence.
-                Use the scope control at the bottom of the form to push a change out to the others.
+                Part of the series <strong><?php echo esc_html( $series_term->name ); ?></strong>.
+                A series groups events for browsing and filtering; it does not change what saving this event does.
+                <a href="<?php echo esc_url( $this->url( 'series/edit/' . $series_term->term_id ) ); ?>">Manage the series &rarr;</a>
             </div>
         <?php endif; ?>
 
@@ -2507,6 +2517,26 @@ class SFAF_Portal {
             <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_event', 'uc_nonce' ); ?>
 
+            <?php $this->render_scope_header( $event_id, $bulk_targets, $bulk_locked ); ?>
+
+            <?php
+            /*
+             * THE LOCK.
+             *
+             * Everything editable lives inside this fieldset, and on an event
+             * with a scope choice it is rendered `disabled` — which is the
+             * point: nothing can be typed, and nothing can be saved, before the
+             * manager has decided how the save will apply. Choosing a scope
+             * enables it. The Save and Publish buttons are inside it too, so
+             * "locked" means locked rather than "editable but unsaveable".
+             *
+             * Rendered disabled in the HTML rather than switched off by script,
+             * so the lock is real from the moment the page arrives rather than
+             * from whenever the JavaScript happens to run.
+             */
+            ?>
+            <fieldset class="uc-scope-fields"<?php echo $has_bulk ? ' data-uc-scope-fields disabled' : ''; ?>>
+
             <div class="uc-form-grid">
                 <div class="uc-form-main">
                     <?php $s_title = $st( 'title' ); ?>
@@ -2521,8 +2551,7 @@ class SFAF_Portal {
                     $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
                     $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
                     $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
-                    $ev_parent  = $event_id ? (int) get_post_meta( $event_id, '_uc_series_parent', true ) : 0;
-                    $ev_in_series = $ev_parent && $ev_parent !== (int) $event_id;
+                    $ev_in_series = $event_id && SFAF_Series::id_for_event( $event_id ) > 0;
                     ?>
                     <?php
                     $s_image = $st( 'image' );
@@ -2628,51 +2657,88 @@ class SFAF_Portal {
 
                     <?php
                     /*
-                     * RECURRENCE IS THE SOURCE'S ON AN IMPORTED EVENT.
+                     * SERIES: the umbrella this event belongs to.
                      *
-                     * A platform decides whether and how its event repeats, and
-                     * a fetch brings that shape back every time. So the cadence
-                     * is not ours to set here, and the dropdown is disabled on
-                     * anything with a source rather than looking settable and
-                     * quietly doing nothing.
+                     * A plain term assignment. Nothing is inherited from it,
+                     * nothing about this event is rewritten because of it, and
+                     * changing it never touches another event. The only two
+                     * effects are the badge a visitor sees and the image this
+                     * event falls back to when it has none of its own.
+                     */
+                    $all_series = SFAF_Series::all();
+                    $cur_series = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
+                    ?>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Series</span>
+                        <select name="series">
+                            <option value="0">Not part of a series</option>
+                            <?php foreach ( $all_series as $term ) : ?>
+                                <option value="<?php echo (int) $term->term_id; ?>" <?php selected( $cur_series, $term->term_id ); ?>>
+                                    <?php echo esc_html( $term->name ); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <span class="uc-hint">
+                            An umbrella for grouping and filtering. A series may hold different kinds of event, so it is
+                            not the same thing as repeating. <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>">Manage series</a>.
+                        </span>
+                    </label>
+
+                    <?php
+                    /*
+                     * REPEAT IS A GENERATOR, AND IT RUNS ONCE.
                      *
-                     * DUAL USE OF _uc_end_date, NAMED HERE SO IT IS NOT A
-                     * SURPRISE: that one meta key is both the event's end date
-                     * at the source (written by SFAF_Sources::update_event) and
-                     * this box's "Series end date" for recurrence generation
-                     * (read by SFAF_Recurrence). Splitting them is a data
-                     * migration and is deliberately NOT part of this release.
-                     * Whoever next touches recurrence should split them, and
-                     * until then remember that setting a series end date on an
-                     * imported event writes the same key a fetch overwrites.
+                     * On save it creates one separate event per date, all
+                     * stamped with a shared recurrence group, and then forgets
+                     * the pattern. Nothing regenerates. Editing or deleting any
+                     * of them afterwards is an ordinary edit or delete.
                      *
-                     * Like the locked FAQ rows, the disabled control carries no
-                     * `name`, so a tampered POST has nothing to submit, and the
-                     * save skips the field outright rather than trusting one.
+                     * SHOWN ONLY WHERE IT CAN DO SOMETHING: on an event that is
+                     * not already part of a group (generating again would double
+                     * every date it made the first time) and that has no source
+                     * (a platform decides whether its own event repeats, and a
+                     * fetch brings that shape back regardless).
                      */
                     $rec_locked = ( $event_id && '' !== $prov['source'] );
-                    $s_enddate  = $rec_locked ? 'locked' : $st( 'end_date' );
+                    $has_group  = $event_id && '' !== SFAF_Recurrence::group_of( $event_id );
                     ?>
                     <fieldset class="uc-fieldset<?php echo $rec_locked ? ' uc-fieldset-locked' : ''; ?>">
-                        <legend>Recurrence</legend>
-                        <div class="uc-field-row">
-                            <label class="uc-field<?php echo esc_attr( $this->field_class( $rec_locked ? 'locked' : 'normal' ) ); ?>">
-                                <span class="uc-field-label">Repeats <?php echo $this->field_badge( $rec_locked ? 'locked' : 'normal', $prov['label'] ); ?></span>
-                                <select<?php echo $rec_locked ? ' disabled' : ' name="recurrence"'; ?>>
-                                    <?php foreach ( array( '' => 'Does not repeat', 'daily' => 'Daily', 'weekly' => 'Weekly', 'biweekly' => 'Every 2 weeks', 'monthly' => 'Monthly' ) as $k => $lbl ) : ?>
-                                        <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $g( '_uc_recurrence' ), $k ); ?>><?php echo esc_html( $lbl ); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                            <label class="uc-field<?php echo esc_attr( $this->field_class( $s_enddate ) ); ?>">
-                                <span class="uc-field-label">Series end date <?php echo $this->field_badge( $s_enddate, $prov['label'] ); ?></span>
-                                <input type="date"<?php echo ( 'locked' === $s_enddate ) ? ' disabled' : ' name="end_date"'; ?> value="<?php echo esc_attr( $g( '_uc_end_date' ) ); ?>" />
-                            </label>
-                        </div>
+                        <legend>Repeat</legend>
                         <?php if ( $rec_locked ) : ?>
-                            <p class="uc-hint">Recurrence is managed on <?php echo esc_html( $prov['label'] ? $prov['label'] : 'the source platform' ); ?>. Change how this event repeats there and the next fetch brings it across.</p>
+                            <p class="uc-hint">
+                                <?php echo $this->icon_lock(); ?>
+                                Whether this event repeats is decided at <?php echo esc_html( $prov['label'] ? $prov['label'] : 'the source' ); ?>,
+                                and every fetch brings that shape across.
+                            </p>
+                        <?php elseif ( $has_group ) : ?>
+                            <?php $group_count = count( $bulk_targets ); ?>
+                            <p class="uc-hint">
+                                <strong>Part of a recurrence group.</strong>
+                                <?php echo esc_html( SFAF_Recurrence::pattern_label( SFAF_Recurrence::pattern_of( $event_id ), $g( '_uc_event_date' ) ) ); ?>
+                                &middot; <?php echo (int) $group_count; ?> upcoming
+                                <?php echo esc_html( _n( 'occurrence', 'occurrences', $group_count ) ); ?>.
+                                This event is its own record. Nothing regenerates it, and deleting it removes one date and nothing else.
+                            </p>
                         <?php else : ?>
-                            <p class="uc-hint">Set a cadence and end date to auto-generate the series on save.</p>
+                            <div class="uc-field-row">
+                                <label class="uc-field">
+                                    <span class="uc-field-label">Repeats</span>
+                                    <select name="repeat">
+                                        <option value="">Does not repeat</option>
+                                        <?php foreach ( SFAF_Recurrence::patterns() as $k => $lbl ) : ?>
+                                            <option value="<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $lbl ); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <label class="uc-field">
+                                    <span class="uc-field-label">Repeat until</span>
+                                    <input type="date" name="repeat_until" value="" />
+                                </label>
+                            </div>
+                            <p class="uc-hint">
+                                Creates one separate event per date on save, all grouped so they can be edited together later.
+                                It happens once &mdash; nothing regenerates afterwards.
+                            </p>
                         <?php endif; ?>
                     </fieldset>
                 </div>
@@ -2779,50 +2845,22 @@ class SFAF_Portal {
             </div>
 
             <?php
-            $ev_parent    = $event_id ? (int) get_post_meta( $event_id, '_uc_series_parent', true ) : 0;
-            $ev_is_parent = $ev_parent && $ev_parent === (int) $event_id;
-            $ev_is_child  = $ev_parent && $ev_parent !== (int) $event_id;
-
-            if ( $ev_is_parent ) : ?>
-                <div class="uc-card">
-                    <h3>FAQ</h3>
-                    <p class="uc-hint">This is a series parent. Edit the shared FAQ in the <a href="<?php echo esc_url( $this->url( 'series/edit/' . $event_id ) ); ?>">Series Manager</a>.</p>
-                </div>
-            <?php else :
-                // The platform that owns this event's FAQ rows, if any. Read
-                // from the adapter, exactly like every other locked field.
-                $faq_source = array(
-                    'locked' => in_array( 'faqs', $owned, true ),
-                    'label'  => $prov['label'],
-                    'url'    => $prov['source_url'],
-                );
-
-                if ( $ev_is_child ) :
-                    $series = sfaf_get_series_faq( $event_id );
-                    $evfaq  = sfaf_get_event_faq( $event_id );
-                    ?>
-                    <div class="uc-card">
-                        <h3>FAQ</h3>
-                        <p class="uc-hint"><strong>Series FAQ (inherited)</strong></p>
-                        <?php if ( empty( $series ) ) : ?>
-                            <p class="uc-muted">No series FAQ yet.</p>
-                        <?php else : foreach ( $series as $f ) : ?>
-                            <p><strong><?php echo esc_html( $f['question'] ); ?></strong><br><?php echo esc_html( $f['answer'] ); ?></p>
-                        <?php endforeach; endif; ?>
-                        <label class="uc-check"><input type="checkbox" name="faq_override" value="1" <?php checked( sfaf_faq_is_override( $event_id ) ); ?> /> Replace the series FAQ with the event-specific FAQ below</label>
-                        <p class="uc-hint" style="margin-top:12px;"><strong>Event-specific FAQ</strong></p>
-                        <?php $this->faq_repeater( 'uc_event_faq', $evfaq, $faq_source ); ?>
-                    </div>
-                <?php else :
-                    $faqs = $event_id ? sfaf_normalize_faqs( get_post_meta( $event_id, '_uc_series_faq', true ) ) : array();
-                    ?>
-                    <div class="uc-card">
-                        <h3>FAQ</h3>
-                        <p class="uc-hint">Frequently asked questions for this event.</p>
-                        <?php $this->faq_repeater( 'uc_series_faq', $faqs, $faq_source ); ?>
-                    </div>
-                <?php endif; ?>
-            <?php endif; ?>
+            // The platform that owns this event's FAQ rows, if any. Read from
+            // the adapter, exactly like every other locked field.
+            $faq_source = array(
+                'locked' => in_array( 'faqs', $owned, true ),
+                'label'  => $prov['label'],
+                'url'    => $prov['source_url'],
+            );
+            ?>
+            <div class="uc-card">
+                <h3>FAQ</h3>
+                <p class="uc-hint">
+                    Frequently asked questions for this event. These are its own &mdash; there is no series block above
+                    them and nothing overrides them.
+                </p>
+                <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
+            </div>
 
             <?php
             /*
@@ -2837,16 +2875,25 @@ class SFAF_Portal {
             if ( $event_id && '' === $prov['source'] ) {
                 $this->render_notify_box( $user, $event_id );
             }
-
-            // How far this save travels. Only where there is a series for it
-            // to travel through.
-            if ( $event_id ) {
-                $this->render_scope_box( $event_id );
-            }
+            // How far this save travels is chosen at the TOP of the form now,
+            // before anything is edited, rather than in a box at the bottom
+            // after it. See render_scope_header().
             ?>
 
             <div class="uc-form-actions">
-                <button type="submit" name="save_mode" value="draft" class="uc-btn">Save Draft</button>
+                <?php
+                /*
+                 * CONFIRM ON SAVE, NAMING THE COUNT.
+                 *
+                 * This is the click that can rewrite a term's worth of
+                 * programming, so in "all upcoming" mode both buttons ask
+                 * "Update 12 events?" first. The sentence is built by the same
+                 * script that owns the scope, off the count in the banner, so
+                 * the number in the dialog and the number on screen are the
+                 * same number.
+                 */
+                ?>
+                <button type="submit" name="save_mode" value="draft" class="uc-btn" data-uc-scope-confirm>Save Draft</button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -2868,9 +2915,9 @@ class SFAF_Portal {
                 $watched = $event_id ? SFAF_Sources::completeness_payload( $event_id ) : array();
                 ?>
                 <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
-                    <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
+                    <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary" data-uc-scope-confirm>Submit for Review</button>
                 <?php else : ?>
-                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"
+                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary" data-uc-scope-confirm
                             <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
                             <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
                 <?php endif; ?>
@@ -2887,6 +2934,7 @@ class SFAF_Portal {
                     ?></script>
                 <?php endif; ?>
             </div>
+            </fieldset>
         </form>
         <?php
         $this->chrome_close();
@@ -3047,302 +3095,95 @@ class SFAF_Portal {
      * ================================================================== */
 
     /**
-     * How far this save travels through the series.
+     * The scope choice, at the TOP of the form, made BEFORE anything is edited.
      *
-     * IDENTICAL TO THE WP ADMIN CONTROL, because both build from
-     * SFAF_Recurrence::scopes() and SFAF_Recurrence::scope_label(). Two
-     * editors offering different scopes, or the same words meaning different
-     * things, is how the old "All future events" label came to apply to the
-     * past without anybody noticing.
+     * TWO BUTTONS, NOT THREE RADIOS AT THE BOTTOM. The old control offered
+     * "only this event", "this and later occurrences" and "all occurrences,
+     * including past ones", sat below the form, and defaulted to one of them —
+     * so a manager could type a new time into a field, scroll past a control
+     * they had already stopped reading, and save. Worse, one of the three
+     * choices could rewrite events that had already happened.
+     *
+     * What replaces it:
+     *
+     *   CHOSEN FIRST. Every field is locked until a scope is picked, so nothing
+     *   can be edited before the manager has decided how it saves. There is no
+     *   default, because a default is a decision made by whoever wrote the
+     *   form rather than by the person about to change twelve events.
+     *
+     *   THE TARGET IS THE RECURRENCE GROUP, NOT THE SERIES. A series may hold
+     *   an educational session one week and a social the next, so a series-wide
+     *   edit would be wrong. A recurrence group is a set of events generated
+     *   together from one pattern, identical by default. See
+     *   SFAF_Recurrence's header note on why these are two different things.
+     *
+     *   PAST OCCURRENCES ARE NOT REACHABLE. "All upcoming" means exactly that:
+     *   events whose date has passed are the historical record and no scope
+     *   offers to rewrite them.
+     *
+     *   ONLY WHERE THERE IS A CHOICE. Shown when the event is in a recurrence
+     *   group with more than one upcoming occurrence. A one-off event just
+     *   opens for editing — a scope question with one possible answer is not a
+     *   question.
+     *
+     * @param int   $event_id
+     * @param int[] $targets     Upcoming events in this event's recurrence group.
+     * @param array $locked      field => reason, from bulk_locked_fields().
      */
-    private function render_scope_box( $event_id ) {
-        $raw_parent = (int) get_post_meta( $event_id, '_uc_series_parent', true );
-        if ( ! $raw_parent || ! SFAF_Recurrence::parent_exists( $raw_parent ) ) {
-            return; // standalone, or orphaned and not editable as a series
+    private function render_scope_header( $event_id, $targets, $locked ) {
+        $count = count( $targets );
+        if ( ! $event_id || $count < 2 ) {
+            return;
         }
-
-        $is_parent = ( $raw_parent === (int) $event_id );
-        if ( $is_parent && ! SFAF_Recurrence::child_count( $event_id ) ) {
-            return; // a series of one; there is nothing to apply to
-        }
-
-        // The cutoff "later occurrences" counts from: today when editing the
-        // series itself, this occurrence's own date when editing one of them.
-        $cutoff = $is_parent
-            ? current_time( 'Y-m-d' )
-            : (string) get_post_meta( $event_id, '_uc_event_date', true );
         ?>
-        <div class="uc-card">
-            <h3>Apply this save to</h3>
-            <div class="uc-scope-options">
-                <?php foreach ( array_keys( SFAF_Recurrence::scopes() ) as $scope ) : ?>
-                    <label class="uc-radio-opt">
-                        <input type="radio" name="uc_series_apply" value="<?php echo esc_attr( $scope ); ?>" <?php checked( 'this' === $scope ); ?> />
-                        <span><?php echo esc_html( SFAF_Recurrence::scope_label( $scope, $cutoff ) ); ?></span>
-                    </label>
-                <?php endforeach; ?>
+        <div class="uc-scope" data-uc-scope-choice data-uc-scope-count="<?php echo (int) $count; ?>">
+            <h2 class="uc-scope-title">How should this save apply?</h2>
+            <p class="uc-scope-lead">
+                This event is one of <strong><?php echo (int) $count; ?></strong> upcoming occurrences generated from
+                the same pattern. Choose before you edit &mdash; the fields below are locked until you do.
+            </p>
+            <div class="uc-scope-buttons">
+                <button type="button" class="uc-btn uc-scope-btn" data-uc-scope="this">
+                    Edit this event
+                </button>
+                <button type="button" class="uc-btn uc-scope-btn" data-uc-scope="all_upcoming">
+                    Edit all <?php echo (int) $count; ?> upcoming occurrences
+                </button>
             </div>
             <p class="uc-hint">
-                <?php if ( $is_parent ) : ?>
-                    This event is always saved, because it is the record you are editing. The choice is how far
-                    the change travels down the series. Occurrences edited individually keep their own details
-                    unless they fall inside the scope you pick.
-                <?php else : ?>
-                    Choosing anything other than &ldquo;only this event&rdquo; copies this occurrence's details onto
-                    the others in scope. If you pick later occurrences and this one is not the first in the series,
-                    the series template moves to this date, so everything before it keeps exactly what it has now
-                    and stays part of the series.
-                <?php endif; ?>
+                Past occurrences are never changed by either choice. The events in this group are not necessarily the
+                whole series &mdash; a series can hold different kinds of event, which is why an edit travels through
+                the group rather than through the series.
             </p>
+            <noscript>
+                <p class="uc-scope-noscript">
+                    Choosing a scope needs JavaScript. With it switched off this form saves this event only.
+                </p>
+            </noscript>
         </div>
+
+        <?php // Stays visible while a long form scrolls, because the whole
+              // point is that the manager can see what this save will do at the
+              // moment they press the button, not only at the moment they
+              // chose. ?>
+        <div class="uc-scope-banner" data-uc-scope-banner hidden role="status">
+            <span data-uc-scope-banner-text></span>
+            <button type="button" class="uc-btn uc-btn-sm" data-uc-scope-change>Change</button>
+        </div>
+
         <?php
-    }
-
-    /* =====================================================================
-     * Rendering — series removal and orphan repair
-     * ================================================================== */
-
-    /**
-     * The screen a series parent removal has to go through.
-     *
-     * Removing the parent used to be one click on a row that looked like every
-     * other row, and it left every occurrence published, pointing at a post
-     * that no longer existed, invisible to this Manager and impossible to edit
-     * back into shape. So there is no route that removes a parent silently any
-     * more: this screen states what would happen and offers the two things a
-     * person pressing "Remove" might actually have meant.
-     */
-    private function render_series_remove( $user, $parent_id ) {
-        $post = $parent_id ? get_post( $parent_id ) : null;
-        if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
-            $this->chrome_open( $user, 'series' );
-            echo '<div class="uc-card"><p class="uc-empty">Series not found or you don\'t have permission to change it.</p></div>';
-            $this->chrome_close();
-            return;
-        }
-
-        $children = SFAF_Recurrence::children_of( $parent_id );
-        $next     = 0;
-        if ( ! empty( $children ) ) {
-            $dated = array();
-            foreach ( $children as $cid ) {
-                $dated[ $cid ] = (string) get_post_meta( $cid, '_uc_event_date', true );
-            }
-            asort( $dated );
-            $next = (int) key( $dated );
-        }
-
-        $this->chrome_open( $user, 'series' );
+        /*
+         * The chosen scope, and the fields that carry no pencil when it is
+         * "all upcoming". Both are read straight back by
+         * save_event_from_post(), which re-derives the locked list server-side
+         * rather than trusting this — the markup is the affordance, not the
+         * rule.
+         */
         ?>
-        <div class="uc-page-head">
-            <h1>Remove series</h1>
-            <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-btn">&larr; Cancel</a>
-        </div>
-
-        <div class="uc-card">
-            <h2><?php echo esc_html( get_the_title( $parent_id ) ); ?></h2>
-            <?php if ( empty( $children ) ) : ?>
-                <p>This series has no other occurrences, so removing it removes one event and nothing else.</p>
-                <form method="post" action="<?php echo esc_url( $this->url( 'series/remove/' . $parent_id ) ); ?>">
-                    <input type="hidden" name="uc_action" value="remove_series" />
-                    <input type="hidden" name="series_id" value="<?php echo (int) $parent_id; ?>" />
-                    <input type="hidden" name="removal_mode" value="whole" />
-                    <?php wp_nonce_field( 'uc_portal_remove_series', 'uc_nonce' ); ?>
-                    <button type="submit" class="uc-btn uc-link-danger">Remove this event</button>
-                </form>
-            <?php else : ?>
-                <p class="uc-hint">
-                    This event is the series itself as well as its first occurrence, and
-                    <strong><?php echo (int) count( $children ); ?></strong> other
-                    <?php echo esc_html( _n( 'occurrence depends', 'occurrences depend', count( $children ) ) ); ?> on it.
-                    Removing it on its own would leave <?php echo esc_html( _n( 'that occurrence', 'those occurrences', count( $children ) ) ); ?>
-                    published and pointing at nothing: not listed here, not editable as a group, and showing a broken
-                    series link on the public page. That is why this screen exists.
-                </p>
-
-                <div class="uc-removal-options">
-                    <form method="post" action="<?php echo esc_url( $this->url( 'series/remove/' . $parent_id ) ); ?>"
-                          onsubmit="return confirm('Remove the whole series and all <?php echo (int) ( count( $children ) + 1 ); ?> events?');">
-                        <input type="hidden" name="uc_action" value="remove_series" />
-                        <input type="hidden" name="series_id" value="<?php echo (int) $parent_id; ?>" />
-                        <input type="hidden" name="removal_mode" value="whole" />
-                        <?php wp_nonce_field( 'uc_portal_remove_series', 'uc_nonce' ); ?>
-                        <h3>Remove the whole series</h3>
-                        <p class="uc-hint">
-                            All <?php echo (int) ( count( $children ) + 1 ); ?> events go, this one and every occurrence.
-                            They go to the WordPress trash, so they can be brought back from there for as long as
-                            WordPress keeps them.
-                        </p>
-                        <button type="submit" class="uc-btn uc-link-danger">Remove all <?php echo (int) ( count( $children ) + 1 ); ?> events</button>
-                    </form>
-
-                    <form method="post" action="<?php echo esc_url( $this->url( 'series/remove/' . $parent_id ) ); ?>">
-                        <input type="hidden" name="uc_action" value="remove_series" />
-                        <input type="hidden" name="series_id" value="<?php echo (int) $parent_id; ?>" />
-                        <input type="hidden" name="removal_mode" value="promote" />
-                        <?php wp_nonce_field( 'uc_portal_remove_series', 'uc_nonce' ); ?>
-                        <h3>Remove only this one and keep the series</h3>
-                        <p class="uc-hint">
-                            <?php if ( $next ) : ?>
-                                <strong><?php echo esc_html( get_the_title( $next ) ); ?></strong> on
-                                <strong><?php
-                                    $nd = get_post_meta( $next, '_uc_event_date', true );
-                                    echo esc_html( $nd ? date_i18n( 'M j, Y', strtotime( $nd ) ) : 'its date' );
-                                ?></strong>
-                                becomes the series, and the remaining
-                                <?php echo (int) ( count( $children ) - 1 ); ?>
-                                <?php echo esc_html( _n( 'occurrence follows', 'occurrences follow', max( 0, count( $children ) - 1 ) ) ); ?> it.
-                                The series settings, the FAQ, the image and the list of cancelled dates all move across.
-                                Nothing is orphaned.
-                            <?php endif; ?>
-                        </p>
-                        <button type="submit" class="uc-btn uc-btn-primary">Promote the next occurrence</button>
-                    </form>
-                </div>
-            <?php endif; ?>
-        </div>
-        <?php
-        $this->chrome_close();
-    }
-
-    /**
-     * Occurrences whose series parent has gone.
-     *
-     * Deliberately NOT repaired on sight. Rebuilding a series and cutting one
-     * loose are both irreversible-ish rearrangements of somebody's programme,
-     * and a plugin doing either quietly on page load is how a manager finds
-     * their calendar rearranged by nobody.
-     */
-    private function render_orphans( $user ) {
-        if ( ! $this->can_view_all( $user ) ) {
-            $this->chrome_open( $user, 'series' );
-            echo '<div class="uc-card"><p class="uc-empty">You don\'t have permission to repair series.</p></div>';
-            $this->chrome_close();
-            return;
-        }
-
-        $this->chrome_open( $user, 'series' );
-        $groups = SFAF_Recurrence::find_orphans();
-        ?>
-        <div class="uc-page-head">
-            <h1>Orphaned occurrences</h1>
-            <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-btn">&larr; Back to Series</a>
-        </div>
-
-        <?php if ( empty( $groups ) ) : ?>
-            <div class="uc-card"><p class="uc-empty">Nothing is orphaned. Every occurrence belongs to a series that still exists.</p></div>
-        <?php else : ?>
-            <div class="uc-card">
-                <p class="uc-hint">
-                    These events still say they are part of a series, but the event they belonged to no longer exists.
-                    Until one of the choices below is made they cannot be managed as a group, and series settings
-                    cannot reach them. Nothing here happens on its own.
-                </p>
-            </div>
-
-            <?php foreach ( $groups as $missing => $ids ) : ?>
-                <div class="uc-card">
-                    <div class="uc-card-head">
-                        <h2><?php echo (int) count( $ids ); ?> <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $ids ) ) ); ?></h2>
-                        <span class="uc-muted">Pointing at missing event #<?php echo (int) $missing; ?></span>
-                    </div>
-                    <table class="uc-table">
-                        <thead><tr><th>Event</th><th>Date</th><th>Status</th></tr></thead>
-                        <tbody>
-                        <?php foreach ( $ids as $id ) : $d = get_post_meta( $id, '_uc_event_date', true ); ?>
-                            <tr>
-                                <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
-                                <td><?php echo $d ? esc_html( date_i18n( 'M j, Y', strtotime( $d ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                                <td><span class="uc-pill uc-pill-<?php echo esc_attr( get_post_status( $id ) ); ?>"><?php echo esc_html( sfaf_status_label( get_post_status( $id ) ) ); ?></span></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-
-                    <div class="uc-removal-options">
-                        <form method="post" action="<?php echo esc_url( $this->url( 'series/orphans' ) ); ?>">
-                            <input type="hidden" name="uc_action" value="rebuild_orphans" />
-                            <input type="hidden" name="missing_parent" value="<?php echo (int) $missing; ?>" />
-                            <?php wp_nonce_field( 'uc_portal_rebuild_orphans', 'uc_nonce' ); ?>
-                            <h3>Make them a series again</h3>
-                            <p class="uc-hint">
-                                The earliest of them becomes the series and the rest follow it. Every one is marked as
-                                individually edited first, so the first series save cannot rewrite details they have
-                                been carrying on their own.
-                            </p>
-                            <button type="submit" class="uc-btn uc-btn-primary">Rebuild as a series</button>
-                        </form>
-
-                        <form method="post" action="<?php echo esc_url( $this->url( 'series/orphans' ) ); ?>"
-                              onsubmit="return confirm('Turn these into separate standalone events?');">
-                            <input type="hidden" name="uc_action" value="release_orphans" />
-                            <input type="hidden" name="missing_parent" value="<?php echo (int) $missing; ?>" />
-                            <?php wp_nonce_field( 'uc_portal_release_orphans', 'uc_nonce' ); ?>
-                            <h3>Make them standalone events</h3>
-                            <p class="uc-hint">
-                                Each becomes an ordinary event with no series at all. Nothing is deleted and no content
-                                changes; they simply stop claiming to be part of a group.
-                            </p>
-                            <button type="submit" class="uc-btn">Convert to standalone</button>
-                        </form>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-        <?php
-        $this->chrome_close();
-    }
-
-    /**
-     * The cancelled-occurrence panel on the series editor.
-     *
-     * THIS IS WHERE A CANCELLATION BECOMES VISIBLE AND REVERSIBLE. A
-     * cancellation that a manager cannot see is indistinguishable from an
-     * event that quietly failed to generate, and one they cannot undo turns a
-     * mis-click into a support request.
-     */
-    private function render_cancelled_panel( $parent_id ) {
-        $cancelled = SFAF_Recurrence::cancelled_dates( $parent_id );
-        ?>
-        <div class="uc-card">
-            <h3>Cancelled occurrences</h3>
-            <?php if ( empty( $cancelled ) ) : ?>
-                <p class="uc-hint">
-                    None. Removing a single occurrence from the Events screen cancels that date: it will not be
-                    recreated the next time this series is saved, and it will be listed here so it can be put back.
-                </p>
-            <?php else : ?>
-                <p class="uc-hint">
-                    These dates are deliberately skipped. Saving this series, changing how often it repeats or
-                    moving its end date will not bring them back.
-                </p>
-                <table class="uc-table">
-                    <thead><tr><th>Date</th><th>Still in the pattern?</th><th class="uc-col-actions">Action</th></tr></thead>
-                    <tbody>
-                    <?php foreach ( $cancelled as $date ) :
-                        $in_pattern = SFAF_Recurrence::date_in_pattern( $parent_id, $date );
-                        $stamp      = strtotime( $date );
-                        ?>
-                        <tr>
-                            <td><?php echo esc_html( $stamp ? date_i18n( 'l, M j, Y', $stamp ) : $date ); ?></td>
-                            <td><?php echo $in_pattern
-                                ? 'Yes'
-                                : '<span class="uc-muted">No. The cadence or end date has changed since, so there is nothing to bring back.</span>'; ?></td>
-                            <td class="uc-row-actions">
-                                <form method="post" action="<?php echo esc_url( $this->url( 'series/edit/' . $parent_id ) ); ?>" class="uc-inline-form">
-                                    <input type="hidden" name="uc_action" value="restore_occurrence" />
-                                    <input type="hidden" name="series_id" value="<?php echo (int) $parent_id; ?>" />
-                                    <input type="hidden" name="occurrence_date" value="<?php echo esc_attr( $date ); ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_restore_occurrence', 'uc_nonce' ); ?>
-                                    <button type="submit" class="uc-action-link"><?php echo $in_pattern ? 'Restore' : 'Forget'; ?></button>
-                                </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        </div>
+        <input type="hidden" name="edit_scope" value="this" data-uc-scope-input />
+        <script type="application/json" id="uc-scope-locked"><?php
+            echo wp_json_encode( $locked, JSON_HEX_TAG | JSON_HEX_AMP );
+        ?></script>
         <?php
     }
 
@@ -3634,11 +3475,10 @@ class SFAF_Portal {
             delete_transient( $key );
         }
 
-        // Which of the three storage cases this event is, so the panel can say
-        // where the rows will actually land instead of leaving it a mystery.
-        $parent    = (int) get_post_meta( $event_id, '_uc_series_parent', true );
-        $is_child  = $parent && $parent !== (int) $event_id;
-        $is_parent = $parent && $parent === (int) $event_id;
+        // There is nothing left to explain about where the rows land: an event
+        // has one FAQ block and a set is copied into it. The two paragraphs
+        // that used to be here described the three-storage-case model, which
+        // was the model rather than a quirk of the panel.
         ?>
         <div class="uc-card uc-faq-set-panel">
             <div class="uc-card-head"><h2><?php echo sfaf_icon( 'help' ); ?> FAQ sets</h2>
@@ -3658,12 +3498,6 @@ class SFAF_Portal {
                         ?>.
                     </div>
                 <?php endif; ?>
-            <?php endif; ?>
-
-            <?php if ( $is_parent ) : ?>
-                <p class="uc-hint">This is a series parent, so a set applied here lands in the shared Series FAQ and every occurrence inherits it.</p>
-            <?php elseif ( $is_child ) : ?>
-                <p class="uc-hint">This is one occurrence, so a set applied here lands in this occurrence&rsquo;s own questions. The series FAQ still appears above them unless &ldquo;Replace the series FAQ&rdquo; is ticked below, which this does not change for you.</p>
             <?php endif; ?>
 
             <div class="uc-faq-set-actions">

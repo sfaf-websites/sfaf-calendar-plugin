@@ -224,8 +224,6 @@ function sfaf_install_sample_data() {
         update_post_meta( $post_id, '_uc_start_time', $e['start'] );
         update_post_meta( $post_id, '_uc_end_time', $e['end'] );
         update_post_meta( $post_id, '_uc_location', $e['location'] );
-        update_post_meta( $post_id, '_uc_recurrence', $e['recurrence'] );
-        update_post_meta( $post_id, '_uc_end_date', $e['end_date'] );
         update_post_meta( $post_id, '_uc_rsvp_enabled', $e['rsvp'] ? '1' : '0' );
         update_post_meta( $post_id, '_uc_capacity', (string) $e['capacity'] );
         if ( ! empty( $e['gofundme_url'] ) ) {
@@ -233,10 +231,19 @@ function sfaf_install_sample_data() {
             update_post_meta( $post_id, '_uc_gofundme_goal', $e['goal'] );
         }
 
-        // Generate recurring occurrences through the existing engine.
+        /*
+         * Recurring samples are GENERATED, once, exactly as a manager creating
+         * one would be. What comes out is a set of ordinary, independent events
+         * sharing a recurrence group — there is no sample "series parent",
+         * because there is no such thing any more.
+         *
+         * The sample data deliberately creates no series terms: a series is a
+         * grouping somebody sets up with a description of what it is for, and
+         * inventing one on a fresh install would put a container on the Series
+         * screen that nobody asked for and that says nothing.
+         */
         if ( $e['recurrence'] && ! empty( $e['end_date'] ) ) {
-            $rec = new SFAF_Recurrence();
-            $rec->maybe_generate( $post_id );
+            SFAF_Recurrence::generate( $post_id, $e['recurrence'], $e['end_date'] );
         }
     }
 
