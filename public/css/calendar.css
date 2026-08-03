@@ -289,14 +289,22 @@
  * 2.26:1; the label is 13px, which is normal text, which needs 4.5:1. It is
  * not close, and no weight or size change inside a list card gets it there.
  *
- * So this is the outline treatment the brief specifies for that case: 1px
- * brand teal border, label in --uc-teal-text #0E818C at 4.63:1 on white, and
- * the brand teal arriving as a background fill on hover and focus, where the
- * label switches to brand Dark Gray #373433 at 5.47:1 on that fill. Every
- * state is measured and every state passes. */
-.uc-calendar .uc-event-card .uc-lc-btn { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: auto; padding: 8px 16px; -webkit-appearance: none; appearance: none; border: 1px solid var(--uc-teal); border-radius: 99px; background: #fff; color: var(--uc-teal-text); font-family: var(--uc-font-heading); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: center; text-transform: none; letter-spacing: normal; text-decoration: none; white-space: nowrap; box-shadow: none; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease; }
+ * So this is the outline treatment the brief specifies for that case: a 1px
+ * border and the label both in --uc-teal-text #0E818C, which is 4.63:1 on
+ * white, and the brand teal arriving as a background fill on hover and focus,
+ * where the label switches to brand Dark Gray #373433 at 5.47:1 on that fill.
+ *
+ * THE BORDER IS THE DARKENED TEAL, NOT THE BRAND TEAL, and that is a second
+ * measurement rather than a matching exercise. WCAG 1.4.11 asks for 3:1 on
+ * the visual boundary of a control; brand teal against the white card is the
+ * same 2.26:1 that disqualified it as a fill, so an outline drawn in it would
+ * have failed the check the outline exists to pass. The darkened teal is a
+ * variation the brand guide permits (p.18) and measures 4.63:1. It stays on
+ * the button through the hover fill, so the boundary never drops below that
+ * in any state. */
+.uc-calendar .uc-event-card .uc-lc-btn { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: auto; padding: 8px 16px; -webkit-appearance: none; appearance: none; border: 1px solid var(--uc-teal-text); border-radius: 99px; background: #fff; color: var(--uc-teal-text); font-family: var(--uc-font-heading); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: center; text-transform: none; letter-spacing: normal; text-decoration: none; white-space: nowrap; box-shadow: none; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease; }
 .uc-calendar .uc-event-card .uc-lc-btn:hover,
-.uc-calendar .uc-event-card .uc-lc-btn:focus-visible { background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal); }
+.uc-calendar .uc-event-card .uc-lc-btn:focus-visible { background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text); }
 
 /* THE ARROW SLIDES IN, AND THE BUTTON GROWS LEFTWARD.
  *
