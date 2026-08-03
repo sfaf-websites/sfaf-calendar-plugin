@@ -1201,14 +1201,14 @@ class SFAF_Shortcodes {
     /**
      * Render a full event card. This is the LIST display mode and nothing else.
      *
-     * ONE RENDERER, TWO DELIVERIES. This same method produces the cards for the
-     * [sfaf_calendar] shortcode on this site and for the embed on sfaf.org, via
-     * render_events(). There is no second code path and no embed-only variant,
-     * which is what makes the two identical by construction rather than by
-     * anyone remembering to change both. The one deliberate difference is the
-     * RSVP action, and it is a difference in ELEMENT, not in appearance: a
-     * modal cannot post cross-origin, so an embed sends the visitor to the
-     * event page where the form works. Both wear .uc-lc-btn and look the same.
+     * ONE RENDERER, TWO DELIVERIES, AND AS OF 3.2.0 NO DIFFERENCE AT ALL. This
+     * same method produces the cards for the [sfaf_calendar] shortcode on this
+     * site and for the embed on sfaf.org, via render_events(). There is no
+     * second code path and no embed-only variant, which is what makes the two
+     * identical by construction rather than by anyone remembering to change
+     * both. The last remaining split was the RSVP button, which had to be a
+     * link in an embed because a modal cannot post cross-origin; the card no
+     * longer opens a modal, so the two surfaces now emit the same bytes.
      *
      * THE STRUCTURE, TOP TO BOTTOM.
      * -----------------------------------------------------------------------
@@ -1217,8 +1217,8 @@ class SFAF_Shortcodes {
      *   title     links to the event
      *   summary   one clamped line
      *   meta      time, place and series: icon then text, stacked
-     *   funding   only with a real goal, and only a bar with real figures
-     *   footer    what is left of the capacity | one action
+     *   funding   only when switched on, and only with real figures
+     *   footer    places left | View event, and Donate where there is one
      *
      * WHAT LEFT THE CARD, AND WHY IT IS NOT A DELETION. Add to Calendar, the
      * share buttons and the reminder controls are gone from here and unchanged
@@ -1233,8 +1233,7 @@ class SFAF_Shortcodes {
      *
      * CLASSES THAT LOOK COSMETIC AND ARE NOT. .uc-event-card, .uc-card-title,
      * .uc-card-excerpt and .uc-card-meta are the hooks calendar.js and embed.js
-     * search and filter through (searchTextOf(), the category filter), and
-     * .uc-rsvp-btn with data-event-id is what opens the RSVP modal. They are
+     * search and filter through (searchTextOf(), the category filter). They are
      * kept on the rebuilt markup on purpose.
      *
      * @param int $post_id
@@ -1282,36 +1281,42 @@ class SFAF_Shortcodes {
         $permalink = get_permalink( $post_id );
 
         /*
-         * THE ONE ACTION, AND THE LABEL THAT NAMES IT.
+         * "VIEW EVENT", ALWAYS, AND THE PREVIOUS LABEL WAS A LIE.
          *
-         * A card gets exactly one button, and the word on it is what the
-         * button does: RSVP where the event takes registrations, Donate for a
-         * GoFundMe Pro appeal, View event for everything else. The arrow beside
-         * it is decorative and only appears on hover, and there is no hover on
-         * a touch screen, so the label alone has to carry the meaning, which
-         * is why none of these three is "Learn more".
+         * 3.1.0 varied the word on this button: RSVP where the event took
+         * registrations, Donate for an appeal, View event otherwise. The
+         * button did not do any of those things. It went to the event page,
+         * where a person then had to find the RSVP form themselves, so a card
+         * saying "RSVP" was promising an action it could not perform and the
+         * Galaxy Digital volunteer events fell through the gap entirely
+         * because no fourth label existed for them.
+         *
+         * A label describes what pressing it does. This one goes to the event
+         * page, so it says so, on every event and on every surface. There is
+         * no per-event variation left to get wrong.
+         *
+         * DONATE IS THE ONE EXCEPTION, and it is an exception because it is
+         * not the same button doing something else: it is a second button
+         * going somewhere else entirely, straight to the donation page,
+         * rendered only when there is one. It carries the heavier weight of
+         * the two because it is the action with a consequence; View event is
+         * navigation and takes the outline.
          */
-        $rsvp_open = ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) === '1' && sfaf_show_feature( $post_id, 'rsvp' ) );
         $donate_url = get_post_meta( $post_id, '_uc_gofundme_url', true );
         $can_donate = ( $donate_url && sfaf_show_feature( $post_id, 'donate' ) );
 
         /*
-         * WHAT IS LEFT, NOT WHAT HAS GONE. "8 spots left" is the number a
-         * visitor is deciding on; "12/20 spots filled" makes them do the
-         * subtraction. Only native events have a capacity we hold, an
-         * imported event's remaining places live on the platform that sold
-         * them, and we would be guessing.
+         * The footer's supporting line. Still worth saying even though the
+         * button no longer mentions it: how many places are left is what a
+         * person scanning a list is deciding on, and it is the same sentence
+         * the event page shows, from the same helper.
+         *
+         * Native events only for RSVPs. An imported event's remaining places
+         * live on the platform that sold them and we would be guessing.
          */
-        $note     = '';
-        $capacity = 0;
-        if ( $rsvp_open && '' === $source ) {
-            $capacity = (int) get_post_meta( $post_id, '_uc_capacity', true );
-            if ( $capacity > 0 ) {
-                $left = max( 0, $capacity - sfaf_get_rsvp_count( $post_id ) );
-                $note = ( $left > 0 )
-                    ? sprintf( _n( '%s spot left', '%s spots left', $left ), number_format_i18n( $left ) )
-                    : 'Fully booked';
-            }
+        $note = ( '' === $source ) ? sfaf_rsvp_spots_text( $post_id ) : '';
+        if ( '' === $note ) {
+            $note = sfaf_volunteer_spots_text( $post_id );
         }
 
         $summary = wp_trim_words( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ), 25 );
@@ -1380,35 +1385,33 @@ class SFAF_Shortcodes {
 
             <div class="uc-lc-foot">
                 <?php if ( '' !== $note ) : ?>
-                    <?php
-                    /*
-                     * data-capacity is what lets calendar.js redo this sentence
-                     * after a successful RSVP from the list. The old card had a
-                     * capacity bar the modal updated in place; without the
-                     * capacity here, a visitor who has just taken the last
-                     * place would still be reading "1 spot left".
-                     */
-                    ?>
-                    <span class="uc-lc-note" data-capacity="<?php echo (int) $capacity; ?>"><?php echo esc_html( $note ); ?></span>
+                    <span class="uc-lc-note"><?php echo esc_html( $note ); ?></span>
                 <?php endif; ?>
 
                 <?php
-                $arrow = '<span class="uc-lc-arrow" aria-hidden="true">' . sfaf_icon( 'arrow', array( 'size' => '15px' ) ) . '</span>';
-
-                if ( $rsvp_open ) :
-                    if ( sfaf_is_embed_context() ) :
-                        ?>
-                        <a class="uc-lc-btn uc-embed-link" href="<?php echo esc_url( $permalink ); ?>"><span class="uc-lc-btn-label">RSVP</span><?php echo $arrow; ?></a>
-                    <?php else : ?>
-                        <button type="button" class="uc-lc-btn uc-rsvp-btn" data-event-id="<?php echo (int) $post_id; ?>"><span class="uc-lc-btn-label">RSVP</span><?php echo $arrow; ?></button>
-                        <?php
-                    endif;
-                elseif ( $can_donate ) :
-                    ?>
-                    <a class="uc-lc-btn" href="<?php echo esc_url( $donate_url ); ?>" target="_blank" rel="noopener noreferrer"><span class="uc-lc-btn-label">Donate</span><?php echo $arrow; ?></a>
-                <?php else : ?>
-                    <a class="uc-lc-btn" href="<?php echo esc_url( $permalink ); ?>"><span class="uc-lc-btn-label">View event</span><?php echo $arrow; ?></a>
-                <?php endif; ?>
+                /*
+                 * Both are plain links now, on both surfaces. The embed split
+                 * existed only because the RSVP label opened a modal that
+                 * cannot post cross-origin; with no modal on the card there is
+                 * nothing left to differ about, so the shortcode and the embed
+                 * emit byte-identical markup here.
+                 */
+                ?>
+                <div class="uc-lc-actions">
+                    <?php echo sfaf_action_button( array(
+                        'label'   => 'View event',
+                        'href'    => $permalink,
+                        'variant' => 'secondary',
+                    ) ); ?>
+                    <?php if ( $can_donate ) : ?>
+                        <?php echo sfaf_action_button( array(
+                            'label'    => 'Donate',
+                            'href'     => $donate_url,
+                            'variant'  => 'primary',
+                            'external' => true,
+                        ) ); ?>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
         <?php

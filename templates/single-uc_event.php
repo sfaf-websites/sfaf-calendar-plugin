@@ -105,6 +105,15 @@ while ( have_posts() ) :
 
                     // Other events in this series.
                     echo sfaf_series_list_html( $post_id );
+
+                    /*
+                     * Getting there: the address as a link, and a map behind a
+                     * button. Nothing is requested from Google on page view.
+                     * See the header of the location helpers in
+                     * sfaf-template-functions.php for why that is not
+                     * negotiable on these pages.
+                     */
+                    echo sfaf_event_map_html( $post_id );
                     ?>
                 </div>
 
@@ -126,7 +135,10 @@ while ( have_posts() ) :
                             <?php if ( $location ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'pin' ); ?></span>
-                                    <span><?php echo esc_html( $location ); ?></span>
+                                    <?php // A plain link to Google Maps, which costs a
+                                          // visitor nothing until they follow it. The map
+                                          // itself is further down, behind a button. ?>
+                                    <span><a class="uc-fact-maplink" href="<?php echo esc_url( sfaf_map_search_url( $location ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( ! empty( $venues ) ) : ?>

@@ -101,10 +101,24 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * them. They are listed here so the editor asks for them in the same
      * place, in the same way, as the two GoFundMe Pro genuinely cannot give.
      *
+     * FUNDRAISING_PROGRESS IS THE MOST IMPORTANT ENTRY IN THIS LIST, because
+     * it is the only one where a fetch could plausibly want to write and must
+     * not. Whether this calendar repeats a campaign's raised-and-goal figures
+     * in public is an editorial decision about a fundraiser's page, taken by a
+     * person, once. The hourly fetch has an opinion about the numbers and no
+     * standing whatsoever on whether to publish them. Declaring it here means
+     * update_event() refuses the field outright, whatever a future payload or
+     * a well-meaning mapping sends, so a manager who turned it off cannot find
+     * it back on an hour later.
+     *
+     * It carries no completeness obligation: a boolean is answered by being
+     * either value, so SFAF_Sources::field_is_filled() reports it filled and
+     * it never appears in "this event still needs...". See the case there.
+     *
      * @return string[]
      */
     public function manager_fields() {
-        return array( 'image', 'description', 'category', 'organizer' );
+        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress' );
     }
 
     /**

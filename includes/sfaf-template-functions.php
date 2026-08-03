@@ -115,6 +115,86 @@ function sfaf_icon_paths() {
 }
 
 /**
+ * THE ONE BUTTON. Every primary action the calendar renders, anywhere.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A CLASS NAME IN FOUR TEMPLATES. Until 3.2.0
+ * the list card had one button, the event page had four, and no two of them
+ * agreed: the card's was a teal outline pill with a sliding arrow, RSVP was a
+ * solid teal rectangle with dark text, Donate was solid green, Sign Up was
+ * solid purple, and each had its own hover, its own radius and its own idea
+ * of a focus state. A visitor moving from the list to an event page met a
+ * different button language on arrival.
+ *
+ * Everything now comes through here, so a change to the family is one edit
+ * and cannot be applied to three of the five by accident.
+ *
+ * TWO WEIGHTS, AND THEY DO NOT COMPETE.
+ *   primary   solid fill, white label. The money or commitment action:
+ *             Donate, RSVP, Sign Up to Volunteer. One per surface.
+ *   secondary outline, coloured label. Navigation: View event.
+ * Both are measured against WCAG AA at 13px; the numbers are in calendar.css
+ * beside the rules that set them.
+ *
+ * THE ARROW is decorative, aria-hidden, and slides in on hover and on focus.
+ * There is no hover on a touch screen, so the label alone has to say what the
+ * button does. That is why "View event" and "Donate" are the words rather
+ * than "Learn more".
+ *
+ * @param array $args {
+ *     @type string $label    Visible text. Required; an empty label renders ''.
+ *     @type string $href     Destination. With one, this is an <a>; without,
+ *                            a type="button" for a script to pick up.
+ *     @type string $variant  'primary' or 'secondary'. Default 'secondary'.
+ *     @type string $class    Extra classes, e.g. a JS hook.
+ *     @type array  $attrs    Extra attributes as name => value.
+ *     @type bool   $external Open in a new tab with noopener.
+ * }
+ * @return string
+ */
+function sfaf_action_button( $args = array() ) {
+    $args = array_merge( array(
+        'label'    => '',
+        'href'     => '',
+        'variant'  => 'secondary',
+        'class'    => '',
+        'attrs'    => array(),
+        'external' => false,
+    ), (array) $args );
+
+    $label = trim( (string) $args['label'] );
+    if ( '' === $label ) {
+        return '';
+    }
+
+    $classes = 'uc-actionbtn uc-actionbtn-' . ( 'primary' === $args['variant'] ? 'primary' : 'secondary' );
+    if ( '' !== trim( (string) $args['class'] ) ) {
+        $classes .= ' ' . trim( (string) $args['class'] );
+    }
+
+    $is_link = ( '' !== (string) $args['href'] );
+    $tag     = $is_link ? 'a' : 'button';
+
+    $out = '<' . $tag . ' class="' . esc_attr( $classes ) . '"';
+    if ( $is_link ) {
+        $out .= ' href="' . esc_url( $args['href'] ) . '"';
+        if ( ! empty( $args['external'] ) ) {
+            $out .= ' target="_blank" rel="noopener noreferrer"';
+        }
+    } else {
+        $out .= ' type="button"';
+    }
+    foreach ( (array) $args['attrs'] as $name => $value ) {
+        $out .= ' ' . esc_attr( $name ) . '="' . esc_attr( $value ) . '"';
+    }
+    $out .= '>';
+    $out .= '<span class="uc-actionbtn-label">' . esc_html( $label ) . '</span>';
+    $out .= '<span class="uc-actionbtn-arrow" aria-hidden="true">' . sfaf_icon( 'arrow', array( 'size' => '15px' ) ) . '</span>';
+    $out .= '</' . $tag . '>';
+
+    return $out;
+}
+
+/**
  * Render an inline SVG icon from the SFAF set.
  *
  * Icons use currentColor, so they take the text color of wherever they sit.
@@ -402,42 +482,56 @@ function sfaf_donate_block( $post_id ) {
         return '';
     }
 
-    $settings      = get_option( 'uc_settings', array() );
-    $show_progress = ! isset( $settings['gofundme_show_progress'] ) || $settings['gofundme_show_progress'] === '1';
-
-    $goal       = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
-    $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
-    $has_raised = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
-    $raised     = $has_raised ? (float) $raised_raw : 0.0;
-
-    // A bar needs two real numbers. Without both there is nothing honest to
-    // draw, so nothing is drawn.
-    $has_bar = ( $show_progress && $has_raised && $goal > 0 );
-    $percent = $has_bar ? (int) min( 100, round( $raised / $goal * 100 ) ) : 0;
-
     ob_start();
     ?>
     <div class="uc-donate-block">
-        <?php if ( $has_bar ) : ?>
-            <div class="uc-donate-progress">
-                <div class="uc-donate-stats">
-                    <span class="uc-donate-raised">$<?php echo number_format( $raised ); ?> raised</span>
-                    <span class="uc-donate-goal">of $<?php echo number_format( $goal ); ?> goal</span>
-                </div>
-                <div class="uc-donate-bar"><div class="uc-donate-fill" style="width: <?php echo (int) $percent; ?>%"></div></div>
-            </div>
-        <?php elseif ( $show_progress && $goal > 0 ) : ?>
-            <?php // A goal with no total behind it. State the goal and stop. ?>
-            <div class="uc-donate-progress uc-donate-goal-only">
-                <div class="uc-donate-stats">
-                    <span class="uc-donate-goal">$<?php echo number_format( $goal ); ?> goal</span>
-                </div>
-            </div>
-        <?php endif; ?>
-        <a class="uc-donate-btn" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo sfaf_icon( 'heart' ); ?> Donate</a>
+        <?php echo sfaf_fundraising_progress( $post_id ); ?>
+        <?php echo sfaf_action_button( array(
+            'label'    => 'Donate',
+            'href'     => $url,
+            'variant'  => 'primary',
+            'external' => true,
+        ) ); ?>
     </div>
     <?php
     return ob_get_clean();
+}
+
+/**
+ * The meta key holding the per-event fundraising progress choice.
+ *
+ * Named once so the editor, the pending queue, the save routine and the two
+ * display helpers cannot disagree about where the answer lives.
+ *
+ * @return string
+ */
+function sfaf_fundraising_progress_meta_key() {
+    return '_uc_show_fund_progress';
+}
+
+/**
+ * Whether this event shows its fundraising figures. OFF unless switched on.
+ *
+ * OPT IN, NOT OPT OUT, AND THE DEFAULT IS THE POINT. Until 3.2.0 a bar
+ * appeared on any event that had a goal, which meant importing a campaign was
+ * enough to publish its fundraising position on a page nobody had reviewed.
+ * A goal is a number GoFundMe Pro happens to hold; whether this calendar
+ * should be repeating it in public is a decision, and decisions are made by
+ * people. An unset value is therefore no, permanently, and stays no until a
+ * manager says otherwise on the event.
+ *
+ * The site-wide switch is still respected on top of this. It is a master off
+ * for the whole calendar, not a default on for each event.
+ *
+ * @param int $post_id
+ * @return bool
+ */
+function sfaf_show_fundraising_progress( $post_id ) {
+    $settings = get_option( 'uc_settings', array() );
+    if ( isset( $settings['gofundme_show_progress'] ) && $settings['gofundme_show_progress'] !== '1' ) {
+        return false;
+    }
+    return '1' === (string) get_post_meta( $post_id, sfaf_fundraising_progress_meta_key(), true );
 }
 
 /**
@@ -508,6 +602,23 @@ function sfaf_rsvp_block( $post_id ) {
     $capacity   = (int) get_post_meta( $post_id, '_uc_capacity', true );
     $rsvp_count = sfaf_get_rsvp_count( $post_id );
 
+    // In an embed the modal cannot post cross-origin, so the control becomes a
+    // link to the event page where the form works. Same button family either
+    // way: the difference is the element, never the appearance.
+    $button = sfaf_is_embed_context()
+        ? sfaf_action_button( array(
+            'label'   => 'RSVP',
+            'href'    => get_permalink( $post_id ),
+            'variant' => 'primary',
+            'class'   => 'uc-embed-link',
+        ) )
+        : sfaf_action_button( array(
+            'label'   => 'RSVP',
+            'variant' => 'primary',
+            'class'   => 'uc-rsvp-btn',
+            'attrs'   => array( 'data-event-id' => (int) $post_id ),
+        ) );
+
     ob_start();
     ?>
     <div class="uc-card-rsvp">
@@ -519,11 +630,7 @@ function sfaf_rsvp_block( $post_id ) {
         <?php else : ?>
             <span class="uc-capacity-text"><?php echo (int) $rsvp_count; ?> registered</span>
         <?php endif; ?>
-        <?php if ( sfaf_is_embed_context() ) : ?>
-            <a class="uc-rsvp-btn uc-embed-link" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>">RSVP</a>
-        <?php else : ?>
-            <button class="uc-rsvp-btn" data-event-id="<?php echo (int) $post_id; ?>">RSVP</button>
-        <?php endif; ?>
+        <?php echo $button; ?>
     </div>
     <?php
     return ob_get_clean();
@@ -751,10 +858,6 @@ function sfaf_galaxy_block( $post_id ) {
     $settings = get_option( 'uc_settings', array() );
     $portal   = isset( $settings['galaxy_portal_url'] ) ? $settings['galaxy_portal_url'] : '';
 
-    // Spots remaining come from shifts[].slots in production; mocked here.
-    $slots = get_post_meta( $post_id, '_uc_galaxy_slots', true );
-    $slots = ( $slots !== '' ) ? (int) $slots : 8;
-
     $signup = $portal
         ? trailingslashit( $portal ) . 'need/detail/?need_id=' . rawurlencode( $need_id )
         : '';
@@ -762,9 +865,17 @@ function sfaf_galaxy_block( $post_id ) {
     ob_start();
     ?>
     <div class="uc-galaxy-block">
-        <span class="uc-galaxy-spots"><?php echo sfaf_icon( 'hand' ); ?> <?php echo (int) $slots; ?> spots remaining</span>
+        <?php // Spots remaining come from shifts[].slots in production; the
+              // sentence is built in one place so the card and this block can
+              // never quote different numbers. ?>
+        <span class="uc-galaxy-spots"><?php echo sfaf_icon( 'hand' ); ?> <?php echo esc_html( sfaf_volunteer_spots_text( $post_id ) ); ?></span>
         <?php if ( $signup ) : ?>
-            <a class="uc-galaxy-btn" href="<?php echo esc_url( $signup ); ?>" target="_blank" rel="noopener noreferrer">Sign Up to Volunteer</a>
+            <?php echo sfaf_action_button( array(
+                'label'    => 'Sign Up to Volunteer',
+                'href'     => $signup,
+                'variant'  => 'primary',
+                'external' => true,
+            ) ); ?>
         <?php endif; ?>
     </div>
     <?php
@@ -1314,8 +1425,9 @@ function sfaf_fundraising_progress( $post_id ) {
         return '';
     }
 
-    $settings = get_option( 'uc_settings', array() );
-    if ( isset( $settings['gofundme_show_progress'] ) && $settings['gofundme_show_progress'] !== '1' ) {
+    // Off unless a manager switched it on for this event. See
+    // sfaf_show_fundraising_progress() for why the default is no.
+    if ( ! sfaf_show_fundraising_progress( $post_id ) ) {
         return '';
     }
 
@@ -1324,13 +1436,20 @@ function sfaf_fundraising_progress( $post_id ) {
         return '';
     }
 
+    /*
+     * SWITCHED ON WITH NOTHING TO SHOW IS SILENCE, NOT A GOAL ON ITS OWN.
+     *
+     * The previous behaviour printed "$50,000 goal" when no raised figure had
+     * arrived. Read on a fundraiser's page, a goal with no progress beside it
+     * does not read as "we have not been told the total". It reads as zero
+     * raised, which is a claim about how the appeal is going and one we have
+     * no basis for. The rule from sfaf_donate_block() has not changed, only
+     * hardened: a figure is displayed if and only if a real one is stored, and
+     * where there is nothing real to say the section does not appear.
+     */
     $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
-    $has_raised = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
-
-    if ( ! $has_raised ) {
-        return '<div class="uc-lc-fund">'
-            . '<span class="uc-lc-fund-text">$' . number_format( $goal ) . ' goal</span>'
-            . '</div>';
+    if ( '' === $raised_raw || ! is_numeric( $raised_raw ) ) {
+        return '';
     }
 
     $raised  = (float) $raised_raw;
@@ -1340,6 +1459,187 @@ function sfaf_fundraising_progress( $post_id ) {
         . '<span class="uc-lc-fund-bar"><span class="uc-lc-fund-fill" style="width: ' . (int) $percent . '%"></span></span>'
         . '<span class="uc-lc-fund-text">$' . number_format( $raised ) . ' raised of $' . number_format( $goal ) . ' goal</span>'
         . '</div>';
+}
+
+/**
+ * How many RSVP places are left, phrased for a visitor, or ''.
+ *
+ * "12 of 20 spots left" rather than "8/20 spots filled": the number somebody
+ * is deciding on is what remains, and making them subtract is a small tax on
+ * every card. Only events with a capacity we hold produce a sentence: an
+ * imported event's remaining places live on the platform that sold them.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_rsvp_spots_text( $post_id ) {
+    if ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) !== '1' || ! sfaf_show_feature( $post_id, 'rsvp' ) ) {
+        return '';
+    }
+    $capacity = (int) get_post_meta( $post_id, '_uc_capacity', true );
+    if ( $capacity <= 0 ) {
+        return '';
+    }
+    $left = max( 0, $capacity - sfaf_get_rsvp_count( $post_id ) );
+    if ( $left < 1 ) {
+        return 'Fully booked';
+    }
+    return sprintf(
+        '%s of %s spots left',
+        number_format_i18n( $left ),
+        number_format_i18n( $capacity )
+    );
+}
+
+/**
+ * Volunteer places left on an imported Galaxy Digital need, or ''.
+ *
+ * The card's supporting line and the event page's volunteer block say the
+ * same thing from the same place, so the two can never disagree about how
+ * many places are left.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_volunteer_spots_text( $post_id ) {
+    if ( ! sfaf_is_galaxy_need( $post_id ) ) {
+        return '';
+    }
+    $slots = get_post_meta( $post_id, '_uc_galaxy_slots', true );
+    $slots = ( '' !== $slots ) ? (int) $slots : 8;
+    if ( $slots < 1 ) {
+        return 'No volunteer spots left';
+    }
+    return sprintf(
+        _n( '%s volunteer spot remaining', '%s volunteer spots remaining', $slots ),
+        number_format_i18n( $slots )
+    );
+}
+
+/* -------------------------------------------------------------------------
+ * Location and map
+ *
+ * NOTHING REACHES GOOGLE UNTIL SOMEBODY ASKS IT TO, AND THAT IS THE FEATURE.
+ *
+ * These pages carry HIV services, substance use programmes and trans health
+ * groups. A Google Maps iframe placed in the markup is fetched on page view,
+ * which hands Google the page URL, the visitor's IP and their referrer for
+ * every single person who lands on one, whether or not they wanted a map. For
+ * this calendar that is not an analytics footnote; it is a record of who
+ * looked at which service.
+ *
+ * So the iframe does not exist in the document. It is created by script,
+ * after a click, and only then. The address is a plain link to Google Maps at
+ * all times, which meets the actual need (getting directions) at zero
+ * third-party cost to anyone who does not press the button.
+ *
+ * IF YOU ARE HERE TO MAKE THE MAP LOAD AUTOMATICALLY: do not. There is no
+ * lazy-loading attribute, no IntersectionObserver and no "only on desktop"
+ * variant of this that keeps the property above. The click is the consent.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The Google Maps Embed API key, or ''.
+ *
+ * Stored with the platform credentials rather than in uc_settings, for the
+ * reason set out at the top of class-sfaf-credentials.php: uc_settings is
+ * rebuilt from scratch on every settings save, so a key living there survives
+ * only as long as the sanitize callback keeps remembering it.
+ *
+ * @return string
+ */
+function sfaf_google_maps_key() {
+    if ( ! class_exists( 'SFAF_Credentials' ) ) {
+        return '';
+    }
+    return (string) SFAF_Credentials::get( 'google_maps_embed_key' );
+}
+
+/**
+ * A Google Maps link for a free-text location.
+ *
+ * Locations are typed by people and routinely carry a parenthetical:
+ * "940 Howard Street, San Francisco, CA 94103 (SFAF Main Office)". Google's
+ * search handles that perfectly well, so the whole string is passed through
+ * as a query rather than being parsed into an address here. Guessing at which
+ * part is the address is how "(SFAF Main Office)" becomes the destination.
+ *
+ * @param string $location
+ * @return string Empty for an empty location.
+ */
+function sfaf_map_search_url( $location ) {
+    $location = trim( (string) $location );
+    if ( '' === $location ) {
+        return '';
+    }
+    return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $location );
+}
+
+/**
+ * The location section for the single event page: an address link always, and
+ * a map behind a button when a key is configured.
+ *
+ * WHAT RENDERS, IN EACH OF THE THREE STATES.
+ *   no location        nothing at all.
+ *   location, no key   the address as a Google Maps link. No button, no
+ *                      placeholder, no admin notice. A missing key is a
+ *                      configuration fact and not a visitor's problem.
+ *   location and key   the same link, plus a placeholder with a "Show map"
+ *                      button. calendar.js builds the iframe on click.
+ *
+ * The iframe URL is assembled in the browser from the data attributes below,
+ * so the key is not embedded in an element the page loads. It is a referrer
+ * restricted browser key either way: see the readme for the restrictions it
+ * must carry.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_map_html( $post_id ) {
+    $location = trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+    if ( '' === $location ) {
+        return '';
+    }
+
+    $link = sfaf_map_search_url( $location );
+    $key  = sfaf_google_maps_key();
+
+    ob_start();
+    ?>
+    <section class="uc-map" aria-labelledby="uc-map-heading-<?php echo (int) $post_id; ?>">
+        <h2 class="uc-map-heading" id="uc-map-heading-<?php echo (int) $post_id; ?>">Getting there</h2>
+
+        <p class="uc-map-address">
+            <?php echo sfaf_icon( 'pin', array( 'size' => '16px' ) ); ?>
+            <a href="<?php echo esc_url( $link ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a>
+        </p>
+
+        <?php if ( '' !== $key ) : ?>
+            <?php
+            /*
+             * An empty frame and a button. There is no src anywhere in this
+             * markup and no request to Google in it: the placeholder is our
+             * own, and calendar.js inserts an iframe into .uc-map-frame when
+             * the button is pressed. Pressing it twice does nothing.
+             */
+            ?>
+            <div class="uc-map-embed" data-uc-map
+                 data-map-key="<?php echo esc_attr( $key ); ?>"
+                 data-map-query="<?php echo esc_attr( $location ); ?>"
+                 data-map-title="<?php echo esc_attr( 'Map of ' . $location ); ?>">
+                <div class="uc-map-frame" data-uc-map-frame hidden></div>
+                <div class="uc-map-placeholder" data-uc-map-placeholder>
+                    <p class="uc-map-note">The map is not loaded. Pressing Show map loads it from Google, which tells Google you visited this page.</p>
+                    <button type="button" class="uc-actionbtn uc-actionbtn-secondary uc-map-btn" data-uc-map-show>
+                        <span class="uc-actionbtn-label">Show map</span>
+                        <span class="uc-actionbtn-arrow" aria-hidden="true"><?php echo sfaf_icon( 'arrow', array( 'size' => '15px' ) ); ?></span>
+                    </button>
+                </div>
+            </div>
+        <?php endif; ?>
+    </section>
+    <?php
+    return ob_get_clean();
 }
 
 /**

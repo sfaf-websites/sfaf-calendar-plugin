@@ -270,10 +270,10 @@
 .uc-calendar .uc-event-card .uc-lc-series-all::before { content: ", "; }
 
 /* --- Fundraising progress ------------------------------------------------ */
-.uc-calendar .uc-event-card .uc-lc-fund { margin-top: 12px; }
-.uc-calendar .uc-event-card .uc-lc-fund-bar { display: block; height: 4px; border-radius: 99px; background: #E5E7EB; overflow: hidden; }
-.uc-calendar .uc-event-card .uc-lc-fund-fill { display: block; height: 100%; border-radius: 99px; background: var(--uc-green); }
-.uc-calendar .uc-event-card .uc-lc-fund-text { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
+.uc-calendar .uc-event-card .uc-lc-fund, .uc-single .uc-lc-fund { margin-top: 12px; }
+.uc-calendar .uc-event-card .uc-lc-fund-bar, .uc-single .uc-lc-fund-bar { display: block; height: 4px; border-radius: 99px; background: #E5E7EB; overflow: hidden; }
+.uc-calendar .uc-event-card .uc-lc-fund-fill, .uc-single .uc-lc-fund-fill { display: block; height: 100%; border-radius: 99px; background: var(--uc-green); }
+.uc-calendar .uc-event-card .uc-lc-fund-text, .uc-single .uc-lc-fund-text { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
 
 /* --- Footer: supporting text left, one action right ---------------------- */
 .uc-calendar .uc-event-card .uc-lc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--uc-border); }
@@ -282,51 +282,110 @@
    this onto a second line and change the card's height. */
 .uc-calendar .uc-event-card .uc-lc-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
 
-/* THE BUTTON: OUTLINE, AND THE MEASUREMENT THAT DECIDED IT.
+/* ===========================================================================
+ * THE BUTTON FAMILY, AND IT IS ONE FAMILY EVERYWHERE.
  *
- * The brief asked for a solid fill in the SFAF brand colour IF white text on
- * it clears WCAG AA at this size. It does not. White on brand teal #16BECF is
- * 2.26:1; the label is 13px, which is normal text, which needs 4.5:1. It is
- * not close, and no weight or size change inside a list card gets it there.
+ * .uc-actionbtn is every primary action this plugin renders: the card's View
+ * event and Donate, the event page's RSVP, Donate and Sign Up to Volunteer,
+ * and the map's Show map. Before 3.2.0 those were five different buttons with
+ * five different shapes, and a visitor moving from the list to an event page
+ * met a new button language on arrival.
  *
- * So this is the outline treatment the brief specifies for that case: a 1px
- * border and the label both in --uc-teal-text #0E818C, which is 4.63:1 on
- * white, and the brand teal arriving as a background fill on hover and focus,
- * where the label switches to brand Dark Gray #373433 at 5.47:1 on that fill.
+ * SCOPED TO THREE ROOTS, NOT ONE. The card lives in .uc-calendar and the
+ * event page in .uc-single, so both are named here. .uc-sidebar is included
+ * for the same reason it always is: the embed renders inside a stylesheet we
+ * do not control, so anything we do not state is whatever the host says.
  *
- * THE BORDER IS THE DARKENED TEAL, NOT THE BRAND TEAL, and that is a second
- * measurement rather than a matching exercise. WCAG 1.4.11 asks for 3:1 on
- * the visual boundary of a control; brand teal against the white card is the
- * same 2.26:1 that disqualified it as a fill, so an outline drawn in it would
- * have failed the check the outline exists to pass. The darkened teal is a
- * variation the brand guide permits (p.18) and measures 4.63:1. It stays on
- * the button through the hover fill, so the boundary never drops below that
- * in any state. */
-.uc-calendar .uc-event-card .uc-lc-btn { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: auto; padding: 8px 16px; -webkit-appearance: none; appearance: none; border: 1px solid var(--uc-teal-text); border-radius: 99px; background: #fff; color: var(--uc-teal-text); font-family: var(--uc-font-heading); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: center; text-transform: none; letter-spacing: normal; text-decoration: none; white-space: nowrap; box-shadow: none; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease; }
-.uc-calendar .uc-event-card .uc-lc-btn:hover,
-.uc-calendar .uc-event-card .uc-lc-btn:focus-visible { background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text); }
+ * TWO WEIGHTS, MEASURED.
+ *
+ *   secondary  Navigation. 1px --uc-teal-text #0E818C border and label on
+ *              white: 4.63:1 for the text, and 4.63:1 for the boundary, which
+ *              is what WCAG 1.4.11 asks 3:1 of. Brand teal #16BECF was tried
+ *              for the border and measures 2.26:1 against a white card, so it
+ *              would have failed the check the outline exists to pass. The
+ *              darkened teal is a variation the brand guide permits (p.18).
+ *              On hover the brand teal arrives as a fill with the label in
+ *              brand Dark Gray #373433 at 5.47:1.
+ *
+ *   primary    The action with a consequence: Donate, RSVP, Sign Up. Solid
+ *              #0E818C with a white label, 4.63:1, which is why the fill is
+ *              the darkened teal and not brand teal: white on #16BECF is
+ *              2.26:1 and fails AA at 13px outright. Hover deepens to
+ *              #0B666F, 6.68:1.
+ *
+ * They do not compete. A card with a donation link shows View event as the
+ * outline and Donate as the fill, so the eye is offered one answer and one
+ * alternative rather than two equals.
+ * ======================================================================== */
+.uc-calendar .uc-actionbtn,
+.uc-single .uc-actionbtn,
+.uc-sidebar .uc-actionbtn {
+    display: inline-flex; align-items: center; flex-shrink: 0;
+    padding: 8px 16px;
+    -webkit-appearance: none; appearance: none;
+    border: 1px solid var(--uc-teal-text); border-radius: 99px;
+    background: #fff; color: var(--uc-teal-text);
+    font-family: var(--uc-font-heading); font-size: 13px; font-weight: 600; line-height: 1.2;
+    text-align: center; text-transform: none; letter-spacing: normal; text-decoration: none;
+    white-space: nowrap; box-shadow: none; cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.uc-calendar .uc-actionbtn-secondary:hover, .uc-calendar .uc-actionbtn-secondary:focus-visible,
+.uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible,
+.uc-sidebar .uc-actionbtn-secondary:hover, .uc-sidebar .uc-actionbtn-secondary:focus-visible {
+    background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text);
+}
+
+.uc-calendar .uc-actionbtn-primary,
+.uc-single .uc-actionbtn-primary,
+.uc-sidebar .uc-actionbtn-primary {
+    background: var(--uc-teal-text); color: #fff; border-color: var(--uc-teal-text);
+}
+.uc-calendar .uc-actionbtn-primary:hover, .uc-calendar .uc-actionbtn-primary:focus-visible,
+.uc-single .uc-actionbtn-primary:hover, .uc-single .uc-actionbtn-primary:focus-visible,
+.uc-sidebar .uc-actionbtn-primary:hover, .uc-sidebar .uc-actionbtn-primary:focus-visible {
+    background: #0B666F; color: #fff; border-color: #0B666F;
+}
 
 /* THE ARROW SLIDES IN, AND THE BUTTON GROWS LEFTWARD.
  *
  * It starts at zero width and zero opacity, nudged 6px left, and animates to
- * its full 15px on hover and on keyboard focus. Because the button is the
- * right-hand item in a space-between footer, the extra width is taken from
- * the footer's own slack on the left: the right edge never moves, the row
- * never changes height, and no neighbouring card is touched.
+ * its full 15px on hover and on keyboard focus. On a card the button is the
+ * right-hand item in a space-between footer, so the extra width is taken from
+ * the footer's own slack: the right edge never moves, the row never changes
+ * height, and no neighbouring card is touched.
  *
  * It is aria-hidden and purely decorative. There is no hover on a touch
- * screen, so the label (RSVP, Donate, View event) carries the meaning by
- * itself and the arrow only ever adds emphasis. Pure CSS, no JS. */
-.uc-calendar .uc-event-card .uc-lc-arrow { display: inline-flex; align-items: center; max-width: 0; margin-left: 0; opacity: 0; overflow: hidden; transform: translateX(-6px); transition: max-width 0.18s ease, opacity 0.18s ease, transform 0.18s ease, margin-left 0.18s ease; }
-.uc-calendar .uc-event-card .uc-lc-btn:hover .uc-lc-arrow,
-.uc-calendar .uc-event-card .uc-lc-btn:focus-visible .uc-lc-arrow { max-width: 18px; margin-left: 6px; opacity: 1; transform: translateX(0); }
+ * screen, so the label (View event, Donate, RSVP, Sign Up to Volunteer, Show
+ * map) carries the meaning by itself and the arrow only ever adds emphasis.
+ * Pure CSS, no JS. */
+.uc-calendar .uc-actionbtn-arrow,
+.uc-single .uc-actionbtn-arrow,
+.uc-sidebar .uc-actionbtn-arrow {
+    display: inline-flex; align-items: center;
+    max-width: 0; margin-left: 0; opacity: 0; overflow: hidden;
+    transform: translateX(-6px);
+    transition: max-width 0.18s ease, opacity 0.18s ease, transform 0.18s ease, margin-left 0.18s ease;
+}
+.uc-calendar .uc-actionbtn:hover .uc-actionbtn-arrow, .uc-calendar .uc-actionbtn:focus-visible .uc-actionbtn-arrow,
+.uc-single .uc-actionbtn:hover .uc-actionbtn-arrow, .uc-single .uc-actionbtn:focus-visible .uc-actionbtn-arrow,
+.uc-sidebar .uc-actionbtn:hover .uc-actionbtn-arrow, .uc-sidebar .uc-actionbtn:focus-visible .uc-actionbtn-arrow {
+    max-width: 18px; margin-left: 6px; opacity: 1; transform: translateX(0);
+}
+
+.uc-calendar .uc-actionbtn:focus-visible,
+.uc-single .uc-actionbtn:focus-visible,
+.uc-sidebar .uc-actionbtn:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 99px; }
+
+/* The card footer's two buttons. View event first in the source order, so it
+   is what a keyboard reaches first; Donate carries the weight visually. */
+.uc-calendar .uc-event-card .uc-lc-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
 
 /* FOCUS IS VISIBLE, NOT JUST HOVER. Every interactive thing on the card takes
    the same ring, so a keyboard user can see where they are on the image link,
-   the title, the series link and the button alike. */
+   the title, the series link and the buttons alike. */
 .uc-calendar .uc-event-card a:focus-visible,
 .uc-calendar .uc-event-card button:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px; }
-.uc-calendar .uc-event-card .uc-lc-btn:focus-visible { border-radius: 99px; }
 
 /* Badges survive for the single event template, which still uses them. */
 .uc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--badge-color, var(--uc-teal)) 12%, transparent); color: var(--badge-color, var(--uc-teal)); }
@@ -349,8 +408,6 @@
 
 .uc-capacity-text { font-size: 12px; color: var(--uc-muted); white-space: nowrap; }
 
-.uc-rsvp-btn { padding: 7px 20px; border-radius: 8px; border: none; background: var(--uc-teal); color: var(--uc-dark); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-.uc-rsvp-btn:hover { background: #13a8b8; }
 
 /* RSVP Modal */
 .uc-rsvp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
@@ -418,19 +475,11 @@
 .uc-share-linkedin:hover { border-color: #0A66C2; color: #0A66C2; }
 .uc-share-x:hover { border-color: #000; color: #000; }
 
-/* Donate block */
-.uc-donate-block { margin-top: 14px; padding: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; }
-.uc-donate-progress { margin-bottom: 10px; }
-.uc-donate-stats { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
-.uc-donate-raised { font-weight: 700; color: var(--uc-green); }
-.uc-donate-goal { color: var(--uc-muted); }
-/* Goal with no real raised figure behind it: no bar, so no trailing gap, and
-   the goal sits on its own rather than pushed to the right by space-between. */
-.uc-donate-goal-only .uc-donate-stats { justify-content: flex-start; margin-bottom: 0; }
-.uc-donate-bar { height: 8px; background: #dcfce7; border-radius: 99px; overflow: hidden; }
-.uc-donate-fill { height: 100%; background: linear-gradient(90deg, var(--uc-green), #34d399); border-radius: 99px; transition: width 0.6s ease; }
-.uc-donate-btn { display: inline-block; margin-top: 4px; padding: 9px 22px; border-radius: 8px; background: var(--uc-green); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; transition: background 0.2s; }
-.uc-donate-btn:hover { background: #0e9f6e; color: #fff; }
+/* Donate block. The figures come from the same renderer the card uses, so
+   there is one set of .uc-lc-fund rules and this block only spaces them. The
+   button is .uc-actionbtn like every other primary action. */
+.uc-donate-block { margin-top: 14px; padding: 16px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 12px; }
+.uc-single .uc-donate-block .uc-lc-fund { margin: 0 0 12px; }
 
 /* Add to Calendar dropdown */
 .uc-addcal { position: relative; }
@@ -507,10 +556,8 @@
 
 /* Galaxy Digital volunteer needs */
 .uc-badge-volunteer { background: rgba(123,97,255,0.12); color: var(--uc-purple); --badge-color: var(--uc-purple); }
-.uc-galaxy-block { margin-top: 14px; padding: 12px 14px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.uc-galaxy-spots { font-size: 13px; font-weight: 600; color: var(--uc-purple); }
-.uc-galaxy-btn { padding: 8px 18px; border-radius: 8px; background: var(--uc-purple); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
-.uc-galaxy-btn:hover { filter: brightness(0.95); color: #fff; }
+.uc-galaxy-block { margin-top: 14px; padding: 14px 16px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.uc-galaxy-spots { font-size: 13px; font-weight: 600; color: var(--uc-text); display: inline-flex; align-items: center; gap: 6px; }
 
 /* Compact / single-event thumbnails. The list card's own image is the inset
    .uc-lc-media box at the top of this file and takes no rules from here. */
@@ -564,7 +611,6 @@
 /* RSVP and reminders are links to the event page in an embed (they can't post
    cross-origin) — give the anchors the button shape their classes imply. */
 .uc-embed-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
-a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 
 /* Numbered pagination renders as buttons in an embed rather than links. */
 .uc-pagination-pages button.uc-page-link,
@@ -733,10 +779,10 @@ a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: cent
 @media (prefers-reduced-motion: reduce) {
     .uc-event-card { transition: none; }
     .uc-event-card:hover { transform: none; }
-    .uc-calendar .uc-event-card,
-    .uc-calendar .uc-event-card .uc-lc-btn,
-    .uc-calendar .uc-event-card .uc-lc-arrow { transition: none; }
-    .uc-calendar .uc-event-card .uc-lc-arrow { transform: none; }
+    .uc-calendar .uc-event-card { transition: none; }
+    .uc-calendar .uc-actionbtn, .uc-single .uc-actionbtn, .uc-sidebar .uc-actionbtn,
+    .uc-calendar .uc-actionbtn-arrow, .uc-single .uc-actionbtn-arrow, .uc-sidebar .uc-actionbtn-arrow { transition: none; }
+    .uc-calendar .uc-actionbtn-arrow, .uc-single .uc-actionbtn-arrow, .uc-sidebar .uc-actionbtn-arrow { transform: none; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -751,3 +797,38 @@ a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: cent
 input.uc-invalid { border-color: #dc2626 !important; box-shadow: 0 0 0 1px #dc2626; }
 input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-field-error { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: #b91c1c; font-weight: 600; }
+
+/* ===========================================================================
+ * EVENT PAGE MAP
+ *
+ * SCOPED, THOUGH IT IS NOT AN EMBED SURFACE. The single event template is
+ * never rendered into an embed payload: SFAF_Embed::build_payload() calls
+ * render_calendar_block(), render_events() or render_sidebar() and nothing
+ * else, so no part of this section can reach sfaf.org through the embed. It
+ * is scoped to .uc-single anyway, because the event page runs inside the host
+ * theme on this site and the same rule applies there: an unstyled property is
+ * whatever the theme says it is.
+ *
+ * THE PLACEHOLDER IS NOT A LOADING STATE. There is no iframe in the document
+ * until the button is pressed, so nothing here is waiting for anything. The
+ * note says what pressing it does, because a visitor deciding whether to load
+ * a Google map on a page about HIV services deserves to know that is what
+ * they are deciding.
+ * ======================================================================== */
+.uc-single .uc-map { margin-top: 28px; padding: 20px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 14px; }
+.uc-single .uc-map-heading { font-family: var(--uc-font-heading); font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--uc-text); margin: 0 0 10px; }
+.uc-single .uc-map-address { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 14px; line-height: 1.5; color: var(--uc-text); }
+.uc-single .uc-map-address .sfaf-icon { margin-top: 3px; color: var(--uc-teal-text); }
+.uc-single .uc-map-address a { color: var(--uc-teal-text); text-decoration: none; }
+.uc-single .uc-map-address a:hover { text-decoration: underline; }
+.uc-single .uc-map-address a:focus-visible,
+.uc-single .uc-fact-maplink:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px; }
+
+.uc-single .uc-fact-maplink { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--uc-secondary); }
+.uc-single .uc-fact-maplink:hover { color: var(--uc-teal-text); border-bottom-color: var(--uc-teal-text); }
+
+.uc-single .uc-map-embed { margin-top: 14px; }
+.uc-single .uc-map-placeholder { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; background: #fff; border: 1px dashed var(--uc-border); border-radius: 12px; }
+.uc-single .uc-map-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--uc-secondary); }
+.uc-single .uc-map-frame { border-radius: 12px; overflow: hidden; line-height: 0; }
+.uc-single .uc-map-frame iframe { display: block; width: 100%; max-width: 100%; border: 0; }

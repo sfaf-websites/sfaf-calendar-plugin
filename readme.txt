@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.1.0
+Stable tag: 3.2.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -113,7 +113,52 @@ by hand, under Events > Settings > Scheduled Tasks, only after one real removal
 has been seen go through correctly. Until then use "Fetch updates" on the
 portal's Pending screen, which runs the same fetch with somebody watching.
 
+== Google Maps on the event page ==
+
+Optional. Paste a Maps Embed API key under **Events > Settings > Integrations >
+Google Maps** and each event page gains a "Show map" button beneath its
+address. Leave the field blank and the page shows the address as a Google Maps
+link and nothing else: no button, no error, no admin notice on the public page.
+
+**Nothing is sent to Google until a visitor presses the button.** The server
+renders an empty placeholder; the iframe is created by script on click. This is
+deliberate and it is not a performance optimisation to be reversed. These event
+pages cover HIV services, substance use programmes and trans health groups, and
+a Google iframe placed in the markup is fetched on page view, which hands
+Google the page URL, the visitor's IP and their referrer for everyone who lands
+on one whether they wanted a map or not. The address link meets the practical
+need at no third-party cost, and the click is the consent for the rest.
+
+**Restrict the key before you paste it in.** In the Google Cloud console:
+
+1. *Application restrictions* > HTTP referrers, listing both
+   `resources.sfaf.org/*` and `sfaf.org/*`. Both are needed: the calendar is
+   served from one and embedded on the other.
+2. *API restrictions* > Restrict key, with the **Maps Embed API** selected and
+   nothing else.
+
+The Maps Embed API has no usage cap. An unrestricted key is therefore a billing
+exposure rather than a map risk: anybody who copies it out of the page can run
+it against this account from their own site indefinitely. The referrer
+restriction is what makes a key that is visible by design safe to have visible.
+
 == Changelog ==
+
+= 3.2.0 =
+
+**The card button says what it does.** It is "View event" on every event, on every surface. 3.1.0 varied the word between RSVP, Donate and View event, and the button did none of those things: it went to the event page and left a person to find the form themselves. A card promising "RSVP" was promising an action it could not perform, and Galaxy Digital volunteer events fell through the gap because no fourth label existed for them. They read "View event" like everything else now.
+
+**Donate is a second button, not a different first one.** Where an event has a donation link, a Donate button appears beside View event and goes straight to the donation page. It carries the heavier weight of the two, because it is the action with a consequence; View event is navigation and takes the outline. Events without a donation link keep one button.
+
+**How many places are left is still on the card.** "12 of 20 spots left" for RSVPs and the volunteer spots remaining for imported Galaxy Digital needs, from the same helpers the event page uses, so the two can never quote different numbers.
+
+**One button family across the card and the event page.** The RSVP button, the volunteer Sign Up button and the Donate button on an event page were three different shapes with three different hovers, none of them matching the card. They are all the same control now: pill radius, the arrow that slides in on hover and on keyboard focus, the reduced-motion guard and a visible focus ring. Solid #0E818C with a white label at 4.63:1 for the action with a consequence, outline for navigation.
+
+**Fundraising figures are opt in, per event, and off by default.** A goal arriving from GoFundMe Pro no longer publishes itself. Nothing about the money appears anywhere until a manager ticks the box on the event, and the choice is declared manager-owned in the GoFundMe Pro adapter, so the hourly fetch can never change it back. Switched on with no raised figure on file, the section renders nothing at all rather than a goal on its own: a goal with no progress beside it reads as zero raised, which is a claim we have no basis for.
+
+**The pending queue shows the fields, not just a warning that fields exist.** The manager-owned controls (image, description, category, organizer and the fundraising toggle) now render from one function that both the event editor and the pending approval screen call. Neither screen holds a list of the fields, so a field cannot appear on one and be missing from the other. Approving an import no longer means opening a second screen to set two things.
+
+**A map on the event page, loaded only if somebody asks for it.** The address is always a working link to Google Maps. The map itself sits behind a "Show map" button, and there is no iframe in the page until it is pressed: nothing is requested from Google on page view, so Google is told nothing about who opened the page. Event pages cover HIV services, substance use and trans health programming, and a passively loaded third-party frame would report every visit. With no API key configured the page shows the address link alone, with no button, no error and no notice.
 
 = 3.1.0 =
 

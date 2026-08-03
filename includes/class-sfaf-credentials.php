@@ -80,6 +80,25 @@ class SFAF_Credentials {
             'multisite_api_key'        => 'text',
             'galaxy_api_key'           => 'text',
             'webhook_secret'           => 'text',
+
+            /*
+             * The Google Maps Embed API key.
+             *
+             * It lives here rather than in uc_settings for the reason at the
+             * top of this file: uc_settings is rebuilt from scratch on every
+             * settings save, so a key kept there survives only while the
+             * sanitize callback keeps remembering it. This one has to outlive
+             * plugin updates and every future settings field, so it goes where
+             * nothing rewrites the option wholesale.
+             *
+             * 'text' rather than 'secret' on purpose. A Maps browser key is
+             * not confidential. It is visible to anyone who loads a map, by
+             * design, so hiding it in the form would be theatre and would
+             * stop an admin checking which key is in place. Its protection is
+             * the referrer and API restrictions it carries at Google's end,
+             * not secrecy here. See the readme for what those must be.
+             */
+            'google_maps_embed_key'    => 'text',
         );
     }
 

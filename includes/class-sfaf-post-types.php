@@ -330,6 +330,29 @@ class SFAF_Post_Types {
                 <p class="description">Donate button shows on this event only when a URL is set.</p>
             </div>
 
+            <?php
+            /*
+             * The same choice, on the same meta key, as the manager panel the
+             * portal renders on its editor and its pending queue. This is the
+             * WordPress admin, which is a third surface with its own metabox
+             * API and no access to that render, so the one thing shared here
+             * is the thing that matters: sfaf_fundraising_progress_meta_key()
+             * names the storage in one place, and every screen writes '1' or
+             * '0' to it. Nothing infers a default from an absent value.
+             */
+            $fund_key = sfaf_fundraising_progress_meta_key();
+            $fund_on  = ( '1' === (string) get_post_meta( $post->ID, $fund_key, true ) );
+            ?>
+            <div class="uc-meta-field">
+                <label for="uc_show_fund_progress">Fundraising progress</label>
+                <input type="hidden" name="uc_show_fund_progress" value="0" />
+                <label class="uc-check">
+                    <input type="checkbox" id="uc_show_fund_progress" name="uc_show_fund_progress" value="1" <?php checked( $fund_on ); ?> />
+                    Show the raised and goal figures on this event
+                </label>
+                <p class="description">Off by default. Nothing about the money is published until this is ticked, and a fetch never changes it. With no raised figure on file nothing appears even when ticked: a goal on its own reads as zero raised.</p>
+            </div>
+
             <div class="uc-meta-field">
                 <label><?php echo sfaf_icon( 'cloud' ); ?> Pardot Campaigns</label>
                 <?php if ( empty( $pardot_campaigns ) ) : ?>
@@ -591,6 +614,15 @@ class SFAF_Post_Types {
         }
 
         // Goal (numeric).
+        // The hidden 0 beside the checkbox is what makes an unticked box mean
+        // off rather than "not submitted", so the toggle can be switched back.
+        if ( isset( $_POST['uc_show_fund_progress'] ) ) {
+            update_post_meta(
+                $post_id,
+                sfaf_fundraising_progress_meta_key(),
+                ( '1' === (string) wp_unslash( $_POST['uc_show_fund_progress'] ) ) ? '1' : '0'
+            );
+        }
         if ( isset( $_POST['uc_gofundme_goal'] ) ) {
             update_post_meta( $post_id, '_uc_gofundme_goal', preg_replace( '/[^0-9.]/', '', wp_unslash( $_POST['uc_gofundme_goal'] ) ) );
         }

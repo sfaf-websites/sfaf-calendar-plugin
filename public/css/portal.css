@@ -502,3 +502,24 @@ body.uc-portal {
 @media (prefers-reduced-motion: reduce) { .uc-spinner { animation-duration: 2.4s; } }
 .uc-action-error { margin: 10px 0 0; padding: 10px 14px; border-radius: 8px;
     background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 600; }
+
+/* ===========================================================================
+ * THE MANAGER-OWNED PANEL, ON BOTH SCREENS
+ *
+ * One render, so one set of rules. The editor drops it into the main column
+ * of the form; the pending queue puts it in a disclosure under the row it
+ * belongs to. Nothing here is queue-specific except the disclosure itself.
+ * ======================================================================== */
+.uc-manager-panel { display: flex; flex-direction: column; gap: 16px; }
+.uc-manager-panel .uc-fund-field { padding: 14px 16px; background: var(--uc-bg, #f7f8fa); border: 1px solid var(--uc-border, #e2e5ea); border-radius: 10px; }
+.uc-manager-panel .uc-fund-field .uc-hint { margin-top: 6px; }
+
+/* Collapsed by default: a queue is for scanning, and a dozen open panels
+   would stop it being one. */
+.uc-queue-panel-row > td { padding-top: 0; border-top: 0; }
+.uc-queue-panel { border: 1px solid var(--uc-border, #e2e5ea); border-radius: 10px; background: #fff; }
+.uc-queue-panel > summary { cursor: pointer; padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--uc-secondary, #6b7280); list-style: revert; }
+.uc-queue-panel > summary:focus-visible { outline: 2px solid var(--uc-teal-text, #0e818c); outline-offset: -2px; border-radius: 10px; }
+.uc-queue-panel[open] > summary { border-bottom: 1px solid var(--uc-border, #e2e5ea); }
+.uc-queue-form { padding: 16px; }
+.uc-queue-form .uc-form-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }

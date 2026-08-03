@@ -16,7 +16,59 @@
         initFAQ();
         initPagination();
         initViews();
+        initMaps();
     });
+
+    /* -----------------------------------------------------------------------
+     * Click to load the event map.
+     *
+     * NOTHING HERE RUNS UNTIL A BUTTON IS PRESSED, WHICH IS THE WHOLE POINT.
+     * The server sends an empty div and the address as an ordinary link. No
+     * iframe, no src, no preconnect, no prefetch: until somebody chooses to
+     * see a map, this page makes no request to Google and Google learns
+     * nothing about who opened it. These pages carry HIV services, substance
+     * use programmes and trans health groups, so that is not a detail.
+     *
+     * Do not add an IntersectionObserver here, and do not "warm" the frame on
+     * hover. Scrolling past something is not consent.
+     * -------------------------------------------------------------------- */
+    function initMaps() {
+        $(document).on('click', '[data-uc-map-show]', function(e) {
+            e.preventDefault();
+
+            var wrap = $(this).closest('[data-uc-map]');
+            if (!wrap.length || wrap.attr('data-uc-map-loaded') === '1') {
+                return;
+            }
+            wrap.attr('data-uc-map-loaded', '1');
+
+            var key = wrap.attr('data-map-key') || '';
+            var query = wrap.attr('data-map-query') || '';
+            if (!key || !query) {
+                return;
+            }
+
+            var src = 'https://www.google.com/maps/embed/v1/place'
+                + '?key=' + encodeURIComponent(key)
+                + '&q=' + encodeURIComponent(query);
+
+            var frame = document.createElement('iframe');
+            frame.src = src;
+            frame.title = wrap.attr('data-map-title') || 'Map';
+            frame.setAttribute('loading', 'lazy');
+            // The frame needs nothing from this page and this page needs
+            // nothing from it, so it is given nothing.
+            frame.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+            frame.setAttribute('allowfullscreen', '');
+            frame.width = '100%';
+            frame.height = '320';
+            frame.style.border = '0';
+
+            var holder = wrap.find('[data-uc-map-frame]');
+            holder.empty().append(frame).removeAttr('hidden');
+            wrap.find('[data-uc-map-placeholder]').remove();
+        });
+    }
 
     /* -----------------------------------------------------------------------
      * View toggle and month grid, on this site.
@@ -610,22 +662,6 @@
                                 capacityFill.css('width', Math.min((response.count / total) * 100, 100) + '%');
                             } else {
                                 capacityText.text(response.count + ' registered');
-                            }
-                        }
-
-                        /*
-                         * The 3.1.0 list card states what is LEFT rather than
-                         * what is filled, and has no bar. It carries its own
-                         * capacity so this can redo the sentence: someone who
-                         * has just taken the last place must not be left
-                         * reading "1 spot left".
-                         */
-                        var note = card.find('.uc-lc-note');
-                        if (note.length) {
-                            var capacity = parseInt(note.attr('data-capacity'), 10);
-                            if (capacity > 0) {
-                                var left = Math.max(0, capacity - response.count);
-                                note.text(left > 0 ? (left + (left === 1 ? ' spot left' : ' spots left')) : 'Fully booked');
                             }
                         }
                     }

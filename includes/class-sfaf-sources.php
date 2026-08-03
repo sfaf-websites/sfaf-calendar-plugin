@@ -718,6 +718,20 @@ class SFAF_Sources {
                 return self::has_term( $post_id, 'uc_event_category' );
             case 'organizer':
                 return self::has_term( $post_id, 'uc_organizer' );
+
+            /*
+             * A SETTING IS NOT A BLANK. fundraising_progress is a manager-owned
+             * BOOLEAN: it is declared so a fetch can never write it, not
+             * because somebody has to fill it in. Off is a complete answer and
+             * the correct default, so "filled" is true either way and this
+             * never joins the list of things an event still needs before
+             * publishing. Spelled out rather than left to the fall-through
+             * below, because the difference between "not a completeness field"
+             * and "a completeness field nobody added a case for" is exactly the
+             * kind of thing this switch should not leave to inference.
+             */
+            case 'fundraising_progress':
+                return true;
         }
         return true;
     }

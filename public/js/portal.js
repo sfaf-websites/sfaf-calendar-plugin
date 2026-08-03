@@ -117,18 +117,44 @@
         }
     }
 
-    /* Event form: featured image picker (wp.media) + URL fallback */
+    /* ---------------------------------------------------------------------
+     * Featured image picker (wp.media) + URL fallback.
+     *
+     * ONE PICKER PER FIELD, NOT ONE PER PAGE. This used to bind to
+     * document.getElementById('uc-featured-image-id') and friends, which was
+     * fine while the event editor was the only screen that carried the
+     * control. The pending queue now renders the same manager-owned panel, one
+     * per queued event, so those ids appear several times on a page and
+     * getElementById would have wired every Choose Image button on the screen
+     * to the first event's hidden input: choosing a picture for the third
+     * campaign would have set it on the first.
+     *
+     * So the fields are found by data attribute, WITHIN each .uc-image-field,
+     * and each one gets its own media frame. The ids are still unique per
+     * event in the markup; nothing here depends on them.
+     * ------------------------------------------------------------------ */
     function initImagePicker() {
-        var chooseBtn = document.querySelector('.uc-choose-image');
+        var fields = document.querySelectorAll('.uc-image-field');
+        for (var i = 0; i < fields.length; i++) {
+            bindImageField(fields[i]);
+        }
+    }
+
+    function bindImageField(field) {
+        var chooseBtn = field.querySelector('.uc-choose-image');
         if (!chooseBtn) {
             return;
         }
-        var idInput    = document.getElementById('uc-featured-image-id');
-        var urlInput   = document.getElementById('uc-image-url');
-        var preview    = document.getElementById('uc-image-preview');
-        var previewImg = document.getElementById('uc-image-preview-img');
-        var removeBtn  = document.querySelector('.uc-remove-image');
+        var idInput    = field.querySelector('[data-uc-image-id]');
+        var urlInput   = field.querySelector('[data-uc-image-url]');
+        var preview    = field.querySelector('[data-uc-image-preview]');
+        var previewImg = field.querySelector('[data-uc-image-preview-img]');
+        var removeBtn  = field.querySelector('.uc-remove-image');
         var frame;
+
+        if (!idInput || !preview || !previewImg) {
+            return;
+        }
 
         function show(src) {
             if (!src) { return; }

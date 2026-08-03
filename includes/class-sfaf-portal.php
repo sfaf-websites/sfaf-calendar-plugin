@@ -354,6 +354,19 @@ class SFAF_Portal {
                 $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'refreshed' ) );
                 break;
 
+            /*
+             * The manager-owned panel, saved from the pending queue.
+             *
+             * The same controls the editor renders, on the same event, posting
+             * only themselves: nothing else about the event is read or written
+             * here. It exists so approving an import does not have to mean
+             * opening a second screen to set two fields.
+             */
+            case 'save_manager_fields':
+                $event_id = $this->save_manager_panel_from_post( $user );
+                $this->redirect( 'pending', array( 'msg' => 'manager_saved', 'event' => $event_id ) );
+                break;
+
             case 'import_publish':
                 // Publishing is not a one-click move: the platform supplies the
                 // title, times and location, but the category, organizer and
@@ -624,54 +637,16 @@ class SFAF_Portal {
             update_post_meta( $event_id, $key, isset( $_POST[ $field ] ) ? '1' : '0' );
         }
 
-        // Featured image: uploaded attachment wins, pasted URL is the fallback.
-        // "Reset to series image" clears the event's own image so it inherits.
-        //
-        // Skipped entirely when the platform owns the image: those controls
-        // are not rendered at all, so the featured_image_id hidden field is
-        // absent and this block would read 0 and strip the thumbnail.
-        if ( $is_locked( 'image' ) ) {
-            // nothing to do — the source's image lives in its own meta key
-        } elseif ( isset( $_POST['reset_series_image'] ) ) {
-            delete_post_thumbnail( $event_id );
-            delete_post_meta( $event_id, '_uc_image_url' );
-            delete_post_meta( $event_id, '_uc_image_override' );
-        } else {
-            $thumb_id = isset( $_POST['featured_image_id'] ) ? intval( $_POST['featured_image_id'] ) : 0;
-            if ( $thumb_id ) {
-                set_post_thumbnail( $event_id, $thumb_id );
-            } else {
-                delete_post_thumbnail( $event_id );
-            }
-            if ( isset( $_POST['image_url'] ) ) {
-                $img_url = esc_url_raw( wp_unslash( $_POST['image_url'] ) );
-                if ( $img_url ) {
-                    update_post_meta( $event_id, '_uc_image_url', $img_url );
-                } else {
-                    delete_post_meta( $event_id, '_uc_image_url' );
-                }
-            }
-            // Flag a per-event image override so series image changes skip it.
-            if ( has_post_thumbnail( $event_id ) || get_post_meta( $event_id, '_uc_image_url', true ) ) {
-                update_post_meta( $event_id, '_uc_image_override', '1' );
-            } else {
-                delete_post_meta( $event_id, '_uc_image_override' );
-            }
-        }
-
-        // Taxonomies (respect contributor category restrictions).
-        if ( isset( $_POST['category'] ) ) {
-            $cat = intval( $_POST['category'] );
-            $allowed = $this->allowed_categories( $user );
-            if ( $role === 'contributor' && ! empty( $allowed ) && $cat && ! in_array( $cat, $allowed, true ) ) {
-                $cat = 0; // not permitted
-            }
-            wp_set_object_terms( $event_id, $cat ? array( $cat ) : array(), 'uc_event_category' );
-        }
-        if ( isset( $_POST['organizer'] ) ) {
-            $org = intval( $_POST['organizer'] );
-            wp_set_object_terms( $event_id, $org ? array( $org ) : array(), 'uc_organizer' );
-        }
+        /*
+         * THE MANAGER-OWNED FIELDS, SAVED FROM THE ONE PLACE THEY ARE READ.
+         *
+         * Featured image, category, organizer and the fundraising toggle were
+         * written out longhand here and nowhere else, which was fine while the
+         * event editor was the only form that could submit them. The pending
+         * approval queue now posts the same controls, from the same render, so
+         * the reading of them moved somewhere both callers can reach.
+         */
+        ->save_manager_fields_from_post( , ,  );
 
         /*
          * SERIES. A term assignment and nothing else.
@@ -895,6 +870,11 @@ class SFAF_Portal {
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
             '_uc_image_url', '_uc_image_override',
+            // Whether the fundraising figures are published. It travels with
+            // the donate URL and goal it governs: a group that shares a
+            // campaign should not show its progress on one date and not the
+            // next, which is exactly what leaving this out would produce.
+            sfaf_fundraising_progress_meta_key(),
             sfaf_faq_meta_key(),
         );
         if ( ! isset( $locked['capacity'] ) ) {
@@ -1192,6 +1172,7 @@ class SFAF_Portal {
             'faq_set_applied'  => 'FAQ set applied.',
             'faq_set_saved'    => 'FAQ set saved.',
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
+            'manager_saved'    => 'Saved. Those are the same fields the event editor shows, so the event now reads the same in both places.',
         );
         $key = sanitize_key( $_GET['msg'] );
 
@@ -2129,6 +2110,393 @@ class SFAF_Portal {
         return ( 'locked' === $state ) ? ' disabled' : '';
     }
 
+    /* =====================================================================
+     * MANAGER-OWNED FIELDS: ONE RENDER, TWO SCREENS
+     *
+     * THE PROBLEM THIS SOLVES, STATED PLAINLY. The event editor and the
+     * pending approval queue are two screens showing the same event. Until
+     * 3.2.0 they were also two unrelated templates: the editor drew the
+     * manager-owned controls inline, one at a time, scattered down a long
+     * form, and the queue drew a read-only table with an amber pencil that
+     * said something was missing without offering anywhere to put it. Adding
+     * a field meant remembering both places. Nobody remembers both places.
+     *
+     * So there is now exactly one function that knows what a manager-owned
+     * control looks like (render_manager_control()) and exactly one that
+     * knows which controls an event has: manager_panel_fields(). Both screens
+     * call render_manager_panel(), which is a loop over the second calling the
+     * first. A field cannot exist on one screen and not the other, because
+     * neither screen contains a list.
+     *
+     * WHAT MAKES A FIELD "MANAGER-OWNED". For an imported event, the adapter
+     * says so: SFAF_Sources::manager_fields_for(). That declaration is already
+     * what stops a fetch writing the field, so the editor asks for exactly
+     * what the import refuses to supply, by construction. For a native event
+     * there is no adapter and no fetch, so the same controls render without
+     * badges: they are simply the event's own fields.
+     *
+     * THE SAVE HALF IS SHARED TOO. save_manager_fields_from_post() is called
+     * by the full event save and by the queue's own small form, so the two
+     * cannot disagree about what a submitted value means either.
+     * ================================================================== */
+
+    /**
+     * The canonical order of manager-owned controls.
+     *
+     * Order lives here rather than in either screen, so both render them the
+     * same way round.
+     *
+     * @return string[]
+     */
+    private function manager_field_order() {
+        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress' );
+    }
+
+    /**
+     * Everything the controls need, gathered once per event.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     * @param string  $screen 'editor' or 'queue'.
+     * @return array
+     */
+    private function manager_panel_context( $user, $event_id, $screen = 'editor' ) {
+        $event_id = (int) $event_id;
+        $prov     = $event_id
+            ? SFAF_Sources::provenance( $event_id )
+            : array( 'source' => '', 'label' => '', 'source_url' => '' );
+
+        $owned   = ( $event_id && '' !== $prov['source'] ) ? SFAF_Sources::owned_fields_for( $prov['source'] ) : array();
+        $manager = ( $event_id && '' !== $prov['source'] ) ? SFAF_Sources::manager_fields_for( $prov['source'] ) : array();
+        $adapter = ( '' !== $prov['source'] ) ? SFAF_Sources::adapter( $prov['source'] ) : null;
+
+        return array(
+            'event_id' => $event_id,
+            'post'     => $event_id ? get_post( $event_id ) : null,
+            'user'     => $user,
+            'role'     => self::get_role( $user->ID ),
+            'screen'   => ( 'queue' === $screen ) ? 'queue' : 'editor',
+            'prov'     => $prov,
+            'owned'    => $owned,
+            'manager'  => $manager,
+            'note'     => $adapter ? (string) $adapter->manager_fields_note() : '',
+            'cats'     => get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) ),
+            'orgs'     => get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) ),
+            'allowed'  => $this->allowed_categories( $user ),
+            // Unique per event so several panels can sit on the queue screen
+            // without two elements sharing an id.
+            'uid'      => 'e' . $event_id,
+        );
+    }
+
+    /**
+     * Which manager-owned controls this event has.
+     *
+     * @param array $ctx From manager_panel_context().
+     * @return string[]
+     */
+    private function manager_panel_fields( $ctx ) {
+        $imported = ( '' !== $ctx['prov']['source'] );
+
+        // An imported event asks its adapter. A native event has the same four
+        // controls, because they are its ordinary fields; nothing is refusing
+        // to write them, so nothing badges them either.
+        $fields = $imported
+            ? $ctx['manager']
+            : array( 'image', 'description', 'category', 'organizer' );
+
+        // The fundraising toggle governs a donate link, so it appears wherever
+        // there is one and nowhere else, including a native event with a
+        // campaign URL typed by hand. A control over nothing is worse than no
+        // control: it invites a manager to set something with no effect.
+        $has_donate = $ctx['event_id'] && '' !== (string) get_post_meta( $ctx['event_id'], '_uc_gofundme_url', true );
+        $fields     = array_diff( $fields, array( 'fundraising_progress' ) );
+        if ( $has_donate ) {
+            $fields[] = 'fundraising_progress';
+        }
+
+        // Canonical order, and nothing this method does not recognise.
+        $ordered = array();
+        foreach ( $this->manager_field_order() as $field ) {
+            if ( in_array( $field, $fields, true ) ) {
+                $ordered[] = $field;
+            }
+        }
+        return $ordered;
+    }
+
+    /**
+     * THE shared render. Both screens call this and neither has a list.
+     *
+     * @param array $ctx From manager_panel_context().
+     */
+    private function render_manager_panel( $ctx ) {
+        $fields = $this->manager_panel_fields( $ctx );
+        if ( empty( $fields ) ) {
+            return;
+        }
+
+        $imported = ( '' !== $ctx['prov']['source'] );
+        ?>
+        <div class="uc-manager-panel" data-uc-manager-panel>
+            <?php if ( 'queue' === $ctx['screen'] ) : ?>
+                <p class="uc-help">
+                    These are the fields
+                    <?php echo $imported ? esc_html( $ctx['prov']['label'] ) . ' does not supply' : 'a person sets'; ?>.
+                    They are the same controls as the event editor, on the same event: whatever is set here is set there.
+                </p>
+            <?php endif; ?>
+
+            <?php foreach ( $fields as $field ) {
+                $this->render_manager_control( $field, $ctx );
+            } ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * One manager-owned control.
+     *
+     * Every branch renders the same input names the save routine reads, so a
+     * control behaves identically wherever the panel is placed.
+     *
+     * @param string $field
+     * @param array  $ctx
+     */
+    private function render_manager_control( $field, $ctx ) {
+        $event_id = (int) $ctx['event_id'];
+        $uid      = $ctx['uid'];
+        $state    = $this->field_state( $field, $ctx['owned'], $ctx['manager'], $event_id );
+        $note     = $ctx['note'];
+        $label    = $ctx['prov']['label'];
+
+        switch ( $field ) {
+
+            case 'image':
+                $thumb_id   = ( $event_id && has_post_thumbnail( $event_id ) ) ? get_post_thumbnail_id( $event_id ) : 0;
+                $own_url    = $event_id ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
+                $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
+                $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
+                $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
+                $in_series  = $event_id && SFAF_Series::id_for_event( $event_id ) > 0;
+                ?>
+                <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'image', $state ); ?>>
+                    <span class="uc-field-label">Featured Image
+                        <span class="uc-img-source-tag"><?php echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source ); ?></span>
+                        <?php echo $this->field_badge( $state, $label ); ?>
+                    </span>
+                    <?php if ( ( 'attention' === $state || 'filled' === $state ) && '' !== $note ) : ?>
+                        <p class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $state ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $note ); ?></span></p>
+                    <?php endif; ?>
+                    <input type="hidden" name="featured_image_id" id="uc-featured-image-id-<?php echo esc_attr( $uid ); ?>" data-uc-image-id value="<?php echo (int) $thumb_id; ?>" />
+                    <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $uid ); ?>" data-uc-image-preview<?php echo $preview ? '' : ' style="display:none;"'; ?>>
+                        <img src="<?php echo esc_url( $preview ); ?>" alt="" data-uc-image-preview-img />
+                    </div>
+                    <?php if ( 'locked' === $state ) : ?>
+                        <p class="uc-hint"><?php echo esc_html( $label ); ?> supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.</p>
+                    <?php else : ?>
+                        <div class="uc-image-buttons">
+                            <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
+                            <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo ( 'event' === $img_source ) ? '' : ' style="display:none;"'; ?>>Remove</button>
+                        </div>
+                        <?php if ( 'event' === $img_source && $in_series ) : ?>
+                            <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
+                        <?php endif; ?>
+                        <label class="uc-field uc-image-url-field">Or enter image URL
+                            <input type="url" name="image_url" id="uc-image-url-<?php echo esc_attr( $uid ); ?>" data-uc-image-url value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
+                        </label>
+                        <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
+                    <?php endif; ?>
+                </div>
+                <?php
+                break;
+
+            case 'description':
+                ?>
+                <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'description', $state ); ?>>
+                    <span class="uc-field-label">Description <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <?php if ( ( 'attention' === $state || 'filled' === $state ) && '' !== $note ) : ?>
+                        <span class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $state ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $note ); ?></span></span>
+                    <?php endif; ?>
+                    <textarea name="description" rows="8"<?php echo $this->field_disabled( $state ); ?>><?php echo esc_textarea( $ctx['post'] ? $ctx['post']->post_content : '' ); ?></textarea>
+                </label>
+                <?php
+                break;
+
+            case 'category':
+                $current = $event_id ? ( wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
+                ?>
+                <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'category', $state ); ?>>
+                    <span class="uc-field-label">Category <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <select name="category">
+                        <option value="0">None</option>
+                        <?php if ( ! is_wp_error( $ctx['cats'] ) ) : foreach ( $ctx['cats'] as $c ) :
+                            if ( 'contributor' === $ctx['role'] && ! empty( $ctx['allowed'] ) && ! in_array( $c->term_id, $ctx['allowed'], true ) ) { continue; } ?>
+                            <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $current, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
+                        <?php endforeach; endif; ?>
+                    </select>
+                </label>
+                <?php
+                break;
+
+            case 'organizer':
+                $current = $event_id ? ( wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
+                ?>
+                <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>>
+                    <span class="uc-field-label">Organizer <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <select name="organizer">
+                        <option value="0">None</option>
+                        <?php if ( ! is_wp_error( $ctx['orgs'] ) ) : foreach ( $ctx['orgs'] as $o ) : ?>
+                            <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $current, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
+                        <?php endforeach; endif; ?>
+                    </select>
+                </label>
+                <?php
+                break;
+
+            case 'fundraising_progress':
+                $on     = ( '1' === (string) get_post_meta( $event_id, sfaf_fundraising_progress_meta_key(), true ) );
+                $goal   = (float) get_post_meta( $event_id, '_uc_gofundme_goal', true );
+                $raised = get_post_meta( $event_id, '_uc_gofundme_raised', true );
+                $has_r  = ( '' !== $raised && is_numeric( $raised ) );
+                ?>
+                <div class="uc-field uc-fund-field">
+                    <span class="uc-field-label">Fundraising progress</span>
+                    <?php // The hidden 0 is what makes an unticked box mean off
+                          // rather than "not submitted". Both screens post this
+                          // control on its own, so absent-means-unchanged would
+                          // make the toggle impossible to switch back off. ?>
+                    <input type="hidden" name="show_fund_progress" value="0" />
+                    <label class="uc-check">
+                        <input type="checkbox" name="show_fund_progress" value="1" <?php checked( $on ); ?> />
+                        Show the raised and goal figures on this event
+                    </label>
+                    <p class="uc-hint">
+                        Off by default. Nothing about the money appears anywhere until this is ticked, on this event.
+                        <?php if ( $goal > 0 && $has_r ) : ?>
+                            Currently $<?php echo esc_html( number_format( (float) $raised ) ); ?> raised of $<?php echo esc_html( number_format( $goal ) ); ?>.
+                        <?php elseif ( $goal > 0 ) : ?>
+                            There is a $<?php echo esc_html( number_format( $goal ) ); ?> goal but no raised figure yet, so ticking this shows nothing until one arrives. A goal on its own reads as zero raised.
+                        <?php else : ?>
+                            No goal has come from the campaign yet, so there is nothing to show.
+                        <?php endif; ?>
+                    </p>
+                    <?php if ( '' !== $ctx['prov']['source'] ) : ?>
+                        <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
+                    <?php endif; ?>
+                </div>
+                <?php
+                break;
+        }
+    }
+
+    /**
+     * Save the manager-owned fields for one event.
+     *
+     * Called by the full event save and by the queue's panel, so a submitted
+     * value means the same thing on both screens.
+     *
+     * @param WP_User  $user
+     * @param int      $event_id
+     * @param callable $is_locked Takes a field name, returns whether the
+     *                            platform owns it on this event.
+     */
+    private function save_manager_fields_from_post( $user, $event_id, $is_locked ) {
+        $event_id = (int) $event_id;
+        $role     = self::get_role( $user->ID );
+
+        // Featured image: uploaded attachment wins, pasted URL is the fallback.
+        // "Reset to series image" clears the event's own image so it inherits.
+        //
+        // Skipped entirely when the platform owns the image: those controls are
+        // not rendered at all, so featured_image_id is absent and this would
+        // read 0 and strip the thumbnail.
+        if ( $is_locked( 'image' ) ) {
+            // Nothing to do: the source's image lives in its own meta key.
+        } elseif ( isset( $_POST['reset_series_image'] ) ) {
+            delete_post_thumbnail( $event_id );
+            delete_post_meta( $event_id, '_uc_image_url' );
+            delete_post_meta( $event_id, '_uc_image_override' );
+        } elseif ( isset( $_POST['featured_image_id'] ) || isset( $_POST['image_url'] ) ) {
+            $thumb_id = isset( $_POST['featured_image_id'] ) ? intval( $_POST['featured_image_id'] ) : 0;
+            if ( $thumb_id ) {
+                set_post_thumbnail( $event_id, $thumb_id );
+            } else {
+                delete_post_thumbnail( $event_id );
+            }
+            if ( isset( $_POST['image_url'] ) ) {
+                $img_url = esc_url_raw( wp_unslash( $_POST['image_url'] ) );
+                if ( $img_url ) {
+                    update_post_meta( $event_id, '_uc_image_url', $img_url );
+                } else {
+                    delete_post_meta( $event_id, '_uc_image_url' );
+                }
+            }
+            // Flag a per-event image override so series image changes skip it.
+            if ( has_post_thumbnail( $event_id ) || get_post_meta( $event_id, '_uc_image_url', true ) ) {
+                update_post_meta( $event_id, '_uc_image_override', '1' );
+            } else {
+                delete_post_meta( $event_id, '_uc_image_override' );
+            }
+        }
+
+        // Taxonomies (respect contributor category restrictions).
+        if ( isset( $_POST['category'] ) ) {
+            $cat     = intval( $_POST['category'] );
+            $allowed = $this->allowed_categories( $user );
+            if ( 'contributor' === $role && ! empty( $allowed ) && $cat && ! in_array( $cat, $allowed, true ) ) {
+                $cat = 0; // not permitted
+            }
+            wp_set_object_terms( $event_id, $cat ? array( $cat ) : array(), 'uc_event_category' );
+        }
+        if ( isset( $_POST['organizer'] ) ) {
+            $org = intval( $_POST['organizer'] );
+            wp_set_object_terms( $event_id, $org ? array( $org ) : array(), 'uc_organizer' );
+        }
+
+        /*
+         * The fundraising toggle. Written only when the control was on the
+         * form, so a screen that does not offer it cannot silently switch it
+         * off. And because the control always posts a hidden 0 beside the
+         * checkbox, a screen that DOES offer it always says which way.
+         */
+        if ( isset( $_POST['show_fund_progress'] ) ) {
+            update_post_meta(
+                $event_id,
+                sfaf_fundraising_progress_meta_key(),
+                ( '1' === (string) wp_unslash( $_POST['show_fund_progress'] ) ) ? '1' : '0'
+            );
+        }
+    }
+
+    /**
+     * Save the manager-owned panel from the pending queue.
+     *
+     * The queue's panel posts only these fields, so this touches only these
+     * fields: an event's title, date and everything else is left exactly as it
+     * was. Same nonce discipline and same permission check as the editor.
+     *
+     * @param WP_User $user
+     * @return int Event ID, or 0.
+     */
+    private function save_manager_panel_from_post( $user ) {
+        $event_id = isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0;
+        $post     = $event_id ? get_post( $event_id ) : null;
+
+        if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+            wp_die( 'Denied' );
+        }
+
+        $src_slug  = (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true );
+        $src_owned = ( '' !== $src_slug ) ? SFAF_Sources::owned_fields_for( $src_slug ) : array();
+        $is_locked = function ( $field ) use ( $src_owned ) {
+            return in_array( $field, $src_owned, true );
+        };
+
+        $this->save_manager_fields_from_post( $user, $event_id, $is_locked );
+        return $event_id;
+    }
+
     /**
      * Create or update a series.
      *
@@ -2393,12 +2761,10 @@ class SFAF_Portal {
         $g = function( $key, $default = '' ) use ( $event_id ) {
             return $event_id ? get_post_meta( $event_id, $key, true ) : $default;
         };
-        $role   = self::get_role( $user->ID );
-        $cats   = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
-        $orgs   = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) );
-        $cur_cat = $event_id ? ( wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
-        $cur_org = $event_id ? ( wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
-        $allowed = $this->allowed_categories( $user );
+        $role = self::get_role( $user->ID );
+        // The category and organizer lists, the current selections and the
+        // contributor restriction are gathered by manager_panel_context() now,
+        // because the controls that need them live in the shared panel.
 
         // Load the WP media library for the image picker on this page.
         $this->load_media = true;
@@ -2546,57 +2912,23 @@ class SFAF_Portal {
                     </label>
 
                     <?php
-                    $thumb_id   = ( $event_id && has_post_thumbnail( $event_id ) ) ? get_post_thumbnail_id( $event_id ) : 0;
-                    $own_url    = $event_id ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
-                    $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
-                    $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
-                    $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
-                    $ev_in_series = $event_id && SFAF_Series::id_for_event( $event_id ) > 0;
+                    /*
+                     * THE MANAGER-OWNED FIELDS, RENDERED FROM THE ONE PLACE
+                     * THEY ARE WRITTEN.
+                     *
+                     * Featured image, description, category, organizer and
+                     * the fundraising toggle used to be four separate blocks
+                     * of markup scattered down this form, with the pending
+                     * approval queue showing none of them and only an amber
+                     * pencil saying something was missing. Two screens, two
+                     * templates, and a new field had to be remembered twice.
+                     *
+                     * They now come out of render_manager_panel(), which the
+                     * queue calls as well. Neither screen holds a list of the
+                     * fields, so neither screen can be missing one.
+                     */
+                    $this->render_manager_panel( $this->manager_panel_context( $user, $event_id, 'editor' ) );
                     ?>
-                    <?php
-                    $s_image = $st( 'image' );
-                    $s_desc  = $st( 'description' );
-                    ?>
-                    <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $s_image ) ); ?>"<?php echo $this->field_watch_attr( 'image', $s_image ); ?>>
-                        <span class="uc-field-label">Featured Image
-                            <span class="uc-img-source-tag"><?php echo esc_html( $src_labels[ $img_source ] ); ?></span>
-                            <?php echo $this->field_badge( $s_image, $prov['label'] ); ?>
-                        </span>
-                        <?php if ( ( 'attention' === $s_image || 'filled' === $s_image ) && '' !== $mgr_note ) : ?>
-                            <p class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $s_image ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></p>
-                        <?php endif; ?>
-                        <input type="hidden" name="featured_image_id" id="uc-featured-image-id" value="<?php echo (int) $thumb_id; ?>" />
-                        <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
-                            <img src="<?php echo esc_url( $preview ); ?>" alt="" id="uc-image-preview-img" />
-                        </div>
-                        <?php if ( 'locked' === $s_image ) : ?>
-                            <?php // The platform's image refreshes on every fetch, so the
-                                  // picker is disabled: nothing typed here would survive.
-                                  // The override that used to live here has moved to the
-                                  // source itself, which is where it now belongs. ?>
-                            <p class="uc-hint"><?php echo esc_html( $prov['label'] ); ?> supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.</p>
-                        <?php else : ?>
-                            <div class="uc-image-buttons">
-                                <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
-                                <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo ( $img_source === 'event' ) ? '' : ' style="display:none;"'; ?>>Remove</button>
-                            </div>
-                            <?php if ( $img_source === 'event' && $ev_in_series ) : ?>
-                                <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
-                            <?php endif; ?>
-                            <label class="uc-field uc-image-url-field">Or enter image URL
-                                <input type="url" name="image_url" id="uc-image-url" value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
-                            </label>
-                            <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
-                        <?php endif; ?>
-                    </div>
-
-                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_desc ) ); ?>"<?php echo $this->field_watch_attr( 'description', $s_desc ); ?>>
-                        <span class="uc-field-label">Description <?php echo $this->field_badge( $s_desc, $prov['label'] ); ?></span>
-                        <?php if ( ( 'attention' === $s_desc || 'filled' === $s_desc ) && '' !== $mgr_note ) : ?>
-                            <span class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $s_desc ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $mgr_note ); ?></span></span>
-                        <?php endif; ?>
-                        <textarea name="description" rows="8"<?php echo $this->field_disabled( $s_desc ); ?>><?php echo esc_textarea( $post ? $post->post_content : '' ); ?></textarea>
-                    </label>
 
                     <?php
                     $s_date  = $st( 'date' );
@@ -2623,37 +2955,6 @@ class SFAF_Portal {
                         <span class="uc-field-label">Location <?php echo $this->field_badge( $s_loc, $prov['label'] ); ?></span>
                         <input type="text" name="location" value="<?php echo esc_attr( $g( '_uc_location' ) ); ?>" placeholder="e.g., Strut - 470 Castro St"<?php echo $this->field_disabled( $s_loc ); ?> />
                     </label>
-
-                    <?php
-                    // Category and Organizer are this calendar's own taxonomies.
-                    // No platform supplies them, so on an imported event they
-                    // arrive empty every time and both adapters declare them
-                    // manager-owned. That makes them amber here until set, and
-                    // ordinary the moment they are.
-                    $s_cat = $st( 'category' );
-                    $s_org = $st( 'organizer' );
-                    ?>
-                    <div class="uc-field-row">
-                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cat ) ); ?>"<?php echo $this->field_watch_attr( 'category', $s_cat ); ?>>
-                            <span class="uc-field-label">Category <?php echo $this->field_badge( $s_cat, $prov['label'] ); ?></span>
-                            <select name="category">
-                                <option value="0">None</option>
-                                <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) :
-                                    if ( $role === 'contributor' && ! empty( $allowed ) && ! in_array( $c->term_id, $allowed, true ) ) { continue; } ?>
-                                    <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $cur_cat, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
-                                <?php endforeach; endif; ?>
-                            </select>
-                        </label>
-                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_org ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $s_org ); ?>>
-                            <span class="uc-field-label">Organizer <?php echo $this->field_badge( $s_org, $prov['label'] ); ?></span>
-                            <select name="organizer">
-                                <option value="0">None</option>
-                                <?php if ( ! is_wp_error( $orgs ) ) : foreach ( $orgs as $o ) : ?>
-                                    <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $cur_org, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
-                                <?php endforeach; endif; ?>
-                            </select>
-                        </label>
-                    </div>
 
                     <?php
                     /*
@@ -3309,6 +3610,14 @@ class SFAF_Portal {
             $this->render_dashboard( $user );
             return;
         }
+
+        // The queue's manager panels carry the same featured-image picker the
+        // editor does, so this screen needs the media library too. Same render,
+        // same dependencies: a panel that worked in one place and not the other
+        // would be the drift this whole arrangement exists to prevent.
+        $this->load_media = true;
+        wp_enqueue_media();
+
         $this->chrome_open( $user, 'pending' );
         $ids = $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) );
 
@@ -3700,7 +4009,7 @@ class SFAF_Portal {
                     </td>
                     <td><?php echo esc_html( $when ); ?></td>
                     <td><?php echo esc_html( $location ? $location : 'Not set' ); ?></td>
-                    <td class="uc-row-actions">
+                    <td class="uc-row-actions uc-row-actions-top">
                         <div class="uc-actions">
                             <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
                                 <input type="hidden" name="uc_action" value="import_publish" />
@@ -3724,6 +4033,45 @@ class SFAF_Portal {
                                 </form>
                             <?php endif; ?>
                         </div>
+                    </td>
+                </tr>
+                <?php
+                /*
+                 * THE SAME CONTROLS AS THE EVENT EDITOR, ON THE SAME EVENT.
+                 *
+                 * Pending is a view of an event, not a different form, so it
+                 * gets the fields rather than only a pencil telling somebody
+                 * that fields exist elsewhere. The markup comes from
+                 * render_manager_panel(), which the editor also calls: there is
+                 * no second list here that could fall behind.
+                 *
+                 * Collapsed by default. A queue is for scanning, and a dozen
+                 * open panels would stop it being one; opening it is the moment
+                 * a manager has chosen this event.
+                 *
+                 * Its own <form>, because forms cannot nest and this one posts
+                 * and redirects on its own. It carries only these fields, so
+                 * saving here cannot disturb anything else about the event.
+                 */
+                $ctx = $this->manager_panel_context( wp_get_current_user(), $id, 'queue' );
+                ?>
+                <tr class="uc-queue-panel-row">
+                    <td colspan="5">
+                        <details class="uc-queue-panel">
+                            <summary>
+                                <?php echo $needs_t ? esc_html( $needs_t ) : 'Set the fields this platform does not supply'; ?>
+                            </summary>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-form uc-queue-form">
+                                <input type="hidden" name="uc_action" value="save_manager_fields" />
+                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_save_manager_fields', 'uc_nonce' ); ?>
+                                <?php $this->render_manager_panel( $ctx ); ?>
+                                <div class="uc-form-actions">
+                                    <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                                    <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Open the full editor</a>
+                                </div>
+                            </form>
+                        </details>
                     </td>
                 </tr>
             <?php endforeach; ?>
