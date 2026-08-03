@@ -104,6 +104,9 @@ function sfaf_icon_paths() {
         'users'     => '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/>',
         'menu'      => '<path d="M4 7h16M4 12h16M4 17h16"/>',
         'palette'   => '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.9 2-2s.6-2 2-2h1.6a2.9 2.9 0 0 0 2.9-3A8.6 8.6 0 0 0 12 3.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16.5" cy="11" r="1"/>',
+        'cross'     => '<path d="M9.8 3.5h4.4v6.3h6.3v4.4h-6.3v6.3H9.8v-6.3H3.5V9.8h6.3z"/>',
+        'community' => '<circle cx="8" cy="8" r="2.6"/><circle cx="16" cy="8" r="2.6"/><circle cx="8" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/>',
+        'arrow'     => '<path d="M4.5 12h14"/><path d="m12.5 6 6 6-6 6"/>',
 
         // Platform marks — solid, see note above.
         'facebook'  => '<path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/>',
@@ -1022,6 +1025,122 @@ function sfaf_category_color( $term_id ) {
 }
 
 /**
+ * The three usable stops of a category colour's own family.
+ *
+ * WHY THIS IS A TABLE AND NOT A CALCULATION.
+ * ---------------------------------------------------------------------------
+ * A category chip is a coloured pill with words in it, so it has to clear
+ * 4.5:1, and a brand colour is almost never legible against itself. Brand
+ * teal on brand teal is 1:1; the old chip used a 12% tint with the full
+ * saturation colour as text, which measures 2.05:1 and was unreadable by any
+ * standard. Reaching for black or grey text would fix the contrast and lose
+ * the category, which is the one thing the chip exists to say.
+ *
+ * So every approved colour gets a DARKEST STOP OF ITS OWN FAMILY: same hue,
+ * dropped in lightness until it clears the tint it sits on with headroom.
+ * Every pair below is measured, not estimated: the worst of the eight
+ * chromatic families is 6.01:1 on the chip tint and 5.54:1 on the deeper
+ * media tint, against a 4.5:1 requirement.
+ *
+ *   family      chip bg   media bg  ink       chip ratio  media ratio
+ *   Yellow      #FFFAE0   #FFF8D1   #705F00   6.01        5.89
+ *   Orange      #FEF2E4   #FEEBD7   #8A4C05   6.11        5.80
+ *   Red         #FDE9E7   #FCDEDB   #AD1C0D   6.10        5.63
+ *   Burgundy    #F4E2E7   #EED3DA   #A30C33   6.35        5.63
+ *   Pink        #FDEDF1   #FCE3EA   #B3103D   6.07        5.66
+ *   Purple      #F1EAF4   #EAE0EE   #7F3A98   6.02        5.54
+ *   Teal        #E3F7F9   #D5F3F6   #0C666F   6.02        5.72
+ *   Green       #F1F8E9   #EAF5DE   #46661F   6.08        5.85
+ *
+ * The two neutrals are the exception that proves the rule: grey has no
+ * chromatic family to darken into, so both take brand Dark Gray, which IS
+ * their own family's darkest stop rather than a fallback to black.
+ *
+ * sfaf_sanitize_brand_color() is enforced on save, so a stored category
+ * colour is always one of these ten. The computed fallback exists for legacy
+ * rows written before that rule and is deliberately conservative: it mixes
+ * toward white for the backgrounds and toward near-black for the ink, which
+ * keeps the hue and cannot land on an illegible pair.
+ *
+ * @param string $hex Category colour.
+ * @return array{tint:string,media:string,ink:string}
+ */
+function sfaf_category_shades( $hex ) {
+    $hex = strtoupper( trim( (string) $hex ) );
+
+    $table = array(
+        '#FFD900' => array( '#FFFAE0', '#FFF8D1', '#705F00' ), // Yellow
+        '#F7921E' => array( '#FEF2E4', '#FEEBD7', '#8A4C05' ), // Orange
+        '#F04937' => array( '#FDE9E7', '#FCDEDB', '#AD1C0D' ), // Red
+        '#A30C33' => array( '#F4E2E7', '#EED3DA', '#A30C33' ), // Burgundy
+        '#F1668C' => array( '#FDEDF1', '#FCE3EA', '#B3103D' ), // Pink
+        '#8D54A2' => array( '#F1EAF4', '#EAE0EE', '#7F3A98' ), // Purple
+        '#16BECF' => array( '#E3F7F9', '#D5F3F6', '#0C666F' ), // Teal
+        '#8CC745' => array( '#F1F8E9', '#EAF5DE', '#46661F' ), // Green
+        '#D1D3D4' => array( '#F9FAFA', '#F7F7F7', '#373433' ), // Light Gray
+        '#373433' => array( '#E7E7E7', '#DBDADA', '#373433' ), // Dark Gray
+    );
+
+    if ( isset( $table[ $hex ] ) ) {
+        return array(
+            'tint'  => $table[ $hex ][0],
+            'media' => $table[ $hex ][1],
+            'ink'   => $table[ $hex ][2],
+        );
+    }
+
+    $rgb = sfaf_hex_to_rgb( $hex );
+    if ( null === $rgb ) {
+        return sfaf_category_shades( sfaf_default_category_color() );
+    }
+
+    return array(
+        'tint'  => sfaf_mix_hex( $rgb, array( 255, 255, 255 ), 0.12 ),
+        'media' => sfaf_mix_hex( $rgb, array( 255, 255, 255 ), 0.18 ),
+        'ink'   => sfaf_mix_hex( $rgb, array( 26, 29, 33 ), 0.42 ),
+    );
+}
+
+/**
+ * '#RRGGBB' (or '#RGB') to an array( r, g, b ), or null when it is not a hex.
+ *
+ * @param string $hex
+ * @return array|null
+ */
+function sfaf_hex_to_rgb( $hex ) {
+    $hex = ltrim( trim( (string) $hex ), '#' );
+    if ( 3 === strlen( $hex ) ) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+    if ( ! preg_match( '/^[0-9a-fA-F]{6}$/', $hex ) ) {
+        return null;
+    }
+    return array(
+        hexdec( substr( $hex, 0, 2 ) ),
+        hexdec( substr( $hex, 2, 2 ) ),
+        hexdec( substr( $hex, 4, 2 ) ),
+    );
+}
+
+/**
+ * Mix two RGB triples in sRGB and return '#RRGGBB'.
+ *
+ * @param array $rgb    Foreground triple.
+ * @param array $toward Triple to mix toward.
+ * @param float $weight How much of $rgb survives, 0..1.
+ * @return string
+ */
+function sfaf_mix_hex( $rgb, $toward, $weight ) {
+    $weight = max( 0.0, min( 1.0, (float) $weight ) );
+    $out    = '#';
+    for ( $i = 0; $i < 3; $i++ ) {
+        $v    = (int) round( $rgb[ $i ] * $weight + $toward[ $i ] * ( 1 - $weight ) );
+        $out .= str_pad( dechex( max( 0, min( 255, $v ) ) ), 2, '0', STR_PAD_LEFT );
+    }
+    return strtoupper( $out );
+}
+
+/**
  * Effective image URL for an event, in priority order:
  * 1) the event's own featured image or _uc_image_url (both set by hand)
  * 2) _uc_external_image — whatever the third-party source last supplied
@@ -1087,4 +1206,172 @@ function sfaf_event_thumbnail( $post_id, $size = 'large' ) {
         return '<img class="uc-thumb-img" src="' . esc_url( $url ) . '" alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy" />';
     }
     return sfaf_event_placeholder_svg( $post_id );
+}
+
+/* -------------------------------------------------------------------------
+ * LIST CARD helpers (3.1.0)
+ *
+ * These serve the LIST display mode only: the one renderer behind both the
+ * [sfaf_calendar] shortcode and the embed, so anything here has to hold on
+ * sfaf.org's stylesheet as well as on this site. The month grid, the sidebar
+ * rows and the mobile day-detail list are untouched and keep their own
+ * helpers.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The platform an event was imported from ('Eventbrite', 'GoFundMe Pro'), or
+ * '' for a native event.
+ *
+ * GUARDED ON PURPOSE. This is called once per card in a list that the public
+ * embed endpoint serves, and an undefined static call there is a fatal on a
+ * cross-origin response nobody can read the error out of. A missing sources
+ * class costs the byline, not the page.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_source_label( $post_id ) {
+    if ( ! class_exists( 'SFAF_Sources' ) || ! method_exists( 'SFAF_Sources', 'provenance' ) ) {
+        return '';
+    }
+    $provenance = SFAF_Sources::provenance( $post_id );
+    return isset( $provenance['label'] ) ? (string) $provenance['label'] : '';
+}
+
+/**
+ * Which icon stands in for a category on the placeholder tile.
+ *
+ * Keyed on the category NAME, the same way sfaf_event_placeholder_svg() has
+ * always keyed its branded banner, so an event that has no image shows the
+ * same symbol wherever it appears.
+ *
+ * @param string $name Category name.
+ * @return string An icon name from sfaf_icon_paths().
+ */
+function sfaf_category_icon_key( $name ) {
+    $map = array(
+        'Support Groups'  => 'users',
+        'Fundraising'     => 'heart',
+        'Health Services' => 'cross',
+        'Volunteer'       => 'handshake',
+        'Program Groups'  => 'community',
+    );
+    $name = (string) $name;
+    return isset( $map[ $name ] ) ? $map[ $name ] : 'calendar';
+}
+
+/**
+ * The list card's media box: the event's image, or a branded category tile.
+ *
+ * THE PLACEHOLDER IS HTML, NOT AN SVG CANVAS, and that is the fix rather than
+ * a preference. sfaf_event_placeholder_svg() is a 1600x900 drawing with
+ * preserveAspectRatio="slice": correct in a 16:9 banner, wrong in the ~4:1
+ * box this card uses, where slicing would crop the icon and the label off the
+ * top and bottom. Switching to meet instead would letterbox and leave the
+ * background unfilled. A flex box with an icon and a word in it is the right
+ * shape at every width, needs no ratio to be true, and reads as a deliberate
+ * category tile rather than an image that failed to load.
+ *
+ * Roughly half of imported GoFundMe Pro events will never have an image,
+ * because their API does not expose one, so this is the normal case.
+ *
+ * @param int    $post_id
+ * @param string $cat_name Category name, '' when uncategorised.
+ * @return string
+ */
+function sfaf_list_card_media( $post_id, $cat_name = '' ) {
+    $url = sfaf_event_image_url( $post_id );
+    if ( '' !== $url ) {
+        return '<img class="uc-lc-img" src="' . esc_url( $url ) . '"'
+            . ' alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy" decoding="async" />';
+    }
+
+    $label = ( '' !== $cat_name ) ? $cat_name : 'Event';
+
+    // The tile carries the category name as visible text, so the image itself
+    // has nothing left to announce.
+    return '<span class="uc-lc-ph" role="img" aria-label="' . esc_attr( $label ) . '">'
+        . '<span class="uc-lc-ph-icon">' . sfaf_icon( sfaf_category_icon_key( $cat_name ), array( 'size' => '30px' ) ) . '</span>'
+        . '<span class="uc-lc-ph-name">' . esc_html( $label ) . '</span>'
+        . '</span>';
+}
+
+/**
+ * Fundraising progress for the list card: the bar and the sentence, without
+ * the Donate button (which is now the card's footer action).
+ *
+ * NO INVENTED FUNDRAISING NUMBERS. EVER. This is the same rule sfaf_donate_block()
+ * documents at length, enforced identically here because this is a second
+ * place the figures reach a donor. A bar needs two real numbers. A goal with
+ * no total behind it states the goal and draws nothing, because a bar at zero
+ * is a claim about how the appeal is going, and we do not have that fact.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_fundraising_progress( $post_id ) {
+    if ( ! get_post_meta( $post_id, '_uc_gofundme_url', true ) || ! sfaf_show_feature( $post_id, 'donate' ) ) {
+        return '';
+    }
+
+    $settings = get_option( 'uc_settings', array() );
+    if ( isset( $settings['gofundme_show_progress'] ) && $settings['gofundme_show_progress'] !== '1' ) {
+        return '';
+    }
+
+    $goal = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
+    if ( $goal <= 0 ) {
+        return '';
+    }
+
+    $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
+    $has_raised = ( '' !== $raised_raw && is_numeric( $raised_raw ) );
+
+    if ( ! $has_raised ) {
+        return '<div class="uc-lc-fund">'
+            . '<span class="uc-lc-fund-text">$' . number_format( $goal ) . ' goal</span>'
+            . '</div>';
+    }
+
+    $raised  = (float) $raised_raw;
+    $percent = (int) min( 100, round( $raised / $goal * 100 ) );
+
+    return '<div class="uc-lc-fund">'
+        . '<span class="uc-lc-fund-bar"><span class="uc-lc-fund-fill" style="width: ' . (int) $percent . '%"></span></span>'
+        . '<span class="uc-lc-fund-text">$' . number_format( $raised ) . ' raised of $' . number_format( $goal ) . ' goal</span>'
+        . '</div>';
+}
+
+/**
+ * The list card's series row: the series by NAME, then "see all dates".
+ *
+ * WHY THE NAME AND NOT A LABEL. The old badge read "Part of series: Name" on
+ * the card and a generic "Event Series" elsewhere, and a link whose text is a
+ * category rather than a destination tells a screen reader user nothing about
+ * where it goes: every series on the page produced the same announcement.
+ * The name is the only part that identifies anything, so the name leads and
+ * carries the link.
+ *
+ * Points at the term archive for the reasons set out on sfaf_series_link():
+ * it is a real URL WordPress routes, it exists whether or not anyone has built
+ * a calendar page, and it can show what the series IS rather than only when it
+ * next meets.
+ *
+ * @param int $post_id
+ * @return string Empty when the event is in no series.
+ */
+function sfaf_series_dates_link( $post_id ) {
+    $term = SFAF_Series::for_event( $post_id );
+    if ( ! $term ) {
+        return '';
+    }
+    $url = SFAF_Series::url( $term->term_id );
+    if ( '' === $url || '' === $term->name ) {
+        return '';
+    }
+
+    return '<a class="uc-lc-series" href="' . esc_url( $url ) . '">'
+        . '<span class="uc-lc-series-name">' . esc_html( $term->name ) . '</span>'
+        . '<span class="uc-lc-series-all">see all dates</span>'
+        . '</a>';
 }

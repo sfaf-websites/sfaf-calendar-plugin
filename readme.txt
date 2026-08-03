@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.0.0
+Stable tag: 3.1.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -114,6 +114,26 @@ has been seen go through correctly. Until then use "Fetch updates" on the
 portal's Pending screen, which runs the same fetch with somebody watching.
 
 == Changelog ==
+
+= 3.1.0 =
+
+**The list card is rebuilt.** This affects the LIST display mode only, in both the shortcode and the embed, which are the same renderer. The month grid, the sidebar and the mobile day-detail list are untouched.
+
+**What a card says now, top to bottom.** A header row carrying the category and who is running the event on the left, and the day, month and date on the right. The image below it, inset inside the card's own padding and rounded rather than bled to the edge. Then the title, a one-line summary, and the facts stacked one per row with an icon: time, place, and the series. Fundraising progress where there is a goal. A footer with what is left of the capacity on one side and a single action on the other.
+
+**The category chip is readable.** It was the category colour on a 12% tint of itself, which measures 2.05:1 and could not be read. Every approved brand colour now has a measured darkest stop of its own family, and the chip uses it: the worst of the eight is 6.01:1 against a 4.5:1 requirement. Never black, never grey, because the colour is the information.
+
+**Events with no picture get a category tile, not a hole.** Category tint, the category's icon, the category's name. Roughly half of imported GoFundMe Pro events will never have an image, because their API does not expose one, so this is the normal case and now looks like it was meant. The old placeholder was a fixed 16:9 drawing that could only be shown at that one ratio.
+
+**The series row names the series.** "Weekly yoga, see all dates" instead of a generic "Event Series" label, so the link still makes sense read out of context by a screen reader. The row is omitted entirely when an event is in no series.
+
+**One action per card, and the word on it says what it does.** RSVP where the event takes registrations, Donate for a GoFundMe Pro appeal, View event for everything else. White text on the brand teal measures 2.26:1 and fails WCAG AA at this size, so the button is the outline treatment instead: brand teal border, label at 4.63:1, and a teal fill on hover and keyboard focus with the label at 5.47:1. An arrow slides in beside the label on hover and on focus, in pure CSS, and snaps into place instead for anyone who has asked for reduced motion. It is decorative, because there is no hover on a touch screen and the label has to carry the meaning by itself.
+
+**Nothing on a card moves on hover.** No lift, no reflow, no change of row height. The arrow grows into the footer's own free space and the supporting text truncates rather than wrapping, so a card can never shift its neighbours.
+
+**Add to Calendar, sharing and reminders left the card.** They are unchanged on the event page, which renders every one of them. Nobody scanning thirty events adds the fourth to their calendar without opening it first, and those controls were charging every card a row of chrome for a decision that happens one page later.
+
+**Fundraising figures stay honest.** A bar is drawn only where there is a real raised amount and a real goal to measure it against. A goal with nothing behind it states the goal and draws no bar, because a bar at zero is a claim about how an appeal is going.
 
 = 3.0.0 =
 

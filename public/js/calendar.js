@@ -612,6 +612,22 @@
                                 capacityText.text(response.count + ' registered');
                             }
                         }
+
+                        /*
+                         * The 3.1.0 list card states what is LEFT rather than
+                         * what is filled, and has no bar. It carries its own
+                         * capacity so this can redo the sentence: someone who
+                         * has just taken the last place must not be left
+                         * reading "1 spot left".
+                         */
+                        var note = card.find('.uc-lc-note');
+                        if (note.length) {
+                            var capacity = parseInt(note.attr('data-capacity'), 10);
+                            if (capacity > 0) {
+                                var left = Math.max(0, capacity - response.count);
+                                note.text(left > 0 ? (left + (left === 1 ? ' spot left' : ' spots left')) : 'Fully booked');
+                            }
+                        }
                     }
                 } else {
                     $('#uc-rsvp-error').text(response.message || 'Something went wrong.').show();

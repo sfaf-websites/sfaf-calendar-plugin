@@ -1199,128 +1199,215 @@ class SFAF_Shortcodes {
     }
 
     /**
-     * Render a full event card
+     * Render a full event card. This is the LIST display mode and nothing else.
+     *
+     * ONE RENDERER, TWO DELIVERIES. This same method produces the cards for the
+     * [sfaf_calendar] shortcode on this site and for the embed on sfaf.org, via
+     * render_events(). There is no second code path and no embed-only variant,
+     * which is what makes the two identical by construction rather than by
+     * anyone remembering to change both. The one deliberate difference is the
+     * RSVP action, and it is a difference in ELEMENT, not in appearance: a
+     * modal cannot post cross-origin, so an embed sends the visitor to the
+     * event page where the form works. Both wear .uc-lc-btn and look the same.
+     *
+     * THE STRUCTURE, TOP TO BOTTOM.
+     * -----------------------------------------------------------------------
+     *   header    category chip + who is running it | day, month and date
+     *   media     inset, rounded, 150px, or a branded category tile
+     *   title     links to the event
+     *   summary   one clamped line
+     *   meta      time, place and series: icon then text, stacked
+     *   funding   only with a real goal, and only a bar with real figures
+     *   footer    what is left of the capacity | one action
+     *
+     * WHAT LEFT THE CARD, AND WHY IT IS NOT A DELETION. Add to Calendar, the
+     * share buttons and the reminder controls are gone from here and unchanged
+     * on the single event template, which renders every one of them. Nobody
+     * scanning a list of thirty events is adding the fourth one to their
+     * calendar without opening it first; those controls were charging every
+     * card a row of chrome to serve a decision that happens one page later.
+     *
+     * NO IMAGE GRADIENT. The old banner sat text over the image and needed a
+     * scrim to stay legible. Text now sits below the image on the card surface,
+     * so there is nothing to rescue and nothing to draw.
+     *
+     * CLASSES THAT LOOK COSMETIC AND ARE NOT. .uc-event-card, .uc-card-title,
+     * .uc-card-excerpt and .uc-card-meta are the hooks calendar.js and embed.js
+     * search and filter through (searchTextOf(), the category filter), and
+     * .uc-rsvp-btn with data-event-id is what opens the RSVP modal. They are
+     * kept on the rebuilt markup on purpose.
+     *
+     * @param int $post_id
+     * @return string
      */
     private function render_event_card( $post_id ) {
-        $date         = get_post_meta( $post_id, '_uc_event_date', true );
-        $start_time   = get_post_meta( $post_id, '_uc_start_time', true );
-        $end_time     = get_post_meta( $post_id, '_uc_end_time', true );
-        $location     = get_post_meta( $post_id, '_uc_location', true );
-        $recurrence   = get_post_meta( $post_id, '_uc_recurrence', true );
+        $date       = get_post_meta( $post_id, '_uc_event_date', true );
+        $start_time = get_post_meta( $post_id, '_uc_start_time', true );
+        $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
+        $location   = get_post_meta( $post_id, '_uc_location', true );
 
         $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
         $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
 
-        $cat_slug  = ! empty( $categories ) ? $categories[0]->slug : '';
-        $cat_name  = ! empty( $categories ) ? $categories[0]->name : '';
-        $cat_color = ! empty( $categories ) ? sfaf_category_color( $categories[0]->term_id ) : '#16BECF';
-        $org_name  = ! empty( $organizers ) ? $organizers[0]->name : '';
+        $has_cat   = ( ! is_wp_error( $categories ) && ! empty( $categories ) );
+        $cat_slug  = $has_cat ? $categories[0]->slug : '';
+        $cat_name  = $has_cat ? $categories[0]->name : '';
+        $cat_color = $has_cat ? sfaf_category_color( $categories[0]->term_id ) : sfaf_default_category_color();
+        $shades    = sfaf_category_shades( $cat_color );
 
-        $date_ts   = strtotime( $date );
-        $month     = date( 'M', $date_ts );
-        $day       = date( 'j', $date_ts );
-        $weekday   = date( 'D', $date_ts );
+        /*
+         * WHO IS RUNNING THIS. An imported event names the platform it came
+         * from, because that is the honest answer to "whose event is this".
+         * The organizer taxonomy on an Eventbrite import is ours, not theirs,
+         * and is frequently empty. A native event names its organizer.
+         */
+        $source = sfaf_event_source_label( $post_id );
+        $byline = ( '' !== $source )
+            ? $source
+            : ( ( ! is_wp_error( $organizers ) && ! empty( $organizers ) ) ? $organizers[0]->name : '' );
 
-        $recurrence_labels = array(
-            'daily'    => 'Daily',
-            'weekly'   => 'Weekly',
-            'biweekly' => 'Every 2 Weeks',
-            'monthly'  => 'Monthly',
-        );
+        // strtotime( '' ) is false, not 0, and date() on false silently means
+        // "now". That is how an undated event would have printed today's
+        // date as its own. An undated event renders no date block.
+        $date_ts = $date ? strtotime( $date ) : false;
 
-        // Action buttons (each helper respects its display toggle).
-        $actions = sfaf_add_to_calendar( $post_id ) . sfaf_reminders_button( $post_id ) . sfaf_social_share_buttons( $post_id, true );
-
-        // Date and time as one phrase, because that is how it is read: "Sat 15
-        // Aug, 6:00 PM". It leads the meta row on an events calendar, ahead of
-        // organizer, because it is the thing a visitor is actually deciding on.
-        $when = $date_ts ? date_i18n( 'D j M', $date_ts ) : '';
+        $time = '';
         if ( $start_time ) {
-            $when .= ( '' !== $when ? ', ' : '' ) . date_i18n( 'g:i A', strtotime( $start_time ) );
+            $time = date_i18n( 'g:i A', strtotime( $start_time ) );
             if ( $end_time ) {
-                $when .= ' to ' . date_i18n( 'g:i A', strtotime( $end_time ) );
+                $time .= ' to ' . date_i18n( 'g:i A', strtotime( $end_time ) );
             }
         }
 
+        $permalink = get_permalink( $post_id );
+
+        /*
+         * THE ONE ACTION, AND THE LABEL THAT NAMES IT.
+         *
+         * A card gets exactly one button, and the word on it is what the
+         * button does: RSVP where the event takes registrations, Donate for a
+         * GoFundMe Pro appeal, View event for everything else. The arrow beside
+         * it is decorative and only appears on hover, and there is no hover on
+         * a touch screen, so the label alone has to carry the meaning, which
+         * is why none of these three is "Learn more".
+         */
+        $rsvp_open = ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) === '1' && sfaf_show_feature( $post_id, 'rsvp' ) );
+        $donate_url = get_post_meta( $post_id, '_uc_gofundme_url', true );
+        $can_donate = ( $donate_url && sfaf_show_feature( $post_id, 'donate' ) );
+
+        /*
+         * WHAT IS LEFT, NOT WHAT HAS GONE. "8 spots left" is the number a
+         * visitor is deciding on; "12/20 spots filled" makes them do the
+         * subtraction. Only native events have a capacity we hold, an
+         * imported event's remaining places live on the platform that sold
+         * them, and we would be guessing.
+         */
+        $note     = '';
+        $capacity = 0;
+        if ( $rsvp_open && '' === $source ) {
+            $capacity = (int) get_post_meta( $post_id, '_uc_capacity', true );
+            if ( $capacity > 0 ) {
+                $left = max( 0, $capacity - sfaf_get_rsvp_count( $post_id ) );
+                $note = ( $left > 0 )
+                    ? sprintf( _n( '%s spot left', '%s spots left', $left ), number_format_i18n( $left ) )
+                    : 'Fully booked';
+            }
+        }
+
+        $summary = wp_trim_words( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ), 25 );
+
         ob_start();
         ?>
-        <div class="uc-event-card" data-category="<?php echo esc_attr( $cat_slug ); ?>">
-            <?php
-            /*
-             * FULL-WIDTH BANNER, NOT A CROPPED BLOCK.
-             *
-             * The old card put a 150px 4:3 thumbnail on the left. The branded
-             * placeholder is a 1600x900 SVG with preserveAspectRatio="slice",
-             * so squeezing it into 4:3 cut both sides off the centred label and
-             * rendered "Program Groups" as "gram Gro". Roughly half of imported
-             * GoFundMe Pro events will never have a real image, because their
-             * API does not expose one, so that placeholder is not an edge case.
-             *
-             * At full card width in its own 16:9 ratio the SVG fits exactly,
-             * nothing is sliced, and the placeholder reads as a deliberate
-             * branded banner rather than a failed image.
-             */
-            ?>
-            <div class="uc-card-banner">
-                <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" tabindex="-1" aria-hidden="true">
-                    <?php echo sfaf_event_thumbnail( $post_id, 'large' ); ?>
-                </a>
-                <span class="uc-card-datechip">
-                    <span class="uc-card-month"><?php echo esc_html( $month ); ?></span>
-                    <span class="uc-card-day"><?php echo esc_html( $day ); ?></span>
-                    <span class="uc-card-weekday"><?php echo esc_html( $weekday ); ?></span>
-                </span>
+        <div class="uc-event-card uc-lc" data-category="<?php echo esc_attr( $cat_slug ); ?>"
+             style="--uc-cat: <?php echo esc_attr( $cat_color ); ?>; --uc-cat-tint: <?php echo esc_attr( $shades['tint'] ); ?>; --uc-cat-media: <?php echo esc_attr( $shades['media'] ); ?>; --uc-cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>">
+
+            <div class="uc-lc-head">
+                <div class="uc-lc-ident">
+                    <?php if ( '' !== $cat_name ) : ?>
+                        <span class="uc-lc-chip"><?php echo esc_html( $cat_name ); ?></span>
+                    <?php endif; ?>
+                    <?php if ( '' !== $byline ) : ?>
+                        <span class="uc-lc-byline"><?php echo esc_html( $byline ); ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php if ( $date_ts ) : ?>
+                    <div class="uc-lc-date">
+                        <span class="uc-lc-dow"><?php echo esc_html( date_i18n( 'D', $date_ts ) ); ?></span>
+                        <span class="uc-lc-md"><?php echo esc_html( date_i18n( 'M j', $date_ts ) ); ?></span>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <div class="uc-card-accent" style="background: <?php echo esc_attr( $cat_color ); ?>"></div>
+            <?php
+            /*
+             * The image is inset inside the card padding and rounded, not bled
+             * to the card edge: it is one element of the card, not its lid.
+             * Wrapped in a link so the picture is clickable, but hidden from
+             * assistive tech: the title below is the same destination and is
+             * the one that reads properly.
+             */
+            ?>
+            <div class="uc-lc-media">
+                <a href="<?php echo esc_url( $permalink ); ?>" tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id, $cat_name ); ?></a>
+            </div>
 
-            <div class="uc-card-content">
-                <div class="uc-card-badges">
-                    <?php if ( $cat_name ) : ?>
-                        <span class="uc-badge" style="--badge-color: <?php echo esc_attr( $cat_color ); ?>">
-                            <?php echo esc_html( $cat_name ); ?>
-                        </span>
-                    <?php endif; ?>
-                    <?php if ( $recurrence && isset( $recurrence_labels[ $recurrence ] ) ) : ?>
-                        <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_labels[ $recurrence ] ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( sfaf_is_galaxy_need( $post_id ) ) : ?>
-                        <span class="uc-badge uc-badge-volunteer"><?php echo sfaf_icon( 'handshake' ); ?> Volunteer</span>
-                    <?php endif; ?>
-                </div>
+            <h3 class="uc-card-title uc-lc-title">
+                <a href="<?php echo esc_url( $permalink ); ?>"><?php echo esc_html( get_the_title( $post_id ) ); ?></a>
+            </h3>
 
-                <h3 class="uc-card-title">
-                    <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>"><?php echo esc_html( get_the_title( $post_id ) ); ?></a>
-                </h3>
+            <?php if ( '' !== $summary ) : ?>
+                <p class="uc-card-excerpt uc-lc-summary"><?php echo esc_html( $summary ); ?></p>
+            <?php endif; ?>
 
-                <p class="uc-card-excerpt"><?php echo esc_html( wp_trim_words( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ), 25 ) ); ?></p>
+            <div class="uc-card-meta uc-lc-meta">
+                <?php if ( '' !== $time ) : ?>
+                    <span class="uc-meta-item"><?php echo sfaf_icon( 'clock', array( 'size' => '15px' ) ); ?><span><?php echo esc_html( $time ); ?></span></span>
+                <?php endif; ?>
+                <?php if ( $location ) : ?>
+                    <span class="uc-meta-item"><?php echo sfaf_icon( 'pin', array( 'size' => '15px' ) ); ?><span><?php echo esc_html( $location ); ?></span></span>
+                <?php endif; ?>
+                <?php
+                // Omitted entirely when the event is in no series. An empty
+                // row labelled "Event Series" was the thing this replaces.
+                $series = sfaf_series_dates_link( $post_id );
+                if ( '' !== $series ) {
+                    echo '<span class="uc-meta-item">' . sfaf_icon( 'repeat', array( 'size' => '15px' ) ) . $series . '</span>';
+                }
+                ?>
+            </div>
 
-                <div class="uc-card-meta">
-                    <?php if ( '' !== $when ) : ?>
-                        <span class="uc-meta-item uc-meta-when"><?php echo sfaf_icon( 'clock' ); ?> <?php echo esc_html( $when ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( $location ) : ?>
-                        <span class="uc-meta-item"><?php echo sfaf_icon( 'pin' ); ?> <?php echo esc_html( $location ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( $org_name ) : ?>
-                        <span class="uc-meta-item uc-meta-organizer"><?php echo esc_html( $org_name ); ?></span>
-                    <?php endif; ?>
-                </div>
+            <?php echo sfaf_fundraising_progress( $post_id ); ?>
+
+            <div class="uc-lc-foot">
+                <?php if ( '' !== $note ) : ?>
+                    <?php
+                    /*
+                     * data-capacity is what lets calendar.js redo this sentence
+                     * after a successful RSVP from the list. The old card had a
+                     * capacity bar the modal updated in place; without the
+                     * capacity here, a visitor who has just taken the last
+                     * place would still be reading "1 spot left".
+                     */
+                    ?>
+                    <span class="uc-lc-note" data-capacity="<?php echo (int) $capacity; ?>"><?php echo esc_html( $note ); ?></span>
+                <?php endif; ?>
 
                 <?php
-                $series_link = sfaf_series_link( $post_id );
-                if ( $series_link ) {
-                    echo '<div class="uc-card-series">' . $series_link . '</div>';
-                }
+                $arrow = '<span class="uc-lc-arrow" aria-hidden="true">' . sfaf_icon( 'arrow', array( 'size' => '15px' ) ) . '</span>';
 
-                // Donate block + Galaxy volunteer block + RSVP block (helpers handle visibility).
-                echo sfaf_donate_block( $post_id );
-                echo sfaf_galaxy_block( $post_id );
-                echo sfaf_rsvp_block( $post_id );
-
-                if ( trim( $actions ) !== '' ) :
-                ?>
-                    <div class="uc-card-actions"><?php echo $actions; ?></div>
+                if ( $rsvp_open ) :
+                    if ( sfaf_is_embed_context() ) :
+                        ?>
+                        <a class="uc-lc-btn uc-embed-link" href="<?php echo esc_url( $permalink ); ?>"><span class="uc-lc-btn-label">RSVP</span><?php echo $arrow; ?></a>
+                    <?php else : ?>
+                        <button type="button" class="uc-lc-btn uc-rsvp-btn" data-event-id="<?php echo (int) $post_id; ?>"><span class="uc-lc-btn-label">RSVP</span><?php echo $arrow; ?></button>
+                        <?php
+                    endif;
+                elseif ( $can_donate ) :
+                    ?>
+                    <a class="uc-lc-btn" href="<?php echo esc_url( $donate_url ); ?>" target="_blank" rel="noopener noreferrer"><span class="uc-lc-btn-label">Donate</span><?php echo $arrow; ?></a>
+                <?php else : ?>
+                    <a class="uc-lc-btn" href="<?php echo esc_url( $permalink ); ?>"><span class="uc-lc-btn-label">View event</span><?php echo $arrow; ?></a>
                 <?php endif; ?>
             </div>
         </div>

@@ -181,43 +181,148 @@
 .uc-event-list { display: flex; flex-direction: column; gap: 14px; }
 
 /* Event card */
-/* ---------------------------------------------------------------------------
- * LIST CARD (2.10.0 redesign)
+/* ===========================================================================
+ * LIST CARD (3.1.0 redesign)
  *
- * One card per row, full width, with the image as a banner strip across the
- * top rather than a 150px block cropped on the left.
+ * SCOPE. These rules are the LIST display mode and nothing else. The month
+ * grid tiles, the sidebar rows and the mobile day-detail list have their own
+ * selectors further down and are deliberately untouched.
  *
- * The crop was the bug. The branded placeholder is a 1600x900 SVG with
- * preserveAspectRatio="slice", so forcing it into a 4:3 box cut both sides off
- * the centred label and rendered "Program Groups" as "gram Gro". Roughly half
- * of imported GoFundMe Pro events will never have a real image, because their
- * API does not expose one, so that placeholder is the normal case rather than
- * a rare fallback. At full width in its own 16:9 ratio nothing is sliced and it
- * reads as a deliberate branded banner.
- * ------------------------------------------------------------------------ */
-.uc-event-card { display: block; padding: 0; background: #fff; border-radius: 12px; border: 1px solid var(--uc-border); position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; }
-.uc-event-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.06); transform: translateY(-1px); }
+ * EVERY RULE IS SCOPED TO .uc-calendar, AND THAT IS NOT TIDINESS. The same
+ * markup renders inside sfaf.org's stylesheet through the embed, where an
+ * unstyled property does not mean "unset", it means "whatever the host theme
+ * says". So this card states its colours, sizes, link decoration, image
+ * sizing and button appearance rather than inheriting any of them. Scoping to
+ * .uc-calendar puts each rule at (0,2,x) or better against a theme's typical
+ * (0,1,x), which wins on specificity. There is no !important anywhere in
+ * here, so a host that genuinely needs to override us still can.
+ *
+ * THE COLOUR CUSTOM PROPERTIES come from the card's own style attribute:
+ * --uc-cat, --uc-cat-tint, --uc-cat-media and --uc-cat-ink, resolved per
+ * category in sfaf_category_shades(). The fallbacks below are teal's, so a
+ * card that somehow arrives without them is still legible rather than
+ * transparent-on-transparent.
+ *
+ * NO IMAGE SCRIM. The old banner sat a date chip over the photo and needed a
+ * gradient underneath it to stay readable. Nothing sits on the image now, so
+ * there is nothing to rescue: the gradient is gone rather than reduced.
+ * ======================================================================== */
+.uc-calendar .uc-event-card { display: block; padding: 18px; background: #fff; border-radius: 14px; border: 1px solid var(--uc-border); position: relative; overflow: hidden; transition: box-shadow 0.18s ease, border-color 0.18s ease; }
 
-.uc-card-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 12px 0 0 12px; z-index: 2; }
+/* HOVER MOVES NOTHING. The old card lifted itself 1px, which is a paint
+   change on one card but a moving target for the pointer that is on it. The
+   only hover effects on this card are colour and shadow; the single thing
+   that changes size is the arrow inside the button, and it grows into the
+   footer's own free space. No card ever changes row height, and no card ever
+   shifts its neighbours. */
+.uc-calendar .uc-event-card:hover { box-shadow: 0 6px 22px rgba(0,0,0,0.07); border-color: #D5D9E0; transform: none; }
 
-/* Banner strip. 16/9 matches the placeholder's own ratio exactly, so it is
-   never sliced; a real photo is cover-cropped to the same shape. */
-.uc-card-banner { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 260px; overflow: hidden; background: var(--uc-bg); }
-.uc-card-banner > a { display: block; width: 100%; height: 100%; }
-.uc-card-banner img, .uc-card-banner svg, .uc-card-banner .uc-thumb-svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* --- Header row: who and when ------------------------------------------- */
+.uc-calendar .uc-lc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.uc-calendar .uc-lc-ident { min-width: 0; }
 
-/* Date chip, floated on the banner so the banner keeps its full width. */
-.uc-card-datechip { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: block; min-width: 58px; padding: 6px 10px 7px; text-align: center; background: rgba(255,255,255,0.96); border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }
-.uc-card-month { display: block; font-size: 11px; font-weight: 700; color: var(--uc-teal-text); text-transform: uppercase; letter-spacing: 0.5px; }
-.uc-card-day { display: block; font-size: 24px; font-weight: 800; color: var(--uc-text); line-height: 1.1; }
-.uc-card-weekday { display: block; font-size: 10px; color: var(--uc-secondary); text-transform: uppercase; letter-spacing: .04em; }
+/* The chip is a coloured pill with words in it, so it has to be readable as
+   text: category tint behind, the darkest stop of that same colour family in
+   front. Never black, never grey: the colour IS the information. Measured
+   pairs and their ratios are in sfaf_category_shades(). */
+.uc-calendar .uc-lc-chip { display: inline-block; max-width: 100%; padding: 3px 10px; border-radius: 99px; background: var(--uc-cat-tint, #E3F7F9); color: var(--uc-cat-ink, #0C666F); font-family: var(--uc-font-heading); font-size: 12px; font-weight: 600; line-height: 1.5; letter-spacing: 0.01em; }
+.uc-calendar .uc-lc-byline { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
 
-/* Card content */
-.uc-card-content { padding: 16px 20px 20px; min-width: 0; }
+/* --uc-secondary, not --uc-muted: muted is #9CA3AF, which is 2.54:1 on white
+   and fails as text at any size. Secondary is 4.83:1. */
+.uc-calendar .uc-lc-date { flex-shrink: 0; text-align: right; }
+.uc-calendar .uc-lc-dow { display: block; font-size: 11px; font-weight: 600; line-height: 1.4; letter-spacing: 0.09em; text-transform: uppercase; color: var(--uc-secondary); }
+.uc-calendar .uc-lc-md { display: block; font-size: 26px; font-weight: 500; line-height: 1.08; color: var(--uc-text); white-space: nowrap; }
 
-.uc-card-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+/* --- Media: inset and rounded, not bled to the card edge ----------------- */
+.uc-calendar .uc-lc-media { margin-top: 14px; height: 150px; border-radius: 10px; overflow: hidden; background: var(--uc-bg); }
+.uc-calendar .uc-lc-media > a { display: block; width: 100%; height: 100%; }
+.uc-calendar .uc-event-card .uc-lc-img { display: block; width: 100%; max-width: none; height: 100%; object-fit: cover; border: 0; border-radius: 0; }
+
+/* THE PLACEHOLDER IS A DELIBERATE TILE, NOT A FAILED IMAGE. Roughly half of
+   imported GoFundMe Pro events will never have a picture, because their API
+   does not expose one, so this is the normal case and has to look like it was
+   meant. Category tint, the category's icon, the category's name. */
+.uc-calendar .uc-lc-ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 100%; padding: 12px; text-align: center; background: var(--uc-cat-media, #D5F3F6); color: var(--uc-cat-ink, #0C666F); }
+.uc-calendar .uc-lc-ph-icon { display: block; line-height: 0; }
+.uc-calendar .uc-lc-ph-name { display: block; font-family: var(--uc-font-heading); font-size: 14px; font-weight: 600; line-height: 1.3; letter-spacing: 0.02em; }
+
+/* --- Title and summary --------------------------------------------------- */
+.uc-calendar .uc-event-card .uc-card-title { margin: 14px 0 0; font-family: var(--uc-font-heading); font-size: 17px; font-weight: 500; line-height: 1.35; color: var(--uc-text); }
+.uc-calendar .uc-event-card .uc-card-title a { color: inherit; text-decoration: none; }
+.uc-calendar .uc-event-card .uc-card-title a:hover { color: var(--uc-teal-text); text-decoration: underline; }
+
+/* One line, clamped. A summary that wraps to three lines on one card and one
+   on the next turns a scannable column into a ragged one. */
+.uc-calendar .uc-event-card .uc-card-excerpt { display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin: 5px 0 0; font-family: var(--uc-font-body); font-size: 13px; line-height: 1.5; color: var(--uc-secondary); }
+
+/* --- Meta rows: icon then text, stacked ---------------------------------- */
+.uc-calendar .uc-event-card .uc-card-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--uc-secondary); }
+.uc-calendar .uc-event-card .uc-meta-item { display: flex; align-items: flex-start; gap: 7px; white-space: normal; font-weight: 400; color: var(--uc-secondary); }
+.uc-calendar .uc-event-card .uc-meta-item > .sfaf-icon { margin-top: 2px; color: var(--uc-cat-ink, var(--uc-teal-text)); }
+
+/* The series row names the series, so the link makes sense read out of
+   context. "see all dates" is the promise; the name is what it is about. */
+.uc-calendar .uc-event-card .uc-lc-series { color: var(--uc-teal-text); text-decoration: none; }
+.uc-calendar .uc-event-card .uc-lc-series:hover { text-decoration: underline; }
+.uc-calendar .uc-event-card .uc-lc-series-name { font-weight: 600; }
+.uc-calendar .uc-event-card .uc-lc-series-all { color: var(--uc-secondary); font-weight: 400; }
+.uc-calendar .uc-event-card .uc-lc-series-all::before { content: ", "; }
+
+/* --- Fundraising progress ------------------------------------------------ */
+.uc-calendar .uc-event-card .uc-lc-fund { margin-top: 12px; }
+.uc-calendar .uc-event-card .uc-lc-fund-bar { display: block; height: 4px; border-radius: 99px; background: #E5E7EB; overflow: hidden; }
+.uc-calendar .uc-event-card .uc-lc-fund-fill { display: block; height: 100%; border-radius: 99px; background: var(--uc-green); }
+.uc-calendar .uc-event-card .uc-lc-fund-text { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
+
+/* --- Footer: supporting text left, one action right ---------------------- */
+.uc-calendar .uc-event-card .uc-lc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--uc-border); }
+
+/* Truncates rather than wraps, so the button growing on hover can never push
+   this onto a second line and change the card's height. */
+.uc-calendar .uc-event-card .uc-lc-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
+
+/* THE BUTTON: OUTLINE, AND THE MEASUREMENT THAT DECIDED IT.
+ *
+ * The brief asked for a solid fill in the SFAF brand colour IF white text on
+ * it clears WCAG AA at this size. It does not. White on brand teal #16BECF is
+ * 2.26:1; the label is 13px, which is normal text, which needs 4.5:1. It is
+ * not close, and no weight or size change inside a list card gets it there.
+ *
+ * So this is the outline treatment the brief specifies for that case: 1px
+ * brand teal border, label in --uc-teal-text #0E818C at 4.63:1 on white, and
+ * the brand teal arriving as a background fill on hover and focus, where the
+ * label switches to brand Dark Gray #373433 at 5.47:1 on that fill. Every
+ * state is measured and every state passes. */
+.uc-calendar .uc-event-card .uc-lc-btn { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: auto; padding: 8px 16px; -webkit-appearance: none; appearance: none; border: 1px solid var(--uc-teal); border-radius: 99px; background: #fff; color: var(--uc-teal-text); font-family: var(--uc-font-heading); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: center; text-transform: none; letter-spacing: normal; text-decoration: none; white-space: nowrap; box-shadow: none; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease; }
+.uc-calendar .uc-event-card .uc-lc-btn:hover,
+.uc-calendar .uc-event-card .uc-lc-btn:focus-visible { background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal); }
+
+/* THE ARROW SLIDES IN, AND THE BUTTON GROWS LEFTWARD.
+ *
+ * It starts at zero width and zero opacity, nudged 6px left, and animates to
+ * its full 15px on hover and on keyboard focus. Because the button is the
+ * right-hand item in a space-between footer, the extra width is taken from
+ * the footer's own slack on the left: the right edge never moves, the row
+ * never changes height, and no neighbouring card is touched.
+ *
+ * It is aria-hidden and purely decorative. There is no hover on a touch
+ * screen, so the label (RSVP, Donate, View event) carries the meaning by
+ * itself and the arrow only ever adds emphasis. Pure CSS, no JS. */
+.uc-calendar .uc-event-card .uc-lc-arrow { display: inline-flex; align-items: center; max-width: 0; margin-left: 0; opacity: 0; overflow: hidden; transform: translateX(-6px); transition: max-width 0.18s ease, opacity 0.18s ease, transform 0.18s ease, margin-left 0.18s ease; }
+.uc-calendar .uc-event-card .uc-lc-btn:hover .uc-lc-arrow,
+.uc-calendar .uc-event-card .uc-lc-btn:focus-visible .uc-lc-arrow { max-width: 18px; margin-left: 6px; opacity: 1; transform: translateX(0); }
+
+/* FOCUS IS VISIBLE, NOT JUST HOVER. Every interactive thing on the card takes
+   the same ring, so a keyboard user can see where they are on the image link,
+   the title, the series link and the button alike. */
+.uc-calendar .uc-event-card a:focus-visible,
+.uc-calendar .uc-event-card button:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px; }
+.uc-calendar .uc-event-card .uc-lc-btn:focus-visible { border-radius: 99px; }
+
+/* Badges survive for the single event template, which still uses them. */
 .uc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--badge-color, var(--uc-teal)) 12%, transparent); color: var(--badge-color, var(--uc-teal)); }
-.uc-badge-recurrence { background: #f3f4f6; color: var(--uc-muted); font-size: 11px; --badge-color: var(--uc-muted); }
+.uc-badge-recurrence { background: #f3f4f6; color: var(--uc-secondary); font-size: 11px; --badge-color: var(--uc-secondary); }
 
 .uc-card-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 6px; line-height: 1.3; }
 .uc-card-title a { color: inherit; text-decoration: none; }
@@ -225,13 +330,8 @@
 
 .uc-card-excerpt { font-size: 14px; color: var(--uc-secondary); margin: 0 0 10px; line-height: 1.5; }
 
-/* Meta row. Date and time lead: on an events calendar that is the thing a
-   visitor is deciding on, ahead of organizer. It is also the only item allowed
-   to be visually stronger than the rest, for the same reason. */
 .uc-card-meta { display: flex; gap: 16px; font-size: 13px; color: var(--uc-secondary); flex-wrap: wrap; align-items: center; }
 .uc-meta-item { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
-.uc-meta-when { font-weight: 700; color: var(--uc-text); }
-.uc-meta-organizer { color: var(--uc-teal-text); white-space: normal; }
 
 /* RSVP section */
 .uc-card-rsvp { margin-top: 14px; padding: 12px 14px; background: var(--uc-bg); border-radius: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -300,9 +400,6 @@
 .uc-compact-title { font-size: 14px; font-weight: 600; color: var(--uc-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .uc-compact-meta { font-size: 12px; color: var(--uc-muted); margin-top: 2px; }
 
-/* Card actions row (calendar, reminders, share) */
-.uc-card-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--uc-border); }
-
 /* Social share */
 .uc-share { display: flex; align-items: center; gap: 6px; }
 .uc-share-label { font-size: 12px; color: var(--uc-muted); font-weight: 600; }
@@ -340,8 +437,10 @@
 .uc-reminder-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .uc-reminder-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
 
-/* Card style variations (set via Branding) */
-.sfaf-card-minimal .uc-event-card { border-color: transparent; box-shadow: none; background: transparent; padding-left: 12px; }
+/* Card style variations (set via Branding). The minimal variant no longer
+   nudges its left padding: it was aligning content with the 4px category
+   accent bar, and that bar went with the 3.1.0 card. */
+.sfaf-card-minimal .uc-event-card { border-color: transparent; box-shadow: none; background: transparent; }
 .sfaf-card-minimal .uc-event-card:hover { box-shadow: none; transform: none; }
 .sfaf-card-shadow .uc-event-card { border-color: transparent; box-shadow: 0 6px 24px rgba(0,0,0,0.08); }
 
@@ -376,15 +475,15 @@
 @media (max-width: 600px) {
     .uc-filters { flex-direction: column; align-items: stretch; }
     .uc-search { width: 100%; }
-    .uc-card-day { font-size: 20px; }
-    .uc-card-meta { flex-direction: column; gap: 4px; }
+    .uc-calendar .uc-lc-md { font-size: 22px; }
+    .uc-calendar .uc-lc-media { height: 130px; }
     .uc-single-grid { grid-template-columns: 1fr; }
     .uc-single-sidebar { position: static; }
     .uc-single-title { font-size: 26px; }
 }
 
-/* Series link + list */
-.uc-card-series { margin: 8px 0 4px; }
+/* Series link + list. .uc-series-link is the single event template's badge;
+   the list card has its own row, styled with the card above. */
 .uc-series-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); background: rgba(22,190,207,0.08); padding: 3px 10px; border-radius: 99px; text-decoration: none; }
 .uc-series-link:hover { background: rgba(22,190,207,0.16); }
 .uc-single-series-link { margin: 8px 0 0; }
@@ -405,9 +504,8 @@
 .uc-galaxy-btn { padding: 8px 18px; border-radius: 8px; background: var(--uc-purple); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .uc-galaxy-btn:hover { filter: brightness(0.95); color: #fff; }
 
-/* Compact / single-event thumbnails. The list card's own image is the
-   full-width banner at the top of this file; .uc-card-thumb is gone with the
-   cropped left-hand block it styled. */
+/* Compact / single-event thumbnails. The list card's own image is the inset
+   .uc-lc-media box at the top of this file and takes no rules from here. */
 .uc-compact-thumb { width: 56px; height: 56px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--uc-bg); }
 .uc-compact-thumb img, .uc-compact-thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
 .uc-single-image { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
@@ -619,13 +717,18 @@ a.uc-rsvp-btn { display: inline-flex; align-items: center; justify-content: cent
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
     .uc-month-head { align-items: flex-start; }
-    .uc-card-banner { aspect-ratio: 16 / 9; max-height: 200px; }
 }
 
 
+/* The arrow still appears on hover and focus, because it is an affordance
+   rather than an ornament. It just arrives at once instead of sliding. */
 @media (prefers-reduced-motion: reduce) {
     .uc-event-card { transition: none; }
     .uc-event-card:hover { transform: none; }
+    .uc-calendar .uc-event-card,
+    .uc-calendar .uc-event-card .uc-lc-btn,
+    .uc-calendar .uc-event-card .uc-lc-arrow { transition: none; }
+    .uc-calendar .uc-event-card .uc-lc-arrow { transform: none; }
 }
 
 /* ---------------------------------------------------------------------------
