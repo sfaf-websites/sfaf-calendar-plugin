@@ -1630,10 +1630,15 @@ function sfaf_event_map_html( $post_id ) {
                 <div class="uc-map-frame" data-uc-map-frame hidden></div>
                 <div class="uc-map-placeholder" data-uc-map-placeholder>
                     <p class="uc-map-note">The map is not loaded. Pressing Show map loads it from Google, which tells Google you visited this page.</p>
-                    <button type="button" class="uc-actionbtn uc-actionbtn-secondary uc-map-btn" data-uc-map-show>
-                        <span class="uc-actionbtn-label">Show map</span>
-                        <span class="uc-actionbtn-arrow" aria-hidden="true"><?php echo sfaf_icon( 'arrow', array( 'size' => '15px' ) ); ?></span>
-                    </button>
+                    <?php // Same button family as everything else, through the
+                          // same helper. No href, so it renders as a button for
+                          // calendar.js to pick up. ?>
+                    <?php echo sfaf_action_button( array(
+                        'label'   => 'Show map',
+                        'variant' => 'secondary',
+                        'class'   => 'uc-map-btn',
+                        'attrs'   => array( 'data-uc-map-show' => '1' ),
+                    ) ); ?>
                 </div>
             </div>
         <?php endif; ?>
