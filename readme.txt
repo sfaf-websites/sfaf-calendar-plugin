@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.4.0
+Stable tag: 3.5.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.5.0 =
+
+**Teams, a proper notification picker, and registrations reached through their event.**
+
+**A team is a name and a set of people, and an event stores the team rather than the people.** Under Users you can create a team, rename it, choose who is in it and delete it. When an event notifies a team, what gets saved is the team, and who that means is worked out at the moment the reminder is sent. So taking somebody out of a team stops their notifications for every event naming it straight away, with nothing to go and correct, and deleting their account does the same. Adding somebody to a team puts them on events that were set up before they joined, which is deliberate: it is what belonging to a team means, and the alternative is reopening a term of events to add one person. Nothing is snapshotted anywhere, not addresses, not membership, not a resolved list.
+
+**Deleting a team that an event still names is refused, and the events are listed.** The other option was to warn and delete anyway, which cannot be made safe: the event would keep a reference to nothing, and a notification that silently stops going out looks exactly like one that is still going. Refusing is the only version where nothing quietly breaks. The message names the events with links, so you are told what to change rather than just told no. Because a team in use cannot be deleted, no event can ever be left holding a team that does not exist.
+
+**The per-event notification list is now one control with two tabs.** Individuals has a type-to-filter box, which the list needed before it grows to a few hundred names. Teams sits beside it. Both can be used at once, and the summary line says what you have chosen and what it comes to: "1 individual, Philanthropy team (2 people). 3 people in total." The total is a count of distinct addresses, not a sum, so somebody chosen individually who is also in a chosen team is one person and gets one email. Filtering only ever hides rows, so searching for one name can never quietly deselect the people chosen a minute ago. Free-text addresses for people outside the calendar are unchanged and still work. It is built in plain PHP, CSS and JavaScript, uses a real tablist with arrow-key navigation and visible focus, and without JavaScript it degrades to a disclosure holding both lists.
+
+**The three layers of reminder recipients are unchanged.** Registrations, "Get Reminders" subscribers and the notification list are still resolved separately and still deduplicated once; teams slot into the notification-list layer and nothing else moved. The send-once guarantees are untouched.
+
+**RSVPs are reached through their event.** The RSVP count on the Events list is now a link to that event's registrations, with Export CSV. The standalone RSVPs tab has gone: a flat list of every registration ever taken, across every event, is not a question anybody has.
+
+**Registrations for deleted events are still reachable, which is why the screen behind that tab remains.** Those rows are kept on purpose, with the event title snapshotted at deletion so they read "Santa Skivvies (deleted)", and they have no event to be clicked through from. The Events list carries a link to them at the foot of the page whenever any exist, saying how many, and the registrations screen has a view for exactly them. Nothing about the snapshot behaviour changed.
+
+**Security fix: the registrations screen now checks permissions.** It relied on not appearing in the sidebar, which is not a permission, so a contributor who typed the URL could read every registration on the calendar. It is now gated on the same capability as the CSV export beside it, which is where the gate always was. Nobody who could not already export this data has gained access to it.
+
+**The CSV export says what it is carrying.** RSVP data covers HIV, substance use and trans health programming, and knowing somebody attended can disclose things they did not choose to disclose. The registrations screen now states that above the table, next to the button that turns it into a file with no login in front of it. The export gains nothing new: the same rows, the same capability, the same columns including the event title. The filename now carries the event, so a folder of exports is identifiable without opening any of them.
 
 = 3.4.0 =
 

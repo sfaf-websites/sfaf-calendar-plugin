@@ -346,6 +346,22 @@ class SFAF_RSVP {
             $params[] = $search;
         }
 
+        /*
+         * ROWS WHOSE EVENT HAS GONE.
+         *
+         * These are the reason a list of every registration still exists at
+         * all. They cannot be reached through an event, because there is no
+         * event to click, so without a way to ask for them specifically they
+         * would be findable only by scrolling the whole table.
+         *
+         * The test is on the JOIN, not on a flag: an orphan is a row whose
+         * event_id matches no post, which is the definition and needs nothing
+         * written down at deletion time to stay true.
+         */
+        if ( ! empty( $args['orphans'] ) ) {
+            $where .= " AND p.ID IS NULL";
+        }
+
         // Aliased to post_title, NOT to event_title: the table now has its own
         // event_title column holding the snapshot taken when an event was
         // deleted, and aliasing the join over the top of it would null the
@@ -361,6 +377,23 @@ class SFAF_RSVP {
         }
 
         return $wpdb->get_results( $sql );
+    }
+
+    /**
+     * How many registrations belong to an event that no longer exists.
+     *
+     * Drives the link to them from the Events list, which appears only when
+     * there is something behind it. A permanent link to an empty screen is
+     * clutter; a link that appears when history exists is a signpost.
+     *
+     * @return int
+     */
+    public static function orphan_count() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'uc_rsvps';
+        return (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM $table r LEFT JOIN {$wpdb->posts} p ON r.event_id = p.ID WHERE p.ID IS NULL"
+        );
     }
 
     /**

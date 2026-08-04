@@ -342,10 +342,31 @@ class SFAF_Reminders {
 
     /**
      * The event's notification list: the author (unless they removed
-     * themselves), any portal users added, and any free-text addresses.
+     * themselves), any portal users added, anyone in a team the event names,
+     * and any free-text addresses.
      *
      * This is a notification list and nothing else. It confers no ownership and
      * changes nothing about who may edit the event.
+     *
+     * RESOLVED HERE, EVERY TIME, AND NEVER STORED.
+     *
+     * The event holds user ids, team ids and typed addresses. It does not hold
+     * a recipient list, and nothing anywhere writes one down. This function is
+     * what turns those references into people, it runs when the mail is about
+     * to go out, and it is also what the editor calls to show a manager who is
+     * currently on the list. One computation, two callers, so the number on
+     * the screen and the people who get mail cannot drift apart.
+     *
+     * That is why taking somebody out of a team stops their mail for every
+     * event naming it immediately, why deleting their account does the same,
+     * and why somebody added to a team today starts receiving mail for events
+     * chosen before they joined. All three are the same fact: there is nothing
+     * cached to go stale.
+     *
+     * DEDUPLICATED BY ADDRESS, keyed on the lowercased email. Somebody picked
+     * individually AND sitting in a selected team appears once, and gets one
+     * message. The label kept is the first one seen, which is the most
+     * specific: creator, then individually chosen, then via a team.
      *
      * @return array<string,string> lowercased email => display label.
      */
@@ -365,7 +386,29 @@ class SFAF_Reminders {
         foreach ( (array) get_post_meta( $event_id, self::NOTIFY_USERS_META, true ) as $uid ) {
             $user = get_userdata( (int) $uid );
             if ( $user && is_email( $user->user_email ) ) {
-                $out[ self::normalize( $user->user_email ) ] = $user->display_name;
+                $key = self::normalize( $user->user_email );
+                if ( ! isset( $out[ $key ] ) ) {
+                    $out[ $key ] = $user->display_name;
+                }
+            }
+        }
+
+        /*
+         * Teams. The event named a team; who that is gets decided now.
+         *
+         * A team that has been emptied contributes nobody and is not an error.
+         * A team id that no longer resolves contributes nobody either, though
+         * that cannot arise: SFAF_Teams::delete() refuses while any event
+         * names the team, so there is no way to leave a dangling reference
+         * behind.
+         */
+        foreach ( SFAF_Teams::for_event( $event_id ) as $team_id ) {
+            $team_name = SFAF_Teams::get( $team_id );
+            $team_name = $team_name ? $team_name['name'] : $team_id;
+            foreach ( SFAF_Teams::emails( $team_id ) as $email => $display ) {
+                if ( ! isset( $out[ $email ] ) ) {
+                    $out[ $email ] = $display . ' (' . $team_name . ' team)';
+                }
             }
         }
 

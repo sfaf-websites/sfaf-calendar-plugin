@@ -480,7 +480,46 @@ class SFAF_Portal {
                 delete_user_meta( $uid, '_uc_calendar_role' );
                 delete_user_meta( $uid, '_uc_calendar_approval' );
                 delete_user_meta( $uid, '_uc_calendar_categories' );
+                // Out of the calendar means out of its teams. Nothing else has
+                // to happen: no event stored them, so no event has to be
+                // corrected. See SFAF_Teams.
+                SFAF_Teams::forget_user( $uid );
                 $this->redirect( 'users', array( 'msg' => 'user_removed' ) );
+                break;
+
+            /* ---- Teams. A name and a set of users, and nothing else. ------ */
+            case 'save_team':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $saved = SFAF_Teams::save(
+                    isset( $_POST['team_id'] ) ? sanitize_key( wp_unslash( $_POST['team_id'] ) ) : '',
+                    isset( $_POST['team_name'] ) ? wp_unslash( $_POST['team_name'] ) : '',
+                    isset( $_POST['team_users'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['team_users'] ) ) : array()
+                );
+                if ( is_wp_error( $saved ) ) {
+                    set_transient( 'sfaf_team_error_' . $user->ID, $saved->get_error_message(), 60 );
+                    $this->redirect( 'users', array( 'msg' => 'team_failed' ) );
+                }
+                $this->redirect( 'users', array( 'msg' => 'team_saved' ) );
+                break;
+
+            case 'delete_team':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $done = SFAF_Teams::delete( isset( $_POST['team_id'] ) ? sanitize_key( wp_unslash( $_POST['team_id'] ) ) : '' );
+                if ( is_wp_error( $done ) ) {
+                    /*
+                     * REFUSED, AND SAID SO WITH THE EVENTS NAMED.
+                     *
+                     * The events are carried in a transient rather than in the
+                     * URL because there can be a lot of them and they need
+                     * titles and links, not ids. See SFAF_Teams::delete() for
+                     * why this refuses rather than warning and deleting.
+                     */
+                    $data = $done->get_error_data();
+                    set_transient( 'sfaf_team_error_' . $user->ID, $done->get_error_message(), 120 );
+                    set_transient( 'sfaf_team_blocked_' . $user->ID, isset( $data['events'] ) ? $data['events'] : array(), 120 );
+                    $this->redirect( 'users', array( 'msg' => 'team_in_use' ) );
+                }
+                $this->redirect( 'users', array( 'msg' => 'team_deleted' ) );
                 break;
         }
     }
@@ -759,6 +798,23 @@ class SFAF_Portal {
             $uids = isset( $_POST['notify_users'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['notify_users'] ) ) : array();
             $uids = array_values( array_unique( array_filter( $uids ) ) );
             update_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, $uids );
+
+            /*
+             * TEAMS. The reference, and only the reference.
+             *
+             * What is stored is a list of team ids. Nobody's address and
+             * nobody's user id is written here, which is the whole reason a
+             * change of membership reaches events that were saved months ago.
+             * Guarded by its own marker for the same reason the block above is:
+             * every box unticked submits nothing at all, and that has to mean
+             * "none" rather than "this form did not ask".
+             */
+            if ( isset( $_POST['notify_teams_present'] ) ) {
+                SFAF_Teams::set_for_event(
+                    $event_id,
+                    isset( $_POST['notify_teams'] ) ? (array) wp_unslash( $_POST['notify_teams'] ) : array()
+                );
+            }
 
             // Free-text addresses. Validated, not trusted: anything that is not
             // an address is dropped AND named back to the person who typed it,
@@ -1072,6 +1128,10 @@ class SFAF_Portal {
             SFAF_Reminders::NOTIFY_USERS_META,
             SFAF_Reminders::NOTIFY_EMAILS_META,
             SFAF_Reminders::NOTIFY_AUTHOR_OPTOUT_META,
+            // The team REFERENCES, which is all a team ever is on an event.
+            // Copying them copies "tell Philanthropy about this", not the six
+            // people who happen to be in Philanthropy today.
+            SFAF_Teams::EVENT_META,
         );
 
         foreach ( $copy_keys as $key ) {
@@ -1162,10 +1222,31 @@ class SFAF_Portal {
 
         $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-        $rsvps    = SFAF_RSVP::get_all_rsvps( array( 'event_id' => $event_id, 'search' => $search ) );
+        $orphans  = ! empty( $_GET['orphans'] );
+        $rsvps    = SFAF_RSVP::get_all_rsvps( array(
+            'event_id' => $event_id,
+            'search'   => $search,
+            'orphans'  => $orphans,
+        ) );
+
+        /*
+         * THE FILENAME SAYS WHAT IS IN IT.
+         *
+         * A folder of files all called rsvps-2026-08-04.csv is how the wrong
+         * one gets attached to an email. The event's slug goes in the name so
+         * the file is identifiable without opening it, which also means
+         * nobody has to open it to check.
+         */
+        $slug = 'all';
+        if ( $event_id ) {
+            $post = get_post( $event_id );
+            $slug = ( $post && $post->post_name ) ? $post->post_name : 'event-' . $event_id;
+        } elseif ( $orphans ) {
+            $slug = 'deleted-events';
+        }
 
         header( 'Content-Type: text/csv' );
-        header( 'Content-Disposition: attachment; filename="rsvps-' . current_time( 'Y-m-d' ) . '.csv"' );
+        header( 'Content-Disposition: attachment; filename="rsvps-' . sanitize_file_name( $slug ) . '-' . current_time( 'Y-m-d' ) . '.csv"' );
 
         $out = fopen( 'php://output', 'w' );
         fputcsv( $out, array( 'Event', 'Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
@@ -1279,7 +1360,20 @@ class SFAF_Portal {
             'faq-sets'  => array( 'FAQ Sets', 'faq-sets', 'help' ),
         );
         if ( $this->can_view_all( $user ) ) {
-            $nav['rsvps']  = array( 'RSVPs', 'rsvps', 'check' );
+            /*
+             * NO RSVPs ENTRY. Retired in 3.5.0.
+             *
+             * It led to every registration ever taken, across every event, in
+             * one flat table. That is not a question anybody has: the question
+             * is who is coming to a particular event, and that is now the RSVP
+             * count on the Events list, which links straight to it.
+             *
+             * The screen itself is still there and still reachable at /rsvps,
+             * because registrations outlive their events on purpose and rows
+             * whose event has been deleted have nothing to be reached through.
+             * The Events list links to those whenever any exist. See
+             * render_rsvps().
+             */
             $nav['optins'] = array( 'Email Opt-ins', 'optins', 'mail' );
         }
         if ( $is_admin ) {
@@ -1348,7 +1442,9 @@ class SFAF_Portal {
             'rejected'       => 'Event rejected.',
             'user_saved'     => 'User permissions updated.',
             'user_added'     => 'User added to the calendar system.',
-            'user_removed'   => 'User removed from the calendar system.',
+            'user_removed'   => 'User removed from the calendar system, and taken out of any teams they were in. No event needed changing, because no event stored them.',
+            'team_saved'     => 'Team saved. Events that name it will notify whoever is in it at the moment the reminder goes out.',
+            'team_deleted'   => 'Team deleted. No event named it, so no notification changed.',
             'series_saved'   => 'Series saved. Nothing about the events in it changed — a series groups them, it does not overwrite them.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
             'series_removed' => 'Series removed. Every event that was in it is still on the calendar, on the same date and at the same address — only the grouping has gone.',
@@ -2050,7 +2146,30 @@ class SFAF_Portal {
             <?php $this->events_table( $ids, $user, $sort, $filters ); ?>
             <?php $this->events_pagination( $paged, $pages, $total, $sort, $filters ); ?>
         </div>
+
         <?php
+        /*
+         * THE ROUTE TO REGISTRATIONS WITH NO EVENT LEFT TO CLICK.
+         *
+         * RSVP rows are kept when an event is deleted, with the title
+         * snapshotted at that moment so they still read as something. Every
+         * other way into this data is now through an event, and those rows
+         * have no event, so this is their way in. It sits at the foot of the
+         * Events list, appears only when there is something behind it, and
+         * says how many, so it is a signpost rather than furniture.
+         */
+        if ( $this->can_view_all( $user ) ) {
+            $orphan_total = SFAF_RSVP::orphan_count();
+            if ( $orphan_total ) : ?>
+                <p class="uc-hint uc-orphan-note">
+                    <a href="<?php echo esc_url( add_query_arg( 'orphans', 1, $this->url( 'rsvps' ) ) ); ?>">
+                        <?php echo (int) $orphan_total; ?>
+                        <?php echo esc_html( 1 === $orphan_total ? 'registration belongs' : 'registrations belong' ); ?>
+                        to events that have been deleted</a>.
+                    Those records are kept on purpose and are not reachable through an event, so they are gathered here.
+                </p>
+            <?php endif;
+        }
         $this->chrome_close();
     }
 
@@ -2145,7 +2264,25 @@ class SFAF_Portal {
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                     <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                    <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
+                    <td><?php
+                        /*
+                         * THE COUNT IS THE WAY IN. A number in a cell that
+                         * answers "how many" and refuses to answer "who" is
+                         * half an answer, and the other half used to be a
+                         * sidebar tab leading to every registration on the
+                         * calendar at once. Linked only when there is
+                         * something behind it: a link to an empty table is a
+                         * disappointment, not navigation.
+                         */
+                        $rsvp_n = (int) sfaf_get_rsvp_count( $id );
+                        if ( $rsvp_n && $this->can_view_all( $user ) ) {
+                            echo '<a class="uc-tlink" href="'
+                                . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">'
+                                . (int) $rsvp_n . '</a>';
+                        } else {
+                            echo (int) $rsvp_n;
+                        }
+                    ?></td>
                     <td>
                         <span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span>
                         <?php
@@ -3807,20 +3944,7 @@ class SFAF_Portal {
                 <p class="uc-muted">This event's creator has no usable email address on file.</p>
             <?php endif; ?>
 
-            <p class="uc-hint" style="margin-top:14px;"><strong>Other calendar users</strong></p>
-            <?php if ( empty( $portal_users ) ) : ?>
-                <p class="uc-muted">No other calendar users yet.</p>
-            <?php else : ?>
-                <div class="uc-notify-users">
-                    <?php foreach ( $portal_users as $pu ) :
-                        if ( $author && (int) $pu->ID === (int) $author->ID ) { continue; } ?>
-                        <label class="uc-check">
-                            <input type="checkbox" name="notify_users[]" value="<?php echo (int) $pu->ID; ?>" <?php checked( in_array( (int) $pu->ID, $chosen_users, true ) ); ?> />
-                            <?php echo esc_html( $pu->display_name ); ?> <span class="uc-muted">(<?php echo esc_html( $pu->user_email ); ?>)</span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            <?php $this->render_notify_picker( $event_id, $author, $portal_users, $chosen_users ); ?>
 
             <?php
             /*
@@ -3881,6 +4005,213 @@ class SFAF_Portal {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    /**
+     * The notification picker: one control, two tabs, individuals and teams.
+     *
+     * WHY A DISCLOSURE AND NOT A LIST. The list it replaces rendered every
+     * calendar user as a checkbox, always open, in the middle of the event
+     * form. At a dozen users that is a paragraph; at a few hundred it is a
+     * screenful of names between the manager and the Save button, and there
+     * was no way to find anybody in it except to read. This is shut until it
+     * is wanted, says what is currently chosen when shut, and has a filter
+     * field at the top when open.
+     *
+     * WHY THE CHECKBOXES ARE ALL STILL IN THE FORM. Filtering hides rows; it
+     * never removes them. A checkbox that is display:none still posts, so
+     * typing a name to find one person cannot silently deselect the four
+     * chosen earlier. The filter is a view over the list, not an edit of it.
+     *
+     * WITHOUT JAVASCRIPT it is a <details> element containing every checkbox,
+     * both tab panels visible one after the other, and the server-rendered
+     * summary. Everything can still be chosen and saved; what is lost is the
+     * filtering and the live count. Nothing here is built by script.
+     *
+     * THE COUNT IS RESOLVED, NOT COUNTED. Selecting two individuals and a team
+     * of six does not necessarily mean eight people, because a team member may
+     * be one of the individuals, or the creator. The summary deduplicates by
+     * email address, which is exactly what SFAF_Reminders::notify_list() does
+     * when the mail goes out, so the number shown is the number of messages.
+     *
+     * @param int       $event_id
+     * @param WP_User   $author
+     * @param WP_User[] $portal_users
+     * @param int[]     $chosen_users
+     */
+    private function render_notify_picker( $event_id, $author, $portal_users, $chosen_users ) {
+        $teams        = SFAF_Teams::all();
+        $chosen_teams = SFAF_Teams::for_event( $event_id );
+
+        /*
+         * What the browser needs to recompute the count as boxes are ticked:
+         * one address per user, lowercased, and each team's membership as user
+         * ids. Addresses rather than ids because deduplication happens on the
+         * address, the same key the server uses. Every one of these addresses
+         * is already on this screen as a checkbox label.
+         */
+        $payload = array(
+            'users'  => array(),
+            'teams'  => array(),
+            'author' => '',
+        );
+        foreach ( $portal_users as $pu ) {
+            if ( is_email( $pu->user_email ) ) {
+                $payload['users'][ (string) $pu->ID ] = strtolower( trim( $pu->user_email ) );
+            }
+        }
+        foreach ( $teams as $team ) {
+            $emails = array();
+            foreach ( $team['users'] as $uid ) {
+                $member = get_userdata( $uid );
+                if ( $member && is_email( $member->user_email ) ) {
+                    $emails[] = strtolower( trim( $member->user_email ) );
+                }
+            }
+            $payload['teams'][ $team['id'] ] = array(
+                'name'   => $team['name'],
+                'emails' => array_values( array_unique( $emails ) ),
+            );
+        }
+        if ( $author && is_email( $author->user_email ) ) {
+            $payload['author'] = strtolower( trim( $author->user_email ) );
+        }
+
+        $uid_attr = 'uc-notify-' . (int) $event_id;
+        ?>
+        <div class="uc-notify-picker" data-uc-notify-picker>
+            <details class="uc-picker" data-uc-picker>
+                <summary class="uc-picker-toggle" data-uc-picker-toggle>
+                    <span class="uc-picker-label">Choose who else gets it</span>
+                    <span class="uc-picker-count" data-uc-picker-count><?php
+                        echo esc_html( $this->notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) );
+                    ?></span>
+                </summary>
+
+                <div class="uc-picker-panel">
+                    <?php
+                    /*
+                     * Real tabs: a tablist of buttons controlling two panels,
+                     * with arrow keys between them. Without script both panels
+                     * are shown, each under its own heading, because a tab that
+                     * cannot be switched is just a hidden panel.
+                     */
+                    ?>
+                    <div class="uc-picker-tabs" role="tablist" aria-label="Who to notify" data-uc-picker-tabs>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="<?php echo esc_attr( $uid_attr ); ?>-tab-people"
+                                aria-controls="<?php echo esc_attr( $uid_attr ); ?>-panel-people"
+                                aria-selected="true" data-uc-picker-tab="people">Individuals</button>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="<?php echo esc_attr( $uid_attr ); ?>-tab-teams"
+                                aria-controls="<?php echo esc_attr( $uid_attr ); ?>-panel-teams"
+                                aria-selected="false" tabindex="-1" data-uc-picker-tab="teams">Teams</button>
+                    </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="<?php echo esc_attr( $uid_attr ); ?>-panel-people"
+                         aria-labelledby="<?php echo esc_attr( $uid_attr ); ?>-tab-people"
+                         data-uc-picker-panel="people">
+                        <h4 class="uc-picker-heading">Individuals</h4>
+                        <?php if ( empty( $portal_users ) ) : ?>
+                            <p class="uc-muted">No other calendar users yet.</p>
+                        <?php else : ?>
+                            <label class="uc-picker-filter">
+                                <span class="uc-visually-hidden">Filter people by name or address</span>
+                                <input type="search" placeholder="Type to filter people…"
+                                       data-uc-picker-filter="people" autocomplete="off" />
+                            </label>
+                            <div class="uc-picker-options" data-uc-picker-options="people">
+                                <?php foreach ( $portal_users as $pu ) :
+                                    if ( $author && (int) $pu->ID === (int) $author->ID ) { continue; } ?>
+                                    <label class="uc-check uc-picker-option"
+                                           data-uc-picker-search="<?php echo esc_attr( strtolower( $pu->display_name . ' ' . $pu->user_email ) ); ?>">
+                                        <input type="checkbox" name="notify_users[]" value="<?php echo (int) $pu->ID; ?>"
+                                               data-uc-picker-user="<?php echo (int) $pu->ID; ?>"
+                                               <?php checked( in_array( (int) $pu->ID, $chosen_users, true ) ); ?> />
+                                        <span><?php echo esc_html( $pu->display_name ); ?>
+                                            <span class="uc-muted"><?php echo esc_html( $pu->user_email ); ?></span></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="uc-muted uc-picker-empty" data-uc-picker-empty="people" hidden>Nobody matches that.</p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="<?php echo esc_attr( $uid_attr ); ?>-panel-teams"
+                         aria-labelledby="<?php echo esc_attr( $uid_attr ); ?>-tab-teams"
+                         data-uc-picker-panel="teams">
+                        <h4 class="uc-picker-heading">Teams</h4>
+                        <?php if ( empty( $teams ) ) : ?>
+                            <p class="uc-muted">No teams yet. An admin can make one under Users.</p>
+                        <?php else : ?>
+                            <div class="uc-picker-options" data-uc-picker-options="teams">
+                                <?php foreach ( $teams as $team ) : $tsize = SFAF_Teams::size( $team['id'] ); ?>
+                                    <label class="uc-check uc-picker-option">
+                                        <input type="checkbox" name="notify_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>"
+                                               data-uc-picker-team="<?php echo esc_attr( $team['id'] ); ?>"
+                                               <?php checked( in_array( $team['id'], $chosen_teams, true ) ); ?> />
+                                        <span><?php echo esc_html( $team['name'] ); ?>
+                                            <span class="uc-muted"><?php echo (int) $tsize; ?> <?php echo esc_html( 1 === $tsize ? 'person' : 'people' ); ?></span></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="uc-hint">A team is resolved when the reminder is sent, so it always reaches whoever is in it then, not whoever was in it today.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </details>
+
+            <?php // The marker that tells the save "this form carried the teams
+                  // block", so clearing every box means clear rather than
+                  // "leave alone". Same reasoning as notify_list_present. ?>
+            <input type="hidden" name="notify_teams_present" value="1" />
+
+            <script type="application/json" data-uc-notify-data><?php
+                echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+            ?></script>
+        </div>
+        <?php
+    }
+
+    /**
+     * The one-line summary of what is currently selected.
+     *
+     * Rendered by PHP for the page load and recomputed by portal.js on every
+     * tick, from the same rule: count the distinct addresses. Both say
+     * "3 individuals, Philanthropy team (6 people), 7 people in total" so a
+     * manager can see both what they chose and what it comes to.
+     *
+     * @param int      $event_id
+     * @param int[]    $chosen_users
+     * @param string[] $chosen_teams
+     * @param array[]  $teams
+     * @return string
+     */
+    private function notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) {
+        $parts = array();
+        $n     = count( $chosen_users );
+        if ( $n ) {
+            $parts[] = $n . ' ' . ( 1 === $n ? 'individual' : 'individuals' );
+        }
+        foreach ( $chosen_teams as $tid ) {
+            if ( ! isset( $teams[ $tid ] ) ) {
+                continue;
+            }
+            $size    = SFAF_Teams::size( $tid );
+            $parts[] = $teams[ $tid ]['name'] . ' team (' . $size . ' ' . ( 1 === $size ? 'person' : 'people' ) . ')';
+        }
+
+        if ( empty( $parts ) ) {
+            return 'Nobody chosen yet';
+        }
+
+        // The total is the resolved list, which already deduplicates and
+        // already includes the creator and any typed addresses. It is the
+        // honest answer to "how many emails is that".
+        $total = count( SFAF_Reminders::notify_list( $event_id ) );
+        return implode( ', ', $parts ) . '. ' . $total . ' ' . ( 1 === $total ? 'person' : 'people' ) . ' in total.';
     }
 
     /* =====================================================================
@@ -4080,25 +4411,118 @@ class SFAF_Portal {
      * Rendering — RSVPs
      * ================================================================== */
 
+    /**
+     * Registrations: for one event, or the orphans, or everything.
+     *
+     * THE WAY IN IS THE EVENT NOW. The RSVP count on the Events list is a link
+     * to this screen filtered to that event, because "who is coming to Santa
+     * Skivvies" is the question people actually have. A flat list of every
+     * registration ever taken, across every event, answers nothing on its own,
+     * which is why it is no longer in the sidebar.
+     *
+     * IT IS STILL REACHABLE, AND HAS TO BE. Registrations outlive their events
+     * on purpose: the rows are kept when an event is deleted and carry a title
+     * snapshot so they read "Santa Skivvies (deleted)". Those rows have no
+     * event to be reached through. So this screen keeps its URL, gains an
+     * "orphans only" mode, and the Events list links to it whenever there is
+     * anything in it. Retiring the tab must not make that history unreachable,
+     * and does not.
+     *
+     * THE GATE. can_view_all, matching the CSV export beside it and the nav
+     * entry that used to lead here. This check is new: the screen relied on
+     * not being linked, which is not a permission. A contributor who typed the
+     * URL saw every registration on the calendar. See the note in the readme.
+     *
+     * @param WP_User $user
+     */
     private function render_rsvps( $user ) {
-        $this->chrome_open( $user, 'rsvps' );
+        if ( ! $this->can_view_all( $user ) ) {
+            $this->render_dashboard( $user );
+            return;
+        }
+
+        $this->chrome_open( $user, 'events' );
         $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
+        $orphans  = ! empty( $_GET['orphans'] );
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-        $rsvps    = SFAF_RSVP::get_all_rsvps( array( 'event_id' => $event_id, 'search' => $search ) );
+        $rsvps    = SFAF_RSVP::get_all_rsvps( array(
+            'event_id' => $event_id,
+            'search'   => $search,
+            'orphans'  => $orphans,
+        ) );
+
+        $event = $event_id ? get_post( $event_id ) : null;
+        $title = 'All registrations';
+        if ( $event ) {
+            $title = get_the_title( $event_id ) ? get_the_title( $event_id ) : '(untitled event)';
+        } elseif ( $orphans ) {
+            $title = 'Registrations for deleted events';
+        }
 
         $export = add_query_arg(
-            array_filter( array( 'event_id' => $event_id, 's' => $search, '_wpnonce' => wp_create_nonce( 'uc_portal_export' ) ) ),
+            array_filter( array(
+                'event_id' => $event_id,
+                's'        => $search,
+                'orphans'  => $orphans ? 1 : '',
+                '_wpnonce' => wp_create_nonce( 'uc_portal_export' ),
+            ) ),
             $this->url( 'rsvps/export' )
         );
+        $orphan_total = SFAF_RSVP::orphan_count();
         ?>
         <div class="uc-page-head">
-            <h1>RSVPs</h1>
-            <a href="<?php echo esc_url( $export ); ?>" class="uc-btn">Export CSV</a>
+            <h1><?php echo esc_html( $title ); ?></h1>
+            <div class="uc-page-head-actions">
+                <?php if ( $event ) : ?>
+                    <a href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-btn">Edit event</a>
+                <?php endif; ?>
+                <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Events</a>
+                <a href="<?php echo esc_url( $export ); ?>" class="uc-btn uc-btn-primary">Export CSV</a>
+            </div>
         </div>
+
+        <?php
+        /*
+         * SAID WHERE THE DOWNLOAD BUTTON IS.
+         *
+         * These rows are registrations for HIV, substance use and trans health
+         * programming, and a CSV is the moment that data stops being behind a
+         * login and starts being a file on somebody's laptop. The warning
+         * belongs next to the button that does it, not in a policy document.
+         */
+        ?>
+        <div class="uc-flash uc-flash-attention uc-rsvp-sensitivity">
+            <?php echo $this->icon_needs(); ?>
+            <span><strong>This is sensitive personal data.</strong> These registrations cover HIV, substance use and
+            trans health programming, and knowing that somebody attended can disclose things about them that they
+            have not chosen to disclose. An exported file carries all of it out of here with no login in front of
+            it: keep it somewhere approved, share it with nobody who does not need it, and delete it when the work
+            is done.</span>
+        </div>
+
+        <?php if ( $event ) : ?>
+            <p class="uc-hint">
+                Registrations for this event only.
+                <a href="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">All registrations across every event</a>.
+            </p>
+        <?php elseif ( $orphans ) : ?>
+            <p class="uc-hint">
+                Registrations whose event has been deleted. The rows are kept deliberately: deleting an event is a
+                decision about the calendar, not a decision to forget that people came. The name shown is the title
+                the event had at the moment it was deleted.
+                <a href="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">All registrations</a>.
+            </p>
+        <?php elseif ( $orphan_total ) : ?>
+            <p class="uc-hint">
+                <a href="<?php echo esc_url( add_query_arg( 'orphans', 1, $this->url( 'rsvps' ) ) ); ?>">
+                    <?php echo (int) $orphan_total; ?> <?php echo esc_html( 1 === $orphan_total ? 'registration belongs' : 'registrations belong' ); ?> to events that have been deleted</a>.
+            </p>
+        <?php endif; ?>
 
         <form method="get" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-filters-bar">
             <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email…" />
             <?php if ( $event_id ) : ?><input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" /><?php endif; ?>
+            <?php if ( $orphans ) : ?><input type="hidden" name="orphans" value="1" /><?php endif; ?>
             <button class="uc-btn" type="submit">Search</button>
         </form>
 
@@ -4108,11 +4532,24 @@ class SFAF_Portal {
                 <p class="uc-empty">No RSVPs found.</p>
             <?php else : ?>
                 <table class="uc-table">
-                    <thead><tr><th>Event</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Registered</th></tr></thead>
+                    <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Registered</th></tr></thead>
                     <tbody>
                     <?php foreach ( $rsvps as $r ) : ?>
                         <tr>
-                            <td><?php echo esc_html( SFAF_RSVP::event_label( $r ) ); ?></td>
+                            <?php if ( ! $event ) : ?>
+                                <td><?php
+                                    // Linked when the event still exists, plain
+                                    // text when it does not. event_label() is
+                                    // what appends "(deleted)".
+                                    $label = SFAF_RSVP::event_label( $r );
+                                    $live  = ( ! empty( $r->post_title ) || get_post( (int) $r->event_id ) );
+                                    if ( $live ) {
+                                        echo '<a class="uc-tlink" href="' . esc_url( add_query_arg( 'event_id', (int) $r->event_id, $this->url( 'rsvps' ) ) ) . '">' . esc_html( $label ) . '</a>';
+                                    } else {
+                                        echo esc_html( $label );
+                                    }
+                                ?></td>
+                            <?php endif; ?>
                             <td><strong><?php echo esc_html( $r->name ); ?></strong></td>
                             <td><?php echo esc_html( $r->email ); ?></td>
                             <td><?php echo esc_html( $r->phone ); ?></td>
@@ -4718,8 +5155,154 @@ class SFAF_Portal {
                     <?php endif; ?>
             <?php endforeach; endif; ?>
         </div>
+
+        <?php $this->render_teams( $user, $members ); ?>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * Teams: create, rename, set membership, delete.
+     *
+     * UNDER USERS, BECAUSE A TEAM IS MADE OF USERS AND NOTHING ELSE. It is not
+     * a settings screen and not an event screen; it is the second thing you do
+     * after adding people, and it belongs on the page where the people are.
+     *
+     * WHAT THIS SCREEN CANNOT DO. It cannot enter an email address. Membership
+     * is chosen from the calendar's own users, because a team has to resolve to
+     * accounts for removal-by-one-action to mean anything: an address typed in
+     * here would be a copy that removing somebody could not reach. Addresses
+     * for people outside the system still work, on the event, where they are
+     * plainly one-off.
+     *
+     * @param WP_User   $user
+     * @param WP_User[] $members The calendar's users, already loaded above.
+     */
+    private function render_teams( $user, $members ) {
+        $teams = SFAF_Teams::all();
+
+        $err     = get_transient( 'sfaf_team_error_' . $user->ID );
+        $blocked = get_transient( 'sfaf_team_blocked_' . $user->ID );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_team_error_' . $user->ID );
+        }
+        if ( false !== $blocked ) {
+            delete_transient( 'sfaf_team_blocked_' . $user->ID );
+        }
+        ?>
+        <div class="uc-card" id="uc-teams">
+            <div class="uc-card-head"><h2>Teams (<?php echo count( $teams ); ?>)</h2></div>
+            <p class="uc-hint">
+                A team is a name and a set of people. When an event notifies a team, it stores the team and works
+                out who that is at the moment the reminder is sent. So taking somebody out of a team stops their
+                notifications for every event naming it straight away, with nothing to go and correct, and adding
+                somebody puts them on events that were set up before they joined. That is deliberate: it is what
+                belonging to a team means.
+            </p>
+
+            <?php if ( $err ) : ?>
+                <div class="uc-flash uc-flash-error">
+                    <?php echo esc_html( $err ); ?>
+                    <?php if ( is_array( $blocked ) && ! empty( $blocked ) ) : ?>
+                        <ul class="uc-team-blocked">
+                            <?php foreach ( $blocked as $ev ) : ?>
+                                <li>
+                                    <a href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $ev['id'] ) ); ?>"><?php echo esc_html( $ev['title'] ); ?></a>
+                                    <span class="uc-muted">(<?php echo esc_html( sfaf_status_label( $ev['status'] ) ); ?>)</span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ( empty( $teams ) ) : ?>
+                <p class="uc-empty">No teams yet. Make one below.</p>
+            <?php else : ?>
+                <?php foreach ( $teams as $team ) : ?>
+                    <?php $this->render_team_form( $team, $members ); ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
+            <details class="uc-team-new">
+                <summary>Add a team</summary>
+                <?php $this->render_team_form( null, $members ); ?>
+            </details>
+        </div>
+        <?php
+    }
+
+    /**
+     * One team's editor: its name, its members, and Delete.
+     *
+     * The same markup creates and edits, so a new team and an existing one
+     * cannot offer different fields. $team === null is the create case.
+     *
+     * @param array|null $team
+     * @param WP_User[]  $members
+     */
+    private function render_team_form( $team, $members ) {
+        $id      = $team ? $team['id'] : '';
+        $name    = $team ? $team['name'] : '';
+        $in_team = $team ? $team['users'] : array();
+        $size    = $team ? SFAF_Teams::size( $team['id'] ) : 0;
+        ?>
+        <div class="uc-team">
+            <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-team-form">
+                <input type="hidden" name="uc_action" value="save_team" />
+                <input type="hidden" name="team_id" value="<?php echo esc_attr( $id ); ?>" />
+                <?php wp_nonce_field( 'uc_portal_save_team', 'uc_nonce' ); ?>
+
+                <div class="uc-team-head">
+                    <label class="uc-field uc-team-name">
+                        <span class="uc-field-label">Team name</span>
+                        <input type="text" name="team_name" value="<?php echo esc_attr( $name ); ?>"
+                               placeholder="e.g. Philanthropy" required />
+                    </label>
+                    <?php if ( $team ) : ?>
+                        <p class="uc-hint uc-team-size">
+                            <?php echo (int) $size; ?> <?php echo esc_html( 1 === $size ? 'person' : 'people' ); ?> right now.
+                            <?php if ( count( $in_team ) !== $size ) : ?>
+                                <?php echo (int) ( count( $in_team ) - $size ); ?> of the members have no usable address and would be skipped.
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+
+                <fieldset class="uc-team-members">
+                    <legend class="uc-field-label">Members</legend>
+                    <?php if ( empty( $members ) ) : ?>
+                        <p class="uc-muted">Add people to the calendar above first.</p>
+                    <?php else : ?>
+                        <div class="uc-check-grid">
+                            <?php foreach ( $members as $m ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="team_users[]" value="<?php echo (int) $m->ID; ?>"
+                                           <?php checked( in_array( (int) $m->ID, $in_team, true ) ); ?> />
+                                    <?php echo esc_html( $m->display_name ); ?>
+                                    <span class="uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </fieldset>
+
+                <div class="uc-team-actions">
+                    <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit"><?php echo $team ? 'Save team' : 'Create team'; ?></button>
+                </div>
+            </form>
+
+            <?php if ( $team ) : ?>
+                <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-team-delete"
+                      onsubmit="return confirm('Delete the team &quot;<?php echo esc_attr( $name ); ?>&quot;? This is refused if any event still names it.');">
+                    <input type="hidden" name="uc_action" value="delete_team" />
+                    <input type="hidden" name="team_id" value="<?php echo esc_attr( $id ); ?>" />
+                    <?php wp_nonce_field( 'uc_portal_delete_team', 'uc_nonce' ); ?>
+                    <button class="uc-link-danger uc-btn-sm" type="submit">Delete team</button>
+                </form>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     /* =====================================================================

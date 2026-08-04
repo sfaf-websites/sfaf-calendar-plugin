@@ -8,6 +8,7 @@
         initSidebar();
         initRepeaters();
         initFaqSetPicker();
+        initNotifyPicker();
         initImagePicker();
         // ORDER MATTERS between these three. Both the scope confirmation and
         // the completeness confirmation bind a click listener to the same save
@@ -417,6 +418,188 @@
                 function (form) { form.setAttribute('hidden', 'hidden'); }
             );
         }
+    }
+
+    /* ---------------------------------------------------------------------
+     * The notification picker: two tabs, a filter, and a live count.
+     *
+     * ENHANCEMENT ONLY. The server sends a <details> holding both panels and
+     * every checkbox, so with this function deleted the control still opens,
+     * still shows individuals and teams, and still saves. What is added here
+     * is switching between the panels instead of stacking them, filtering the
+     * people list, and recomputing the summary as boxes are ticked.
+     *
+     * FILTERING HIDES, IT NEVER UNCHECKS. A hidden checkbox still posts, so
+     * typing a name to find one person cannot quietly drop the four chosen a
+     * minute ago. That is the one rule this must not get wrong.
+     *
+     * THE COUNT IS A SET OF ADDRESSES, NOT A SUM. Two individuals plus a team
+     * of six is not eight if one of them is in the team, and the number a
+     * manager reads has to be the number of emails that will be sent. So the
+     * addresses are unioned, exactly as SFAF_Reminders::notify_list() unions
+     * them server-side. The creator and any typed addresses are in the total
+     * too, because they are also going to get one.
+     * ------------------------------------------------------------------- */
+    function initNotifyPicker() {
+        document.querySelectorAll('[data-uc-notify-picker]').forEach(function (root) {
+            var dataNode = root.querySelector('[data-uc-notify-data]');
+            var details = root.querySelector('[data-uc-picker]');
+            var countEl = root.querySelector('[data-uc-picker-count]');
+            if (!dataNode || !details) {
+                return;
+            }
+
+            var data;
+            try {
+                data = JSON.parse(dataNode.textContent || '{}');
+            } catch (err) {
+                return; // leave the plain list alone rather than half a control
+            }
+            data.users = data.users || {};
+            data.teams = data.teams || {};
+
+            /* ---- Tabs ---------------------------------------------------- */
+            var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-uc-picker-tab]'));
+            var panels = {};
+            Array.prototype.forEach.call(root.querySelectorAll('[data-uc-picker-panel]'), function (p) {
+                panels[p.getAttribute('data-uc-picker-panel')] = p;
+            });
+
+            function selectTab(name, focus) {
+                tabs.forEach(function (tab) {
+                    var mine = tab.getAttribute('data-uc-picker-tab') === name;
+                    tab.setAttribute('aria-selected', mine ? 'true' : 'false');
+                    // Roving tabindex: one stop for the whole tablist, and the
+                    // arrow keys move between the tabs inside it.
+                    tab.setAttribute('tabindex', mine ? '0' : '-1');
+                    if (mine && focus) { tab.focus(); }
+                });
+                Object.keys(panels).forEach(function (key) {
+                    if (key === name) {
+                        panels[key].removeAttribute('hidden');
+                    } else {
+                        panels[key].setAttribute('hidden', 'hidden');
+                    }
+                });
+            }
+
+            tabs.forEach(function (tab, i) {
+                tab.addEventListener('click', function () {
+                    selectTab(tab.getAttribute('data-uc-picker-tab'), false);
+                });
+                tab.addEventListener('keydown', function (e) {
+                    var next = null;
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { next = (i + 1) % tabs.length; }
+                    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { next = (i - 1 + tabs.length) % tabs.length; }
+                    else if (e.key === 'Home') { next = 0; }
+                    else if (e.key === 'End') { next = tabs.length - 1; }
+                    if (next !== null) {
+                        e.preventDefault();
+                        selectTab(tabs[next].getAttribute('data-uc-picker-tab'), true);
+                    }
+                });
+            });
+
+            // Only now that switching works are the panels allowed to hide.
+            // Doing this before the listeners were bound would have left a
+            // panel unreachable if anything above had thrown.
+            root.classList.add('uc-picker-tabbed');
+            selectTab('people', false);
+
+            /* ---- Filter -------------------------------------------------- */
+            var filter = root.querySelector('[data-uc-picker-filter="people"]');
+            var emptyNote = root.querySelector('[data-uc-picker-empty="people"]');
+            if (filter) {
+                filter.addEventListener('input', function () {
+                    var q = filter.value.replace(/\s+/g, ' ').trim().toLowerCase();
+                    var shown = 0;
+                    Array.prototype.forEach.call(
+                        root.querySelectorAll('[data-uc-picker-search]'),
+                        function (opt) {
+                            var hay = opt.getAttribute('data-uc-picker-search') || '';
+                            var box = opt.querySelector('input[type="checkbox"]');
+                            // A chosen person is never filtered out of sight.
+                            // Losing track of somebody already selected is how
+                            // a filter turns into an accidental deselection.
+                            var keep = !q || hay.indexOf(q) !== -1 || (box && box.checked);
+                            opt.hidden = !keep;
+                            if (keep) { shown++; }
+                        }
+                    );
+                    if (emptyNote) { emptyNote.hidden = (shown !== 0); }
+                });
+                // Escape clears the filter before the browser closes the
+                // <details> out from under somebody mid-search.
+                filter.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && filter.value !== '') {
+                        e.stopPropagation();
+                        filter.value = '';
+                        filter.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+
+            /* ---- The live count ------------------------------------------ */
+            function summarise() {
+                if (!countEl) { return; }
+
+                var picked = [];
+                var addresses = {};
+
+                // Everyone who is going to get one, by address.
+                if (data.author) {
+                    var authorBox = root.parentNode
+                        ? root.parentNode.querySelector('input[name="notify_author"]')
+                        : null;
+                    if (!authorBox || authorBox.checked) { addresses[data.author] = true; }
+                }
+
+                var people = 0;
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-picker-user]'), function (box) {
+                    if (!box.checked) { return; }
+                    people++;
+                    var email = data.users[box.getAttribute('data-uc-picker-user')];
+                    if (email) { addresses[email] = true; }
+                });
+                if (people) {
+                    picked.push(people + (people === 1 ? ' individual' : ' individuals'));
+                }
+
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-picker-team]'), function (box) {
+                    if (!box.checked) { return; }
+                    var team = data.teams[box.getAttribute('data-uc-picker-team')];
+                    if (!team) { return; }
+                    var n = (team.emails || []).length;
+                    picked.push(team.name + ' team (' + n + (n === 1 ? ' person' : ' people') + ')');
+                    (team.emails || []).forEach(function (e) { addresses[e] = true; });
+                });
+
+                // Typed addresses, counted the same way the save reads them.
+                var textarea = document.getElementById('uc-notify-emails');
+                if (textarea) {
+                    textarea.value.split(/[\r\n,;]+/).forEach(function (line) {
+                        line = line.trim().toLowerCase();
+                        if (line && line.indexOf('@') > 0) { addresses[line] = true; }
+                    });
+                }
+
+                if (!picked.length) {
+                    countEl.textContent = 'Nobody chosen yet';
+                    return;
+                }
+                var total = Object.keys(addresses).length;
+                countEl.textContent = picked.join(', ') + '. '
+                    + total + (total === 1 ? ' person' : ' people') + ' in total.';
+            }
+
+            root.addEventListener('change', summarise);
+            var textarea = document.getElementById('uc-notify-emails');
+            if (textarea) { textarea.addEventListener('input', summarise); }
+            var authorBox = root.parentNode ? root.parentNode.querySelector('input[name="notify_author"]') : null;
+            if (authorBox) { authorBox.addEventListener('change', summarise); }
+
+            summarise();
+        });
     }
 
     /* Publish confirmation for events still missing manager-owned fields.
