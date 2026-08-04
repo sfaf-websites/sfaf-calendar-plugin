@@ -120,6 +120,11 @@ body.uc-portal {
 .uc-actions .uc-action-link,
 .uc-actions .uc-link-danger,
 .uc-actions .uc-link-ok { font-size: 13px; font-weight: 600; line-height: 1; }
+/* Duplicate has to be a submit button, because it posts a nonce. This makes it
+ * sit in the row exactly like the Edit link beside it. */
+.uc-actions button.uc-action-btn { background: none; border: 0; padding: 0; cursor: pointer;
+    font-family: inherit; color: var(--uc-accent-text); text-decoration: none; }
+.uc-actions button.uc-action-btn:hover { text-decoration: underline; }
 
 .uc-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #eef2f7; color: var(--p-muted); text-transform: capitalize; }
 .uc-pill-publish { background: #d1fae5; color: #065f46; }
@@ -127,6 +132,27 @@ body.uc-portal {
 .uc-pill-draft { background: #e5e7eb; color: #374151; }
 .uc-pill-confirmed { background: #d1fae5; color: #065f46; }
 .uc-pill-subscribed { background: #e0e7ff; color: #3730a3; }
+
+/* Amber, and sitting beside the status rather than replacing it: the event IS
+ * a draft, and this says who made it one and why. Never capitalized away from
+ * the words it was given, unlike the status pills. */
+.uc-pill-removed { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d;
+    text-transform: none; margin-left: 5px; cursor: help; }
+
+/* ---------- Views ----------
+ * Which events are being looked at, asked before the refinements below it.
+ * A row of links rather than a segmented control, because each one is a real
+ * URL that can be bookmarked and shared.  */
+.uc-view-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px;
+    border-bottom: 1px solid var(--p-border); }
+.uc-view-tab { padding: 8px 14px; font-size: 14px; font-weight: 600; color: var(--p-muted);
+    text-decoration: none; border: 1px solid transparent; border-bottom: 0;
+    border-radius: 8px 8px 0 0; margin-bottom: -1px; }
+.uc-view-tab:hover { color: var(--uc-accent-text); background: var(--p-bg); }
+.uc-view-tab-active { color: var(--p-text); background: #fff;
+    border-color: var(--p-border); border-bottom: 1px solid #fff; }
+.uc-view-tab:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+.uc-view-hint { margin: 0 0 14px; max-width: 70ch; }
 
 /* ---------- Filters ---------- */
 .uc-filters-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }

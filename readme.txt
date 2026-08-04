@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.3.0
+Stable tag: 3.4.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.4.0 =
+
+**Past events have a home, and any event can be copied into a new one.** Nothing in this release deletes anything, expires anything or moves anything. No event is altered by installing it.
+
+**The Events list has views: Upcoming, Archived, Removed at source, and All.** Upcoming is what opens now, because it is the work, and it sorts soonest first rather than newest first. Archived is every event dated before today, which is the whole definition: there is no archive flag, no retention period and nothing that runs. An event moves between the two views because the date passed, not because anything happened to it. It is the same table with the same columns, the same sortable headings and the same actions, so filtering by category or status and sorting by any column all work inside a view, and the view travels with the sort, the filters and the page numbers.
+
+**Imported events are in the archive exactly like native ones**, because a past GoFundMe Pro or Eventbrite event is a permanent local record and always was. The Source column now says so: it shows the platform's badge, linked to the campaign where there is a URL. Until now that column read only the multi-site sync marker, so an imported event said "Local", which is the one thing it is not.
+
+**Events the platform stopped listing are not filed as "past".** Those were unpublished to drafts by this plugin rather than by a person, and they can be at any date, so they get a view of their own and an amber "Removed at source" marker beside their status saying when and why. The editor's fuller explanation is unchanged.
+
+**Duplicate creates a new draft from any event, archived or not.** It copies the title, description, image, location, start and end times, capacity, RSVP and display settings, fundraising URL and goal, category, organizer, venue, series, FAQs, the notification list and the reply-to address. It deliberately does not copy the date: setting that is the point of the action. It does not copy registrations or reminder history, so the new event has no attendees and no record of having mailed anyone, and its morning-of reminder will still go out. It does not join the original's recurrence group, so an "edit all upcoming occurrences" elsewhere cannot reach it.
+
+**A duplicate of an imported event is a native event.** No external source, id, URL, image, timezone or import timestamp comes across, and no FAQ row keeps the platform id it was carrying. That means nothing is locked and every field is editable, not because anything unlocks it but because there is no longer a platform to ask. The copy is built from a list of what to take rather than by taking everything and deleting what should not have come, so a source field added in future cannot leak into a duplicate by being forgotten.
+
+**Registrations still outlive their events.** RSVP and reminder-log rows are kept when an event is deleted, with the title snapshotted at that moment so the list reads "Santa Skivvies (deleted)". Nothing in this release touches that, and nothing in this release deletes an event.
 
 = 3.3.0 =
 

@@ -279,6 +279,21 @@ class SFAF_Portal {
                 $this->redirect( 'events', array( 'msg' => 'trashed' ) );
                 break;
 
+            /*
+             * DUPLICATE. Inserts one new draft and changes nothing else.
+             *
+             * Lands the manager in the editor on the copy, because the copy has
+             * no date and cannot be published until it does. See
+             * duplicate_event() for what travels and what does not.
+             */
+            case 'duplicate_event':
+                $new_id = $this->duplicate_event( $user, intval( $_POST['event_id'] ) );
+                if ( is_wp_error( $new_id ) ) {
+                    $this->redirect( 'events', array( 'msg' => 'duplicate_failed' ) );
+                }
+                $this->redirect( 'events/edit/' . (int) $new_id, array( 'msg' => 'duplicated' ) );
+                break;
+
             case 'remove_series':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
                 $term_id = intval( $_POST['series_id'] );
@@ -941,6 +956,177 @@ class SFAF_Portal {
     }
 
     /* =====================================================================
+     * Duplicate as template
+     * ================================================================== */
+
+    /**
+     * Create a new draft event from an existing one.
+     *
+     * THE COPY IS AN ALLOW-LIST, AND THAT IS THE WHOLE SAFETY ARGUMENT.
+     *
+     * The obvious way to write this is to copy every meta row and then delete
+     * the ones that must not travel. That works exactly until somebody adds a
+     * new source-owned key, at which point every duplicate made afterwards
+     * quietly carries it and looks imported to everything that reads the meta.
+     * A deny-list has to be remembered; an allow-list cannot be forgotten.
+     * So nothing is copied unless it is named below, and the source identity
+     * is not absent because it was removed, it is absent because it was never
+     * asked for.
+     *
+     * WHAT COMES ACROSS. Title, description and excerpt; the featured image
+     * and the image URL; location; start and end times; capacity and the RSVP
+     * switch; the fundraising URL, goal and figures toggle; the Pardot
+     * campaigns; the organizer address and the new-RSVP notification; the
+     * confirmation email overrides and the reply-to; all five display
+     * toggles; category, organizer, venue and series; the FAQ rows; and the
+     * per-event notification list.
+     *
+     * WHAT DOES NOT, AND WHY EACH ONE:
+     *
+     *   THE DATE. Deliberately empty. Setting a date is the reason a manager
+     *   is here, and a duplicate that arrived carrying last year's date would
+     *   be a past event pretending to be a new one.
+     *
+     *   REGISTRATIONS AND SEND HISTORY. Rows in uc_rsvps and uc_reminder_log
+     *   belong to the event people actually registered for. They are keyed by
+     *   event_id and this function never writes to either table, so the new
+     *   event starts with no attendees and no record of having mailed anyone.
+     *   _uc_reminder_sent_at is left off for the same reason: carried over, it
+     *   would tell the reminder run that this event had already been done and
+     *   the morning-of mail would never go out.
+     *
+     *   THE RECURRENCE GROUP AND PATTERN. A duplicate is a new independent
+     *   event. Carrying the group would put it inside the original's bulk-edit
+     *   scope, so an "edit all upcoming occurrences" on any member would reach
+     *   into a copy nobody meant to include.
+     *
+     *   EVERY TRACE OF AN IMPORT. A duplicate of a GoFundMe Pro or Eventbrite
+     *   event is a NATIVE event. No external source, id, URL, image, timezone,
+     *   import timestamp, update timestamp or removal record, which is what
+     *   makes SFAF_Sources::provenance() return nothing for it, which in turn
+     *   is what makes owned_fields_for() lock nothing and the editor render
+     *   every field as editable. Nothing has to be told to unlock: there is no
+     *   adapter to ask.
+     *
+     *   THE source_faq_id ON EVERY COPIED FAQ ROW. Stripped explicitly, at
+     *   copy time. sfaf_normalize_faqs() preserves the id on read, so the rows
+     *   arrive here still carrying the original's platform record ids, and
+     *   they would keep them forever if this did not take them off. They are
+     *   meaningless on an event with no source, and worse than meaningless:
+     *   sync_faqs() splits rows on exactly that key, so a later import that
+     *   ever touched this event would treat hand-written rows as the
+     *   platform's to rewrite and remove.
+     *
+     * NOTHING IS DELETED BY ANY OF THIS. The original is not read-modified,
+     * not restatused and not touched. This function only ever inserts.
+     *
+     * @param WP_User $user
+     * @param int     $source_id
+     * @return int|WP_Error New draft's ID.
+     */
+    private function duplicate_event( $user, $source_id ) {
+        $source_id = (int) $source_id;
+        $source    = get_post( $source_id );
+
+        if ( ! $source || 'uc_event' !== $source->post_type ) {
+            return new WP_Error( 'sfaf_dup_not_event', 'That is not an event.' );
+        }
+        if ( ! $this->can_edit_event( $user, $source ) ) {
+            return new WP_Error( 'sfaf_dup_denied', 'You do not have permission to copy that event.' );
+        }
+
+        /*
+         * A DRAFT, AND SAYING SO IN THE TITLE.
+         *
+         * Both halves matter. Draft keeps it off the calendar until somebody
+         * has set a date and looked at it, and the title keeps it from
+         * shadowing the original in a list where two identical names would be
+         * a coin toss. Authored by whoever pressed the button rather than by
+         * the original's author, because it is their event now and a
+         * contributor has to be able to see and edit what they just made.
+         */
+        $new_id = wp_insert_post( array(
+            'post_type'    => 'uc_event',
+            'post_status'  => 'draft',
+            'post_title'   => $source->post_title . ' (copy)',
+            'post_content' => $source->post_content,
+            'post_excerpt' => $source->post_excerpt,
+            'post_author'  => $user->ID,
+        ), true );
+
+        if ( is_wp_error( $new_id ) ) {
+            return $new_id;
+        }
+        $new_id = (int) $new_id;
+
+        // Everything that travels. Nothing outside this list is read.
+        $copy_keys = array(
+            '_uc_start_time', '_uc_end_time', '_uc_location',
+            '_uc_capacity', '_uc_rsvp_enabled',
+            '_uc_gofundme_url', '_uc_gofundme_goal', sfaf_fundraising_progress_meta_key(),
+            '_uc_pardot_campaigns',
+            '_uc_organizer_email', '_uc_notify_organizer',
+            '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
+            '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+            '_uc_image_url', '_uc_image_override',
+            SFAF_Reminders::NOTIFY_USERS_META,
+            SFAF_Reminders::NOTIFY_EMAILS_META,
+            SFAF_Reminders::NOTIFY_AUTHOR_OPTOUT_META,
+        );
+
+        foreach ( $copy_keys as $key ) {
+            $value = get_post_meta( $source_id, $key, true );
+            if ( '' === $value || array() === $value || null === $value ) {
+                continue;
+            }
+            update_post_meta( $new_id, $key, $value );
+        }
+
+        /*
+         * THE FAQ ROWS, WITH THE PLATFORM IDS TAKEN OFF.
+         *
+         * Rebuilt field by field rather than copied and unset, so a row can
+         * only ever contain a question and an answer whatever it arrived with.
+         * That is the same shape SFAF_FAQ_Sets::clean_rows() produces and the
+         * same shape the editor's repeater posts, so a duplicated row is
+         * indistinguishable from a hand-typed one, which is exactly what it
+         * now is.
+         */
+        $faqs = array();
+        foreach ( sfaf_get_faqs( $source_id ) as $row ) {
+            $q = isset( $row['question'] ) ? (string) $row['question'] : '';
+            $a = isset( $row['answer'] ) ? (string) $row['answer'] : '';
+            if ( '' === $q && '' === $a ) {
+                continue;
+            }
+            $faqs[] = array( 'question' => $q, 'answer' => $a );
+        }
+        if ( ! empty( $faqs ) ) {
+            update_post_meta( $new_id, sfaf_faq_meta_key(), $faqs );
+        }
+
+        // Category, organizer, venue and series. A series is a term, so it
+        // copies like any other and does not make the duplicate a member of
+        // anything that regenerates.
+        foreach ( array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY ) as $tax ) {
+            $terms = wp_get_object_terms( $source_id, $tax, array( 'fields' => 'ids' ) );
+            if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+                wp_set_object_terms( $new_id, $terms, $tax );
+            }
+        }
+
+        // The featured image. The attachment is shared, not duplicated: two
+        // events pointing at one library item is what the library is for, and
+        // copying the file would leave a second copy to maintain.
+        $thumb = get_post_thumbnail_id( $source_id );
+        if ( $thumb ) {
+            set_post_thumbnail( $new_id, $thumb );
+        }
+
+        return $new_id;
+    }
+
+    /* =====================================================================
      * Users page actions
      * ================================================================== */
 
@@ -1156,6 +1342,8 @@ class SFAF_Portal {
         $map = array(
             'saved'          => 'Event saved.',
             'trashed'        => 'Event removed.',
+            'duplicated'     => 'Copied. This is a new draft with no date and no registrations, and the event it came from is unchanged. Set the date, check the details, then publish. If the original was imported, this copy is not: nothing here is tied to the platform and every field is yours to edit.',
+            'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
             'rejected'       => 'Event rejected.',
             'user_saved'     => 'User permissions updated.',
@@ -1625,6 +1813,85 @@ class SFAF_Portal {
      *
      * @return array<string,string> column key => first-click direction
      */
+    /**
+     * The Events list's views, and the query each one adds.
+     *
+     * ONE DEFINITION, READ BY THE TAB STRIP, THE VALIDATOR, THE QUERY AND
+     * EVERY LINK THAT CARRIES THE VIEW ALONG. A view that existed in the tabs
+     * but not in the validator would 404 into the default; one that existed in
+     * the validator but not the query would silently show everything. Both are
+     * the sort of drift that only shows up in use.
+     *
+     * UPCOMING IS THE DEFAULT because it is the work. Past events have not
+     * gone anywhere and are one click away, which is the whole of what
+     * "archived" means here: a view, not a lifecycle. Nothing is deleted,
+     * nothing expires, and no event is ever moved or marked by any of this.
+     *
+     * @return array[] key => array{label:string, args:array, hint:string}
+     */
+    private function event_views() {
+        return array(
+            'upcoming' => array(
+                'label' => 'Upcoming',
+                'args'  => array( 'upcoming' => true ),
+                'hint'  => 'Events dated today or later.',
+            ),
+            'archived' => array(
+                'label' => 'Archived',
+                'args'  => array( 'archived' => true ),
+                'hint'  => 'Events that have already happened. Nothing here has been deleted or altered: these are the same records, kept permanently, including events imported from GoFundMe Pro and Eventbrite.',
+            ),
+            'removed'  => array(
+                'label' => 'Removed at source',
+                'args'  => array( 'removed' => true ),
+                'hint'  => 'Imported events the platform stopped listing. They were taken off the calendar and kept as drafts rather than deleted, at any date, so they are gathered here instead of being split across the other views.',
+            ),
+            'all'      => array(
+                'label' => 'All',
+                'args'  => array(),
+                'hint'  => '',
+            ),
+        );
+    }
+
+    /**
+     * The view tabs, each carrying the current filters and sort with it.
+     *
+     * Links rather than another dropdown in the filter bar: which events are
+     * being looked at is the first question the screen answers, and burying it
+     * in a select beside four refinements makes it read as a fifth refinement.
+     */
+    private function view_tabs( $view, $filters, $sort ) {
+        $base = array_filter( array(
+            's'       => $filters['s'],
+            'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'status'  => $filters['status'],
+            'from'    => $filters['from'],
+            'to'      => $filters['to'],
+            'orderby' => $sort['orderby'],
+        ), function ( $v ) { return '' !== $v && null !== $v; } );
+        ?>
+        <div class="uc-view-tabs" role="navigation" aria-label="Which events to show">
+            <?php foreach ( $this->event_views() as $key => $def ) :
+                $active = ( $key === $view );
+                // The order is deliberately NOT carried: each view has its own
+                // sensible default direction and forcing the previous view's
+                // onto it lands somebody on the oldest event of all.
+                $url = add_query_arg( array_merge( $base, array( 'view' => $key ) ), $this->url( 'events' ) );
+                ?>
+                <a class="uc-view-tab<?php echo $active ? ' uc-view-tab-active' : ''; ?>"
+                   href="<?php echo esc_url( $url ); ?>"<?php echo $active ? ' aria-current="page"' : ''; ?>>
+                    <?php echo esc_html( $def['label'] ); ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        $hint = $this->event_views()[ $view ]['hint'];
+        if ( '' !== $hint ) {
+            echo '<p class="uc-hint uc-view-hint">' . esc_html( $hint ) . '</p>';
+        }
+    }
+
     private function sortable_columns() {
         return array(
             'title'  => 'asc',   // alphabetical is what a first click should mean
@@ -1662,6 +1929,8 @@ class SFAF_Portal {
             'status'  => $filters['status'],
             'from'    => $filters['from'],
             'to'      => $filters['to'],
+            // Sorting inside Archived must stay inside Archived.
+            'view'    => isset( $filters['view'] ) ? $filters['view'] : '',
             'orderby' => $column,
             'order'   => $next,
         ), function ( $v ) { return '' !== $v && null !== $v; } );
@@ -1682,12 +1951,29 @@ class SFAF_Portal {
 
     private function render_events( $user ) {
         $this->chrome_open( $user, 'events' );
+
+        /*
+         * THE VIEW IS A FILTER, NOT A SCREEN.
+         *
+         * Archived events are the same posts in the same table with the same
+         * columns, the same sorting and the same actions; the only difference
+         * is which side of today the date falls on. So this is one more value
+         * in the query string beside the search, category, status and date
+         * range, and everything already built keeps working across it. A
+         * second screen would have meant a second table to keep in step.
+         */
+        $view = isset( $_GET['view'] ) ? sanitize_key( $_GET['view'] ) : 'upcoming';
+        if ( ! isset( $this->event_views()[ $view ] ) ) {
+            $view = 'upcoming';
+        }
+
         $filters = array(
             's'        => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
             'cat'      => isset( $_GET['cat'] ) ? intval( $_GET['cat'] ) : 0,
             'status'   => isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '',
             'from'     => isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '',
             'to'       => isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '',
+            'view'     => $view,
         );
 
         // SORT LIVES IN THE URL so a view can be linked, bookmarked and shared,
@@ -1701,13 +1987,23 @@ class SFAF_Portal {
         $order = ( isset( $_GET['order'] ) && 'asc' === strtolower( sanitize_key( $_GET['order'] ) ) ) ? 'asc' : 'desc';
         if ( ! isset( $_GET['order'] ) ) {
             $order = $sortable[ $orderby ];
+            /*
+             * The useful end of the list is a different end in each view. On
+             * upcoming events it is the soonest, which needs doing first; on
+             * archived events it is the most recent, which is the one anybody
+             * is looking for. Only the unstated default moves: a sort chosen
+             * in the URL still wins, in either view.
+             */
+            if ( 'date' === $orderby && 'upcoming' === $view ) {
+                $order = 'asc';
+            }
         }
         $sort  = array( 'orderby' => $orderby, 'order' => $order );
         $paged = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
         $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
 
-        $ids = $this->query_events( $user, array_merge( $filters, array(
+        $ids = $this->query_events( $user, array_merge( $filters, $this->event_views()[ $view ]['args'], array(
             'orderby'  => $orderby,
             'order'    => $order,
             'paged'    => $paged,
@@ -1721,7 +2017,11 @@ class SFAF_Portal {
             <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
         </div>
 
+        <?php $this->view_tabs( $view, $filters, $sort ); ?>
+
         <form method="get" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-filters-bar">
+            <?php // Filtering must not silently drop you back into Upcoming. ?>
+            <input type="hidden" name="view" value="<?php echo esc_attr( $view ); ?>" />
             <input type="search" name="s" value="<?php echo esc_attr( $filters['s'] ); ?>" placeholder="Search events…" />
             <select name="cat">
                 <option value="0">All categories</option>
@@ -1775,6 +2075,8 @@ class SFAF_Portal {
             'status'  => $filters['status'],
             'from'    => $filters['from'],
             'to'      => $filters['to'],
+            // Page 2 of Archived is page 2 of Archived.
+            'view'    => isset( $filters['view'] ) ? $filters['view'] : '',
             'orderby' => $sort['orderby'],
             'order'   => $sort['order'],
         ), function ( $v ) { return '' !== $v && null !== $v; } );
@@ -1844,7 +2146,33 @@ class SFAF_Portal {
                     <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo (int) sfaf_get_rsvp_count( $id ); ?></td>
-                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
+                    <td>
+                        <span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span>
+                        <?php
+                        /*
+                         * "REMOVED AT SOURCE" IS NOT "PAST", AND MUST NOT READ
+                         * AS IT.
+                         *
+                         * An event the platform stopped listing was unpublished
+                         * to a draft by this plugin, not by a person, and can be
+                         * at any date. Left as a bare "Draft" pill it is
+                         * indistinguishable from something a manager parked
+                         * deliberately, and in the Archived view it would be
+                         * indistinguishable from an event that simply happened.
+                         * So it says so, with when and why, and the editor's
+                         * fuller banner is unchanged and still one click away.
+                         */
+                        $removed_at = (int) get_post_meta( $id, SFAF_Sources::META_REMOVED_AT, true );
+                        if ( $removed_at ) :
+                            $why = (string) get_post_meta( $id, SFAF_Sources::META_REMOVED_WHY, true );
+                            ?>
+                            <span class="uc-pill uc-pill-removed"
+                                  title="<?php echo esc_attr(
+                                      ( 'ended' === $why ? 'The campaign is no longer active at the source' : 'It stopped being returned by the source' )
+                                      . ', ' . human_time_diff( $removed_at, time() ) . ' ago. It was taken off the calendar and kept as a draft.'
+                                  ); ?>">Removed at source</span>
+                        <?php endif; ?>
+                    </td>
                     <td><?php
                         // NO SERIES EVER APPEARS IN THIS TABLE. It is a list of
                         // uc_event posts and a series is a term, so that is now
@@ -1864,8 +2192,34 @@ class SFAF_Portal {
                         }
                     ?></td>
                     <td><?php
-                        $src = get_post_meta( $id, '_uc_source_site', true );
-                        echo $src ? esc_html( wp_parse_url( $src, PHP_URL_HOST ) ?: $src ) : '<span class="uc-muted">Local</span>';
+                        /*
+                         * WHERE THIS EVENT CAME FROM, ALL THREE ANSWERS.
+                         *
+                         * This column used to read only _uc_source_site, the
+                         * multi-site sync marker, so an event imported from
+                         * GoFundMe Pro or Eventbrite said "Local", which is the
+                         * one thing it is not. That mattered least while the list
+                         * showed only upcoming events and most in the archive,
+                         * which is where somebody is looking at a record of
+                         * something that happened and needs to know whose
+                         * record it is.
+                         *
+                         * The import badge wins when both are set, because it
+                         * is the one that says anything about how the event is
+                         * maintained.
+                         */
+                        $row_prov = SFAF_Sources::provenance( $id );
+                        $src      = get_post_meta( $id, '_uc_source_site', true );
+                        if ( '' !== $row_prov['source'] ) {
+                            $badge = '<span class="uc-source-badge">' . esc_html( $row_prov['label'] ) . '</span>';
+                            echo $row_prov['source_url']
+                                ? '<a href="' . esc_url( $row_prov['source_url'] ) . '" target="_blank" rel="noopener noreferrer">' . $badge . '</a>'
+                                : $badge;
+                        } elseif ( $src ) {
+                            echo esc_html( wp_parse_url( $src, PHP_URL_HOST ) ?: $src );
+                        } else {
+                            echo '<span class="uc-muted">Local</span>';
+                        }
                     ?></td>
                     <?php
                     /*
@@ -1882,6 +2236,31 @@ class SFAF_Portal {
                     <td class="uc-row-actions">
                         <div class="uc-actions">
                             <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
+                            <?php
+                            /*
+                             * DUPLICATE LIVES HERE AND NOT IN THE EDITOR.
+                             *
+                             * It posts and redirects to the new draft, which on
+                             * the editor would mean walking away from whatever
+                             * the manager had typed and not saved. From the
+                             * list there is nothing to lose. It is also where
+                             * the thought occurs: somebody scanning last
+                             * year's events for the one to run again is
+                             * already looking at this row.
+                             *
+                             * Offered on every event, archived or not, and on
+                             * imported ones, where it is the way to turn a
+                             * campaign the platform owns into an event of our
+                             * own.
+                             */
+                            ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
+                                <input type="hidden" name="uc_action" value="duplicate_event" />
+                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_duplicate_event', 'uc_nonce' ); ?>
+                                <button type="submit" class="uc-action-link uc-action-btn"
+                                        title="Create a new draft from this event. No date, no registrations, and this event is not changed.">Duplicate</button>
+                            </form>
                             <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>"
                                   onsubmit="return confirm('Remove this event? Nothing else changes and nothing brings it back.');">
                                 <input type="hidden" name="uc_action" value="trash_event" />
@@ -4368,7 +4747,10 @@ class SFAF_Portal {
             'posts_per_page'         => isset( $args['per_page'] ) ? (int) $args['per_page'] : 50,
             'meta_key'               => '_uc_event_date',
             'orderby'                => 'meta_value',
-            'order'                  => isset( $args['upcoming'] ) ? 'ASC' : 'DESC',
+            // ! empty, not isset: passing 'upcoming' => false used to flip the
+            // order to ASC just by naming the key, which is a trap for any
+            // caller that computes the flag rather than hard-coding it.
+            'order'                  => ! empty( $args['upcoming'] ) ? 'ASC' : 'DESC',
             'no_found_rows'          => true,
             'update_post_meta_cache' => true,
             'update_post_term_cache' => true,
@@ -4457,6 +4839,36 @@ class SFAF_Portal {
         }
         if ( ! empty( $args['upcoming'] ) ) {
             $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' );
+        }
+
+        /*
+         * ARCHIVED: THE EVENT DATE IS IN THE PAST. THAT IS THE WHOLE RULE.
+         *
+         * Nothing is deleted, nothing expires and no retention period exists.
+         * A past event is an ordinary uc_event post that has stopped being
+         * upcoming, so "archived" is a question asked of the date at read
+         * time and never a state written to the post. That is why there is no
+         * archive flag to keep in step with anything, and why an event moves
+         * between the two views by the calendar changing rather than by
+         * something running.
+         *
+         * Today is upcoming, not archived, in both directions: the two views
+         * use the same boundary with opposite comparisons, so no event can
+         * fall into both and none can fall between them.
+         */
+        if ( ! empty( $args['archived'] ) ) {
+            $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '<', 'type' => 'DATE' );
+        }
+
+        /*
+         * REMOVED AT SOURCE. A view of its own, because it is the one case
+         * where a manager has to find events by something other than when they
+         * happen. An event the platform stopped listing was unpublished to a
+         * draft and can be at any date, so it is neither reliably upcoming nor
+         * reliably archived and would be findable in neither.
+         */
+        if ( ! empty( $args['removed'] ) ) {
+            $q['meta_query'][] = array( 'key' => SFAF_Sources::META_REMOVED_AT, 'compare' => 'EXISTS' );
         }
         if ( ! empty( $args['from'] ) ) {
             $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' );
