@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.2.0
+Stable tag: 3.2.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -143,6 +143,12 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.2.1 =
+
+**Fixes a fatal in 3.2.0 that stopped the plugin activating at all.** One line of `includes/class-sfaf-portal.php` shipped with its variables missing, which is a PHP parse error, and a parse error in a required file cannot be caught by the plugin's own safety net. WordPress could install 3.2.0 and never activate it, with no useful message. 3.2.0 never ran, so nothing it introduced was ever in service and no data was touched by it. Install 3.2.1 over it.
+
+**How it will not happen again.** Every PHP file is now parsed with a real PHP binary before a build is packaged, and any parse error stops the build. The checks that were in place before proved the code was balanced (braces, brackets, PHP tags) and never proved it was valid, which is exactly the gap the broken line fell through: it was correctly balanced and wrong only as an expression.
 
 = 3.2.0 =
 

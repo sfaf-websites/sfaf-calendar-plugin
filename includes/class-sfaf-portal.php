@@ -646,7 +646,7 @@ class SFAF_Portal {
          * approval queue now posts the same controls, from the same render, so
          * the reading of them moved somewhere both callers can reach.
          */
-        ->save_manager_fields_from_post( , ,  );
+        $this->save_manager_fields_from_post( $user, $event_id, $is_locked );
 
         /*
          * SERIES. A term assignment and nothing else.
