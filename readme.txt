@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.2.1
+Stable tag: 3.3.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -42,6 +42,28 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * `[upcoming_events count="5" category="fundraising"]` - Compact upcoming events widget
 
 Build any of these visually under Events &rsaquo; Shortcode Generator.
+
+== Event Images ==
+
+**Supply event images at 1200 x 675 pixels (16:9 landscape).**
+
+Event cards crop the image to 16:9 and fill the box, so anything taller than
+that loses its top and bottom. A portrait photograph of a group is the case
+that goes wrong: the crop takes a landscape band out of the middle and can cut
+through people's faces. Crop it to 16:9 before uploading and you decide what
+stays in frame rather than the stylesheet deciding for you.
+
+1200 x 675 is also the size a shared link's preview image wants, on Facebook,
+LinkedIn, Slack and the rest, so one picture at this size is right in both
+places and there is no second file to remember.
+
+Where an event has no image, the card draws a branded placeholder tile in the
+category's colour, carrying the category icon and name, at the same 16:9 shape.
+That is a designed state and not a failure: roughly half of imported GoFundMe
+Pro campaigns will never have a picture, because the API does not expose one.
+
+The same target is stated beside the image control in both editors: the
+/caladmin event form and the Event Image box in the WordPress admin.
 
 == Installation ==
 
@@ -143,6 +165,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.3.0 =
+
+**IMPORTANT: the embed block on sfaf.org must be re-copied.** This release changes `public/css/calendar.css`, and the embed serves its stylesheet from this site at a pinned version. Until the block is re-copied from Events &rsaquo; Embed Code, sfaf.org keeps the old card image shape. Nothing breaks in the meantime; the images there simply stay as they were.
+
+**Card images are 16:9 now, and the target size is 1200 x 675.** The card's image box was a fixed 150 pixels tall at whatever width the column happened to be, so its shape changed with the layout and the same photograph was cropped differently in different places. In a wide single column that band was shallow enough to cut through people's faces. It is a 16:9 ratio now, so the height follows the width and the crop is the same everywhere. Both event editors state the 1200 x 675 target beside the image control, which is also the right shape for a shared link's preview image, so one upload covers both. The month grid and the sidebar are untouched: neither uses this box.
+
+**A saved FAQ set can be applied from inside the FAQ block.** The set could already be applied, from a panel at the top of the editor that posted the page and reloaded it, which threw away every unsaved edit in the form below and sat nowhere near the questions it changed. There is now a dropdown and an Add button in the FAQ block itself. It copies the questions into the rows underneath it without leaving the page, so nothing typed is lost and any of the new rows can be edited or deleted before saving. It appends only: existing questions are never rewritten or reordered, and a question already on the event is skipped rather than duplicated. Available on imported events too, where a campaign often needs questions the platform does not carry, and on an event that has not been saved yet. Applied rows are hand-written content and carry no platform ID, so a refetch from GoFundMe Pro leaves them exactly where they are. The old panel still works without JavaScript.
+
+**The edit-scope question is a modal.** Opening an event that is one of several upcoming occurrences used to show two buttons in a box at the top of a long form. They were easy to scroll past, and a manager who scrolled past them met a form where nothing could be typed and nothing explained why. The question now opens over a frozen editor and has to be answered first. It names the count, as in "Edit all 12 upcoming occurrences". Escape and a Cancel button both go back to where the manager came from rather than leaving them in an editor with no scope chosen. Focus is trapped in the dialog while it is open and lands on the banner stating the answer once it closes. A one-off event opens straight to editing with no dialog at all. What happens after the choice is unchanged: the same banner, the same per-field unlocking, the date never editable across occurrences, and past occurrences never targeted by either option.
 
 = 3.2.1 =
 

@@ -528,8 +528,64 @@ class SFAF_Post_Types {
     public function render_faq_meta_box( $post ) {
         echo '<div class="uc-meta-box">';
         echo '<p class="description" style="margin-top:0;">Frequently asked questions for this event.</p>';
+        $this->faq_set_picker_html();
         $this->faq_repeater_html( 'uc_faqs', sfaf_get_faqs( $post->ID ), $this->faq_source_label( $post->ID ) );
         echo '</div>';
+    }
+
+    /**
+     * Apply a saved FAQ set, from inside the metabox.
+     *
+     * The same control the portal editor grew, for the same reason: a set that
+     * can only be applied by posting a separate form somewhere else is a set
+     * nobody applies. See SFAF_Portal::faq_set_picker() for the long note on
+     * why the copying happens in the browser and why appending is the only
+     * mode offered.
+     *
+     * Applied rows carry no source_faq_id, because a repeater row is a
+     * question and an answer and nothing else, so they are manual rows and
+     * SFAF_Sources::sync_faqs() leaves them alone on every fetch.
+     *
+     * There is no fallback for a WordPress admin with JavaScript switched off,
+     * because the post editor around this box does not work without it either.
+     */
+    private function faq_set_picker_html() {
+        $sets = SFAF_FAQ_Sets::all();
+        if ( empty( $sets ) ) {
+            return;
+        }
+
+        $payload = array();
+        foreach ( $sets as $id => $set ) {
+            $payload[ $id ] = array(
+                'name' => $set['name'],
+                'rows' => $set['rows'],
+            );
+        }
+        ?>
+        <div class="uc-faq-picker" data-uc-faq-picker hidden>
+            <label for="uc-faq-set-select"><strong>Apply a saved FAQ set</strong></label>
+            <div class="uc-faq-picker-row">
+                <select id="uc-faq-set-select" data-uc-faq-set>
+                    <?php foreach ( $sets as $set ) : ?>
+                        <option value="<?php echo esc_attr( $set['id'] ); ?>"><?php
+                            echo esc_html( $set['name'] . ' (' . count( $set['rows'] ) . ')' );
+                        ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="button" class="button" data-uc-faq-apply>Add these questions</button>
+            </div>
+            <p class="description" data-uc-faq-said role="status" hidden></p>
+            <p class="description">
+                The questions are copied in and added underneath the ones already here. Nothing already written is
+                changed or removed, and questions already on this event are skipped rather than duplicated. Update
+                the event to keep them. Editing the set afterwards does not change this event.
+            </p>
+            <script type="application/json" data-uc-faq-sets><?php
+                echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+            ?></script>
+        </div>
+        <?php
     }
 
     /**
@@ -544,6 +600,17 @@ class SFAF_Post_Types {
             <div class="uc-img-source-preview"><?php echo sfaf_event_thumbnail( $post->ID, 'medium' ); ?></div>
             <p class="uc-img-source-label">Showing: <strong><?php echo esc_html( $labels[ $source ] ); ?></strong> image</p>
             <p class="description">Set a <strong>Featured Image</strong> to override the series image for this occurrence.</p>
+            <?php
+            /*
+             * Said here as well as in the portal editor, because this is the
+             * other screen where somebody chooses the picture, and a spec that
+             * only exists on one of two editors is a spec half the uploads
+             * never meet. See the note in SFAF_Portal::render_manager_control().
+             */
+            ?>
+            <p class="description"><strong>Best size: 1200 x 675 pixels (16:9 landscape).</strong> Event cards crop to
+                this shape and fill it, so anything taller loses its top and bottom. It is also the shape used when
+                someone shares the event.</p>
             <?php if ( $source === 'event' ) : ?>
                 <label class="uc-display-toggle"><input type="checkbox" name="uc_reset_series_image" value="1" /> Reset to series image (clear this event's image on save)</label>
             <?php endif; ?>

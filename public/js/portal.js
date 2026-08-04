@@ -7,6 +7,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         initSidebar();
         initRepeaters();
+        initFaqSetPicker();
         initImagePicker();
         // ORDER MATTERS between these three. Both the scope confirmation and
         // the completeness confirmation bind a click listener to the same save
@@ -262,6 +263,162 @@
         });
     }
 
+    /* ---------------------------------------------------------------------
+     * Apply a saved FAQ set, into the repeater, without leaving the page.
+     *
+     * COPY, IN THE BROWSER. The rows are written straight into the FAQ
+     * repeater as ordinary new rows and are saved when the event is saved.
+     * Nothing is posted here, so nothing typed into the form is lost, and the
+     * manager can edit or delete any of the new rows before saving. That is
+     * the whole difference from the server-side apply this replaces, which
+     * posted and redirected and therefore threw the form away.
+     *
+     * APPEND ONLY. There is no replace mode. Existing rows are never rewritten
+     * and never reordered, and a question that is already on the event is
+     * skipped rather than added twice, matching SFAF_FAQ_Sets::apply().
+     *
+     * The imported rows a platform owns are not in this repeater at all: they
+     * are rendered above it with no form fields, so there is nothing here that
+     * could reach them. They are still counted when checking for duplicates,
+     * because a set that repeats a question the campaign already answers
+     * should not add it again.
+     * ------------------------------------------------------------------- */
+    function initFaqSetPicker() {
+        var pickers = document.querySelectorAll('[data-uc-faq-picker]');
+        if (!pickers.length) {
+            return;
+        }
+
+        var applied = 0; // keeps the generated field indexes unique per page
+
+        Array.prototype.forEach.call(pickers, function (picker) {
+            var dataNode = picker.querySelector('[data-uc-faq-sets]');
+            var select = picker.querySelector('[data-uc-faq-set]');
+            var button = picker.querySelector('[data-uc-faq-apply]');
+            var said = picker.querySelector('[data-uc-faq-said]');
+            if (!dataNode || !select || !button) {
+                return;
+            }
+
+            var sets;
+            try {
+                sets = JSON.parse(dataNode.textContent || '{}');
+            } catch (err) {
+                return; // leave the server-side form in place rather than half a control
+            }
+
+            /* The repeater this picker belongs to. Nearest one after the
+             * picker inside the same block, so a page that grows a second
+             * repeater later cannot silently start filling the wrong one. */
+            var block = picker.parentElement;
+            var rep = block ? block.querySelector('.uc-repeater') : null;
+            var rows = rep ? rep.querySelector('.uc-repeater-rows') : null;
+            var tpl = rep ? rep.querySelector('.uc-repeater-tpl') : null;
+            if (!rows || !tpl) {
+                return;
+            }
+
+            /* Case- and space-insensitive question identity. Deliberately the
+             * same rule as SFAF_FAQ_Sets::fingerprint(), so applying here and
+             * applying on the server skip the same rows. */
+            function fingerprint(text) {
+                return String(text == null ? '' : text).replace(/\s+/g, ' ').trim().toLowerCase();
+            }
+
+            /* Every question already on this event: the manager's own rows in
+             * the repeater, and the platform's read-only rows above it. */
+            function present() {
+                var seen = {};
+                Array.prototype.forEach.call(
+                    block.querySelectorAll('.uc-faq-row input[type="text"]'),
+                    function (input) {
+                        var print = fingerprint(input.value);
+                        if (print) { seen[print] = true; }
+                    }
+                );
+                return seen;
+            }
+
+            function addRow(question, answer) {
+                var html = tpl.innerHTML.replace(/__I__/g, 'set-' + applied);
+                applied++;
+                var wrap = document.createElement('div');
+                wrap.innerHTML = html.trim();
+                var node = wrap.firstChild;
+                if (!node) {
+                    return false;
+                }
+                var q = node.querySelector('input[type="text"]');
+                var a = node.querySelector('textarea');
+                if (q) { q.value = question; }
+                if (a) { a.value = answer; }
+                rows.appendChild(node);
+                return true;
+            }
+
+            function report(message) {
+                if (!said) {
+                    return;
+                }
+                said.textContent = message;
+                said.removeAttribute('hidden');
+            }
+
+            button.addEventListener('click', function () {
+                var set = sets[select.value];
+                if (!set || !set.rows || !set.rows.length) {
+                    report('That set has no questions in it.');
+                    return;
+                }
+
+                var seen = present();
+                var added = 0;
+                var skipped = 0;
+
+                set.rows.forEach(function (row) {
+                    var print = fingerprint(row.question);
+                    if (print && seen[print]) {
+                        skipped++;
+                        return;
+                    }
+                    if (addRow(row.question || '', row.answer || '')) {
+                        seen[print] = true;
+                        added++;
+                    }
+                });
+
+                var name = set.name || 'that set';
+                if (!added) {
+                    report('Every question in "' + name + '" is already on this event, so nothing was added.');
+                } else {
+                    report('Added ' + added + ' question' + (added === 1 ? '' : 's') + ' from "' + name + '"'
+                        + (skipped ? ', and skipped ' + skipped + ' already here' : '')
+                        + '. Save the event to keep them.');
+                }
+
+                /* The completeness check watches the form for changes and
+                 * these rows were added by script, which fires no change
+                 * event. Nudge it so the pre-publish warning stays honest. */
+                if (added && typeof window.sfafRefreshCompleteness === 'function') {
+                    window.sfafRefreshCompleteness();
+                }
+            });
+
+            picker.removeAttribute('hidden');
+        });
+
+        /* The post-and-redirect version, now that the in-place one is live.
+         * Only hidden once a picker above has actually initialised, so a
+         * browser that fell out of any of the guards above keeps a control
+         * that works. */
+        if (document.querySelector('[data-uc-faq-picker]:not([hidden])')) {
+            Array.prototype.forEach.call(
+                document.querySelectorAll('[data-uc-faq-apply-fallback]'),
+                function (form) { form.setAttribute('hidden', 'hidden'); }
+            );
+        }
+    }
+
     /* Publish confirmation for events still missing manager-owned fields.
      *
      * A WARNING, NOT A BLOCK. There are real reasons to publish before the
@@ -446,12 +603,31 @@
      * states the scope and the count and stays put while the form scrolls,
      * because the manager needs to know what the save will do at the moment
      * they press the button, not only at the moment they chose.
+     *
+     * THE QUESTION IS ASKED AS A MODAL. The server sends the choice as an
+     * ordinary block at the top of the form; what happens here is that it is
+     * lifted into a real <dialog> and opened with showModal(). That is the
+     * whole implementation of "freezes the editor behind it": the browser's
+     * top layer makes everything outside the dialog inert, traps Tab inside
+     * it, and raises Escape as a cancel event. None of those are reimplemented
+     * here, because a hand-rolled focus trap is a thing to get wrong.
+     *
+     * Escape and the Cancel button do the same thing: leave. An editor whose
+     * scope was never chosen is an editor where nothing can be typed and no
+     * save can happen, so staying on it with the question dismissed would be
+     * a dead screen. Going back to where the manager came from is the answer
+     * that matches what they did.
+     *
+     * If <dialog> is missing, everything below still runs and the block stays
+     * in the page as the panel it already was. The lock does not depend on
+     * this function: the fieldset arrives disabled from the server.
      * ------------------------------------------------------------------- */
     function initEditScope() {
         var choice = document.querySelector('[data-uc-scope-choice]');
         if (!choice) {
             return; // a one-off event: nothing to choose between
         }
+        // Read BEFORE the node is moved into a dialog outside the form.
         var form = choice.closest ? choice.closest('form') : null;
         if (!form) {
             return;
@@ -462,6 +638,8 @@
         var banner = document.querySelector('[data-uc-scope-banner]');
         var bannerText = document.querySelector('[data-uc-scope-banner-text]');
         var changeBtn = document.querySelector('[data-uc-scope-change]');
+        var cancelRow = choice.querySelector('[data-uc-scope-dismiss-row]');
+        var cancelBtn = choice.querySelector('[data-uc-scope-cancel]');
         var count = parseInt(choice.getAttribute('data-uc-scope-count'), 10) || 0;
 
         var locked = {};
@@ -591,6 +769,11 @@
                     Array.prototype.forEach.call(wrap.querySelectorAll('input, textarea, select'), function (c) {
                         if (!c.hasAttribute('disabled')) { setLocked(c, false); }
                     });
+                    // Buttons that write into this block rather than fields in
+                    // it. Unlocked with the block they belong to.
+                    Array.prototype.forEach.call(wrap.querySelectorAll('[data-uc-faq-apply]'), function (c) {
+                        c.disabled = false;
+                    });
                     wrap.classList.remove('uc-field-pencil-locked');
                     pencil.remove();
                     var first = wrap.querySelector('input:not([type=hidden]), textarea, select');
@@ -601,8 +784,79 @@
             });
         }
 
+        /* ---- The dialog ------------------------------------------------
+         *
+         * Built here rather than sent by the server, so a browser without
+         * <dialog> is never handed markup it cannot open and the block stays
+         * the working panel it already is. */
+        var dialog = null;
+        var answered = false;
+
+        function supportsDialog() {
+            var probe = document.createElement('dialog');
+            return typeof window.HTMLDialogElement !== 'undefined'
+                && typeof probe.showModal === 'function';
+        }
+
+        /* Back to where they came from. The referrer when it is a page on this
+         * site and not this same page (a save redirects here, so the referrer
+         * can be the editor itself), otherwise the events list the server
+         * named. history.back() is the last resort: it is the only one that
+         * can land on a page outside the portal. */
+        function dismiss() {
+            var back = choice.getAttribute('data-uc-scope-back') || '';
+            var ref = document.referrer || '';
+            if (ref && ref.indexOf(window.location.origin + '/') === 0 && ref !== window.location.href) {
+                window.location.href = ref;
+            } else if (back) {
+                window.location.href = back;
+            } else {
+                window.history.back();
+            }
+        }
+
+        function openModal() {
+            if (!supportsDialog()) {
+                return;
+            }
+            dialog = document.createElement('dialog');
+            dialog.className = 'uc-scope-modal';
+            dialog.setAttribute('aria-labelledby', 'uc-scope-title');
+            dialog.setAttribute('aria-describedby', 'uc-scope-lead');
+            document.body.appendChild(dialog);
+            dialog.appendChild(choice); // moves it out of the form: see the note above
+            if (cancelRow) {
+                cancelRow.removeAttribute('hidden');
+            }
+            document.body.classList.add('uc-modal-open');
+
+            // Escape. Prevented and re-handled so dismissing always leaves,
+            // rather than closing the dialog over an editor nothing can be
+            // done with.
+            dialog.addEventListener('cancel', function (e) {
+                e.preventDefault();
+                dismiss();
+            });
+
+            // Closed any other way, without an answer: same outcome.
+            dialog.addEventListener('close', function () {
+                document.body.classList.remove('uc-modal-open');
+                if (!answered) {
+                    dismiss();
+                }
+            });
+
+            dialog.showModal();
+
+            var first = choice.querySelector('[data-uc-scope]');
+            if (first) {
+                first.focus();
+            }
+        }
+
         function choose(scope) {
             input.value = scope;
+            answered = true;
 
             if (fields) {
                 fields.removeAttribute('disabled');
@@ -614,13 +868,30 @@
             eachEditable(function (el) { setLocked(el, true); });
             addPencils(scope);
 
-            choice.setAttribute('hidden', 'hidden');
+            // The apply-a-set button is a <button>, so it is not one of the
+            // controls eachEditable() locks, and it writes rows into the FAQ
+            // block. Locked with the rest until that block's pencil is pressed.
+            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-faq-apply]'), function (btn) {
+                btn.disabled = true;
+            });
+
+            if (dialog) {
+                dialog.close();
+                dialog.remove();
+                dialog = null;
+            } else {
+                choice.setAttribute('hidden', 'hidden');
+            }
             if (banner && bannerText) {
                 bannerText.textContent = (scope === 'all_upcoming')
                     ? 'Editing all ' + count + ' upcoming occurrences.'
                     : 'Editing this event only.';
                 banner.classList.toggle('uc-scope-banner-all', scope === 'all_upcoming');
                 banner.removeAttribute('hidden');
+                // Where focus goes when the dialog closes. The banner states
+                // the answer, so it is both the sensible landing place for the
+                // keyboard and the right thing to have read out next.
+                banner.focus();
             }
 
             // The confirmation on the save buttons, naming the count. This is
@@ -639,6 +910,16 @@
                 choose(btn.getAttribute('data-uc-scope'));
             });
         });
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+                if (dialog) {
+                    dialog.close(); // the close handler leaves, since nothing was answered
+                } else {
+                    dismiss();
+                }
+            });
+        }
 
         if (changeBtn) {
             // Reloading is the honest way back: fields that have already been
@@ -662,5 +943,10 @@
                 }
             });
         });
+
+        /* Last, so every listener above is bound before the question can be
+         * answered. Everything up to this point works whether or not this
+         * does anything. */
+        openModal();
     }
 })();

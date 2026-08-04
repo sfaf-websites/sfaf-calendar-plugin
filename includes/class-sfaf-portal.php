@@ -1903,6 +1903,99 @@ class SFAF_Portal {
      * ================================================================== */
 
     /**
+     * Apply a saved FAQ set, from inside the FAQ block itself.
+     *
+     * WHY THIS EXISTS WHEN THE PANEL ABOVE THE FORM ALREADY DID IT. The panel
+     * applies by posting and redirecting, which is correct on the server and
+     * useless in practice: pressing it throws away every unsaved edit in the
+     * form below it, and it sits at the top of a long page nowhere near the
+     * questions it changes. So the set was appliable and nobody applied one.
+     *
+     * This control does the copying in the browser instead. It writes the
+     * set's rows into the repeater as ordinary new rows and stops there. They
+     * are saved when the event is saved, alongside everything else the manager
+     * has typed, and can be edited or removed first. Nothing is posted, so
+     * nothing is lost.
+     *
+     * WHAT IT CANNOT DO, BY CONSTRUCTION rather than by care:
+     *
+     *   It cannot overwrite. It only ever appends rows to the end of the
+     *   repeater. There is no replace mode here, because a replace that
+     *   silently discards typing is exactly what this must not be.
+     *
+     *   It cannot touch an imported row. Platform-owned rows are rendered
+     *   outside this repeater with no `name` attributes at all (see
+     *   faq_repeater()), so there is no field here that could carry one. They
+     *   are read back from the database on save and re-attached in front.
+     *
+     *   It cannot smuggle in a source_faq_id. A repeater row is a question
+     *   input and an answer textarea, and that is the whole of what posts.
+     *   An applied row is therefore a manual row in the only sense that
+     *   matters to SFAF_Sources::sync_faqs(), which splits rows on whether
+     *   they carry an ID and leaves the ones that do not alone forever.
+     *
+     * ON A NEW EVENT TOO. The old panel needed a saved event to post to. This
+     * needs nothing, so the questions can be applied while the event is still
+     * being written and saved with it.
+     *
+     * The server-side apply is left in place and hidden by script, so a
+     * manager without JavaScript keeps the post-and-redirect they had.
+     */
+    private function faq_set_picker() {
+        $sets = SFAF_FAQ_Sets::all();
+        if ( empty( $sets ) ) {
+            return;
+        }
+
+        // Name and rows only. The IDs are the option's keys and the timestamps
+        // are for the management screen; neither is any use to the browser.
+        $payload = array();
+        foreach ( $sets as $id => $set ) {
+            $payload[ $id ] = array(
+                'name' => $set['name'],
+                'rows' => $set['rows'],
+            );
+        }
+        ?>
+        <div class="uc-faq-picker" data-uc-faq-picker hidden>
+            <?php
+            /*
+             * NOT class="uc-field". That class is one of the wrappers the edit
+             * scope script hangs a pencil on, so labelling this control with
+             * it would put a second pencil inside the FAQ block: one for the
+             * dropdown and one for the questions, unlocking half the block
+             * each. Without it the whole block resolves to the one .uc-card
+             * wrapper and gets a single pencil that opens the set picker and
+             * the rows together, which is how a manager thinks of them.
+             */
+            ?>
+            <div class="uc-faq-picker-row">
+                <label class="uc-faq-picker-label">
+                    <span class="uc-field-label">Apply a saved FAQ set</span>
+                    <select data-uc-faq-set>
+                        <?php foreach ( $sets as $set ) : ?>
+                            <option value="<?php echo esc_attr( $set['id'] ); ?>"><?php
+                                echo esc_html( $set['name'] . ' (' . count( $set['rows'] ) . ')' );
+                            ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button type="button" class="uc-btn uc-btn-sm" data-uc-faq-apply>Add these questions</button>
+            </div>
+            <p class="uc-flash uc-faq-picker-said" data-uc-faq-said role="status" hidden></p>
+            <p class="uc-hint">
+                The questions are copied in and added underneath the ones already here. Nothing already written is
+                changed or removed, and questions that are already on this event are skipped rather than duplicated.
+                Edit or remove any of them before you save. Editing the set afterwards does not change this event.
+            </p>
+            <script type="application/json" data-uc-faq-sets><?php
+                echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+            ?></script>
+        </div>
+        <?php
+    }
+
+    /**
      * Portal FAQ repeater markup (vanilla repeater handled by portal.js).
      *
      * WHY IMPORTED ROWS CARRY NO FORM FIELDS AT ALL. When a platform owns the
@@ -2305,7 +2398,24 @@ class SFAF_Portal {
                         <label class="uc-field uc-image-url-field">Or enter image URL
                             <input type="url" name="image_url" id="uc-image-url-<?php echo esc_attr( $uid ); ?>" data-uc-image-url value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
                         </label>
+                        <?php
+                        /*
+                         * THE SPEC, WHERE THE PICTURE IS CHOSEN.
+                         *
+                         * Card images are cropped to 16:9 and filled, so a
+                         * portrait photograph loses its top and bottom and a
+                         * group shot can lose the faces. Saying the target
+                         * size here is the difference between a manager
+                         * cropping it before uploading and finding out how it
+                         * cropped after publishing. The same file is what a
+                         * shared link previews with, so it is one size to
+                         * remember rather than two.
+                         */
+                        ?>
                         <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
+                        <p class="uc-hint"><strong>Best size: 1200 x 675 pixels (16:9 landscape).</strong> Cards crop to
+                            this shape and fill it, so anything taller loses its top and bottom. It is also the shape
+                            used when someone shares the event, so one picture at this size is right everywhere.</p>
                     <?php endif; ?>
                 </div>
                 <?php
@@ -2667,6 +2777,8 @@ class SFAF_Portal {
                         <input type="url" name="series_image_url" id="uc-image-url" value="<?php echo esc_attr( $img_url ); ?>" placeholder="https://…/image.jpg" />
                     </label>
                     <p class="uc-hint">Shown on the series page, and used by any event in the series with no image of its own.</p>
+                    <p class="uc-hint"><strong>Best size: 1200 x 675 pixels (16:9 landscape).</strong> Event cards crop
+                        to this shape and fill it, so anything taller loses its top and bottom.</p>
                 </div>
 
                 <label class="uc-field">
@@ -3160,6 +3272,7 @@ class SFAF_Portal {
                     Frequently asked questions for this event. These are its own &mdash; there is no series block above
                     them and nothing overrides them.
                 </p>
+                <?php $this->faq_set_picker(); ?>
                 <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
             </div>
 
@@ -3427,6 +3540,22 @@ class SFAF_Portal {
      *   opens for editing — a scope question with one possible answer is not a
      *   question.
      *
+     *   ASKED AS A MODAL, NOT AS A PANEL. Two buttons in a tinted box at the
+     *   top of the page are easy to scroll past, and a manager who scrolled
+     *   past them met a form where nothing could be typed and no explanation
+     *   of why. The question now arrives as a dialog over a frozen editor:
+     *   it is the only thing on screen that can be operated, so it cannot be
+     *   missed and cannot be postponed. Declining it leaves the editor rather
+     *   than sitting in it undecided.
+     *
+     * THE MARKUP IS STILL A PLAIN BLOCK IN THE PAGE. portal.js lifts it into a
+     * real <dialog> and opens it modally; the browser's own top layer then
+     * supplies the backdrop, the focus trap and the Escape key rather than
+     * this reimplementing three things it would get wrong. Without JavaScript,
+     * or in a browser with no <dialog>, it stays exactly what it is here: a
+     * panel at the top of the form, which is what the previous version was.
+     * So the enhancement can fail and leave a usable screen behind.
+     *
      * @param int   $event_id
      * @param int[] $targets     Upcoming events in this event's recurrence group.
      * @param array $locked      field => reason, from bulk_locked_fields().
@@ -3437,25 +3566,43 @@ class SFAF_Portal {
             return;
         }
         ?>
-        <div class="uc-scope" data-uc-scope-choice data-uc-scope-count="<?php echo (int) $count; ?>">
-            <h2 class="uc-scope-title">How should this save apply?</h2>
-            <p class="uc-scope-lead">
+        <div class="uc-scope" data-uc-scope-choice data-uc-scope-count="<?php echo (int) $count; ?>"
+             data-uc-scope-back="<?php echo esc_url( $this->url( 'events' ) ); ?>">
+            <h2 class="uc-scope-title" id="uc-scope-title">How should this save apply?</h2>
+            <p class="uc-scope-lead" id="uc-scope-lead">
                 This event is one of <strong><?php echo (int) $count; ?></strong> upcoming occurrences generated from
-                the same pattern. Choose before you edit &mdash; the fields below are locked until you do.
+                the same pattern. Choose before you edit. Until you do, nothing on this event can be changed.
             </p>
             <div class="uc-scope-buttons">
                 <button type="button" class="uc-btn uc-scope-btn" data-uc-scope="this">
                     Edit this event
+                    <span class="uc-scope-btn-sub">The other <?php echo (int) ( $count - 1 ); ?> upcoming
+                        occurrence<?php echo ( 2 === $count ) ? '' : 's'; ?> stay as
+                        <?php echo ( 2 === $count ) ? 'it is' : 'they are'; ?>.</span>
                 </button>
-                <button type="button" class="uc-btn uc-scope-btn" data-uc-scope="all_upcoming">
+                <button type="button" class="uc-btn uc-scope-btn uc-scope-btn-all" data-uc-scope="all_upcoming">
                     Edit all <?php echo (int) $count; ?> upcoming occurrences
+                    <span class="uc-scope-btn-sub">One save changes every one of them.</span>
                 </button>
             </div>
             <p class="uc-hint">
                 Past occurrences are never changed by either choice. The events in this group are not necessarily the
-                whole series &mdash; a series can hold different kinds of event, which is why an edit travels through
+                whole series: a series can hold different kinds of event, which is why an edit travels through
                 the group rather than through the series.
             </p>
+            <?php
+            /*
+             * DECLINING IS A REAL ANSWER AND HAS A REAL BUTTON.
+             *
+             * A dialog that can only be answered one of two ways traps anybody
+             * who opened the wrong event. This goes back to where they came
+             * from, which is the honest outcome: no scope was chosen, so no
+             * editing starts.
+             */
+            ?>
+            <div class="uc-scope-dismiss" data-uc-scope-dismiss-row hidden>
+                <button type="button" class="uc-btn uc-btn-sm" data-uc-scope-cancel>Cancel and go back</button>
+            </div>
             <noscript>
                 <p class="uc-scope-noscript">
                     Choosing a scope needs JavaScript. With it switched off this form saves this event only.
@@ -3466,8 +3613,9 @@ class SFAF_Portal {
         <?php // Stays visible while a long form scrolls, because the whole
               // point is that the manager can see what this save will do at the
               // moment they press the button, not only at the moment they
-              // chose. ?>
-        <div class="uc-scope-banner" data-uc-scope-banner hidden role="status">
+              // chose. It also takes focus when the dialog closes, so the
+              // answer is the first thing announced after the question. ?>
+        <div class="uc-scope-banner" data-uc-scope-banner hidden role="status" tabindex="-1">
             <span data-uc-scope-banner-text></span>
             <button type="button" class="uc-btn uc-btn-sm" data-uc-scope-change>Change</button>
         </div>
@@ -3813,7 +3961,21 @@ class SFAF_Portal {
                 <?php if ( empty( $sets ) ) : ?>
                     <p class="uc-muted">No saved sets yet. Write this event&rsquo;s FAQs below, save the event, then use &ldquo;Save these as a set&rdquo; to reuse them on the next one.</p>
                 <?php else : ?>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form">
+                    <?php
+                    /*
+                     * THE FALLBACK, NOT THE CONTROL.
+                     *
+                     * Applying happens in the FAQ block itself now, where the
+                     * questions are, without a page load and without throwing
+                     * away unsaved edits. See faq_set_picker().
+                     *
+                     * This form still works and is still the only thing that
+                     * does anything without JavaScript, so it is rendered and
+                     * then hidden by the script that takes over, rather than
+                     * deleted. The server action behind it is unchanged.
+                     */
+                    ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form" data-uc-faq-apply-fallback>
                         <input type="hidden" name="uc_action" value="faq_set_apply" />
                         <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                         <?php wp_nonce_field( 'uc_portal_faq_set_apply', 'uc_nonce' ); ?>

@@ -242,6 +242,14 @@
 .uc-faq-readonly { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
 .uc-faq-readonly li { margin-bottom: 8px; }
 
+/* The saved-set picker sits above the rows it writes into, boxed so it reads
+ * as a control acting on them rather than as one more field in the list. */
+.uc-faq-picker { margin: 0 0 14px; padding: 10px 12px; background: var(--uc-bg);
+    border: 1px solid var(--uc-border); border-radius: 8px; }
+.uc-faq-picker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.uc-faq-picker-row select { max-width: 320px; }
+.uc-faq-picker .description { margin: 8px 0 0; }
+
 /* Display: pagination style radios */
 .uc-radio-stack { display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .uc-radio-opt { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; }

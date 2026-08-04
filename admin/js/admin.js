@@ -9,6 +9,7 @@
         initLogoUploader();
         initSeriesImage();
         initRepeaters();
+        initFaqSetPicker();
         initGofundmeAutofill();
         initShortcodeGenerator();
         initEmbedGenerator();
@@ -140,6 +141,116 @@
         $(document).on('click', '.uc-repeater-remove', function(e) {
             e.preventDefault();
             $(this).closest('.uc-repeater-row').remove();
+        });
+    }
+
+    /**
+     * Apply a saved FAQ set into the FAQ metabox repeater.
+     *
+     * COPY, IN THE BROWSER, APPEND ONLY. The set's rows are written into the
+     * repeater as ordinary new rows and saved when the event is updated, so
+     * nothing already typed into the editor is lost and the manager can edit
+     * or delete any of them first. Existing rows are never rewritten and never
+     * reordered.
+     *
+     * Rows a platform owns are not in this repeater: they are listed above it
+     * as plain text with no form fields, so nothing here can reach them. They
+     * are still counted when checking for duplicates, because a set repeating
+     * a question the campaign already answers should not add it again.
+     *
+     * An applied row is a question and an answer and nothing else, so it
+     * carries no source_faq_id and SFAF_Sources::sync_faqs() treats it as
+     * manual content: never touched, never reordered away, never removed.
+     */
+    function initFaqSetPicker() {
+        var applied = 0; // keeps the generated field indexes unique per page
+
+        $('[data-uc-faq-picker]').each(function() {
+            var $picker = $(this);
+            var $select = $picker.find('[data-uc-faq-set]');
+            var $button = $picker.find('[data-uc-faq-apply]');
+            var $said   = $picker.find('[data-uc-faq-said]');
+            var raw     = $picker.find('[data-uc-faq-sets]').text();
+            if (!$select.length || !$button.length || !raw) {
+                return;
+            }
+
+            var sets;
+            try {
+                sets = JSON.parse(raw);
+            } catch (err) {
+                return;
+            }
+
+            var $block = $picker.parent();
+            var $rep   = $block.find('.uc-repeater').first();
+            var $rows  = $rep.find('.uc-repeater-rows').first();
+            var tpl    = $rep.find('.uc-repeater-template').html();
+            if (!$rows.length || !tpl) {
+                return;
+            }
+
+            /* Same identity rule as SFAF_FAQ_Sets::fingerprint(), so applying
+             * here and applying on the server skip the same rows. */
+            function fingerprint(text) {
+                return String(text == null ? '' : text).replace(/\s+/g, ' ').replace(/^ | $/g, '').toLowerCase();
+            }
+
+            /* Questions already on this event: the editable rows, and the
+             * platform's read-only ones listed above them. */
+            function present() {
+                var seen = {};
+                $block.find('.uc-faq-row input[type="text"]').each(function() {
+                    var print = fingerprint($(this).val());
+                    if (print) { seen[print] = true; }
+                });
+                $block.find('.uc-faq-readonly li strong').each(function() {
+                    var print = fingerprint($(this).text());
+                    if (print) { seen[print] = true; }
+                });
+                return seen;
+            }
+
+            $button.on('click', function(e) {
+                e.preventDefault();
+
+                var set = sets[$select.val()];
+                if (!set || !set.rows || !set.rows.length) {
+                    $said.text('That set has no questions in it.').prop('hidden', false);
+                    return;
+                }
+
+                var seen = present();
+                var added = 0;
+                var skipped = 0;
+
+                $.each(set.rows, function(i, row) {
+                    var print = fingerprint(row.question);
+                    if (print && seen[print]) {
+                        skipped++;
+                        return;
+                    }
+                    var $row = $(tpl.replace(/__INDEX__/g, 'set-' + applied));
+                    applied++;
+                    $row.find('input[type="text"]').val(row.question || '');
+                    $row.find('textarea').val(row.answer || '');
+                    $rows.append($row);
+                    seen[print] = true;
+                    added++;
+                });
+
+                var name = set.name || 'that set';
+                if (!added) {
+                    $said.text('Every question in "' + name + '" is already on this event, so nothing was added.');
+                } else {
+                    $said.text('Added ' + added + ' question' + (added === 1 ? '' : 's') + ' from "' + name + '"'
+                        + (skipped ? ', and skipped ' + skipped + ' already here' : '')
+                        + '. Update the event to keep them.');
+                }
+                $said.prop('hidden', false);
+            });
+
+            $picker.prop('hidden', false);
         });
     }
 

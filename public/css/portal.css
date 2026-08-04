@@ -285,8 +285,38 @@ body.uc-portal {
 .uc-scope-title { margin: 0 0 6px; font-size: 17px; }
 .uc-scope-lead { margin: 0 0 14px; font-size: 14px; line-height: 1.6; }
 .uc-scope-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-.uc-scope-btn { font-weight: 600; }
+
+/* Two stacked lines inside one button: the choice, and what it does to the
+ * other occurrences. The consequence belongs on the control that causes it,
+ * not in a paragraph below that the pointer is already past. */
+.uc-scope-btn { flex: 1 1 220px; display: flex; flex-direction: column; align-items: flex-start;
+    gap: 4px; text-align: left; font-weight: 600; padding: 12px 14px; height: auto; }
+.uc-scope-btn-sub { font-weight: 400; font-size: 12px; line-height: 1.45; color: var(--p-muted); }
+.uc-scope-btn-all { border-color: #fcd34d; background: #fffbeb; }
+.uc-scope-btn-all:hover { border-color: #f59e0b; }
+.uc-scope-btn-all .uc-scope-btn-sub { color: #92400e; }
+.uc-scope-dismiss { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--p-border); }
 .uc-scope-noscript { margin: 10px 0 0; font-size: 13px; color: #92400e; }
+
+/* ---------------------------------------------------------------------------
+ * The scope question as a modal.
+ *
+ * The <dialog> is created by portal.js and the .uc-scope block above is moved
+ * into it, so these rules only ever apply once the enhancement has taken. The
+ * dialog itself is a transparent frame: the panel inside keeps its own border,
+ * padding and background, which is why the same markup reads correctly in
+ * both places.
+ *
+ * No reset of the browser's focus trap, backdrop or Escape handling is needed
+ * or wanted here. That is the point of using a real dialog.
+ * ------------------------------------------------------------------------ */
+.uc-scope-modal { width: min(560px, calc(100vw - 32px)); max-width: none; padding: 0;
+    border: 0; background: transparent; overflow: visible; color: var(--p-text, #1a1d21); }
+.uc-scope-modal::backdrop { background: rgba(15, 23, 42, 0.55); }
+.uc-scope-modal .uc-scope { margin: 0; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); }
+
+/* The page behind a modal must not scroll under it. */
+body.uc-modal-open { overflow: hidden; }
 
 .uc-scope-banner { position: sticky; top: 0; z-index: 20;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -399,6 +429,23 @@ body.uc-portal {
 .uc-faq-set-actions > form { flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .uc-field-inline { width: 100%; }
 .uc-faq-set-actions .uc-hint { margin: 0; }
+
+/* The picker inside the FAQ block. Boxed and tinted because it is a control
+ * that writes into the rows underneath it rather than one more field in the
+ * list, and it has to read as belonging to them. */
+.uc-faq-picker { margin: 0 0 16px; padding: 12px 14px; background: var(--p-bg, #f6f8fa);
+    border: 1px solid var(--p-border, #e3e7ec); border-radius: 10px; }
+.uc-faq-picker-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
+/* Its own class rather than .uc-field, on purpose: see the note in
+   SFAF_Portal::faq_set_picker() about pencils. So it has to state the layout
+   .uc-field would have given it. */
+.uc-faq-picker-label { flex: 1 1 240px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.uc-faq-picker-label > .uc-field-label { font-size: 13px; font-weight: 600; color: var(--p-text); display: block; }
+.uc-faq-picker-label select { width: 100%; padding: 8px 10px; border: 1px solid var(--p-border);
+    border-radius: 7px; font-size: 14px; background: #fff; color: var(--p-text); }
+.uc-faq-picker-row .uc-btn { flex: 0 0 auto; }
+.uc-faq-picker .uc-hint { margin: 8px 0 0; }
+.uc-faq-picker-said { margin: 10px 0 0; }
 
 /* A locked recurrence fieldset reads as one unit, so the whole box is tinted
  * rather than each control being outlined separately. */
