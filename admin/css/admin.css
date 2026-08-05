@@ -55,6 +55,23 @@
 .uc-admin-table a { color: var(--uc-teal); text-decoration: none; }
 .uc-no-data { text-align: center; color: var(--uc-muted); padding: 40px 16px !important; }
 
+/* Calendar Users */
+.uc-users-explainer { margin: 0; padding: 16px; border-bottom: 1px solid var(--uc-border); font-size: 13px; color: var(--uc-muted); line-height: 1.6; }
+.uc-users-explainer strong { color: var(--uc-text); }
+.uc-users-search { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--uc-border); }
+.uc-users-search input[type="search"] { min-width: 240px; }
+.uc-users-count { margin-left: auto; font-size: 12px; color: var(--uc-muted); }
+.uc-users-table td { vertical-align: top; }
+.uc-users-who strong { display: block; }
+.uc-users-who .uc-muted, .uc-users-access .uc-muted, .uc-users-teams .uc-muted { display: block; font-size: 12px; color: var(--uc-muted); margin-top: 2px; line-height: 1.5; }
+.uc-users-editrole { display: block; font-size: 12px; margin-top: 2px; }
+.uc-users-form { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.uc-users-teamlist { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.uc-users-teamlist label { display: flex; align-items: center; gap: 6px; }
+.uc-users-pager { display: flex; gap: 6px; padding: 12px 16px; }
+.uc-users-page { padding: 4px 10px; border: 1px solid var(--uc-border); border-radius: 6px; font-size: 13px; text-decoration: none; }
+.uc-users-page.current { background: var(--uc-bg); font-weight: 700; }
+
 /* Status badges */
 .uc-status { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
 .uc-status-confirmed { background: #d1fae5; color: #065f46; }

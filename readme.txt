@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.6.0
+Stable tag: 3.7.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.7.0 =
+
+**An administrator can no longer lose access to the calendar.** One did. He added himself as a calendar user so that he could put himself in a team, and his portal access dropped from full to contributor. His WordPress role was never touched and never could have been: nothing in this plugin has ever written a WordPress role or capability. What happened is that the calendar's own access level, which until now was only consulted when somebody had no record at all, started existing for him, and the "Add a user" form's first option is Contributor.
+
+**The rule is now the other way round.** Full access is derived from `manage_options` first, and a calendar user record cannot reduce it. If you can change how this site runs, you have full calendar access, including RSVPs and the pending queue, whether or not the calendar lists you as a user. A record for an administrator still exists and still matters, because that is what puts somebody in the team picker and the notification picker, but it can only ever describe somebody who is not already an administrator. An administrator added to the calendar is added at Admin, whatever the form said.
+
+**On the screens, an administrator's access level is shown as fixed with the reason**, rather than as a dropdown that would accept a change and then have no effect.
+
+**Team membership never touches access.** It did not before either, and this release does not fix a bug there so much as make it impossible to introduce one: adding somebody to a team, removing them, or saving a team writes exactly one option, `sfaf_teams`, and nothing else. Membership is a set of user ids that says who gets notified. It says nothing about what anybody may do.
+
+**New screen: Events > Calendar Users.** Every WordPress user on one page, gated on `manage_options`, showing their WordPress role, their calendar access level and their team memberships. Access level and teams are two separate forms with two separate handlers, so saving one cannot carry a stale value from the other; that coupling is exactly how the defect above happened. The WordPress role is read-only here with a link to the built-in Users screen, deliberately: routing it through `wp_update_user()` is easy, but reproducing everything the Users screen does around it (editable roles, refusing to let the last administrator demote themselves, multisite super-admins) and keeping that in step with WordPress is not, and a second subtly different way to change a role is the kind of thing this release exists to prevent.
+
+The portal's own Users screen is still where teams are created and named, and still where contributor approval and category restrictions are set. The new screen is where you look somebody up.
+
+**Standing rule from this release on:** nothing in this plugin writes `wp_capabilities`, or calls `set_role()`, `wp_update_user()`, `add_cap()` or `remove_cap()`, except a control whose explicit and only purpose is changing a role. Never as a side effect of saving something else. There is no such control in this plugin; WordPress already has one.
 
 = 3.6.0 =
 

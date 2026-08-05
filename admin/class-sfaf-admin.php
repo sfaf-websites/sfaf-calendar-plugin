@@ -9,6 +9,7 @@ class SFAF_Admin {
         add_action( 'admin_init', array( $this, 'handle_series_save' ) );
         add_action( 'admin_init', array( $this, 'handle_series_action' ) );
         add_action( 'admin_init', array( $this, 'handle_cron_action' ) );
+        add_action( 'admin_init', array( $this, 'handle_users_action' ) );
     }
 
     /**
@@ -119,6 +120,26 @@ class SFAF_Admin {
             array( $this, 'render_automation_page' )
         );
 
+        /*
+         * CALENDAR USERS.
+         *
+         * Every WordPress user, their WordPress role, their calendar access
+         * level and their teams, on one screen, gated on manage_options. It
+         * exists because the portal's own Users screen lists only people who
+         * already have a calendar record, which made "give this person access"
+         * and "put this person in a team" the same action and hid everybody
+         * else. It is also the screen an administrator can reach when the
+         * portal will not let them in.
+         */
+        add_submenu_page(
+            'edit.php?post_type=uc_event',
+            'Calendar Users',
+            'Calendar Users',
+            'manage_options',
+            'uc-users',
+            array( $this, 'render_users_page' )
+        );
+
         add_submenu_page(
             'edit.php?post_type=uc_event',
             'Settings & Integrations',
@@ -127,6 +148,299 @@ class SFAF_Admin {
             'uc-settings',
             array( $this, 'render_settings_page' )
         );
+    }
+
+    /* =====================================================================
+     * Calendar Users
+     * ================================================================== */
+
+    /** Where this screen lives. */
+    public static function users_url( $args = array() ) {
+        return add_query_arg(
+            array_merge( array( 'post_type' => 'uc_event', 'page' => 'uc-users' ), $args ),
+            admin_url( 'edit.php' )
+        );
+    }
+
+    /**
+     * Save one row of the Calendar Users screen.
+     *
+     * TWO ACTIONS, NOT ONE FORM WITH TWO HALVES.
+     *
+     * Access level and team membership are separate concerns stored in separate
+     * places, so they are separate submissions. Saving somebody's teams sends
+     * no access level at all, and saving their access level sends no teams, so
+     * neither can carry a stale value from the other and there is no shared
+     * handler in which one could be written as a side effect of the other. That
+     * is exactly how the 3.5.0 defect happened in the portal, where adding
+     * somebody so they could be put in a team wrote an access level.
+     *
+     * NEITHER ACTION TOUCHES WORDPRESS ROLES OR CAPABILITIES. Nothing here
+     * calls set_role(), wp_update_user(), add_cap() or remove_cap(), and
+     * nothing writes wp_capabilities. The WordPress role on this screen is a
+     * read-only display with a link to the built-in Users screen, which is the
+     * one control whose purpose is changing it.
+     */
+    public function handle_users_action() {
+        if ( empty( $_POST['uc_users_action'] ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $action = sanitize_key( wp_unslash( $_POST['uc_users_action'] ) );
+        $uid    = isset( $_POST['user_id'] ) ? intval( $_POST['user_id'] ) : 0;
+        $nonce  = isset( $_POST['uc_users_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_users_nonce'] ) ) : '';
+
+        if ( ! $uid || ! wp_verify_nonce( $nonce, 'uc_users_' . $action . '_' . $uid ) ) {
+            return;
+        }
+        if ( ! get_userdata( $uid ) ) {
+            return;
+        }
+
+        $back = array(
+            'paged'  => isset( $_POST['paged'] ) ? max( 1, intval( $_POST['paged'] ) ) : 1,
+            's'      => isset( $_POST['s'] ) ? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : '',
+            'saved'  => $action,
+            'who'    => $uid,
+        );
+        if ( '' === $back['s'] ) {
+            unset( $back['s'] );
+        }
+
+        if ( 'set_access' === $action ) {
+            /*
+             * An administrator's access cannot be reduced here, and the screen
+             * does not offer a control that would try. This re-checks it anyway
+             * rather than trusting the markup: a POST is a POST.
+             */
+            if ( SFAF_Portal::is_site_admin( $uid ) ) {
+                update_user_meta( $uid, '_uc_calendar_role', 'admin' );
+            } else {
+                $level = isset( $_POST['access'] ) ? sanitize_key( wp_unslash( $_POST['access'] ) ) : '';
+                if ( 'none' === $level || '' === $level ) {
+                    // No calendar record. Their teams are left exactly as they
+                    // were: this control edits access and only access.
+                    delete_user_meta( $uid, '_uc_calendar_role' );
+                } else {
+                    update_user_meta( $uid, '_uc_calendar_role', SFAF_Portal::storable_role( $uid, $level ) );
+                }
+            }
+        } elseif ( 'set_teams' === $action ) {
+            $ids = isset( $_POST['teams'] ) ? (array) wp_unslash( $_POST['teams'] ) : array();
+            SFAF_Teams::set_for_user( $uid, array_map( 'sanitize_key', $ids ) );
+        } else {
+            return;
+        }
+
+        wp_safe_redirect( self::users_url( $back ) );
+        exit;
+    }
+
+    /**
+     * Everybody, and what the calendar thinks of them.
+     *
+     * THE WORDPRESS ROLE IS READ-ONLY HERE, WITH A LINK.
+     *
+     * Editing it was the alternative, and it would have had to go through
+     * wp_update_user() to be correct. That is not the hard part: the hard part
+     * is everything the built-in Users screen does around it — editable_roles,
+     * refusing to let the last administrator demote themselves, multisite
+     * super-admins, network role restrictions — all of which would have to be
+     * reproduced here and kept in step with core. A second, subtly different
+     * way to change a WordPress role is precisely the kind of thing that
+     * produced the defect this screen exists to fix, so the role links to the
+     * screen that already owns it and this screen owns the calendar's own two
+     * fields.
+     */
+    public function render_users_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to view this page.' );
+        }
+
+        $paged  = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
+        $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+        $per    = 25;
+
+        $q = new WP_User_Query( array(
+            'number'  => $per,
+            'paged'   => $paged,
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
+            'search'  => $search ? '*' . $search . '*' : '',
+            'search_columns' => array( 'user_login', 'user_email', 'display_name', 'user_nicename' ),
+        ) );
+
+        $users  = $q->get_results();
+        $total  = (int) $q->get_total();
+        $pages  = $per > 0 ? (int) ceil( $total / $per ) : 1;
+        $teams  = SFAF_Teams::all();
+        $levels = SFAF_Portal::roles();
+
+        // The site's role display names, fetched once. WP_Roles is what the
+        // built-in Users screen reads for the same column.
+        $role_names = array();
+        if ( function_exists( 'wp_roles' ) ) {
+            $role_names = (array) wp_roles()->role_names;
+        }
+        ?>
+        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Calendar Users</h1>
+                    <p class="uc-subtitle">Who can use the calendar, and who gets told about events. Two separate things, edited separately.</p>
+                </div>
+                <div class="uc-admin-actions">
+                    <a href="<?php echo esc_url( admin_url( 'users.php' ) ); ?>" class="button">WordPress Users</a>
+                </div>
+            </div>
+
+            <?php if ( ! empty( $_GET['saved'] ) ) :
+                $who   = isset( $_GET['who'] ) ? get_userdata( intval( $_GET['who'] ) ) : null;
+                $whom  = $who ? $who->display_name : 'That user';
+                $what  = ( 'set_teams' === $_GET['saved'] ) ? 'Team membership saved for' : 'Calendar access saved for';
+                ?>
+                <div class="notice notice-success is-dismissible"><p>
+                    <?php echo esc_html( $what . ' ' . $whom . '.' ); ?>
+                    <?php echo ( 'set_teams' === $_GET['saved'] )
+                        ? 'Their access level is unchanged.'
+                        : 'Their teams are unchanged.'; ?>
+                </p></div>
+            <?php endif; ?>
+
+            <div class="uc-admin-card">
+                <p class="uc-users-explainer">
+                    <strong>Access level</strong> is what somebody may do in <code>/caladmin</code>.
+                    <strong>Teams</strong> are who gets notified about an event. Changing one never changes the other,
+                    and neither one changes anybody's WordPress role.
+                    A WordPress administrator always has full calendar access, whatever is listed here, so their
+                    access level is shown as fixed rather than offered as a control that would do nothing.
+                </p>
+
+                <form method="get" class="uc-users-search">
+                    <input type="hidden" name="post_type" value="uc_event" />
+                    <input type="hidden" name="page" value="uc-users" />
+                    <label class="screen-reader-text" for="uc-users-s">Search users</label>
+                    <input type="search" id="uc-users-s" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email" />
+                    <button type="submit" class="button">Search</button>
+                    <?php if ( '' !== $search ) : ?>
+                        <a class="button-link" href="<?php echo esc_url( self::users_url() ); ?>">Clear</a>
+                    <?php endif; ?>
+                    <span class="uc-users-count"><?php echo (int) $total; ?> <?php echo esc_html( 1 === $total ? 'user' : 'users' ); ?></span>
+                </form>
+
+                <?php if ( empty( $users ) ) : ?>
+                    <p class="uc-no-data">No users matched.</p>
+                <?php else : ?>
+                <table class="uc-admin-table uc-users-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>WordPress role</th>
+                            <th>Calendar access</th>
+                            <th>Teams</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ( $users as $u ) :
+                        $is_wpadm  = SFAF_Portal::is_site_admin( $u->ID );
+                        $stored    = get_user_meta( $u->ID, '_uc_calendar_role', true );
+                        $effective = SFAF_Portal::get_role( $u->ID );
+                        $in_teams  = wp_list_pluck( SFAF_Teams::for_user( $u->ID ), 'id' );
+                        $wp_roles  = array();
+                        foreach ( (array) $u->roles as $r ) {
+                            $wp_roles[] = isset( $role_names[ $r ] ) ? translate_user_role( $role_names[ $r ] ) : $r;
+                        }
+                        ?>
+                        <tr>
+                            <td class="uc-users-who">
+                                <strong><?php echo esc_html( $u->display_name ); ?></strong>
+                                <span class="uc-muted"><?php echo esc_html( $u->user_email ); ?></span>
+                            </td>
+
+                            <td class="uc-users-wprole">
+                                <?php echo $wp_roles ? esc_html( implode( ', ', $wp_roles ) ) : '<span class="uc-muted">None</span>'; ?>
+                                <a class="uc-users-editrole" href="<?php echo esc_url( get_edit_user_link( $u->ID ) ); ?>">Edit in WordPress</a>
+                            </td>
+
+                            <td class="uc-users-access">
+                                <?php if ( $is_wpadm ) : ?>
+                                    <strong>Full (fixed)</strong>
+                                    <span class="uc-muted">A WordPress administrator has full calendar access, including RSVPs, whether or not they are listed as a calendar user. Take away their administrator role on the WordPress Users screen to change that.</span>
+                                <?php else : ?>
+                                    <form method="post" class="uc-users-form">
+                                        <input type="hidden" name="uc_users_action" value="set_access" />
+                                        <input type="hidden" name="user_id" value="<?php echo (int) $u->ID; ?>" />
+                                        <input type="hidden" name="paged" value="<?php echo (int) $paged; ?>" />
+                                        <input type="hidden" name="s" value="<?php echo esc_attr( $search ); ?>" />
+                                        <?php wp_nonce_field( 'uc_users_set_access_' . $u->ID, 'uc_users_nonce' ); ?>
+                                        <label class="screen-reader-text" for="uc-access-<?php echo (int) $u->ID; ?>">Calendar access for <?php echo esc_attr( $u->display_name ); ?></label>
+                                        <select name="access" id="uc-access-<?php echo (int) $u->ID; ?>">
+                                            <option value="none" <?php selected( '', $effective ); ?>>No calendar access</option>
+                                            <?php foreach ( $levels as $lk => $ll ) : ?>
+                                                <option value="<?php echo esc_attr( $lk ); ?>" <?php selected( $effective, $lk ); ?>><?php echo esc_html( $ll ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button type="submit" class="button button-small">Save access</button>
+                                        <?php if ( $stored && $stored !== $effective ) : ?>
+                                            <span class="uc-muted">Stored as <?php echo esc_html( $stored ); ?>.</span>
+                                        <?php endif; ?>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
+
+                            <td class="uc-users-teams">
+                                <?php if ( empty( $teams ) ) : ?>
+                                    <span class="uc-muted">No teams yet. Make one in <a href="<?php echo esc_url( home_url( '/caladmin/users' ) ); ?>">the portal</a>.</span>
+                                <?php else : ?>
+                                    <form method="post" class="uc-users-form">
+                                        <input type="hidden" name="uc_users_action" value="set_teams" />
+                                        <input type="hidden" name="user_id" value="<?php echo (int) $u->ID; ?>" />
+                                        <input type="hidden" name="paged" value="<?php echo (int) $paged; ?>" />
+                                        <input type="hidden" name="s" value="<?php echo esc_attr( $search ); ?>" />
+                                        <?php wp_nonce_field( 'uc_users_set_teams_' . $u->ID, 'uc_users_nonce' ); ?>
+                                        <div class="uc-users-teamlist">
+                                            <?php foreach ( $teams as $team ) : ?>
+                                                <label>
+                                                    <input type="checkbox" name="teams[]" value="<?php echo esc_attr( $team['id'] ); ?>"
+                                                           <?php checked( in_array( $team['id'], $in_teams, true ) ); ?> />
+                                                    <?php echo esc_html( $team['name'] ); ?>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <button type="submit" class="button button-small">Save teams</button>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <?php if ( $pages > 1 ) : ?>
+                    <div class="uc-users-pager">
+                        <?php
+                        $args = array();
+                        if ( '' !== $search ) {
+                            $args['s'] = $search;
+                        }
+                        for ( $p = 1; $p <= $pages; $p++ ) {
+                            $url = self::users_url( array_merge( $args, array( 'paged' => $p ) ) );
+                            if ( $p === $paged ) {
+                                echo '<span class="uc-users-page current">' . (int) $p . '</span>';
+                            } else {
+                                echo '<a class="uc-users-page" href="' . esc_url( $url ) . '">' . (int) $p . '</a>';
+                            }
+                        }
+                        ?>
+                    </div>
+                <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
     }
 
     /**

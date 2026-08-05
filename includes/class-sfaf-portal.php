@@ -97,6 +97,52 @@ class SFAF_Portal {
      * Roles & capabilities
      * ================================================================== */
 
+    /** The calendar access levels, worst to best, and what to call them. */
+    public static function roles() {
+        return array(
+            'contributor' => 'Contributor',
+            'editor'      => 'Editor',
+            'admin'       => 'Admin',
+        );
+    }
+
+    /**
+     * Whether this user is a WordPress administrator.
+     *
+     * The single question everything below asks. manage_options is the
+     * capability that means "may change how this site runs", so it is also what
+     * "may do anything in the calendar" means. Kept as one function so there is
+     * one answer and one place to read it.
+     *
+     * @param int $user_id
+     * @return bool
+     */
+    public static function is_site_admin( $user_id ) {
+        return user_can( (int) $user_id, 'manage_options' );
+    }
+
+    /**
+     * Somebody's calendar access level.
+     *
+     * ADMINISTRATORS ARE CHECKED FIRST, AND THE STORED RECORD CANNOT OVERRIDE
+     * THEM.
+     *
+     * This used to read the meta first and only fall back to manage_options
+     * when there was none, which made the calendar user record able to REDUCE a
+     * WordPress administrator. It did, in 3.5.0: an administrator who added
+     * himself on the Users screen so that he could be put in a team got the
+     * form's default level, 'contributor', written against his account, and the
+     * entrance gate then held him to it. His WordPress role was never touched
+     * and never could have been; the calendar simply stopped believing it.
+     *
+     * So the order is now: are you an administrator? Then you have full access,
+     * whatever any record says. The record still exists and still matters, for
+     * teams and for the notification picker, but it can only ever describe
+     * somebody who is not already an administrator.
+     *
+     * @param int $user_id
+     * @return string 'admin'|'editor'|'contributor'|'' (no access)
+     */
     public static function get_role( $user_id ) {
         // Memoize: every capability check (can_view_all/can_create/...) resolves
         // the role, so a single page render asks for it many times.
@@ -105,11 +151,20 @@ class SFAF_Portal {
         if ( isset( $cache[ $user_id ] ) ) {
             return $cache[ $user_id ];
         }
-        $role = get_user_meta( $user_id, '_uc_calendar_role', true );
-        if ( ! $role ) {
-            // WordPress administrators get implicit calendar-admin access.
-            $role = user_can( $user_id, 'manage_options' ) ? 'admin' : '';
+
+        if ( self::is_site_admin( $user_id ) ) {
+            $cache[ $user_id ] = 'admin';
+            return 'admin';
         }
+
+        $role  = get_user_meta( $user_id, '_uc_calendar_role', true );
+        $known = self::roles();
+        // Only the three known levels grant anything. A meta value that is not
+        // one of them is not access by accident.
+        if ( ! is_string( $role ) || ! isset( $known[ $role ] ) ) {
+            $role = '';
+        }
+
         $cache[ $user_id ] = $role;
         return $role;
     }
@@ -466,10 +521,16 @@ class SFAF_Portal {
 
             case 'add_user':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                $uid  = intval( $_POST['user_id'] );
-                $role = $this->valid_role( $_POST['role'] ?? 'contributor' );
+                $uid = intval( $_POST['user_id'] );
                 if ( $uid && get_userdata( $uid ) ) {
-                    update_user_meta( $uid, '_uc_calendar_role', $role );
+                    /*
+                     * THE LEVEL AN ADMINISTRATOR IS ADDED AT IS 'admin',
+                     * whatever the form said. Adding yourself here is how
+                     * somebody gets into the team picker, and in 3.5.0 doing it
+                     * wrote the form's default against your own account and cost
+                     * you the portal. See SFAF_Portal::get_role().
+                     */
+                    update_user_meta( $uid, '_uc_calendar_role', self::storable_role( $uid, $_POST['role'] ?? 'contributor' ) );
                 }
                 $this->redirect( 'users', array( 'msg' => 'user_added' ) );
                 break;
@@ -544,9 +605,27 @@ class SFAF_Portal {
         $this->redirect();
     }
 
-    private function valid_role( $role ) {
-        $role = sanitize_key( $role );
-        return in_array( $role, array( 'admin', 'editor', 'contributor' ), true ) ? $role : 'contributor';
+    /**
+     * What to actually store as somebody's calendar access level.
+     *
+     * An administrator's record is stored as 'admin' and nothing else. Not
+     * because the stored value decides anything for them any more (get_role()
+     * settles that before it reads the meta), but so that the row in the
+     * database says the same thing the screens say. A record reading
+     * "contributor" against an administrator is a lie waiting to become true
+     * the day somebody takes their WordPress role away.
+     *
+     * @param int    $user_id
+     * @param string $requested
+     * @return string
+     */
+    public static function storable_role( $user_id, $requested ) {
+        if ( self::is_site_admin( $user_id ) ) {
+            return 'admin';
+        }
+        $role  = sanitize_key( $requested );
+        $known = self::roles();
+        return isset( $known[ $role ] ) ? $role : 'contributor';
     }
 
     /* =====================================================================
@@ -1195,7 +1274,7 @@ class SFAF_Portal {
         if ( ! $uid || ! get_userdata( $uid ) ) {
             return;
         }
-        update_user_meta( $uid, '_uc_calendar_role', $this->valid_role( $_POST['role'] ?? 'contributor' ) );
+        update_user_meta( $uid, '_uc_calendar_role', self::storable_role( $uid, $_POST['role'] ?? 'contributor' ) );
         $approval = ( isset( $_POST['approval'] ) && $_POST['approval'] === 'auto' ) ? 'auto' : 'review';
         update_user_meta( $uid, '_uc_calendar_approval', $approval );
 
@@ -5078,19 +5157,28 @@ class SFAF_Portal {
 
         <div class="uc-card">
             <div class="uc-card-head"><h2>Add a user to the calendar</h2></div>
+            <p class="uc-hint">
+                Adding somebody here gives them a calendar record, which is what puts them in the team picker and
+                the notification picker. It is not how anybody gets their WordPress role, and it cannot take access
+                away: a WordPress administrator has full calendar access whether or not they are listed here, and
+                adding one lists them at Admin.
+            </p>
             <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-inline-form">
                 <input type="hidden" name="uc_action" value="add_user" />
                 <?php wp_nonce_field( 'uc_portal_add_user', 'uc_nonce' ); ?>
                 <select name="user_id" required>
                     <option value="">Select a WordPress user</option>
                     <?php foreach ( $non_members as $u ) : ?>
-                        <option value="<?php echo (int) $u->ID; ?>"><?php echo esc_html( $u->display_name . ' (' . $u->user_email . ')' ); ?></option>
+                        <option value="<?php echo (int) $u->ID; ?>"><?php
+                            echo esc_html( $u->display_name . ' (' . $u->user_email . ')' );
+                            echo self::is_site_admin( $u->ID ) ? ' — administrator' : '';
+                        ?></option>
                     <?php endforeach; ?>
                 </select>
                 <select name="role">
-                    <option value="contributor">Contributor</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
+                    <?php foreach ( self::roles() as $rk => $rl ) : ?>
+                        <option value="<?php echo esc_attr( $rk ); ?>"><?php echo esc_html( $rl ); ?></option>
+                    <?php endforeach; ?>
                 </select>
                 <button class="uc-btn uc-btn-primary" type="submit">Add</button>
             </form>
@@ -5105,6 +5193,7 @@ class SFAF_Portal {
                 $approval = get_user_meta( $m->ID, '_uc_calendar_approval', true ) ?: 'review';
                 $ucats    = (array) get_user_meta( $m->ID, '_uc_calendar_categories', true );
                 $is_self  = (int) $m->ID === (int) $user->ID;
+                $is_wpadm = self::is_site_admin( $m->ID );
                 ?>
                 <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-row">
                     <input type="hidden" name="uc_action" value="set_user_role" />
@@ -5115,13 +5204,27 @@ class SFAF_Portal {
                         <span class="uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
                     </div>
                     <div class="uc-user-controls">
-                        <label>Role
-                            <select name="role">
-                                <?php foreach ( array( 'contributor' => 'Contributor', 'editor' => 'Editor', 'admin' => 'Admin' ) as $rk => $rl ) : ?>
-                                    <option value="<?php echo esc_attr( $rk ); ?>" <?php selected( $role, $rk ); ?>><?php echo esc_html( $rl ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </label>
+                        <?php if ( $is_wpadm ) : ?>
+                            <?php /*
+                              * FIXED, AND SAID SO, RATHER THAN A CONTROL THAT DOES NOTHING.
+                              * A WordPress administrator's access is decided by
+                              * manage_options, so a dropdown here would accept a
+                              * change and then have no effect. See get_role().
+                              */ ?>
+                            <div class="uc-user-fixed">
+                                <span class="uc-field-label">Access</span>
+                                <strong>Admin (fixed)</strong>
+                                <span class="uc-muted">WordPress administrator, so full calendar access. Change it on the WordPress Users screen.</span>
+                            </div>
+                        <?php else : ?>
+                            <label>Role
+                                <select name="role">
+                                    <?php foreach ( self::roles() as $rk => $rl ) : ?>
+                                        <option value="<?php echo esc_attr( $rk ); ?>" <?php selected( $role, $rk ); ?>><?php echo esc_html( $rl ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                        <?php endif; ?>
                         <label>Approval
                             <select name="approval">
                                 <option value="review" <?php selected( $approval, 'review' ); ?>>Requires approval</option>
@@ -5143,7 +5246,10 @@ class SFAF_Portal {
                     </div>
                     <?php if ( ! $is_self ) : ?>
                         </form>
-                        <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-remove" onsubmit="return confirm('Remove calendar access for this user?');">
+                        <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-remove"
+                              onsubmit="return confirm('<?php echo $is_wpadm
+                                  ? 'Take this administrator off the calendar list? They keep full access, because they are a WordPress administrator. They come off every team.'
+                                  : 'Remove calendar access for this user?'; ?>');">
                             <input type="hidden" name="uc_action" value="remove_user" />
                             <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
                             <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>

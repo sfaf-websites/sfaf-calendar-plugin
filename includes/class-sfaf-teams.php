@@ -399,6 +399,64 @@ class SFAF_Teams {
     }
 
     /**
+     * Set exactly which teams a user belongs to.
+     *
+     * The other half of for_user(): the Calendar Users screen edits membership
+     * a person at a time rather than a team at a time, so this walks every team
+     * once and adds or drops this one user.
+     *
+     * IT WRITES ONE OPTION AND NOTHING ELSE. No role, no capability, no user
+     * meta. Being in a team says who gets notified and says nothing whatever
+     * about what somebody may do, and there is deliberately no code path from
+     * here to anything that decides access.
+     *
+     * @param int      $user_id
+     * @param string[] $team_ids The complete list this user should be in.
+     * @return int How many teams changed.
+     */
+    public static function set_for_user( $user_id, $team_ids ) {
+        $user_id = (int) $user_id;
+        if ( $user_id <= 0 ) {
+            return 0;
+        }
+
+        $raw = get_option( self::OPTION, array() );
+        if ( ! is_array( $raw ) ) {
+            return 0;
+        }
+
+        $wanted = array();
+        foreach ( (array) $team_ids as $tid ) {
+            $tid = sanitize_key( (string) $tid );
+            if ( '' !== $tid && isset( $raw[ $tid ] ) ) {
+                $wanted[] = $tid;
+            }
+        }
+
+        $changed = 0;
+        foreach ( $raw as $id => $team ) {
+            if ( ! is_array( $team ) ) {
+                continue;
+            }
+            $before = self::clean_ids( isset( $team['users'] ) ? $team['users'] : array() );
+            $after  = in_array( (string) $id, $wanted, true )
+                ? ( in_array( $user_id, $before, true ) ? $before : array_merge( $before, array( $user_id ) ) )
+                : array_values( array_diff( $before, array( $user_id ) ) );
+
+            if ( $after !== $before ) {
+                $raw[ $id ]['users']   = $after;
+                $raw[ $id ]['updated'] = time();
+                $changed++;
+            }
+        }
+
+        if ( $changed ) {
+            update_option( self::OPTION, $raw, false );
+        }
+        return $changed;
+    }
+
+    /**
      * Drop a user from every team.
      *
      * Called when somebody is removed from the calendar system, so a team does
