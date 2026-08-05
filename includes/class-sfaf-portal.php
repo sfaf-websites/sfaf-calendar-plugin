@@ -3245,27 +3245,31 @@ class SFAF_Portal {
                         <?php if ( 'event' === $img_source && $in_series ) : ?>
                             <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
                         <?php endif; ?>
-                        <label class="uc-field uc-image-url-field">Or enter image URL
+                        <label class="uc-field uc-image-url-field">
+                            <span class="uc-field-label">Or an image URL
+                                <?php echo sfaf_help(
+                                    'uc-help-imgurl-' . $uid,
+                                    'A picture set here overrides the series image for this one date. The URL is the fallback: it is used only when no image has been chosen from the library, so pasting one never fights with a chosen file.',
+                                    'the image URL'
+                                ); ?>
+                            </span>
                             <input type="url" name="image_url" id="uc-image-url-<?php echo esc_attr( $uid ); ?>" data-uc-image-url value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
                         </label>
                         <?php
                         /*
-                         * THE SPEC, WHERE THE PICTURE IS CHOSEN.
+                         * THE SPEC STAYS INLINE, AND IT IS THE ONE THING HERE
+                         * THAT DOES.
                          *
                          * Card images are cropped to 16:9 and filled, so a
                          * portrait photograph loses its top and bottom and a
-                         * group shot can lose the faces. Saying the target
-                         * size here is the difference between a manager
-                         * cropping it before uploading and finding out how it
-                         * cropped after publishing. The same file is what a
-                         * shared link previews with, so it is one size to
-                         * remember rather than two.
+                         * group shot can lose the faces. This is the difference
+                         * between cropping before uploading and finding out
+                         * afterwards, it is one line, and it is read every time
+                         * somebody picks a picture rather than once. Behind a
+                         * "?" it would be read never.
                          */
                         ?>
-                        <p class="uc-hint">Set an image to override the series image for this occurrence. The URL is a fallback.</p>
-                        <p class="uc-hint"><strong>Best size: 1200 x 675 pixels (16:9 landscape).</strong> Cards crop to
-                            this shape and fill it, so anything taller loses its top and bottom. It is also the shape
-                            used when someone shares the event, so one picture at this size is right everywhere.</p>
+                        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.</p>
                     <?php endif; ?>
                 </div>
                 <?php
@@ -3321,7 +3325,13 @@ class SFAF_Portal {
                 ?>
                 <div class="uc-field uc-cat-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'category', $state ); ?>
                      data-uc-chips>
-                    <span class="uc-field-label">Categories <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <span class="uc-field-label">Categories <?php echo $this->field_badge( $state, $label ); ?>
+                        <?php echo sfaf_help(
+                            'uc-help-cats-' . $uid,
+                            'An event can be in several, and it appears under each of them in the filter bar. The first one alphabetically supplies the card colour and the placeholder picture, so the order you see the chips in is the order that decides it.',
+                            'categories'
+                        ); ?>
+                    </span>
                     <input type="hidden" name="uc_category_present" value="1" />
 
                     <?php // Where the script writes the chips. Empty and hidden
@@ -3346,10 +3356,6 @@ class SFAF_Portal {
                         <?php endforeach; endif; ?>
                     </div>
 
-                    <span class="uc-hint">
-                        An event can be in several. It appears under each of them in the filter bar.
-                        The first one alphabetically supplies the card's colour and its placeholder picture.
-                    </span>
                 </div>
                 <?php
                 break;
@@ -4573,13 +4579,13 @@ class SFAF_Portal {
                 </section>
 
                 <?php // ---- Classification: how it is found. --------------- ?>
-                <section class="uc-bento-card uc-bento-3">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Classification</h2>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer' ), $placed ) ); ?>
                 </section>
 
                 <?php // ---- Schedule: when, and where its other dates live. - ?>
-                <section class="uc-bento-card uc-bento-3">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Schedule</h2>
                     <?php
                     $s_date  = $st( 'date' );
@@ -4624,15 +4630,14 @@ class SFAF_Portal {
                     </label>
 
                     <?php if ( $cur_series ) : ?>
+                        <?php // ONE SHORT LINK, not a sentence with a link inside
+                              // it. The old wording wrapped mid-phrase and left
+                              // the link broken across two lines. ?>
                         <p class="uc-bento-link">
-                            <?php echo sfaf_icon( 'repeat', array( 'size' => '15px' ) ); ?>
-                            <a href="<?php echo esc_url( $this->url( 'series/edit/' . $cur_series ) ); ?>">Open this event's schedule</a>
-                            to change the pattern, add a date or take one off.
-                        </p>
-                    <?php else : ?>
-                        <p class="uc-hint">
-                            Leave this alone if the event repeats: setting a repeat below creates the series from this
-                            event's own name, and its schedule is edited there afterwards.
+                            <a href="<?php echo esc_url( $this->url( 'series/edit/' . $cur_series ) ); ?>">
+                                <?php echo sfaf_icon( 'repeat', array( 'size' => '15px' ) ); ?>
+                                <span>Edit the schedule</span>
+                            </a>
                         </p>
                     <?php endif; ?>
 
@@ -4648,68 +4653,82 @@ class SFAF_Portal {
                     $rec_locked = ( $event_id && '' !== $prov['source'] );
                     $has_group  = $event_id && '' !== SFAF_Recurrence::group_of( $event_id );
                     ?>
-                    <fieldset class="uc-fieldset<?php echo $rec_locked ? ' uc-fieldset-locked' : ''; ?>">
-                        <legend>Repeat</legend>
-                        <?php if ( $rec_locked ) : ?>
-                            <p class="uc-hint">
-                                <?php echo $this->icon_lock(); ?>
-                                Whether this event repeats is decided at <?php echo esc_html( $prov['label'] ? $prov['label'] : 'the source' ); ?>,
-                                and every fetch brings that shape across.
-                            </p>
-                        <?php elseif ( $has_group ) : ?>
-                            <?php $group_count = count( $bulk_targets ); ?>
-                            <p class="uc-hint">
-                                <strong>Part of a recurrence group.</strong>
-                                <?php echo esc_html( SFAF_Recurrence::pattern_label( SFAF_Recurrence::pattern_of( $event_id ), $g( '_uc_event_date' ) ) ); ?>
-                                &middot; <?php echo (int) $group_count; ?> upcoming
-                                <?php echo esc_html( _n( 'occurrence', 'occurrences', $group_count ) ); ?>.
-                                This event is its own record. Nothing regenerates it, and deleting it removes one date and nothing else.
-                            </p>
-                        <?php else : ?>
-                            <div class="uc-field-row">
-                                <label class="uc-field">
-                                    <span class="uc-field-label">Repeats</span>
-                                    <select name="repeat">
-                                        <option value="">Does not repeat</option>
-                                        <?php foreach ( SFAF_Recurrence::patterns() as $k => $lbl ) : ?>
-                                            <option value="<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $lbl ); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                                <label class="uc-field">
-                                    <span class="uc-field-label">Repeat until</span>
-                                    <input type="date" name="repeat_until" value="" />
-                                </label>
-                            </div>
-                            <p class="uc-hint">
-                                Creates one separate event per date on save, all grouped so they can be edited together
-                                later. It happens once, and nothing regenerates afterwards.
-                            </p>
-                        <?php endif; ?>
-                    </fieldset>
+                    <?php
+                    /*
+                     * ONE LINE EACH, AND NO CARD INSIDE THE CARD.
+                     *
+                     * This was a bordered fieldset carrying its own paragraph,
+                     * inside a card that already had a heading. The paragraph is
+                     * the same three sentences every time and is read once ever,
+                     * so it is behind the "?" and what is left is the control
+                     * and its state.
+                     */
+                    ?>
+                    <?php if ( $rec_locked ) : ?>
+                        <p class="uc-hint uc-repeat-line">
+                            <?php echo $this->icon_lock(); ?>
+                            Repeating is decided at <?php echo esc_html( $prov['label'] ? $prov['label'] : 'the source' ); ?>.
+                        </p>
+                    <?php elseif ( $has_group ) : ?>
+                        <?php $group_count = count( $bulk_targets ); ?>
+                        <p class="uc-repeat-line">
+                            <strong><?php echo esc_html( SFAF_Recurrence::pattern_label( SFAF_Recurrence::pattern_of( $event_id ), $g( '_uc_event_date' ) ) ); ?></strong>,
+                            <?php echo (int) $group_count; ?> upcoming
+                            <?php echo esc_html( _n( 'occurrence', 'occurrences', $group_count ) ); ?>
+                            <?php echo sfaf_help(
+                                'uc-help-group-' . (int) $event_id,
+                                'These dates were generated together from one pattern, which is what "edit all upcoming occurrences" targets. Each one is a separate, complete event: nothing regenerates it, and deleting it removes that single date and nothing else.',
+                                'the recurrence group'
+                            ); ?>
+                        </p>
+                    <?php else : ?>
+                        <div class="uc-field-row">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Repeats
+                                    <?php echo sfaf_help(
+                                        'uc-help-repeat-' . (int) $event_id,
+                                        'On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.',
+                                        'repeating'
+                                    ); ?>
+                                </span>
+                                <select name="repeat">
+                                    <option value="">Does not repeat</option>
+                                    <?php foreach ( SFAF_Recurrence::patterns() as $k => $lbl ) : ?>
+                                        <option value="<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $lbl ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Until</span>
+                                <input type="date" name="repeat_until" value="" />
+                            </label>
+                        </div>
+                    <?php endif; ?>
                 </section>
 
                 <?php // ---- Location: a venue, or somewhere one-off. ------- ?>
                 <?php $s_loc = $st( 'location' ); ?>
-                <section class="uc-bento-card uc-bento-4">
+                <section class="uc-bento-card uc-bento-6">
                     <h2 class="uc-bento-title">Location</h2>
                     <?php $this->render_location_field( $event_id, $s_loc, $prov ); ?>
                 </section>
 
                 <?php // ---- Image ------------------------------------------ ?>
-                <section class="uc-bento-card uc-bento-2">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Image</h2>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
                 </section>
 
                 <?php // ---- Capacity --------------------------------------- ?>
-                <section class="uc-bento-card uc-bento-2">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Capacity</h2>
                     <label class="uc-check"><input type="checkbox" name="rsvp_enabled" value="1" <?php checked( $g( '_uc_rsvp_enabled' ), '1' ); ?> /> Accept RSVPs</label>
                     <label class="uc-field">
                         <span class="uc-field-label">Capacity</span>
                         <input type="number" name="capacity" min="0" value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>" />
-                        <span class="uc-hint">0 means unlimited.</span>
+                        <?php // Stays inline: it is four words, and it stops
+                              // somebody typing 0 meaning "nobody". ?>
+                        <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
                     </label>
                 </section>
 
@@ -4720,7 +4739,7 @@ class SFAF_Portal {
                 // looking editable and being replaced on the next run.
                 $s_url = $st( 'source_url' );
                 ?>
-                <section class="uc-bento-card uc-bento-2">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Donate</h2>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>">
                         <span class="uc-field-label">GoFundMe URL <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
@@ -4729,7 +4748,7 @@ class SFAF_Portal {
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'fundraising_progress' ), $placed ) ); ?>
                 </section>
 
-                <section class="uc-bento-card uc-bento-2">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Organizer contact</h2>
                     <label class="uc-field">
                         <span class="uc-field-label">Email</span>
@@ -4738,7 +4757,7 @@ class SFAF_Portal {
                     <label class="uc-check"><input type="checkbox" name="notify_organizer" value="1" <?php checked( $g( '_uc_notify_organizer' ), '1' ); ?> /> Email on new RSVP</label>
                 </section>
 
-                <section class="uc-bento-card uc-bento-2">
+                <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Display</h2>
                     <?php
                     $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Reminders' );
@@ -4788,7 +4807,7 @@ class SFAF_Portal {
                         delete_transient( 'sfaf_replyto_rejected_' . $user->ID . '_' . $event_id );
                     }
                     ?>
-                    <section class="uc-bento-card uc-bento-4">
+                    <section class="uc-bento-card uc-bento-6">
                         <h2 class="uc-bento-title">Notifications</h2>
                         <?php $this->render_notify_box( $user, $event_id ); ?>
 
@@ -4971,17 +4990,25 @@ class SFAF_Portal {
         $mode     = $venue_id ? 'venue' : 'custom';
         ?>
         <div class="uc-field uc-location-field" data-uc-location>
-            <span class="uc-field-label">Location</span>
+            <span class="uc-field-label">Location
+                <?php echo sfaf_help(
+                    'uc-help-venue-' . (int) $event_id,
+                    'An event points at its venue rather than keeping a copy of the address, so correcting an address on the Venues screen corrects every event held there at once, including ones already published. Use a different location for a one-off place that is not worth adding as a venue.',
+                    'venues'
+                ); ?>
+            </span>
 
             <?php if ( empty( $venues ) ) : ?>
                 <p class="uc-hint">
-                    No venues yet. <a href="<?php echo esc_url( $this->url( 'venues' ) ); ?>">Add one</a> and the address
-                    is kept in one place, so correcting it later corrects every event held there.
+                    No venues yet. <a href="<?php echo esc_url( $this->url( 'venues' ) ); ?>">Add one</a> to keep its address in one place.
                 </p>
             <?php else : ?>
-                <label class="uc-check">
+                <?php // Ordinary radio rows: control first, label beside it, both
+                      // left aligned. They were centred with the labels adrift,
+                      // which made two short phrases wrap. ?>
+                <label class="uc-radio-row">
                     <input type="radio" name="location_mode" value="venue" data-uc-location-mode="venue" <?php checked( 'venue', $mode ); ?> />
-                    A venue
+                    <span>A venue</span>
                 </label>
                 <div class="uc-location-venue" data-uc-location-panel="venue">
                     <select name="venue">
@@ -4993,20 +5020,16 @@ class SFAF_Portal {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <p class="uc-hint">
-                        The address comes from the venue and is not copied onto this event, so correcting it on the
-                        <a href="<?php echo esc_url( $this->url( 'venues' ) ); ?>">Venues screen</a> corrects every event held there.
-                    </p>
+                    <p class="uc-hint"><a href="<?php echo esc_url( $this->url( 'venues' ) ); ?>">Manage venues</a></p>
                 </div>
             <?php endif; ?>
 
-            <label class="uc-check">
+            <label class="uc-radio-row">
                 <input type="radio" name="location_mode" value="custom" data-uc-location-mode="custom" <?php checked( 'custom', $mode ); ?> />
-                A different location
+                <span>A different location</span>
             </label>
             <div class="uc-location-custom" data-uc-location-panel="custom">
                 <input type="text" name="location" value="<?php echo esc_attr( $text ); ?>" placeholder="e.g. Dolores Park, near the tennis courts" />
-                <p class="uc-hint">For a one-off place that is not worth adding as a venue. Typed onto this event only.</p>
             </div>
         </div>
         <?php

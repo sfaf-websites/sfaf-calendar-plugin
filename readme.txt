@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.9.0
+Stable tag: 3.10.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.10.0 =
+
+**The editor cards no longer stretch to match each other.** A grid row is as tall as its tallest card, so Location beside Image left a hand's depth of empty card below it. The cards now flow as real masonry: a card ends where its content ends and the next one moves up under it.
+
+Done with CSS multi-column rather than grid row spans, because grid has no pure-CSS masonry: row spans have to be measured in JavaScript first, which reflows when the webfont lands and again every time a field grows. Multi-column needs no script and collapses by changing one number, three columns to two to one. The trade is that columns are equal width, so the old four-and-two split is gone; the cards that genuinely need a full row (Basics, Notifications, FAQs) span all columns, and dead space was the actual complaint. Tab order still follows the document, which is the order the form is meant to be filled, and at one column that is exactly what is on screen.
+
+**Formatting faults fixed.** The Location radios were inheriting a centred layout that pushed their labels right and wrapped two short phrases; they are ordinary left-aligned rows now, control then label. The Schedule card's link was a sentence with a link buried in it that broke mid-phrase across lines; it is one short link, "Edit the schedule". The Repeat box was a bordered card inside a card carrying its own paragraph; it is one line stating the cadence and the count, with the explanation behind the help icon.
+
+**Long helper text moved behind a "?".** Most of the height mismatch was paragraphs longer than the fields they explained, all of them read once and never again. Four are now disclosures: how a venue reference works, what a recurrence group is and what deleting one occurrence does, how the first category supplies the card colour, and what the image URL override means.
+
+It is a real button with `aria-expanded` and `aria-controls`, not a hover and not a `title` attribute. Hover cannot be produced by a touch screen or a keyboard, and `title` is announced inconsistently and cannot hold a sentence worth reading. Click, tap, Enter and Space all work because that is what a button already does. With scripting off the explanation is simply visible, exactly as before, so nothing is ever behind a control that cannot open.
+
+**Two short ones stay inline and are not hidden:** the image spec (1200 x 675, 16:9 landscape) and "0 means unlimited" under capacity. Both prevent a specific mistake, both are one line, and both are read every time rather than once. Behind a "?" they would be read never.
+
+**Venue addresses are searchable again.** A regression from 3.9.0: the address used to live in `_uc_location` and was found by the meta clause, then moved onto the venue term, which the search matched by name only. Searching "940 Howard" stopped finding the events held there. Term meta is now in the search, as one named key on the same whitelist principle as everything else: not "all term meta", because a term can carry anything anybody ever attached to it and a wildcard would make a future key searchable the day it was invented rather than the day somebody chose it. Nothing personal is reachable and the test asserts that against the generated SQL rather than against the list it was built from.
 
 = 3.9.0 =
 

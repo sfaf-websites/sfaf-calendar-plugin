@@ -16,6 +16,7 @@
         // registered. The scope one has to go first: a manager who decides not
         // to update twelve events should never then be asked about a missing
         // image on an event they have just decided not to save.
+        initHelpToggles();
         initCategoryChips();
         initLocationPicker();
         initFaqSaveAsSet();
@@ -25,6 +26,48 @@
         initCompleteness();
         initAsyncActions();
     });
+
+    /* ---------------------------------------------------------------------
+     * Help disclosures: a "?" beside a label opening a paragraph.
+     *
+     * THE REGION IS VISIBLE UNTIL THIS RUNS, and that is the whole no-script
+     * story: with the file missing, every explanation is simply on the page as
+     * it used to be. Nothing is ever hidden behind a control that cannot open.
+     *
+     * A BUTTON, NOT A HOVER. Hover cannot be produced by a touch screen or by a
+     * keyboard, and `title` is announced inconsistently and cannot hold a
+     * sentence worth reading. This is the plain disclosure pattern: click, tap,
+     * Enter and Space all work because they are what a <button> already does,
+     * and aria-expanded says which way it is.
+     * ------------------------------------------------------------------- */
+    function initHelpToggles() {
+        document.querySelectorAll('[data-uc-help-toggle]').forEach(function (btn) {
+            var id = btn.getAttribute('aria-controls');
+            var body = id ? document.getElementById(id) : null;
+            if (!body) {
+                return; // leave the paragraph where it is rather than orphan it
+            }
+
+            body.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+
+            btn.addEventListener('click', function () {
+                var open = btn.getAttribute('aria-expanded') === 'true';
+                btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+                body.hidden = open;
+            });
+
+            // Escape closes it without moving focus somewhere unexpected, and
+            // stops there rather than reaching whatever else listens for it.
+            btn.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
+                    e.stopPropagation();
+                    btn.setAttribute('aria-expanded', 'false');
+                    body.hidden = true;
+                }
+            });
+        });
+    }
 
     /* ---------------------------------------------------------------------
      * Categories as chips.

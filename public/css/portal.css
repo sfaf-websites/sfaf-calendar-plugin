@@ -202,13 +202,31 @@ body.uc-portal {
    the muted control say what it is. Nothing in this block changes when a field
    is locked except the field itself.
    ------------------------------------------------------------------------- */
-.uc-bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 20px; align-items: start; }
-.uc-bento-card { grid-column: span 6; background: var(--surface-2); border: 0.5px solid var(--p-border);
-    border-radius: 12px; padding: 18px; min-width: 0; }
-.uc-bento-2 { grid-column: span 2; }
-.uc-bento-3 { grid-column: span 3; }
-.uc-bento-4 { grid-column: span 4; }
-.uc-bento-6 { grid-column: span 6; }
+/* MASONRY, BY MULTI-COLUMN, AND WHY NOT GRID.
+   A grid row is as tall as its tallest card, so Location beside Image left a
+   hand's depth of empty card. There is no pure-CSS masonry in grid: row spans
+   need the height measured in JavaScript first, which reflows on font load and
+   on every field that grows. Multi-column is real masonry, needs no script, and
+   collapses by changing one number, which is what "survives the responsive
+   collapse better" comes down to.
+
+   THE TRADE IS PER-CARD WIDTH. Columns are equal, so the old 4-and-2 split is
+   gone; column-span keeps the two cards that genuinely need the full width. Dead
+   space was the actual complaint and this removes all of it.
+
+   DOM ORDER IS FILL ORDER, always. Columns flow top to bottom, and at one column
+   that IS the fill order; tab order follows the DOM either way, so the keyboard
+   and a screen reader get the form in the order it is meant to be filled. */
+.uc-bento { columns: 3; column-gap: 16px; margin-bottom: 20px; }
+.uc-bento-card { break-inside: avoid; page-break-inside: avoid; display: inline-block; width: 100%;
+    margin: 0 0 16px; background: var(--surface-2); border: 0.5px solid var(--p-border);
+    border-radius: 12px; padding: 18px; }
+/* The cards that get a row of their own: the first thing filled in, the
+   notification picker (a two-tab list that a third of the width cramps), and
+   the FAQs. A spanning element cannot be inline-block, so it goes back to
+   block; the inline-block on the rest is what stops a browser fragmenting a
+   card across a column break. */
+.uc-bento-6 { column-span: all; display: block; }
 .uc-bento-title { font-size: 16px; font-weight: 500; margin: 0 0 14px; color: var(--p-text); }
 .uc-bento-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
     flex-wrap: wrap; margin-bottom: 14px; }
@@ -226,22 +244,44 @@ body.uc-portal {
 /* Helper text is QUIETER THAN A LABEL, not the same size in a different colour.
    Field labels carry the weight; hints explain and get out of the way. */
 .uc-bento .uc-hint { font-size: 12px; line-height: 1.5; color: var(--p-muted); font-weight: 400; }
+/* The two short ones that stayed inline. They prevent a specific mistake, so
+   they read as instruction rather than as background. */
+.uc-bento .uc-hint-spec { color: var(--p-text); }
 .uc-bento .uc-field-label { font-size: 13px; font-weight: 600; }
 .uc-bento .uc-field { margin-bottom: 14px; }
 .uc-bento .uc-field:last-child { margin-bottom: 0; }
-.uc-bento .uc-fieldset { margin-top: 4px; }
 .uc-bento .uc-card { background: transparent; border: 0; padding: 0; margin: 0; }
+.uc-bento .uc-bento-link { margin: 0 0 12px; }
+.uc-bento .uc-bento-link a { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.uc-repeat-line { margin: 0; font-size: 13px; }
 
-@media (max-width: 1100px) {
-    /* Two across, in the order somebody fills the form. */
-    .uc-bento { grid-template-columns: repeat(4, 1fr); }
-    .uc-bento-2, .uc-bento-3, .uc-bento-4 { grid-column: span 2; }
-    .uc-bento-6 { grid-column: span 4; }
-}
-@media (max-width: 760px) {
-    .uc-bento { grid-template-columns: 1fr; }
-    .uc-bento-card, .uc-bento-2, .uc-bento-3, .uc-bento-4, .uc-bento-6 { grid-column: span 1; }
-}
+@media (max-width: 1100px) { .uc-bento { columns: 2; } }
+@media (max-width: 760px)  { .uc-bento { columns: 1; } }
+
+/* ---------- Help disclosures ----------
+   A "?" beside a label, opening a paragraph. A real button, so it answers to
+   click, tap, Enter and Space, and carries aria-expanded; never hover, which no
+   touch screen and no keyboard can produce. With the script gone the region is
+   simply visible, so nothing behind one is ever unreachable. */
+.uc-help-btn { display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; margin-left: 5px; padding: 0; border-radius: 50%;
+    border: 1px solid var(--p-border); background: #fff; color: var(--p-muted);
+    font-size: 11px; font-weight: 700; line-height: 1; cursor: pointer; vertical-align: middle; }
+.uc-help-btn:hover { color: var(--uc-accent-text); border-color: var(--uc-accent-text); }
+.uc-help-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
+.uc-help-btn[aria-expanded="true"] { color: #fff; background: var(--uc-accent-text); border-color: var(--uc-accent-text); }
+.uc-help-body { display: block; margin: 6px 0 0; padding: 8px 10px; border-radius: 8px;
+    background: #fff; border: 1px solid var(--p-border);
+    font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); }
+.uc-help-body[hidden] { display: none; }
+
+/* ---------- Radio rows ----------
+   Control first, label beside it, both hard left. The location choices were
+   inheriting a centred layout, which pushed two short phrases into a wrap. */
+.uc-radio-row { display: flex; align-items: center; gap: 8px; margin: 0 0 6px;
+    font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; }
+.uc-radio-row input[type="radio"] { flex: 0 0 auto; margin: 0; }
+.uc-radio-row span { flex: 1 1 auto; }
 
 /* ---------- Categories as chips ---------- */
 .uc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }

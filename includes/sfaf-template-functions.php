@@ -1457,6 +1457,44 @@ function sfaf_category_chips_html( $post_id, $context = 'card' ) {
 }
 
 /**
+ * A "?" that opens a paragraph of explanation, for a form label.
+ *
+ * WHY THIS EXISTS. Several editor cards carried a paragraph longer than the
+ * field it explained, which is most of why cards in one row ended up wildly
+ * different heights, and all of it is read once and never again. The
+ * explanation is still worth having; it is not worth three lines of permanent
+ * screen furniture beside a one-line control.
+ *
+ * A REAL BUTTON, AND NOT A TOOLTIP. Hover is unreachable on a touch screen and
+ * unreachable from the keyboard, and `title` is announced inconsistently, cannot
+ * be styled, and cannot hold a sentence anybody wants to read. This is the
+ * standard disclosure pattern: a button carrying aria-expanded and aria-controls,
+ * and a region that is genuinely hidden when closed. It works on click, on
+ * Enter, on Space and on tap, and with the script gone the region is simply
+ * visible, so nothing is ever unreachable.
+ *
+ * @param string $id   Unique id for the region.
+ * @param string $text The explanation. Plain text.
+ * @param string $what What it is about, for the button's accessible name.
+ * @return string
+ */
+function sfaf_help( $id, $text, $what = '' ) {
+    $id   = sanitize_html_class( (string) $id );
+    $text = trim( (string) $text );
+    if ( '' === $id || '' === $text ) {
+        return '';
+    }
+
+    $label = ( '' !== $what ) ? 'More about ' . $what : 'More about this field';
+
+    return '<button type="button" class="uc-help-btn" data-uc-help-toggle'
+        . ' aria-expanded="false" aria-controls="' . esc_attr( $id ) . '"'
+        . ' aria-label="' . esc_attr( $label ) . '">?</button>'
+        . '<span class="uc-help-body" id="' . esc_attr( $id ) . '" data-uc-help-body>'
+        . esc_html( $text ) . '</span>';
+}
+
+/**
  * Where an event happens, as one line.
  *
  * ONE READER FOR TWO STORAGE SHAPES, AND THE REFERENCE IS RESOLVED HERE.

@@ -15,6 +15,9 @@
  *   the post          title, description (post_content), excerpt
  *   meta              location, FAQ questions and answers
  *   taxonomy          category, organizer, venue, series, by term NAME
+ *   term meta         the venue's address, so a street still finds the events
+ *                     held there now that the address lives on the venue and
+ *                     not on the event. See TERM_META_KEYS.
  *   imported events   the platform's display name, so "Eventbrite" and
  *                     "GoFundMe" both find their events even though what is
  *                     stored is the slug
@@ -27,9 +30,11 @@
  * address, not the confirmation email subject or body. Two separate things
  * keep that true. The obvious one is that the RSVP and reminder-log tables are
  * not in any query this builds. The one that will still hold in a year is that
- * META_KEYS is a list of what to look in, not a list of what to skip: a meta
- * key invented next year is unsearchable until somebody adds it here on
- * purpose, so nobody can make personal data searchable by forgetting about it.
+ * META_KEYS and TERM_META_KEYS are lists of what to look in, not lists of what
+ * to skip: a meta key invented next year is unsearchable until somebody adds it
+ * here on purpose, so nobody can make personal data searchable by forgetting
+ * about it. Term meta was added in 3.10.0 as one named key, not a wildcard, for
+ * exactly that reason.
  *
  * This is a search for EVENTS. Registrations are reached from the event they
  * belong to, which is the correct route and the only one.
@@ -87,6 +92,26 @@ class SFAF_Search {
         'uc_organizer',
         'uc_venue',
         'uc_series',
+    );
+
+    /**
+     * Term meta searched on the terms an event carries. A WHITELIST, like the
+     * post meta above and for the same reason.
+     *
+     * WHY THIS EXISTS. Until 3.9.0 an event's address lived in _uc_location and
+     * was found by the meta clause, so "940 Howard" reached the events held
+     * there. The address moved onto the venue term, which the taxonomy clause
+     * matches by NAME only, so searching for a street stopped finding anything.
+     * That was a regression in what could be found, not a decision about it.
+     *
+     * ONE KEY, NAMED. Not "all term meta": a term can carry anything anybody
+     * ever attached to it, and a wildcard here would make every future term meta
+     * key searchable the day it was invented rather than the day somebody chose
+     * to make it so. Nothing personal is or will be stored on a term, and this
+     * list is what keeps that true by construction rather than by memory.
+     */
+    const TERM_META_KEYS = array(
+        '_sfaf_venue_address',
     );
 
     /**
@@ -239,6 +264,30 @@ class SFAF_Search {
                 . " AND sft.name LIKE %s )",
                 array_merge( self::TAXONOMIES, array( $like ) )
             );
+
+            /*
+             * Term meta on the terms this event carries: the venue's address.
+             *
+             * Same shape as the name clause one line up, one join further: from
+             * the event to its terms, then to that term's meta. It starts from
+             * the object_id index and stops at the first hit, and the candidate
+             * set it runs against is whatever status and date have already
+             * narrowed the query to. See TERM_META_KEYS for why this is a list
+             * of one rather than "any term meta".
+             */
+            if ( ! empty( self::TERM_META_KEYS ) ) {
+                $tm_keys = implode( ', ', array_fill( 0, count( self::TERM_META_KEYS ), '%s' ) );
+                $ors[]   = $wpdb->prepare(
+                    "EXISTS ( SELECT 1 FROM {$wpdb->term_relationships} sfmtr"
+                    . " INNER JOIN {$wpdb->term_taxonomy} sfmtt ON sfmtt.term_taxonomy_id = sfmtr.term_taxonomy_id"
+                    . " INNER JOIN {$wpdb->termmeta} sfmtm ON sfmtm.term_id = sfmtt.term_id"
+                    . " WHERE sfmtr.object_id = {$posts}.ID"
+                    . " AND sfmtt.taxonomy IN ( {$tax_placeholders} )"
+                    . " AND sfmtm.meta_key IN ( {$tm_keys} )"
+                    . " AND sfmtm.meta_value LIKE %s )",
+                    array_merge( self::TAXONOMIES, self::TERM_META_KEYS, array( $like ) )
+                );
+            }
 
             /*
              * Imported events, by the platform's NAME.
