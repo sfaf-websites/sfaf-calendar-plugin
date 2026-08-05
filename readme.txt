@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.5.0
+Stable tag: 3.6.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.6.0 =
+
+**Searching an event now searches the event.** It did not before, on any of the three surfaces, and the reasons differed.
+
+**The caladmin Events search** used WordPress's built-in search, which covers the title, the description and the excerpt and nothing else. Most of an event is not in any of those: the location is meta, the venue, organizer, series and category are taxonomy terms, the FAQs are meta, and the platform an imported event came from is meta. So searching for a venue, an organizer, a neighbourhood or a question somebody answered in the FAQ returned nothing, correctly, to a question it was never asked.
+
+**The public search and the embed search were not searches at all.** Both read the text out of the event cards already on the page and hid the ones that did not match. That only ever looked at the current page, so with twelve events shown and forty on the calendar the other twenty-eight were never considered, and a shorter list reads exactly like "no such event". It also searched the CARD rather than the event: a card carries the title, a summary trimmed to twenty-five words and the time and location line, so everything else was invisible to it. The two were not even consistent with each other, since the embed looked at the compact layout's markup and the calendar site did not.
+
+**All three now run one query, built in one place.** A search matches the title, the description, the excerpt, the location, the category, organizer, venue and series by name, and the FAQ questions and answers. Imported events match on the platform's display name, so "Eventbrite" and "GoFundMe" both find their events even though what is stored is a short slug. Matching is partial and case insensitive, and several words all have to match, each of them anywhere in the event, so adding a word narrows the results.
+
+**The public calendar and an embed of it return the same events for the same words**, because both go through the same query builder and the same renderer. The embed no longer decides what matching means; it asks.
+
+**No attendee data is searchable, and cannot become searchable by accident.** RSVP names and addresses, the per-event notification list, the teams an event notifies, the reply-to and organizer addresses and the confirmation email text are all absent. The list of places a search looks is a list of what to include rather than what to skip, so a field added in future is unsearchable until somebody adds it there deliberately. Registrations are reached from the event they belong to, which is the only route to them.
+
+**Unpublished events cannot be reached by searching.** The search only ever adds a restriction to a query whose post status and date window were already decided, so it can narrow a result set and has no way to widen one. On the public calendar and in embeds that set is published upcoming events, before any search term is considered.
+
+**On performance:** the query uses one correlated EXISTS per source rather than one JOIN per condition, which is what makes a multi-field meta search scan badly. A concatenated search-index meta key was considered and not built: it would have added a rebuild hook, a backfill and a way for results to be silently wrong when the index drifted, for a saving this calendar's size does not need. If it is ever needed, `SFAF_Search::where()` is the single method that would change. Search responses are deliberately not cached by the embed endpoint, since the search term is the one parameter a caller can put anything into and caching it means one stored row per string anybody has ever typed.
 
 = 3.5.0 =
 

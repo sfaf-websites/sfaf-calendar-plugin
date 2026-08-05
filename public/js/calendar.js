@@ -464,39 +464,118 @@
     }
 
     /**
-     * Search
+     * Search, run by the server.
+     *
+     * WHAT THIS REPLACES, AND WHY IT HAD TO GO. The old version read the text
+     * out of the cards already on the page and hid the ones that did not
+     * match. That has two problems and the smaller one is that it only ever
+     * looked at the current page: with twelve events shown and forty on the
+     * calendar, searching found nothing in the other twenty-eight and said so
+     * by showing a shorter list, which reads exactly like "no such event".
+     *
+     * The bigger one is that it searched the CARD, not the EVENT. A card
+     * carries the title, a summary trimmed to twenty-five words, and the time
+     * and location line. Everything else about an event, the rest of the
+     * description, the venue, the organizer, the series, the category, the
+     * FAQ, is not on the card and so could not be found, which is why the
+     * search appeared not to look through an event's text. It could not.
+     *
+     * The query now goes to the server and comes back as a new list, through
+     * exactly the same renderer and the same filters as the first page load.
+     * SFAF_Search decides what "matches" means, in one place, for this and for
+     * the embed and for the caladmin list.
      */
     function initSearch() {
-        var searchTimer;
-        $('.uc-search').on('input', function() {
-            clearTimeout(searchTimer);
-            var query = $(this).val().toLowerCase();
-            
-            searchTimer = setTimeout(function() {
-                if (query.length === 0) {
-                    $('.uc-event-card').show();
-                } else {
-                    $('.uc-event-card').each(function() {
-                        var title = $(this).find('.uc-card-title').text().toLowerCase();
-                        var excerpt = $(this).find('.uc-card-excerpt').text().toLowerCase();
-                        var meta = $(this).find('.uc-card-meta').text().toLowerCase();
-                        var match = title.indexOf(query) > -1 || 
-                                    excerpt.indexOf(query) > -1 || 
-                                    meta.indexOf(query) > -1;
-                        $(this).toggle(match);
-                    });
+        $('.uc-calendar, .uc-upcoming-widget').each(function () {
+            var $block = $(this);
+            var $input = $block.find('.uc-search');
+            if (!$input.length) {
+                return;
+            }
+
+            var timer = null;
+            var seq = 0;
+
+            function run() {
+                var term = $.trim($input.val() || '');
+                $block.attr('data-filter-s', term);
+
+                var $list = $block.find('.uc-event-list, .uc-upcoming-list').first();
+                if (!$list.length) {
+                    return;
                 }
-                updateCount();
-            }, 200);
+
+                // Every request carries a number and only the newest one is
+                // allowed to write. Without this, a slow request for "har"
+                // can land after a fast one for "harm reduction" and put the
+                // wrong list on screen under the right search box.
+                seq++;
+                var mine = seq;
+                $block.addClass('uc-searching');
+
+                $.ajax({
+                    url: ucData.ajaxUrl,
+                    method: 'POST',
+                    data: {
+                        action:    'uc_load_events',
+                        nonce:     ucData.nonce,
+                        page:      1,
+                        per_page:  $block.attr('data-per-page'),
+                        category:  $block.attr('data-filter-category') || '',
+                        organizer: $block.attr('data-filter-organizer') || '',
+                        series:    $block.attr('data-filter-series') || '',
+                        venue:     $block.attr('data-filter-venue') || '',
+                        s:         term,
+                        render:    $block.attr('data-render') || 'card'
+                    },
+                    success: function (resp) {
+                        if (mine !== seq) {
+                            return; // a newer search has already answered
+                        }
+                        $list.html((resp && resp.html) ? resp.html : '');
+                        // Back to page one: the list on screen is now the
+                        // first page of a different result set, and leaving
+                        // the old number here would make Load More append
+                        // page five of it.
+                        $block.attr('data-page', '1');
+                        if (!resp || !resp.html) {
+                            $list.html('<p class="uc-empty">No events match that search.</p>');
+                        }
+                        updateCount($block);
+                    },
+                    complete: function () {
+                        if (mine === seq) {
+                            $block.removeClass('uc-searching');
+                        }
+                    }
+                });
+            }
+
+            $input.on('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(run, 250);
+            });
+            // Enter should not submit whatever form the shortcode happens to
+            // sit inside, and should not wait out the debounce either.
+            $input.on('keydown', function (e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    clearTimeout(timer);
+                    run();
+                }
+            });
         });
     }
 
     /**
      * Update visible event count
      */
-    function updateCount() {
-        var visible = $('.uc-event-card:visible').length;
-        $('.uc-count-number').text(visible);
+    function updateCount($block) {
+        // Scoped to one block when given one, so two calendars on a page do
+        // not write each other's counts.
+        var $scope = ($block && $block.length) ? $block : $(document);
+        var visible = $scope.find('.uc-event-card:visible, .uc-compact-card:visible').length;
+        $scope.find('.uc-count-number').text(visible);
     }
 
     /**

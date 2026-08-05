@@ -168,6 +168,10 @@ class SFAF_Embed {
                 'organizer'    => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'venue'        => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'series'       => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'absint' ),
+                // The search box. sanitize_text_field is a WordPress userland
+                // function, so it tolerates the three arguments core passes a
+                // sanitize_callback: see the long note above.
+                's'            => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 // Not absint: a negative per_page must stay negative so
                 // normalize_params() sees it as "unset" and falls back to the
                 // configured default, rather than flipping -5 into a real 5.
@@ -285,6 +289,13 @@ class SFAF_Embed {
             'organizer'    => (string) $request->get_param( 'organizer' ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
+            /*
+             * Capped, because this is a public endpoint and the search term is
+             * the one parameter a caller can put arbitrary length into.
+             * SFAF_Search caps the number of words as well; this caps the
+             * bytes before they ever reach it.
+             */
+            's'            => substr( trim( (string) $request->get_param( 's' ) ), 0, 120 ),
             'per_page'     => min( $per_page, $max ),
             'page'         => $page,
             'show_filters' => (string) $request->get_param( 'show_filters' ),
@@ -850,6 +861,11 @@ class SFAF_Embed {
             'organizer' => $params['organizer'],
             'venue'     => $params['venue'],
             'series'    => $params['series'],
+            // Part of the identity even though searches are not cached below.
+            // If they ever are, the key is already right; leaving it out would
+            // mean a cached unsearched page being served to a search, and one
+            // visitor's search results being served to the next visitor.
+            's'         => isset( $params['s'] ) ? $params['s'] : '',
         );
 
         if ( 'month' === $params['mode'] ) {
@@ -893,9 +909,28 @@ class SFAF_Embed {
         return 'sfaf_embed_' . md5( wp_json_encode( $identity ) );
     }
 
+    /**
+     * SEARCHES ARE NOT CACHED, and that is a deliberate policy rather than an
+     * oversight.
+     *
+     * Every other parameter this endpoint takes is drawn from a small fixed
+     * set: a handful of category slugs, a few organizers, a month. The search
+     * term is the one thing a caller can put anything at all into, so caching
+     * it means one transient per distinct string anybody has ever typed, in an
+     * options table, from a public endpoint. That is a slow leak at best and
+     * something worth doing on purpose at worst.
+     *
+     * The thing being given up is small. A search is a long tail of one-off
+     * queries with almost no repeat rate, so the hit rate would have been near
+     * zero anyway, and running the query is what a search is for.
+     */
+    private function cacheable( $params ) {
+        return $this->cache_ttl() > 0 && '' === trim( (string) ( isset( $params['s'] ) ? $params['s'] : '' ) );
+    }
+
     /** @return array|null Cached payload, or null when there is nothing usable. */
     private function get_cached( $params ) {
-        if ( $this->cache_ttl() <= 0 ) {
+        if ( ! $this->cacheable( $params ) ) {
             return null;
         }
         $cached = get_transient( $this->cache_key( $params ) );
@@ -903,10 +938,10 @@ class SFAF_Embed {
     }
 
     private function set_cached( $params, $payload ) {
-        $ttl = $this->cache_ttl();
-        if ( $ttl > 0 ) {
-            set_transient( $this->cache_key( $params ), $payload, $ttl );
+        if ( ! $this->cacheable( $params ) ) {
+            return;
         }
+        set_transient( $this->cache_key( $params ), $payload, $this->cache_ttl() );
     }
 
     /**

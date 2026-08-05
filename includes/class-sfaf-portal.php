@@ -5414,8 +5414,23 @@ class SFAF_Portal {
             $q['author'] = $user->ID;
         }
 
+        /*
+         * SEARCH. Not $q['s'].
+         *
+         * WordPress's built-in search reaches post_title, post_content and
+         * post_excerpt and stops, which on this post type is the title and the
+         * description and nothing else: not the location, not the venue,
+         * organizer, series or category, not the FAQ, not which platform an
+         * imported event came from. Most of an event is in meta and terms, so
+         * most of an event was unsearchable.
+         *
+         * SFAF_Search covers the post columns itself as well, which is why the
+         * built-in is switched off rather than combined with it: both active
+         * would AND together and an event would have to match the narrow one
+         * too. See the note on SFAF_Search::QUERY_VAR.
+         */
         if ( ! empty( $args['s'] ) ) {
-            $q['s'] = $args['s'];
+            SFAF_Search::apply( $q, $args['s'] );
         }
         if ( ! empty( $args['cat'] ) ) {
             $q['tax_query'] = array( array( 'taxonomy' => 'uc_event_category', 'field' => 'term_id', 'terms' => (int) $args['cat'] ) );

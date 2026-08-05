@@ -128,6 +128,9 @@
             view: viewFor(container),
             toggle: container.getAttribute('data-toggle') || '',
             count: container.getAttribute('data-count') || '',
+            // The active search, so every request a block makes after one has
+            // been typed keeps it: load more, page two, month navigation.
+            s: container.getAttribute('data-active-search') || '',
             page: page || 1,
             mode: mode || ''
         };
@@ -921,41 +924,26 @@
     }
 
     /**
-     * The text a search looks through: title, summary and meta line, the same
-     * fields the calendar site searches. Falls back to the whole card if the
-     * markup ever changes shape.
-     */
-    function searchTextOf(card) {
-        var parts = card.querySelectorAll(
-            '.uc-card-title, .uc-card-excerpt, .uc-card-meta, .uc-compact-title, .uc-compact-meta'
-        );
-        if (!parts.length) {
-            return card.textContent || '';
-        }
-        var text = '';
-        for (var i = 0; i < parts.length; i++) {
-            text += ' ' + (parts[i].textContent || '');
-        }
-        return text;
-    }
-
-    /**
-     * Show only the cards matching the active category and search text.
+     * Show only the cards matching the active category.
      *
-     * Client-side, over cards that are already on the page — the same thing the
-     * filter buttons do on the calendar site, so the behaviour matches.
+     * SEARCH IS NO LONGER DONE HERE. It used to read the text out of each card
+     * and hide the ones that did not contain the term, which searched the card
+     * rather than the event, and only the cards already downloaded. It now
+     * goes to the endpoint, which runs the same query the calendar site runs,
+     * so the same words return the same events on both. See bindSearch().
+     *
+     * The category buttons are still client-side, unchanged: a category is a
+     * value already printed on every card, so the answer is genuinely on the
+     * page in a way a search term never was.
      */
     function applyFilters(container) {
         var category = container.getAttribute('data-active-category') || 'all';
-        var term = (container.getAttribute('data-active-search') || '').toLowerCase();
         var cards = cardsIn(container);
         var visible = 0;
 
         for (var i = 0; i < cards.length; i++) {
             var card = cards[i];
-            var matchesCategory = (category === 'all') || (card.getAttribute('data-category') === category);
-            var matchesTerm = (term === '') || (searchTextOf(card).toLowerCase().indexOf(term) > -1);
-            var show = matchesCategory && matchesTerm;
+            var show = (category === 'all') || (card.getAttribute('data-category') === category);
 
             card.style.display = show ? '' : 'none';
             if (show) {
@@ -985,18 +973,85 @@
         }
     }
 
+    /**
+     * Search, run by the endpoint.
+     *
+     * ASKS THE SERVER, so an embed on another site and the calendar on this
+     * one return the same events for the same words. Both queries are built by
+     * SFAF_Search, through the same renderer, so there is nothing here that
+     * could disagree with the calendar site: this file no longer decides what
+     * matching means, it just asks.
+     *
+     * REQUESTS ONLY THE LIST, not the whole block. Re-rendering the block would
+     * replace the filter bar and take the focus out of the search box between
+     * keystrokes, which makes typing impossible. So this asks for `items` and
+     * swaps the list underneath, leaving the box, its value and the caret
+     * exactly where they were.
+     */
     function bindSearch(container) {
         var input = container.querySelector('.uc-search');
         if (!input) {
             return;
         }
+
         var timer = null;
+        var seq = 0;
+
+        function run() {
+            var term = (input.value || '').replace(/^\s+|\s+$/g, '');
+            container.setAttribute('data-active-search', term);
+
+            var list = listOf(container);
+            if (!list) {
+                return;
+            }
+
+            // Only the newest request may write. A slow answer for "har"
+            // landing after a fast one for "harm reduction" would otherwise
+            // leave the wrong list under the right search box.
+            seq++;
+            var mine = seq;
+
+            request(container, 1, 'items', function (data) {
+                if (mine !== seq) {
+                    return;
+                }
+                list.innerHTML = (data && data.html) ? data.html : '';
+                if (!data || !data.html) {
+                    list.innerHTML = '<p class="uc-empty">No events match that search.</p>';
+                }
+                var block = inner(container);
+                if (block) {
+                    // Page one of a different result set. Left alone, Load More
+                    // would append page five of the previous one.
+                    block.setAttribute('data-page', '1');
+                    if (data && typeof data.max_pages !== 'undefined') {
+                        block.setAttribute('data-max-pages', String(data.max_pages));
+                    }
+                }
+                if (!data || !data.has_more) {
+                    removePagination(container);
+                }
+                // The category buttons are still a client-side filter, so the
+                // active one has to be reapplied to the rows that just landed.
+                applyFilters(container);
+            }, function () {
+                if (mine === seq) {
+                    showError(container);
+                }
+            });
+        }
+
         input.addEventListener('input', function () {
             clearTimeout(timer);
-            timer = setTimeout(function () {
-                container.setAttribute('data-active-search', input.value);
-                applyFilters(container);
-            }, 200);
+            timer = setTimeout(run, 250);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                clearTimeout(timer);
+                run();
+            }
         });
     }
 

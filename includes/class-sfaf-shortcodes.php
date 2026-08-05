@@ -59,6 +59,21 @@ class SFAF_Shortcodes {
             'organizer' => $this->slug_list( isset( $raw['organizer'] ) ? $raw['organizer'] : '' ),
             'venue'     => $this->slug_list( isset( $raw['venue'] ) ? $raw['venue'] : '' ),
             'series'    => isset( $raw['series'] ) ? absint( $raw['series'] ) : 0,
+            /*
+             * SEARCH IS A FILTER LIKE THE REST OF THEM.
+             *
+             * Putting it here rather than anywhere else is what makes the
+             * calendar on this site and an embed on another one return the
+             * same events for the same words: both reach build_query_args()
+             * through this, so there is one query and no second implementation
+             * to disagree with the first.
+             *
+             * It used to be neither. Both surfaces filtered the cards already
+             * in the page with JavaScript, which meant a search only ever
+             * looked at the events on the current page and never at the rest,
+             * and looked through the rendered card text rather than the event.
+             */
+            's'         => isset( $raw['s'] ) ? sanitize_text_field( (string) $raw['s'] ) : '',
         );
     }
 
@@ -116,6 +131,20 @@ class SFAF_Shortcodes {
         } else {
             $args['posts_per_page'] = $per_page;
             $args['paged']          = max( 1, $paged );
+        }
+
+        /*
+         * SEARCH, ADDED TO A QUERY THAT IS ALREADY RESTRICTED.
+         *
+         * post_status is 'publish' and the date window is "today or later",
+         * both set above and neither touched by this. SFAF_Search only ever
+         * appends to the WHERE, so a search can narrow this result set and has
+         * no way to widen it: there is no search term that reaches a draft, a
+         * pending event, a dismissed import or a past one, because search does
+         * not choose which events are eligible.
+         */
+        if ( '' !== $filters['s'] ) {
+            SFAF_Search::apply( $args, $filters['s'] );
         }
 
         // Slug-based taxonomy filters. Several slugs in one filter are an OR;
@@ -834,6 +863,9 @@ class SFAF_Shortcodes {
             'organizer'    => '',
             'series'       => '',
             'venue'        => '',
+            // A preset search, so [sfaf_calendar s="harm reduction"] renders a
+            // page of matching events rather than an empty box to type into.
+            's'            => '',
             'per_page'     => '',
             'show_filters' => 'yes',
             'layout'       => 'cards',
@@ -868,6 +900,7 @@ class SFAF_Shortcodes {
             'organizer'    => '',
             'series'       => '',
             'venue'        => '',
+            's'            => '',
             'per_page'     => '',
             'show_filters' => 'yes',
             'layout'       => 'cards',
@@ -930,6 +963,8 @@ class SFAF_Shortcodes {
              data-filter-organizer="<?php echo esc_attr( $filters['organizer'] ); ?>"
              data-filter-series="<?php echo (int) $filters['series']; ?>"
              data-filter-venue="<?php echo esc_attr( $filters['venue'] ); ?>"
+             <?php // Carried so paging and "load more" keep the search applied. ?>
+             data-filter-s="<?php echo esc_attr( $filters['s'] ); ?>"
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
              data-view="<?php echo esc_attr( $view ); ?>"
@@ -939,7 +974,15 @@ class SFAF_Shortcodes {
             <?php if ( $this->show_filters( $args['show_filters'] ) ) : ?>
             <div class="uc-filters">
                 <div class="uc-search-wrap">
-                    <input type="text" class="uc-search" placeholder="Search events..." />
+                    <?php
+                    /*
+                     * The value is rendered back in so a search survives a
+                     * page load: the shortcode accepts s="…", and the embed
+                     * re-renders the whole block on every search.
+                     */
+                    ?>
+                    <input type="search" class="uc-search" value="<?php echo esc_attr( $filters['s'] ); ?>"
+                           aria-label="Search events" placeholder="Search events..." />
                 </div>
                 <div class="uc-filter-buttons">
                     <button class="uc-filter-btn active" data-category="all">All Events</button>
@@ -1142,7 +1185,9 @@ class SFAF_Shortcodes {
         $render   = ( isset( $_POST['render'] ) && $_POST['render'] === 'compact' ) ? 'compact' : 'card';
 
         $filters = array();
-        foreach ( array( 'category', 'organizer', 'series', 'venue' ) as $key ) {
+        // 's' rides along with the rest, because the search is a filter now
+        // rather than a pass over the cards this endpoint already returned.
+        foreach ( array( 'category', 'organizer', 'series', 'venue', 's' ) as $key ) {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
 
