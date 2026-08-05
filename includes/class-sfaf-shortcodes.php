@@ -10,6 +10,10 @@ class SFAF_Shortcodes {
         add_action( 'wp_ajax_nopriv_uc_load_events', array( $this, 'ajax_load_events' ) );
         add_action( 'wp_ajax_uc_load_month', array( $this, 'ajax_load_month' ) );
         add_action( 'wp_ajax_nopriv_uc_load_month', array( $this, 'ajax_load_month' ) );
+        // The whole block, for a change that alters the controls as well as the
+        // list: choosing a group re-derives the Groups row and the breadcrumb.
+        add_action( 'wp_ajax_uc_load_block', array( $this, 'ajax_load_block' ) );
+        add_action( 'wp_ajax_nopriv_uc_load_block', array( $this, 'ajax_load_block' ) );
     }
 
     /* ---------------------------------------------------------------------
@@ -74,6 +78,15 @@ class SFAF_Shortcodes {
              * and looked through the rendered card text rather than the event.
              */
             's'         => isset( $raw['s'] ) ? sanitize_text_field( (string) $raw['s'] ) : '',
+            /*
+             * THE GROUPS A VISITOR PICKED, as series slugs.
+             *
+             * Separate from 'series', which is the block's own scope and takes
+             * a single id from a snippet. This is a visitor narrowing what is
+             * already in front of them and may name several, so it is a slug
+             * list like category, organizer and venue. See group_pills().
+             */
+            'groups'    => $this->slug_list( isset( $raw['groups'] ) ? $raw['groups'] : '' ),
         );
     }
 
@@ -230,7 +243,173 @@ class SFAF_Shortcodes {
             );
         }
 
+        /*
+         * THE GROUPS THE VISITOR CHOSE. Several slugs are an OR, because
+         * choosing two groups means "either of these", and the clause ANDs with
+         * everything above it, because it is narrowing a set that has already
+         * been narrowed by category and by the block's own scope.
+         *
+         * A slug that reaches here has already been checked against the list of
+         * groups this block actually contains. See effective_groups().
+         */
+        if ( '' !== $filters['groups'] ) {
+            $args['tax_query'][] = array(
+                'taxonomy' => SFAF_Series::TAXONOMY,
+                'field'    => 'slug',
+                'terms'    => explode( ',', $filters['groups'] ),
+            );
+        }
+
         return $args;
+    }
+
+    /* ---------------------------------------------------------------------
+     * The second level: groups.
+     *
+     * WHAT THIS IS FOR. The visitor filter bar is category-only on purpose: a
+     * person reading the calendar should never have to learn what an organizer
+     * or a series is. But somebody who found one Wednesday of a group that runs
+     * every Wednesday had no way to ask for the rest of its dates.
+     *
+     * SO IT IS A SECOND LEVEL, NOT A SECOND BAR. Nothing shows until a category
+     * is chosen, so nobody is ever looking at two taxonomies at once, and the
+     * row is derived from what is actually in front of them rather than from a
+     * list of everything the site has.
+     *
+     * THE WORD "SERIES" IS NEVER SHOWN. It is the name of a data structure. The
+     * row is called Groups and the pills carry the term's own public name.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * The groups a block currently contains, in name order.
+     *
+     * DERIVED FROM THE EVENTS, NOT FROM THE SERIES LIST. get_terms() on
+     * uc_series would answer "every series on the site", which is a different
+     * question and a longer list: a series with nothing in this category, or
+     * nothing upcoming, or nothing inside this block's scope, would be offered
+     * and would return an empty calendar when pressed.
+     *
+     * So the same query the list runs is run once for ids, and the terms are
+     * asked for those objects. That means every pill has at least one event
+     * behind it by construction, and it also means the list respects the block's
+     * scope for free: whatever category, organizer, venue, series and search the
+     * block was built with are already in these filters.
+     *
+     * THE GROUP SELECTION ITSELF IS NOT APPLIED when deriving. A row that shrank
+     * to the one pill you just pressed would take away the way back.
+     *
+     * @param array $filters Normalized filters, group selection ignored.
+     * @return WP_Term[]
+     */
+    public function available_groups( $filters ) {
+        $filters           = $this->normalize_filters( $filters );
+        $filters['groups'] = '';
+
+        // No category chosen means no second level, so there is nothing to
+        // derive and no query to pay for.
+        if ( '' === $filters['category'] ) {
+            return array();
+        }
+
+        $args                   = $this->build_query_args( 0, 1, $filters );
+        $args['posts_per_page'] = 300;
+        $args['fields']         = 'ids';
+        $args['no_found_rows']  = true;
+        $args['update_post_meta_cache'] = false;
+        $args['update_post_term_cache'] = false;
+        unset( $args['paged'] );
+
+        $q = new WP_Query( $args );
+        if ( empty( $q->posts ) ) {
+            return array();
+        }
+
+        $terms = get_terms( array(
+            'taxonomy'   => SFAF_Series::TAXONOMY,
+            'object_ids' => array_map( 'intval', $q->posts ),
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        ) );
+        if ( is_wp_error( $terms ) || empty( $terms ) ) {
+            return array();
+        }
+
+        // object_ids can return the same term once per object it is on.
+        $unique = array();
+        foreach ( $terms as $term ) {
+            $unique[ (int) $term->term_id ] = $term;
+        }
+        $terms = array_values( $unique );
+        usort( $terms, function ( $a, $b ) {
+            return strcasecmp( $a->name, $b->name );
+        } );
+
+        return $terms;
+    }
+
+    /**
+     * The group selection actually queried: what was asked for, kept to what
+     * this block contains.
+     *
+     * THE CLAMP IS THE DERIVED LIST, and that is the whole of it. The list was
+     * built under the block's own category, organizer, venue, series and search,
+     * so a group that is not in it is a group this block does not contain, and a
+     * slug naming one can only have come from a stale link or a hand-written
+     * parameter. It is DROPPED rather than honoured and rather than returning
+     * nothing: showing the block's own events is the honest answer to both.
+     *
+     * @param WP_Term[] $available From available_groups().
+     * @param string    $requested Slug list.
+     * @return string
+     */
+    public function effective_groups( $available, $requested ) {
+        $requested = $this->slug_list( $requested );
+        if ( '' === $requested || empty( $available ) ) {
+            return '';
+        }
+
+        $allowed = wp_list_pluck( $available, 'slug' );
+        $inside  = array_values( array_intersect( explode( ',', $requested ), $allowed ) );
+
+        return empty( $inside ) ? '' : implode( ',', $inside );
+    }
+
+    /**
+     * The groups a visitor asked for in the URL.
+     *
+     * uc_group, following uc_cat, so a narrowed calendar is a real address that
+     * survives a reload and can be sent to somebody.
+     *
+     * @return string
+     */
+    private function requested_groups() {
+        return isset( $_GET['uc_group'] ) ? $this->slug_list( wp_unslash( $_GET['uc_group'] ) ) : '';
+    }
+
+    /**
+     * Derive and clamp in one step, for the paths that have filters and a
+     * requested selection but no rendered block to have derived from.
+     *
+     * THE CLAMP IS RE-DERIVED SERVER-SIDE, NOT TRUSTED. The browser sends what
+     * it thinks is selected; this works out what the block actually contains
+     * from the same filters the block was built with, and keeps only the
+     * overlap. A crafted request therefore reaches nothing a visitor could not
+     * have reached by pressing the pills.
+     *
+     * Skipped entirely when nothing was asked for, so the ordinary page of
+     * events pays for no extra query.
+     *
+     * @param array  $filters   Normalized filters.
+     * @param string $requested Slug list from the request.
+     * @return string
+     */
+    public function clamp_groups( $filters, $requested ) {
+        $requested = $this->slug_list( $requested );
+        if ( '' === $requested ) {
+            return '';
+        }
+        return $this->effective_groups( $this->available_groups( $filters ), $requested );
     }
 
     /* ---------------------------------------------------------------------
@@ -400,6 +579,16 @@ class SFAF_Shortcodes {
                 'taxonomy' => SFAF_Series::TAXONOMY,
                 'field'    => 'term_id',
                 'terms'    => $series_term,
+            );
+        }
+
+        // The chosen groups, so the grid cannot contradict the list beside it.
+        // Already clamped by whoever built these filters.
+        if ( ! empty( $filters['groups'] ) ) {
+            $args['tax_query'][] = array(
+                'taxonomy' => SFAF_Series::TAXONOMY,
+                'field'    => 'slug',
+                'terms'    => explode( ',', $filters['groups'] ),
             );
         }
 
@@ -747,6 +936,165 @@ class SFAF_Shortcodes {
     }
 
     /**
+     * How many groups is still a row of pills rather than a list to open.
+     *
+     * Judged on the count that will actually render for THIS category, not on
+     * how many the site has: seven categories of three groups each are seven
+     * comfortable rows, and one category of twenty is the only one that needs
+     * folding away.
+     */
+    const GROUP_PILL_LIMIT = 6;
+
+    /**
+     * The Groups row.
+     *
+     * PILLS OR A FOLDED LIST, decided here on the real count. Up to six is a row
+     * somebody can read at a glance; beyond that a row wraps to three lines and
+     * stops being scannable, so it becomes a disclosure holding the same
+     * checkboxes. Both are multi-select, because asking for two groups means
+     * "either of these", and both post the same parameter.
+     *
+     * THE WORD "SERIES" DOES NOT APPEAR. A visitor should not have to know that
+     * the calendar has a taxonomy called that; they are asking for a group whose
+     * name they already know from the poster.
+     *
+     * @param WP_Term[] $available
+     * @param string    $active Slug list.
+     */
+    private function render_group_row( $available, $active ) {
+        if ( empty( $available ) ) {
+            return;
+        }
+
+        $on   = ( '' === $active ) ? array() : explode( ',', $active );
+        $many = ( count( $available ) > self::GROUP_PILL_LIMIT );
+        ?>
+        <div class="uc-groups<?php echo $many ? ' uc-groups-many' : ''; ?>" data-uc-groups>
+            <span class="uc-groups-label" id="uc-groups-label">Groups</span>
+
+            <?php if ( ! $many ) : ?>
+                <div class="uc-groups-pills" role="group" aria-labelledby="uc-groups-label">
+                    <?php foreach ( $available as $term ) :
+                        $picked = in_array( $term->slug, $on, true ); ?>
+                        <button type="button" class="uc-group-pill<?php echo $picked ? ' active' : ''; ?>"
+                                data-uc-group="<?php echo esc_attr( $term->slug ); ?>"
+                                aria-pressed="<?php echo $picked ? 'true' : 'false'; ?>">
+                            <?php echo esc_html( $term->name ); ?>
+                        </button>
+                    <?php endforeach; ?>
+                    <?php if ( ! empty( $on ) ) : ?>
+                        <button type="button" class="uc-group-clear" data-uc-group-clear>Clear</button>
+                    <?php endif; ?>
+                </div>
+            <?php else : ?>
+                <details class="uc-groups-list"<?php echo ! empty( $on ) ? ' open' : ''; ?>>
+                    <summary>
+                        <?php echo esc_html(
+                            empty( $on )
+                                ? 'Choose a group (' . count( $available ) . ')'
+                                : count( $on ) . ' of ' . count( $available ) . ' chosen'
+                        ); ?>
+                    </summary>
+                    <div class="uc-groups-options" role="group" aria-labelledby="uc-groups-label">
+                        <?php foreach ( $available as $term ) :
+                            $picked = in_array( $term->slug, $on, true ); ?>
+                            <label class="uc-check uc-group-option">
+                                <input type="checkbox" data-uc-group="<?php echo esc_attr( $term->slug ); ?>"
+                                       <?php checked( $picked ); ?> />
+                                <span><?php echo esc_html( $term->name ); ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                        <?php if ( ! empty( $on ) ) : ?>
+                            <button type="button" class="uc-group-clear" data-uc-group-clear>Clear all</button>
+                        <?php endif; ?>
+                    </div>
+                </details>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Where the visitor is, and the way back up.
+     *
+     * All events > Support groups > the groups chosen. Every segment to the left
+     * of where they are is a control that steps back one level, because the
+     * commonest thing after narrowing twice is wanting to be one level out, and
+     * the alternative is hunting for whichever chip is lit.
+     *
+     * NAMED UP TO TWO, COUNTED AFTER THAT. Three long group names on one line
+     * wrap into an unreadable tangle at the width a sidebar embed gets, and
+     * "3 groups" is both shorter and truthful.
+     *
+     * @param string    $scope_category The block's own scope, never steppable.
+     * @param string    $active_category
+     * @param WP_Term[] $available
+     * @param string    $active_groups
+     */
+    private function render_breadcrumb( $scope_category, $active_category, $available, $active_groups ) {
+        if ( '' === $active_category && '' === $active_groups ) {
+            return; // nothing has been narrowed, so there is nowhere to go back to
+        }
+
+        $cat_names = array();
+        foreach ( explode( ',', $active_category ) as $slug ) {
+            if ( '' === $slug ) {
+                continue;
+            }
+            $term = get_term_by( 'slug', $slug, 'uc_event_category' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                $cat_names[] = $term->name;
+            }
+        }
+
+        $on         = ( '' === $active_groups ) ? array() : explode( ',', $active_groups );
+        $by_slug    = array();
+        foreach ( $available as $term ) {
+            $by_slug[ $term->slug ] = $term->name;
+        }
+        $group_names = array();
+        foreach ( $on as $slug ) {
+            if ( isset( $by_slug[ $slug ] ) ) {
+                $group_names[] = $by_slug[ $slug ];
+            }
+        }
+        ?>
+        <nav class="uc-crumbs" aria-label="Filters applied">
+            <?php
+            // "All events" means everything this block is about, which on a
+            // scoped block is not everything on the calendar. It is still the
+            // top of what a visitor can reach from here.
+            ?>
+            <button type="button" class="uc-crumb" data-uc-crumb="all">
+                <?php echo esc_html( '' !== $scope_category ? 'All of these events' : 'All events' ); ?>
+            </button>
+
+            <?php if ( ! empty( $cat_names ) ) : ?>
+                <span class="uc-crumb-sep" aria-hidden="true">&rsaquo;</span>
+                <?php if ( ! empty( $group_names ) ) : ?>
+                    <button type="button" class="uc-crumb" data-uc-crumb="category">
+                        <?php echo esc_html( implode( ', ', $cat_names ) ); ?>
+                    </button>
+                <?php else : ?>
+                    <span class="uc-crumb uc-crumb-here" aria-current="true"><?php echo esc_html( implode( ', ', $cat_names ) ); ?></span>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ( ! empty( $group_names ) ) : ?>
+                <span class="uc-crumb-sep" aria-hidden="true">&rsaquo;</span>
+                <span class="uc-crumb uc-crumb-here" aria-current="true">
+                    <?php echo esc_html(
+                        count( $group_names ) <= 2
+                            ? implode( ' and ', $group_names )
+                            : count( $group_names ) . ' groups'
+                    ); ?>
+                </span>
+            <?php endif; ?>
+        </nav>
+        <?php
+    }
+
+    /**
      * The visitor-facing list / calendar toggle.
      *
      * Not shown in sidebar mode: a 250px column has no room for a month grid,
@@ -959,6 +1307,7 @@ class SFAF_Shortcodes {
             // What the visitor picked, as distinct from what the block is
             // scoped to. See effective_category().
             'active_category' => null,
+            'active_groups'   => null,
         ) );
 
         $filters = $this->normalize_filters( $args );
@@ -996,6 +1345,24 @@ class SFAF_Shortcodes {
          * label the list as something it is not.
          */
         $active_category = ( '' !== $requested && $filters['category'] === $requested ) ? $filters['category'] : '';
+
+        /*
+         * THE SECOND LEVEL. Derived after the category is settled, because the
+         * whole point is that it lists what is inside the chosen category, and
+         * clamped against that derived list, which is what stops a hand-written
+         * uc_group reaching past the block's scope. See available_groups().
+         *
+         * A block already scoped to one series is not offered a group row: it
+         * can only ever contain the one thing the block already is, and a filter
+         * whose only option is "what you are looking at" is furniture.
+         */
+        $available_groups = ( $filters['series'] > 0 ) ? array() : $this->available_groups( $filters );
+        $requested_groups = ( null === $args['active_groups'] )
+            ? $this->requested_groups()
+            : $this->slug_list( $args['active_groups'] );
+
+        $filters['groups'] = $this->effective_groups( $available_groups, $requested_groups );
+        $active_groups     = $filters['groups'];
 
         // Sidebar is a different shape entirely: no filter bar, no pagination,
         // no toggle, a count rather than a page size. It returns early rather
@@ -1045,6 +1412,7 @@ class SFAF_Shortcodes {
              <?php // The block's own scope, which a chip may narrow and can never widen. ?>
              data-scope-category="<?php echo esc_attr( $scope_category ); ?>"
              data-active-category="<?php echo esc_attr( $active_category ); ?>"
+             data-active-groups="<?php echo esc_attr( $active_groups ); ?>"
              data-filter-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-filter-organizer="<?php echo esc_attr( $filters['organizer'] ); ?>"
              data-filter-series="<?php echo (int) $filters['series']; ?>"
@@ -1135,6 +1503,21 @@ class SFAF_Shortcodes {
                 </div>
                 <?php endif; ?>
             </div>
+
+            <?php
+            /*
+             * THE SECOND LEVEL, ONLY ONCE THE FIRST HAS BEEN ANSWERED.
+             *
+             * Nothing renders until a category is chosen, so the bar a visitor
+             * meets is exactly the bar they met before, and nobody is ever
+             * looking at two taxonomies at once. Nothing renders either when the
+             * chosen category holds no groups at all: an empty row, or a row
+             * saying there are no groups, is a control explaining its own
+             * absence.
+             */
+            $this->render_group_row( $available_groups, $active_groups );
+            $this->render_breadcrumb( $scope_category, $active_category, $available_groups, $active_groups );
+            ?>
             <?php endif; ?>
 
             <div class="uc-view-bar">
@@ -1308,6 +1691,10 @@ class SFAF_Shortcodes {
             isset( $_POST['scope_category'] ) ? sanitize_text_field( wp_unslash( $_POST['scope_category'] ) ) : '',
             $filters['category']
         );
+        $filters['groups'] = $this->clamp_groups(
+            $filters,
+            isset( $_POST['groups'] ) ? sanitize_text_field( wp_unslash( $_POST['groups'] ) ) : ''
+        );
 
         if ( $per_page <= 0 ) {
             wp_send_json( array( 'html' => '', 'has_more' => false, 'total' => 0, 'max_pages' => 1 ) );
@@ -1322,6 +1709,49 @@ class SFAF_Shortcodes {
             // MATCHING events rather than the number of cards left on screen.
             'total'     => $events['total'],
             'max_pages' => $events['max_pages'],
+        ) );
+    }
+
+    /**
+     * AJAX: the whole calendar block, re-rendered.
+     *
+     * WHY A WHOLE BLOCK AND NOT JUST THE LIST. The category chips only ever
+     * changed the rows, so swapping the list was enough. A group choice changes
+     * the controls too: the Groups row is derived from what the chosen category
+     * contains, and the breadcrumb states where the visitor now is. Rebuilding
+     * those in the browser would be a second implementation of both, in another
+     * language, free to disagree with the first. The server already knows how to
+     * draw them.
+     *
+     * The scope and the choice arrive as separate parameters and stay separate,
+     * so a chip can still never promote itself into the block's own definition.
+     */
+    public function ajax_load_block() {
+        check_ajax_referer( 'uc_nonce', 'nonce' );
+
+        $args = array(
+            'category'        => isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '',
+            'active_category' => isset( $_POST['active_category'] ) ? sanitize_text_field( wp_unslash( $_POST['active_category'] ) ) : '',
+            'active_groups'   => isset( $_POST['active_groups'] ) ? sanitize_text_field( wp_unslash( $_POST['active_groups'] ) ) : '',
+            'organizer'       => isset( $_POST['organizer'] ) ? sanitize_text_field( wp_unslash( $_POST['organizer'] ) ) : '',
+            'venue'           => isset( $_POST['venue'] ) ? sanitize_text_field( wp_unslash( $_POST['venue'] ) ) : '',
+            'series'          => isset( $_POST['series'] ) ? absint( $_POST['series'] ) : 0,
+            's'               => isset( $_POST['s'] ) ? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : '',
+            'per_page'        => isset( $_POST['per_page'] ) ? intval( $_POST['per_page'] ) : '',
+            'layout'          => ( isset( $_POST['layout'] ) && 'compact' === $_POST['layout'] ) ? 'compact' : 'cards',
+            'view'            => isset( $_POST['view'] ) ? sanitize_text_field( wp_unslash( $_POST['view'] ) ) : 'list',
+            'toggle'          => ( isset( $_POST['toggle'] ) && 'no' === $_POST['toggle'] ) ? 'no' : 'yes',
+            'month'           => isset( $_POST['month'] ) ? sanitize_text_field( wp_unslash( $_POST['month'] ) ) : '',
+            'page'            => 1,
+        );
+
+        $block = $this->render_calendar_block( $args );
+
+        wp_send_json( array(
+            'html'      => $block['html'],
+            'total'     => $block['total'],
+            'max_pages' => $block['max_pages'],
+            'has_more'  => $block['has_more'],
         ) );
     }
 
@@ -1343,17 +1773,19 @@ class SFAF_Shortcodes {
 
         $month   = $this->normalize_month( isset( $_POST['month'] ) ? wp_unslash( $_POST['month'] ) : '' );
         $filters = array();
-        foreach ( array( 'category', 'organizer', 'series', 'venue' ) as $key ) {
+        foreach ( array( 'category', 'organizer', 'series', 'venue', 'groups' ) as $key ) {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
-        // Clamped exactly as the list is, so choosing a category narrows the
-        // month grid too and cannot widen it. The transient key below is built
-        // from the normalized filters, so a clamped request shares the cache
-        // entry with the honest one rather than creating a second.
+        // Clamped exactly as the list is, so choosing a category or a group
+        // narrows the month grid too and cannot widen it. The transient key
+        // below is built from the normalized filters, so a clamped request
+        // shares the cache entry with the honest one rather than creating a
+        // second.
         $filters['category'] = $this->effective_category(
             isset( $_POST['scope_category'] ) ? sanitize_text_field( wp_unslash( $_POST['scope_category'] ) ) : '',
             $filters['category']
         );
+        $filters['groups'] = $this->clamp_groups( $filters, $filters['groups'] );
 
         $key    = 'sfaf_month_' . md5( wp_json_encode( array(
             'month'   => $month,

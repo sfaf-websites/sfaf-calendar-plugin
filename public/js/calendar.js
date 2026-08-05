@@ -81,12 +81,27 @@
      * everything they operate on is server-rendered once.
      * -------------------------------------------------------------------- */
 
-    function initViews() {
-        $('.uc-calendar').each(function () {
+    /**
+     * The per-block set-up, which has to run again on markup that arrives later.
+     *
+     * Everything else in this file is delegated from the document and therefore
+     * survives a block being replaced. These three are bound to elements inside
+     * one block, so choosing a group, which re-renders the block, has to redo
+     * them or the month grid, the search box and infinite scroll would all go
+     * quiet on markup that looks identical.
+     */
+    function initViewsFor($blocks) {
+        $blocks.filter('.uc-calendar').each(function () {
             var $block = $(this);
             restoreView($block);
             bindMonthGrid($block);
         });
+        bindSearchIn($blocks);
+        $blocks.each(function () { observeSentinels(this); });
+    }
+
+    function initViews() {
+        initViewsFor($('.uc-calendar'));
 
         $(document).on('click', '.uc-view-btn', function () {
             var $block = $(this).closest('.uc-calendar');
@@ -185,6 +200,7 @@
             month: month,
             category: activeCategory($block),
             scope_category: $block.attr('data-scope-category') || '',
+            groups: activeGroups($block),
             organizer: $block.attr('data-filter-organizer') || '',
             series: $block.attr('data-filter-series') || '',
             venue: $block.attr('data-filter-venue') || ''
@@ -466,6 +482,11 @@
         return active !== '' ? active : ($block.attr('data-scope-category') || $block.attr('data-filter-category') || '');
     }
 
+    /** The groups this block is narrowed to, as the server wants them. */
+    function activeGroups($block) {
+        return $block.attr('data-active-groups') || '';
+    }
+
     /** Everything a list request needs, in one place, so no caller can differ. */
     function listParams($block, page) {
         return {
@@ -475,6 +496,7 @@
             per_page:       $block.attr('data-per-page'),
             category:       activeCategory($block),
             scope_category: $block.attr('data-scope-category') || '',
+            groups:         activeGroups($block),
             organizer:      $block.attr('data-filter-organizer') || '',
             series:         $block.attr('data-filter-series') || '',
             venue:          $block.attr('data-filter-venue') || '',
@@ -511,8 +533,128 @@
             $btn.addClass('active').attr('aria-pressed', 'true');
 
             $block.attr('data-active-category', cat === 'all' ? '' : cat);
-            reloadList($block);
-            reloadMonth($block);
+            // A different category holds different groups, so the second-level
+            // choice cannot survive the first-level one changing. Left in place
+            // it would be a filter for something not on screen.
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+
+        /*
+         * THE SECOND LEVEL. Multi-select, because asking for two groups means
+         * "either of these", and a server query for the same reason the category
+         * chips are one: hiding rows would only ever see the current page, and a
+         * shorter list is indistinguishable from "no such group".
+         *
+         * The whole block is re-rendered rather than just the list, because the
+         * row itself and the breadcrumb above it both change with the answer.
+         */
+        $(document).on('click', '[data-uc-group]', function (e) {
+            var $el = $(this);
+            if ($el.is('input')) {
+                return; // the change handler below owns the checkbox form
+            }
+            e.preventDefault();
+            toggleGroup($el.closest('.uc-calendar'), String($el.attr('data-uc-group') || ''));
+        });
+
+        $(document).on('change', 'input[data-uc-group]', function () {
+            toggleGroup($(this).closest('.uc-calendar'), String($(this).attr('data-uc-group') || ''));
+        });
+
+        $(document).on('click', '[data-uc-group-clear]', function (e) {
+            e.preventDefault();
+            var $block = $(this).closest('.uc-calendar');
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+
+        /* The breadcrumb steps back up a level. "All" clears both, the category
+         * segment clears only the groups under it. */
+        $(document).on('click', '[data-uc-crumb]', function (e) {
+            e.preventDefault();
+            var $block = $(this).closest('.uc-calendar');
+            if ($(this).attr('data-uc-crumb') === 'all') {
+                $block.attr('data-active-category', '');
+            }
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+    }
+
+    /** Add or remove one group from the selection, then ask the server again. */
+    function toggleGroup($block, slug) {
+        if (!$block.length || !slug) {
+            return;
+        }
+        var current = activeGroups($block);
+        var list = current === '' ? [] : current.split(',');
+        var at = $.inArray(slug, list);
+
+        if (at === -1) {
+            list.push(slug);
+        } else {
+            list.splice(at, 1);
+        }
+        $block.attr('data-active-groups', list.join(','));
+        reloadBlock($block);
+    }
+
+    /**
+     * Re-render the whole block for the filters it now holds.
+     *
+     * The list alone is not enough here: the Groups row is derived from what the
+     * chosen category contains, and the breadcrumb states where the visitor is.
+     * Both are server-rendered, so both come back with the block.
+     */
+    function reloadBlock($block) {
+        if (!$block.length) {
+            return;
+        }
+        /*
+         * The block is asked for in the SAME shape the shortcode renders it:
+         * `category` is the block's own scope and `active_category` is what the
+         * visitor picked, kept apart exactly as they are on a page load. Sending
+         * the effective category as the scope would let a chip promote itself
+         * into the block's definition, and the next request could not tell the
+         * two apart any more.
+         */
+        var params = {
+            action:          'uc_load_block',
+            nonce:           ucData.nonce,
+            per_page:        $block.attr('data-per-page'),
+            category:        $block.attr('data-scope-category') || '',
+            active_category: $block.attr('data-active-category') || '',
+            active_groups:   activeGroups($block),
+            organizer:       $block.attr('data-filter-organizer') || '',
+            series:          $block.attr('data-filter-series') || '',
+            venue:           $block.attr('data-filter-venue') || '',
+            s:               $block.attr('data-filter-s') || '',
+            layout:          ($block.attr('data-render') === 'compact') ? 'compact' : 'cards',
+            view:            $block.attr('data-view') || 'list',
+            month:           $block.find('.uc-month').attr('data-month') || $block.attr('data-month') || '',
+            toggle:          $block.find('.uc-view-toggle').length ? 'yes' : 'no'
+        };
+
+        $block.addClass('uc-searching');
+        $.ajax({
+            url: ucData.ajaxUrl,
+            method: 'POST',
+            data: params,
+            success: function (resp) {
+                if (!resp || !resp.html) {
+                    // Say nothing rather than blank the calendar somebody was
+                    // reading. The filters on the block are unchanged, so
+                    // pressing again retries.
+                    return;
+                }
+                var $fresh = $(resp.html);
+                $block.replaceWith($fresh);
+                initViewsFor($fresh);
+            },
+            complete: function () {
+                $block.removeClass('uc-searching');
+            }
         });
 
         /*
@@ -541,45 +683,9 @@
             // No button for it: the bar is switched off, or the block is scoped
             // elsewhere. Run the same query anyway; the server decides.
             $block.attr('data-active-category', slug);
-            reloadList($block);
-            reloadMonth($block);
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
         });
-    }
-
-    /** Re-fetch page one of the list for whatever filters the block now holds. */
-    function reloadList($block) {
-        var $list = $block.find('.uc-event-list, .uc-upcoming-list').first();
-        if (!$list.length) {
-            return;
-        }
-
-        $block.addClass('uc-searching');
-        $.ajax({
-            url: ucData.ajaxUrl,
-            method: 'POST',
-            data: listParams($block, 1),
-            success: function (resp) {
-                $list.html((resp && resp.html) ? resp.html : '<p class="uc-empty">No events in that category just now.</p>');
-                $block.attr('data-page', '1');
-                if (resp && typeof resp.max_pages !== 'undefined') {
-                    $block.attr('data-max-pages', String(resp.max_pages));
-                }
-                setCount($block, (resp && typeof resp.total !== 'undefined') ? resp.total : null);
-                syncPagination($block, resp);
-            },
-            complete: function () {
-                $block.removeClass('uc-searching');
-            }
-        });
-    }
-
-    /** The month grid follows the same filter; a stale one would contradict the list. */
-    function reloadMonth($block) {
-        if (!$block.find('.uc-panel-calendar').length) {
-            return;
-        }
-        var month = $block.find('.uc-month').attr('data-month') || $block.attr('data-month') || '';
-        loadMonth($block, month);
     }
 
     /**
@@ -634,12 +740,24 @@
      * the embed and for the caladmin list.
      */
     function initSearch() {
-        $('.uc-calendar, .uc-upcoming-widget').each(function () {
+        bindSearchIn($('.uc-calendar, .uc-upcoming-widget'));
+    }
+
+    /**
+     * Bind the search box inside each of these blocks.
+     *
+     * Guarded, because a block that has just been re-rendered is passed through
+     * here again and a second listener on the same box would fire two requests
+     * per keystroke.
+     */
+    function bindSearchIn($blocks) {
+        $blocks.filter('.uc-calendar, .uc-upcoming-widget').each(function () {
             var $block = $(this);
             var $input = $block.find('.uc-search');
-            if (!$input.length) {
+            if (!$input.length || $input.attr('data-uc-search-bound') === '1') {
                 return;
             }
+            $input.attr('data-uc-search-bound', '1');
 
             var timer = null;
             var seq = 0;

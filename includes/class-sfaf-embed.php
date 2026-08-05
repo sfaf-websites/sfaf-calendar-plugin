@@ -214,6 +214,24 @@ class SFAF_Embed {
                  * rather than honoured, in SFAF_Shortcodes::effective_category().
                  */
                 'active_category' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+
+                /*
+                 * 3.11.0: the groups a visitor chose from the second-level row.
+                 *
+                 * ON THIS ROUTE, NOT A NEW ONE, and that is not a preference.
+                 * Every CORS mechanism in this file is gated on
+                 * is_embed_request(), which compares the route string exactly.
+                 * A second route would match none of preflight, the response
+                 * headers or the rest_pre_serve_request fallback, so it would
+                 * work when tested on this site and be blocked by the browser
+                 * the moment sfaf.org asked for it. Same route, more
+                 * parameters, same headers.
+                 *
+                 * A slug outside what the snippet's own scope contains is
+                 * dropped server-side, exactly as active_category is. See
+                 * SFAF_Shortcodes::effective_groups().
+                 */
+                'active_groups' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -303,6 +321,7 @@ class SFAF_Embed {
             // three modes below cannot disagree about it.
             'effective_category' => $this->shortcodes->effective_category( $scope_category, $active_category ),
             'active_category'    => $active_category,
+            'active_groups'      => (string) $request->get_param( 'active_groups' ),
             'organizer'    => (string) $request->get_param( 'organizer' ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
@@ -346,6 +365,14 @@ class SFAF_Embed {
          */
         $resolved             = $params;
         $resolved['category'] = $params['effective_category'];
+        /*
+         * The group selection is re-derived and clamped here for items and
+         * month, exactly as the browser-driven paths on this site are: the
+         * request says what it thinks is chosen, and the server works out what
+         * this snippet actually contains before believing any of it. The block
+         * mode does its own, because it also has to draw the row.
+         */
+        $resolved['groups'] = $this->shortcodes->clamp_groups( $resolved, $params['active_groups'] );
 
         try {
             if ( $params['mode'] === 'month' ) {
@@ -885,10 +912,11 @@ class SFAF_Embed {
         $identity = array(
             'mode'      => $params['mode'],
             'category'  => $params['category'],
-            // The visitor's chosen category is part of the identity: two people
-            // reading the same block with different chips pressed must not share
-            // a cache entry.
+            // The visitor's chosen category and groups are part of the identity:
+            // two people reading the same block with different pills pressed
+            // must not share a cache entry.
             'active_category' => isset( $params['active_category'] ) ? $params['active_category'] : '',
+            'active_groups'   => isset( $params['active_groups'] ) ? $params['active_groups'] : '',
             'organizer' => $params['organizer'],
             'venue'     => $params['venue'],
             'series'    => $params['series'],

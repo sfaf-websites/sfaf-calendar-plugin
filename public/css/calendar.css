@@ -173,6 +173,47 @@
 
 .uc-organizer-select { padding: 8px 12px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 13px; color: var(--uc-secondary); background: #fff; }
 
+/* ---------------------------------------------------------------------------
+   THE SECOND LEVEL: GROUPS
+
+   Deliberately lighter than the category row above it. The categories are the
+   choice everybody makes; this is the one somebody makes after it, and if the
+   two carried equal weight a visitor would meet two rows of pills at once,
+   which is the thing the whole design avoids. Smaller type, a quieter chosen
+   state, and it sits indented under the bar it belongs to.
+   ------------------------------------------------------------------------ */
+.uc-groups { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 10px 0 0; border-top: 1px solid var(--uc-border); }
+.uc-groups-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--uc-muted); flex-shrink: 0; }
+.uc-groups-pills { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.uc-group-pill { padding: 4px 12px; border-radius: 99px; border: 1px solid var(--uc-border); background: #fff;
+    color: var(--uc-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.uc-group-pill:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+/* Multi-select, so the chosen state has to read as "on" rather than as "the one
+   selected": filled, not merely outlined. */
+.uc-group-pill.active { border-color: var(--uc-teal-text); background: var(--uc-teal-text); color: #fff; }
+.uc-group-pill:focus-visible, .uc-group-clear:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+.uc-group-clear { border: 0; background: none; padding: 4px 6px; font-size: 12px; font-weight: 600; color: var(--uc-secondary); cursor: pointer; text-decoration: underline; }
+
+/* Beyond six, the row wraps to three lines and stops being scannable, so the
+   same checkboxes fold away behind a summary. Still multi-select. */
+.uc-groups-list { min-width: 0; }
+.uc-groups-list > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); list-style: none; padding: 4px 12px; border: 1px solid var(--uc-border); border-radius: 99px; display: inline-block; }
+.uc-groups-list > summary::-webkit-details-marker { display: none; }
+.uc-groups-list[open] > summary { border-color: var(--uc-teal-text); }
+.uc-groups-options { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding: 10px 12px;
+    border: 1px solid var(--uc-border); border-radius: 10px; background: #fff; max-height: 260px; overflow-y: auto; }
+.uc-group-option { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0; cursor: pointer; }
+
+/* ---------- Breadcrumb ----------
+   Where the visitor is, and one press back up a level. Every segment left of
+   the current one is a button, because the commonest thing after narrowing
+   twice is wanting to be one level out. */
+.uc-crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; font-size: 13px; }
+.uc-crumb { border: 0; background: none; padding: 0; font: inherit; color: var(--uc-teal-text); cursor: pointer; text-decoration: underline; }
+.uc-crumb:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+.uc-crumb-here { color: var(--uc-secondary); font-weight: 700; text-decoration: none; cursor: default; }
+.uc-crumb-sep { color: var(--uc-muted); }
+
 /* Event count */
 .uc-event-count { font-size: 14px; color: var(--uc-muted); margin-bottom: 12px; }
 .uc-count-number { font-weight: 700; }

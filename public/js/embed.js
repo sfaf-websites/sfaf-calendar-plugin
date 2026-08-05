@@ -125,6 +125,9 @@
             // never widen it past what its author chose.
             category: container.getAttribute('data-category') || '',
             active_category: activeCategory(container),
+            // The second-level choice, clamped at the endpoint against what this
+            // snippet's own scope actually contains. See effective_groups().
+            active_groups: container.getAttribute('data-active-groups') || '',
             organizer: container.getAttribute('data-organizer') || '',
             series: container.getAttribute('data-series') || '',
             venue: container.getAttribute('data-venue') || '',
@@ -419,10 +422,16 @@
             adoptStylesheet(data.css_url);
             container.innerHTML = data.html;
             applyCardStyle(container, data.card_style);
-            // The block arrives with a fresh filter bar — "All Events" active,
-            // search box empty — so the remembered filter state resets with it.
-            container.setAttribute('data-active-category', 'all');
-            container.setAttribute('data-active-search', '');
+            /*
+             * The block arrives already showing what was asked for, so the
+             * state is NOT reset here any more. It used to be, because the only
+             * way a block was re-fetched was a first load; a group choice
+             * re-fetches it too, and clearing the attributes would have thrown
+             * away the choice that caused the request one line after the server
+             * honoured it. The search box is the exception: the fresh markup
+             * carries the term the request was made with, so the attribute
+             * already agrees with what is on screen.
+             */
             bind(container);
             // Warm the neighbouring months once the block is on screen, so the
             // first arrow click is instant. After first paint, never before.
@@ -942,64 +951,17 @@
     }
 
     /**
-     * Show the events in the chosen category.
+     * The category buttons and the chips both re-fetch the WHOLE block.
      *
-     * THE CATEGORY BUTTONS ASK THE ENDPOINT NOW, exactly as the search box
-     * already did. Hiding cards in the page was wrong in three separate ways
-     * and only looked right on a single unpaginated block: it never saw the
-     * events on page two, it matched one slug against one slug so an event in
-     * two categories was findable under only one of them, and the number it
-     * wrote above the list was how many cards remained rather than how many
-     * events matched.
+     * They used to swap only the list, which was right while a category
+     * changed nothing but the rows. It changes the controls now: choosing one
+     * is what makes the Groups row appear, and the row is derived by the
+     * endpoint from what that category actually contains. Rebuilding it here
+     * would be a second implementation of the derivation, in another language.
      *
-     * REQUESTS THE LIST, NOT THE BLOCK, for the same reason bindSearch() does:
-     * re-rendering the block would replace the filter bar under the finger that
-     * just pressed it and throw away a typed search.
+     * The search box still swaps the list alone, because re-rendering the block
+     * would take the caret out from between two keystrokes.
      */
-    function applyCategory(container) {
-        var list = listOf(container);
-        if (!list) {
-            return;
-        }
-
-        catSeq++;
-        var mine = catSeq;
-
-        request(container, 1, 'items', function (data) {
-            if (mine !== catSeq) {
-                return;
-            }
-            list.innerHTML = (data && data.html)
-                ? data.html
-                : '<p class="uc-empty">No events in that category just now.</p>';
-
-            var block = inner(container);
-            if (block) {
-                block.setAttribute('data-page', '1');
-                if (data && typeof data.max_pages !== 'undefined') {
-                    block.setAttribute('data-max-pages', String(data.max_pages));
-                }
-            }
-            if (!data || !data.has_more) {
-                removePagination(container);
-            }
-            setCount(container, (data && typeof data.total !== 'undefined') ? data.total : null);
-
-            // The month grid answers the same question and must not be left
-            // showing the unfiltered month beside a filtered list.
-            var grid = gridOf(container);
-            if (grid) {
-                loadMonth(container, grid.getAttribute('data-month') || '');
-            }
-        }, function () {
-            if (mine === catSeq) {
-                showError(container);
-            }
-        });
-    }
-
-    /** Only the newest category request may write. Same rule as the search box. */
-    var catSeq = 0;
 
     /** The number above the list: the endpoint's total, never the card count. */
     function setCount(container, total) {
@@ -1026,10 +988,82 @@
                     button.classList.add('active');
                     button.setAttribute('aria-pressed', 'true');
                     container.setAttribute('data-active-category', button.getAttribute('data-category') || 'all');
-                    applyCategory(container);
+                    // A different category holds different groups, so the
+                    // second-level choice cannot outlive the first-level one.
+                    container.setAttribute('data-active-groups', '');
+                    loadBlock(container, 1, false);
                 });
             })(buttons[i]);
         }
+    }
+
+    /**
+     * The second level: groups.
+     *
+     * THE WHOLE BLOCK IS RE-FETCHED, not just the list. The Groups row is
+     * derived by the server from what the chosen category contains, and the
+     * breadcrumb states where the visitor is; rebuilding either here would be a
+     * second implementation of both, in another language, free to disagree with
+     * the endpoint's.
+     *
+     * Delegated from the container in init(), once, so it survives every render.
+     */
+    function bindGroups(container) {
+        container.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) {
+                return;
+            }
+
+            var clear = t.closest('[data-uc-group-clear]');
+            if (clear && container.contains(clear)) {
+                e.preventDefault();
+                container.setAttribute('data-active-groups', '');
+                loadBlock(container, 1, false);
+                return;
+            }
+
+            var crumb = t.closest('[data-uc-crumb]');
+            if (crumb && container.contains(crumb)) {
+                e.preventDefault();
+                if (crumb.getAttribute('data-uc-crumb') === 'all') {
+                    container.setAttribute('data-active-category', 'all');
+                }
+                container.setAttribute('data-active-groups', '');
+                loadBlock(container, 1, false);
+                return;
+            }
+
+            var pill = t.closest('[data-uc-group]');
+            if (pill && container.contains(pill) && pill.tagName !== 'INPUT') {
+                e.preventDefault();
+                toggleGroup(container, pill.getAttribute('data-uc-group') || '');
+            }
+        });
+
+        container.addEventListener('change', function (e) {
+            var box = e.target;
+            if (box && box.matches && box.matches('input[data-uc-group]')) {
+                toggleGroup(container, box.getAttribute('data-uc-group') || '');
+            }
+        });
+    }
+
+    function toggleGroup(container, slug) {
+        if (!slug) {
+            return;
+        }
+        var current = container.getAttribute('data-active-groups') || '';
+        var list = current === '' ? [] : current.split(',');
+        var at = list.indexOf(slug);
+
+        if (at === -1) {
+            list.push(slug);
+        } else {
+            list.splice(at, 1);
+        }
+        container.setAttribute('data-active-groups', list.join(','));
+        loadBlock(container, 1, false);
     }
 
     /**
@@ -1065,7 +1099,8 @@
                 return;
             }
             container.setAttribute('data-active-category', slug);
-            applyCategory(container);
+            container.setAttribute('data-active-groups', '');
+            loadBlock(container, 1, false);
         });
     }
 
@@ -1208,12 +1243,14 @@
         }
         container.setAttribute('data-sfaf-ready', '1');
         container.setAttribute('data-active-category', 'all');
+        container.setAttribute('data-active-groups', '');
         container.setAttribute('data-active-search', '');
 
         // Bound to the container itself, once, so they survive every re-render
         // and reach cards that arrive from a later request.
         bindAddToCalendar(container);
         bindChips(container);
+        bindGroups(container);
 
         ensureStylesheet();
         setLoading(container);

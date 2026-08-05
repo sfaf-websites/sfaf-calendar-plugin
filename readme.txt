@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.10.0
+Stable tag: 3.11.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.11.0 =
+
+**A second level of filtering on the public calendar, and it only appears once the first has been answered.** The visitor bar is category-only on purpose: nobody reading the calendar should have to learn what an organizer or a series is. But somebody who found one Wednesday of a group that runs every Wednesday had no way to ask for the rest of its dates. Choosing a category now reveals a **Groups** row underneath it.
+
+**The word "series" is never shown to a visitor.** It is the name of a data structure. The row is called Groups and each pill carries the term's own public name, the one that is on the poster.
+
+**The list is derived from the events actually in front of the visitor**, not from the site's series list. The same query the list runs is run once for ids and the series terms are asked for those events, so every pill has at least one event behind it and a group with nothing in the chosen category never appears. One-off events are not in the row: a one-off is already fully visible in the list below and does not need a filter to find, and mixing the two would make the row long and its entries mean different things. A category whose events are all one-offs shows no row at all rather than an empty one.
+
+**Multi-select**, because choosing two groups means "either of these". Up to six it is a row of pills; beyond six the row wraps to three lines and stops being scannable, so the same checkboxes fold away behind a summary. The decision is made per category on the count that will actually render.
+
+**A breadcrumb says where you are and steps back up:** All events > Support groups > the groups chosen, with every segment to the left of the current one a real control. Up to two groups are named; beyond that it says how many, because three long names wrap into a tangle at the width a sidebar embed gets.
+
+**It is a server query, like the category filter since 3.8.0 and the search since 3.6.0.** Nothing is filtered client-side. Hiding rows only ever sees the page already downloaded, which is what made both the old search and the old category filter silently wrong past page one, and a shorter list is indistinguishable from "no such group". The count above the list is the count of matching events, so it can never contradict what is under it, and the month grid narrows with the list rather than sitting beside it showing something else.
+
+**The choice is clamped on the server against what the block actually contains.** The derived list is built under the block's own category, organizer, venue, series and search, so a group not in it is a group this block does not hold; a slug naming one is dropped rather than honoured. Every path re-derives rather than trusting the request: the page load, the AJAX list, the month grid and the embed endpoint all end at the same two methods. A scoped block therefore only ever offers groups it contains, and a hand-written `uc_group` cannot reach past it.
+
+**The selection is in the URL as `uc_group`**, following `uc_cat`, so a narrowed calendar is a real address that survives a reload and can be sent to somebody. Unknown and out-of-scope slugs are dropped before they reach a query, exactly as `uc_cat` is.
+
+**The shortcode and the embed return the same events for the same selection**, because both reach the query through the same derivation and the same clamp. No new REST route: the parameter is on the existing embed route, since every CORS mechanism there is gated on an exact route-string match and a second route would have worked in testing on this site and been blocked by the browser the moment sfaf.org asked for it.
 
 = 3.10.0 =
 
