@@ -23,11 +23,10 @@ while ( have_posts() ) :
     // nothing regenerates it. See SFAF_Recurrence.
     $recurrence = SFAF_Recurrence::pattern_of( $post_id );
 
-    $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
     $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
     $venues     = wp_get_post_terms( $post_id, 'uc_venue' );
 
-    $cat_color = ! empty( $categories ) ? ( get_term_meta( $categories[0]->term_id, '_uc_category_color', true ) ?: '#16BECF' ) : '#16BECF';
+    $cat_color = sfaf_event_category_color( $post_id );
 
     $date_ts = $date ? strtotime( $date ) : false;
 
@@ -47,14 +46,32 @@ while ( have_posts() ) :
                 </div>
             <?php endif; ?>
 
-            <a href="<?php echo esc_url( get_post_type_archive_link( 'uc_event' ) ); ?>" class="uc-single-back">&larr; All Events</a>
+            <?php
+            /*
+             * BACK TO THE CALENDAR THEY CAME FROM, NOT TO THIS SITE'S ARCHIVE.
+             *
+             * This page is served from the resources site. The calendar people
+             * actually read is a page on sfaf.org, or an embed of it somewhere
+             * else again. get_post_type_archive_link() pointed here, so "All
+             * Events" took a visitor from a site they knew to one they had never
+             * seen and that is not a public surface at all.
+             *
+             * sfaf_calendar_return_url() prefers the referrer, so it returns
+             * them to the exact calendar they clicked from, and falls back to
+             * the Calendar home URL setting when there is no referrer. See the
+             * header of that function for what a referrer has to satisfy before
+             * it is followed.
+             */
+            ?>
+            <a href="<?php echo esc_url( sfaf_calendar_return_url() ); ?>" class="uc-single-back">&larr; All Events</a>
 
             <header class="uc-single-header">
                 <div class="uc-single-badges">
-                    <?php foreach ( $categories as $cat ) :
-                        $c = get_term_meta( $cat->term_id, '_uc_category_color', true ) ?: '#16BECF'; ?>
-                        <span class="uc-badge" style="--badge-color: <?php echo esc_attr( $c ); ?>"><?php echo esc_html( $cat->name ); ?></span>
-                    <?php endforeach; ?>
+                    <?php
+                    // Every category, each one a link back to the calendar
+                    // filtered to it. Same destination rule as the back link.
+                    echo sfaf_category_chips_html( $post_id, 'single' );
+                    ?>
                     <?php if ( '' !== $recurrence_label ) : ?>
                         <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_label ); ?></span>
                     <?php endif; ?>

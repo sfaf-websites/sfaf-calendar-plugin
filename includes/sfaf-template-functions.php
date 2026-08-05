@@ -107,6 +107,8 @@ function sfaf_icon_paths() {
         'cross'     => '<path d="M9.8 3.5h4.4v6.3h6.3v4.4h-6.3v6.3H9.8v-6.3H3.5V9.8h6.3z"/>',
         'community' => '<circle cx="8" cy="8" r="2.6"/><circle cx="16" cy="8" r="2.6"/><circle cx="8" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/>',
         'arrow'     => '<path d="M4.5 12h14"/><path d="m12.5 6 6 6-6 6"/>',
+        // "Edit this one date", on every upcoming row of a series schedule.
+        'pencil'    => '<path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5l3 3"/>',
 
         // Platform marks — solid, see note above.
         'facebook'  => '<path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/>',
@@ -1027,8 +1029,11 @@ function sfaf_event_icon_svg( $key, $color ) {
  * Branded, category-matched 16:9 SVG placeholder (inline, no external files).
  */
 function sfaf_event_placeholder_svg( $post_id ) {
-    $cats = wp_get_post_terms( $post_id, 'uc_event_category' );
-    $name = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? $cats[0]->name : '';
+    // THE FIRST CATEGORY, and "first" is decided in one place so this picture
+    // cannot come out one colour on the list and another in the month grid.
+    // See sfaf_event_categories().
+    $first = sfaf_event_primary_category( $post_id );
+    $name  = $first ? $first->name : '';
 
     // Approved brand palette (brand guide v3.0, p.9). The third value is the
     // foreground: light brand backgrounds take the dark gray, dark ones take
@@ -1133,6 +1138,322 @@ function sfaf_category_color( $term_id ) {
         $cache[ $term_id ] = $color ? $color : sfaf_default_category_color();
     }
     return $cache[ $term_id ];
+}
+
+/* -----------------------------------------------------------------------------
+ * An event's categories, in ONE order, decided in ONE place.
+ *
+ * AN EVENT HAS ALWAYS BEEN ABLE TO HAVE SEVERAL. uc_event_category is an
+ * ordinary hierarchical taxonomy and the WordPress editor has always offered
+ * checkboxes; the REST payload satellites read has always carried an array. What
+ * enforced one was the /caladmin editor, which rendered a single <select> and
+ * wrote wp_set_object_terms() with an array of one, so opening a two-category
+ * event there and pressing Save silently deleted the second category.
+ *
+ * WHY THE ORDER IS FIXED HERE. Several things pick "the first" category: the
+ * card's colour, the branded placeholder's colour and icon, the accent stripe on
+ * a compact card. get_the_terms() and wp_get_post_terms() do not promise an
+ * order, and they do not agree with each other, so the same event could take one
+ * colour on the list and another in the month grid, and could change colour when
+ * a cache was rebuilt. Every one of those call sites now comes through here.
+ *
+ * THE ORDER IS ALPHABETICAL BY NAME, term ID breaking a tie. Alphabetical
+ * because it is the order the chips are already printed in, so "the first one"
+ * is a thing a manager can see rather than a hidden property; term ID as the
+ * tie-break because two categories may share a name only by accident and the
+ * answer still has to be stable. Renaming a category can move it, which is
+ * correct: the chips move with it, and what is on the card still matches what is
+ * on the event.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * An event's categories, alphabetical, memoized for the request.
+ *
+ * @param int $post_id
+ * @return WP_Term[]
+ */
+function sfaf_event_categories( $post_id ) {
+    static $cache = array();
+    $post_id = (int) $post_id;
+    if ( isset( $cache[ $post_id ] ) ) {
+        return $cache[ $post_id ];
+    }
+
+    $terms = wp_get_post_terms( $post_id, 'uc_event_category' );
+    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+        $cache[ $post_id ] = array();
+        return $cache[ $post_id ];
+    }
+
+    usort( $terms, function ( $a, $b ) {
+        $by_name = strcasecmp( $a->name, $b->name );
+        return ( 0 !== $by_name ) ? $by_name : ( (int) $a->term_id - (int) $b->term_id );
+    } );
+
+    $cache[ $post_id ] = $terms;
+    return $terms;
+}
+
+/**
+ * The category that supplies an event's colour and icon, or null.
+ *
+ * @param int $post_id
+ * @return WP_Term|null
+ */
+function sfaf_event_primary_category( $post_id ) {
+    $cats = sfaf_event_categories( $post_id );
+    return empty( $cats ) ? null : $cats[0];
+}
+
+/**
+ * The colour an event is drawn in: its first category's, or the default.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_category_color( $post_id ) {
+    $first = sfaf_event_primary_category( $post_id );
+    return $first ? sfaf_category_color( $first->term_id ) : sfaf_default_category_color();
+}
+
+/* -----------------------------------------------------------------------------
+ * Where a visitor goes when they leave an event page.
+ *
+ * THE PROBLEM THIS SOLVES. The event page is served from the resources site; the
+ * calendar people actually browse is a page on sfaf.org carrying a shortcode, or
+ * an embed of it on some other site entirely. "All Events" used to point at
+ * get_post_type_archive_link(), which is a resources URL: a visitor who clicked
+ * an event on sfaf.org and then pressed Back-to-the-list landed on a site they
+ * had never seen and that is not a public surface. Category chips would have
+ * done exactly the same thing.
+ *
+ * THE ANSWER IS THE REFERRER, THEN A CONFIGURED URL, THEN THE ARCHIVE. The
+ * referrer is the only thing that knows WHICH calendar page they came from, and
+ * there can be several. The setting is what covers a shared link, a search
+ * result or a bookmark, where there is no referrer at all. The archive is the
+ * last resort and exists so a link is never broken, not because it is a good
+ * destination.
+ *
+ * THE PLUGIN DOES NOT GUESS. It cannot know which page on sfaf.org holds a
+ * shortcode, and searching post_content for one would find drafts, revisions and
+ * the wrong page as readily as the right one. With several calendar pages the
+ * configured fallback picks one, deliberately, and the referrer covers the rest.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The configured calendar home, or '' when nobody has set one.
+ *
+ * @return string
+ */
+function sfaf_calendar_home_url() {
+    $settings = get_option( 'uc_settings', array() );
+    $url      = is_array( $settings ) && isset( $settings['calendar_home_url'] ) ? trim( (string) $settings['calendar_home_url'] ) : '';
+    if ( '' === $url ) {
+        return '';
+    }
+    $parts = wp_parse_url( $url );
+    if ( empty( $parts['host'] ) || empty( $parts['scheme'] ) ) {
+        return '';
+    }
+    return in_array( strtolower( $parts['scheme'] ), array( 'http', 'https' ), true ) ? $url : '';
+}
+
+/**
+ * The registrable-looking part of a host: the last two labels.
+ *
+ * Deliberately not a public-suffix implementation. It exists to answer one
+ * question, "is resources.sfaf.org the same organisation as sfaf.org", and it
+ * answers that correctly. It would be wrong for a multi-part suffix such as
+ * co.uk, which is why it is only ever used to WIDEN an allow-list that already
+ * contains this site's own host and the configured calendar host, never as the
+ * only check and never to authorise a redirect off this organisation's domains.
+ *
+ * @param string $host
+ * @return string
+ */
+function sfaf_host_base( $host ) {
+    $host  = strtolower( trim( (string) $host ) );
+    $parts = array_values( array_filter( explode( '.', $host ) ) );
+    $n     = count( $parts );
+    return ( $n >= 2 ) ? $parts[ $n - 2 ] . '.' . $parts[ $n - 1 ] : $host;
+}
+
+/**
+ * The referrer, but only when it is plausibly a calendar page on our own sites.
+ *
+ * WHAT IS CHECKED, IN ORDER, AND WHY EACH ONE IS THERE:
+ *
+ *  1. It parses, and has a scheme and a host. A referrer is attacker-supplied
+ *     input like any other header.
+ *  2. The scheme is http or https. This closes javascript:, data: and every
+ *     other scheme that is not a page.
+ *  3. The host is one of: this site's host, the configured calendar home's host,
+ *     or a host sharing this site's last-two-label domain. This is the check
+ *     that stops it becoming an open redirect: a link back to somebody else's
+ *     site can never be built from this, whatever the header says.
+ *  4. It is not an event page. An event linking "back to the calendar" and
+ *     landing on another event is not going back to anything, and the event
+ *     someone came from is the one they are already leaving.
+ *  5. The URL is REBUILT from the validated scheme, host, path and query rather
+ *     than the raw string being passed through. Credentials, ports, fragments
+ *     and anything else exotic in the header do not survive.
+ *
+ * @return string A safe URL, or ''.
+ */
+function sfaf_calendar_referrer() {
+    $raw = isset( $_SERVER['HTTP_REFERER'] ) ? (string) wp_unslash( $_SERVER['HTTP_REFERER'] ) : '';
+    if ( '' === $raw ) {
+        return '';
+    }
+
+    $parts = wp_parse_url( $raw );
+    if ( empty( $parts['host'] ) || empty( $parts['scheme'] ) ) {
+        return '';
+    }
+    if ( ! in_array( strtolower( $parts['scheme'] ), array( 'http', 'https' ), true ) ) {
+        return '';
+    }
+
+    $host    = strtolower( $parts['host'] );
+    $allowed = array();
+
+    $self = wp_parse_url( home_url() );
+    if ( ! empty( $self['host'] ) ) {
+        $allowed[] = strtolower( $self['host'] );
+    }
+    $configured = sfaf_calendar_home_url();
+    if ( '' !== $configured ) {
+        $chome = wp_parse_url( $configured );
+        if ( ! empty( $chome['host'] ) ) {
+            $allowed[] = strtolower( $chome['host'] );
+        }
+    }
+
+    $same_org = ! empty( $self['host'] ) && sfaf_host_base( $host ) === sfaf_host_base( $self['host'] );
+    if ( ! in_array( $host, $allowed, true ) && ! $same_org ) {
+        return '';
+    }
+
+    $path = isset( $parts['path'] ) ? $parts['path'] : '/';
+
+    // An event page is not a calendar. The single-event rewrite is /events/{slug},
+    // so a path with a segment under the archive base is one of ours; the bare
+    // archive is not, and stays usable.
+    $archive_base = 'events';
+    $obj          = get_post_type_object( 'uc_event' );
+    if ( $obj && ! empty( $obj->rewrite['slug'] ) ) {
+        $archive_base = trim( (string) $obj->rewrite['slug'], '/' );
+    }
+    $segments = array_values( array_filter( explode( '/', trim( $path, '/' ) ) ) );
+    if ( count( $segments ) >= 2 && $segments[0] === $archive_base ) {
+        return '';
+    }
+
+    $url = strtolower( $parts['scheme'] ) . '://' . $host . $path;
+    if ( ! empty( $parts['query'] ) ) {
+        $url .= '?' . $parts['query'];
+    }
+    return esc_url_raw( $url );
+}
+
+/**
+ * Where "back to the calendar" should go from an event page.
+ *
+ * @param string $category_slug Optional: filter the calendar to this category.
+ * @return string
+ */
+function sfaf_calendar_return_url( $category_slug = '' ) {
+    $slug = sanitize_title( (string) $category_slug );
+
+    $url = sfaf_calendar_referrer();
+    if ( '' === $url ) {
+        $url = sfaf_calendar_home_url();
+    }
+    if ( '' === $url ) {
+        /*
+         * Nothing configured and nowhere to go back to. A category still has a
+         * real archive on this site and the post type still has one, so the link
+         * works; it is simply not the calendar anybody was reading. Filling in
+         * the Calendar home URL setting is what stops this happening.
+         */
+        if ( '' !== $slug ) {
+            $term = get_term_by( 'slug', $slug, 'uc_event_category' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                $link = get_term_link( $term );
+                if ( ! is_wp_error( $link ) ) {
+                    return $link;
+                }
+            }
+        }
+        return (string) get_post_type_archive_link( 'uc_event' );
+    }
+
+    // Our own parameter, never doubled: a referrer that already carried one was
+    // itself filtered, and this click is choosing a different filter.
+    $url = remove_query_arg( 'uc_cat', $url );
+    return ( '' !== $slug ) ? add_query_arg( 'uc_cat', $slug, $url ) : $url;
+}
+
+/**
+ * Where a category chip printed INSIDE a calendar block points.
+ *
+ * Scripts on both surfaces intercept these and filter the list in place, so this
+ * href is what happens when they cannot: no JavaScript, a middle-click, or an
+ * embed on a page whose script failed. It therefore has to be a real calendar
+ * showing that category, not the current page, because on an embed the current
+ * page belongs to somebody else.
+ *
+ * @param string $slug
+ * @return string
+ */
+function sfaf_category_filter_url( $slug ) {
+    $slug = sanitize_title( (string) $slug );
+    $home = sfaf_calendar_home_url();
+    if ( '' === $home ) {
+        $term = $slug ? get_term_by( 'slug', $slug, 'uc_event_category' ) : null;
+        if ( $term && ! is_wp_error( $term ) ) {
+            $link = get_term_link( $term );
+            if ( ! is_wp_error( $link ) ) {
+                return $link;
+            }
+        }
+        return (string) get_post_type_archive_link( 'uc_event' );
+    }
+    return $slug ? add_query_arg( 'uc_cat', $slug, $home ) : $home;
+}
+
+/**
+ * The category chips for one event, as links.
+ *
+ * @param int    $post_id
+ * @param string $context 'card' inside a calendar block, 'single' on an event page.
+ * @return string
+ */
+function sfaf_category_chips_html( $post_id, $context = 'card' ) {
+    $cats = sfaf_event_categories( $post_id );
+    if ( empty( $cats ) ) {
+        return '';
+    }
+
+    $out = '';
+    foreach ( $cats as $cat ) {
+        $url = ( 'single' === $context )
+            ? sfaf_calendar_return_url( $cat->slug )
+            : sfaf_category_filter_url( $cat->slug );
+
+        if ( 'single' === $context ) {
+            $color = sfaf_category_color( $cat->term_id );
+            $out  .= '<a class="uc-badge uc-badge-link" href="' . esc_url( $url ) . '"'
+                . ' data-uc-cat="' . esc_attr( $cat->slug ) . '"'
+                . ' style="--badge-color: ' . esc_attr( $color ) . '">'
+                . esc_html( $cat->name ) . '</a>';
+        } else {
+            $out .= '<a class="uc-lc-chip uc-lc-chip-link" href="' . esc_url( $url ) . '"'
+                . ' data-uc-cat="' . esc_attr( $cat->slug ) . '">'
+                . esc_html( $cat->name ) . '</a>';
+        }
+    }
+    return $out;
 }
 
 /**

@@ -187,8 +187,10 @@ class SFAF_SEO {
             $items[] = array( '@type' => 'ListItem', 'position' => $pos++, 'name' => 'Events', 'item' => $archive );
         }
 
-        $cats = wp_get_post_terms( $id, 'uc_event_category' );
-        if ( ! is_wp_error( $cats ) && ! empty( $cats ) ) {
+        // A breadcrumb is a single trail, so it names the first category, using
+        // the same "first" every other surface uses. See sfaf_event_categories().
+        $cats = sfaf_event_categories( $id );
+        if ( ! empty( $cats ) ) {
             $link = get_term_link( $cats[0] );
             $items[] = array(
                 '@type'    => 'ListItem',

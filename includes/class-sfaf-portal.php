@@ -364,6 +364,29 @@ class SFAF_Portal {
                 $this->redirect( 'series/edit/' . $id, array( 'msg' => 'series_saved' ) );
                 break;
 
+            /* ---- The schedule. Three writes, all bounded by "upcoming". ----
+             *
+             * Gated exactly as series editing is, because that is what this is:
+             * the schedule screen IS the series screen. Each one re-derives its
+             * targets from the stored data rather than from the form, so a POST
+             * naming an event in another series, or a date that has passed,
+             * achieves nothing.
+             */
+            case 'schedule_pattern':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $this->schedule_pattern_from_post();
+                break;
+
+            case 'schedule_add_date':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $this->schedule_add_date_from_post();
+                break;
+
+            case 'schedule_remove_date':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $this->schedule_remove_date_from_post();
+                break;
+
             case 'approve_event':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
@@ -936,6 +959,26 @@ class SFAF_Portal {
         $pattern   = isset( $_POST['repeat'] ) ? SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['repeat'] ) ) : '';
         $until     = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
         if ( ! $is_imported && '' !== $pattern && '' !== $until ) {
+            /*
+             * THE SERIES IS MADE HERE, FROM THE EVENT, BEFORE THE DATES ARE.
+             *
+             * An event with several dates is a series by definition, and in this
+             * organisation's programming it is the ONLY thing in that series and
+             * carries the same name. Making the manager go to another screen and
+             * type that name a second time was asking one question twice.
+             *
+             * Ordering matters and is not incidental: generate() copies the
+             * uc_series term from the seed onto every occurrence it makes, so
+             * the series has to exist and be assigned first. Done afterwards it
+             * would land on the first date only.
+             *
+             * An event already in a series keeps it. Somebody who deliberately
+             * put this into an existing programme is not overruled.
+             */
+            if ( ! SFAF_Series::id_for_event( $event_id ) ) {
+                SFAF_Series::create_for_event( $event_id );
+            }
+
             $made      = SFAF_Recurrence::generate( $event_id, $pattern, $until );
             $generated = count( $made['created'] );
         }
@@ -1536,8 +1579,42 @@ class SFAF_Portal {
             'faq_set_saved'    => 'FAQ set saved.',
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
             'manager_saved'    => 'Saved. Those are the same fields the event editor shows, so the event now reads the same in both places.',
+
+            // The schedule.
+            'schedule_added'    => 'Date added. It is an ordinary event, identical to the others, with nobody registered yet.',
+            'schedule_removed'  => 'Date removed. Nothing regenerates it, so it stays removed. Any registrations against it are kept.',
+            'schedule_unchanged'=> 'Nothing to change: the schedule already says that.',
+            'schedule_no_group' => 'These dates are not on a repeating pattern, so there is no pattern to change. Each date can still be edited on its own.',
+            'schedule_nothing_upcoming' => 'There are no upcoming dates to change. Dates that have already been are the record of what happened and are never rewritten.',
+            'schedule_imported' => 'This event comes from another platform, which decides when it happens. Changing the schedule here would be undone by the next fetch.',
+            'schedule_no_seed'  => 'There is no existing date to copy, so there is nothing to base a new one on. Create the first event and choose this series on it.',
+            'schedule_add_failed'    => 'That date could not be added.',
+            'schedule_remove_failed' => 'That date is not part of this series, so nothing was removed.',
+            'schedule_past'     => 'That date has already been. Past occurrences are the record of what happened and are never changed from here.',
         );
         $key = sanitize_key( $_GET['msg'] );
+
+        /*
+         * The pattern edit reports its count for the same reason a bulk save
+         * does: the number in the confirmation and the number in the answer have
+         * to be the same number, or nobody knows how much moved.
+         */
+        if ( 'schedule_updated' === $key ) {
+            $n = isset( $_GET['written'] ) ? max( 0, intval( $_GET['written'] ) ) : 0;
+            echo '<div class="uc-flash">' . esc_html( sprintf(
+                'Schedule updated. %d upcoming %s changed. Past dates were not touched.',
+                $n,
+                _n( 'occurrence was', 'occurrences were', $n )
+            ) ) . '</div>';
+            return;
+        }
+
+        $sched_error = get_transient( 'sfaf_schedule_error_' . get_current_user_id() );
+        if ( $sched_error && in_array( $key, array( 'schedule_add_failed', 'schedule_remove_failed' ), true ) ) {
+            delete_transient( 'sfaf_schedule_error_' . get_current_user_id() );
+            echo '<div class="uc-flash uc-flash-error">' . esc_html( $sched_error ) . '</div>';
+            return;
+        }
 
         /*
          * Two messages carry a count, so they are built rather than looked up.
@@ -3029,18 +3106,44 @@ class SFAF_Portal {
                 break;
 
             case 'category':
-                $current = $event_id ? ( wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
+                /*
+                 * SEVERAL CATEGORIES, BECAUSE AN EVENT IS OFTEN SEVERAL THINGS.
+                 *
+                 * This was a single <select>, and the taxonomy never was: an
+                 * event tagged both Support Groups and Workshops in the
+                 * WordPress editor lost the second one the moment anybody
+                 * pressed Save here, because the save wrote an array of one.
+                 * The data model did not change for this; the control did.
+                 *
+                 * THE MARKER FIELD IS NOT DECORATION. A checkbox group with
+                 * nothing ticked submits nothing at all, which is
+                 * indistinguishable from "this screen did not carry the
+                 * control", and the pending queue renders a different subset
+                 * of controls from the editor. Without the marker, clearing
+                 * every category would silently leave the old ones in place.
+                 */
+                $current = $event_id
+                    ? array_map( 'intval', (array) wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) )
+                    : array();
                 ?>
-                <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'category', $state ); ?>>
-                    <span class="uc-field-label">Category <?php echo $this->field_badge( $state, $label ); ?></span>
-                    <select name="category">
-                        <option value="0">None</option>
+                <div class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'category', $state ); ?>>
+                    <span class="uc-field-label">Categories <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <input type="hidden" name="uc_category_present" value="1" />
+                    <div class="uc-check-grid uc-cat-grid">
                         <?php if ( ! is_wp_error( $ctx['cats'] ) ) : foreach ( $ctx['cats'] as $c ) :
                             if ( 'contributor' === $ctx['role'] && ! empty( $ctx['allowed'] ) && ! in_array( $c->term_id, $ctx['allowed'], true ) ) { continue; } ?>
-                            <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $current, $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
+                            <label class="uc-check">
+                                <input type="checkbox" name="category[]" value="<?php echo (int) $c->term_id; ?>"
+                                       <?php checked( in_array( (int) $c->term_id, $current, true ) ); ?> />
+                                <?php echo esc_html( $c->name ); ?>
+                            </label>
                         <?php endforeach; endif; ?>
-                    </select>
-                </label>
+                    </div>
+                    <span class="uc-hint">
+                        Tick every category this event belongs to. It appears under each of them in the filter bar.
+                        The first one alphabetically supplies the card's colour and its placeholder picture.
+                    </span>
+                </div>
                 <?php
                 break;
 
@@ -3145,14 +3248,33 @@ class SFAF_Portal {
             }
         }
 
-        // Taxonomies (respect contributor category restrictions).
-        if ( isset( $_POST['category'] ) ) {
-            $cat     = intval( $_POST['category'] );
+        /*
+         * CATEGORIES. Several, and only when this form actually carried the
+         * control. See the marker note in render_manager_control().
+         *
+         * A contributor restricted to certain categories can neither add one
+         * they are not allowed nor, just as importantly, REMOVE one they cannot
+         * see: the categories already on the event that are outside their
+         * allow-list are read back and kept. Otherwise a restricted contributor
+         * editing an event would quietly strip every category they had not been
+         * given, simply by saving.
+         */
+        if ( isset( $_POST['uc_category_present'] ) ) {
+            $posted  = isset( $_POST['category'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['category'] ) ) : array();
             $allowed = $this->allowed_categories( $user );
-            if ( 'contributor' === $role && ! empty( $allowed ) && $cat && ! in_array( $cat, $allowed, true ) ) {
-                $cat = 0; // not permitted
+            $limited = ( 'contributor' === $role && ! empty( $allowed ) );
+
+            if ( $limited ) {
+                $posted = array_values( array_intersect( $posted, array_map( 'intval', $allowed ) ) );
+                foreach ( (array) wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) as $existing ) {
+                    if ( ! in_array( (int) $existing, array_map( 'intval', $allowed ), true ) ) {
+                        $posted[] = (int) $existing;
+                    }
+                }
             }
-            wp_set_object_terms( $event_id, $cat ? array( $cat ) : array(), 'uc_event_category' );
+
+            $posted = array_values( array_unique( array_filter( $posted ) ) );
+            wp_set_object_terms( $event_id, $posted, 'uc_event_category' );
         }
         if ( isset( $_POST['organizer'] ) ) {
             $org = intval( $_POST['organizer'] );
@@ -3246,22 +3368,26 @@ class SFAF_Portal {
         <div class="uc-page-head">
             <h1>Series</h1>
             <?php if ( $this->can_view_all( $user ) ) : ?>
-                <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Series</a>
+                <?php // Still here, and no longer the way in. See the note below. ?>
+                <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn">+ New series</a>
             <?php endif; ?>
         </div>
 
         <p class="uc-help">
-            A series is an umbrella for grouping and filtering &mdash; closer to a category than to an event. It has no
-            date, never appears on the calendar, and may hold different kinds of event: the same group might run an
-            educational session one week and a social the next. A series with no dates yet is perfectly normal.
+            <strong>A series is an event's schedule: the event, and all of its dates.</strong> Open one to see the
+            pattern it runs on, change the day or the time for everything still to come, add a date, or take one off.
+            <br />
+            You do not normally create a series here. Set a repeat on a new event and its series is made from the
+            event's own name in the same step, so nobody has to name the same thing twice. Creating one by hand is for
+            the case where a programme needs describing before any of its dates are known.
         </p>
 
         <div class="uc-card">
             <?php if ( empty( $series ) ) : ?>
-                <p class="uc-empty">No series yet. Create one, then choose it on any event.</p>
+                <p class="uc-empty">No series yet. Set a repeat on a new event and one is made for it.</p>
             <?php else : ?>
                 <table class="uc-table">
-                    <thead><tr><th></th><th>Series</th><th>Upcoming events</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
+                    <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
                     <tbody>
                     <?php foreach ( $series as $term ) :
                         $edit  = $this->url( 'series/edit/' . $term->term_id );
@@ -3278,6 +3404,30 @@ class SFAF_Portal {
                                 }
                             ?></a></td>
                             <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( $term->name ); ?></strong></a></td>
+                            <td><?php
+                                /*
+                                 * THE CADENCE, IN THE LIST. It has been stored
+                                 * since 3.0.0 and shown nowhere, so a manager
+                                 * scanning this screen could not tell a weekly
+                                 * group from a one-off without opening it.
+                                 */
+                                $row_ids = SFAF_Series::events( $term->term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
+                                if ( empty( $row_ids ) ) {
+                                    $row_ids = SFAF_Series::events( $term->term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
+                                }
+                                if ( empty( $row_ids ) ) {
+                                    echo '<span class="uc-muted">No dates yet</span>';
+                                } else {
+                                    $rid  = (int) $row_ids[0];
+                                    $line = SFAF_Recurrence::schedule_sentence(
+                                        SFAF_Recurrence::pattern_of( $rid ),
+                                        (string) get_post_meta( $rid, '_uc_event_date', true ),
+                                        (string) get_post_meta( $rid, '_uc_start_time', true ),
+                                        (string) get_post_meta( $rid, '_uc_end_time', true )
+                                    );
+                                    echo esc_html( $line );
+                                }
+                            ?></td>
                             <td><?php echo (int) $count; ?></td>
                             <td><?php
                                 // "No dates yet" rather than a dash. An empty
@@ -3289,7 +3439,7 @@ class SFAF_Portal {
                             ?></td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
-                                    <a class="uc-action-link" href="<?php echo esc_url( $edit ); ?>">Edit</a>
+                                    <a class="uc-action-link" href="<?php echo esc_url( $edit ); ?>">Schedule</a>
                                     <a class="uc-action-link" href="<?php echo esc_url( SFAF_Series::url( $term->term_id ) ); ?>" target="_blank" rel="noopener">View</a>
                                 </div>
                             </td>
@@ -3343,9 +3493,18 @@ class SFAF_Portal {
         $this->chrome_open( $user, 'series' );
         ?>
         <div class="uc-page-head">
-            <h1><?php echo $term ? 'Edit Series' : 'New Series'; ?></h1>
+            <h1><?php echo $term ? esc_html( $term->name ) : 'New Series'; ?></h1>
             <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-btn">&larr; Back</a>
         </div>
+        <?php if ( $term ) : ?>
+            <p class="uc-help">This event and all of its dates. The schedule is below the series details.</p>
+        <?php else : ?>
+            <p class="uc-help">
+                A series made by hand, for a programme that needs describing before its dates are known. If you already
+                know the dates, create the event instead and set a repeat on it: the series is made from the event's own
+                name in the same step.
+            </p>
+        <?php endif; ?>
 
         <form method="post" action="<?php echo esc_url( $this->url( $term_id ? 'series/edit/' . $term_id : 'series/new' ) ); ?>" class="uc-form">
             <input type="hidden" name="uc_action" value="save_series" />
@@ -3408,31 +3567,8 @@ class SFAF_Portal {
             <?php
             // Outside the form: this posts on its own, and HTML forms cannot
             // nest. Same reasoning as the FAQ set and refresh panels.
-            $total    = SFAF_Series::total_count( $term_id );
-            $upcoming = SFAF_Series::upcoming_count( $term_id );
+            $this->render_schedule( $term_id );
             ?>
-            <div class="uc-card">
-                <h3>Events in this series</h3>
-                <?php if ( ! $total ) : ?>
-                    <p class="uc-hint">None yet. Choose this series on any event, or create an event into it.</p>
-                <?php else : ?>
-                    <p class="uc-hint">
-                        <strong><?php echo (int) $total; ?></strong> <?php echo esc_html( _n( 'event', 'events', $total ) ); ?>,
-                        <strong><?php echo (int) $upcoming; ?></strong> upcoming.
-                    </p>
-                    <ul class="uc-series-list">
-                        <?php foreach ( SFAF_Series::events( $term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 25 ) ) as $eid ) :
-                            $d = get_post_meta( $eid, '_uc_event_date', true ); ?>
-                            <li>
-                                <a href="<?php echo esc_url( $this->url( 'events/edit/' . $eid ) ); ?>">
-                                    <span class="uc-series-date"><?php echo $d ? esc_html( date_i18n( 'M j, Y', strtotime( $d ) ) ) : ''; ?></span>
-                                    <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-            </div>
 
             <div class="uc-card uc-card-danger">
                 <h3>Remove this series</h3>
@@ -3445,13 +3581,459 @@ class SFAF_Portal {
                     <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
                     <?php wp_nonce_field( 'uc_portal_remove_series', 'uc_nonce' ); ?>
                     <button type="submit" class="uc-btn uc-link-danger"
-                            data-uc-confirm="Remove the series &quot;<?php echo esc_attr( $term->name ); ?>&quot;? The <?php echo (int) $total; ?> events in it stay on the calendar, unchanged.">Remove series</button>
+                            data-uc-confirm="Remove the series &quot;<?php echo esc_attr( $term->name ); ?>&quot;? The <?php echo (int) SFAF_Series::total_count( $term_id ); ?> events in it stay on the calendar, unchanged.">Remove series</button>
                 </form>
             </div>
         <?php endif; ?>
         <?php
         $this->chrome_close();
     }
+
+    /* =====================================================================
+     * Schedule writes
+     * ================================================================== */
+
+    /**
+     * Change the day, the time, or both, across a group's upcoming dates.
+     *
+     * THE GROUP IS RE-DERIVED FROM THE SERIES, never taken from the form. The
+     * form carries a series id and nothing else that decides what is written, so
+     * a tampered POST can only ever aim this at a series the person is already
+     * allowed to edit, at the same set of upcoming events the screen showed
+     * them.
+     *
+     * THE PATTERN META IS LEFT ALONE. A weekly group moved from Wednesdays to
+     * Tuesdays is still weekly; what changed is which day, and that is recorded
+     * where it has always been recorded, in the dates themselves.
+     */
+    private function schedule_pattern_from_post() {
+        $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
+        if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
+            $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
+        }
+
+        $group = SFAF_Series::recurrence_group( $term_id );
+        if ( '' === $group ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_no_group' ) );
+        }
+
+        $ids = SFAF_Recurrence::upcoming_in_group( $group );
+        if ( empty( $ids ) ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_nothing_upcoming' ) );
+        }
+
+        // Imported events are not ours to reschedule. Checked here as well as in
+        // the markup: the control is not rendered for them, and this is what
+        // makes that a rule rather than an appearance.
+        $prov = SFAF_Sources::provenance( $ids[0] );
+        if ( '' !== $prov['source'] ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_imported' ) );
+        }
+
+        $moved = 0;
+        if ( isset( $_POST['weekday'] ) && '' !== $_POST['weekday'] ) {
+            $result = SFAF_Recurrence::reday_group( $group, intval( $_POST['weekday'] ) );
+            $moved  = (int) $result['moved'];
+        }
+
+        $start   = isset( $_POST['start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['start_time'] ) ) : '';
+        $end     = isset( $_POST['end_time'] ) ? sanitize_text_field( wp_unslash( $_POST['end_time'] ) ) : '';
+        $retimed = ( '' !== $start ) ? SFAF_Recurrence::retime_group( $group, $start, $end ) : 0;
+
+        $written = max( $moved, $retimed );
+        $this->redirect( 'series/edit/' . $term_id, array(
+            'msg'     => $written ? 'schedule_updated' : 'schedule_unchanged',
+            'written' => $written,
+        ) );
+    }
+
+    /**
+     * Add one date to a series.
+     */
+    private function schedule_add_date_from_post() {
+        $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
+        if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
+            $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
+        }
+
+        /*
+         * THE SEED IS THE NEXT OCCURRENCE, or the most recent one when there is
+         * nothing upcoming. The next one is what the event looks like NOW:
+         * current location, current times, current capacity, rather than what
+         * it looked like when the group was first set up.
+         */
+        $upcoming = SFAF_Series::events( $term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
+        $seed_id  = ! empty( $upcoming ) ? (int) $upcoming[0] : 0;
+        if ( ! $seed_id ) {
+            $all     = SFAF_Series::events( $term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => -1 ) );
+            $seed_id = ! empty( $all ) ? (int) end( $all ) : 0;
+        }
+        if ( ! $seed_id ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_no_seed' ) );
+        }
+
+        $prov = SFAF_Sources::provenance( $seed_id );
+        if ( '' !== $prov['source'] ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_imported' ) );
+        }
+
+        $new_id = SFAF_Recurrence::add_occurrence(
+            $seed_id,
+            isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '',
+            isset( $_POST['start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['start_time'] ) ) : '',
+            isset( $_POST['end_time'] ) ? sanitize_text_field( wp_unslash( $_POST['end_time'] ) ) : '',
+            empty( $_POST['independent'] )
+        );
+
+        if ( is_wp_error( $new_id ) ) {
+            set_transient( 'sfaf_schedule_error_' . get_current_user_id(), $new_id->get_error_message(), 60 );
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_add_failed' ) );
+        }
+
+        $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_added', 'event' => (int) $new_id ) );
+    }
+
+    /**
+     * Take one date off the schedule.
+     *
+     * TRASHED, NOT ERASED, which is the same thing "Delete" does everywhere else
+     * in this portal. The date comes off the calendar immediately and nothing
+     * regenerates it: recurrence has not been a template since 3.0.0, so there
+     * is no pattern re-run on save that could notice a gap and fill it back in.
+     * That is what makes removing a holiday stick, and it is why the old
+     * cancelled-dates list no longer exists.
+     *
+     * REGISTRATIONS ARE NOT TOUCHED. RSVP rows live in their own table keyed by
+     * event id and nothing here writes to it. They stay reachable, and if the
+     * event is ever purged for good SFAF_RSVP::snapshot_event_title() has
+     * already recorded which event they were for.
+     *
+     * A PAST DATE CANNOT BE REMOVED FROM HERE. The row carries no button, and
+     * this refuses one anyway.
+     */
+    private function schedule_remove_date_from_post() {
+        $term_id  = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
+        $event_id = isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0;
+
+        if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
+            $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
+        }
+
+        $post = $event_id ? get_post( $event_id ) : null;
+        $in   = $event_id ? in_array(
+            $event_id,
+            SFAF_Series::events( $term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => -1 ) ),
+            true
+        ) : false;
+
+        if ( ! $post || 'uc_event' !== $post->post_type || ! $in ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_remove_failed' ) );
+        }
+
+        $date = (string) get_post_meta( $event_id, '_uc_event_date', true );
+        if ( '' === $date || $date < current_time( 'Y-m-d' ) ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_past' ) );
+        }
+
+        wp_trash_post( $event_id );
+        $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_removed' ) );
+    }
+
+    /* =====================================================================
+     * The schedule
+     *
+     * THIS SCREEN IS "THIS EVENT, ALL ITS DATES", NOT "A SEPARATE OBJECT".
+     *
+     * Everything a manager needs to do to a repeating event's dates happens
+     * here, because until now none of it happened anywhere. The pattern has been
+     * stored since 3.0.0 and shown nowhere after creation, so a group's cadence
+     * was invisible; there was no way at all to add a date to an existing group,
+     * which meant extending a term's programme by three weeks was three
+     * hand-built events that no bulk edit could reach.
+     *
+     * THE PAST IS SHOWN AND IS NOT EDITABLE. It is the record of sessions that
+     * happened, in front of people who attended them, and every write below is
+     * bounded by SFAF_Recurrence::upcoming_in_group(), which is "today or later"
+     * at the query. Past rows carry no controls, and there is no route from this
+     * screen that reaches one even if the markup were tampered with.
+     *
+     * THE PATTERN EDIT TARGETS THE RECURRENCE GROUP, which is what "edit all
+     * upcoming occurrences" in the event editor has always targeted. Same
+     * marker, same "today or later" bound, same idea of what a set of
+     * occurrences is. There is no second grouping here to disagree with it.
+     * ================================================================== */
+
+    /**
+     * A series' dates: the pattern, what is coming, what has been, and the four
+     * things a manager can do about it.
+     *
+     * @param int $term_id
+     */
+    private function render_schedule( $term_id ) {
+        $term_id  = (int) $term_id;
+        $group    = SFAF_Series::recurrence_group( $term_id );
+        $all_ids  = SFAF_Series::events( $term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => -1 ) );
+        $today    = current_time( 'Y-m-d' );
+
+        $upcoming = array();
+        $past     = array();
+        foreach ( $all_ids as $eid ) {
+            $d = (string) get_post_meta( $eid, '_uc_event_date', true );
+            if ( '' !== $d && $d >= $today ) {
+                $upcoming[] = $eid;
+            } else {
+                $past[] = $eid;
+            }
+        }
+        // Most recent first: the last session held is the one anybody scrolling
+        // to the past section is actually looking for.
+        $past = array_reverse( $past );
+
+        /*
+         * THE SEED IS WHAT A NEW DATE IS COPIED FROM, and it is the next
+         * occurrence rather than the first. The next one is the current shape of
+         * the event: its location, its times and its capacity as they are now,
+         * not as they were when the group was set up in March.
+         */
+        $seed_id = ! empty( $upcoming ) ? $upcoming[0] : ( ! empty( $past ) ? $past[0] : 0 );
+
+        /*
+         * IMPORTED EVENTS HAVE NO SCHEDULE OF OURS TO EDIT. Recurrence has been
+         * refused on them since 2.9.0 because the platform decides whether its
+         * own event repeats and every fetch brings that shape back. Offering an
+         * editable pattern here would be offering to make a change the next
+         * fetch quietly undoes.
+         */
+        $prov     = $seed_id ? SFAF_Sources::provenance( $seed_id ) : array( 'source' => '', 'label' => '' );
+        $imported = ( '' !== $prov['source'] );
+
+        $pattern  = $seed_id ? SFAF_Recurrence::pattern_of( $seed_id ) : '';
+        $start    = $seed_id ? (string) get_post_meta( $seed_id, '_uc_start_time', true ) : '';
+        $end      = $seed_id ? (string) get_post_meta( $seed_id, '_uc_end_time', true ) : '';
+        $anchor   = $seed_id ? (string) get_post_meta( $seed_id, '_uc_event_date', true ) : '';
+        $sentence = SFAF_Recurrence::schedule_sentence( $pattern, $anchor, $start, $end );
+
+        $in_group = ( '' !== $group ) ? SFAF_Recurrence::upcoming_in_group( $group ) : array();
+        $movable  = SFAF_Recurrence::weekday_is_movable( $pattern );
+        $days     = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
+        $cur_dow  = $anchor ? (int) date( 'w', strtotime( $anchor . ' 12:00:00' ) ) : -1;
+        $back     = 'series/edit/' . $term_id;
+        ?>
+        <div class="uc-card uc-schedule">
+            <div class="uc-card-head">
+                <h3>Schedule</h3>
+                <?php if ( ! empty( $all_ids ) ) : ?>
+                    <span class="uc-muted">
+                        <?php echo (int) count( $upcoming ); ?> upcoming,
+                        <?php echo (int) count( $past ); ?> past
+                    </span>
+                <?php endif; ?>
+            </div>
+
+            <?php if ( empty( $all_ids ) ) : ?>
+                <p class="uc-hint">
+                    No dates yet. Create an event and choose this series on it, or set a repeat on a new event, which
+                    makes its dates and its series in one step.
+                </p>
+            <?php else : ?>
+
+                <p class="uc-schedule-sentence"><?php echo esc_html( $sentence ); ?></p>
+
+                <?php if ( $imported ) : ?>
+                    <p class="uc-hint">
+                        <?php echo $this->icon_lock(); ?>
+                        These dates come from <?php echo esc_html( $prov['label'] ? $prov['label'] : 'another platform' ); ?>,
+                        which decides when this event happens. Changing the pattern here would be undone by the next
+                        fetch, so it is not offered.
+                    </p>
+                <?php elseif ( '' === $group ) : ?>
+                    <p class="uc-hint">
+                        These dates are not on a repeating pattern, so there is no pattern to change. Each one can still
+                        be edited on its own, and a date can be added below.
+                    </p>
+                <?php else : ?>
+
+                    <details class="uc-schedule-edit">
+                        <summary>Change the pattern</summary>
+                        <p class="uc-hint">
+                            Applies to the <strong><?php echo (int) count( $in_group ); ?></strong>
+                            upcoming <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>
+                            in this group. Dates that have already been are the record of what happened and are never
+                            rewritten.
+                        </p>
+                        <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
+                            <input type="hidden" name="uc_action" value="schedule_pattern" />
+                            <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_schedule_pattern', 'uc_nonce' ); ?>
+
+                            <div class="uc-field-row">
+                                <?php if ( $movable ) : ?>
+                                    <label class="uc-field">
+                                        <span class="uc-field-label">Day</span>
+                                        <select name="weekday">
+                                            <?php foreach ( $days as $i => $day ) : ?>
+                                                <option value="<?php echo (int) $i; ?>" <?php selected( $cur_dow, $i ); ?>><?php echo esc_html( $day ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                <?php endif; ?>
+                                <label class="uc-field">
+                                    <span class="uc-field-label">Start time</span>
+                                    <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>" />
+                                </label>
+                                <label class="uc-field">
+                                    <span class="uc-field-label">End time</span>
+                                    <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>" />
+                                </label>
+                            </div>
+
+                            <?php if ( ! $movable ) : ?>
+                                <p class="uc-hint">
+                                    <?php if ( 'daily' === $pattern ) : ?>
+                                        This happens every day, so there is no weekday to move it to. The time can still
+                                        be changed here, and a single date can be moved from its own event.
+                                    <?php else : ?>
+                                        This repeats on a day of the month rather than a day of the week, so moving it to
+                                        a weekday would turn it into a different pattern from the one it was set up with.
+                                        The time can still be changed here, and a single date can be moved from its own
+                                        event.
+                                    <?php endif; ?>
+                                </p>
+                            <?php endif; ?>
+
+                            <div class="uc-form-actions">
+                                <button type="submit" class="uc-btn uc-btn-primary"
+                                        data-uc-confirm="Update <?php echo (int) count( $in_group ); ?> upcoming <?php echo esc_attr( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>? Dates that have already been are not touched.">
+                                    Update <?php echo (int) count( $in_group ); ?> upcoming
+                                    <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>
+                                </button>
+                            </div>
+                        </form>
+                    </details>
+                <?php endif; ?>
+
+                <h4 class="uc-schedule-head">Upcoming</h4>
+                <?php if ( empty( $upcoming ) ) : ?>
+                    <p class="uc-empty">Nothing upcoming. Add a date below.</p>
+                <?php else : ?>
+                    <ul class="uc-schedule-list">
+                        <?php foreach ( $upcoming as $eid ) : $this->render_schedule_row( $eid, $term_id, true, $group ); ?><?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+
+                <?php if ( ! empty( $past ) ) : ?>
+                    <h4 class="uc-schedule-head">Past</h4>
+                    <p class="uc-hint">What already happened. Nothing here can be changed from this screen.</p>
+                    <ul class="uc-schedule-list uc-schedule-past">
+                        <?php foreach ( array_slice( $past, 0, 50 ) as $eid ) : $this->render_schedule_row( $eid, $term_id, false, $group ); ?><?php endforeach; ?>
+                    </ul>
+                    <?php if ( count( $past ) > 50 ) : ?>
+                        <p class="uc-hint">Showing the 50 most recent of <?php echo (int) count( $past ); ?>.</p>
+                    <?php endif; ?>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ( ! $imported && $seed_id ) : ?>
+                <details class="uc-schedule-add">
+                    <summary>Add a date</summary>
+                    <p class="uc-hint">
+                        Creates one more event exactly like the others: same title, description, location, times,
+                        capacity, categories and series. It starts with nobody registered, because registrations belong
+                        to the date they were made for.
+                    </p>
+                    <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
+                        <input type="hidden" name="uc_action" value="schedule_add_date" />
+                        <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_schedule_add_date', 'uc_nonce' ); ?>
+
+                        <div class="uc-field-row">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Date</span>
+                                <input type="date" name="date" required />
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Start time</span>
+                                <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>" />
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">End time</span>
+                                <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>" />
+                            </label>
+                        </div>
+
+                        <?php if ( '' !== $group ) : ?>
+                            <label class="uc-check">
+                                <input type="checkbox" name="independent" value="1" />
+                                Keep this date out of the group
+                            </label>
+                            <p class="uc-hint">
+                                Left unticked, the new date joins the group, so "update all upcoming occurrences"
+                                reaches it like any other. Tick it for a genuine one-off &mdash; a special session, a
+                                different venue for one week &mdash; that should not be rewritten by a bulk edit.
+                            </p>
+                        <?php endif; ?>
+
+                        <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Add this date</button>
+                        </div>
+                    </form>
+                </details>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * One row of the schedule.
+     *
+     * A PAST ROW CARRIES NO CONTROLS AT ALL, rather than disabled ones. A
+     * greyed-out pencil invites somebody to work out how to enable it; nothing
+     * there says the matter is closed.
+     *
+     * @param int    $eid
+     * @param int    $term_id
+     * @param bool   $editable
+     * @param string $group
+     */
+    private function render_schedule_row( $eid, $term_id, $editable, $group ) {
+        $date  = (string) get_post_meta( $eid, '_uc_event_date', true );
+        $start = (string) get_post_meta( $eid, '_uc_start_time', true );
+        $end   = (string) get_post_meta( $eid, '_uc_end_time', true );
+        $ts    = $date ? strtotime( $date . ' 12:00:00' ) : 0;
+        $rsvps = sfaf_get_rsvp_count( $eid );
+        $solo  = ( '' !== $group && SFAF_Recurrence::group_of( $eid ) !== $group );
+        ?>
+        <li class="uc-schedule-row">
+            <span class="uc-schedule-date"><?php echo $ts ? esc_html( date_i18n( 'D, M j, Y', $ts ) ) : '<span class="uc-muted">No date</span>'; ?></span>
+            <span class="uc-schedule-time"><?php echo esc_html( SFAF_Recurrence::time_phrase( $start, $end ) ); ?></span>
+            <span class="uc-schedule-meta">
+                <?php echo esc_html( sfaf_status_label( get_post_status( $eid ) ) ); ?>
+                <?php if ( $rsvps > 0 ) : ?>
+                    &middot; <?php echo (int) $rsvps; ?> <?php echo esc_html( _n( 'RSVP', 'RSVPs', $rsvps ) ); ?>
+                <?php endif; ?>
+                <?php if ( $solo ) : ?>
+                    <?php // Said out loud, because it is why a bulk edit will skip it. ?>
+                    &middot; <span class="uc-muted">one-off</span>
+                <?php endif; ?>
+            </span>
+            <?php if ( $editable ) : ?>
+                <span class="uc-schedule-actions">
+                    <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $this->url( 'events/edit/' . $eid ) ); ?>"
+                       title="Edit this date" aria-label="Edit <?php echo esc_attr( $date ); ?>"><?php echo sfaf_icon( 'pencil', array( 'size' => '15px' ) ); ?></a>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'series/edit/' . $term_id ) ); ?>" class="uc-schedule-remove">
+                        <input type="hidden" name="uc_action" value="schedule_remove_date" />
+                        <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $eid; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_schedule_remove_date', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-link-danger uc-btn-sm"
+                                data-uc-confirm="Remove <?php echo esc_attr( $ts ? date_i18n( 'D, M j, Y', $ts ) : 'this date' ); ?> from the schedule?<?php echo $rsvps > 0 ? ' ' . (int) $rsvps . ' people have registered; their registrations are kept and stay in the RSVP list.' : ''; ?> Nothing puts it back.">Remove</button>
+                    </form>
+                </span>
+            <?php endif; ?>
+        </li>
+        <?php
+    }
+
     /* =====================================================================
      * Rendering — event form
      * ================================================================== */
@@ -3687,8 +4269,15 @@ class SFAF_Portal {
                             <?php endforeach; ?>
                         </select>
                         <span class="uc-hint">
-                            An umbrella for grouping and filtering. A series may hold different kinds of event, so it is
-                            not the same thing as repeating. <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>">Manage series</a>.
+                            <?php if ( ! $event_id || ! SFAF_Series::id_for_event( $event_id ) ) : ?>
+                                Leave this alone if the event repeats: setting a repeat below creates the series from
+                                this event's own name, and its schedule is edited there afterwards. Choose an existing
+                                one only to put this event under a programme that is already running.
+                            <?php else : ?>
+                                This event's schedule lives on its series.
+                                <a href="<?php echo esc_url( $this->url( 'series/edit/' . SFAF_Series::id_for_event( $event_id ) ) ); ?>">Open the schedule</a>
+                                to change the pattern, add a date or remove one.
+                            <?php endif; ?>
                         </span>
                     </label>
 

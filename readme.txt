@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.7.0
+Stable tag: 3.8.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,41 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.8.0 =
+
+**An event can be in more than one category again, and the data model never stopped allowing it.** uc_event_category is an ordinary WordPress taxonomy, the WordPress editor has always shown checkboxes, and the payload satellites read has always carried an array. What enforced one category was the /caladmin editor: a single dropdown, saving an array of one. Opening a two-category event there and pressing Save deleted the second category. Nothing about the database changed in this release; the control did.
+
+**Every category now shows as a chip on the card**, in one fixed order, and that order is decided in a single place. Several things pick "the first" category: the card's colour, the branded placeholder's colour and icon, the accent stripe on a compact card, the breadcrumb. WordPress does not promise an order for an event's terms, so the same event could take one colour in the list and another in the month grid, and could change when a cache was rebuilt. Categories are now sorted by name, term ID breaking a tie, everywhere. Alphabetical because it is the order the chips are printed in, so "the first one" is something a manager can see rather than a hidden property.
+
+**The filter bar runs a query instead of hiding cards.** It was wrong in three separate ways and only looked right on a single unpaginated block: it never saw the events on page two, so a category with events further down showed fewer than it had; it compared one slug on the card against one slug on the button, so an event in two categories was findable under only one of them; and the number above the list was how many cards remained visible rather than how many events matched. It now asks the same query the first page load and the search box use. An event in two categories appears under both, and the count changing when you choose a category is the point.
+
+**A block scoped by its shortcode cannot be widened from the filter bar.** `category="fundraising"` is the author saying what the block is; a chip is a visitor narrowing what is there. They are now separate values, the second is clamped to the first on the server rather than by convention in the browser, and a scoped block only offers buttons for its own categories instead of printing every category on the site, all but one of which could only empty the list.
+
+**Category chips are links.** Inside a calendar or an embed, clicking one filters in place with no page load and no jump to another domain. The href is a real calendar URL all the same, because that is what has to happen with no JavaScript, on a middle-click, or on a host page whose script failed.
+
+**Nobody is stranded on the resources site any more.** The event page is served from resources; the calendar people actually read is a page on sfaf.org. "All Events" pointed at this site's own post type archive, so a visitor who clicked an event on sfaf.org and then asked for the list landed on a site they had never seen and that is not a public surface. Category chips on an event page would have done the same.
+
+Both now use the **referrer** when there is one, so a visitor goes back to the exact calendar page they came from, with the category applied for a chip. A referrer is followed only if it parses, is http or https, is on this site's host, on the configured calendar host, or on a host sharing this site's own domain, and is not itself an event page; the URL is then rebuilt from those validated parts, so credentials, ports and fragments in the header do not survive. A link back to somebody else's site cannot be built from it.
+
+**New setting, Display > Calendar home URL:** the page that carries the calendar, used when there is no referrer at all, which is every shared link, search result and bookmark. With several calendar pages this one is the fallback for all of them. The plugin cannot know which page holds a shortcode and does not try to guess.
+
+**One event, one series.** Setting a repeat on a new event now creates its series implicitly, named from the event, in the same step. A repeating event in this organisation's programming has exactly one series and it is called the same thing as the event, so asking for the title and then asking again for a series name was asking one question twice and inviting the two answers to differ. Creating a series by hand is still there for a programme that needs describing before its dates are known; it is simply no longer the path you are pushed down to schedule a repeat.
+
+**The series screen is now the schedule editor, which is the gap this release exists to close.** The recurrence pattern has been stored since 3.0.0 and shown nowhere after the event was created, so a group's cadence was invisible, and there was no way at all to add a date to an existing group: extending a term's programme by three weeks meant three hand-built events that no bulk edit could reach.
+
+The screen now reads the pattern back in plain language ("Every other Wednesday, 6:00 PM to 7:30 PM"), lists the occurrences with upcoming and past clearly separated, and offers four things:
+
+* **Change the pattern.** Day, time, or both, applied to upcoming occurrences only, with the confirmation naming the count. Weekly and biweekly groups move by one uniform offset, so the interval between occurrences is exactly what it was; the offset takes the short way round unless that would push the next session into yesterday, in which case the whole group goes forward instead. A monthly-on-the-same-weekday group is recomputed per month, so "the second Friday" becomes "the second Tuesday". Daily and monthly-on-the-date take a time change but not a day change, and say why: daily has no weekday to pick, and shifting a day-of-month pattern onto a weekday would silently turn it into a different pattern from the one it was set up with.
+* **Edit one date**, from a pencil on every upcoming row, which opens that event's own editor. That is how a single week moves to a different day.
+* **Add a date**, copied from the next occurrence so it carries the event as it is now rather than as it was in March. It joins the recurrence group by default so bulk edits reach it, and there is a tick box for a date that should deliberately stay independent. It starts with the group's capacity and nobody registered, because registrations belong to the date they were made for.
+* **Remove one date.** It stays removed: recurrence has not been a template since 3.0.0, so there is no pattern re-run on save that could notice a gap and fill it back in. That is what makes taking a holiday off the calendar work.
+
+**Past occurrences cannot be reached from any of it.** They are the record of sessions that happened, in front of the people who attended them. Every write is bounded at the query by "today or later", the past rows carry no controls at all rather than disabled ones, and removing a past date is refused by the handler as well as absent from the markup.
+
+**Imported events are not offered schedule editing.** Recurrence has been refused on GoFundMe Pro and Eventbrite events since 2.9.0, because the platform decides whether its own event repeats and every fetch brings that shape back. Offering an editable pattern here would be offering a change the next fetch quietly undoes, so the screen says so instead.
+
+The REST payload satellites consume needed no change: `categories`, `category_colors` and `terms.uc_event_category` have always been arrays and still are.
 
 = 3.7.0 =
 

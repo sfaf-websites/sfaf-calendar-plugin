@@ -204,6 +204,16 @@ class SFAF_Embed {
                 'toggle'       => array( 'type' => 'string',  'default' => 'yes',   'sanitize_callback' => 'sanitize_text_field' ),
                 'month'        => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'count'        => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'absint' ),
+
+                /*
+                 * 3.8.0: the category a VISITOR chose from the filter bar, kept
+                 * separate from `category`, which is what the embed snippet was
+                 * scoped to by whoever wrote it. The filter bar runs a real
+                 * query now instead of hiding cards, and this is the parameter
+                 * it sends. A value outside the snippet's own scope is dropped
+                 * rather than honoured, in SFAF_Shortcodes::effective_category().
+                 */
+                'active_category' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -284,8 +294,15 @@ class SFAF_Embed {
             $count = 10;
         }
 
+        $scope_category  = (string) $request->get_param( 'category' );
+        $active_category = (string) $request->get_param( 'active_category' );
+
         return array(
-            'category'     => (string) $request->get_param( 'category' ),
+            'category'     => $scope_category,
+            // What the query actually runs with, computed once here so the
+            // three modes below cannot disagree about it.
+            'effective_category' => $this->shortcodes->effective_category( $scope_category, $active_category ),
+            'active_category'    => $active_category,
             'organizer'    => (string) $request->get_param( 'organizer' ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
@@ -320,6 +337,16 @@ class SFAF_Embed {
     private function build_payload( $params ) {
         sfaf_set_embed_context( true );
 
+        /*
+         * items and month are given the EFFECTIVE category, because both render
+         * a result set directly and neither has a filter bar of its own to
+         * reconcile. The block mode is handed the scope and the choice
+         * separately, because it draws the buttons and has to know which one to
+         * mark as pressed.
+         */
+        $resolved             = $params;
+        $resolved['category'] = $params['effective_category'];
+
         try {
             if ( $params['mode'] === 'month' ) {
                 // Month navigation replaces the grid only. Everything around it
@@ -327,7 +354,7 @@ class SFAF_Embed {
                 // must not be rebuilt underneath the visitor.
                 $payload = array(
                     'mode'      => 'month',
-                    'html'      => $this->shortcodes->render_month_grid( $params['month'], $params ),
+                    'html'      => $this->shortcodes->render_month_grid( $params['month'], $resolved ),
                     'month'     => $params['month'],
                     'total'     => 0,
                     'page'      => 1,
@@ -338,7 +365,7 @@ class SFAF_Embed {
                 $events  = $this->shortcodes->render_events(
                     $params['per_page'],
                     $params['page'],
-                    $params,
+                    $resolved,
                     $params['layout'] === 'compact' ? 'compact' : 'card'
                 );
                 $payload = array(
@@ -858,6 +885,10 @@ class SFAF_Embed {
         $identity = array(
             'mode'      => $params['mode'],
             'category'  => $params['category'],
+            // The visitor's chosen category is part of the identity: two people
+            // reading the same block with different chips pressed must not share
+            // a cache entry.
+            'active_category' => isset( $params['active_category'] ) ? $params['active_category'] : '',
             'organizer' => $params['organizer'],
             'venue'     => $params['venue'],
             'series'    => $params['series'],

@@ -87,6 +87,54 @@ class SFAF_Shortcodes {
     }
 
     /**
+     * The category actually queried: what the visitor chose, inside what the
+     * block was scoped to.
+     *
+     * TWO DIFFERENT THINGS USED TO SHARE ONE ATTRIBUTE. `category="fundraising"`
+     * on a shortcode is the author saying "this block is the fundraising
+     * calendar", and it is not negotiable by whoever is reading the page. A
+     * click on a filter chip is the visitor narrowing what is already there.
+     * Keeping them apart is what lets the chips run a real query instead of
+     * hiding cards, without a chip or a hand-written URL being able to widen a
+     * block past what its author scoped it to.
+     *
+     * A chosen category outside the scope is DROPPED, not honoured and not
+     * treated as an empty result: it can only arrive from a stale link or a
+     * crafted request, and showing the block's own events is the honest answer
+     * to both.
+     *
+     * @param string $scope  The block's own category attribute.
+     * @param string $active What the visitor picked.
+     * @return string
+     */
+    public function effective_category( $scope, $active ) {
+        $scope  = $this->slug_list( $scope );
+        $active = $this->slug_list( $active );
+
+        if ( '' === $active ) {
+            return $scope;
+        }
+        if ( '' === $scope ) {
+            return $active;
+        }
+        $inside = array_intersect( explode( ',', $active ), explode( ',', $scope ) );
+        return empty( $inside ) ? $scope : implode( ',', $inside );
+    }
+
+    /**
+     * The category a visitor asked for in the URL.
+     *
+     * One parameter, uc_cat, written by every category chip on an event page so
+     * that "show me the rest of the support groups" lands on a calendar already
+     * filtered rather than on a full list the visitor has to filter again.
+     *
+     * @return string
+     */
+    private function requested_category() {
+        return isset( $_GET['uc_cat'] ) ? $this->slug_list( wp_unslash( $_GET['uc_cat'] ) ) : '';
+    }
+
+    /**
      * Whether the visitor-facing search and category buttons should render.
      *
      * Accepts what a shortcode attribute or a data attribute might carry —
@@ -564,16 +612,14 @@ class SFAF_Shortcodes {
                                     ?>
                                     <span class="uc-day-dots" aria-hidden="true"><?php
                                         foreach ( $ids as $id ) {
-                                            $cats  = wp_get_post_terms( $id, 'uc_event_category' );
-                                            $color = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? sfaf_category_color( $cats[0]->term_id ) : '#16BECF';
+                                            $color = sfaf_event_category_color( $id );
                                             echo '<span class="uc-day-dot" style="background:' . esc_attr( $color ) . '"></span>';
                                         }
                                     ?></span>
                                     <ul class="uc-day-events">
                                         <?php foreach ( $ids as $id ) :
                                             $start = (string) get_post_meta( $id, '_uc_start_time', true );
-                                            $cats  = wp_get_post_terms( $id, 'uc_event_category' );
-                                            $color = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? sfaf_category_color( $cats[0]->term_id ) : '#16BECF';
+                                            $color = sfaf_event_category_color( $id );
                                             ?>
                                             <li class="uc-day-event">
                                                 <a href="<?php echo esc_url( get_permalink( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
@@ -673,12 +719,13 @@ class SFAF_Shortcodes {
         $start = (string) get_post_meta( $post_id, '_uc_start_time', true );
         $ts    = $date ? strtotime( $date . ' 12:00:00' ) : 0;
 
-        $cats  = wp_get_post_terms( $post_id, 'uc_event_category' );
-        $color = ( ! is_wp_error( $cats ) && ! empty( $cats ) ) ? sfaf_category_color( $cats[0]->term_id ) : '#16BECF';
+        $color = sfaf_event_category_color( $post_id );
+        $slugs = implode( ' ', wp_list_pluck( sfaf_event_categories( $post_id ), 'slug' ) );
 
         ob_start();
         ?>
         <a class="uc-sidebar-row" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>"
+           data-category="<?php echo esc_attr( $slugs ); ?>"
            style="--cat-color: <?php echo esc_attr( $color ); ?>">
             <span class="uc-sidebar-date">
                 <?php if ( $ts ) : ?>
@@ -909,10 +956,46 @@ class SFAF_Shortcodes {
             'toggle'       => 'yes',
             'month'        => '',
             'count'        => 0,
+            // What the visitor picked, as distinct from what the block is
+            // scoped to. See effective_category().
+            'active_category' => null,
         ) );
 
         $filters = $this->normalize_filters( $args );
         $view    = $this->normalize_view( $args['view'] );
+
+        /*
+         * THE FILTER BAR RUNS A QUERY NOW.
+         *
+         * It used to hide cards in the page with JavaScript, which had the same
+         * two faults the old search had and one of its own. It only ever
+         * considered the events already downloaded, so on a paginated calendar
+         * "Support Groups" showed the support groups on page one and reported
+         * that as the total. It compared one slug on the card against one slug
+         * on the button, so an event in two categories appeared under whichever
+         * one happened to be printed and was invisible under the other. And the
+         * count it wrote was the number of cards left visible, not the number of
+         * matching events.
+         *
+         * Asking the server fixes all three at once, and the count changing when
+         * a category is chosen is the correct behaviour rather than a side
+         * effect: it is now the number of events in that category.
+         */
+        $scope_category  = $filters['category'];
+        $active_category = ( null === $args['active_category'] )
+            ? $this->requested_category()
+            : $this->slug_list( $args['active_category'] );
+
+        $requested           = $active_category;
+        $filters['category'] = $this->effective_category( $scope_category, $requested );
+
+        /*
+         * A BUTTON IS ONLY MARKED PRESSED WHEN IT IS WHAT IS BEING SHOWN. If the
+         * chosen category fell outside the block's scope it was dropped, and the
+         * list is the block's own events; lighting up a chip in that state would
+         * label the list as something it is not.
+         */
+        $active_category = ( '' !== $requested && $filters['category'] === $requested ) ? $filters['category'] : '';
 
         // Sidebar is a different shape entirely: no filter bar, no pagination,
         // no toggle, a count rather than a page size. It returns early rather
@@ -959,6 +1042,9 @@ class SFAF_Shortcodes {
              data-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-render="<?php echo $compact ? 'compact' : 'card'; ?>"
              data-per-page="<?php echo (int) $per_page; ?>"
+             <?php // The block's own scope, which a chip may narrow and can never widen. ?>
+             data-scope-category="<?php echo esc_attr( $scope_category ); ?>"
+             data-active-category="<?php echo esc_attr( $active_category ); ?>"
              data-filter-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-filter-organizer="<?php echo esc_attr( $filters['organizer'] ); ?>"
              data-filter-series="<?php echo (int) $filters['series']; ?>"
@@ -985,16 +1071,40 @@ class SFAF_Shortcodes {
                            aria-label="Search events" placeholder="Search events..." />
                 </div>
                 <div class="uc-filter-buttons">
-                    <button class="uc-filter-btn active" data-category="all">All Events</button>
                     <?php
+                    /*
+                     * WHICH BUTTONS EXIST, AND WHY IT IS NOT SIMPLY "ALL OF
+                     * THEM". A block scoped with category="fundraising" used to
+                     * print a button for every category on the site, all but one
+                     * of which could only ever empty the list. The bar now offers
+                     * the block's own categories when it has a scope, and "All
+                     * Events" means "everything this block is about" rather than
+                     * everything on the calendar.
+                     */
                     $categories = get_terms( array(
                         'taxonomy'   => 'uc_event_category',
                         'hide_empty' => true,
                     ) );
-                    foreach ( $categories as $cat ) :
-                        $color = sfaf_category_color( $cat->term_id );
+                    if ( is_wp_error( $categories ) ) {
+                        $categories = array();
+                    }
+                    if ( '' !== $scope_category ) {
+                        $in_scope   = explode( ',', $scope_category );
+                        $categories = array_values( array_filter( $categories, function ( $c ) use ( $in_scope ) {
+                            return in_array( $c->slug, $in_scope, true );
+                        } ) );
+                    }
+                    $active_slugs = ( '' === $active_category ) ? array() : explode( ',', $active_category );
                     ?>
-                        <button class="uc-filter-btn" data-category="<?php echo esc_attr( $cat->slug ); ?>"
+                    <button class="uc-filter-btn<?php echo empty( $active_slugs ) ? ' active' : ''; ?>"
+                            data-category="all" aria-pressed="<?php echo empty( $active_slugs ) ? 'true' : 'false'; ?>">All Events</button>
+                    <?php foreach ( $categories as $cat ) :
+                        $color = sfaf_category_color( $cat->term_id );
+                        $on    = in_array( $cat->slug, $active_slugs, true );
+                    ?>
+                        <button class="uc-filter-btn<?php echo $on ? ' active' : ''; ?>"
+                                data-category="<?php echo esc_attr( $cat->slug ); ?>"
+                                aria-pressed="<?php echo $on ? 'true' : 'false'; ?>"
                                 style="--cat-color: <?php echo esc_attr( $color ); ?>">
                             <?php echo esc_html( $cat->name ); ?>
                         </button>
@@ -1191,15 +1301,27 @@ class SFAF_Shortcodes {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
 
+        // The scope rides along so it can be enforced here rather than trusted
+        // to the browser. Without it a crafted request could show a scoped block
+        // events its author never put in it. See effective_category().
+        $filters['category'] = $this->effective_category(
+            isset( $_POST['scope_category'] ) ? sanitize_text_field( wp_unslash( $_POST['scope_category'] ) ) : '',
+            $filters['category']
+        );
+
         if ( $per_page <= 0 ) {
-            wp_send_json( array( 'html' => '', 'has_more' => false ) );
+            wp_send_json( array( 'html' => '', 'has_more' => false, 'total' => 0, 'max_pages' => 1 ) );
         }
 
         $events = $this->render_events( $per_page, $page, $filters, $render );
 
         wp_send_json( array(
-            'html'     => $events['html'],
-            'has_more' => ( $page < $events['max_pages'] ),
+            'html'      => $events['html'],
+            'has_more'  => ( $page < $events['max_pages'] ),
+            // Added in 3.8.0 so the count above the list is the number of
+            // MATCHING events rather than the number of cards left on screen.
+            'total'     => $events['total'],
+            'max_pages' => $events['max_pages'],
         ) );
     }
 
@@ -1224,6 +1346,14 @@ class SFAF_Shortcodes {
         foreach ( array( 'category', 'organizer', 'series', 'venue' ) as $key ) {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
+        // Clamped exactly as the list is, so choosing a category narrows the
+        // month grid too and cannot widen it. The transient key below is built
+        // from the normalized filters, so a clamped request shares the cache
+        // entry with the honest one rather than creating a second.
+        $filters['category'] = $this->effective_category(
+            isset( $_POST['scope_category'] ) ? sanitize_text_field( wp_unslash( $_POST['scope_category'] ) ) : '',
+            $filters['category']
+        );
 
         $key    = 'sfaf_month_' . md5( wp_json_encode( array(
             'month'   => $month,
@@ -1290,14 +1420,28 @@ class SFAF_Shortcodes {
         $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
         $location   = get_post_meta( $post_id, '_uc_location', true );
 
-        $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
+        /*
+         * EVERY CATEGORY, AND THE FIRST ONE DECIDES THE COLOUR.
+         *
+         * An event tagged both "Support Groups" and "Workshops" is two things
+         * and says so: one chip each, in the order sfaf_event_categories()
+         * fixes. The card can only be drawn in one colour, so the first
+         * category supplies it, and because that order is decided in one place
+         * the colour cannot change between the list, the month grid and the
+         * placeholder image.
+         *
+         * data-category carries ALL of the slugs, space separated, because it
+         * is what the filter scripts read: with one slug on it an event with
+         * two categories appeared under only one of them.
+         */
+        $categories = sfaf_event_categories( $post_id );
         $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
 
-        $has_cat   = ( ! is_wp_error( $categories ) && ! empty( $categories ) );
-        $cat_slug  = $has_cat ? $categories[0]->slug : '';
-        $cat_name  = $has_cat ? $categories[0]->name : '';
+        $has_cat   = ! empty( $categories );
+        $cat_slugs = $has_cat ? implode( ' ', wp_list_pluck( $categories, 'slug' ) ) : '';
         $cat_color = $has_cat ? sfaf_category_color( $categories[0]->term_id ) : sfaf_default_category_color();
         $shades    = sfaf_category_shades( $cat_color );
+        $chips     = sfaf_category_chips_html( $post_id, 'card' );
 
         /*
          * WHO IS RUNNING THIS. An imported event names the platform it came
@@ -1368,14 +1512,12 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <div class="uc-event-card uc-lc" data-category="<?php echo esc_attr( $cat_slug ); ?>"
+        <div class="uc-event-card uc-lc" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
              style="--uc-cat: <?php echo esc_attr( $cat_color ); ?>; --uc-cat-tint: <?php echo esc_attr( $shades['tint'] ); ?>; --uc-cat-media: <?php echo esc_attr( $shades['media'] ); ?>; --uc-cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>">
 
             <div class="uc-lc-head">
                 <div class="uc-lc-ident">
-                    <?php if ( '' !== $cat_name ) : ?>
-                        <span class="uc-lc-chip"><?php echo esc_html( $cat_name ); ?></span>
-                    <?php endif; ?>
+                    <?php echo $chips; ?>
                     <?php if ( '' !== $byline ) : ?>
                         <span class="uc-lc-byline"><?php echo esc_html( $byline ); ?></span>
                     <?php endif; ?>
@@ -1471,16 +1613,18 @@ class SFAF_Shortcodes {
         $start_time = get_post_meta( $post_id, '_uc_start_time', true );
         $location   = get_post_meta( $post_id, '_uc_location', true );
 
-        $categories = wp_get_post_terms( $post_id, 'uc_event_category' );
-        $cat_color  = ! empty( $categories ) ? sfaf_category_color( $categories[0]->term_id ) : '#16BECF';
-        $cat_slug   = ! empty( $categories ) ? $categories[0]->slug : '';
+        // First category for the accent stripe, every slug for the filter. Same
+        // rule as the full card; see render_event_card().
+        $categories = sfaf_event_categories( $post_id );
+        $cat_color  = ! empty( $categories ) ? sfaf_category_color( $categories[0]->term_id ) : sfaf_default_category_color();
+        $cat_slugs  = ! empty( $categories ) ? implode( ' ', wp_list_pluck( $categories, 'slug' ) ) : '';
 
         $date_ts = strtotime( $date );
 
         ob_start();
         ?>
         <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" class="uc-compact-card"
-           data-category="<?php echo esc_attr( $cat_slug ); ?>">
+           data-category="<?php echo esc_attr( $cat_slugs ); ?>">
             <div class="uc-compact-accent" style="background: <?php echo esc_attr( $cat_color ); ?>"></div>
             <div class="uc-compact-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'thumbnail' ); ?></div>
             <div class="uc-compact-date">

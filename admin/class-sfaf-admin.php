@@ -661,6 +661,22 @@ class SFAF_Admin {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_textarea_field( $input[ $field ] ) : '';
         }
 
+        /*
+         * THE CALENDAR HOME URL.
+         *
+         * The page on the main site that carries the calendar. It exists because
+         * event pages are served from this site and the calendar is not on it:
+         * without this, "All Events" and every category chip on an event page
+         * had nowhere honest to point and fell back to this site's own archive,
+         * which is not a public surface. See sfaf_calendar_return_url().
+         *
+         * Stored as a URL, not a page ID, precisely because it is normally on
+         * ANOTHER site. Only http and https are kept, so nothing else can be
+         * stored and later rendered into an href.
+         */
+        $home_url = isset( $input['calendar_home_url'] ) ? esc_url_raw( trim( (string) $input['calendar_home_url'] ), array( 'http', 'https' ) ) : '';
+        $out['calendar_home_url'] = $home_url;
+
         // Colors.
         foreach ( array( 'brand_primary_color', 'brand_accent_color' ) as $field ) {
             $color = isset( $input[ $field ] ) ? sanitize_hex_color( $input[ $field ] ) : '';
@@ -1529,6 +1545,22 @@ class SFAF_Admin {
                             <input type="number" name="uc_settings[display_per_page]" value="<?php echo esc_attr( $s( 'display_per_page', '12' ) ); ?>" class="uc-input" min="-1" step="1" style="max-width:120px;" />
                         </div>
                         <p class="description">Default 12. Use 0 or -1 to show all events with no pagination. Override per shortcode with <code>per_page="20"</code>.</p>
+                        <div class="uc-field-row">
+                            <label>Calendar home URL</label>
+                            <input type="url" name="uc_settings[calendar_home_url]" value="<?php echo esc_attr( $s( 'calendar_home_url' ) ); ?>" class="uc-input" placeholder="https://www.sfaf.org/events/" />
+                        </div>
+                        <p class="description">
+                            The page that carries the calendar. Event pages are served from this site and the calendar
+                            usually is not, so this is where <strong>All Events</strong> and the category chips on an
+                            event page send somebody who arrived without a referrer: a shared link, a search result, a
+                            bookmark. When they did click through from a calendar, they go back to that exact page
+                            instead, whichever one it was.
+                            <br />
+                            If there are several calendar pages, this one is the fallback for all of them. The plugin
+                            cannot tell which page holds a shortcode and does not try to guess. Leaving this empty falls
+                            back to this site's own event archive, which is almost certainly not what a visitor should
+                            be shown.
+                        </p>
                         <div class="uc-field-row uc-field-row-top">
                             <label>Pagination style</label>
                             <div class="uc-radio-stack">

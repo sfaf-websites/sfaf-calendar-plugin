@@ -183,6 +183,26 @@ body.uc-portal {
 .uc-user-controls { display: flex; gap: 12px; flex-wrap: wrap; }
 .uc-user-controls label { font-size: 12px; color: var(--p-muted); display: flex; flex-direction: column; gap: 4px; }
 .uc-user-controls select { padding: 7px 10px; border: 1px solid var(--p-border); border-radius: 7px; }
+/* ---------- The schedule (series screen) ---------- */
+.uc-schedule-sentence { margin: 0 0 14px; font-family: var(--uc-font-heading, inherit); font-size: 17px; font-weight: 700; }
+.uc-schedule-head { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--p-muted); }
+.uc-schedule-edit > summary, .uc-schedule-add > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; margin-bottom: 8px; }
+.uc-schedule-list { list-style: none; margin: 0; padding: 0; }
+.uc-schedule-row { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
+                   gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--p-border); font-size: 14px; }
+.uc-schedule-row:last-child { border-bottom: none; }
+.uc-schedule-date { font-weight: 600; }
+.uc-schedule-time, .uc-schedule-meta { font-size: 13px; color: var(--p-muted); }
+.uc-schedule-actions { display: flex; align-items: center; gap: 8px; justify-self: end; }
+.uc-schedule-actions form { margin: 0; }
+/* The past is legible and plainly finished, not disabled-looking: nothing there
+   offers an action, so nothing has to look switched off. */
+.uc-schedule-past .uc-schedule-row { opacity: 0.72; }
+@media (max-width: 720px) {
+    .uc-schedule-row { grid-template-columns: 1fr auto; }
+    .uc-schedule-time, .uc-schedule-meta { grid-column: 1 / 2; }
+}
+
 .uc-user-fixed { display: flex; flex-direction: column; gap: 4px; font-size: 12px; max-width: 260px; }
 .uc-user-fixed .uc-field-label { color: var(--p-muted); }
 .uc-user-cats { grid-column: 1 / -1; font-size: 13px; }

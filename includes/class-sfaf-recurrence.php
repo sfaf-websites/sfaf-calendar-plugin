@@ -504,6 +504,353 @@ class SFAF_Recurrence {
     }
 
     /**
+     * Every event in a group, past included, earliest first.
+     *
+     * The schedule screen shows the past as well: a manager needs to see that
+     * the group has been running since March, and needs it visibly separated
+     * from what is still to come so that nothing offers to edit it.
+     *
+     * @param string $group
+     * @return int[]
+     */
+    public static function all_in_group( $group ) {
+        $group = (string) $group;
+        if ( '' === $group ) {
+            return array();
+        }
+
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => SFAF_Series::editable_statuses(),
+            'posts_per_page'         => -1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+            'orderby'                => array( 'event_date' => 'ASC', 'ID' => 'ASC' ),
+            'meta_query'             => array(
+                'group'      => array( 'key' => self::GROUP_META, 'value' => $group ),
+                'event_date' => array( 'key' => '_uc_event_date', 'compare' => 'EXISTS' ),
+            ),
+        ) );
+
+        return array_map( 'intval', $q->posts );
+    }
+
+    /* =====================================================================
+     * The schedule, in words and as an editable thing
+     *
+     * WHAT THIS ADDS, AND WHAT IT DELIBERATELY DOES NOT.
+     *
+     * The pattern has been stored since 3.0.0 and never shown anywhere after
+     * the event was created, so a manager looking at a group could not see what
+     * cadence it was on and had no way to add a date to it. Both are fixed here.
+     *
+     * NOTHING BELOW REGENERATES ANYTHING. These are bulk writes over a list of
+     * existing posts, decided once, when somebody presses a button. The pattern
+     * is still a record of where the events came from, not a rule anything
+     * follows: adding a date does not consult it, and removing one does not make
+     * anything notice a gap. That is what makes a removed holiday stay removed.
+     *
+     * EVERY WRITE HERE IS BOUNDED BY upcoming_in_group(), WHICH IS ALREADY
+     * "TODAY OR LATER". Past occurrences are the historical record of something
+     * that happened in front of people who attended it, and there is no code
+     * path from this screen that can reach one.
+     * ================================================================== */
+
+    /**
+     * The schedule as a sentence: "Every other Wednesday, 6:00 PM to 7:30 PM".
+     *
+     * pattern_label() answers "what cadence" in the abstract, which is what the
+     * event editor needs. This answers "when does this actually happen", which
+     * is what somebody looking at a schedule needs, and it needs the weekday and
+     * the clock to do it.
+     *
+     * @param string $pattern
+     * @param string $date  Y-m-d of any occurrence, for the weekday and the day number.
+     * @param string $start H:i
+     * @param string $end   H:i
+     * @return string
+     */
+    public static function schedule_sentence( $pattern, $date, $start = '', $end = '' ) {
+        $pattern = self::clean_pattern( $pattern );
+        $when    = '';
+
+        $ts = $date ? strtotime( (string) $date ) : false;
+
+        if ( '' === $pattern ) {
+            $when = $ts ? date_i18n( 'l, F j, Y', $ts ) : 'No repeating pattern';
+        } elseif ( 'daily' === $pattern ) {
+            $when = 'Every day';
+        } elseif ( 'weekly' === $pattern ) {
+            $when = $ts ? 'Every ' . date_i18n( 'l', $ts ) : 'Every week';
+        } elseif ( 'biweekly' === $pattern ) {
+            // "Every other Wednesday" rather than "every 2 weeks on Wednesday":
+            // it is what people say, and it is unambiguous.
+            $when = $ts ? 'Every other ' . date_i18n( 'l', $ts ) : 'Every 2 weeks';
+        } elseif ( 'monthly' === $pattern ) {
+            $when = $ts ? 'Every month on the ' . date_i18n( 'jS', $ts ) : 'Every month';
+        } elseif ( 'monthly_nth' === $pattern ) {
+            $when = self::pattern_label( 'monthly_nth', $date );
+            if ( '' === $when ) {
+                $when = 'Every month';
+            }
+        }
+
+        $clock = self::time_phrase( $start, $end );
+        return ( '' !== $clock ) ? $when . ', ' . $clock : $when;
+    }
+
+    /**
+     * "6:00 PM to 7:30 PM", "from 6:00 PM", or ''.
+     *
+     * @param string $start
+     * @param string $end
+     * @return string
+     */
+    public static function time_phrase( $start, $end = '' ) {
+        $start = trim( (string) $start );
+        $end   = trim( (string) $end );
+        if ( '' === $start ) {
+            return '';
+        }
+        $from = date_i18n( 'g:i A', strtotime( $start ) );
+        if ( '' === $end ) {
+            return 'from ' . $from;
+        }
+        return $from . ' to ' . date_i18n( 'g:i A', strtotime( $end ) );
+    }
+
+    /**
+     * Whether the weekday of a whole group can be moved sensibly.
+     *
+     * WEEKLY AND BIWEEKLY, YES: every occurrence moves by the same few days and
+     * the interval between them is untouched, so "Wednesdays" becomes
+     * "Tuesdays" and nothing else about the group changes.
+     *
+     * MONTHLY-ON-THE-SAME-WEEKDAY, YES, but by a different calculation: each
+     * date is recomputed as the same ordinal weekday of its own month, so "the
+     * second Friday" becomes "the second Tuesday".
+     *
+     * DAILY AND MONTHLY-ON-THE-DATE, NO, and not because it is hard. Daily
+     * happens on every weekday already, so there is no weekday to change.
+     * Monthly-on-the-date is anchored to a day number, and shifting it to a
+     * weekday would silently convert it into a different pattern from the one
+     * the manager chose. Both take a time change like anything else, and a
+     * single date can always be moved from its own event.
+     *
+     * @param string $pattern
+     * @return bool
+     */
+    public static function weekday_is_movable( $pattern ) {
+        return in_array( self::clean_pattern( $pattern ), array( 'weekly', 'biweekly', 'monthly_nth' ), true );
+    }
+
+    /**
+     * Write a start and end time across the upcoming occurrences of a group.
+     *
+     * @param string $group
+     * @param string $start H:i, required.
+     * @param string $end   H:i, '' clears.
+     * @return int How many events were written.
+     */
+    public static function retime_group( $group, $start, $end ) {
+        $ids = self::upcoming_in_group( $group );
+        if ( empty( $ids ) || '' === trim( (string) $start ) ) {
+            return 0;
+        }
+
+        foreach ( $ids as $id ) {
+            update_post_meta( $id, '_uc_start_time', sanitize_text_field( $start ) );
+            if ( '' === trim( (string) $end ) ) {
+                delete_post_meta( $id, '_uc_end_time' );
+            } else {
+                update_post_meta( $id, '_uc_end_time', sanitize_text_field( $end ) );
+            }
+        }
+        return count( $ids );
+    }
+
+    /**
+     * Move the upcoming occurrences of a group onto a different weekday.
+     *
+     * WEEKLY AND BIWEEKLY MOVE BY A SINGLE UNIFORM OFFSET. Every upcoming date
+     * shifts by the same number of days, so the gap between occurrences is
+     * exactly what it was, the order is what it was, and two of them cannot land
+     * on the same day. The offset takes the SHORT way round: Wednesday to
+     * Tuesday is one day back, not six forward, unless going back would push
+     * the first upcoming occurrence into the past, in which case the whole group
+     * goes forward instead. Nothing here may produce a date earlier than today.
+     *
+     * MONTHLY-ON-THE-SAME-WEEKDAY IS RECOMPUTED PER MONTH, because a uniform
+     * offset would not preserve "the second one". Each date becomes the same
+     * ordinal weekday of its own month. A month with no fifth Tuesday is left
+     * alone rather than quietly moved a week early, which is the same rule the
+     * generator follows.
+     *
+     * THE SLUG DOES NOT MOVE WITH THE DATE. Occurrence permalinks contain the
+     * date they were generated for and they are live URLs; renaming them would
+     * break every link anybody has to a session that is still happening, just on
+     * a different day. Same reasoning as apply_to_group().
+     *
+     * @param string $group
+     * @param int    $target_dow 0 (Sunday) to 6 (Saturday).
+     * @return array{moved:int,skipped:int}
+     */
+    public static function reday_group( $group, $target_dow ) {
+        $out        = array( 'moved' => 0, 'skipped' => 0 );
+        $target_dow = (int) $target_dow;
+        if ( $target_dow < 0 || $target_dow > 6 ) {
+            return $out;
+        }
+
+        $ids = self::upcoming_in_group( $group );
+        if ( empty( $ids ) ) {
+            return $out;
+        }
+
+        $pattern = self::pattern_of( $ids[0] );
+        if ( ! self::weekday_is_movable( $pattern ) ) {
+            return $out;
+        }
+
+        $tz    = wp_timezone();
+        $today = current_time( 'Y-m-d' );
+
+        $dates = array();
+        foreach ( $ids as $id ) {
+            $dates[ $id ] = (string) get_post_meta( $id, '_uc_event_date', true );
+        }
+
+        if ( 'monthly_nth' === $pattern ) {
+            $names = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
+            foreach ( $dates as $id => $date ) {
+                $nth = self::nth_weekday_of_month( $date );
+                if ( ! $nth ) {
+                    $out['skipped']++;
+                    continue;
+                }
+                try {
+                    $month = new DateTimeImmutable( substr( $date, 0, 7 ) . '-01', $tz );
+                } catch ( Exception $e ) {
+                    $out['skipped']++;
+                    continue;
+                }
+                $hit = $month->modify( sprintf( '%s %s of this month', self::ordinal( $nth['nth'] ), $names[ $target_dow ] ) );
+                if ( ! $hit || $hit->format( 'Y-m' ) !== $month->format( 'Y-m' ) || $hit->format( 'Y-m-d' ) < $today ) {
+                    $out['skipped']++;
+                    continue;
+                }
+                update_post_meta( $id, '_uc_event_date', $hit->format( 'Y-m-d' ) );
+                $out['moved']++;
+            }
+            return $out;
+        }
+
+        /*
+         * Weekly and biweekly: one offset for the whole group.
+         *
+         * ANCHORED AT MIDDAY. _uc_event_date is a plain calendar day held as
+         * text, not an instant, and adding days to a midnight timestamp is the
+         * one arithmetic here that a daylight-saving boundary could move by an
+         * hour and therefore by a day. Midday has an hour of slack either side.
+         */
+        $first    = reset( $dates );
+        $first_ts = $first ? strtotime( $first . ' 12:00:00' ) : false;
+        if ( ! $first_ts ) {
+            return $out;
+        }
+
+        $offset = ( $target_dow - (int) date( 'w', $first_ts ) + 7 ) % 7;
+        if ( $offset > 3 ) {
+            $offset -= 7; // the short way round
+        }
+        if ( 0 === $offset ) {
+            return $out; // already on that day
+        }
+        if ( $offset < 0 && date( 'Y-m-d', strtotime( $first . ' 12:00:00 ' . $offset . ' days' ) ) < $today ) {
+            $offset += 7; // backwards would land the next session in the past
+        }
+
+        foreach ( $dates as $id => $date ) {
+            $ts = $date ? strtotime( $date . ' 12:00:00 ' . sprintf( '%+d', $offset ) . ' days' ) : false;
+            if ( ! $ts ) {
+                $out['skipped']++;
+                continue;
+            }
+            $moved = date( 'Y-m-d', $ts );
+            if ( $moved < $today ) {
+                $out['skipped']++;
+                continue;
+            }
+            update_post_meta( $id, '_uc_event_date', $moved );
+            $out['moved']++;
+        }
+        return $out;
+    }
+
+    /**
+     * Add one more date to a group, copied from an existing occurrence.
+     *
+     * IDENTICAL TO THE OTHERS BY CONSTRUCTION, because it goes through the same
+     * create_occurrence() the generator uses: the same meta list, the same
+     * taxonomies, the same image, the same slug scheme. There is no second idea
+     * here of what an occurrence is.
+     *
+     * CAPACITY COMES ACROSS AND REGISTRATIONS DO NOT. Capacity is a property of
+     * the event and is in the copied list; RSVPs are rows in another table keyed
+     * by event id, and nothing here writes to it. A date added today therefore
+     * starts with the group's capacity and nobody registered, which is what a
+     * new date is.
+     *
+     * @param int    $seed_id     The occurrence to copy.
+     * @param string $date        Y-m-d.
+     * @param string $start       H:i, '' to keep the seed's.
+     * @param string $end         H:i, '' to keep the seed's.
+     * @param bool   $join_group  Whether it joins the seed's recurrence group.
+     * @return int|WP_Error New post ID.
+     */
+    public static function add_occurrence( $seed_id, $date, $start = '', $end = '', $join_group = true ) {
+        $seed = get_post( (int) $seed_id );
+        if ( ! $seed || 'uc_event' !== $seed->post_type ) {
+            return new WP_Error( 'sfaf_add_date_no_seed', 'There is no event to copy this date from.' );
+        }
+
+        $date = trim( (string) $date );
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+            return new WP_Error( 'sfaf_add_date_bad_date', 'Give the new date as a real date.' );
+        }
+
+        $group   = $join_group ? self::group_of( $seed->ID ) : '';
+        $pattern = $join_group ? self::pattern_of( $seed->ID ) : '';
+
+        $id = self::create_occurrence( $seed, $date, $group, $pattern );
+        if ( ! $id ) {
+            return new WP_Error( 'sfaf_add_date_failed', 'The date could not be added.' );
+        }
+
+        /*
+         * A DATE THAT IS DELIBERATELY NOT IN THE GROUP CARRIES NEITHER MARKER.
+         * create_occurrence() writes whatever it is given, so an empty group
+         * would leave an empty meta row behind and upcoming_in_group() matches
+         * on value, not existence. Removing them outright is what makes this a
+         * genuine one-off that no bulk edit can reach.
+         */
+        if ( ! $join_group ) {
+            delete_post_meta( $id, self::GROUP_META );
+            delete_post_meta( $id, self::PATTERN_META );
+        }
+
+        if ( '' !== trim( (string) $start ) ) {
+            update_post_meta( $id, '_uc_start_time', sanitize_text_field( $start ) );
+        }
+        if ( '' !== trim( (string) $end ) ) {
+            update_post_meta( $id, '_uc_end_time', sanitize_text_field( $end ) );
+        }
+
+        return $id;
+    }
+
+    /**
      * Fields that carry no pencil in "all upcoming" mode, and why.
      *
      * DATE, ALWAYS. The dates are the only thing that makes the occurrences

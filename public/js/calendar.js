@@ -134,7 +134,7 @@
     /** Storage key scoped to this block's filters, so blocks stay independent. */
     function viewKey($block) {
         return 'sfafView:' + [
-            $block.attr('data-filter-category') || '',
+            $block.attr('data-scope-category') || $block.attr('data-filter-category') || '',
             $block.attr('data-filter-organizer') || '',
             $block.attr('data-filter-series') || '',
             $block.attr('data-filter-venue') || '',
@@ -183,7 +183,8 @@
             action: 'uc_load_month',
             nonce: ucData.nonce,
             month: month,
-            category: $block.attr('data-filter-category') || '',
+            category: activeCategory($block),
+            scope_category: $block.attr('data-scope-category') || '',
             organizer: $block.attr('data-filter-organizer') || '',
             series: $block.attr('data-filter-series') || '',
             venue: $block.attr('data-filter-venue') || ''
@@ -192,12 +193,23 @@
 
     var monthCache = {};
 
+    /**
+     * Cache key for one month of one block.
+     *
+     * The chosen category is part of it. Without that, filtering to a category
+     * and then flipping back would serve the other category's grid out of cache,
+     * which is the same class of fault the filter bar itself had.
+     */
+    function monthKey($block, month) {
+        return viewKey($block) + '#' + activeCategory($block) + '#' + month;
+    }
+
     function loadMonth($block, month) {
         var $panel = $block.find('.uc-panel-calendar');
         if (!$panel.length || !month) {
             return;
         }
-        var key = viewKey($block) + '#' + month;
+        var key = monthKey($block, month);
         if (monthCache[key]) {
             $panel.html(monthCache[key]);
             bindMonthGrid($block);
@@ -246,7 +258,7 @@
             return;
         }
         $.each([$grid.attr('data-prev'), $grid.attr('data-next')], function (_, month) {
-            var key = viewKey($block) + '#' + month;
+            var key = monthKey($block, month);
             if (!month || monthCache[key]) {
                 return;
             }
@@ -332,21 +344,36 @@
             loadMoreEvents($container, $(this));
         });
 
-        // Infinite scroll
-        if ('IntersectionObserver' in window) {
-            document.querySelectorAll('.uc-infinite-sentinel').forEach(function(sentinel) {
-                var observer = new IntersectionObserver(function(entries) {
-                    entries.forEach(function(entry) {
-                        if (entry.isIntersecting) {
-                            var $container = $(sentinel).closest('[data-render]');
-                            loadMoreEvents($container, $(sentinel));
-                        }
-                    });
-                }, { rootMargin: '300px' });
-                observer.observe(sentinel);
-                sentinel._ucObserver = observer;
-            });
+        observeSentinels(document);
+    }
+
+    /**
+     * Watch every infinite-scroll sentinel that is not already watched.
+     *
+     * Called on load AND after a filter or search rebuilds the control. A
+     * sentinel put back into the page by syncPagination() is a new element, and
+     * one that nothing observes is an infinite scroll that silently stops at
+     * page one.
+     */
+    function observeSentinels(root) {
+        if (!('IntersectionObserver' in window)) {
+            return;
         }
+        var sentinels = (root || document).querySelectorAll('.uc-infinite-sentinel');
+        Array.prototype.forEach.call(sentinels, function (sentinel) {
+            if (sentinel._ucObserver) {
+                return;
+            }
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        loadMoreEvents($(sentinel).closest('[data-render]'), $(sentinel));
+                    }
+                });
+            }, { rootMargin: '300px' });
+            observer.observe(sentinel);
+            sentinel._ucObserver = observer;
+        });
     }
 
     function loadMoreEvents($container, $trigger) {
@@ -373,17 +400,9 @@
         $.ajax({
             url: ucData.ajaxUrl,
             method: 'POST',
-            data: {
-                action:    'uc_load_events',
-                nonce:     ucData.nonce,
-                page:      next,
-                per_page:  $container.attr('data-per-page'),
-                category:  $container.attr('data-filter-category') || '',
-                organizer: $container.attr('data-filter-organizer') || '',
-                series:    $container.attr('data-filter-series') || '',
-                venue:     $container.attr('data-filter-venue') || '',
-                render:    $container.attr('data-render') || 'card'
-            },
+            // Carries the chosen category and the search term, so the next page
+            // is the next page of what is on screen rather than of everything.
+            data: listParams($container, next),
             success: function(resp) {
                 if (resp && resp.html) {
                     $container.find('.uc-event-list, .uc-upcoming-list').first().append(resp.html);
@@ -435,32 +454,161 @@
     }
 
     /**
-     * Category filter buttons
+     * The category this block is currently showing.
+     *
+     * TWO ATTRIBUTES, NOT ONE. data-scope-category is what the shortcode was
+     * written to show and never changes; data-active-category is what the
+     * visitor picked. The server clamps the second to the first, so a block
+     * scoped to one programme cannot be widened from here.
+     */
+    function activeCategory($block) {
+        var active = $block.attr('data-active-category') || '';
+        return active !== '' ? active : ($block.attr('data-scope-category') || $block.attr('data-filter-category') || '');
+    }
+
+    /** Everything a list request needs, in one place, so no caller can differ. */
+    function listParams($block, page) {
+        return {
+            action:         'uc_load_events',
+            nonce:          ucData.nonce,
+            page:           page,
+            per_page:       $block.attr('data-per-page'),
+            category:       activeCategory($block),
+            scope_category: $block.attr('data-scope-category') || '',
+            organizer:      $block.attr('data-filter-organizer') || '',
+            series:         $block.attr('data-filter-series') || '',
+            venue:          $block.attr('data-filter-venue') || '',
+            s:              $block.attr('data-filter-s') || '',
+            render:         $block.attr('data-render') || 'card'
+        };
+    }
+
+    /**
+     * Category filter buttons.
+     *
+     * THIS ASKS THE SERVER. It used to hide cards that were already in the page,
+     * which meant three separate wrong answers: it only ever looked at the
+     * events on the current page, so a category with events on page two showed
+     * fewer than it had; it compared one slug against one slug, so an event in
+     * two categories was findable under only one of them; and the count it wrote
+     * was how many cards were left visible rather than how many events matched.
+     *
+     * The query is the same one the first page load and the search box run, so
+     * a category chosen here returns exactly the events that category holds.
+     * The count changing is the point.
      */
     function initFilters() {
-        $('.uc-filter-btn').on('click', function() {
-            var cat = $(this).data('category');
-            
-            $('.uc-filter-btn').removeClass('active');
-            $(this).addClass('active');
+        $(document).on('click', '.uc-filter-btn', function () {
+            var $btn   = $(this);
+            var $block = $btn.closest('.uc-calendar, .uc-upcoming-widget');
+            var cat    = String($btn.attr('data-category') || 'all');
 
-            if (cat === 'all') {
-                $('.uc-event-card').show();
-            } else {
-                $('.uc-event-card').each(function() {
-                    var cardCat = $(this).data('category');
-                    $(this).toggle(cardCat === cat);
-                });
+            if (!$block.length) {
+                return;
             }
 
-            updateCount();
+            $block.find('.uc-filter-btn').removeClass('active').attr('aria-pressed', 'false');
+            $btn.addClass('active').attr('aria-pressed', 'true');
+
+            $block.attr('data-active-category', cat === 'all' ? '' : cat);
+            reloadList($block);
+            reloadMonth($block);
         });
 
-        $('.uc-organizer-select').on('change', function() {
-            var org = $(this).val();
-            // For now, this is a client-side hint. 
-            // Full AJAX filtering can be added in Phase 2.
+        /*
+         * A chip on a card filters IN PLACE rather than navigating. The href is
+         * a real calendar URL carrying ?uc_cat=, because that is what has to
+         * happen without JavaScript, in a new tab, or in an embed whose script
+         * did not run. When the script IS running and the chip is inside a
+         * calendar block, there is nowhere to go: the calendar is already here.
+         */
+        $(document).on('click', '.uc-lc-chip-link', function (e) {
+            var $block = $(this).closest('.uc-calendar, .uc-upcoming-widget');
+            if (!$block.length || e.which > 1 || e.metaKey || e.ctrlKey || e.shiftKey) {
+                return;
+            }
+            var slug = String($(this).attr('data-uc-cat') || '');
+            if (!slug) {
+                return;
+            }
+            e.preventDefault();
+
+            var $btn = $block.find('.uc-filter-btn[data-category="' + slug + '"]');
+            if ($btn.length) {
+                $btn.trigger('click');
+                return;
+            }
+            // No button for it: the bar is switched off, or the block is scoped
+            // elsewhere. Run the same query anyway; the server decides.
+            $block.attr('data-active-category', slug);
+            reloadList($block);
+            reloadMonth($block);
         });
+    }
+
+    /** Re-fetch page one of the list for whatever filters the block now holds. */
+    function reloadList($block) {
+        var $list = $block.find('.uc-event-list, .uc-upcoming-list').first();
+        if (!$list.length) {
+            return;
+        }
+
+        $block.addClass('uc-searching');
+        $.ajax({
+            url: ucData.ajaxUrl,
+            method: 'POST',
+            data: listParams($block, 1),
+            success: function (resp) {
+                $list.html((resp && resp.html) ? resp.html : '<p class="uc-empty">No events in that category just now.</p>');
+                $block.attr('data-page', '1');
+                if (resp && typeof resp.max_pages !== 'undefined') {
+                    $block.attr('data-max-pages', String(resp.max_pages));
+                }
+                setCount($block, (resp && typeof resp.total !== 'undefined') ? resp.total : null);
+                syncPagination($block, resp);
+            },
+            complete: function () {
+                $block.removeClass('uc-searching');
+            }
+        });
+    }
+
+    /** The month grid follows the same filter; a stale one would contradict the list. */
+    function reloadMonth($block) {
+        if (!$block.find('.uc-panel-calendar').length) {
+            return;
+        }
+        var month = $block.find('.uc-month').attr('data-month') || $block.attr('data-month') || '';
+        loadMonth($block, month);
+    }
+
+    /**
+     * Put the pagination control back, or take it away, to match the answer.
+     *
+     * A category with three events must not keep a Load More button from the
+     * unfiltered list, and going back to All Events must bring it back.
+     */
+    function syncPagination($block, resp) {
+        var hasMore = !!(resp && resp.has_more);
+        var $pag    = $block.find('.uc-pagination');
+        var style   = $block.attr('data-pagination') || 'load_more';
+
+        if (!hasMore) {
+            $pag.remove();
+            return;
+        }
+        // Numbered page links are server-rendered against a page count this
+        // request has changed, so they are not rebuilt here: they would be
+        // links to pages of the previous result set. Load More and the infinite
+        // sentinel carry no page numbers and can be put back safely.
+        if (!$pag.length && style !== 'pages') {
+            var html = (style === 'infinite')
+                ? '<div class="uc-pagination uc-pagination-infinite"><div class="uc-infinite-sentinel" aria-hidden="true"></div><div class="uc-loading-indicator">Loading…</div></div>'
+                : '<div class="uc-pagination uc-pagination-loadmore"><button type="button" class="uc-load-more">Load More</button></div>';
+            // Immediately after the cards, which is where the server puts it.
+            $block.find('.uc-event-list, .uc-upcoming-list').first().after(html);
+            observeSentinels($block[0]);
+        }
     }
 
     /**
@@ -516,18 +664,10 @@
                 $.ajax({
                     url: ucData.ajaxUrl,
                     method: 'POST',
-                    data: {
-                        action:    'uc_load_events',
-                        nonce:     ucData.nonce,
-                        page:      1,
-                        per_page:  $block.attr('data-per-page'),
-                        category:  $block.attr('data-filter-category') || '',
-                        organizer: $block.attr('data-filter-organizer') || '',
-                        series:    $block.attr('data-filter-series') || '',
-                        venue:     $block.attr('data-filter-venue') || '',
-                        s:         term,
-                        render:    $block.attr('data-render') || 'card'
-                    },
+                    // The same parameter builder the filter chips and Load More
+                    // use, so a search inside a chosen category keeps that
+                    // category instead of quietly widening back to everything.
+                    data: listParams($block, 1),
                     success: function (resp) {
                         if (mine !== seq) {
                             return; // a newer search has already answered
@@ -541,7 +681,11 @@
                         if (!resp || !resp.html) {
                             $list.html('<p class="uc-empty">No events match that search.</p>');
                         }
-                        updateCount($block);
+                        if (resp && typeof resp.max_pages !== 'undefined') {
+                            $block.attr('data-max-pages', String(resp.max_pages));
+                        }
+                        setCount($block, (resp && typeof resp.total !== 'undefined') ? resp.total : null);
+                        syncPagination($block, resp);
                     },
                     complete: function () {
                         if (mine === seq) {
@@ -568,14 +712,19 @@
     }
 
     /**
-     * Update visible event count
+     * The number above the list.
+     *
+     * PREFER THE SERVER'S TOTAL. Counting the cards on screen was only ever
+     * right when there was one page, and it is what made a filtered calendar
+     * report "12 events coming up" because twelve was the page size. The card
+     * count remains as a fallback for a response that did not carry a total.
      */
-    function updateCount($block) {
-        // Scoped to one block when given one, so two calendars on a page do
-        // not write each other's counts.
+    function setCount($block, total) {
         var $scope = ($block && $block.length) ? $block : $(document);
-        var visible = $scope.find('.uc-event-card:visible, .uc-compact-card:visible').length;
-        $scope.find('.uc-count-number').text(visible);
+        var value  = (total === null || typeof total === 'undefined')
+            ? $scope.find('.uc-event-card:visible, .uc-compact-card:visible').length
+            : total;
+        $scope.find('.uc-count-number').text(value);
     }
 
     /**

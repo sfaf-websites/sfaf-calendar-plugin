@@ -219,14 +219,26 @@
 
 /* --- Header row: who and when ------------------------------------------- */
 .uc-calendar .uc-lc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.uc-calendar .uc-lc-ident { min-width: 0; }
+/* An event can be in several categories, so this holds several chips and has to
+   wrap them rather than push the date block off the row. */
+.uc-calendar .uc-lc-ident { min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
 
 /* The chip is a coloured pill with words in it, so it has to be readable as
    text: category tint behind, the darkest stop of that same colour family in
    front. Never black, never grey: the colour IS the information. Measured
    pairs and their ratios are in sfaf_category_shades(). */
 .uc-calendar .uc-lc-chip { display: inline-block; max-width: 100%; padding: 3px 10px; border-radius: 99px; background: var(--uc-cat-tint, #E3F7F9); color: var(--uc-cat-ink, #0C666F); font-family: var(--uc-font-heading); font-size: 12px; font-weight: 600; line-height: 1.5; letter-spacing: 0.01em; }
-.uc-calendar .uc-lc-byline { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
+/* Chips are links now: one per category, each filtering the calendar to it.
+   They keep the chip's own colours rather than taking the theme's link colour,
+   because the colour is the category and an underline on a pill reads as a
+   defect. The affordance is the hover state and the pointer. */
+.uc-calendar .uc-lc-chip-link { text-decoration: none; cursor: pointer; transition: filter 0.12s ease; }
+.uc-calendar .uc-lc-chip-link:hover,
+.uc-calendar .uc-lc-chip-link:focus-visible { filter: brightness(0.94); text-decoration: none; }
+.uc-calendar .uc-lc-chip-link:focus-visible { outline: 2px solid var(--uc-cat-ink, #0C666F); outline-offset: 2px; }
+/* flex-basis 100%: the chips wrap among themselves, and who is running it always
+   starts a line of its own underneath them however many chips there are. */
+.uc-calendar .uc-lc-byline { display: block; flex-basis: 100%; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
 
 /* --uc-secondary, not --uc-muted: muted is #9CA3AF, which is 2.54:1 on white
    and fails as text at any size. Secondary is 4.83:1. */
@@ -415,6 +427,10 @@
 /* Badges survive for the single event template, which still uses them. */
 .uc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--badge-color, var(--uc-teal)) 12%, transparent); color: var(--badge-color, var(--uc-teal)); }
 .uc-badge-recurrence { background: #f3f4f6; color: var(--uc-secondary); font-size: 11px; --badge-color: var(--uc-secondary); }
+/* A category badge on an event page goes back to the calendar, filtered. */
+.uc-badge-link { text-decoration: none; cursor: pointer; transition: filter 0.12s ease; }
+.uc-badge-link:hover, .uc-badge-link:focus-visible { filter: brightness(0.94); text-decoration: none; }
+.uc-badge-link:focus-visible { outline: 2px solid var(--badge-color, var(--uc-teal)); outline-offset: 2px; }
 
 .uc-card-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 6px; line-height: 1.3; }
 .uc-card-title a { color: inherit; text-decoration: none; }

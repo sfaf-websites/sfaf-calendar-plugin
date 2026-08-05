@@ -521,6 +521,89 @@ class SFAF_Series {
     }
 
     /**
+     * Give an event a series named after itself, and return the term.
+     *
+     * ONE EVENT, ONE SERIES, AND THE MANAGER NAMES IT ONCE.
+     *
+     * In SFAF's actual programming a repeating event has exactly one series and
+     * it is called the same thing as the event. Asking for the event's title and
+     * then asking again for a series name was asking the same question twice and
+     * inviting the two answers to differ, which is how you end up with the
+     * "Wednesday Support Group" series holding the "Support Group (Weds)" event.
+     * So a repeat creates its series implicitly, from the title already typed.
+     *
+     * THE GENERAL CASE IS UNTOUCHED. A series can still hold different kinds of
+     * event and can still be made by hand before any date exists; a programme
+     * often is described before it is scheduled. That path is still there, it is
+     * simply no longer the one a manager is pushed down to schedule a repeat.
+     *
+     * AN EXISTING SERIES OF THE SAME NAME IS REUSED rather than a second one
+     * created beside it. Scheduling the autumn dates of a group that already ran
+     * in the spring should land in the series that already exists.
+     *
+     * @param int    $post_id
+     * @param string $name Defaults to the event's title.
+     * @return int Term ID, or 0 when nothing could be made.
+     */
+    public static function create_for_event( $post_id, $name = '' ) {
+        $post_id = (int) $post_id;
+        if ( ! $post_id ) {
+            return 0;
+        }
+
+        $name = trim( sanitize_text_field( '' !== $name ? $name : (string) get_the_title( $post_id ) ) );
+        if ( '' === $name ) {
+            return 0;
+        }
+
+        $existing = get_term_by( 'name', $name, self::TAXONOMY );
+        if ( $existing && ! is_wp_error( $existing ) ) {
+            $term_id = (int) $existing->term_id;
+        } else {
+            $created = self::create( $name );
+            if ( is_wp_error( $created ) ) {
+                return 0;
+            }
+            $term_id = (int) $created;
+        }
+
+        self::set_for_event( $post_id, $term_id );
+        return $term_id;
+    }
+
+    /**
+     * The recurrence group this series' events belong to, or ''.
+     *
+     * A SERIES IS THE EVENT'S SCHEDULE, so in practice every event in it shares
+     * one group. This asks the events rather than storing a second copy of the
+     * answer on the term: a group is a marker on the posts and nothing else, and
+     * a stored copy could disagree with them.
+     *
+     * Upcoming events are asked first, because the schedule screen is about what
+     * is still to come; a series whose only group is in the past falls back to
+     * the whole set so the pattern can still be read.
+     *
+     * @param int $term_id
+     * @return string
+     */
+    public static function recurrence_group( $term_id ) {
+        foreach ( array( true, false ) as $upcoming_only ) {
+            $ids = self::events( $term_id, array(
+                'upcoming' => $upcoming_only,
+                'status'   => self::editable_statuses(),
+                'limit'    => -1,
+            ) );
+            foreach ( $ids as $id ) {
+                $group = SFAF_Recurrence::group_of( $id );
+                if ( '' !== $group ) {
+                    return $group;
+                }
+            }
+        }
+        return '';
+    }
+
+    /**
      * Delete a series.
      *
      * THE EVENTS SURVIVE. Removing a series removes the grouping and nothing

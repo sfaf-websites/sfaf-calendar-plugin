@@ -118,7 +118,13 @@
      */
     function paramsFor(container, page, mode, extra) {
         var params = {
+            // data-category is the SNIPPET's scope, written by whoever pasted
+            // the embed, and is never changed from here. data-active-category is
+            // what the visitor picked from the filter bar. The endpoint clamps
+            // the second to the first, so a chip can narrow this block and can
+            // never widen it past what its author chose.
             category: container.getAttribute('data-category') || '',
+            active_category: activeCategory(container),
             organizer: container.getAttribute('data-organizer') || '',
             series: container.getAttribute('data-series') || '',
             venue: container.getAttribute('data-venue') || '',
@@ -469,9 +475,8 @@
             }
             block.setAttribute('data-page', String(next));
 
-            // Newly appended cards must obey the filter that is already on.
-            applyFilters(container);
-
+            // Nothing to reapply: the request already carried the chosen
+            // category, so what just landed is page N of the filtered set.
             if (!data.has_more || next >= maxPages) {
                 removePagination(container);
             } else if (isButton) {
@@ -588,7 +593,9 @@
     var monthCache = {};
 
     function monthCacheKey(container, month) {
-        return viewKey(container) + '#' + month;
+        // The chosen category belongs in the key: without it, filtering and then
+        // returning would serve the other category's grid out of this cache.
+        return viewKey(container) + '#' + activeCategory(container) + '#' + month;
     }
 
     /**
@@ -924,37 +931,87 @@
     }
 
     /**
-     * Show only the cards matching the active category.
+     * The category this block is showing, as the endpoint wants it.
      *
-     * SEARCH IS NO LONGER DONE HERE. It used to read the text out of each card
-     * and hide the ones that did not contain the term, which searched the card
-     * rather than the event, and only the cards already downloaded. It now
-     * goes to the endpoint, which runs the same query the calendar site runs,
-     * so the same words return the same events on both. See bindSearch().
-     *
-     * The category buttons are still client-side, unchanged: a category is a
-     * value already printed on every card, so the answer is genuinely on the
-     * page in a way a search term never was.
+     * 'all' and '' both mean "no choice made"; the endpoint then falls back to
+     * the snippet's own scope.
      */
-    function applyFilters(container) {
-        var category = container.getAttribute('data-active-category') || 'all';
-        var cards = cardsIn(container);
-        var visible = 0;
+    function activeCategory(container) {
+        var value = container.getAttribute('data-active-category') || '';
+        return (value === 'all') ? '' : value;
+    }
 
-        for (var i = 0; i < cards.length; i++) {
-            var card = cards[i];
-            var show = (category === 'all') || (card.getAttribute('data-category') === category);
+    /**
+     * Show the events in the chosen category.
+     *
+     * THE CATEGORY BUTTONS ASK THE ENDPOINT NOW, exactly as the search box
+     * already did. Hiding cards in the page was wrong in three separate ways
+     * and only looked right on a single unpaginated block: it never saw the
+     * events on page two, it matched one slug against one slug so an event in
+     * two categories was findable under only one of them, and the number it
+     * wrote above the list was how many cards remained rather than how many
+     * events matched.
+     *
+     * REQUESTS THE LIST, NOT THE BLOCK, for the same reason bindSearch() does:
+     * re-rendering the block would replace the filter bar under the finger that
+     * just pressed it and throw away a typed search.
+     */
+    function applyCategory(container) {
+        var list = listOf(container);
+        if (!list) {
+            return;
+        }
 
-            card.style.display = show ? '' : 'none';
-            if (show) {
-                visible++;
+        catSeq++;
+        var mine = catSeq;
+
+        request(container, 1, 'items', function (data) {
+            if (mine !== catSeq) {
+                return;
             }
-        }
+            list.innerHTML = (data && data.html)
+                ? data.html
+                : '<p class="uc-empty">No events in that category just now.</p>';
 
+            var block = inner(container);
+            if (block) {
+                block.setAttribute('data-page', '1');
+                if (data && typeof data.max_pages !== 'undefined') {
+                    block.setAttribute('data-max-pages', String(data.max_pages));
+                }
+            }
+            if (!data || !data.has_more) {
+                removePagination(container);
+            }
+            setCount(container, (data && typeof data.total !== 'undefined') ? data.total : null);
+
+            // The month grid answers the same question and must not be left
+            // showing the unfiltered month beside a filtered list.
+            var grid = gridOf(container);
+            if (grid) {
+                loadMonth(container, grid.getAttribute('data-month') || '');
+            }
+        }, function () {
+            if (mine === catSeq) {
+                showError(container);
+            }
+        });
+    }
+
+    /** Only the newest category request may write. Same rule as the search box. */
+    var catSeq = 0;
+
+    /** The number above the list: the endpoint's total, never the card count. */
+    function setCount(container, total) {
         var count = container.querySelector('.uc-count-number');
-        if (count) {
-            count.textContent = String(visible);
+        if (!count) {
+            return;
         }
+        if (total === null || typeof total === 'undefined') {
+            count.textContent = String(cardsIn(container).length);
+            return;
+        }
+        count.textContent = String(total);
     }
 
     function bindFilters(container) {
@@ -964,13 +1021,52 @@
                 button.addEventListener('click', function () {
                     for (var j = 0; j < buttons.length; j++) {
                         buttons[j].classList.remove('active');
+                        buttons[j].setAttribute('aria-pressed', 'false');
                     }
                     button.classList.add('active');
+                    button.setAttribute('aria-pressed', 'true');
                     container.setAttribute('data-active-category', button.getAttribute('data-category') || 'all');
-                    applyFilters(container);
+                    applyCategory(container);
                 });
             })(buttons[i]);
         }
+    }
+
+    /**
+     * A category chip on a card filters this block instead of navigating.
+     *
+     * The chip's href is a real calendar URL carrying ?uc_cat=, and that is what
+     * has to happen when this listener is not there: no JavaScript, a
+     * middle-click, or a host page where the script failed. Somebody reading an
+     * embed on another site should not be thrown to a different domain for a
+     * filter this block can apply itself.
+     *
+     * Delegated from the container, once, in init(): cards arrive from later
+     * requests and would otherwise miss the binding.
+     */
+    function bindChips(container) {
+        container.addEventListener('click', function (e) {
+            var chip = e.target && e.target.closest ? e.target.closest('.uc-lc-chip-link') : null;
+            if (!chip || !container.contains(chip)) {
+                return;
+            }
+            if (e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey) {
+                return;
+            }
+            var slug = chip.getAttribute('data-uc-cat') || '';
+            if (!slug) {
+                return;
+            }
+            e.preventDefault();
+
+            var button = container.querySelector('.uc-filter-btn[data-category="' + slug + '"]');
+            if (button) {
+                button.click();
+                return;
+            }
+            container.setAttribute('data-active-category', slug);
+            applyCategory(container);
+        });
     }
 
     /**
@@ -1032,9 +1128,9 @@
                 if (!data || !data.has_more) {
                     removePagination(container);
                 }
-                // The category buttons are still a client-side filter, so the
-                // active one has to be reapplied to the rows that just landed.
-                applyFilters(container);
+                // The search request carried the chosen category too, so these
+                // rows are already the right ones. Only the count needs writing.
+                setCount(container, (data && typeof data.total !== 'undefined') ? data.total : null);
             }, function () {
                 if (mine === seq) {
                     showError(container);
@@ -1114,8 +1210,10 @@
         container.setAttribute('data-active-category', 'all');
         container.setAttribute('data-active-search', '');
 
-        // Bound to the container itself, once, so it survives every re-render.
+        // Bound to the container itself, once, so they survive every re-render
+        // and reach cards that arrive from a later request.
         bindAddToCalendar(container);
+        bindChips(container);
 
         ensureStylesheet();
         setLoading(container);
