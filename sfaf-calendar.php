@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.8.0
+ * Version: 3.9.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.8.0' );
+define( 'SFAF_VERSION', '3.9.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -81,6 +81,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-credentials.php',
     'includes/sfaf-template-functions.php',
     'includes/class-sfaf-series.php',
+    'includes/class-sfaf-venues.php',
     'includes/class-sfaf-post-types.php',
     'includes/class-sfaf-shortcodes.php',
     'includes/class-sfaf-embed.php',
@@ -372,7 +373,7 @@ function sfaf_output_ics() {
     $lines[] = 'DTEND:' . $end->format( 'Ymd\THis\Z' );
     $lines[] = 'SUMMARY:' . sfaf_ics_escape( get_the_title( $post_id ) );
     $lines[] = 'DESCRIPTION:' . sfaf_ics_escape( $description );
-    $lines[] = 'LOCATION:' . sfaf_ics_escape( get_post_meta( $post_id, '_uc_location', true ) );
+    $lines[] = 'LOCATION:' . sfaf_ics_escape( sfaf_event_location( $post_id ) );
     $lines[] = 'URL:' . esc_url_raw( get_permalink( $post_id ) );
     $lines[] = 'END:VEVENT';
     $lines[] = 'END:VCALENDAR';

@@ -16,11 +16,260 @@
         // registered. The scope one has to go first: a manager who decides not
         // to update twelve events should never then be asked about a missing
         // image on an event they have just decided not to save.
+        initCategoryChips();
+        initLocationPicker();
+        initFaqSaveAsSet();
+        initLiveSearch();
         initEditScope();
         initConfirmButtons();
         initCompleteness();
         initAsyncActions();
     });
+
+    /* ---------------------------------------------------------------------
+     * Categories as chips.
+     *
+     * THE CHECKBOXES ARE STILL THE FORM. Every one of them is rendered by the
+     * server, every one of them posts, and with this function deleted the
+     * control is the checkbox list it has always been. What happens here is
+     * that the list is folded away behind an "Add category" button and the
+     * ticked ones are mirrored as removable chips, because that is what a
+     * category looks like on a card, on the event page and in the filter bar,
+     * and the editor was the one place it did not.
+     *
+     * NOTHING IS STORED TWICE. A chip has no state: it is drawn from the
+     * checkbox and its × unticks the checkbox. There is no second list to fall
+     * out of step with the first.
+     * ------------------------------------------------------------------- */
+    function initCategoryChips() {
+        document.querySelectorAll('[data-uc-chips]').forEach(function (root) {
+            var source = root.querySelector('[data-uc-chips-source]');
+            var list = root.querySelector('[data-uc-chips-list]');
+            var empty = root.querySelector('[data-uc-chips-empty]');
+            var addWrap = root.querySelector('[data-uc-chips-add]');
+            var toggle = root.querySelector('[data-uc-chips-toggle]');
+            if (!source || !list || !addWrap || !toggle) {
+                return;
+            }
+
+            var boxes = Array.prototype.slice.call(source.querySelectorAll('input[type="checkbox"]'));
+            if (!boxes.length) {
+                return;
+            }
+
+            function labelOf(box) {
+                var label = box.closest ? box.closest('label') : null;
+                return (label && label.getAttribute('data-uc-chip-label')) || (label ? label.textContent.trim() : '');
+            }
+
+            function draw() {
+                list.innerHTML = '';
+                var chosen = 0;
+
+                boxes.forEach(function (box) {
+                    if (!box.checked) {
+                        return;
+                    }
+                    chosen++;
+                    var chip = document.createElement('span');
+                    chip.className = 'uc-chip';
+                    var color = box.getAttribute('data-uc-chip-color');
+                    if (color) {
+                        chip.style.setProperty('--chip-color', color);
+                    }
+
+                    var text = document.createElement('span');
+                    text.className = 'uc-chip-text';
+                    text.textContent = labelOf(box);
+                    chip.appendChild(text);
+
+                    // A chip is only removable while the field is editable. On
+                    // an imported event whose categories a platform owns, the
+                    // checkbox is disabled and the chip is a label.
+                    if (!box.disabled && !box.classList.contains('uc-inert')) {
+                        var kill = document.createElement('button');
+                        kill.type = 'button';
+                        kill.className = 'uc-chip-remove';
+                        kill.setAttribute('aria-label', 'Remove ' + labelOf(box));
+                        kill.innerHTML = '&times;';
+                        kill.addEventListener('click', function () {
+                            box.checked = false;
+                            draw();
+                            toggle.focus();
+                        });
+                        chip.appendChild(kill);
+                    }
+
+                    list.appendChild(chip);
+                });
+
+                list.hidden = (chosen === 0);
+                if (empty) { empty.hidden = (chosen !== 0); }
+            }
+
+            boxes.forEach(function (box) {
+                box.addEventListener('change', draw);
+            });
+
+            toggle.addEventListener('click', function () {
+                var open = source.hasAttribute('hidden');
+                if (open) {
+                    source.removeAttribute('hidden');
+                } else {
+                    source.setAttribute('hidden', 'hidden');
+                }
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+
+            // Only now that the button works is the list allowed to fold away.
+            source.setAttribute('hidden', 'hidden');
+            source.classList.add('uc-chips-source');
+            addWrap.removeAttribute('hidden');
+            root.classList.add('uc-chips-on');
+            draw();
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * Location: a venue, or somewhere one-off.
+     *
+     * Both panels are server-rendered and both submit; the radio decides which
+     * one the save believes. All this does is hide the one that is not chosen,
+     * so with scripting off the screen shows two controls and a choice rather
+     * than nothing.
+     * ------------------------------------------------------------------- */
+    function initLocationPicker() {
+        document.querySelectorAll('[data-uc-location]').forEach(function (root) {
+            var modes = Array.prototype.slice.call(root.querySelectorAll('[data-uc-location-mode]'));
+            if (!modes.length) {
+                return;
+            }
+
+            function apply() {
+                var chosen = 'custom';
+                modes.forEach(function (m) { if (m.checked) { chosen = m.value; } });
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-location-panel]'), function (panel) {
+                    panel.hidden = (panel.getAttribute('data-uc-location-panel') !== chosen);
+                });
+            }
+
+            modes.forEach(function (m) { m.addEventListener('change', apply); });
+            root.classList.add('uc-location-on');
+            apply();
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * "Save these as a set", from inside the FAQ card.
+     *
+     * The control belongs to a form declared outside the editor's form, by the
+     * `form` attribute, because HTML forms cannot nest. That association is
+     * plain HTML and works with scripting off, in which case the server saves
+     * the questions as they are STORED on the event.
+     *
+     * What this adds is copying the rows currently ON SCREEN into that form
+     * first, so a set can be saved from questions just typed without saving the
+     * event. Same server action either way.
+     * ------------------------------------------------------------------- */
+    function initFaqSaveAsSet() {
+        var form = document.getElementById('uc-faq-set-create');
+        var holder = form ? form.querySelector('[data-uc-faq-set-rows]') : null;
+        if (!form || !holder) {
+            return;
+        }
+
+        var name = document.querySelector('[data-uc-faq-saveset] input[name="faq_set_name"]');
+
+        form.addEventListener('submit', function (e) {
+            if (name && !name.value.trim()) {
+                e.preventDefault();
+                name.focus();
+                return;
+            }
+
+            holder.innerHTML = '';
+            var i = 0;
+            document.querySelectorAll('.uc-faq-card .uc-repeater-row.uc-faq-row').forEach(function (row) {
+                var q = row.querySelector('input[type="text"]');
+                var a = row.querySelector('textarea');
+                if (!q || !a || q.disabled) {
+                    return; // an imported row: not ours to copy into a set
+                }
+                if (!q.value.trim() && !a.value.trim()) {
+                    return;
+                }
+                holder.appendChild(hidden('faq_set_rows[' + i + '][question]', q.value));
+                holder.appendChild(hidden('faq_set_rows[' + i + '][answer]', a.value));
+                i++;
+            });
+        });
+
+        function hidden(n, v) {
+            var el = document.createElement('input');
+            el.type = 'hidden';
+            el.name = n;
+            el.value = v;
+            return el;
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * The events list search, as you type.
+     *
+     * SUBMITS THE REAL FORM, DEBOUNCED. The search is a server query, so this
+     * cannot filter rows already on screen; and it should not fire a request
+     * per keystroke either. 300ms after typing stops, the form goes, which
+     * means the answer lands at a real URL with the term in it: shareable,
+     * back-buttonable, and carrying the sort and filters that were already in
+     * the form's own fields.
+     *
+     * THE CARET COMES BACK. A submit is a page load, so the server marks the
+     * box for refocus when a term is present and the caret is put at the end of
+     * it. Without that, every pause mid-word would drop focus and the next
+     * letter would go nowhere.
+     * ------------------------------------------------------------------- */
+    function initLiveSearch() {
+        var refocus = document.querySelector('[data-uc-refocus]');
+        if (refocus) {
+            refocus.focus();
+            var end = refocus.value.length;
+            try { refocus.setSelectionRange(end, end); } catch (err) { /* not all inputs allow it */ }
+        }
+
+        document.querySelectorAll('[data-uc-live-search]').forEach(function (form) {
+            var input = form.querySelector('[data-uc-live-search-input]');
+            if (!input) {
+                return;
+            }
+            var timer = null;
+            var last = input.value;
+
+            function go() {
+                if (input.value === last) {
+                    return; // nothing changed: a stray keyup, or arrow keys
+                }
+                last = input.value;
+                form.classList.add('uc-searching');
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            }
+
+            input.addEventListener('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(go, 300);
+            });
+            // Enter should search now rather than wait out the debounce, and
+            // should not double-submit afterwards.
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    clearTimeout(timer);
+                }
+            });
+        });
+    }
 
     /**
      * Slow actions that need to say they are working.
@@ -870,6 +1119,18 @@
                 }
                 if (el.hasAttribute('disabled')) {
                     return; // a platform owns this one; not ours to unlock
+                }
+                /* NOT EVERY INPUT IN A FORM IS A FIELD ON THE EVENT.
+                 *
+                 * The notification picker's filter box is in this form because
+                 * that is where the picker is, but it saves nothing, posts
+                 * nothing and changes nothing: it narrows a list. Locking it
+                 * behind a pencil made it impossible to type into on exactly
+                 * the events that have a scope choice, which is to say every
+                 * recurring one. Anything carrying data-uc-not-a-field is a
+                 * control over the form's own UI and is left alone. */
+                if (el.hasAttribute('data-uc-not-a-field')) {
+                    return;
                 }
                 fn(el);
             });

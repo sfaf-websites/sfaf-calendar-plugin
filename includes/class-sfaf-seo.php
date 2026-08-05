@@ -71,7 +71,7 @@ class SFAF_SEO {
 
     private function event_schema( $id ) {
         $dt    = sfaf_event_datetimes( $id );
-        $loc   = get_post_meta( $id, '_uc_location', true );
+        $loc   = sfaf_event_location( $id );
         $parts = array_map( 'trim', explode( ',', (string) $loc ) );
         $street   = isset( $parts[0] ) ? $parts[0] : (string) $loc;
         $locality = ( isset( $parts[1] ) && $parts[1] !== '' ) ? $parts[1] : 'San Francisco';

@@ -217,6 +217,13 @@ function sfaf_install_sample_data() {
             $venue = sfaf_sample_term( $e['venue'], 'uc_venue' );
             if ( $venue ) {
                 wp_set_object_terms( $post_id, array( $venue ), 'uc_venue' );
+                // The address lives on the venue now and an event refers to it,
+                // so the sample venue is given one. Without this the samples
+                // would name a venue with no address and read as a half-filled
+                // screen rather than an example of the model. See SFAF_Venues.
+                if ( '' === (string) get_term_meta( $venue, SFAF_Venues::META_ADDRESS, true ) ) {
+                    update_term_meta( $venue, SFAF_Venues::META_ADDRESS, $e['location'] );
+                }
             }
         }
 

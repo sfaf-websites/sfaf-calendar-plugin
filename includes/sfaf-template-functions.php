@@ -380,7 +380,7 @@ function sfaf_google_calendar_url( $post_id ) {
         'text'     => get_the_title( $post_id ),
         'dates'    => $start_utc->format( 'Ymd\THis\Z' ) . '/' . $end_utc->format( 'Ymd\THis\Z' ),
         'details'  => wp_strip_all_tags( get_the_excerpt( $post_id ) ),
-        'location' => get_post_meta( $post_id, '_uc_location', true ),
+        'location' => sfaf_event_location( $post_id ),
     );
 
     return 'https://calendar.google.com/calendar/render?' . http_build_query( $args );
@@ -681,7 +681,7 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
         '{event_time}'       => $start_fmt ? $start_fmt : $start_raw,
         '{event_end_time}'   => $end_fmt,
         '{event_time_range}' => $time_range,
-        '{event_location}'   => get_post_meta( $event_id, '_uc_location', true ),
+        '{event_location}'   => sfaf_event_location( $event_id ),
         // Cast: get_permalink() returns false for a post that has gone, and
         // strtr wants strings.
         '{event_url}'        => (string) get_permalink( $event_id ),
@@ -1457,6 +1457,37 @@ function sfaf_category_chips_html( $post_id, $context = 'card' ) {
 }
 
 /**
+ * Where an event happens, as one line.
+ *
+ * ONE READER FOR TWO STORAGE SHAPES, AND THE REFERENCE IS RESOLVED HERE.
+ *
+ * An event either names a venue, in which case its address lives on the venue
+ * and is looked up now, or it holds its own location text. It never holds both:
+ * saving one clears the other, so this cannot have to decide which wins.
+ *
+ * Resolving at read time is the entire point of storing a reference. Correct a
+ * suite number on the venue and every event held there is right immediately,
+ * including the ones already published and the ones already past. Nothing was
+ * copied, so there is nothing to go and re-copy. See class-sfaf-venues.php.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_location( $post_id ) {
+    $post_id = (int) $post_id;
+
+    $venue_id = SFAF_Venues::id_for_event( $post_id );
+    if ( $venue_id ) {
+        $display = SFAF_Venues::display( $venue_id );
+        if ( '' !== $display ) {
+            return $display;
+        }
+    }
+
+    return trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+}
+
+/**
  * The three usable stops of a category colour's own family.
  *
  * WHY THIS IS A TABLE AND NOT A CALCULATION.
@@ -1917,7 +1948,7 @@ function sfaf_map_search_url( $location ) {
  * @return string
  */
 function sfaf_event_map_html( $post_id ) {
-    $location = trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+    $location = sfaf_event_location( $post_id );
     if ( '' === $location ) {
         return '';
     }

@@ -64,6 +64,19 @@ class SFAF_Post_Types {
             'show_in_rest' => true,
         ) );
 
+        /*
+         * VENUES ARE MANAGED IN /caladmin, NOT IN THE WORDPRESS ADMIN.
+         *
+         * show_ui is off for the same reason it is off on the series taxonomy:
+         * this is event management, not site configuration, and the people who
+         * schedule events work in the portal. The WordPress screen also could
+         * not hold an address, which is the thing a venue is actually for, so
+         * keeping it would have meant two screens where one of them was wrong.
+         *
+         * The taxonomy itself is unchanged and still public, so /event-venue/
+         * archives, the REST payload satellites read and every existing term
+         * relationship carry on exactly as they were. See SFAF_Venues.
+         */
         register_taxonomy( 'uc_venue', 'uc_event', array(
             'labels' => array(
                 'name'          => 'Venues',
@@ -73,6 +86,8 @@ class SFAF_Post_Types {
             ),
             'hierarchical' => false,
             'public'       => true,
+            'show_ui'      => false,
+            'show_in_menu' => false,
             'rewrite'      => array( 'slug' => 'event-venue' ),
             'show_in_rest' => true,
         ) );
@@ -156,7 +171,7 @@ class SFAF_Post_Types {
         $date       = get_post_meta( $post->ID, '_uc_event_date', true );
         $start_time = get_post_meta( $post->ID, '_uc_start_time', true );
         $end_time   = get_post_meta( $post->ID, '_uc_end_time', true );
-        $location   = get_post_meta( $post->ID, '_uc_location', true );
+        $location   = sfaf_event_location( $post->ID );
         $series_id  = SFAF_Series::id_for_event( $post->ID );
         $all_series = SFAF_Series::all();
         $group      = SFAF_Recurrence::group_of( $post->ID );

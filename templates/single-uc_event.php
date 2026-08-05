@@ -15,7 +15,7 @@ while ( have_posts() ) :
     $date       = get_post_meta( $post_id, '_uc_event_date', true );
     $start_time = get_post_meta( $post_id, '_uc_start_time', true );
     $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
-    $location   = get_post_meta( $post_id, '_uc_location', true );
+    $location   = sfaf_event_location( $post_id );
 
     // The pattern that GENERATED this event, kept only so the page can say
     // "repeats weekly". It is a fact about where the event came from, not a

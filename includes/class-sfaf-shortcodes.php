@@ -1418,7 +1418,7 @@ class SFAF_Shortcodes {
         $date       = get_post_meta( $post_id, '_uc_event_date', true );
         $start_time = get_post_meta( $post_id, '_uc_start_time', true );
         $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
-        $location   = get_post_meta( $post_id, '_uc_location', true );
+        $location   = sfaf_event_location( $post_id );
 
         /*
          * EVERY CATEGORY, AND THE FIRST ONE DECIDES THE COLOUR.
@@ -1611,7 +1611,7 @@ class SFAF_Shortcodes {
     private function render_compact_card( $post_id ) {
         $date       = get_post_meta( $post_id, '_uc_event_date', true );
         $start_time = get_post_meta( $post_id, '_uc_start_time', true );
-        $location   = get_post_meta( $post_id, '_uc_location', true );
+        $location   = sfaf_event_location( $post_id );
 
         // First category for the accent stripe, every slug for the filter. Same
         // rule as the full card; see render_event_card().

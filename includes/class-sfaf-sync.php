@@ -67,7 +67,7 @@ class SFAF_Sync {
             'date'            => get_post_meta( $post_id, '_uc_event_date', true ),
             'start_time'      => get_post_meta( $post_id, '_uc_start_time', true ),
             'end_time'        => get_post_meta( $post_id, '_uc_end_time', true ),
-            'location'        => get_post_meta( $post_id, '_uc_location', true ),
+            'location'        => sfaf_event_location( $post_id ),
             'recurrence'      => SFAF_Recurrence::pattern_of( $post_id ),
             'capacity'        => get_post_meta( $post_id, '_uc_capacity', true ),
             'rsvp_enabled'    => get_post_meta( $post_id, '_uc_rsvp_enabled', true ),

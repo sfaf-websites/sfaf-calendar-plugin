@@ -14,6 +14,10 @@
     --p-border: #E2E5EA;
     --p-text: #1A1D21;
     --p-muted: #6B7280;
+    /* The bento cards sit on the page background and need to read as raised
+       panels without a heavy border. surface-2 is a hair off white so a card
+       inside a card is still legible. */
+    --surface-2: #FBFCFD;
     --p-sidebar: #000000;
     --p-sidebar-text: #cbd5e1;
     --p-green: #8CC745;      /* Pantone 3561 UP */
@@ -183,6 +187,106 @@ body.uc-portal {
 .uc-user-controls { display: flex; gap: 12px; flex-wrap: wrap; }
 .uc-user-controls label { font-size: 12px; color: var(--p-muted); display: flex; flex-direction: column; gap: 4px; }
 .uc-user-controls select { padding: 7px 10px; border: 1px solid var(--p-border); border-radius: 7px; }
+/* ---------------------------------------------------------------------------
+   THE EVENT EDITOR: BENTO CARDS
+
+   Six columns, and each group of fields is a card that names itself. The old
+   editor was one column of identically weighted labels, so the title, the
+   fundraising toggle and the reply-to address all looked equally important and
+   finding the date meant reading everything above it.
+
+   THE CARDS HOLD UP WHEN FIELDS ARE LOCKED. An imported event disables its
+   platform-owned controls and marks empty manager-owned ones amber. A card with
+   three disabled inputs has to look deliberate rather than broken, so a locked
+   field keeps the same shape and weight it always had and only the badge and
+   the muted control say what it is. Nothing in this block changes when a field
+   is locked except the field itself.
+   ------------------------------------------------------------------------- */
+.uc-bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 20px; align-items: start; }
+.uc-bento-card { grid-column: span 6; background: var(--surface-2); border: 0.5px solid var(--p-border);
+    border-radius: 12px; padding: 18px; min-width: 0; }
+.uc-bento-2 { grid-column: span 2; }
+.uc-bento-3 { grid-column: span 3; }
+.uc-bento-4 { grid-column: span 4; }
+.uc-bento-6 { grid-column: span 6; }
+.uc-bento-title { font-size: 16px; font-weight: 500; margin: 0 0 14px; color: var(--p-text); }
+.uc-bento-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 14px; }
+.uc-bento-head .uc-bento-title { margin: 0; }
+.uc-bento-link { margin: 0 0 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+/* One control width for the whole editor. Mixed widths were most of why it read
+   as unfinished. */
+.uc-bento .uc-field input[type="text"], .uc-bento .uc-field input[type="url"],
+.uc-bento .uc-field input[type="email"], .uc-bento .uc-field input[type="date"],
+.uc-bento .uc-field input[type="time"], .uc-bento .uc-field input[type="number"],
+.uc-bento .uc-field select, .uc-bento .uc-field textarea,
+.uc-bento .uc-location-custom input { width: 100%; }
+
+/* Helper text is QUIETER THAN A LABEL, not the same size in a different colour.
+   Field labels carry the weight; hints explain and get out of the way. */
+.uc-bento .uc-hint { font-size: 12px; line-height: 1.5; color: var(--p-muted); font-weight: 400; }
+.uc-bento .uc-field-label { font-size: 13px; font-weight: 600; }
+.uc-bento .uc-field { margin-bottom: 14px; }
+.uc-bento .uc-field:last-child { margin-bottom: 0; }
+.uc-bento .uc-fieldset { margin-top: 4px; }
+.uc-bento .uc-card { background: transparent; border: 0; padding: 0; margin: 0; }
+
+@media (max-width: 1100px) {
+    /* Two across, in the order somebody fills the form. */
+    .uc-bento { grid-template-columns: repeat(4, 1fr); }
+    .uc-bento-2, .uc-bento-3, .uc-bento-4 { grid-column: span 2; }
+    .uc-bento-6 { grid-column: span 4; }
+}
+@media (max-width: 760px) {
+    .uc-bento { grid-template-columns: 1fr; }
+    .uc-bento-card, .uc-bento-2, .uc-bento-3, .uc-bento-4, .uc-bento-6 { grid-column: span 1; }
+}
+
+/* ---------- Categories as chips ---------- */
+.uc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.uc-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 11px;
+    border-radius: 99px; font-size: 13px; font-weight: 600; line-height: 1.4;
+    background: color-mix(in srgb, var(--chip-color, #16BECF) 14%, #fff);
+    color: color-mix(in srgb, var(--chip-color, #16BECF) 72%, #000); }
+.uc-chip-remove { border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1;
+    padding: 0 4px; color: inherit; opacity: 0.7; border-radius: 99px; }
+.uc-chip-remove:hover { opacity: 1; }
+.uc-chip-remove:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.uc-chips-empty { margin: 0 0 8px; font-size: 13px; color: var(--p-muted); }
+.uc-chips-add { margin-bottom: 8px; }
+/* The checkbox list, once folded away behind the Add button. Without script it
+   is simply the visible control it has always been. */
+.uc-chips-source { grid-template-columns: 1fr; max-height: 220px; overflow-y: auto;
+    padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 8px; background: #fff; }
+
+/* ---------- Location ---------- */
+.uc-location-field .uc-check { margin-bottom: 6px; }
+.uc-location-venue, .uc-location-custom { margin: 0 0 12px 22px; }
+.uc-location-on .uc-location-venue[hidden], .uc-location-on .uc-location-custom[hidden] { display: none; }
+
+/* ---------- Venues screen ---------- */
+.uc-venue { padding: 14px 0; border-top: 1px solid var(--p-border); }
+.uc-venue:first-of-type { border-top: 0; }
+.uc-venue-address { flex: 2 1 320px; }
+.uc-venue-actions { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.uc-venue-delete { margin-top: 8px; }
+.uc-venue-new { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-venue-new > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; }
+
+/* ---------- FAQ card ---------- */
+.uc-faq-saveset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.uc-faq-saveset input[type="text"] { min-width: 240px; padding: 7px 10px; border: 1px solid var(--p-border);
+    border-radius: 7px; font-size: 13px; }
+.uc-faq-saveset-note { font-size: 12px; }
+/* The form the save-as-set control belongs to. It has to be in the document and
+   has nothing to show, so it takes no space rather than being display:none,
+   which some browsers treat as a reason to skip its controls. */
+.uc-offscreen-form { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* The search box says it is working, since a submit is a page load. */
+.uc-filters-bar.uc-searching input[type="search"] { opacity: 0.7; }
+
 /* ---------- The schedule (series screen) ---------- */
 .uc-schedule-sentence { margin: 0 0 14px; font-family: var(--uc-font-heading, inherit); font-size: 17px; font-weight: 700; }
 .uc-schedule-head { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--p-muted); }

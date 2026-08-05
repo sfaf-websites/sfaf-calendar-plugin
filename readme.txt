@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.8.0
+Stable tag: 3.9.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.9.0 =
+
+**The event editor is a set of cards instead of one long column.** Six of them, in a six-column grid: Basics, Classification, Schedule, Location, Image, Capacity, Donate, Organizer contact, Display, Notifications and FAQs. Every group names itself, helper text is visibly quieter than a field label, and every control in the form is one width. Before this the title, the fundraising toggle and the reply-to address all carried the same visual weight, so finding the date meant reading everything above it. It collapses to two columns and then to one, in the order somebody fills the form.
+
+**The cards are not shared with the pending queue, and the controls still are.** The queue's layout is a single stack under one heading; that is a layout, and two screens cannot share one. What they share, which is what the 3.2.0 rule was actually about, is the list of manager-owned fields and the markup of each one: neither screen holds a list, both ask the same function, and both draw through the same renderer. The editor now places those controls into its own cards by name, and makes one last call for anything no card claimed, which lands in an "Other details" card. So a field added to the shared list still cannot appear on one screen and not the other. That last call is the point: silence was the failure this design had to rule out.
+
+**Locked fields survive the new layout.** An imported event still disables what its platform owns and still marks empty manager-owned fields amber, per field, exactly as before. No card is built out of controls that can only be locked together, so a card of disabled inputs reads as deliberate rather than broken.
+
+**Categories are chips.** Selected ones show as removable pills with an Add control, matching how a category looks on a card, on the event page and in the filter bar. The checkboxes are still the form: they are what posts, they are what a browser with scripting off shows, and a chip has no state of its own beyond the box it mirrors.
+
+**Venues moved into /caladmin, and Location became a picker.** The venue taxonomy has existed since the beginning with a WordPress admin screen and no way at all to pick one while creating an event, so the location was typed by hand every time and the same building got six spellings. There is a Venues screen in the portal now with names and addresses, the WordPress one is gone, and the Location field offers a venue or "a different location" with free text behind it.
+
+**An event stores a REFERENCE to its venue, not a copy of the address.** This is the whole design decision. Correct a suite number on the Venues screen and every event held there is right immediately, including ones already published and ones already past, because nothing was copied and there is nothing to go and re-copy. An event holds either a venue or its own text and never both, so nothing downstream has to decide which one wins. Deleting a venue is refused while events are held there, with those events named: they keep no address of their own, so deleting it would leave them with nowhere to be rather than with stale text. Imported events are untouched, since the platform owns their location and writes it on every fetch.
+
+**"Save these as a set" is in the FAQ block, where the questions are.** 3.3.0 moved applying a set down into the block and left saving one on a panel above the form, so a manager writing FAQs had no way to keep them from where they were working. Both controls are in the card header now. HTML forms cannot nest, so the control belongs to a form declared outside the editor's by the `form` attribute, which is plain HTML and works with scripting off. With scripting on, the questions currently on screen are copied across first, so a set can be saved from questions just typed.
+
+**Fixed: the notification picker's filter box could not be typed into.** The edit-scope lock walks every input in the form and makes it read-only until that field's pencil is pressed. That box is not a field on the event: it saves nothing, posts nothing and changes nothing, it only narrows the list under it. Locking it made the picker unusable at any real size on exactly the events that need it, since a recurring event is the one that has a scope choice at all. Controls over the form's own interface are now marked as such and left alone.
+
+**The /caladmin search filters as you type.** The search has been a real server query since 3.6.0, not a pass over the rows on screen, so this is debounced at 300ms and then submits the form it was always in. The answer arrives at a real URL: the address bar says what is being searched, the back button works, the result is shareable, and the sort and filters ride along in the fields they were already in. The caret is put back where it was, so typing continues through the reload. With scripting off the Filter button is unchanged.
+
+**Verified rather than changed: one-off events already had no pencils.** The scope question is only asked when an event has two or more upcoming occurrences in its recurrence group, the fieldset only arrives locked when that question is asked, and the script that adds pencils returns immediately when there is no question. A one-off event, and a new one, open with every field directly editable. There is now a test holding that in place.
+
+**The dashboard's RSVP figure links to that event's registrations**, the same link the Events list has had since 3.5.0 and this screen did not, so the identical number two screens apart answered "how many" in one place and both "how many" and "who" in the other. Linked only when there is something behind it and the reader may see it, exactly as on the Events list.
 
 = 3.8.0 =
 
