@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.11.0
+Stable tag: 3.12.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.12.0 =
+
+**The editor is a grid with real column spans again, and nothing stretches.** 3.10.0 went to CSS multi-column to stop cards growing to the height of their row, and that fixed the wrong thing at too high a price. Columns fill top to bottom before moving right, so Classification and Schedule stacked down a narrow left strip while the top two thirds of the page beside them sat empty.
+
+The stretching was never a reason to leave grid. It is `align-items: stretch`, the grid default, and one declaration turns it off: with `align-items: start` every card sits at the top of its cell at its own height. No JavaScript measures anything, no reflow when the webfont lands, and per-card widths come back.
+
+**The cards, top to bottom.** Event details full width; Classification beside Schedule; Location beside Capacity; then Donate, Organizer contact and Display sharing one row as three short cards; Notifications, anything unclaimed, and FAQs full width at the foot. Short sits beside short deliberately: nothing stretches now, but a row is still as tall as its tallest card, so pairing a two-field card with a ten-field one would put the gap straight back.
+
+**"Basics" is now "Event details", and the picture is in it.** The old name described nothing. Title, description and image are the three things a person writes about the event itself, so they are one card and it is the first one. The image had its own card two thirds of the way down the page, which is where it was found last and chosen last. There is no separate Image card any more.
+
+**A card with no span is full width rather than one column.** That is the forgiving failure. A card somebody adds and forgets to size reads as deliberate at full width and as broken at a sixth, and it matters most for the "Other details" catch-all that exists for exactly the field nobody placed.
+
+**Why the 3.10.0 location fix did not take.** The radios were never inheriting a centred layout. `.uc-field input` gives every input inside a field wrapper `width: 100%`, twelve pixels of padding and a bordered white background, and the location block is a `div` carrying `.uc-field` that holds radios rather than a label wrapped around one text input. So each radio was as wide as the row, and a browser paints the control glyph in the middle of whatever box it is given: that is the "floating centre-ish" look, with the label squeezed against the right edge and two-word phrases wrapping.
+
+The 3.10.0 rule did win on specificity and was loaded; it set `flex: 0 0 auto`, and a flex basis of `auto` resolves from `width`, which it never declared. Nothing overrode the rule because nothing addressed the property doing the damage.
+
+**The same rule was quietly oversizing three other controls**, all of them the same shape of wrapper: the category checkbox list, the fundraising progress toggle and "Reset to series image". Checkboxes and radios inside a field now keep their own size, and the reset lives beside the rule that caused it rather than in the block that suffered from it.
+
+Locked and amber fields are untouched and still carry their badges; the catch-all card still claims any manager-owned field no card named, so a field added to the shared list cannot vanish from the editor while showing in the pending queue; and the help disclosures added in 3.10.0 are unchanged real buttons.
 
 = 3.11.0 =
 

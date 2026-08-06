@@ -4546,6 +4546,16 @@ class SFAF_Portal {
              * address all looked equally important, and finding the date meant
              * reading everything above it.
              *
+             * A REAL GRID, WITH SPANS, AND NOT MULTI-COLUMN. 3.10.0 went to CSS
+             * columns to stop cards stretching to their row's height, and paid
+             * for it by losing per-card width and by filling the first column
+             * top to bottom: Classification and Schedule stacked in a narrow
+             * left strip while two thirds of the page sat empty. The stretching
+             * was never the grid's fault, it was align-items: stretch. With
+             * align-items: start each card sits at the top of its cell at its
+             * own height, spans come back, and DOM order is left-to-right
+             * reading order at every width. See the CSS block for the spans.
+             *
              * WHAT IS SHARED WITH THE PENDING QUEUE, AND WHAT IS NOT. The cards
              * are not: they are a layout, and the queue's layout is a stack under
              * one heading. The CONTROLS are, and always were: both screens draw
@@ -4567,25 +4577,41 @@ class SFAF_Portal {
             ?>
             <div class="uc-bento">
 
-                <?php // ---- Basics: what this event is. Full width, first. ---- ?>
+                <?php
+                /*
+                 * ---- EVENT DETAILS: what this event IS. Full width, first. ----
+                 *
+                 * Title, description and picture are the three things a person
+                 * writes about the event itself, so they are one card and it is
+                 * the first one. "Basics" said nothing; this names its contents.
+                 *
+                 * THE IMAGE LIVES HERE NOW rather than in a card of its own two
+                 * thirds of the way down the page, where it was found last and
+                 * chosen last. Two calls, because the canonical field order is
+                 * image before description and the writing order is the other
+                 * way round; $placed carries across them exactly as before, so
+                 * neither field can be claimed twice.
+                 */
+                ?>
                 <section class="uc-bento-card uc-bento-6">
-                    <h2 class="uc-bento-title">Basics</h2>
+                    <h2 class="uc-bento-title">Event details</h2>
                     <?php $s_title = $st( 'title' ); ?>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_title ) ); ?>"<?php echo $this->field_watch_attr( 'title', $s_title ); ?>>
                         <span class="uc-field-label">Title <?php echo $this->field_badge( $s_title, $prov['label'] ); ?></span>
                         <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>"<?php echo $this->field_disabled( $s_title ); ?> <?php echo ( 'locked' === $s_title ) ? '' : 'required'; ?> />
                     </label>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ) ) ); ?>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
                 </section>
 
                 <?php // ---- Classification: how it is found. --------------- ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card uc-bento-3">
                     <h2 class="uc-bento-title">Classification</h2>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer' ), $placed ) ); ?>
                 </section>
 
                 <?php // ---- Schedule: when, and where its other dates live. - ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card uc-bento-3">
                     <h2 class="uc-bento-title">Schedule</h2>
                     <?php
                     $s_date  = $st( 'date' );
@@ -4706,21 +4732,17 @@ class SFAF_Portal {
                     <?php endif; ?>
                 </section>
 
-                <?php // ---- Location: a venue, or somewhere one-off. ------- ?>
+                <?php // ---- Location: a venue, or somewhere one-off. -------
+                      // There is no Image card any more: the picture moved up
+                      // into Event details, with the title it belongs to. ?>
                 <?php $s_loc = $st( 'location' ); ?>
-                <section class="uc-bento-card uc-bento-6">
+                <section class="uc-bento-card uc-bento-3">
                     <h2 class="uc-bento-title">Location</h2>
                     <?php $this->render_location_field( $event_id, $s_loc, $prov ); ?>
                 </section>
 
-                <?php // ---- Image ------------------------------------------ ?>
-                <section class="uc-bento-card">
-                    <h2 class="uc-bento-title">Image</h2>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
-                </section>
-
                 <?php // ---- Capacity --------------------------------------- ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card uc-bento-3">
                     <h2 class="uc-bento-title">Capacity</h2>
                     <label class="uc-check"><input type="checkbox" name="rsvp_enabled" value="1" <?php checked( $g( '_uc_rsvp_enabled' ), '1' ); ?> /> Accept RSVPs</label>
                     <label class="uc-field">
@@ -4737,9 +4759,17 @@ class SFAF_Portal {
                 // The Donate URL is the campaign link on an imported campaign
                 // and a fetch writes it, so it locks with source_url rather than
                 // looking editable and being replaced on the next run.
+                //
+                // THE THREE SHORT ONES SHARE A ROW. Donate, Organizer contact
+                // and Display are two or three controls each, so at a third of
+                // the width apiece they finish level and the row closes behind
+                // them. Notifications is in this group by subject but is a
+                // filterable list of people; it takes the full row below rather
+                // than leaving a card and a half of empty space beside two short
+                // ones.
                 $s_url = $st( 'source_url' );
                 ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card uc-bento-2">
                     <h2 class="uc-bento-title">Donate</h2>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>">
                         <span class="uc-field-label">GoFundMe URL <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
@@ -4748,7 +4778,7 @@ class SFAF_Portal {
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'fundraising_progress' ), $placed ) ); ?>
                 </section>
 
-                <section class="uc-bento-card">
+                <section class="uc-bento-card uc-bento-2">
                     <h2 class="uc-bento-title">Organizer contact</h2>
                     <label class="uc-field">
                         <span class="uc-field-label">Email</span>
@@ -4757,7 +4787,7 @@ class SFAF_Portal {
                     <label class="uc-check"><input type="checkbox" name="notify_organizer" value="1" <?php checked( $g( '_uc_notify_organizer' ), '1' ); ?> /> Email on new RSVP</label>
                 </section>
 
-                <section class="uc-bento-card">
+                <section class="uc-bento-card uc-bento-2">
                     <h2 class="uc-bento-title">Display</h2>
                     <?php
                     $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Reminders' );

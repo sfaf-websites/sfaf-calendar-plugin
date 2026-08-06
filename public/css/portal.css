@@ -169,12 +169,34 @@ body.uc-portal {
 .uc-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--p-text); }
 .uc-field input, .uc-field select, .uc-field textarea { padding: 10px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; font-weight: 400; font-family: inherit; background: #fff; width: 100%; }
 .uc-field input:focus, .uc-field select:focus, .uc-field textarea:focus { outline: none; border-color: var(--uc-primary); box-shadow: 0 0 0 3px rgba(22,190,207,0.12); }
+/* A BOX IS NOT A TEXT FIELD, and the rule above does not know that.
+   `.uc-field input` gives every input inside a .uc-field wrapper width: 100%,
+   12px of padding and a bordered white background. Several wrappers are DIVS
+   holding boxes rather than labels around one text input, so their checkboxes
+   and radios were being drawn as full-width text fields: .uc-location-field,
+   .uc-cat-field (the category list), .uc-fund-field (the fundraising toggle)
+   and .uc-image-field ("Reset to series image").
+
+   THIS IS WHAT DEFEATED THE 3.10.0 LOCATION FIX. That fix set
+   `.uc-radio-row input[type="radio"] { flex: 0 0 auto }`, which does win on
+   specificity, but flex-basis: auto defers to `width`, and it never declared
+   one. So width: 100% still applied, the browser painted the radio glyph in
+   the middle of a full-row box, and the label was squeezed to the right edge
+   and wrapped. Nothing overrode the rule because nothing addressed the
+   property doing the damage.
+
+   Two classes beat one, so this wins wherever a box sits inside a field. */
+.uc-field input[type="checkbox"], .uc-field input[type="radio"] {
+    width: auto; padding: 0; border: 0; border-radius: 0; background: none; }
 .uc-field-row { display: flex; gap: 12px; }
 .uc-field-row .uc-field { flex: 1; }
 .uc-fieldset { border: 1px solid var(--p-border); border-radius: 10px; padding: 14px 16px; margin: 0; }
 .uc-fieldset legend { font-size: 13px; font-weight: 700; padding: 0 6px; }
 .uc-hint { font-size: 12px; color: var(--p-muted); margin: 6px 0 0; }
 .uc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+/* The box holds its size and the label takes the rest, so a two-word label
+   never wraps because the control grew. The gap owns the spacing. */
+.uc-check input[type="checkbox"], .uc-check input[type="radio"] { flex: 0 0 auto; margin: 0; }
 .uc-side-box { background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 10px; padding: 14px; }
 .uc-side-box h3 { margin-top: 0; }
 .uc-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--p-border); }
@@ -202,31 +224,44 @@ body.uc-portal {
    the muted control say what it is. Nothing in this block changes when a field
    is locked except the field itself.
    ------------------------------------------------------------------------- */
-/* MASONRY, BY MULTI-COLUMN, AND WHY NOT GRID.
-   A grid row is as tall as its tallest card, so Location beside Image left a
-   hand's depth of empty card. There is no pure-CSS masonry in grid: row spans
-   need the height measured in JavaScript first, which reflows on font load and
-   on every field that grows. Multi-column is real masonry, needs no script, and
-   collapses by changing one number, which is what "survives the responsive
-   collapse better" comes down to.
+/* A GRID WITH EXPLICIT SPANS, AND align-items: start.
 
-   THE TRADE IS PER-CARD WIDTH. Columns are equal, so the old 4-and-2 split is
-   gone; column-span keeps the two cards that genuinely need the full width. Dead
-   space was the actual complaint and this removes all of it.
+   WHAT ACTUALLY CAUSED THE STRETCHING. A grid item defaults to
+   align-items: stretch, so Location beside Image grew to the height of the
+   taller one and left a hand's depth of empty card. That is one declaration,
+   not a reason to leave grid: align-items: start puts each card at the top of
+   its cell at its own height, with nothing measured in JavaScript.
 
-   DOM ORDER IS FILL ORDER, always. Columns flow top to bottom, and at one column
-   that IS the fill order; tab order follows the DOM either way, so the keyboard
-   and a screen reader get the form in the order it is meant to be filled. */
-.uc-bento { columns: 3; column-gap: 16px; margin-bottom: 20px; }
-.uc-bento-card { break-inside: avoid; page-break-inside: avoid; display: inline-block; width: 100%;
-    margin: 0 0 16px; background: var(--surface-2); border: 0.5px solid var(--p-border);
+   WHY MULTI-COLUMN WAS WORSE. 3.10.0 used CSS columns to solve the stretching
+   and paid too much. Columns fill TOP TO BOTTOM before moving right, so
+   Classification and Schedule stacked down a narrow left strip while the top
+   two thirds of the page beside them sat empty. Column widths are equal as
+   well, so no card could be given the width its contents need.
+
+   THE SPANS. Six columns.
+     6  Event details; then Notifications, Other details and FAQs at the foot.
+     3  Classification beside Schedule, Location beside Capacity.
+     2  Donate, Organizer contact and Display: three short cards, one row.
+   Short beside short is the rule. Nothing stretches now, but a ROW is still as
+   tall as its tallest card, so pairing a two-field card with a ten-field one
+   puts the gap back under the short one.
+
+   A CARD WITH NO SPAN CLASS IS FULL WIDTH, not one column. That is the
+   forgiving failure: a card somebody added and forgot to size reads as
+   deliberate at full width and as broken at a sixth. It matters most for the
+   "Other details" catch-all, which exists for exactly the field nobody placed.
+
+   DOM ORDER IS FILL ORDER at every width. Auto-placement is sparse, so it
+   never puts a later card ahead of an earlier one, and tab order follows the
+   DOM: the keyboard gets the form in the order it is on screen. */
+.uc-bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 16px; align-items: start; margin-bottom: 20px; }
+.uc-bento-card { grid-column: span 6; min-width: 0;
+    background: var(--surface-2); border: 0.5px solid var(--p-border);
     border-radius: 12px; padding: 18px; }
-/* The cards that get a row of their own: the first thing filled in, the
-   notification picker (a two-tab list that a third of the width cramps), and
-   the FAQs. A spanning element cannot be inline-block, so it goes back to
-   block; the inline-block on the rest is what stops a browser fragmenting a
-   card across a column break. */
-.uc-bento-6 { column-span: all; display: block; }
+.uc-bento-2 { grid-column: span 2; }
+.uc-bento-3 { grid-column: span 3; }
+.uc-bento-6 { grid-column: span 6; }
 .uc-bento-title { font-size: 16px; font-weight: 500; margin: 0 0 14px; color: var(--p-text); }
 .uc-bento-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
     flex-wrap: wrap; margin-bottom: 14px; }
@@ -255,8 +290,18 @@ body.uc-portal {
 .uc-bento .uc-bento-link a { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .uc-repeat-line { margin: 0; font-size: 13px; }
 
-@media (max-width: 1100px) { .uc-bento { columns: 2; } }
-@media (max-width: 760px)  { .uc-bento { columns: 1; } }
+/* Two across, then one. A 3 and a 2 both become a half, so the pairs stay
+   pairs and the three short cards become two and one; a 6 stays full. The
+   order on screen does not change at any step, so neither does the tab order. */
+@media (max-width: 1100px) {
+    .uc-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .uc-bento-card, .uc-bento-6 { grid-column: span 2; }
+    .uc-bento-2, .uc-bento-3 { grid-column: span 1; }
+}
+@media (max-width: 760px) {
+    .uc-bento { grid-template-columns: minmax(0, 1fr); }
+    .uc-bento-card, .uc-bento-2, .uc-bento-3, .uc-bento-6 { grid-column: span 1; }
+}
 
 /* ---------- Help disclosures ----------
    A "?" beside a label, opening a paragraph. A real button, so it answers to
@@ -276,11 +321,18 @@ body.uc-portal {
 .uc-help-body[hidden] { display: none; }
 
 /* ---------- Radio rows ----------
-   Control first, label beside it, both hard left. The location choices were
-   inheriting a centred layout, which pushed two short phrases into a wrap. */
+   Control first, label beside it, both hard left.
+
+   THE PART THIS BLOCK CANNOT DO ON ITS OWN is up beside .uc-field, and that is
+   why 3.10.0 looked unchanged on screen. The rows were never centred by a
+   text-align they inherited; the radio itself was 100% wide, from
+   `.uc-field input`, and a browser paints the glyph in the middle of the box it
+   is given. flex: 0 0 auto here resolves its basis from `width`, so it could
+   not undo that by itself. The width reset lives with the rule that caused it,
+   where the next person to read `.uc-field input` will see it. */
 .uc-radio-row { display: flex; align-items: center; gap: 8px; margin: 0 0 6px;
     font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; }
-.uc-radio-row input[type="radio"] { flex: 0 0 auto; margin: 0; }
+.uc-radio-row input[type="radio"] { flex: 0 0 auto; width: auto; margin: 0; }
 .uc-radio-row span { flex: 1 1 auto; }
 
 /* ---------- Categories as chips ---------- */
