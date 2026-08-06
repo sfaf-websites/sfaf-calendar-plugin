@@ -1038,18 +1038,31 @@ function sfaf_event_placeholder_svg( $post_id ) {
     // Approved brand palette (brand guide v3.0, p.9). The third value is the
     // foreground: light brand backgrounds take the dark gray, dark ones take
     // white, so the label and icon stay legible.
-    $map = array(
-        'Support Groups'  => array( '#16BECF', 'people',    '#373433' ), // Teal
-        'Fundraising'     => array( '#F04937', 'heart',     '#ffffff' ), // Red
-        'Health Services' => array( '#8CC745', 'cross',     '#373433' ), // Green
-        'Volunteer'       => array( '#8D54A2', 'hands',     '#ffffff' ), // Purple
-        'Program Groups'  => array( '#FFD900', 'community', '#373433' ), // Yellow
-    );
+    /*
+     * READ FROM THE CATEGORY, NOT FROM A LIST IN THIS FILE.
+     *
+     * This used to hold its own map of five category NAMES to a colour and an
+     * icon, which meant three separate things were wrong at once. It ignored
+     * `_uc_category_color` entirely, so setting a category's colour changed the
+     * chip and left the placeholder alone. It could not describe a sixth
+     * category, which fell through to dark gray whatever colour it had. And two
+     * of its five icon names, 'people' and 'hands', are not in
+     * sfaf_icon_paths() and therefore drew nothing at all, which nobody
+     * noticed because the rectangle behind them still looked deliberate.
+     *
+     * SFAF_Categories::icon() keeps those five categories on the icons they
+     * have always had, so nothing on the calendar changes appearance today, and
+     * it checks every key against the icon set before returning it.
+     */
+    $term_id = $first ? (int) $first->term_id : 0;
+    $label   = ( '' !== $name ) ? $name : 'Event';
 
-    if ( $name !== '' && isset( $map[ $name ] ) ) {
-        $bg = $map[ $name ][0]; $icon = $map[ $name ][1]; $fg = $map[ $name ][2]; $label = $name;
+    if ( $term_id ) {
+        $bg   = sfaf_category_color( $term_id );
+        $icon = SFAF_Categories::icon( $term_id, $name );
+        $fg   = sfaf_on_color( $bg );
     } else {
-        $bg = '#373433'; $icon = 'calendar'; $fg = '#FFD900'; $label = $name !== '' ? $name : 'Event';
+        $bg = '#373433'; $icon = 'calendar'; $fg = '#FFD900';
     }
 
     // The yellow brand accent would vanish on the yellow background, so fall
@@ -1115,6 +1128,48 @@ function sfaf_brand_palette() {
  */
 function sfaf_default_category_color() {
     return '#16BECF';
+}
+
+/**
+ * Which of the two brand neutrals is legible ON a given brand colour.
+ *
+ * MEASURED, NOT PICKED. Every one of the ten approved colours was checked
+ * against Dark Gray and against white, and this returns whichever wins:
+ *
+ *   Yellow      8.92 dark   Orange   5.34 dark   Red        3.68 white
+ *   Burgundy    7.90 white  Pink     4.13 dark   Purple     5.35 white
+ *   Green       6.10 dark   Teal     5.47 dark   Light Gray 8.22 dark
+ *   Dark Gray  12.34 white
+ *
+ * FOR LARGE TEXT ONLY, and the caller has to keep that true. Red and Pink have
+ * no foreground that clears 4.5:1 either way; both clear the 3:1 that WCAG
+ * asks of text at 24px or 18.7px bold. The one place this is used is the
+ * placeholder SVG, whose label is 92px bold on a 1600-unit canvas, so it is
+ * large by any reading. Small text on a category colour goes through
+ * sfaf_category_shades() instead, which is a tint-and-ink pair built for it.
+ *
+ * @param string $hex A brand colour.
+ * @return string '#373433' or '#FFFFFF'.
+ */
+function sfaf_on_color( $hex ) {
+    $lum = function ( $h ) {
+        $h = ltrim( (string) $h, '#' );
+        if ( 6 !== strlen( $h ) ) {
+            return 0.0;
+        }
+        $c = array();
+        foreach ( array( 0, 2, 4 ) as $i ) {
+            $v   = hexdec( substr( $h, $i, 2 ) ) / 255;
+            $c[] = ( $v <= 0.03928 ) ? $v / 12.92 : pow( ( $v + 0.055 ) / 1.055, 2.4 );
+        }
+        return 0.2126 * $c[0] + 0.7152 * $c[1] + 0.0722 * $c[2];
+    };
+    $ratio = function ( $a, $b ) use ( $lum ) {
+        $la = $lum( $a );
+        $lb = $lum( $b );
+        return ( max( $la, $lb ) + 0.05 ) / ( min( $la, $lb ) + 0.05 );
+    };
+    return ( $ratio( '#373433', $hex ) >= $ratio( '#FFFFFF', $hex ) ) ? '#373433' : '#FFFFFF';
 }
 
 /**
@@ -1845,8 +1900,16 @@ function sfaf_list_card_media( $post_id, $cat_name = '' ) {
 
     // The tile carries the category name as visible text, so the image itself
     // has nothing left to announce.
+    // The icon comes from the category itself where there is one, so setting it
+    // on the Categories screen changes the tile as well as the placeholder. The
+    // tint and ink behind it are sfaf_category_shades(), unchanged: they are a
+    // contrast-checked pair and small text must not sit on a raw brand colour.
+    $primary  = sfaf_event_primary_category( $post_id );
+    $icon_key = $primary ? SFAF_Categories::icon( (int) $primary->term_id, $primary->name )
+                         : sfaf_category_icon_key( $cat_name );
+
     return '<span class="uc-lc-ph" role="img" aria-label="' . esc_attr( $label ) . '">'
-        . '<span class="uc-lc-ph-icon">' . sfaf_icon( sfaf_category_icon_key( $cat_name ), array( 'size' => '30px' ) ) . '</span>'
+        . '<span class="uc-lc-ph-icon">' . sfaf_icon( $icon_key, array( 'size' => '30px' ) ) . '</span>'
         . '<span class="uc-lc-ph-name">' . esc_html( $label ) . '</span>'
         . '</span>';
 }

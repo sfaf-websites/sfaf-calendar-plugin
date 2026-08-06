@@ -421,6 +421,32 @@ class SFAF_Portal {
                 $this->schedule_remove_date_from_post();
                 break;
 
+            /* ---- Categories. What kind of event this is. ------------------ */
+            case 'save_category':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $saved = SFAF_Categories::save(
+                    isset( $_POST['category_id'] ) ? intval( $_POST['category_id'] ) : 0,
+                    isset( $_POST['category_name'] ) ? wp_unslash( $_POST['category_name'] ) : '',
+                    isset( $_POST['category_color'] ) ? wp_unslash( $_POST['category_color'] ) : '',
+                    isset( $_POST['category_icon'] ) ? sanitize_key( wp_unslash( $_POST['category_icon'] ) ) : ''
+                );
+                if ( is_wp_error( $saved ) ) {
+                    set_transient( 'sfaf_category_error_' . $user->ID, $saved->get_error_message(), 60 );
+                    $this->redirect( 'series', array( 'msg' => 'category_failed' ) );
+                }
+                $this->redirect( 'series', array( 'msg' => 'category_saved' ) );
+                break;
+
+            case 'delete_category':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $gone = SFAF_Categories::delete( isset( $_POST['category_id'] ) ? intval( $_POST['category_id'] ) : 0 );
+                if ( is_wp_error( $gone ) ) {
+                    set_transient( 'sfaf_category_error_' . $user->ID, $gone->get_error_message(), 60 );
+                    $this->redirect( 'series', array( 'msg' => 'category_failed' ) );
+                }
+                $this->redirect( 'series', array( 'msg' => 'category_deleted', 'freed' => (int) $gone ) );
+                break;
+
             /* ---- Venues. A name and an address, and events point at them. -- */
             case 'save_venue':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
@@ -1602,7 +1628,7 @@ class SFAF_Portal {
         $nav = array(
             'dashboard' => array( 'Dashboard', '', 'home' ),
             'events'    => array( 'Events', 'events', 'calendar' ),
-            'series'    => array( 'Series', 'series', 'repeat' ),
+            'series'    => array( 'Series & Categories', 'series', 'repeat' ),
             'faq-sets'  => array( 'FAQ Sets', 'faq-sets', 'help' ),
         );
         if ( $this->can_view_all( $user ) ) {
@@ -1696,7 +1722,9 @@ class SFAF_Portal {
             'user_removed'   => 'User removed from the calendar system, and taken out of any teams they were in. No event needed changing, because no event stored them.',
             'team_saved'     => 'Team saved. Events that name it will notify whoever is in it at the moment the reminder goes out.',
             'team_deleted'   => 'Team deleted. No event named it, so no notification changed.',
-            'series_saved'   => 'Series saved. Nothing about the events in it changed — a series groups them, it does not overwrite them.',
+            'series_saved'   => 'Series saved. Nothing about the events in it changed: a series groups them, it does not overwrite them.',
+            'category_saved' => 'Category saved. Its colour and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
+            'category_failed'=> 'That category could not be saved. Give it a name and try again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
             // 'series_removed' is built from real counts further down, because
             // what it did depends on which option was chosen.
@@ -1740,6 +1768,18 @@ class SFAF_Portal {
          * SFAF_Series::remove() actually counted, so what the screen asked and
          * what the screen reports are the same arithmetic.
          */
+        /* Deleting a category reports what it actually did to the events. */
+        if ( 'category_deleted' === $key ) {
+            $n = isset( $_GET['freed'] ) ? max( 0, intval( $_GET['freed'] ) ) : 0;
+            echo '<div class="uc-flash">' . esc_html( sprintf(
+                'Category deleted. %d %s on the calendar, uncategorised, and %s drawn in the default colour until given another category.',
+                $n,
+                _n( 'event stays', 'events stay', $n ),
+                _n( 'is', 'are', $n )
+            ) ) . '</div>';
+            return;
+        }
+
         if ( 'series_removed' === $key ) {
             $trashed  = isset( $_GET['trashed'] ) ? max( 0, intval( $_GET['trashed'] ) ) : 0;
             $detached = isset( $_GET['detached'] ) ? max( 0, intval( $_GET['detached'] ) ) : 0;
@@ -3676,12 +3716,29 @@ class SFAF_Portal {
         $series = SFAF_Series::all();
         ?>
         <div class="uc-page-head">
-            <h1>Series</h1>
+            <h1>Series &amp; Categories</h1>
             <?php if ( $this->can_view_all( $user ) ) : ?>
                 <?php // Still here, and no longer the way in. See the note below. ?>
                 <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn">+ New series</a>
             <?php endif; ?>
         </div>
+
+        <?php
+        /*
+         * TWO SECTIONS ON ONE PAGE, the same shape as Users and Permissions.
+         *
+         * Both answer "how is the programming organised": a series is one
+         * event and all of its dates, a category is what KIND of event it is.
+         * Neither is site configuration, which is the same reasoning that
+         * moved venues out of the WordPress admin in 3.13.0 and series before
+         * them. Managers work here; they do not open wp-admin.
+         */
+        ?>
+        <section class="uc-section" id="uc-series">
+            <div class="uc-section-head">
+                <h2>Series</h2>
+                <p class="uc-section-sub">An event and all of its dates, with the pattern it runs on.</p>
+            </div>
 
         <p class="uc-help">
             <strong>A series is an event's schedule: the event, and all of its dates.</strong> Open one to see the
@@ -3759,8 +3816,190 @@ class SFAF_Portal {
                 </table>
             <?php endif; ?>
         </div>
+        </section>
+
+        <?php $this->render_categories( $user ); ?>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * Categories: what KIND of event this is, with the colour and icon that
+     * follow from it.
+     *
+     * WHERE THIS COULD BE DONE BEFORE: only the WordPress admin, under Events >
+     * Categories, and only the name could be set there. Colour was term meta
+     * with no form field in the entire plugin, so the only thing that ever
+     * wrote it was the sample-data seeder and every hand-made category was
+     * permanently the default teal. Icon was not stored at all. See the header
+     * of class-sfaf-categories.php for the third fault, in the placeholder.
+     *
+     * THE COLOUR PICKER IS THE PALETTE, not a colour input. Ten radios, each an
+     * approved brand colour, because a free hex field is a way to put something
+     * off-brand on the public calendar and the guide is explicit that the
+     * palette is the palette. sfaf_sanitize_brand_color() enforces the same
+     * thing on the way in, so a hand-written POST cannot get past it either.
+     *
+     * EDITING IS A MODE IN THE URL, exactly as the team rows are: no script
+     * needed, and a rename in progress survives a reload.
+     *
+     * @param WP_User $user
+     */
+    private function render_categories( $user ) {
+        $can_edit = $this->can_view_all( $user );
+        $cats     = SFAF_Categories::all();
+        $palette  = sfaf_brand_palette();
+        $icons    = SFAF_Categories::icons();
+
+        $editing  = isset( $_GET['cat_edit'] ) ? (int) $_GET['cat_edit'] : 0;
+        $creating = ! empty( $_GET['cat_new'] );
+        $base     = $this->url( 'series' );
+
+        $err = get_transient( 'sfaf_category_error_' . $user->ID );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_category_error_' . $user->ID );
+        }
+        ?>
+        <section class="uc-section" id="uc-categories">
+            <div class="uc-section-head">
+                <h2>Categories</h2>
+                <p class="uc-section-sub">What kind of event this is. The colour and icon are what a card and its placeholder are drawn from.</p>
+            </div>
+
+            <div class="uc-card">
+                <div class="uc-card-head">
+                    <h2><?php echo count( $cats ); ?> <?php echo esc_html( 1 === count( $cats ) ? 'category' : 'categories' ); ?></h2>
+                </div>
+
+                <?php if ( $err ) : ?>
+                    <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
+                <?php endif; ?>
+
+                <p class="uc-hint">
+                    An event can be in several. The first one alphabetically supplies the colour of its card and the
+                    picture shown when it has no image of its own, which is why every category has both.
+                </p>
+
+                <?php if ( empty( $cats ) ) : ?>
+                    <p class="uc-empty">No categories yet. Create one below.</p>
+                <?php else : ?>
+                    <ul class="uc-cat-list">
+                        <?php foreach ( $cats as $cat ) :
+                            $cid   = (int) $cat->term_id;
+                            $color = sfaf_category_color( $cid );
+                            $icon  = SFAF_Categories::icon( $cid, $cat->name );
+                            $used  = count( SFAF_Categories::events_using( $cid, -1 ) );
+                            $open  = ( $editing === $cid );
+                            ?>
+                            <li class="uc-cat-row<?php echo $open ? ' uc-cat-row-open' : ''; ?>">
+                                <?php if ( ! $open ) : ?>
+                                    <span class="uc-cat-swatch" style="--cat: <?php echo esc_attr( $color ); ?>; --cat-ink: <?php echo esc_attr( sfaf_on_color( $color ) ); ?>;">
+                                        <?php echo sfaf_icon( $icon, array( 'size' => '17px' ) ); ?>
+                                    </span>
+                                    <span class="uc-cat-id">
+                                        <strong><?php echo esc_html( $cat->name ); ?></strong>
+                                        <span class="uc-muted">
+                                            <?php echo esc_html( $palette[ $color ] ); ?>,
+                                            <?php echo esc_html( isset( $icons[ $icon ] ) ? strtolower( $icons[ $icon ] ) : $icon ); ?> icon,
+                                            <?php echo (int) $used; ?> <?php echo esc_html( 1 === $used ? 'event' : 'events' ); ?>
+                                        </span>
+                                    </span>
+                                    <?php if ( $can_edit ) : ?>
+                                        <span class="uc-cat-actions">
+                                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'cat_edit', $cid, $base ) . '#uc-categories' ); ?>">Edit</a>
+                                            <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-delete"
+                                                  onsubmit="return confirm('<?php echo esc_attr( sprintf(
+                                                      'Delete the category "%s"? %d %s stay on the calendar and simply lose this category.',
+                                                      $cat->name, $used, ( 1 === $used ? 'event will' : 'events will' )
+                                                  ) ); ?>');">
+                                                <input type="hidden" name="uc_action" value="delete_category" />
+                                                <input type="hidden" name="category_id" value="<?php echo $cid; ?>" />
+                                                <?php wp_nonce_field( 'uc_portal_delete_category', 'uc_nonce' ); ?>
+                                                <button type="submit" class="uc-link-danger uc-btn-sm">Delete</button>
+                                            </form>
+                                        </span>
+                                    <?php endif; ?>
+                                <?php else : ?>
+                                    <?php $this->render_category_form( $cat, $base ); ?>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+
+                <?php if ( $can_edit ) : ?>
+                    <div class="uc-cat-new">
+                        <?php if ( ! $creating ) : ?>
+                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'cat_new', 1, $base ) . '#uc-categories' ); ?>">Create a category</a>
+                        <?php else : ?>
+                            <?php $this->render_category_form( null, $base ); ?>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+        <?php
+    }
+
+    /**
+     * One category's editor: its name, its colour and its icon.
+     *
+     * The same markup creates and edits, so a new category and an existing one
+     * cannot offer different fields. $cat === null is the create case.
+     *
+     * @param WP_Term|null $cat
+     * @param string       $base Return URL for this screen.
+     */
+    private function render_category_form( $cat, $base ) {
+        $cid     = $cat ? (int) $cat->term_id : 0;
+        $name    = $cat ? $cat->name : '';
+        $color   = $cid ? sfaf_category_color( $cid ) : sfaf_default_category_color();
+        $icon    = $cid ? SFAF_Categories::icon( $cid, $name ) : SFAF_Categories::default_icon();
+        $palette = sfaf_brand_palette();
+        $icons   = SFAF_Categories::icons();
+        ?>
+        <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form">
+            <input type="hidden" name="uc_action" value="save_category" />
+            <input type="hidden" name="category_id" value="<?php echo $cid; ?>" />
+            <?php wp_nonce_field( 'uc_portal_save_category', 'uc_nonce' ); ?>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Name</span>
+                <input type="text" name="category_name" value="<?php echo esc_attr( $name ); ?>"
+                       placeholder="e.g. Support Groups" required <?php echo $cat ? 'autofocus' : ''; ?> />
+            </label>
+
+            <div class="uc-field">
+                <span class="uc-field-label">Colour</span>
+                <div class="uc-swatches" role="radiogroup" aria-label="Category colour">
+                    <?php foreach ( $palette as $hex => $label ) : ?>
+                        <label class="uc-swatch" style="--cat: <?php echo esc_attr( $hex ); ?>; --cat-ink: <?php echo esc_attr( sfaf_on_color( $hex ) ); ?>;">
+                            <input type="radio" name="category_color" value="<?php echo esc_attr( $hex ); ?>"
+                                   <?php checked( strtoupper( $color ), $hex ); ?> />
+                            <span class="uc-swatch-dot" aria-hidden="true"></span>
+                            <span class="uc-visually-hidden"><?php echo esc_html( $label ); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <span class="uc-hint">The ten approved brand colours. Nothing outside them can be saved here.</span>
+            </div>
+
+            <label class="uc-field uc-cat-icon">
+                <span class="uc-field-label">Icon</span>
+                <select name="category_icon">
+                    <?php foreach ( $icons as $key => $label ) : ?>
+                        <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $icon, $key ); ?>><?php echo esc_html( $label ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="uc-hint">Drawn on an event that has no picture of its own, which is most imported ones.</span>
+            </label>
+
+            <div class="uc-cat-form-actions">
+                <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"><?php echo $cat ? 'Save category' : 'Create category'; ?></button>
+                <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $base . '#uc-categories' ); ?>">Cancel</a>
+            </div>
+        </form>
+        <?php
     }
 
     /**
@@ -4568,14 +4807,39 @@ class SFAF_Portal {
                 <?php endif; ?>
 
                 <?php if ( ! empty( $past ) ) : ?>
-                    <h4 class="uc-schedule-head">Past</h4>
-                    <p class="uc-hint">What already happened. Nothing here can be changed from this screen.</p>
-                    <ul class="uc-schedule-list uc-schedule-past">
-                        <?php foreach ( array_slice( $past, 0, 50 ) as $eid ) : $this->render_schedule_row( $eid, $term_id, false, $group ); ?><?php endforeach; ?>
-                    </ul>
-                    <?php if ( count( $past ) > 50 ) : ?>
-                        <p class="uc-hint">Showing the 50 most recent of <?php echo (int) count( $past ); ?>.</p>
-                    <?php endif; ?>
+                    <?php
+                    /*
+                     * THE PAST IS FOLDED AWAY, AND IT STARTS FOLDED.
+                     *
+                     * A weekly group two years old has a hundred past dates and
+                     * four upcoming ones, and this screen exists to answer "what
+                     * is coming up". Listing the whole history above that answer
+                     * buries it, and the list only ever grows.
+                     *
+                     * FOLDED, NOT DROPPED. Nothing here can be edited from this
+                     * screen anyway, so what is behind the summary is a record
+                     * rather than a control; and the Events list already has an
+                     * Archived view that holds all of it, which the summary
+                     * points at. A <details> keeps it one click away with no
+                     * script involved.
+                     */
+                    ?>
+                    <details class="uc-schedule-pastfold">
+                        <summary>
+                            <?php echo (int) count( $past ); ?> past
+                            <?php echo esc_html( _n( 'date', 'dates', count( $past ) ) ); ?>
+                        </summary>
+                        <p class="uc-hint">
+                            What already happened. Nothing here can be changed from this screen.
+                            <a href="<?php echo esc_url( add_query_arg( 'view', 'archived', $this->url( 'events' ) ) ); ?>">See them in the Archived view</a>.
+                        </p>
+                        <ul class="uc-schedule-list uc-schedule-past">
+                            <?php foreach ( array_slice( $past, 0, 50 ) as $eid ) : $this->render_schedule_row( $eid, $term_id, false, $group ); ?><?php endforeach; ?>
+                        </ul>
+                        <?php if ( count( $past ) > 50 ) : ?>
+                            <p class="uc-hint">Showing the 50 most recent of <?php echo (int) count( $past ); ?>.</p>
+                        <?php endif; ?>
+                    </details>
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -5866,7 +6130,17 @@ class SFAF_Portal {
                 if ( $reply_rejected ) {
                     delete_transient( 'sfaf_replyto_rejected_' . $user->ID . '_' . $event_id );
                 }
+                /*
+                 * ITS OWN HEADING TRAVELS WITH IT. Replies is a separate
+                 * question from who receives the mail: it is who fields the
+                 * answers, very often a shared mailbox rather than whichever
+                 * staff member is on the list. Carrying the heading here means
+                 * the editor and the registrations screen both show it under
+                 * the same words, and it cannot be drawn by anything else.
+                 */
                 ?>
+                <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Replies</h4>
                 <label class="uc-field">
                     <span class="uc-field-label">Replies go to</span>
                     <?php
@@ -5897,6 +6171,7 @@ class SFAF_Portal {
                         <?php endif; ?>
                     </span>
                 </label>
+                </div>
                 <?php
                 break;
         }
@@ -6229,24 +6504,18 @@ class SFAF_Portal {
 
             <?php
             /*
-             * ---- 3. REPLIES. A SEPARATE QUESTION, KEPT SEPARATE. ----------
+             * ---- 3. REPLIES IS NOT DRAWN HERE. ---------------------------
              *
-             * Everything above is who RECEIVES mail. This is who fields the
-             * replies when a participant answers one, which is very often a
-             * different answer: a shared mailbox somebody watches rather than
-             * whichever staff member happens to be on the list. Folding it
-             * into the list would make "reply to all the recipients" the only
-             * expressible option, which is not what anybody wants from a
-             * hundred-person reminder.
-             *
-             * Drawn by the shared RSVP settings render, so this card and the
-             * registrations screen cannot offer different versions of it.
+             * It used to be, and that is what put the field on screen twice.
+             * This method IS the 'notify' setting; 'replyto' is a setting of
+             * its own in rsvp_setting_fields(), so the catch-all call that
+             * renders this one also renders that one. A field drawn inside
+             * another field's renderer is invisible to the placement
+             * bookkeeping, which is the whole mechanism that stops anything
+             * appearing twice. So it draws itself, in order, right after this
+             * block, carrying its own heading. See render_rsvp_setting().
              */
             ?>
-            <div class="uc-notify-section">
-                <h4 class="uc-notify-subhead">Replies</h4>
-                <?php $this->render_rsvp_setting( 'replyto', $this->rsvp_settings_context( $user, $event_id ) ); ?>
-            </div>
 
             <?php
             // What actually went out, if anything has. The ledger is the record
@@ -6279,50 +6548,41 @@ class SFAF_Portal {
     }
 
     /**
-     * Everybody who counts as a person on this calendar.
+     * Who appears in a picker. NOT the same question as who has access.
      *
-     * THE PICKERS WERE ASKING THE WRONG QUESTION. They listed users carrying
-     * the `_uc_calendar_role` meta and nobody else. But calendar access is
-     * decided by SFAF_Portal::get_role(), which answers "admin" for any
-     * WordPress administrator whether or not they have that meta, and has done
-     * since 3.7.0 precisely so an administrator cannot be locked out of their
-     * own calendar. So the site's administrators were absent from the
-     * notification picker and from the team membership picker: real calendar
-     * people, invisible to both, and typing one of their names into the filter
-     * returned "Nobody matches that" because they genuinely were not in the
-     * list being filtered.
+     * TWO CONCEPTS, AND KEEPING THEM APART IS THE POINT.
      *
-     * One method now answers the question, so the two pickers cannot disagree
-     * about who exists, and neither holds the rule.
+     *   ACCESS is decided by manage_options, first, in get_role(). A WordPress
+     *   administrator has full calendar access and can never be locked out of
+     *   it. That is the 3.7.0 fix and nothing here touches it.
      *
-     * @return WP_User[] Display-name order, deduplicated.
+     *   VISIBILITY is decided by having a calendar user record, which is what
+     *   Users and Permissions creates. Only people with a record appear in the
+     *   notification picker and the team picker.
+     *
+     * So an administrator who has not added themselves has full access and does
+     * NOT appear in pickers, and that is correct: a picker is a list of the
+     * people who work on this calendar, not a list of everybody who could. The
+     * way to appear in one is to be added, which takes one action on a screen
+     * that exists for it.
+     *
+     * 3.14.0 GOT THIS WRONG AND IS CORRECTED HERE. Administrators were missing
+     * from the pickers and the fix applied was to widen the list to include
+     * them, which quietly made "can access" and "is a colleague on this
+     * calendar" the same list. The real fault was that nothing said which
+     * question the picker was asking. It asks the second one.
+     *
+     * @return WP_User[] Display-name order.
      */
     private function calendar_people() {
-        $listed = get_users( array(
+        $people = get_users( array(
             'meta_key'     => '_uc_calendar_role',
             'meta_compare' => 'EXISTS',
             'orderby'      => 'display_name',
             'order'        => 'ASC',
             'number'       => 200,
         ) );
-
-        // Administrators have calendar access from manage_options alone, so
-        // they belong here whether or not anybody added them.
-        $admins = get_users( array(
-            'capability' => 'manage_options',
-            'orderby'    => 'display_name',
-            'order'      => 'ASC',
-            'number'     => 200,
-        ) );
-
-        $out = array();
-        foreach ( array_merge( $listed, $admins ) as $u ) {
-            $out[ (int) $u->ID ] = $u;
-        }
-        uasort( $out, function ( $a, $b ) {
-            return strcasecmp( $a->display_name, $b->display_name );
-        } );
-        return array_values( $out );
+        return is_array( $people ) ? $people : array();
     }
 
     /**
@@ -6521,6 +6781,33 @@ class SFAF_Portal {
                     </div>
                 </div>
             </details>
+
+            <?php
+            /*
+             * WHO IS CHOSEN, AS CHIPS, BELOW THE PICKER.
+             *
+             * THE LIST ABOVE IS FOR FINDING PEOPLE, NOT FOR HOLDING THE
+             * ANSWER. A scrolling column of forty checkboxes with six ticked
+             * somewhere in it makes "who is on this list" a question you
+             * answer by scrolling, and the answer changes as you filter. The
+             * chips are the answer, they sit still, and they read the same way
+             * as the address pills further down the card, so the whole card
+             * says one thing in one language.
+             *
+             * BUILT BY SCRIPT, AND HIDDEN UNTIL IT IS. Same arrangement as the
+             * category chips: the checkboxes ARE the form and post on their
+             * own, so with the script gone this container never appears and
+             * the plain list is exactly the control it has always been.
+             * Nothing here is the only way to do anything.
+             */
+            ?>
+            <div class="uc-rchips" data-uc-notify-chips hidden>
+                <span class="uc-rchips-label">On the list</span>
+                <div class="uc-rchips-list" data-uc-notify-chips-list></div>
+                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>
+                    Nobody else yet. Open the picker above to add somebody.
+                </p>
+            </div>
 
             <?php // The marker that tells the save "this form carried the teams
                   // block", so clearing every box means clear rather than
@@ -7681,14 +7968,12 @@ class SFAF_Portal {
 
         <?php
         /*
-         * THE TEAM PICKER GETS calendar_people(), NOT $members.
-         *
-         * $members above is the list of calendar RECORDS, which is the right
-         * list for the section that manages those records. Team membership is
-         * a different question: it asks who counts as a person on this
-         * calendar, and an administrator counts whether or not anybody added
-         * them. Using $members here is what made administrators invisible in
-         * the team picker, the same fault the notification picker had.
+         * BOTH PICKERS ASK ONE METHOD who is on this calendar, so neither
+         * holds the rule and the two cannot drift apart. It resolves to the
+         * same set $members is built from, deliberately: a picker lists the
+         * people with a calendar record, and nobody else. See
+         * calendar_people() for why that is not the same question as who has
+         * access.
          */
         $this->render_teams( $user, $this->calendar_people() );
         ?>

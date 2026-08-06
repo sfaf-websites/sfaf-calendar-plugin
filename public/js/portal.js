@@ -850,6 +850,76 @@
                 });
             }
 
+            /* ---- The chosen, as chips ------------------------------------
+             *
+             * The picker list finds people; these hold the answer. Removing a
+             * chip unticks the box it was drawn from, which is the single
+             * source of truth: the boxes are what post, and nothing here keeps
+             * a second copy of the selection to fall out of step with them.
+             * ------------------------------------------------------------ */
+            var chipWrap = root.querySelector('[data-uc-notify-chips]');
+            var chipList = root.querySelector('[data-uc-notify-chips-list]');
+            var chipEmpty = root.querySelector('[data-uc-notify-chips-empty]');
+
+            function pickerBoxes() {
+                return Array.prototype.slice.call(
+                    root.querySelectorAll('[data-uc-picker-user], [data-uc-picker-team]')
+                );
+            }
+            function chipNameOf(box) {
+                var label = box.closest ? box.closest('label') : null;
+                if (!label) { return box.value; }
+                var span = label.querySelector('span');
+                if (!span) { return label.textContent.trim(); }
+                // The label carries the name and a muted qualifier (the address,
+                // or the team's size). The chip wants the name only.
+                var muted = span.querySelector('.uc-muted');
+                var text = span.textContent;
+                if (muted) { text = text.replace(muted.textContent, ''); }
+                return text.replace(/\s+/g, ' ').trim();
+            }
+
+            function drawChips() {
+                if (!chipWrap || !chipList) { return; }
+                chipWrap.hidden = false;
+                chipList.innerHTML = '';
+                var n = 0;
+
+                pickerBoxes().forEach(function (box) {
+                    if (!box.checked) { return; }
+                    n++;
+                    var isTeam = box.hasAttribute('data-uc-picker-team');
+                    var chip = document.createElement('span');
+                    chip.className = 'uc-rchip' + (isTeam ? ' uc-rchip-team' : '');
+
+                    var text = document.createElement('span');
+                    text.className = 'uc-rchip-text';
+                    text.textContent = chipNameOf(box);
+                    chip.appendChild(text);
+
+                    var kill = document.createElement('button');
+                    kill.type = 'button';
+                    kill.className = 'uc-rchip-x';
+                    kill.setAttribute('aria-label', 'Remove ' + chipNameOf(box));
+                    kill.innerHTML = '&times;';
+                    kill.addEventListener('click', function () {
+                        box.checked = false;
+                        drawChips();
+                        summarise();
+                        // Focus has just been destroyed with the button it was
+                        // on, so it goes somewhere deliberate rather than back
+                        // to the top of the document.
+                        if (details && details.querySelector('[data-uc-picker-toggle]')) {
+                            details.querySelector('[data-uc-picker-toggle]').focus();
+                        }
+                    });
+                    chip.appendChild(kill);
+                    chipList.appendChild(chip);
+                });
+
+                if (chipEmpty) { chipEmpty.hidden = (n !== 0); }
+            }
+
             /* ---- The live count ------------------------------------------ */
             function summarise() {
                 if (!countEl) { return; }
@@ -885,14 +955,24 @@
                     (team.emails || []).forEach(function (e) { addresses[e] = true; });
                 });
 
-                // Typed addresses, counted the same way the save reads them.
-                var textarea = document.getElementById('uc-notify-emails');
-                if (textarea) {
-                    textarea.value.split(/[\r\n,;]+/).forEach(function (line) {
-                        line = line.trim().toLowerCase();
-                        if (line && line.indexOf('@') > 0) { addresses[line] = true; }
-                    });
-                }
+                /*
+                 * Typed addresses, counted the same way the save reads them.
+                 *
+                 * These are PILLS now. This read the removed textarea by id
+                 * and therefore silently counted none of them, so an event
+                 * with four typed addresses reported the wrong total from the
+                 * moment 3.14.0 replaced the control. A ticked pill is on the
+                 * list, an unticked one is being removed, which is exactly the
+                 * test the server applies to the same field.
+                 */
+                Array.prototype.forEach.call(
+                    document.querySelectorAll('[data-uc-email-pill]'),
+                    function (box) {
+                        if (!box.checked) { return; }
+                        var addr = (box.value || '').trim().toLowerCase();
+                        if (addr.indexOf('@') > 0) { addresses[addr] = true; }
+                    }
+                );
 
                 if (!picked.length) {
                     countEl.textContent = 'Nobody chosen yet';
@@ -903,13 +983,26 @@
                     + total + (total === 1 ? ' person' : ' people') + ' in total.';
             }
 
-            root.addEventListener('change', summarise);
-            var textarea = document.getElementById('uc-notify-emails');
-            if (textarea) { textarea.addEventListener('input', summarise); }
+            function refreshBoth() { drawChips(); summarise(); }
+
+            root.addEventListener('change', refreshBoth);
             var authorBox = root.parentNode ? root.parentNode.querySelector('input[name="notify_author"]') : null;
             if (authorBox) { authorBox.addEventListener('change', summarise); }
 
-            summarise();
+            // The address pills live outside this picker but are part of the
+            // same total, so a pill added or removed has to recount.
+            var pillField = document.querySelector('[data-uc-emails]');
+            if (pillField) {
+                pillField.addEventListener('change', summarise);
+                pillField.addEventListener('click', function () {
+                    // The Add button builds a pill without firing `change`, so
+                    // the recount is deferred to after the click handler that
+                    // creates it has run.
+                    window.setTimeout( summarise, 0 );
+                });
+            }
+
+            refreshBoth();
         });
     }
 

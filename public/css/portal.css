@@ -79,15 +79,72 @@ body.uc-portal {
     background: var(--p-bg);
     color: var(--p-text);
     font-family: var(--uc-font-heading);
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.55;
 }
 .uc-portal .sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
 .uc-portal a { color: var(--uc-accent-text); text-decoration: none; }
 .uc-portal a:hover { text-decoration: underline; }
 .uc-portal h1 { font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
 .uc-portal h2 { font-size: 17px; font-weight: 700; margin: 0; }
-.uc-portal h3 { font-size: 14px; font-weight: 700; margin: 16px 0 8px; }
+
+/* ---------------------------------------------------------------------------
+   THE TYPE SCALE. FIVE STEPS, AND EVERY ONE OF THEM IS VISIBLY DIFFERENT.
+
+   The coloured card headers fixed the outermost level and stopped there, so
+   INSIDE a card everything was still within a point or two of everything else:
+   a subhead, a field label and a line of helper text all read as one texture,
+   which is the same complaint one level down.
+
+   The ladder, largest to smallest, and nothing may sit between two steps:
+
+     PAGE TITLE   24px  800                        h1
+     SECTION      20px  700                        .uc-section-head h2
+     CARD HEADING 14px  600  UPPERCASE, tracked, on the tinted band
+     SUBHEAD      16px  600  Montserrat, 22px of space above
+     FIELD LABEL  13px  600
+     BODY         14px  400
+     HELPER       12px  400  muted
+
+   THE CARD HEADING IS SMALLER THAN THE SUBHEAD ON PURPOSE. Size is not what
+   makes it dominant: uppercase, letter-spacing and a coloured band across the
+   full width of the card do that, and all three are things no other level has.
+   Making it larger as well would push every field further down the page for a
+   distinction that is already unmistakable.
+
+   THE SUBHEAD IS THE STEP THAT WAS MISSING. It has to beat body text at a
+   glance, so it is larger, heavier, in the display face, and carries real
+   space above it. Space is half the signal: a heading with a line of air over
+   it reads as starting something, and one without reads as continuing.
+   ------------------------------------------------------------------------- */
+.uc-portal { font-size: 14px; }
+.uc-portal .uc-subhead,
+.uc-portal .uc-notify-subhead,
+.uc-portal .uc-schedule-head,
+.uc-portal .uc-picker-heading,
+.uc-portal h3 {
+    font-family: var(--uc-font-heading);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--sfaf-darkgray);
+    margin: 22px 0 8px;
+}
+/* A subhead at the very top of its container has nothing to be spaced away
+   from, and the gap would read as a mistake. */
+.uc-portal .uc-subhead:first-child,
+.uc-portal .uc-notify-subhead:first-child,
+.uc-portal .uc-schedule-head:first-child,
+.uc-portal .uc-picker-heading:first-child,
+.uc-portal h3:first-child { margin-top: 0; }
+
+/* Helper text is the quietest thing on the screen and must never be mistaken
+   for a label. Two steps below the subhead and one below the label. */
+.uc-portal .uc-hint { font-size: 12px; line-height: 1.55; font-weight: 400; color: var(--p-muted); }
+.uc-portal .uc-field-label { font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--sfaf-darkgray); }
+.uc-portal .uc-muted { font-size: inherit; color: var(--p-muted); }
 
 /* ---------------------------------------------------------------------------
    HEADINGS HAVE TO READ AS HEADINGS.
@@ -103,7 +160,7 @@ body.uc-portal {
    be a heading; it has to be DIFFERENT. Making it large would push the fields
    down the page for nothing.
    ------------------------------------------------------------------------- */
-.uc-heading, .uc-card-head h2, .uc-bento-title, .uc-section-head h2, .uc-picker-heading {
+.uc-heading, .uc-card-head h2, .uc-bento-title {
     font-family: var(--uc-font-heading);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -305,7 +362,10 @@ body.uc-portal {
 .uc-section { margin-bottom: 34px; }
 .uc-section + .uc-section { padding-top: 28px; border-top: 2px solid var(--p-border); }
 .uc-section-head { margin-bottom: 14px; }
-.uc-section-head h2 { margin: 0 0 4px; font-size: 20px; }
+/* The SECTION step: above a card heading, below the page title, and the only
+   level between them. Montserrat, but not uppercase: at 20px that shouts. */
+.uc-section-head h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700;
+    font-family: var(--uc-font-heading); color: var(--sfaf-darkgray); }
 .uc-section-sub { margin: 0; font-size: 13px; color: var(--p-muted); }
 
 /* ---------- Users ---------- */
@@ -495,9 +555,25 @@ body.uc-portal {
 .uc-notify-section { display: flex; flex-direction: column; gap: 8px;
     padding-top: 16px; border-top: 1px solid var(--p-border); }
 .uc-notify-section:first-child { padding-top: 0; border-top: 0; }
-.uc-notify-subhead { margin: 0; font-family: var(--uc-font-heading);
-    text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 700;
-    color: var(--p-muted); }
+
+/* THE CHOSEN RECIPIENTS, AS CHIPS, under the picker. The same shape as the
+   address pills below them, so the card reads one way throughout: a list is
+   for finding somebody, a chip is somebody who is on the list. */
+.uc-rchips { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.uc-rchips-label { font-size: 12px; font-weight: 600; color: var(--p-muted); }
+.uc-rchips-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.uc-rchip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 11px;
+    border-radius: 99px; font-size: 13px; font-weight: 500; line-height: 1.4;
+    background: var(--uc-band); color: var(--p-text); border: 1px solid var(--p-border-strong); }
+/* A team is a different KIND of thing from a person and is marked as one,
+   because "Philanthropy" and "Ann Rivera" otherwise look like two people. */
+.uc-rchip-team { background: #fff; border-style: dashed; }
+.uc-rchip-team .uc-rchip-text::before { content: "Team: "; color: var(--p-muted); font-weight: 600; }
+.uc-rchip-x { border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1;
+    padding: 0 4px; color: inherit; opacity: 0.7; border-radius: 99px; font-family: inherit; }
+.uc-rchip-x:hover { opacity: 1; }
+.uc-rchip-x:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
+.uc-rchips-empty { margin: 0; font-size: 12px; }
 
 /* "Anyone else": one address at a time, as removable pills. */
 .uc-email-pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -538,6 +614,53 @@ body.uc-portal {
 .uc-location-venue, .uc-location-custom { margin: 0 0 12px 22px; }
 .uc-location-on .uc-location-venue[hidden], .uc-location-on .uc-location-custom[hidden] { display: none; }
 
+/* ---------------------------------------------------------------------------
+   CATEGORIES (Series & Categories screen).
+
+   Each row leads with the thing the category actually IS on the calendar: its
+   colour, with its icon inside. A row that describes a colour in words and
+   never shows it makes the manager save and go and look.
+   ------------------------------------------------------------------------- */
+.uc-cat-list { list-style: none; margin: 0; padding: 0; }
+.uc-cat-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+    padding: 12px 0; border-top: 1px solid var(--p-border); }
+.uc-cat-row:first-child { border-top: 0; }
+.uc-cat-row-open { display: block; background: var(--p-bg); border-radius: 10px; padding: 14px 14px 16px; }
+.uc-cat-swatch { display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+    background: var(--cat, #16BECF); color: var(--cat-ink, #373433); }
+.uc-cat-id { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.uc-cat-id .uc-muted { font-size: 12px; }
+.uc-cat-actions { display: flex; align-items: center; gap: 10px; }
+.uc-cat-actions form { margin: 0; }
+.uc-cat-new { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-cat-form { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
+.uc-cat-form-actions { display: flex; gap: 10px; align-items: center; }
+.uc-cat-icon select { max-width: 260px; }
+
+/* THE PALETTE IS THE PICKER. Ten radios, and nothing else can be chosen: a free
+   hex field is a way to put an off-brand colour on the public calendar. The
+   dot carries the colour; the accessible name is the colour's brand name, in
+   the visually hidden span beside it. */
+.uc-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.uc-swatch { position: relative; display: inline-flex; }
+.uc-swatch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.uc-swatch-dot { display: block; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--cat); border: 1px solid var(--p-border-strong); cursor: pointer; }
+.uc-swatch input:hover + .uc-swatch-dot { transform: scale(1.08); }
+/* The chosen one is ringed rather than merely brighter, because two of the ten
+   are pale enough that a brightness change would be invisible on them. */
+.uc-swatch input:checked + .uc-swatch-dot {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--uc-accent-text); }
+.uc-swatch input:focus-visible + .uc-swatch-dot {
+    outline: 2px solid var(--uc-accent-text); outline-offset: 3px; }
+
+/* ---------- Series schedule: the past, folded away ---------- */
+.uc-schedule-pastfold { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-schedule-pastfold > summary { cursor: pointer; font-family: var(--uc-font-heading);
+    font-size: 14px; font-weight: 600; color: var(--uc-accent-text); }
+.uc-schedule-pastfold > summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+
 /* ---------- Venues screen ----------
    Four address fields, sized to what goes in them: street takes the room, ZIP
    and state do not need any. Below 720px they stack, because a two-character
@@ -576,7 +699,6 @@ body.uc-portal {
 
 /* ---------- The schedule (series screen) ---------- */
 .uc-schedule-sentence { margin: 0 0 14px; font-family: var(--uc-font-heading, inherit); font-size: 17px; font-weight: 700; }
-.uc-schedule-head { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--p-muted); }
 .uc-schedule-edit > summary, .uc-schedule-add > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; margin-bottom: 8px; }
 .uc-schedule-list { list-style: none; margin: 0; padding: 0; }
 .uc-schedule-row { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
@@ -934,7 +1056,6 @@ body.uc-modal-open { overflow: hidden; }
 
 /* The per-panel headings are how the no-script version tells the two lists
    apart. Once the tabs are live they say the same thing twice, so they go. */
-.uc-picker-heading { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
 .uc-picker-tabbed .uc-picker-heading { display: none; }
 .uc-picker-panel-body + .uc-picker-panel-body { margin-top: 18px; }
 .uc-picker-tabbed .uc-picker-panel-body + .uc-picker-panel-body { margin-top: 0; }

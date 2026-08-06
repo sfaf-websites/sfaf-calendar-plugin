@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.14.0
+Stable tag: 3.15.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.15.0 =
+
+**"Replies go to" was on screen twice, and the mechanism that prevents that is the same one that caused it.** Every RSVP setting is drawn through one method and claimed by name, with a final call that takes whatever is left over. The notification box IS the "notify" setting, and it also drew the reply-to field by hand. A field drawn inside another field's renderer is invisible to that bookkeeping, so the catch-all drew it a second time. Reply-to now draws itself, carrying its own heading, and nothing else renders it. The same fault was on the registrations screen for the same reason, because both screens end at the same catch-all.
+
+Nothing else was doubled: capacity, accept RSVPs, the organizer address and the new-RSVP toggle each appear once, and a test now asserts that by counting them in the source rather than by inspection.
+
+**A type scale, applied across the whole portal.** The coloured card headers fixed the outermost level and stopped there, so inside a card a subhead, a field label and a line of helper text were all within a point or two of each other. There are five steps now and every one is visibly different: page title, section, card heading, subhead, then body with helper text below it. The subhead was the missing rung and is the one that changed most: larger than body, weight 600, in Montserrat, with real space above it, because a heading with air over it reads as starting something and one without reads as continuing. This lands hardest on the registrations screen, where the headings were closest to body text.
+
+The card heading stays smaller than the subhead on purpose. Uppercase, letter-spacing and a coloured band across the card are what make it dominant, and no other level has any of the three; making it larger as well would push every field further down the page for a distinction that is already unmistakable.
+
+**Chosen recipients are chips.** The picker was a scrolling column of checkboxes that was both the way to find somebody and the record of who was chosen, so "who is on this list" was a question you answered by scrolling, and the answer moved as you filtered. The list finds people; chips below it hold the answer, each with an x. Teams are marked as teams, because "Philanthropy" and a person's name otherwise look like two people. It reads the same way as the address pills further down the card, so the whole card speaks one language. The checkboxes are still what post, so with scripting off the plain list is exactly the control it has always been.
+
+While fixing that: the live recipient count had been reading the address textarea by id since 3.14.0 replaced it with pills, so typed addresses had silently stopped counting. It reads the pills now.
+
+**Pickers list people with a calendar user record, and only those.** This narrows what 3.14.0 widened, and the distinction is the point. Calendar ACCESS comes from manage_options: a WordPress administrator has full access and can never be locked out, which is the 3.7.0 fix and is untouched. Picker VISIBILITY comes from having a record under Users and Permissions. An administrator who has not added themselves has full access and does not appear in pickers, which is correct: a picker is a list of the people who work on this calendar, not of everybody who could. 3.14.0 fixed the symptom by widening the list, which quietly made those two things the same list.
+
+**The series schedule shows what is coming up.** Past dates are folded behind a summary that names how many there are, and it starts folded. A weekly group two years old has a hundred past dates and four upcoming ones, and this screen exists to answer the second. Nothing there can be edited from this screen anyway, and the Events list already has an Archived view holding all of it, which the summary links to.
+
+**Categories can be managed in caladmin at last, on one page with Series.** Both answer how the programming is organised, neither is site configuration, which is the same reasoning that moved venues in 3.13.0.
+
+**Three things were broken, not one.** Categories could only be edited in the WordPress admin, and only their name could be set there. Colour was term meta with no form field anywhere in the plugin: the only thing that ever wrote it was the sample-data seeder, so every category anybody created by hand was permanently the default teal. Icon was not stored at all, but mapped from five exact category names, so a sixth category could not have one and renaming a category silently took its icon away. And the branded placeholder had a second hard-coded name map with its own colours that ignored the stored colour entirely, naming two icons that do not exist in the icon set and therefore never drew at all.
+
+All of it now reads from the category. The colour picker is the ten approved brand colours as swatches and nothing else can be saved, enforced on the way in as well as in the form. The icon is a curated list, checked against the icon set before it is ever returned, so a key that does not exist can never reach the page. The five categories that predate this screen keep the icons they have always had, so nothing on the calendar changes appearance today.
+
+A category created without a colour gets the documented default and stores it, rather than holding an empty string that readers have to guess at. Every brand colour has a measured foreground for the placeholder label: Dark Gray or white, whichever wins, all ten clearing the 3:1 that large text requires. Deleting a category is allowed rather than refused, unlike a venue or a team, and the difference is deliberate: its events stay exactly where and when they were and simply lose the classification, which is visible and reversible rather than data loss. The confirmation names the count.
 
 = 3.14.0 =
 
