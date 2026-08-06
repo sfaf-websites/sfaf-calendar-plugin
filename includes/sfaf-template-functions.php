@@ -1511,6 +1511,60 @@ function sfaf_help( $id, $text, $what = '' ) {
  * @param int $post_id
  * @return string
  */
+/**
+ * The four meta keys an event's OWN location is kept in.
+ *
+ * An event either names a venue, in which case the address lives on the venue
+ * term, or it holds its own location. Its own location used to be one free-text
+ * line, exactly as a venue's address used to be, and for the same reason it was
+ * not enough: nothing could tell a complete address from half of one.
+ *
+ * `_uc_location` IS STILL THE COMPOSED LINE and is still what everything reads.
+ * The parts are composed into it on every save, which is why sfaf_event_location()
+ * below is unchanged and why none of its call sites had to learn about parts.
+ *
+ * @return array<string,string> part => meta key
+ */
+function sfaf_location_part_keys() {
+    return array(
+        'street' => '_uc_location_street',
+        'city'   => '_uc_location_city',
+        'state'  => '_uc_location_state',
+        'zip'    => '_uc_location_zip',
+    );
+}
+
+/**
+ * An event's own location as its four parts.
+ *
+ * FALLS BACK TO PARSING THE STORED LINE, which is how every location written
+ * before this existed still fills the form in. That is deliberately a read-time
+ * fallback rather than a migration pass: nothing is rewritten until somebody
+ * saves, so a line that the parser would split badly is not touched until a
+ * person is looking at the result. The parser is the venues one, unchanged, so
+ * there is one set of rules about what an address is: a trailing ZIP and a bare
+ * two-letter state code are the only things treated as certain, and anything
+ * else goes into street whole rather than being guessed at.
+ *
+ * @param int $post_id
+ * @return array{street:string,city:string,state:string,zip:string}
+ */
+function sfaf_event_location_parts( $post_id ) {
+    $post_id = (int) $post_id;
+    $parts   = array();
+    foreach ( sfaf_location_part_keys() as $part => $key ) {
+        $parts[ $part ] = $post_id ? (string) get_post_meta( $post_id, $key, true ) : '';
+    }
+
+    if ( '' === implode( '', $parts ) ) {
+        $line = $post_id ? trim( (string) get_post_meta( $post_id, '_uc_location', true ) ) : '';
+        if ( '' !== $line ) {
+            return SFAF_Venues::parse_address( $line );
+        }
+    }
+    return $parts;
+}
+
 function sfaf_event_location( $post_id ) {
     $post_id = (int) $post_id;
 

@@ -100,12 +100,18 @@ class SFAF_Recurrence {
     /* =====================================================================
      * Patterns
      * ================================================================== */
-
     /**
-     * The patterns on offer, key => label.
+     * The patterns on offer, key => label. LEGACY SHORTHANDS ONLY.
      *
-     * The first four are the ones the pre-3.0 engine already generated and the
-     * arithmetic below is the same arithmetic; monthly_nth is the addition.
+     * These five are the whole of what the engine could express before 3.14.0,
+     * and they are kept because they are stored on every event generated up to
+     * now. They are also still valid input: each one is exactly equivalent to a
+     * structured pattern, and parse_pattern() below normalises it to one.
+     *
+     * WHAT THEY COULD NOT SAY, which is why the structured form exists:
+     * a group meeting Tuesdays AND Thursdays, any interval other than one or
+     * two weeks, an nth-weekday chosen rather than inferred from the start
+     * date, or "the LAST Friday" as distinct from "the fifth Friday".
      *
      * @return array<string,string>
      */
@@ -119,15 +125,160 @@ class SFAF_Recurrence {
         );
     }
 
-    /** Coerce anything submitted into a pattern we recognise, or ''. */
-    public static function clean_pattern( $raw ) {
-        $raw = is_string( $raw ) ? sanitize_key( $raw ) : '';
-        return array_key_exists( $raw, self::patterns() ) ? $raw : '';
+    /** Upper bounds, so a typed interval cannot ask for a thousand years. */
+    const MAX_INTERVAL = 52;
+
+    /**
+     * Normalise any pattern, old or new, into one shape.
+     *
+     * THE STORED FORM IS STILL A SINGLE STRING, deliberately. PATTERN_META has
+     * held one since 3.0.0 and is read by pattern_label(), schedule_sentence(),
+     * weekday_is_movable() and reday_group(); giving it a second, structured
+     * shape would have meant every one of those learning which it was holding.
+     * So the structure is IN the string, after a colon:
+     *
+     *   daily                 every day
+     *   daily:3               every 3 days
+     *   weekly                every week, on the seed's own weekday
+     *   biweekly              every 2 weeks, on the seed's own weekday
+     *   weekly:1:2,4          every week on Tuesday and Thursday
+     *   weekly:3:1            every 3 weeks on Monday
+     *   monthly               every month on the same date
+     *   monthly:2             every 2 months on the same date
+     *   monthly_nth           every month on the seed's own nth weekday
+     *   monthly_nth:1:1       the first Monday of every month
+     *   monthly_nth:-1:5      the LAST Friday of every month
+     *
+     * Weekdays are 0 for Sunday through 6 for Saturday, matching date('w').
+     * An ordinal of -1 means last, which is NOT the same as 5: a month with
+     * four Fridays has a last Friday and no fifth one.
+     *
+     * @param string $raw
+     * @return array|null {type, interval, days[], nth, dow} or null if unusable.
+     */
+    public static function parse_pattern( $raw ) {
+        $raw = is_string( $raw ) ? strtolower( trim( $raw ) ) : '';
+        if ( '' === $raw ) {
+            return null;
+        }
+        // sanitize_key() cannot be used here: it strips the colons and commas
+        // that carry the structure, which would silently turn "weekly:1:2,4"
+        // into an unrecognised key and drop the pattern.
+        if ( ! preg_match( '/^[a-z_]+(:-?[0-9]+)?(:-?[0-9]+(,-?[0-9]+)*)?$/', $raw ) ) {
+            return null;
+        }
+
+        $bits = explode( ':', $raw );
+        $type = $bits[0];
+        $num  = isset( $bits[1] ) ? (int) $bits[1] : 0;
+
+        $interval = function ( $n ) {
+            $n = (int) $n;
+            return ( $n >= 1 ) ? min( $n, self::MAX_INTERVAL ) : 1;
+        };
+
+        switch ( $type ) {
+            case 'daily':
+                return array( 'type' => 'daily', 'interval' => $interval( $num ?: 1 ), 'days' => array(), 'nth' => 0, 'dow' => -1 );
+
+            case 'biweekly':
+                return array( 'type' => 'weekly', 'interval' => 2, 'days' => array(), 'nth' => 0, 'dow' => -1 );
+
+            case 'weekly':
+                $days = array();
+                if ( isset( $bits[2] ) ) {
+                    foreach ( explode( ',', $bits[2] ) as $d ) {
+                        $d = (int) $d;
+                        if ( $d >= 0 && $d <= 6 && ! in_array( $d, $days, true ) ) {
+                            $days[] = $d;
+                        }
+                    }
+                    sort( $days );
+                }
+                return array( 'type' => 'weekly', 'interval' => $interval( $num ?: 1 ), 'days' => $days, 'nth' => 0, 'dow' => -1 );
+
+            case 'monthly':
+                return array( 'type' => 'monthly', 'interval' => $interval( $num ?: 1 ), 'days' => array(), 'nth' => 0, 'dow' => -1 );
+
+            case 'monthly_nth':
+                $nth = isset( $bits[1] ) ? (int) $bits[1] : 0;   // 0 means "infer from the start date"
+                $dow = isset( $bits[2] ) ? (int) $bits[2] : -1;
+                if ( $nth < -1 || $nth > 5 || 0 === $nth && isset( $bits[1] ) ) {
+                    $nth = 0;
+                }
+                if ( $dow < 0 || $dow > 6 ) {
+                    $dow = -1;
+                }
+                return array( 'type' => 'monthly_nth', 'interval' => 1, 'days' => array(), 'nth' => $nth, 'dow' => $dow );
+        }
+        return null;
     }
 
     /**
-     * The label for a pattern, with monthly_nth spelled out against a real
-     * date: "every 2nd Friday of the month".
+     * Build the canonical stored string from a spec.
+     *
+     * @param array $spec
+     * @return string
+     */
+    public static function pattern_string( $spec ) {
+        if ( ! is_array( $spec ) || empty( $spec['type'] ) ) {
+            return '';
+        }
+        $interval = isset( $spec['interval'] ) ? max( 1, min( (int) $spec['interval'], self::MAX_INTERVAL ) ) : 1;
+
+        switch ( $spec['type'] ) {
+            case 'daily':
+                return ( 1 === $interval ) ? 'daily' : 'daily:' . $interval;
+
+            case 'weekly':
+                $days = isset( $spec['days'] ) ? array_values( array_unique( array_map( 'intval', (array) $spec['days'] ) ) ) : array();
+                sort( $days );
+                if ( empty( $days ) ) {
+                    // No day chosen means "the seed's own weekday", which is
+                    // exactly what the legacy shorthands mean.
+                    return ( 2 === $interval ) ? 'biweekly' : ( 1 === $interval ? 'weekly' : 'weekly:' . $interval );
+                }
+                return 'weekly:' . $interval . ':' . implode( ',', $days );
+
+            case 'monthly':
+                return ( 1 === $interval ) ? 'monthly' : 'monthly:' . $interval;
+
+            case 'monthly_nth':
+                $nth = isset( $spec['nth'] ) ? (int) $spec['nth'] : 0;
+                $dow = isset( $spec['dow'] ) ? (int) $spec['dow'] : -1;
+                if ( 0 === $nth || $dow < 0 ) {
+                    return 'monthly_nth';
+                }
+                return 'monthly_nth:' . $nth . ':' . $dow;
+        }
+        return '';
+    }
+
+    /** Coerce anything submitted into a pattern we recognise, or ''. */
+    public static function clean_pattern( $raw ) {
+        $spec = self::parse_pattern( $raw );
+        return $spec ? self::pattern_string( $spec ) : '';
+    }
+
+    /** Weekday names, index 0 = Sunday, matching date('w'). */
+    public static function weekday_names( $short = false ) {
+        $long  = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
+        $abbr  = array( 'S', 'M', 'T', 'W', 'T', 'F', 'S' );
+        return $short ? $abbr : $long;
+    }
+
+    /** "first", "second", … and "last" for -1. */
+    public static function ordinal_word( $n ) {
+        $n = (int) $n;
+        if ( -1 === $n ) {
+            return 'last';
+        }
+        $words = array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', 5 => 'fifth' );
+        return isset( $words[ $n ] ) ? $words[ $n ] : 'first';
+    }
+
+    /**
+     * The label for a pattern, in plain language, against a real date.
      *
      * Naming the actual weekday is the point. "Every month, on the same
      * weekday" is only meaningful next to the date it was derived from, and a
@@ -139,22 +290,83 @@ class SFAF_Recurrence {
      * @return string
      */
     public static function pattern_label( $pattern, $start = '' ) {
-        $labels = self::patterns();
-        if ( ! isset( $labels[ $pattern ] ) ) {
+        $spec = self::parse_pattern( $pattern );
+        if ( ! $spec ) {
             return '';
         }
-        if ( 'monthly_nth' === $pattern && $start ) {
-            $nth = self::nth_weekday_of_month( $start );
-            if ( $nth ) {
-                $ordinals = array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', 5 => 'fifth' );
-                return sprintf(
-                    'Every %s %s of the month',
-                    isset( $ordinals[ $nth['nth'] ] ) ? $ordinals[ $nth['nth'] ] : $nth['nth'] . 'th',
-                    $nth['weekday']
-                );
-            }
+        $names = self::weekday_names();
+
+        switch ( $spec['type'] ) {
+            case 'daily':
+                return ( 1 === $spec['interval'] ) ? 'Every day' : sprintf( 'Every %d days', $spec['interval'] );
+
+            case 'weekly':
+                $days = $spec['days'];
+                if ( empty( $days ) && $start ) {
+                    $dow = self::dow_of( $start );
+                    if ( null !== $dow ) {
+                        $days = array( $dow );
+                    }
+                }
+                $on = '';
+                if ( ! empty( $days ) ) {
+                    $list = array();
+                    foreach ( $days as $d ) {
+                        $list[] = $names[ $d ];
+                    }
+                    $on = ' on ' . self::join_words( $list );
+                }
+                if ( 1 === $spec['interval'] ) {
+                    return 'Every week' . $on;
+                }
+                if ( 2 === $spec['interval'] && 1 === count( $days ) ) {
+                    // "Every other Wednesday" is what people say, and it is
+                    // unambiguous.
+                    return 'Every other ' . $names[ $days[0] ];
+                }
+                return sprintf( 'Every %d weeks', $spec['interval'] ) . $on;
+
+            case 'monthly':
+                $day = $start ? date_i18n( 'jS', strtotime( $start ) ) : '';
+                $every = ( 1 === $spec['interval'] ) ? 'Every month' : sprintf( 'Every %d months', $spec['interval'] );
+                return $day ? $every . ' on the ' . $day : $every;
+
+            case 'monthly_nth':
+                $nth = $spec['nth'];
+                $dow = $spec['dow'];
+                if ( 0 === $nth || $dow < 0 ) {
+                    if ( ! $start ) {
+                        return 'Every month, on the same weekday';
+                    }
+                    $derived = self::nth_weekday_of_month( $start );
+                    if ( ! $derived ) {
+                        return 'Every month, on the same weekday';
+                    }
+                    $nth = $derived['nth'];
+                    $dow = $derived['dow'];
+                }
+                return sprintf( 'Every %s %s of the month', self::ordinal_word( $nth ), $names[ $dow ] );
         }
-        return $labels[ $pattern ];
+        return '';
+    }
+
+    /** "Monday", "Monday and Thursday", "Monday, Wednesday and Friday". */
+    private static function join_words( $list ) {
+        $list = array_values( $list );
+        $n    = count( $list );
+        if ( 0 === $n ) { return ''; }
+        if ( 1 === $n ) { return $list[0]; }
+        return implode( ', ', array_slice( $list, 0, -1 ) ) . ' and ' . $list[ $n - 1 ];
+    }
+
+    /** date('w') for a Y-m-d, or null. */
+    public static function dow_of( $date ) {
+        try {
+            $d = new DateTimeImmutable( (string) $date, wp_timezone() );
+        } catch ( Exception $e ) {
+            return null;
+        }
+        return (int) $d->format( 'w' );
     }
 
     /**
@@ -178,14 +390,19 @@ class SFAF_Recurrence {
     }
 
     /**
-     * The dates a pattern produces AFTER the start date, through the end date.
+     * The dates a pattern produces AFTER the start date.
      *
      * The start date is not in the list because it is the event the manager is
-     * already creating. It is part of the group all the same — generate()
+     * already creating. It is part of the group all the same: generate()
      * stamps it.
      *
-     * DATE ARITHMETIC IS SITE-LOCAL, matching how _uc_event_date is stored:
-     * a plain Y-m-d that is already the site's calendar day.
+     * TWO WAYS TO STOP, AND EITHER MAY BE USED. $end is a date, inclusive.
+     * $limit is a count of dates to return. Whichever comes first wins, and
+     * MAX_OCCURRENCES is the backstop under both, because a pattern with no
+     * end and no count is a request to fill the database.
+     *
+     * DATE ARITHMETIC IS SITE-LOCAL, matching how _uc_event_date is stored: a
+     * plain Y-m-d that is already the site's calendar day.
      *
      * A NOTE ON 'monthly'. "+1 month" from the 31st lands in the following
      * month, because PHP normalises 31 February to 3 March. That behaviour is
@@ -193,103 +410,134 @@ class SFAF_Recurrence {
      * it is why monthly_nth exists as a separate choice for anybody who means
      * "the last Friday" rather than "the 31st".
      *
-     * @param string $start   Y-m-d
-     * @param string $end     Y-m-d inclusive
+     * @param string $start Y-m-d
+     * @param string $end   Y-m-d inclusive, or '' when $limit is doing the work.
      * @param string $pattern
+     * @param int    $limit Maximum dates to return; 0 for no count limit.
      * @return string[] Y-m-d
      */
-    public static function dates( $start, $end, $pattern ) {
-        $pattern = self::clean_pattern( $pattern );
-        if ( '' === $pattern || ! $start || ! $end ) {
+    public static function dates( $start, $end, $pattern, $limit = 0 ) {
+        $spec = self::parse_pattern( $pattern );
+        if ( ! $spec || ! $start ) {
+            return array();
+        }
+        $limit = max( 0, (int) $limit );
+        if ( '' === (string) $end && $limit <= 0 ) {
             return array();
         }
 
         $tz = wp_timezone();
         try {
-            $cur  = new DateTime( (string) $start, $tz );
-            $stop = new DateTime( (string) $end, $tz );
+            $from = new DateTimeImmutable( (string) $start, $tz );
+            // No end date means "count only": run to the backstop horizon and
+            // let $limit stop it.
+            $stop = ( '' !== (string) $end )
+                ? new DateTimeImmutable( (string) $end, $tz )
+                : $from->modify( '+10 years' );
         } catch ( Exception $e ) {
             return array();
         }
-        if ( $stop < $cur ) {
+        if ( $stop < $from ) {
             return array();
         }
 
-        if ( 'monthly_nth' === $pattern ) {
-            return self::nth_weekday_dates( $start, $end );
-        }
-
-        $steps = array(
-            'daily'    => '+1 day',
-            'weekly'   => '+1 week',
-            'biweekly' => '+2 weeks',
-            'monthly'  => '+1 month',
-        );
-
+        $cap   = ( $limit > 0 ) ? min( $limit, self::MAX_OCCURRENCES ) : self::MAX_OCCURRENCES;
         $dates = array();
-        $cur->modify( $steps[ $pattern ] );
-        while ( $cur <= $stop && count( $dates ) < self::MAX_OCCURRENCES ) {
-            $dates[] = $cur->format( 'Y-m-d' );
-            $cur->modify( $steps[ $pattern ] );
-        }
-        return $dates;
-    }
 
-    /**
-     * "The same weekday-of-the-month, every month" — the 2nd Friday, the 4th
-     * Tuesday — derived from the start date rather than asked for separately.
-     *
-     * A MONTH THAT DOES NOT HAVE A FIFTH FRIDAY IS SKIPPED, not moved to the
-     * fourth. Somebody who set up a fifth-Friday group means the fifth Friday;
-     * silently holding it a week early in the months that have only four would
-     * put an event on a date nobody chose.
-     *
-     * @param string $start Y-m-d
-     * @param string $end   Y-m-d inclusive
-     * @return string[] Y-m-d, strictly after $start
-     */
-    private static function nth_weekday_dates( $start, $end ) {
-        $nth = self::nth_weekday_of_month( $start );
-        if ( ! $nth ) {
-            return array();
-        }
-        $tz = wp_timezone();
-        try {
-            $from   = new DateTimeImmutable( (string) $start, $tz );
-            $stop   = new DateTimeImmutable( (string) $end, $tz );
-            $cursor = new DateTimeImmutable( $from->format( 'Y-m-01' ), $tz );
-        } catch ( Exception $e ) {
-            return array();
-        }
+        switch ( $spec['type'] ) {
 
-        $names = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
-        $day   = $names[ $nth['dow'] ];
-
-        $dates = array();
-        for ( $i = 0; $i < self::MAX_OCCURRENCES; $i++ ) {
-            $cursor = $cursor->modify( '+1 month' );
-            if ( $cursor > $stop ) {
+            case 'daily':
+                $cur = $from;
+                while ( count( $dates ) < $cap ) {
+                    $cur = $cur->modify( '+' . $spec['interval'] . ' day' );
+                    if ( $cur > $stop ) { break; }
+                    $dates[] = $cur->format( 'Y-m-d' );
+                }
                 break;
-            }
-            // "second friday of March 2027" — PHP resolves this exactly, and
-            // returns a date in the FOLLOWING month when the month has no such
-            // weekday, which is the case we drop.
-            $hit = $cursor->modify( sprintf( '%s %s of this month', self::ordinal( $nth['nth'] ), $day ) );
-            if ( ! $hit || $hit->format( 'Y-m' ) !== $cursor->format( 'Y-m' ) ) {
-                continue;
-            }
-            if ( $hit > $stop || $hit <= $from ) {
-                continue;
-            }
-            $dates[] = $hit->format( 'Y-m-d' );
-        }
-        return $dates;
-    }
 
-    /** "first" … "fifth", for PHP's relative date syntax. */
-    private static function ordinal( $n ) {
-        $words = array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', 5 => 'fifth' );
-        return isset( $words[ (int) $n ] ) ? $words[ (int) $n ] : 'first';
+            case 'weekly':
+                $days = $spec['days'];
+                if ( empty( $days ) ) {
+                    $days = array( (int) $from->format( 'w' ) );
+                }
+                sort( $days );
+                /*
+                 * WEEK BLOCKS, NOT A RUNNING STEP. With several days chosen the
+                 * old "+1 week" arithmetic has nothing to step: Tuesday and
+                 * Thursday are not one interval apart. So the cursor walks in
+                 * blocks of $interval weeks from the week the start date is in,
+                 * and each block emits its chosen days in order. An interval of
+                 * 1 emits every week; 2 emits every other week, which is what
+                 * biweekly always meant.
+                 */
+                $week_start = $from->modify( '-' . (int) $from->format( 'w' ) . ' days' );
+                for ( $block = 0; count( $dates ) < $cap; $block++ ) {
+                    $base = $week_start->modify( '+' . ( $block * $spec['interval'] ) . ' weeks' );
+                    if ( $base > $stop->modify( '+7 days' ) ) { break; }
+                    foreach ( $days as $d ) {
+                        $hit = $base->modify( '+' . $d . ' days' );
+                        if ( $hit <= $from ) { continue; }
+                        if ( $hit > $stop ) { continue; }
+                        if ( count( $dates ) >= $cap ) { break; }
+                        $dates[] = $hit->format( 'Y-m-d' );
+                    }
+                    // A guard against a pathological interval producing an
+                    // endless loop with nothing ever emitted.
+                    if ( $block > self::MAX_OCCURRENCES ) { break; }
+                }
+                break;
+
+            case 'monthly':
+                $cur = $from;
+                while ( count( $dates ) < $cap ) {
+                    $cur = $cur->modify( '+' . $spec['interval'] . ' month' );
+                    if ( $cur > $stop ) { break; }
+                    $dates[] = $cur->format( 'Y-m-d' );
+                }
+                break;
+
+            case 'monthly_nth':
+                $nth = $spec['nth'];
+                $dow = $spec['dow'];
+                if ( 0 === $nth || $dow < 0 ) {
+                    $derived = self::nth_weekday_of_month( $start );
+                    if ( ! $derived ) { return array(); }
+                    $nth = $derived['nth'];
+                    $dow = $derived['dow'];
+                }
+                $names  = self::weekday_names();
+                $day    = $names[ $dow ];
+                $cursor = new DateTimeImmutable( $from->format( 'Y-m-01' ), $tz );
+
+                for ( $i = 0; $i < self::MAX_OCCURRENCES && count( $dates ) < $cap; $i++ ) {
+                    $cursor = $cursor->modify( '+1 month' );
+                    if ( $cursor > $stop ) { break; }
+
+                    if ( -1 === $nth ) {
+                        // "last friday of this month" resolves exactly and
+                        // always exists, which is the whole difference from
+                        // asking for a fifth one.
+                        $hit = $cursor->modify( 'last ' . $day . ' of this month' );
+                    } else {
+                        /*
+                         * A MONTH THAT DOES NOT HAVE A FIFTH FRIDAY IS SKIPPED,
+                         * not moved to the fourth. Somebody who set up a
+                         * fifth-Friday group means the fifth Friday; silently
+                         * holding it a week early in the months that have only
+                         * four would put an event on a date nobody chose.
+                         */
+                        $hit = $cursor->modify( sprintf( '%s %s of this month', self::ordinal_word( $nth ), $day ) );
+                        if ( ! $hit || $hit->format( 'Y-m' ) !== $cursor->format( 'Y-m' ) ) {
+                            continue;
+                        }
+                    }
+                    if ( ! $hit || $hit > $stop || $hit <= $from ) { continue; }
+                    $dates[] = $hit->format( 'Y-m-d' );
+                }
+                break;
+        }
+
+        return $dates;
     }
 
     /* =====================================================================
@@ -311,10 +559,11 @@ class SFAF_Recurrence {
      *
      * @param int    $seed_id
      * @param string $pattern
-     * @param string $end_date Y-m-d, inclusive.
+     * @param string $end_date Y-m-d, inclusive. '' when $limit ends it instead.
+     * @param int    $limit    Occurrences to create AFTER the seed; 0 for none.
      * @return array{group:string,created:int[],dates:string[],skipped:int}
      */
-    public static function generate( $seed_id, $pattern, $end_date ) {
+    public static function generate( $seed_id, $pattern, $end_date, $limit = 0 ) {
         $seed_id = (int) $seed_id;
         $out     = array( 'group' => '', 'created' => array(), 'dates' => array(), 'skipped' => 0 );
 
@@ -328,7 +577,7 @@ class SFAF_Recurrence {
 
         $pattern = self::clean_pattern( $pattern );
         $start   = (string) get_post_meta( $seed_id, '_uc_event_date', true );
-        $dates   = self::dates( $start, $end_date, $pattern );
+        $dates   = self::dates( $start, $end_date, $pattern, $limit );
         if ( empty( $dates ) ) {
             return $out;
         }
@@ -572,28 +821,14 @@ class SFAF_Recurrence {
      * @return string
      */
     public static function schedule_sentence( $pattern, $date, $start = '', $end = '' ) {
-        $pattern = self::clean_pattern( $pattern );
-        $when    = '';
-
-        $ts = $date ? strtotime( (string) $date ) : false;
-
-        if ( '' === $pattern ) {
+        // One source for the words. This used to hold its own copy of the
+        // labelling, so a pattern the engine understood could be described one
+        // way here and another way in pattern_label(); with the structured
+        // patterns there would have been far more room for the two to drift.
+        $when = self::pattern_label( $pattern, $date );
+        if ( '' === $when ) {
+            $ts   = $date ? strtotime( (string) $date ) : false;
             $when = $ts ? date_i18n( 'l, F j, Y', $ts ) : 'No repeating pattern';
-        } elseif ( 'daily' === $pattern ) {
-            $when = 'Every day';
-        } elseif ( 'weekly' === $pattern ) {
-            $when = $ts ? 'Every ' . date_i18n( 'l', $ts ) : 'Every week';
-        } elseif ( 'biweekly' === $pattern ) {
-            // "Every other Wednesday" rather than "every 2 weeks on Wednesday":
-            // it is what people say, and it is unambiguous.
-            $when = $ts ? 'Every other ' . date_i18n( 'l', $ts ) : 'Every 2 weeks';
-        } elseif ( 'monthly' === $pattern ) {
-            $when = $ts ? 'Every month on the ' . date_i18n( 'jS', $ts ) : 'Every month';
-        } elseif ( 'monthly_nth' === $pattern ) {
-            $when = self::pattern_label( 'monthly_nth', $date );
-            if ( '' === $when ) {
-                $when = 'Every month';
-            }
         }
 
         $clock = self::time_phrase( $start, $end );
@@ -642,7 +877,24 @@ class SFAF_Recurrence {
      * @return bool
      */
     public static function weekday_is_movable( $pattern ) {
-        return in_array( self::clean_pattern( $pattern ), array( 'weekly', 'biweekly', 'monthly_nth' ), true );
+        $spec = self::parse_pattern( $pattern );
+        if ( ! $spec ) {
+            return false;
+        }
+        /*
+         * A GROUP ON SEVERAL WEEKDAYS HAS NO SINGLE WEEKDAY TO MOVE.
+         *
+         * "Move this group to Thursdays" is a coherent instruction for a
+         * Wednesday group and a meaningless one for a group that meets
+         * Tuesdays and Thursdays: it cannot say which of the two moved, and
+         * reday_group() would collapse both onto one day, silently halving the
+         * schedule. Multi-day groups are edited date by date on the series
+         * screen, which is where the dates are.
+         */
+        if ( 'weekly' === $spec['type'] ) {
+            return count( $spec['days'] ) <= 1;
+        }
+        return 'monthly_nth' === $spec['type'];
     }
 
     /**
@@ -735,7 +987,7 @@ class SFAF_Recurrence {
                     $out['skipped']++;
                     continue;
                 }
-                $hit = $month->modify( sprintf( '%s %s of this month', self::ordinal( $nth['nth'] ), $names[ $target_dow ] ) );
+                $hit = $month->modify( sprintf( '%s %s of this month', self::ordinal_word( $nth["nth"] ), $names[ $target_dow ] ) );
                 if ( ! $hit || $hit->format( 'Y-m' ) !== $month->format( 'Y-m' ) || $hit->format( 'Y-m-d' ) < $today ) {
                     $out['skipped']++;
                     continue;

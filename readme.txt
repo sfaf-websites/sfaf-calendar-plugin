@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.13.0
+Stable tag: 3.14.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,44 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.14.0 =
+
+**The portal is on brand, and it follows the one rule the brand guide is explicit about.** The guide approves ten colours and then says not to use them all, because too many produces a kaleidoscope: combine a neutral gray or black with one or two accents and use lighter and darker variations of those for contrast. So this is Dark Gray and white, teal as the single structural accent, and yellow reserved for one job.
+
+Every card now carries a 3px teal edge and a heading band in teal at 10 percent. Card headings are Montserrat, the brand's web headline face, uppercase and semibold at 14px in Dark Gray. That is three differences at once, which is what makes a heading unmistakable at a glance rather than on inspection; the complaint was that everything read at the same weight, so a card heading looked like a field label. A heading does not have to be large to be a heading, it has to be different, and making it large would only push the fields down the page.
+
+**Yellow means "this is the action" and nothing else.** Save and Add. The moment it decorates a heading or a border it stops carrying that meaning and there is no colour left that does. Body text is Dark Gray rather than pure black. Category colours are untouched: they are a different system with real meaning behind each hue and have been contrast-checked since 3.1.0.
+
+**Contrast was measured, not chosen by eye, and one brand value did not survive it.** Brand teal is 2.26:1 against white and has been banned as a text colour here since 3.1.0. The guide permits darker variations, and its own #0E818C is the usual one, but that measures 4.27:1 on the new teal heading band and 4.28:1 on the page background, both below AA. Teal that carries text is therefore one step darker again at #0E7680, which clears 4.5:1 on white, on the page background and on both bands. Nineteen pairings are measured and all pass. The 3px card edge is deliberately brand teal at 2.26:1 and is decoration: it carries no information, and removing it entirely would lose nothing but the brand.
+
+**Montserrat loads from Google Fonts** with preconnect and display=swap, so text is readable in the platform's own face immediately rather than invisible while the file arrives.
+
+**The recurrence control is rebuilt, and the engine behind it grew to match.** The old single dropdown described the arithmetic rather than the schedule: "every Thursday" was spelled "Every week" and only meant Thursday if the date above happened to be one, and a group meeting Tuesdays and Thursdays could not be expressed at all.
+
+It is now a segmented control, Never, Daily, Weekly or Monthly. Weekly reveals an interval and seven day circles, so a group that meets twice a week is one setting. Monthly offers the date of the month or a chosen ordinal and weekday, including **last**, which is genuinely different from fifth: a month with four Fridays has a last Friday and no fifth one. An ends block offers no end date, a date, or a number of occurrences.
+
+**A plain-language summary underneath states what it comes to and how many events that is:** "Every week on Wednesday, until Dec 31 2026. 21 events will be created." Generation makes that many independent posts, once, so the number belongs in front of the button rather than after it.
+
+**What the engine already did, and what it did not.** Daily, weekly, every two weeks, monthly on the same date, and the nth weekday of the month all existed. What did not: several weekdays in one pattern, any interval other than one or two weeks, choosing the ordinal and weekday rather than inferring both from the start date, "last" as distinct from "fifth", and ending after a count rather than on a date. All five are new. Every pre-existing pattern produces byte-identical dates, which is asserted rather than assumed.
+
+**Recurrence stays disabled on imported events**, unchanged since 2.9.0.
+
+**FAQs moved up**, directly below Event details. They are the event's own content and belonged with it rather than at the foot of the page.
+
+**Notifications now leads with the question people actually open it to ask:** who gets told when somebody registers. That was answered by a lone checkbox in a card called Organizer contact, three cards away, which is why that card looked like it had no purpose. It had one, it was filed under the wrong heading. The card is three sections in the order things happen: when somebody registers, the morning-of reminder, then replies. **Organizer contact is gone**, and nothing was lost with it: both of its controls are one setting and are now the first thing in Notifications.
+
+**Reply-to stays, and stays separate.** The notification list is who receives mail; reply-to is who fields the replies, which is very often a different answer and very often a shared mailbox. Folding it into the list would make "reply to all the recipients" the only expressible option.
+
+**"Anyone else" is an address at a time, as removable pills**, instead of a textarea of one per line. A bad address is refused while you are still looking at it rather than after a save and a page reload. Each pill is a ticked checkbox, so it works with scripting off and reads correctly to a screen reader. The separate "Currently on the list" block is gone: it restated what the picker already showed, one save behind, so the two disagreed until Save was pressed and nothing said which was true.
+
+**Why typing a name into the Individuals filter found nobody.** Two faults with one root. The list was built from users carrying the calendar-role record and nobody else, but calendar access has been decided by manage_options first since 3.7.0, precisely so an administrator cannot be locked out of their own calendar. So the site's administrators were absent from the picker: real calendar people, invisible to it, and typing one of their names genuinely matched nothing. The same query fed the team membership picker, so they were missing there too. One method answers "who counts as a person on this calendar" now, and both pickers use it.
+
+The second fault is why the message appeared before anything was typed: it was only ever updated inside the keystroke handler, so its state was whatever the markup left it as until somebody typed. It is now set on load from the list actually on screen, and only ever shown in answer to a query. A panel that renders no options at all says so plainly instead of offering a search box over nothing.
+
+**The event's own location is street, city, state and ZIP.** 3.13.0 gave venues those four fields and left the "a different location" branch as a single free-text line, so the same thing was structured in one place and a sentence in the other. It was never a rendering fault: the fields existed only on the Venues screen and had never been added to the event's own entry.
+
+**Existing single-line locations survive, parsed by the venues parser, unchanged.** Only a trailing ZIP and a bare two-letter state code are treated as certain; anything uncertain stays in street whole and nothing is ever dropped. That parse happens when the form is drawn rather than as a migration pass, so nothing is rewritten until somebody saves and looks at the result. Everything still reads one composed line, so no reader had to change.
 
 = 3.13.0 =
 

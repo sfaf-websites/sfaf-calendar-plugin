@@ -18,6 +18,8 @@
         // image on an event they have just decided not to save.
         initHelpToggles();
         initCategoryChips();
+        initRecurrence();
+        initEmailPills();
         initLocationPicker();
         initFaqSaveAsSet();
         initLiveSearch();
@@ -802,7 +804,15 @@
             var filter = root.querySelector('[data-uc-picker-filter="people"]');
             var emptyNote = root.querySelector('[data-uc-picker-empty="people"]');
             if (filter) {
-                filter.addEventListener('input', function () {
+                /*
+                 * THE EMPTY NOTE IS DRIVEN FROM ONE PLACE, AND IT RUNS ONCE ON
+                 * LOAD. It used to be updated only inside the input handler, so
+                 * its state was whatever the markup said until somebody typed.
+                 * Calling the same function at the end means the message on
+                 * screen always describes the list on screen, including before
+                 * anything has been typed at all.
+                 */
+                var applyFilter = function () {
                     var q = filter.value.replace(/\s+/g, ' ').trim().toLowerCase();
                     var shown = 0;
                     Array.prototype.forEach.call(
@@ -818,8 +828,17 @@
                             if (keep) { shown++; }
                         }
                     );
-                    if (emptyNote) { emptyNote.hidden = (shown !== 0); }
-                });
+                    if (emptyNote) {
+                        // Only ever shown in answer to a query. With the box
+                        // empty there is nothing to fail to match, so "Nobody
+                        // matches that" would be answering a question nobody
+                        // asked, which is how it came to be on screen before a
+                        // single keystroke.
+                        emptyNote.hidden = ( shown !== 0 || q === '' );
+                    }
+                };
+                filter.addEventListener('input', applyFilter);
+                applyFilter();
                 // Escape clears the filter before the browser closes the
                 // <details> out from under somebody mid-search.
                 filter.addEventListener('keydown', function (e) {
@@ -1435,5 +1454,388 @@
          * answered. Everything up to this point works whether or not this
          * does anything. */
         openModal();
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE RECURRENCE CONTROL.
+     *
+     * ENHANCEMENT ONLY. The server sends every panel visible and every control
+     * a real input, and reads repeat_mode on save. With this function deleted
+     * the whole thing still works: you pick a mode, tick days, choose an end,
+     * and save. What is added is folding away the panels that do not apply and
+     * the live summary line.
+     *
+     * THE DATE ARITHMETIC IS DUPLICATED HERE, AND THAT IS A REAL RISK. The
+     * count in the summary has to be the count that will actually be created,
+     * so this mirrors SFAF_Recurrence::dates() step for step: the same week
+     * blocks, the same "a month without a fifth Friday is skipped", the same
+     * distinction between last and fifth, the same caps. Two implementations
+     * of one rule can drift, so they are cross-checked against each other over
+     * a matrix of patterns rather than trusted to stay in step by inspection.
+     * If you change one, change the other and re-run that check.
+     * ------------------------------------------------------------------- */
+    var UC_MAX_OCCURRENCES = 366;
+    var UC_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    function ucParseYmd(s) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+        if (!m) { return null; }
+        // UTC throughout, so nothing here can be moved a day by a timezone.
+        // The stored dates are plain calendar days and are treated as such.
+        return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    }
+    function ucYmd(d) {
+        var mm = String(d.getUTCMonth() + 1);
+        var dd = String(d.getUTCDate());
+        return d.getUTCFullYear() + '-' + (mm.length < 2 ? '0' + mm : mm) + '-' + (dd.length < 2 ? '0' + dd : dd);
+    }
+    function ucAddDays(d, n) {
+        var x = new Date(d.getTime());
+        x.setUTCDate(x.getUTCDate() + n);
+        return x;
+    }
+    function ucAddMonths(d, n) {
+        var x = new Date(d.getTime());
+        // Matches PHP's "+1 month": the 31st of January becomes the 3rd of
+        // March rather than being clamped to the 28th. Same overflow, so the
+        // two engines agree on the awkward dates as well as the easy ones.
+        x.setUTCMonth(x.getUTCMonth() + n);
+        return x;
+    }
+    function ucNthWeekday(year, month, nth, dow) {
+        if (nth === -1) {
+            var last = new Date(Date.UTC(year, month + 1, 0));
+            return ucAddDays(last, -(((last.getUTCDay() - dow) + 7) % 7));
+        }
+        var first = new Date(Date.UTC(year, month, 1));
+        var day = 1 + (((dow - first.getUTCDay()) + 7) % 7) + (nth - 1) * 7;
+        var d = new Date(Date.UTC(year, month, day));
+        return (d.getUTCMonth() === month) ? d : null;
+    }
+
+    /** The mirror of SFAF_Recurrence::dates(). */
+    function ucRecurrenceDates(startYmd, endYmd, spec, limit) {
+        var from = ucParseYmd(startYmd);
+        if (!from || !spec || !spec.type) { return []; }
+        limit = Math.max(0, limit | 0);
+        if (!endYmd && limit <= 0) { return []; }
+
+        var stop = endYmd ? ucParseYmd(endYmd) : ucAddMonths(from, 120);
+        if (!stop || stop < from) { return []; }
+
+        var cap = limit > 0 ? Math.min(limit, UC_MAX_OCCURRENCES) : UC_MAX_OCCURRENCES;
+        var interval = Math.max(1, Math.min(spec.interval || 1, 52));
+        var out = [];
+        var cur, i;
+
+        if (spec.type === 'daily') {
+            cur = from;
+            while (out.length < cap) {
+                cur = ucAddDays(cur, interval);
+                if (cur > stop) { break; }
+                out.push(ucYmd(cur));
+            }
+        } else if (spec.type === 'weekly') {
+            var days = (spec.days && spec.days.length) ? spec.days.slice() : [from.getUTCDay()];
+            days.sort(function (a, b) { return a - b; });
+            var weekStart = ucAddDays(from, -from.getUTCDay());
+            var horizon = ucAddDays(stop, 7);
+            for (var block = 0; out.length < cap; block++) {
+                var base = ucAddDays(weekStart, block * interval * 7);
+                if (base > horizon) { break; }
+                for (i = 0; i < days.length; i++) {
+                    var hit = ucAddDays(base, days[i]);
+                    if (hit <= from || hit > stop) { continue; }
+                    if (out.length >= cap) { break; }
+                    out.push(ucYmd(hit));
+                }
+                if (block > UC_MAX_OCCURRENCES) { break; }
+            }
+        } else if (spec.type === 'monthly') {
+            cur = from;
+            while (out.length < cap) {
+                cur = ucAddMonths(cur, interval);
+                if (cur > stop) { break; }
+                out.push(ucYmd(cur));
+            }
+        } else if (spec.type === 'monthly_nth') {
+            var nth = spec.nth, dow = spec.dow;
+            if (!nth || dow < 0) {
+                nth = Math.ceil(from.getUTCDate() / 7);
+                dow = from.getUTCDay();
+            }
+            var cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1));
+            for (i = 0; i < UC_MAX_OCCURRENCES && out.length < cap; i++) {
+                cursor = ucAddMonths(cursor, 1);
+                if (cursor > stop) { break; }
+                var got = ucNthWeekday(cursor.getUTCFullYear(), cursor.getUTCMonth(), nth, dow);
+                if (!got || got > stop || got <= from) { continue; }
+                out.push(ucYmd(got));
+            }
+        }
+        return out;
+    }
+
+    /** The mirror of SFAF_Recurrence::pattern_label(). */
+    function ucRecurrenceLabel(spec, startYmd) {
+        var from = ucParseYmd(startYmd);
+        var interval = Math.max(1, spec.interval || 1);
+        var i, list;
+
+        if (spec.type === 'daily') {
+            return interval === 1 ? 'Every day' : 'Every ' + interval + ' days';
+        }
+        if (spec.type === 'weekly') {
+            var days = (spec.days && spec.days.length) ? spec.days.slice() : (from ? [from.getUTCDay()] : []);
+            days.sort(function (a, b) { return a - b; });
+            list = [];
+            for (i = 0; i < days.length; i++) { list.push(UC_DAY_NAMES[days[i]]); }
+            var on = list.length ? ' on ' + ucJoinWords(list) : '';
+            if (interval === 1) { return 'Every week' + on; }
+            if (interval === 2 && days.length === 1) { return 'Every other ' + UC_DAY_NAMES[days[0]]; }
+            return 'Every ' + interval + ' weeks' + on;
+        }
+        if (spec.type === 'monthly') {
+            var every = interval === 1 ? 'Every month' : 'Every ' + interval + ' months';
+            return from ? every + ' on the ' + ucOrdinalDate(from.getUTCDate()) : every;
+        }
+        if (spec.type === 'monthly_nth') {
+            var nth = spec.nth, dow = spec.dow;
+            if (!nth || dow < 0) {
+                if (!from) { return 'Every month, on the same weekday'; }
+                nth = Math.ceil(from.getUTCDate() / 7);
+                dow = from.getUTCDay();
+            }
+            var words = { '1': 'first', '2': 'second', '3': 'third', '4': 'fourth', '5': 'fifth', '-1': 'last' };
+            return 'Every ' + (words[String(nth)] || 'first') + ' ' + UC_DAY_NAMES[dow] + ' of the month';
+        }
+        return '';
+    }
+    function ucJoinWords(list) {
+        if (!list.length) { return ''; }
+        if (list.length === 1) { return list[0]; }
+        return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+    }
+    function ucOrdinalDate(n) {
+        var s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+    function ucPrettyDate(ymd) {
+        var d = ucParseYmd(ymd);
+        if (!d) { return ymd; }
+        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' ' + d.getUTCFullYear();
+    }
+
+    function initRecurrence() {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-uc-repeat]'), function (root) {
+            var summary = root.querySelector('[data-uc-repeat-summary]');
+            var panels = {};
+            Array.prototype.forEach.call(root.querySelectorAll('[data-uc-repeat-panel]'), function (p) {
+                panels[p.getAttribute('data-uc-repeat-panel')] = p;
+            });
+            // The date the event itself is on. Every pattern is anchored to it,
+            // and it can change while this control is open, so it is read from
+            // the form each time rather than captured once.
+            var dateInput = document.querySelector('input[name="date"]');
+
+            function startDate() {
+                if (dateInput && dateInput.value) { return dateInput.value; }
+                return root.getAttribute('data-uc-repeat-date') || '';
+            }
+            function mode() {
+                var on = root.querySelector('[data-uc-repeat-mode]:checked');
+                return on ? on.value : '';
+            }
+            function chosenDays() {
+                var out = [];
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-repeat-day]:checked'), function (b) {
+                    out.push(parseInt(b.value, 10));
+                });
+                return out;
+            }
+            function currentSpec() {
+                var m = mode();
+                if (m === 'daily') { return { type: 'daily', interval: 1 }; }
+                if (m === 'weekly') {
+                    var n = parseInt((root.querySelector('[name="repeat_weekly_interval"]') || {}).value, 10);
+                    return { type: 'weekly', interval: (n > 0 ? n : 1), days: chosenDays() };
+                }
+                if (m === 'monthly') {
+                    var sub = root.querySelector('[data-uc-repeat-monthly]:checked');
+                    if (sub && sub.value === 'nth') {
+                        return {
+                            type: 'monthly_nth',
+                            nth: parseInt((root.querySelector('[name="repeat_nth"]') || {}).value, 10) || 1,
+                            dow: parseInt((root.querySelector('[name="repeat_nth_dow"]') || {}).value, 10)
+                        };
+                    }
+                    return { type: 'monthly', interval: 1 };
+                }
+                return null;
+            }
+            function ends() {
+                var on = root.querySelector('[data-uc-repeat-ends]:checked');
+                return on ? on.value : 'never';
+            }
+
+            function refresh() {
+                var m = mode();
+                if (panels.weekly) { panels.weekly.hidden = (m !== 'weekly'); }
+                if (panels.monthly) { panels.monthly.hidden = (m !== 'monthly'); }
+                if (panels.ends) { panels.ends.hidden = (m === ''); }
+
+                if (!summary) { return; }
+                var spec = currentSpec();
+                if (!spec) {
+                    summary.textContent = 'Does not repeat. One event will be created.';
+                    return;
+                }
+                if (spec.type === 'weekly' && !spec.days.length) {
+                    summary.textContent = 'Pick at least one day of the week.';
+                    return;
+                }
+
+                var start = startDate();
+                if (!start) {
+                    summary.textContent = 'Set the event date first, since every repeat is counted from it.';
+                    return;
+                }
+
+                var how = ends(), until = '', limit = 0, tail = '';
+                if (how === 'on') {
+                    until = (root.querySelector('[name="repeat_until"]') || {}).value || '';
+                    if (!until) {
+                        summary.textContent = 'Choose the date it runs until.';
+                        return;
+                    }
+                    tail = ', until ' + ucPrettyDate(until);
+                } else if (how === 'after') {
+                    var total = parseInt((root.querySelector('[name="repeat_count"]') || {}).value, 10);
+                    if (!(total > 1)) {
+                        summary.textContent = 'Choose how many occurrences there should be.';
+                        return;
+                    }
+                    limit = total - 1;
+                } else {
+                    limit = 52;      // must equal SFAF_Portal::REPEAT_OPEN_ENDED_LIMIT
+                    tail = ', for a year';
+                }
+
+                // +1 for the event being edited: it is the first occurrence,
+                // and it is an event on the calendar like all the others.
+                var made = ucRecurrenceDates(start, until, spec, limit);
+                summary.textContent = ucRecurrenceLabel(spec, start) + tail + '. '
+                    + (made.length + 1) + ' events will be created.';
+            }
+
+            root.addEventListener('change', refresh);
+            root.addEventListener('input', refresh);
+            if (dateInput) { dateInput.addEventListener('change', refresh); }
+            refresh();
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * "Anyone else": one address at a time, as removable pills.
+     *
+     * ENHANCEMENT ONLY, AGAIN. Each pill is a ticked checkbox, so unticking one
+     * takes the address off the list with scripting switched off, and the Add
+     * field simply posts and is appended by the server. What this adds is
+     * refusing a bad address while the person is still looking at it, rather
+     * than after a save and a page load, and taking a removed pill off the
+     * screen instead of leaving it there greyed out.
+     * ------------------------------------------------------------------- */
+    function initEmailPills() {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-uc-emails]'), function (root) {
+            var list = root.querySelector('[data-uc-email-pills]');
+            var input = root.querySelector('[data-uc-email-input]');
+            var addBtn = root.querySelector('[data-uc-email-add]');
+            var error = root.querySelector('[data-uc-email-error]');
+            var empty = root.querySelector('[data-uc-emails-empty]');
+            if (!list || !input || !addBtn) { return; }
+
+            function known() {
+                var out = [];
+                Array.prototype.forEach.call(list.querySelectorAll('[data-uc-email-pill]'), function (b) {
+                    if (b.checked) { out.push(b.value.toLowerCase()); }
+                });
+                return out;
+            }
+            function syncEmpty() {
+                if (!empty) { return; }
+                empty.hidden = known().length !== 0;
+            }
+            function say(msg) {
+                if (!error) { return; }
+                error.textContent = msg || '';
+                error.hidden = !msg;
+            }
+            function valid(addr) {
+                // Deliberately the same shape of test the server applies: an
+                // address with one @, something either side, and a dot in the
+                // domain. Anything stricter here would reject addresses the
+                // server would have accepted, which is worse than the reverse.
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr);
+            }
+
+            function add() {
+                var addr = (input.value || '').trim();
+                if (!addr) { say('Type an address first.'); input.focus(); return; }
+                if (!valid(addr)) { say('"' + addr + '" is not an email address.'); input.focus(); return; }
+                if (known().indexOf(addr.toLowerCase()) !== -1) {
+                    say('That address is already on the list.');
+                    input.value = '';
+                    return;
+                }
+
+                var label = document.createElement('label');
+                label.className = 'uc-email-pill';
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.name = 'notify_emails[]';
+                box.value = addr;
+                box.checked = true;
+                box.setAttribute('data-uc-email-pill', '');
+                var text = document.createElement('span');
+                text.className = 'uc-email-pill-text';
+                text.textContent = addr;
+                var x = document.createElement('span');
+                x.className = 'uc-email-pill-x';
+                x.setAttribute('aria-hidden', 'true');
+                x.textContent = '×';
+                label.appendChild(box);
+                label.appendChild(text);
+                label.appendChild(x);
+                list.appendChild(label);
+
+                // The add field must not also post, or the address would be
+                // counted twice: once as a pill and once as a new one.
+                input.value = '';
+                say('');
+                syncEmpty();
+                input.focus();
+            }
+
+            addBtn.addEventListener('click', add);
+            input.addEventListener('keydown', function (e) {
+                // Enter adds the address rather than submitting the whole form,
+                // which is what it would otherwise do in a single-field row.
+                if (e.key === 'Enter') { e.preventDefault(); add(); }
+            });
+            input.addEventListener('input', function () { say(''); });
+
+            list.addEventListener('change', function (e) {
+                var box = e.target;
+                if (!box || !box.hasAttribute || !box.hasAttribute('data-uc-email-pill')) { return; }
+                if (!box.checked) {
+                    var pill = box.closest('.uc-email-pill');
+                    if (pill) { pill.parentNode.removeChild(pill); }
+                }
+                syncEmpty();
+            });
+
+            syncEmpty();
+        });
     }
 })();

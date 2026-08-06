@@ -1,27 +1,71 @@
 /* SFAF Calendar — /caladmin portal */
 
+/* ---------------------------------------------------------------------------
+   THE BRAND, AND THE ONE RULE THE GUIDE IS EXPLICIT ABOUT.
+
+   The guide (v3.0) approves ten colours and then says not to use them all:
+   too many produces a kaleidoscope. It directs a neutral gray or black plus
+   ONE OR TWO accents, with lighter and darker variations of those for
+   contrast. So this portal is Dark Gray and white, TEAL as the single
+   structural accent, and YELLOW reserved for one job.
+
+   YELLOW MEANS "THIS IS THE ACTION" AND NOTHING ELSE. Save and Add. The
+   moment it decorates a heading or a border it stops carrying that meaning
+   and there is no colour left that does.
+
+   EVERY PAIRING BELOW IS MEASURED, NOT CHOSEN BY EYE. Brand teal #16BECF is
+   2.26:1 against white and has been banned as a text colour here since 3.1.0.
+   The guide permits darker variations of an approved colour, and p.18's
+   #0E818C is the usual one, but it measures 4.27:1 on the 10% teal heading
+   band and 4.28:1 on the page background, both of which fail AA. So teal that
+   carries text is one step darker again: --uc-accent-text below clears 4.5:1
+   on white, on the page background and on both bands.
+   ------------------------------------------------------------------------- */
 :root {
-    /* Approved SFAF brand palette (brand guide v3.0, p.9). */
-    --uc-primary: #FFD900;   /* SFAF yellow, Pantone 109 CP (dark surfaces / CTAs) */
-    --uc-accent: #16BECF;    /* teal fill/border, Pantone 7710 UP */
-    /* Darkened teal for teal TEXT on white — #16BECF fails AA as text. */
-    --uc-accent-text: #0E818C;
-    --sfaf-yellow: #FFD900;
-    --sfaf-black: #000000;
-    --sfaf-gray: #373433;
-    --p-bg: #F4F6F9;
+    /* Approved SFAF brand palette (brand guide v3.0, p.9), verbatim. */
+    --sfaf-yellow:    #FFD900;
+    --sfaf-orange:    #F7921E;
+    --sfaf-red:       #F04937;
+    --sfaf-burgundy:  #A30C33;
+    --sfaf-pink:      #F1668C;
+    --sfaf-purple:    #8D54A2;
+    --sfaf-green:     #8CC745;
+    --sfaf-teal:      #16BECF;
+    --sfaf-lightgray: #D1D3D4;
+    --sfaf-darkgray:  #373433;
+    --sfaf-black:     #000000;
+    --sfaf-gray:      #373433;
+
+    --uc-primary: #FFD900;   /* SFAF yellow, Pantone 109 CP. PRIMARY ACTIONS ONLY. */
+    --uc-accent: #16BECF;    /* teal fill/border, Pantone 7710 UP. Decoration only. */
+    /* Teal that CARRIES TEXT, or has to be seen as a control boundary.
+       5.35:1 on white, 4.95:1 on the page background, 4.94:1 and 4.56:1 on the
+       two heading bands. See the note above for why not #0E818C. */
+    --uc-accent-text: #0E7680;
+
+    /* The 10% teal heading band, pre-flattened. A translucent fill over an
+       unknown backdrop cannot be contrast-checked; a flat colour can, and
+       these are the two values the alpha actually resolves to here. */
+    --uc-band: #E8F9FA;      /* over a white card */
+    --uc-band-alt: #DFF0F3;  /* over the page background */
+
+    --p-bg: #F5F6F7;
     --p-panel: #ffffff;
+    /* Hairlines between rows: decorative, so brand Light Gray at low contrast
+       is right. A control's OWN boundary is --p-border-strong below, which is
+       a darker variation of the same brand gray and clears 3:1. */
     --p-border: #E2E5EA;
-    --p-text: #1A1D21;
-    --p-muted: #6B7280;
+    --p-border-strong: #8C8D8E;
+    --p-text: #373433;       /* brand Dark Gray, not pure black */
+    --p-muted: #6B6764;      /* a warm gray from the same family, 5.60:1 on white */
     /* The bento cards sit on the page background and need to read as raised
        panels without a heavy border. surface-2 is a hair off white so a card
        inside a card is still legible. */
-    --surface-2: #FBFCFD;
-    --p-sidebar: #000000;
-    --p-sidebar-text: #cbd5e1;
+    --surface-2: #FFFFFF;
+    --p-sidebar: #373433;
+    --p-sidebar-text: #D1D3D4;
     --p-green: #8CC745;      /* Pantone 3561 UP */
-    --p-gray: #cbd5e1;
+    --p-gray: #D1D3D4;
     --p-danger: #F04937;     /* Red, Pantone 179 CP */
 
     /* Web brand typefaces (brand guide v3.0, p.10). */
@@ -41,9 +85,31 @@ body.uc-portal {
 .uc-portal .sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
 .uc-portal a { color: var(--uc-accent-text); text-decoration: none; }
 .uc-portal a:hover { text-decoration: underline; }
-.uc-portal h1 { font-size: 24px; font-weight: 800; margin: 0; }
+.uc-portal h1 { font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
 .uc-portal h2 { font-size: 17px; font-weight: 700; margin: 0; }
 .uc-portal h3 { font-size: 14px; font-weight: 700; margin: 16px 0 8px; }
+
+/* ---------------------------------------------------------------------------
+   HEADINGS HAVE TO READ AS HEADINGS.
+
+   The core complaint about this portal was that everything looked the same
+   weight, so a card heading was indistinguishable from the label of a field
+   inside it. A heading is now three things at once, which is what makes it
+   unmistakable at a glance rather than on inspection: Montserrat (the brand's
+   web headline face), UPPERCASE with letter-spacing, and sitting on a tinted
+   band that a field label never has.
+
+   14px and semibold, not big and bold. A heading does not have to be large to
+   be a heading; it has to be DIFFERENT. Making it large would push the fields
+   down the page for nothing.
+   ------------------------------------------------------------------------- */
+.uc-heading, .uc-card-head h2, .uc-bento-title, .uc-section-head h2, .uc-picker-heading {
+    font-family: var(--uc-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    color: var(--sfaf-darkgray);
+}
 
 /* ---------- Login ---------- */
 .uc-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(135deg, #000000, #373433); }
@@ -88,10 +154,16 @@ body.uc-portal {
 .uc-flash-info { background: #dbeafe; color: #1e40af; }
 
 /* ---------- Buttons ---------- */
-.uc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border); background: #fff; color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-.uc-btn:hover { border-color: var(--uc-accent); color: var(--uc-accent-text); text-decoration: none; }
-.uc-btn-primary { background: var(--uc-primary); border-color: var(--uc-primary); color: #1a1d21; }
-.uc-btn-primary:hover { filter: brightness(0.94); color: #1a1d21; }
+/* A SECONDARY BUTTON IS OUTLINED, A PRIMARY ONE IS YELLOW. That is the whole
+   button vocabulary, and it is why yellow appears nowhere else: the moment it
+   decorates something, a yellow button stops meaning "this is the action".
+   Dark Gray on yellow measures 8.92:1. The border is the strong gray so the
+   control's own edge clears 3:1 rather than being a hairline. */
+.uc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.uc-btn:hover { border-color: var(--uc-accent-text); color: var(--uc-accent-text); text-decoration: none; }
+.uc-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-btn-primary { background: var(--uc-primary); border-color: #E0BE00; color: var(--sfaf-darkgray); }
+.uc-btn-primary:hover { filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
 .uc-btn-block { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 .uc-btn-sm { padding: 6px 12px; font-size: 13px; }
 .uc-link-danger { background: none; border: none; color: var(--p-danger); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
@@ -107,8 +179,30 @@ body.uc-portal {
 .uc-stat-accent .uc-stat-num { color: var(--uc-accent-text); }
 
 /* ---------- Cards / tables ---------- */
-.uc-card { background: var(--p-panel); border: 1px solid var(--p-border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-.uc-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+/* ---------------------------------------------------------------------------
+   THE CARD: A TEAL EDGE AND A TINTED HEADER BAND.
+
+   ONE accent, used the same way everywhere, rather than a colour per card.
+   Colouring cards individually is exactly the kaleidoscope the guide warns
+   against, and it would also collide with the category colours, which are a
+   different system with real meaning behind each hue.
+
+   The 3px edge is decoration and is deliberately brand teal #16BECF, which
+   measures 2.26:1 against white. That is below the 3:1 that WCAG 1.4.11 asks
+   of non-text content, and it is fine here because the edge carries no
+   information: the card is identified by its heading and its own border, and
+   removing the stripe entirely would lose nothing but the brand. Anything
+   that DOES carry information uses --uc-accent-text, which is measured.
+   ------------------------------------------------------------------------- */
+.uc-card { background: var(--p-panel); border: 1px solid var(--p-border);
+    border-left: 3px solid var(--sfaf-teal);
+    border-radius: 4px 12px 12px 4px; padding: 20px; margin-bottom: 20px; overflow: hidden; }
+/* The band is full bleed, pulled out to the padding edge rather than achieved
+   by unpadding the card and re-padding every child. */
+.uc-card-head { display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: -20px -20px 16px; padding: 11px 20px;
+    background: var(--uc-band); border-bottom: 1px solid var(--p-border); }
+.uc-card-head h2 { font-size: 14px; }
 .uc-empty { color: var(--p-muted); padding: 24px; text-align: center; }
 
 .uc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -167,7 +261,10 @@ body.uc-portal {
 .uc-form-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
 .uc-form-main, .uc-form-side { display: flex; flex-direction: column; gap: 16px; }
 .uc-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--p-text); }
-.uc-field input, .uc-field select, .uc-field textarea { padding: 10px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; font-weight: 400; font-family: inherit; background: #fff; width: 100%; }
+/* A control's own boundary has to be visible: --p-border-strong is a darker
+   variation of brand Light Gray and measures 3.33:1 on white. --p-border is
+   the hairline BETWEEN things, which is decoration and does not. */
+.uc-field input, .uc-field select, .uc-field textarea { padding: 10px 12px; border: 1px solid var(--p-border-strong); border-radius: 8px; font-size: 14px; font-weight: 400; font-family: inherit; background: #fff; width: 100%; }
 .uc-field input:focus, .uc-field select:focus, .uc-field textarea:focus { outline: none; border-color: var(--uc-primary); box-shadow: 0 0 0 3px rgba(22,190,207,0.12); }
 /* A BOX IS NOT A TEXT FIELD, and the rule above does not know that.
    `.uc-field input` gives every input inside a .uc-field wrapper width: 100%,
@@ -262,12 +359,17 @@ body.uc-portal {
     gap: 16px; align-items: start; margin-bottom: 20px; }
 .uc-bento-main, .uc-bento-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .uc-bento-card { min-width: 0;
-    background: var(--surface-2); border: 0.5px solid var(--p-border);
-    border-radius: 12px; padding: 18px; }
-.uc-bento-title { font-size: 16px; font-weight: 500; margin: 0 0 14px; color: var(--p-text); }
-.uc-bento-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-    flex-wrap: wrap; margin-bottom: 14px; }
-.uc-bento-head .uc-bento-title { margin: 0; }
+    background: var(--surface-2); border: 1px solid var(--p-border);
+    border-left: 3px solid var(--sfaf-teal);
+    border-radius: 4px 12px 12px 4px; padding: 18px; overflow: hidden; }
+/* The same band as .uc-card-head, on a card whose heading is a bare <h2>
+   rather than a wrapper. Full bleed by the same negative-margin trick. */
+.uc-bento-title { font-size: 14px; margin: -18px -18px 16px; padding: 10px 18px;
+    background: var(--uc-band); border-bottom: 1px solid var(--p-border); }
+.uc-bento-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap; margin: -18px -18px 16px; padding: 8px 18px;
+    background: var(--uc-band); border-bottom: 1px solid var(--p-border); }
+.uc-bento-head .uc-bento-title { margin: 0; padding: 0; background: none; border: 0; }
 .uc-bento-link { margin: 0 0 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
 
 /* One control width for the whole editor. Mixed widths were most of why it read
@@ -330,6 +432,89 @@ body.uc-portal {
     font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; }
 .uc-radio-row input[type="radio"] { flex: 0 0 auto; width: auto; margin: 0; }
 .uc-radio-row span { flex: 1 1 auto; }
+
+/* ---------------------------------------------------------------------------
+   THE RECURRENCE CONTROL.
+
+   A radio group that looks like a switch, seven checkboxes that look like day
+   circles, and a plain-language summary. Every one of them is a real input
+   underneath: the visual is a sibling <span>, and the input itself is taken out
+   of the flow rather than display:none'd, so it keeps its focus ring, its
+   keyboard behaviour and its announcement.
+   ------------------------------------------------------------------------- */
+.uc-repeat { display: flex; flex-direction: column; gap: 12px; }
+
+.uc-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--p-border-strong);
+    border-radius: 9px; overflow: hidden; align-self: flex-start; }
+.uc-seg-opt { position: relative; }
+.uc-seg-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.uc-seg-opt span { display: block; padding: 8px 16px; font-size: 13px; font-weight: 600;
+    color: var(--p-text); background: #fff; border-left: 1px solid var(--p-border);
+    cursor: pointer; user-select: none; white-space: nowrap; }
+.uc-seg-opt:first-child span { border-left: 0; }
+.uc-seg-opt input:hover + span { background: var(--uc-band); }
+/* The chosen segment is the darkened teal with white on it, measured at
+   5.35:1. Brand teal would have been 2.26:1 and is never used behind text. */
+.uc-seg-opt input:checked + span { background: var(--uc-accent-text); color: #fff; }
+.uc-seg-opt input:focus-visible + span { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+
+.uc-repeat-panel { display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 14px; border: 1px solid var(--p-border); border-radius: 10px; background: var(--p-bg); }
+.uc-repeat-every { display: flex; align-items: center; gap: 8px; font-size: 14px; flex-wrap: wrap; }
+.uc-repeat-num { width: 74px; padding: 7px 9px; border: 1px solid var(--p-border-strong);
+    border-radius: 7px; font-size: 14px; font-family: inherit; }
+.uc-repeat-date { padding: 7px 9px; border: 1px solid var(--p-border-strong);
+    border-radius: 7px; font-size: 14px; font-family: inherit; }
+.uc-repeat-nth { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: 22px; }
+.uc-repeat-nth select { padding: 7px 9px; border: 1px solid var(--p-border-strong);
+    border-radius: 7px; font-size: 14px; font-family: inherit; background: #fff; }
+
+/* THE DAY CIRCLES ARE CHECKBOXES. Round is a style; what a screen reader and a
+   keyboard get is a labelled checkbox in a group, which is what it is. */
+.uc-days { display: flex; gap: 6px; flex-wrap: wrap; }
+.uc-day { position: relative; }
+.uc-day input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.uc-day > span[aria-hidden] { display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--p-border-strong);
+    background: #fff; font-size: 13px; font-weight: 700; color: var(--p-text);
+    cursor: pointer; user-select: none; }
+.uc-day input:hover + span { background: var(--uc-band); }
+.uc-day input:checked + span { background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
+.uc-day input:focus-visible + span { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+
+/* The sentence that says what all of it comes to, and how many events that is.
+   Yellow is not used here: this is information, not an action. */
+.uc-repeat-summary { margin: 0; padding: 10px 12px; border-radius: 8px;
+    background: var(--uc-band); border-left: 3px solid var(--sfaf-teal);
+    font-size: 13px; font-weight: 600; color: var(--p-text); }
+
+/* ---------------------------------------------------------------------------
+   NOTIFICATIONS: three questions, in the order they happen.
+   ------------------------------------------------------------------------- */
+.uc-notify-block { display: flex; flex-direction: column; gap: 20px; }
+.uc-notify-section { display: flex; flex-direction: column; gap: 8px;
+    padding-top: 16px; border-top: 1px solid var(--p-border); }
+.uc-notify-section:first-child { padding-top: 0; border-top: 0; }
+.uc-notify-subhead { margin: 0; font-family: var(--uc-font-heading);
+    text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 700;
+    color: var(--p-muted); }
+
+/* "Anyone else": one address at a time, as removable pills. */
+.uc-email-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.uc-email-pill { position: relative; display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 500; margin: 0;
+    background: var(--uc-band); color: var(--p-text); border: 1px solid var(--p-border-strong); }
+.uc-email-pill input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.uc-email-pill-x { font-size: 15px; line-height: 1; opacity: 0.65; }
+.uc-email-pill:hover .uc-email-pill-x { opacity: 1; }
+.uc-email-pill input:focus-visible ~ .uc-email-pill-x { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+/* With scripting off an unticked pill stays on screen, so it has to LOOK
+   removed rather than silently still being there. */
+.uc-email-pill input:not(:checked) ~ .uc-email-pill-text { text-decoration: line-through; opacity: 0.55; }
+.uc-email-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.uc-email-add input { flex: 1 1 240px; min-width: 0; padding: 8px 11px;
+    border: 1px solid var(--p-border-strong); border-radius: 8px; font-size: 14px; font-family: inherit; }
+.uc-emails-field { gap: 8px; }
 
 /* ---------- Categories as chips ---------- */
 .uc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }

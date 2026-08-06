@@ -883,13 +883,43 @@ class SFAF_Portal {
             if ( 'venue' === $mode && $venue && SFAF_Venues::exists( $venue ) ) {
                 SFAF_Venues::set_for_event( $event_id, $venue );
                 delete_post_meta( $event_id, '_uc_location' );
+                foreach ( sfaf_location_part_keys() as $key ) {
+                    delete_post_meta( $event_id, $key );
+                }
             } else {
                 SFAF_Venues::set_for_event( $event_id, 0 );
-                update_post_meta(
-                    $event_id,
-                    '_uc_location',
-                    isset( $_POST['location'] ) ? sanitize_text_field( wp_unslash( $_POST['location'] ) ) : ''
-                );
+
+                /*
+                 * FOUR PARTS IN, ONE LINE OUT. The parts are the record and
+                 * `_uc_location` is composed from them here, on every save, so
+                 * the thirteen readers of sfaf_event_location() keep reading a
+                 * string and the two can never disagree. Same arrangement as a
+                 * venue's address, using the same composer.
+                 *
+                 * A form that carried the old single field instead posts
+                 * `location` and no parts; that is handled in the branch below.
+                 */
+                $posted = array();
+                foreach ( sfaf_location_part_keys() as $part => $key ) {
+                    $field           = 'location_' . $part;
+                    $posted[ $part ] = isset( $_POST[ $field ] )
+                        ? trim( sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) )
+                        : '';
+                    if ( '' !== $posted[ $part ] ) {
+                        update_post_meta( $event_id, $key, $posted[ $part ] );
+                    } else {
+                        delete_post_meta( $event_id, $key );
+                    }
+                }
+
+                $line = SFAF_Venues::compose( $posted );
+                if ( '' === $line && isset( $_POST['location'] ) ) {
+                    // An older form, or one with the parts empty: fall back to
+                    // whatever single field it did carry rather than blanking a
+                    // location that is already there.
+                    $line = sanitize_text_field( wp_unslash( $_POST['location'] ) );
+                }
+                update_post_meta( $event_id, '_uc_location', $line );
             }
         } elseif ( ! $is_locked( 'location' ) && isset( $_POST['location'] ) ) {
             // A form that carried the plain field and no mode: the pending
@@ -901,7 +931,21 @@ class SFAF_Portal {
         if ( isset( $_POST['gofundme_url'] ) && ! $is_locked( 'source_url' ) ) {
             update_post_meta( $event_id, '_uc_gofundme_url', esc_url_raw( wp_unslash( $_POST['gofundme_url'] ) ) );
         }
-        if ( isset( $_POST['organizer_email'] ) ) {
+        /*
+         * WHO GETS TOLD ON A NEW REGISTRATION. Both halves of it, guarded by
+         * one marker, because they moved into the Notifications card together
+         * and a form either carries that block or it does not. Without the
+         * marker an unticked box would be indistinguishable from a form that
+         * never asked, which is the same trap the notify list is guarded
+         * against further down.
+         */
+        if ( isset( $_POST['uc_org_notify_present'] ) ) {
+            update_post_meta( $event_id, '_uc_notify_organizer', isset( $_POST['notify_organizer'] ) ? '1' : '0' );
+            if ( isset( $_POST['organizer_email'] ) ) {
+                update_post_meta( $event_id, '_uc_organizer_email', sanitize_email( wp_unslash( $_POST['organizer_email'] ) ) );
+            }
+        } elseif ( isset( $_POST['organizer_email'] ) ) {
+            // An older form that carried the address on its own.
             update_post_meta( $event_id, '_uc_organizer_email', sanitize_email( wp_unslash( $_POST['organizer_email'] ) ) );
         }
 
@@ -911,7 +955,9 @@ class SFAF_Portal {
         $this->save_rsvp_settings_from_post( $user, $event_id, $is_locked );
 
         $toggles = array(
-            'notify_organizer'=> '_uc_notify_organizer',
+            // 'notify_organizer' is written above, with the address it belongs
+            // to, under its own marker. It is not an unconditional toggle any
+            // more because the block it lives in is not on every form.
             'show_rsvp'       => '_uc_show_rsvp',
             'show_donate'     => '_uc_show_donate',
             'show_social'     => '_uc_show_social',
@@ -1016,9 +1062,8 @@ class SFAF_Portal {
          * resubmit cannot double them, and nothing ever runs this again.
          */
         $generated = 0;
-        $pattern   = isset( $_POST['repeat'] ) ? SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['repeat'] ) ) : '';
-        $until     = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
-        if ( ! $is_imported && '' !== $pattern && '' !== $until ) {
+        list( $pattern, $until, $limit ) = $this->recurrence_from_post();
+        if ( ! $is_imported && '' !== $pattern && ( '' !== $until || $limit > 0 ) ) {
             /*
              * THE SERIES IS MADE HERE, FROM THE EVENT, BEFORE THE DATES ARE.
              *
@@ -1039,7 +1084,7 @@ class SFAF_Portal {
                 SFAF_Series::create_for_event( $event_id );
             }
 
-            $made      = SFAF_Recurrence::generate( $event_id, $pattern, $until );
+            $made      = SFAF_Recurrence::generate( $event_id, $pattern, $until, $limit );
             $generated = count( $made['created'] );
         }
 
@@ -1504,6 +1549,25 @@ class SFAF_Portal {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title><?php echo esc_html( $title ); ?> - SFAF Calendar</title>
+    <?php
+    /*
+     * MONTSERRAT, THE BRAND'S WEB HEADLINE FACE (guide v3.0, p.10).
+     *
+     * preconnect first, because the font file is on a second host and the
+     * connection cost is paid before the CSS that asks for it has even been
+     * parsed. display=swap so text is readable in the fallback immediately
+     * rather than invisible while the file arrives: a portal that flashes
+     * blank headings on every page load is worse than one in Segoe UI for
+     * 200ms.
+     *
+     * The fallback stack in --uc-font-heading is a real stack, not a token
+     * ending in sans-serif, so a machine with no network still gets the
+     * platform's own UI face at the same weights.
+     */
+    ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
     <link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
     <style>:root{--uc-primary:<?php echo esc_html( $primary ); ?>;--uc-accent:<?php echo esc_html( $accent ); ?>;}</style>
     <?php
@@ -4864,15 +4928,18 @@ class SFAF_Portal {
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'fundraising_progress' ), $placed ) ); ?>
                 </section>
 
-                <section class="uc-bento-card">
-                    <h2 class="uc-bento-title">Organizer contact</h2>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Email</span>
-                        <input type="email" name="organizer_email" value="<?php echo esc_attr( $g( '_uc_organizer_email' ) ); ?>" />
-                    </label>
-                    <label class="uc-check"><input type="checkbox" name="notify_organizer" value="1" <?php checked( $g( '_uc_notify_organizer' ), '1' ); ?> /> Email on new RSVP</label>
-                </section>
-
+                <?php
+                /*
+                 * ORGANIZER CONTACT IS GONE, AND NOTHING WAS LOST WITH IT.
+                 *
+                 * It held two controls, an address and "Email on new RSVP",
+                 * which together are one setting: who gets told when somebody
+                 * registers. Split across a card of their own, three cards away
+                 * from Notifications, they read as a card with no purpose. Both
+                 * are now the first thing in the Notifications card, which is
+                 * where that question is asked. See render_notify_box().
+                 */
+                ?>
                 <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Display</h2>
                     <?php
@@ -4913,6 +4980,41 @@ class SFAF_Portal {
                     </label>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
+                </section>
+
+                <?php
+                // ---- FAQs, full width: the rows and BOTH set controls. ----
+                //
+                // The platform that owns this event's FAQ rows, if any. Read
+                // from the adapter, exactly like every other locked field.
+                $faq_source = array(
+                    'locked' => in_array( 'faqs', $owned, true ),
+                    'label'  => $prov['label'],
+                    'url'    => $prov['source_url'],
+                );
+                ?>
+                <section class="uc-bento-card uc-faq-card">
+                    <div class="uc-bento-head">
+                        <h2 class="uc-bento-title">FAQs</h2>
+                        <?php
+                        /*
+                         * BOTH SET CONTROLS, HERE, WHERE THE QUESTIONS ARE.
+                         *
+                         * 3.3.0 moved "apply a set" into this block and left
+                         * "save these as a set" on a panel above the form, so
+                         * the manager writing FAQs had no way to save them from
+                         * where they were working. A control that exists
+                         * somewhere else is missing.
+                         */
+                        $this->render_faq_save_as_set( $event_id );
+                        ?>
+                    </div>
+                    <p class="uc-hint">
+                        Frequently asked questions for this event. These are its own: there is no series block above
+                        them and nothing overrides them.
+                    </p>
+                    <?php $this->faq_set_picker(); ?>
+                    <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
                 </section>
 
                 <?php // ---- Classification: how it is found. --------------- ?>
@@ -5019,27 +5121,7 @@ class SFAF_Portal {
                             ); ?>
                         </p>
                     <?php else : ?>
-                        <div class="uc-field-row">
-                            <label class="uc-field">
-                                <span class="uc-field-label">Repeats
-                                    <?php echo sfaf_help(
-                                        'uc-help-repeat-' . (int) $event_id,
-                                        'On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.',
-                                        'repeating'
-                                    ); ?>
-                                </span>
-                                <select name="repeat">
-                                    <option value="">Does not repeat</option>
-                                    <?php foreach ( SFAF_Recurrence::patterns() as $k => $lbl ) : ?>
-                                        <option value="<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $lbl ); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                            <label class="uc-field">
-                                <span class="uc-field-label">Until</span>
-                                <input type="date" name="repeat_until" value="" />
-                            </label>
-                        </div>
+                        <?php $this->render_recurrence_control( $event_id, (string) $g( '_uc_event_date' ) ); ?>
                     <?php endif; ?>
                 </section>
 
@@ -5099,40 +5181,6 @@ class SFAF_Portal {
                     </section>
                 <?php endif; ?>
 
-                <?php
-                // ---- FAQs, full width: the rows and BOTH set controls. ----
-                //
-                // The platform that owns this event's FAQ rows, if any. Read
-                // from the adapter, exactly like every other locked field.
-                $faq_source = array(
-                    'locked' => in_array( 'faqs', $owned, true ),
-                    'label'  => $prov['label'],
-                    'url'    => $prov['source_url'],
-                );
-                ?>
-                <section class="uc-bento-card uc-faq-card">
-                    <div class="uc-bento-head">
-                        <h2 class="uc-bento-title">FAQs</h2>
-                        <?php
-                        /*
-                         * BOTH SET CONTROLS, HERE, WHERE THE QUESTIONS ARE.
-                         *
-                         * 3.3.0 moved "apply a set" into this block and left
-                         * "save these as a set" on a panel above the form, so
-                         * the manager writing FAQs had no way to save them from
-                         * where they were working. A control that exists
-                         * somewhere else is missing.
-                         */
-                        $this->render_faq_save_as_set( $event_id );
-                        ?>
-                    </div>
-                    <p class="uc-hint">
-                        Frequently asked questions for this event. These are its own: there is no series block above
-                        them and nothing overrides them.
-                    </p>
-                    <?php $this->faq_set_picker(); ?>
-                    <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
-                </section>
             </div><?php // .uc-bento-main ?>
 
             <?php // The side column, built at the top of this block. ?>
@@ -5204,6 +5252,276 @@ class SFAF_Portal {
         <?php
         $this->chrome_close();
     }
+
+    /**
+     * "Does this repeat?", asked so that the answer is readable.
+     *
+     * WHAT WAS WRONG WITH THE DROPDOWN. Six options, each of which had to be
+     * reverse-engineered: "every Thursday" was spelled "Every week" and only
+     * meant Thursday if the date above happened to be one, "the first Monday of
+     * the month" was spelled "Every month, on the same weekday", and a group
+     * meeting Tuesdays AND Thursdays could not be expressed at all. The list
+     * described the ARITHMETIC. This describes the schedule.
+     *
+     * FOUR CONTROLS, EACH ANSWERING ONE QUESTION. How often (segmented), on
+     * which days (circles), when it stops (ends), and what that comes to (the
+     * summary). The summary is the important one: generation is a creation-time
+     * action that makes N independent posts, so the number is stated before the
+     * button is pressed rather than discovered afterwards.
+     *
+     * NO JAVASCRIPT: every section is visible and every control is a real
+     * input. The server reads repeat_mode and uses only the fields belonging to
+     * it, exactly as the location picker reads location_mode. What is lost
+     * without script is the folding away of the sections that do not apply and
+     * the live summary; nothing becomes unreachable and nothing is built by
+     * script.
+     *
+     * KEYBOARD: the day circles are checkboxes with visible labels, styled
+     * round; the mode switch is a radio group. Both are focusable, both answer
+     * to Space, and both are announced as what they are.
+     *
+     * @param int    $event_id
+     * @param string $date The event's own date, which anchors every pattern.
+     */
+    private function render_recurrence_control( $event_id, $date ) {
+        $uid  = 'uc-rep-' . (int) $event_id;
+        $dow  = $date ? (int) SFAF_Recurrence::dow_of( $date ) : (int) current_time( 'w' );
+        $days = SFAF_Recurrence::weekday_names();
+        $abbr = SFAF_Recurrence::weekday_names( true );
+
+        $day_num = $date ? date_i18n( 'jS', strtotime( $date ) ) : '';
+        $nth     = $date ? SFAF_Recurrence::nth_weekday_of_month( $date ) : null;
+        ?>
+        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="<?php echo esc_attr( $date ); ?>">
+
+            <span class="uc-field-label">Repeats
+                <?php echo sfaf_help(
+                    'uc-help-repeat-' . (int) $event_id,
+                    'On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.',
+                    'repeating'
+                ); ?>
+            </span>
+
+            <?php // ---- How often. A radio group that looks like a switch. -- ?>
+            <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
+                <?php foreach ( array(
+                    ''        => 'Never',
+                    'daily'   => 'Daily',
+                    'weekly'  => 'Weekly',
+                    'monthly' => 'Monthly',
+                ) as $val => $label ) : ?>
+                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="<?php echo esc_attr( $val ); ?>"
+                               <?php checked( '' === $val ); ?> data-uc-repeat-mode />
+                        <span><?php echo esc_html( $label ); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+
+            <?php // ---- Weekly ------------------------------------------- ?>
+            <div class="uc-repeat-panel" data-uc-repeat-panel="weekly">
+                <div class="uc-repeat-every">
+                    <span>Every</span>
+                    <input type="number" name="repeat_weekly_interval" value="1" min="1" max="52"
+                           class="uc-repeat-num" data-uc-not-a-field aria-label="Weeks between occurrences" />
+                    <span>week(s) on</span>
+                </div>
+                <div class="uc-days" role="group" aria-label="Which days of the week">
+                    <?php foreach ( $abbr as $i => $letter ) : ?>
+                        <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="<?php echo (int) $i; ?>"
+                                   <?php checked( $i === $dow ); ?> data-uc-repeat-day />
+                            <span aria-hidden="true"><?php echo esc_html( $letter ); ?></span>
+                            <span class="uc-visually-hidden"><?php echo esc_html( $days[ $i ] ); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
+            </div>
+
+            <?php // ---- Monthly ------------------------------------------ ?>
+            <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="date" checked data-uc-repeat-monthly />
+                    <span>On the <strong><?php echo esc_html( $day_num ? $day_num : 'same date' ); ?></strong> of each month</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="nth" data-uc-repeat-monthly />
+                    <span>On the</span>
+                </label>
+                <div class="uc-repeat-nth">
+                    <select name="repeat_nth" aria-label="Which occurrence in the month" data-uc-not-a-field>
+                        <?php foreach ( array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', -1 => 'last' ) as $n => $word ) : ?>
+                            <option value="<?php echo (int) $n; ?>" <?php selected( $nth && (int) $nth['nth'] === (int) $n ); ?>><?php echo esc_html( $word ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="repeat_nth_dow" aria-label="Which weekday" data-uc-not-a-field>
+                        <?php foreach ( $days as $i => $name ) : ?>
+                            <option value="<?php echo (int) $i; ?>" <?php selected( $i === $dow ); ?>><?php echo esc_html( $name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span>of each month</span>
+                </div>
+                <?php // "last" is not "fifth": a month with four Fridays has a
+                      // last Friday and no fifth one, and the engine skips the
+                      // months a fifth would fall outside. ?>
+                <p class="uc-hint">Choose <em>last</em> rather than <em>fourth</em> if you mean the final one, since some months have five.</p>
+            </div>
+
+            <?php // ---- Ends --------------------------------------------- ?>
+            <div class="uc-repeat-panel" data-uc-repeat-panel="ends">
+                <span class="uc-field-label">Ends</span>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="never" checked data-uc-repeat-ends />
+                    <span>No end date</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="on" data-uc-repeat-ends />
+                    <span>On</span>
+                    <input type="date" name="repeat_until" value="" class="uc-repeat-date"
+                           aria-label="Repeat until this date" data-uc-not-a-field />
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="after" data-uc-repeat-ends />
+                    <span>After</span>
+                    <input type="number" name="repeat_count" value="12" min="2" max="366" class="uc-repeat-num"
+                           aria-label="How many occurrences in total" data-uc-not-a-field />
+                    <span>occurrences</span>
+                </label>
+                <?php
+                /*
+                 * "NO END DATE" CANNOT MEAN FOREVER, AND SAYS SO.
+                 *
+                 * Generation makes real posts, once. There is no pattern left
+                 * afterwards for anything to extend, so an unbounded choice
+                 * would have to mean "as many as we are willing to create",
+                 * and pretending otherwise would be the one place on this
+                 * screen that lies about what the software does.
+                 */
+                ?>
+                <p class="uc-hint">
+                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
+                    afterwards; add more dates later from the series screen.
+                </p>
+            </div>
+
+            <?php
+            /*
+             * THE SUMMARY, AND THE COUNT.
+             *
+             * Rendered by the server for the page load and recomputed by
+             * portal.js on every change, from the same rules. The number is
+             * the whole point: this creates N independent events and nobody
+             * should meet that number for the first time afterwards.
+             */
+            ?>
+            <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
+                Does not repeat.
+            </p>
+        </div>
+        <?php
+    }
+    /**
+     * Read the recurrence control back into a pattern, an end date and a count.
+     *
+     * ALL FOUR PANELS POST, ALWAYS, because without script they are all on
+     * screen and even with it they are only hidden. So this reads repeat_mode
+     * first and then looks at nothing else: the weekly interval on a form
+     * saved as Monthly is a field somebody never saw, and honouring it would
+     * be honouring a value nobody chose. Same rule as the location picker,
+     * which reads location_mode and then ignores whichever branch lost.
+     *
+     * THE DEFAULT IS ALWAYS "NO", in every direction. An unrecognised mode, a
+     * missing end, a count of zero: each returns something that generates
+     * nothing, because this function's mistakes create posts.
+     *
+     * @return array{0:string,1:string,2:int} pattern, end date, occurrence limit.
+     */
+    private function recurrence_from_post() {
+        $mode = isset( $_POST['repeat_mode'] ) ? sanitize_key( wp_unslash( $_POST['repeat_mode'] ) ) : '';
+
+        // The pre-3.14.0 form posted a single `repeat` select. Still honoured,
+        // because a browser can hold a form open across a plugin update.
+        if ( '' === $mode && isset( $_POST['repeat'] ) ) {
+            $legacy = SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['repeat'] ) );
+            $until  = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
+            return array( $legacy, $until, 0 );
+        }
+
+        $spec = null;
+        if ( 'daily' === $mode ) {
+            $spec = array( 'type' => 'daily', 'interval' => 1 );
+        } elseif ( 'weekly' === $mode ) {
+            $days = array();
+            if ( isset( $_POST['repeat_days'] ) && is_array( $_POST['repeat_days'] ) ) {
+                foreach ( wp_unslash( $_POST['repeat_days'] ) as $d ) {
+                    $d = (int) $d;
+                    if ( $d >= 0 && $d <= 6 ) {
+                        $days[] = $d;
+                    }
+                }
+            }
+            $spec = array(
+                'type'     => 'weekly',
+                'interval' => isset( $_POST['repeat_weekly_interval'] ) ? (int) $_POST['repeat_weekly_interval'] : 1,
+                'days'     => $days,
+            );
+        } elseif ( 'monthly' === $mode ) {
+            $monthly = isset( $_POST['repeat_monthly_mode'] ) ? sanitize_key( wp_unslash( $_POST['repeat_monthly_mode'] ) ) : 'date';
+            if ( 'nth' === $monthly ) {
+                $spec = array(
+                    'type' => 'monthly_nth',
+                    'nth'  => isset( $_POST['repeat_nth'] ) ? (int) $_POST['repeat_nth'] : 1,
+                    'dow'  => isset( $_POST['repeat_nth_dow'] ) ? (int) $_POST['repeat_nth_dow'] : 0,
+                );
+            } else {
+                $spec = array( 'type' => 'monthly', 'interval' => 1 );
+            }
+        }
+
+        if ( ! $spec ) {
+            return array( '', '', 0 );
+        }
+        $pattern = SFAF_Recurrence::pattern_string( $spec );
+        if ( '' === $pattern ) {
+            return array( '', '', 0 );
+        }
+
+        $ends  = isset( $_POST['repeat_ends'] ) ? sanitize_key( wp_unslash( $_POST['repeat_ends'] ) ) : 'never';
+        $until = '';
+        $limit = 0;
+
+        if ( 'on' === $ends ) {
+            $until = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
+            if ( '' === $until ) {
+                return array( '', '', 0 ); // "until" with no date is not an instruction
+            }
+        } elseif ( 'after' === $ends ) {
+            // The control counts the event itself as the first occurrence,
+            // because that is what somebody means by "after 12". The engine
+            // counts dates it CREATES, which is one fewer.
+            $total = isset( $_POST['repeat_count'] ) ? (int) $_POST['repeat_count'] : 0;
+            $limit = max( 0, $total - 1 );
+            if ( $limit <= 0 ) {
+                return array( '', '', 0 );
+            }
+        } else {
+            // No end date. Bounded at a year, and the control says so.
+            $limit = self::REPEAT_OPEN_ENDED_LIMIT;
+        }
+
+        return array( $pattern, $until, $limit );
+    }
+
+    /**
+     * How many dates "no end date" creates.
+     *
+     * Generation is one-off and makes real posts, so unbounded is not a thing
+     * this can offer. A year is the honest reading of "keep going", it is what
+     * the control tells the manager it will do, and the summary states the
+     * resulting number before anything is created.
+     */
+    const REPEAT_OPEN_ENDED_LIMIT = 52;
 
     /**
      * Where the event happens: a venue, or somewhere one-off.
@@ -5288,7 +5606,45 @@ class SFAF_Portal {
                 <span>A different location</span>
             </label>
             <div class="uc-location-custom" data-uc-location-panel="custom">
-                <input type="text" name="location" value="<?php echo esc_attr( $text ); ?>" placeholder="e.g. Dolores Park, near the tennis courts" />
+                <?php
+                /*
+                 * THE SAME FOUR FIELDS A VENUE HAS.
+                 *
+                 * 3.13.0 gave venues street, city, state and ZIP and left this
+                 * branch as one free-text line, so the same address was
+                 * structured in one place and a sentence in the other. They are
+                 * the same thing and are now entered the same way.
+                 *
+                 * Existing one-line locations are parsed by the venues parser,
+                 * at read time rather than in a migration pass, so nothing is
+                 * rewritten until somebody saves. See
+                 * sfaf_event_location_parts().
+                 */
+                $loc_parts = sfaf_event_location_parts( $event_id );
+                ?>
+                <div class="uc-venue-grid uc-location-grid">
+                    <label class="uc-field uc-venue-street">
+                        <span class="uc-field-label">Street</span>
+                        <input type="text" name="location_street" value="<?php echo esc_attr( $loc_parts['street'] ); ?>" placeholder="Dolores Park, near the tennis courts" />
+                    </label>
+                    <label class="uc-field uc-venue-city">
+                        <span class="uc-field-label">City</span>
+                        <input type="text" name="location_city" value="<?php echo esc_attr( $loc_parts['city'] ); ?>" placeholder="San Francisco" />
+                    </label>
+                    <label class="uc-field uc-venue-state">
+                        <span class="uc-field-label">State</span>
+                        <input type="text" name="location_state" value="<?php echo esc_attr( $loc_parts['state'] ); ?>" placeholder="CA" maxlength="20" />
+                    </label>
+                    <label class="uc-field uc-venue-zip">
+                        <span class="uc-field-label">ZIP</span>
+                        <input type="text" name="location_zip" value="<?php echo esc_attr( $loc_parts['zip'] ); ?>" placeholder="94114" maxlength="10" />
+                    </label>
+                </div>
+                <?php // The line every reader still sees, so what is stored and
+                      // what is shown cannot drift apart unnoticed. ?>
+                <?php if ( '' !== $text ) : ?>
+                    <p class="uc-hint">Shows as: <strong><?php echo esc_html( $text ); ?></strong></p>
+                <?php endif; ?>
             </div>
         </div>
         <?php
@@ -5638,13 +5994,43 @@ class SFAF_Portal {
                 );
             }
 
-            // Free-text addresses. Validated, not trusted: anything that is not
-            // an address is dropped AND named back to the person who typed it,
-            // because a typo that disappears in silence looks like a save.
+            /*
+             * ADDRESSES FOR PEOPLE OUTSIDE THE SYSTEM.
+             *
+             * These arrive as PILLS now: one ticked checkbox per address, so
+             * unticking one takes it off and the whole set posts as an array.
+             * A textarea of one-per-line is still accepted, because an older
+             * cached form posts that and losing somebody's recipients to a
+             * stale tab would be a poor trade for a tidier parser.
+             *
+             * notify_email_new is the "add one" field. With script it never
+             * arrives, because the button turns it into a pill on the spot and
+             * clears it. Without script it is how an address gets added at all,
+             * and it is validated here exactly as every other one is.
+             *
+             * Validated, not trusted: anything that is not an address is
+             * dropped AND named back to the person who typed it, because a typo
+             * that disappears in silence looks like a save.
+             */
             $valid    = array();
             $rejected = array();
-            $raw      = isset( $_POST['notify_emails'] ) ? (string) wp_unslash( $_POST['notify_emails'] ) : '';
-            foreach ( preg_split( '/[\r\n,;]+/', $raw ) as $line ) {
+
+            $candidates = array();
+            $posted     = isset( $_POST['notify_emails'] ) ? wp_unslash( $_POST['notify_emails'] ) : array();
+            if ( is_array( $posted ) ) {
+                foreach ( $posted as $one ) {
+                    $candidates[] = (string) $one;
+                }
+            } else {
+                foreach ( preg_split( '/[\r\n,;]+/', (string) $posted ) as $line ) {
+                    $candidates[] = $line;
+                }
+            }
+            if ( isset( $_POST['notify_email_new'] ) ) {
+                $candidates[] = (string) wp_unslash( $_POST['notify_email_new'] );
+            }
+
+            foreach ( $candidates as $line ) {
                 $line = trim( $line );
                 if ( '' === $line ) {
                     continue;
@@ -5668,6 +6054,37 @@ class SFAF_Portal {
         }
     }
 
+    /**
+     * WHO GETS TOLD, AND WHEN. Two different emails, in the order they happen.
+     *
+     * THE FRAMING WAS BACKWARDS. This card used to open by explaining that
+     * registrants get the morning-of reminder automatically and that everything
+     * below was about who else gets a copy of it. That is the second thing this
+     * card does. The first thing, and the reason a manager opens it, is "who
+     * finds out when somebody signs up". That question was answered by a lone
+     * checkbox in a card called Organizer contact, three cards away, which is
+     * why that card looked like it had no purpose. It had one, it was just
+     * filed under the wrong heading.
+     *
+     * So: registrations first, the reminder second, replies last. The two are
+     * genuinely separate mechanisms and are not merged. A new registration
+     * emails one address (SFAF_RSVP::handle_routing). The morning-of reminder
+     * goes to a resolved list (SFAF_Reminders::notify_list). Presenting them as
+     * one list would be a lie about what the software does.
+     *
+     * WHAT IS STORED, AND WHY THE CREATOR IS NOT A NAME IN A LIST. The list is
+     * user ids and team ids, never addresses copied out of an account, so
+     * changing somebody's address changes where their mail goes and nothing has
+     * to be corrected here. The creator is not stored at all: they are derived
+     * from post_author every time, so there is no second copy of "who made
+     * this" to drift out of step with the first. What IS stored is the
+     * opposite: a single flag recording that the creator took themselves off,
+     * because "not opted out" is the default and an absent flag should mean
+     * exactly that.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
     private function render_notify_box( $user, $event_id ) {
         $post = get_post( $event_id );
         if ( ! $post ) {
@@ -5678,19 +6095,12 @@ class SFAF_Portal {
         $author_on     = ! SFAF_Reminders::author_opted_out( $event_id );
         $chosen_users  = array_map( 'intval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, true ) );
         $extra_emails  = (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true );
-        $resolved      = SFAF_Reminders::notify_list( $event_id );
         $reminders_on  = SFAF_Reminders::enabled();
 
-        // Anyone with a calendar-portal role is pickable. WordPress users with
-        // no role here are deliberately not offered: this is a list of the
-        // people who work on the calendar, not of every account on the site.
-        $portal_users = get_users( array(
-            'meta_key'     => '_uc_calendar_role',
-            'meta_compare' => 'EXISTS',
-            'orderby'      => 'display_name',
-            'order'        => 'ASC',
-            'number'       => 200,
-        ) );
+        $org_email  = (string) get_post_meta( $event_id, '_uc_organizer_email', true );
+        $org_notify = ( '1' === (string) get_post_meta( $event_id, '_uc_notify_organizer', true ) );
+
+        $portal_users = $this->calendar_people();
 
         // Addresses the last save could not use. Reported rather than dropped
         // in silence, because a typo that vanishes without comment reads as
@@ -5704,76 +6114,154 @@ class SFAF_Portal {
         <?php // No card of its own since 3.9.0: this sits inside the editor's
               // Notifications card, which supplies the heading. ?>
         <div class="uc-notify-block">
-            <p class="uc-hint">
-                Everyone who has registered for this event gets the morning-of reminder automatically.
-                This is who <em>else</em> receives a copy, so staff can see what participants are sent.
-                It changes nothing about who can edit this event.
-            </p>
 
-            <?php if ( ! $reminders_on ) : ?>
-                <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
-            <?php endif; ?>
-
-            <input type="hidden" name="notify_list_present" value="1" />
-
-            <?php if ( $author && is_email( $author->user_email ) ) : ?>
+            <?php // ---- 1. WHEN SOMEBODY REGISTERS. --------------------- ?>
+            <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">When somebody registers</h4>
+                <p class="uc-hint">
+                    One email, as it happens, to one address. Use a shared mailbox rather than a person if more than
+                    one of you needs to see them.
+                </p>
+                <input type="hidden" name="uc_org_notify_present" value="1" />
                 <label class="uc-check">
-                    <input type="checkbox" name="notify_author" value="1" <?php checked( $author_on ); ?> />
-                    Send to <strong><?php echo esc_html( $author->display_name ); ?></strong> (created this event, <?php echo esc_html( $author->user_email ); ?>)
+                    <input type="checkbox" name="notify_organizer" value="1" <?php checked( $org_notify ); ?> />
+                    Email somebody each time an RSVP comes in
                 </label>
-                <p class="uc-hint">Untick to take yourself, or whoever created this, off the list. The event is unaffected.</p>
-            <?php else : ?>
-                <p class="uc-muted">This event's creator has no usable email address on file.</p>
-            <?php endif; ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Send those to</span>
+                    <input type="email" name="organizer_email" value="<?php echo esc_attr( $org_email ); ?>"
+                           placeholder="events@sfaf.org" />
+                    <span class="uc-hint">
+                        <?php if ( '' === $org_email ) : ?>
+                            Nothing is set here, so registrations go to the site-wide address in Settings if there is one.
+                        <?php endif; ?>
+                    </span>
+                </label>
+            </div>
 
-            <?php $this->render_notify_picker( $event_id, $author, $portal_users, $chosen_users ); ?>
+            <?php // ---- 2. THE MORNING-OF REMINDER. --------------------- ?>
+            <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">The morning-of reminder</h4>
+                <p class="uc-hint">
+                    Everyone who has registered gets this automatically. Below is who <em>else</em> receives a copy,
+                    so staff can see what participants are sent. It changes nothing about who can edit this event.
+                </p>
+
+                <?php if ( ! $reminders_on ) : ?>
+                    <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
+                <?php endif; ?>
+
+                <input type="hidden" name="notify_list_present" value="1" />
+
+                <?php if ( $author && is_email( $author->user_email ) ) : ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="notify_author" value="1" <?php checked( $author_on ); ?> />
+                        Send to <strong><?php echo esc_html( $author->display_name ); ?></strong> (created this event, <?php echo esc_html( $author->user_email ); ?>)
+                    </label>
+                <?php else : ?>
+                    <p class="uc-muted">This event's creator has no usable email address on file.</p>
+                <?php endif; ?>
+
+                <?php $this->render_notify_picker( $event_id, $author, $portal_users, $chosen_users ); ?>
+
+                <?php
+                /*
+                 * ANYONE ELSE: PILLS, AND ONE ADDRESS AT A TIME.
+                 *
+                 * This was a textarea of one address per line, which meant a
+                 * typo was not found until Save, was reported after the page
+                 * had reloaded, and left the manager rereading their own
+                 * block of text to find which line was wrong.
+                 *
+                 * EACH PILL IS A TICKED CHECKBOX, not a script-built widget.
+                 * Untick and the address comes off the list; that works with
+                 * scripting off, it posts correctly, and a screen reader gets
+                 * a labelled checkbox rather than a div with an x in it. The
+                 * script hides an unticked pill so the effect is immediate,
+                 * but it is the checkbox doing the work either way.
+                 *
+                 * ADDING is one field and one button. With script the button
+                 * validates and makes a pill on the spot, so a bad address is
+                 * refused while the person is still looking at it. Without
+                 * script the field simply posts and the server appends it,
+                 * validating exactly as it always did.
+                 */
+                $notify_invalid = ( is_array( $rejected ) && ! empty( $rejected ) );
+                ?>
+                <div class="uc-field uc-emails-field" data-uc-emails>
+                    <span class="uc-field-label">Anyone else</span>
+                    <div class="uc-email-pills" data-uc-email-pills>
+                        <?php foreach ( $extra_emails as $addr ) :
+                            $addr = (string) $addr;
+                            if ( '' === $addr ) { continue; } ?>
+                            <label class="uc-email-pill">
+                                <input type="checkbox" name="notify_emails[]" value="<?php echo esc_attr( $addr ); ?>"
+                                       checked data-uc-email-pill />
+                                <span class="uc-email-pill-text"><?php echo esc_html( $addr ); ?></span>
+                                <span class="uc-email-pill-x" aria-hidden="true">&times;</span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="uc-muted uc-emails-empty" data-uc-emails-empty<?php echo empty( $extra_emails ) ? '' : ' hidden'; ?>>
+                        Nobody outside the calendar yet.
+                    </p>
+
+                    <div class="uc-email-add">
+                        <input type="email" name="notify_email_new" id="uc-notify-email-new"
+                               data-uc-email-input data-uc-not-a-field
+                               placeholder="supervisor@example.org" autocomplete="off"
+                               <?php echo $notify_invalid ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-notify-emails-error"' : ''; ?> />
+                        <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-email-add>Add</button>
+                    </div>
+                    <p class="uc-field-error" data-uc-email-error role="alert" hidden></p>
+                    <?php if ( $notify_invalid ) : ?>
+                        <p class="uc-field-error" id="uc-notify-emails-error" data-uc-for="uc-notify-email-new" role="alert">
+                            <?php echo esc_html( 1 === count( $rejected ) ? 'This is not an email address, so it was not saved: ' : 'These are not email addresses, so they were not saved: ' ); ?>
+                            <?php echo esc_html( implode( ', ', $rejected ) ); ?>
+                        </p>
+                    <?php endif; ?>
+                    <span class="uc-hint">
+                        For people outside the calendar system: a supervisor, a co-host. Untick an address to take it
+                        off the list.
+                    </span>
+                </div>
+            </div>
 
             <?php
             /*
-             * data-uc-email-list hands this to the shared validator, which
-             * checks it line by line and names the offending lines rather than
-             * saying the box as a whole is wrong. Same red border, same message
-             * position and same aria wiring as a single email input.
+             * ---- 3. REPLIES. A SEPARATE QUESTION, KEPT SEPARATE. ----------
+             *
+             * Everything above is who RECEIVES mail. This is who fields the
+             * replies when a participant answers one, which is very often a
+             * different answer: a shared mailbox somebody watches rather than
+             * whichever staff member happens to be on the list. Folding it
+             * into the list would make "reply to all the recipients" the only
+             * expressible option, which is not what anybody wants from a
+             * hundred-person reminder.
+             *
+             * Drawn by the shared RSVP settings render, so this card and the
+             * registrations screen cannot offer different versions of it.
              */
-            $notify_invalid = ( is_array( $rejected ) && ! empty( $rejected ) );
             ?>
-            <label class="uc-field" style="margin-top:14px;">
-                <span class="uc-field-label">Anyone else</span>
-                <textarea name="notify_emails" id="uc-notify-emails" rows="3"
-                          data-uc-email-list="1"
-                          <?php echo $notify_invalid ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-notify-emails-error"' : ''; ?>
-                          placeholder="supervisor@example.org&#10;co-host@example.org"><?php echo esc_textarea( implode( "\n", array_map( 'strval', $extra_emails ) ) ); ?></textarea>
-            </label>
-            <?php if ( $notify_invalid ) : ?>
-                <p class="uc-field-error" id="uc-notify-emails-error" data-uc-for="uc-notify-emails" role="alert">
-                    <?php echo esc_html( 1 === count( $rejected ) ? 'This is not an email address, so it was not saved: ' : 'These are not email addresses, so they were not saved: ' ); ?>
-                    <?php echo esc_html( implode( ', ', $rejected ) ); ?>
-                </p>
-            <?php endif; ?>
-            <p class="uc-hint">One address per line, for people outside the calendar system: a supervisor, a co-host. Anything that is not an address is rejected on save and named here.</p>
-
-            <p class="uc-hint" style="margin-top:14px;"><strong>Currently on the list</strong></p>
-            <?php if ( empty( $resolved ) ) : ?>
-                <p class="uc-muted">Nobody. Only people who register will get the reminder.</p>
-            <?php else : ?>
-                <ul class="uc-notify-list">
-                    <?php foreach ( $resolved as $email => $label ) : ?>
-                        <li><?php echo esc_html( $label ); ?>: <?php echo esc_html( $email ); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-                <p class="uc-hint">Saved as of the last save. Change the boxes above and save to update it.</p>
-            <?php endif; ?>
+            <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Replies</h4>
+                <?php $this->render_rsvp_setting( 'replyto', $this->rsvp_settings_context( $user, $event_id ) ); ?>
+            </div>
 
             <?php
             // What actually went out, if anything has. The ledger is the record
             // of record for "did they get it?", so it is shown where the
-            // question gets asked.
+            // question gets asked. The "currently on the list" block that used
+            // to sit here is gone: it restated what the picker already shows,
+            // one save behind, so the two disagreed for as long as it took to
+            // press Save and nobody could tell which was true.
             $sent = SFAF_Reminders::log_for_event( $event_id );
             if ( ! empty( $sent ) ) : ?>
-                <p class="uc-hint" style="margin-top:14px;"><strong>Reminder log for this event</strong></p>
-                <table class="uc-table">
-                    <thead><tr><th>Recipient</th><th>Type</th><th>Result</th><th>When</th></tr></thead>
-                    <tbody>
+                <div class="uc-notify-section">
+                    <h4 class="uc-notify-subhead">Reminder log for this event</h4>
+                    <table class="uc-table">
+                        <thead><tr><th>Recipient</th><th>Type</th><th>Result</th><th>When</th></tr></thead>
+                        <tbody>
                         <?php foreach ( $sent as $row ) : ?>
                             <tr>
                                 <td><?php echo esc_html( $row->email ); ?></td>
@@ -5782,11 +6270,59 @@ class SFAF_Portal {
                                 <td><?php echo esc_html( $row->sent_at ? $row->sent_at : $row->claimed_at ); ?></td>
                             </tr>
                         <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    /**
+     * Everybody who counts as a person on this calendar.
+     *
+     * THE PICKERS WERE ASKING THE WRONG QUESTION. They listed users carrying
+     * the `_uc_calendar_role` meta and nobody else. But calendar access is
+     * decided by SFAF_Portal::get_role(), which answers "admin" for any
+     * WordPress administrator whether or not they have that meta, and has done
+     * since 3.7.0 precisely so an administrator cannot be locked out of their
+     * own calendar. So the site's administrators were absent from the
+     * notification picker and from the team membership picker: real calendar
+     * people, invisible to both, and typing one of their names into the filter
+     * returned "Nobody matches that" because they genuinely were not in the
+     * list being filtered.
+     *
+     * One method now answers the question, so the two pickers cannot disagree
+     * about who exists, and neither holds the rule.
+     *
+     * @return WP_User[] Display-name order, deduplicated.
+     */
+    private function calendar_people() {
+        $listed = get_users( array(
+            'meta_key'     => '_uc_calendar_role',
+            'meta_compare' => 'EXISTS',
+            'orderby'      => 'display_name',
+            'order'        => 'ASC',
+            'number'       => 200,
+        ) );
+
+        // Administrators have calendar access from manage_options alone, so
+        // they belong here whether or not anybody added them.
+        $admins = get_users( array(
+            'capability' => 'manage_options',
+            'orderby'    => 'display_name',
+            'order'      => 'ASC',
+            'number'     => 200,
+        ) );
+
+        $out = array();
+        foreach ( array_merge( $listed, $admins ) as $u ) {
+            $out[ (int) $u->ID ] = $u;
+        }
+        uasort( $out, function ( $a, $b ) {
+            return strcasecmp( $a->display_name, $b->display_name );
+        } );
+        return array_values( $out );
     }
 
     /**
@@ -5895,8 +6431,33 @@ class SFAF_Portal {
                          aria-labelledby="<?php echo esc_attr( $uid_attr ); ?>-tab-people"
                          data-uc-picker-panel="people">
                         <h4 class="uc-picker-heading">Individuals</h4>
-                        <?php if ( empty( $portal_users ) ) : ?>
-                            <p class="uc-muted">No other calendar users yet.</p>
+                        <?php
+                        /*
+                         * THE LIST IS TESTED, NOT THE SOURCE OF THE LIST.
+                         *
+                         * This branch used to ask whether $portal_users was
+                         * empty, then render a filter box over a list built by
+                         * excluding the creator from it. On a calendar where
+                         * every listed person IS the creator, that produced a
+                         * search field above nothing, and typing anything at
+                         * all reported "Nobody matches that" because there was
+                         * genuinely nobody to match. Count what will actually
+                         * be drawn.
+                         */
+                        $pickable = array();
+                        foreach ( $portal_users as $pu ) {
+                            if ( $author && (int) $pu->ID === (int) $author->ID ) {
+                                continue;
+                            }
+                            $pickable[] = $pu;
+                        }
+                        ?>
+                        <?php if ( empty( $pickable ) ) : ?>
+                            <p class="uc-muted">
+                                <?php echo empty( $portal_users )
+                                    ? 'No calendar users yet. An admin can add people under Users.'
+                                    : 'Nobody else has calendar access yet, so there is no one to add here.'; ?>
+                            </p>
                         <?php else : ?>
                             <label class="uc-picker-filter">
                                 <span class="uc-visually-hidden">Filter people by name or address</span>
@@ -5921,8 +6482,7 @@ class SFAF_Portal {
                                        data-uc-picker-filter="people" data-uc-not-a-field autocomplete="off" />
                             </label>
                             <div class="uc-picker-options" data-uc-picker-options="people">
-                                <?php foreach ( $portal_users as $pu ) :
-                                    if ( $author && (int) $pu->ID === (int) $author->ID ) { continue; } ?>
+                                <?php foreach ( $pickable as $pu ) : ?>
                                     <label class="uc-check uc-picker-option"
                                            data-uc-picker-search="<?php echo esc_attr( strtolower( $pu->display_name . ' ' . $pu->user_email ) ); ?>">
                                         <input type="checkbox" name="notify_users[]" value="<?php echo (int) $pu->ID; ?>"
@@ -7119,7 +7679,19 @@ class SFAF_Portal {
         </div>
         </section>
 
-        <?php $this->render_teams( $user, $members ); ?>
+        <?php
+        /*
+         * THE TEAM PICKER GETS calendar_people(), NOT $members.
+         *
+         * $members above is the list of calendar RECORDS, which is the right
+         * list for the section that manages those records. Team membership is
+         * a different question: it asks who counts as a person on this
+         * calendar, and an administrator counts whether or not anybody added
+         * them. Using $members here is what made administrators invisible in
+         * the team picker, the same fault the notification picker had.
+         */
+        $this->render_teams( $user, $this->calendar_people() );
+        ?>
         <?php
         $this->chrome_close();
     }
