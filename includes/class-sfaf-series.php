@@ -303,6 +303,7 @@ class SFAF_Series {
         }
         $args = wp_parse_args( $args, array(
             'upcoming' => false,
+            'past'     => false,
             'status'   => array( 'publish' ),
             'limit'    => 200,
         ) );
@@ -335,6 +336,19 @@ class SFAF_Series {
                 'key'     => '_uc_event_date',
                 'value'   => current_time( 'Y-m-d' ),
                 'compare' => '>=',
+                'type'    => 'DATE',
+            );
+        }
+
+        // The complement of 'upcoming', on the same boundary and the same
+        // clock, so an event can never be in neither set or in both. Today
+        // counts as upcoming: an event happening this afternoon is not
+        // history.
+        if ( ! empty( $args['past'] ) ) {
+            $query['meta_query']['past'] = array(
+                'key'     => '_uc_event_date',
+                'value'   => current_time( 'Y-m-d' ),
+                'compare' => '<',
                 'type'    => 'DATE',
             );
         }
@@ -632,6 +646,101 @@ class SFAF_Series {
         // wp_delete_term removes the relationships for us.
         wp_delete_term( $term_id, self::TAXONOMY );
         return $count;
+    }
+
+    /**
+     * How many of a series' events have already happened.
+     *
+     * @param int $term_id
+     * @return int
+     */
+    public static function past_count( $term_id ) {
+        return count( self::events( $term_id, array(
+            'past'   => true,
+            'status' => self::editable_statuses(),
+            'limit'  => -1,
+        ) ) );
+    }
+
+    /**
+     * Remove a series, having been told what to do with its events.
+     *
+     * THE PAST IS NEVER DELETED. That is the rule this method exists to hold.
+     * "Remove the series and its events" removes the events that have not
+     * happened yet and DETACHES the ones that have: they stay on the calendar
+     * as ordinary standalone past events, on the same date, at the same
+     * address. Past events are the record of what this organisation actually
+     * did, and no single click may destroy that. Somebody who genuinely wants
+     * a past event gone can delete that one event.
+     *
+     * UPCOMING EVENTS GO TO THE TRASH, not out of the database, because that
+     * is exactly what deleting an event has always meant everywhere else in
+     * this portal (see the trash_event action). Making this one button harder
+     * to recover from than the ordinary delete button would be a surprise in
+     * the wrong direction.
+     *
+     * REMOVING THE TERM REMOVES WHAT LIVES ON IT: the series description, its
+     * image and its default FAQ set are term meta, so they go with it under
+     * every mode. Nothing copies them anywhere first, and events that already
+     * took a copy of the FAQ rows keep theirs, because applying a set copies
+     * rather than links.
+     *
+     * RSVP ROWS ARE UNAFFECTED under every mode. They live in their own table
+     * and outlive their events by design; see SFAF_RSVP::snapshot_event_title.
+     *
+     * @param int    $term_id
+     * @param string $mode    'delete_events' or 'keep_events'.
+     * @param int    $move_to Series to move the events to under 'keep_events';
+     *                        0 leaves them unassigned. Ignored otherwise.
+     * @return array|WP_Error {trashed:int, detached:int, moved:int, name:string}
+     */
+    public static function remove( $term_id, $mode, $move_to = 0 ) {
+        $term_id = (int) $term_id;
+        $term    = self::get( $term_id );
+        if ( ! $term ) {
+            return new WP_Error( 'sfaf_series_missing', 'That series no longer exists.' );
+        }
+
+        $mode    = ( 'delete_events' === $mode ) ? 'delete_events' : 'keep_events';
+        $move_to = (int) $move_to;
+
+        // A series cannot be moved into itself, and cannot be moved into one
+        // that has gone. Re-derived here rather than trusted from the form.
+        if ( $move_to === $term_id || ( $move_to && ! self::exists( $move_to ) ) ) {
+            $move_to = 0;
+        }
+
+        $result = array(
+            'name'     => $term->name,
+            'trashed'  => 0,
+            'detached' => 0,
+            'moved'    => 0,
+        );
+
+        $all      = self::events( $term_id, array( 'status' => self::editable_statuses(), 'limit' => -1 ) );
+        $upcoming = self::events( $term_id, array( 'upcoming' => true, 'status' => self::editable_statuses(), 'limit' => -1 ) );
+
+        if ( 'delete_events' === $mode ) {
+            foreach ( $upcoming as $event_id ) {
+                wp_trash_post( $event_id );
+                $result['trashed']++;
+            }
+            // Everything that was not upcoming is past, and is simply let go
+            // of when the term is deleted below.
+            $result['detached'] = count( $all ) - $result['trashed'];
+        } elseif ( $move_to ) {
+            foreach ( $all as $event_id ) {
+                self::set_for_event( $event_id, $move_to );
+                $result['moved']++;
+            }
+        } else {
+            $result['detached'] = count( $all );
+        }
+
+        // wp_delete_term takes the relationships and the term meta with it.
+        wp_delete_term( $term_id, self::TAXONOMY );
+
+        return $result;
     }
 
     /**

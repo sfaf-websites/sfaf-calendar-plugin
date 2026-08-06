@@ -1395,25 +1395,36 @@ class SFAF_Admin {
 
                     <?php
                     /*
-                     * ORGANIZER FIRST. On a programme page that is the filter
-                     * that matches how the work is actually organised: Programa
-                     * Latino runs five distinct series, so filtering by series
-                     * would show a fifth of their programming, and category
-                     * cuts across organizers entirely.
+                     * THE DEFAULT IS EVERYTHING, AND NOTHING IS PRESELECTED.
+                     *
+                     * This defaulted to "One organizer" with whichever
+                     * organizer sorted first already chosen, so a block
+                     * generated without touching the control silently showed
+                     * one team's events. A narrowing that nobody asked for is
+                     * the worst kind: the page looks like it is working and is
+                     * quietly missing most of the calendar. Narrowing is a
+                     * decision, so it has to be made on purpose.
+                     *
+                     * Organizer is still listed first among the narrowings,
+                     * because on a programme page it is the one that matches
+                     * how the work is organised: Programa Latino runs five
+                     * distinct series, so filtering by series would show a
+                     * fifth of their programming, and category cuts across
+                     * organizers entirely.
                      */
                     ?>
                     <div class="uc-embed-field">
                         <label class="uc-embed-label" for="uc-embed-filter-type">Limit to</label>
                         <select id="uc-embed-filter-type" class="uc-input">
-                            <option value="">Everything</option>
-                            <option value="organizer" selected>One organizer</option>
+                            <option value="" selected>All events</option>
+                            <option value="organizer">One organizer</option>
                             <option value="series">One series</option>
                             <option value="category">One category</option>
                         </select>
-                        <p class="description">Organizer is usually the right one for a programme page: a team&rsquo;s work is often several series and several categories.</p>
+                        <p class="description">All events is the default, so a block shows the whole calendar unless it is deliberately narrowed. Organizer is usually the right narrowing for a programme page: a team&rsquo;s work is often several series and several categories.</p>
                     </div>
 
-                    <div class="uc-embed-field" data-when-filter="organizer">
+                    <div class="uc-embed-field" data-when-filter="organizer" hidden>
                         <label class="uc-embed-label" for="uc-embed-organizer">Which organizer</label>
                         <select id="uc-embed-organizer" class="uc-input uc-embed-which">
                             <?php if ( empty( $organizers ) ) : ?>

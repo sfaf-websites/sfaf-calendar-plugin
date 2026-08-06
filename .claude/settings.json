@@ -38,7 +38,26 @@
     "",
     "settings.local.json is gitignored. Personal 'always allow' clicks land there",
     "and must not accumulate into this file, which is meant to be read and reasoned",
-    "about rather than grown by reflex."
+    "about rather than grown by reflex.",
+    "",
+    "AUDITED 2026-08-06, ON EVIDENCE FROM ELEVEN SESSIONS.",
+    "settings.local.json had grown to 252 unreviewed allow rules. 220 were already",
+    "covered by this file and could grant nothing; 3 overlapped rules this file",
+    "deliberately asks about, one of them git filter-repo; the rest were one-off",
+    "command strings, several pointing at scratch directories that no longer exist.",
+    "It is now three WebFetch domains.",
+    "",
+    "The categories that were genuinely missing from THIS file, and were the reason",
+    "the local one kept growing, have been added: php (the language this plugin is",
+    "written in, linted before every build), bash .claude/* (the two scripts that",
+    "exist to be run), xargs, and three read-only git subcommands. The rule is that",
+    "anything worth allowing twice is a category and belongs here.",
+    "",
+    "The guard hook has a test now: bash .claude/guard-test.sh. It was run against",
+    "17 destructive spellings and 18 routine ones, all passing. The hook has never",
+    "fired in any recorded session, and never firing is the intended steady state -",
+    "but a guard nobody has tested is a guard nobody knows the shape of, which is",
+    "the exact failure this file warns about two paragraphs up."
   ],
 
   "permissions": {
@@ -79,6 +98,9 @@
       "Bash(git reset*)",
       "Bash(git revert*)",
       "Bash(git ls-files*)",
+      "Bash(git ls-tree*)",
+      "Bash(git rev-list*)",
+      "Bash(git check-ignore*)",
       "Bash(git rev-parse*)",
       "Bash(git cat-file*)",
       "Bash(git describe*)",
@@ -93,6 +115,10 @@
       "Bash(node --check*)",
       "Bash(npm *)",
       "Bash(npx *)",
+
+      "Bash(php*)",
+      "Bash(bash .claude/*)",
+      "Bash(xargs*)",
 
       "Bash(ls*)",
       "Bash(cat*)",

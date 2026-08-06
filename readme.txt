@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.12.0
+Stable tag: 3.13.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,42 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.13.0 =
+
+**The event editor is two columns, two thirds and one third.** Six equal columns still read as a scatter, because a card's width said nothing about what the card was for and pairing cards became a height-matching exercise. The split is now by what a card is. The main column is the event itself: Event details, Classification, Schedule, Location, Notifications, FAQs, every one of them full width, so no card in it ever sits beside another and the eye goes straight down. The side column is the settings that are read rarely and changed rarely: Capacity, Donate, Organizer contact, Display. It collapses to one column below 980px with the main column first, and nothing is reordered at any width, so the tab order is always what is on screen.
+
+**Users & Permissions is two sections.** It was four cards in a row down one page, so "add a user", "the users", "the teams" and "add a team" read as one continuous flow with nothing saying where one subject ended. Calendar users and Teams now each have a heading, a sentence saying what the section is for, and a rule between them.
+
+**Teams are a list of what exists, not a stack of open forms.** Every team used to render as a form with its name in a permanently editable text box. A team is now a row: its name as plain text, how many people are in it, and three actions. Rename turns that one name into an input. Manage members opens the picker for that team. Delete is unchanged and is still refused while any event names it, with the events listed. Creating a team is a separate collapsed control asking for one thing, because who is in it is a decision made afterwards on the row that now exists.
+
+**Why a team said "0 people right now" above a list of names.** Two separate faults, and the count was the honest one. The member list showed EVERY calendar user under every team, member or not, with nothing but a tick to tell them apart, so a team with nobody in it looked like a team with eight people in it. And "people right now" was counting who could be emailed, not who was in the team, so a member whose account has no address made the number smaller than the membership. Members are now behind "Manage members" and are plainly a picker; the row states the membership, and where the two numbers differ it says so in words.
+
+**A related fault, found while fixing that one:** the membership form only ever listed calendar users, but saving wrote the membership wholesale, so a member without a calendar role was silently dropped by the next save of an unrelated field. The form now declares which people it actually offered, and anything stored outside that set is kept.
+
+**Member rows are one line:** box, name, address. They were in a 180px-minimum grid, so at any real width the name wrapped onto a second line while the rest of the row sat empty.
+
+**Removing a series asks what should happen to its events.** It used to delete on the click behind a browser dialog that promised the events were safe. They are not necessarily safe, because there is a real second thing somebody might mean. The question is now a screen with the actual counts in it and two options.
+
+Keep the events, which is the default: they all stay on the calendar, on the same date and at the same address, and either become unassigned or move to another series that you pick. Or remove the series and its events, which deletes the upcoming ones and leaves the past ones alone.
+
+**The past is never deleted by that button.** Past occurrences are detached and stay on the calendar as standalone past events. They are the record of what this organisation actually did, and one click must not be able to destroy them. Somebody who wants a past event gone can delete that event.
+
+Either option removes the series' own description, image and default FAQ set, because those live on the series and not on the events; the screen says so, and names which of them this particular series actually has. Registration records are kept under both options: they are stored separately from events and outlive them by design, with the event's title saved alongside them. Upcoming events go to the trash, which is what deleting an event does everywhere else here.
+
+**The RSVP count links through even when it is zero,** on the Events list and on the dashboard. It used to link only when somebody had registered, which made it a control that changes shape under the reader, and zero is exactly when somebody wants to go and look. The page they land on says whether nobody has registered yet or whether registrations are switched off entirely, and it distinguishes both from a search that simply did not match.
+
+**The event's registration settings are on the registrations page.** Capacity, whether registrations are accepted, who else is notified and where replies go were only in the event editor, so answering "why has nobody registered" meant leaving the list, finding the event, scrolling a form and coming back. They are here now, and changeable here. They are not a second copy: both screens draw them through one method and save them through one method, so neither can grow a setting the other lacks. That is the same rule that has kept the editor and the pending approval queue in step since 3.2.0.
+
+**Each registration says whether that person also asked for SFAF news and updates.** Consent still lives in its own table and is deliberately not a column on the registration, because they are two different permissions and an RSVP row must never be the evidence for a mailing list. The rows are marked from that table in one query, matched on the address and the event, so somebody who ticked it in March and not in June is marked in March and not in June. CSV export is unchanged, behind the same capability.
+
+**A venue address is street, city, state and ZIP.** One free-text box made "470 Castro St, San Francisco, CA 94114" and "470 Castro" the same field, so nothing could tell a complete address from half of one and correcting a city meant retyping the string.
+
+**Existing addresses were split up rather than dropped, and nothing is lost.** Where the shape is unmistakable the parts are filled in; where it is not, the whole original string goes into street and the rest stay empty, which reads correctly and displays identically. Only a trailing five-digit ZIP and a bare two-letter state code count as unmistakable, so "470 Castro St, San Francisco" is not turned into a street in a state called San Francisco. The migration only ever adds, never overwrites a venue that already has parts, and never touches the original.
+
+**Everything that reads an address still reads one line,** because the four parts are composed into the existing field on every save. That is why none of the thirteen readers had to change, and why an address is still searchable, now by city, state and ZIP as well.
+
+**The embed generator defaults to all events.** It defaulted to "One organizer" with whichever organizer sorted first already chosen, so a block generated without touching the control silently showed one team's events. A page that looks like it is working and is quietly missing most of the calendar is the worst kind of wrong. Narrowing is a decision and now has to be made on purpose.
 
 = 3.12.0 =
 

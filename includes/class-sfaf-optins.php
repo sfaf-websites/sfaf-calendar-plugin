@@ -100,6 +100,48 @@ class SFAF_Optins {
         return $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
     }
 
+    /**
+     * Which of these addresses consented, and on which event.
+     *
+     * ONE QUERY FOR A WHOLE PAGE OF REGISTRATIONS. The registrations table
+     * marks the rows where somebody also ticked "SFAF news and updates", and
+     * asking per row would be one round trip per person. The key is email AND
+     * event, because consent was given on a particular form: somebody who
+     * ticked it in March and not in June is marked in March and not in June,
+     * which is what the record actually says.
+     *
+     * Addresses are compared lowercased, because record() stores what
+     * sanitize_email() returned and the RSVP table stores what the person
+     * typed.
+     *
+     * @param string[] $emails
+     * @return array<string,bool> "email|event_id" => true
+     */
+    public static function consent_index( $emails ) {
+        global $wpdb;
+
+        $emails = array_map( 'strtolower', array_map( 'trim', array_map( 'strval', (array) $emails ) ) );
+        $emails = array_values( array_unique( array_filter( $emails ) ) );
+        if ( empty( $emails ) ) {
+            return array();
+        }
+        // Bounded, so a pathological page cannot build an unbounded IN list.
+        $emails = array_slice( $emails, 0, 1000 );
+
+        $table        = self::table();
+        $placeholders = implode( ',', array_fill( 0, count( $emails ), '%s' ) );
+        $rows         = $wpdb->get_results( $wpdb->prepare(
+            "SELECT email, event_id FROM $table WHERE LOWER(email) IN ($placeholders)",
+            $emails
+        ) );
+
+        $out = array();
+        foreach ( (array) $rows as $row ) {
+            $out[ strtolower( (string) $row->email ) . '|' . (int) $row->event_id ] = true;
+        }
+        return $out;
+    }
+
     /** How many consents are on file. */
     public static function count() {
         global $wpdb;

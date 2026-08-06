@@ -131,12 +131,22 @@ class SFAF_Teams {
     /**
      * Create or rename a team, and set its membership.
      *
-     * @param string $id    Existing id, or '' to create.
-     * @param string $name
-     * @param int[]  $users
+     * A FORM CAN ONLY SPEAK FOR THE PEOPLE IT SHOWED. The membership picker
+     * lists the calendar's own users, so a team member who is not one of them
+     * (an account that lost its calendar role, or one added before it had one)
+     * has no checkbox and would be dropped by the next save of an unrelated
+     * field. $offered is how a caller says which ids its form actually
+     * offered: anything stored outside that set is kept. Pass null when the
+     * caller genuinely knows the whole membership, which add_member() and
+     * remove_member() do.
+     *
+     * @param string     $id      Existing id, or '' to create.
+     * @param string     $name
+     * @param int[]      $users
+     * @param int[]|null $offered Ids the form showed, or null for all of them.
      * @return string|WP_Error The team id.
      */
-    public static function save( $id, $name, $users = array() ) {
+    public static function save( $id, $name, $users = array(), $offered = null ) {
         $name = trim( sanitize_text_field( $name ) );
         if ( '' === $name ) {
             return new WP_Error( 'sfaf_team_no_name', 'Give the team a name so it can be found later.' );
@@ -169,8 +179,23 @@ class SFAF_Teams {
             $raw[ $id ] = array( 'created' => $now );
         }
 
+        $members = self::clean_ids( $users );
+
+        if ( is_array( $offered ) ) {
+            // Keep every stored member the form could not have unticked,
+            // in front of what it did submit, so the order is stable.
+            $offered = self::clean_ids( $offered );
+            $unseen  = array();
+            foreach ( self::clean_ids( isset( $raw[ $id ]['users'] ) ? $raw[ $id ]['users'] : array() ) as $uid ) {
+                if ( ! in_array( $uid, $offered, true ) ) {
+                    $unseen[] = $uid;
+                }
+            }
+            $members = self::clean_ids( array_merge( $unseen, $members ) );
+        }
+
         $raw[ $id ]['name']    = $name;
-        $raw[ $id ]['users']   = self::clean_ids( $users );
+        $raw[ $id ]['users']   = $members;
         $raw[ $id ]['updated'] = $now;
         if ( empty( $raw[ $id ]['created'] ) ) {
             $raw[ $id ]['created'] = $now;
@@ -373,13 +398,58 @@ class SFAF_Teams {
     }
 
     /**
-     * How many people a team currently reaches.
+     * How many people a team currently REACHES. Not how many are in it.
+     *
+     * These are two different numbers and conflating them is what made the
+     * Users screen say "0 people right now" beside a team that had members:
+     * this counts emails(), which skips a member whose account has gone and a
+     * member with no usable address. That is the right number to print beside
+     * a notification picker, where the question is who will actually be
+     * mailed, and the wrong number to print beside a membership list. Use
+     * member_count() for that.
      *
      * @param string $id
      * @return int
      */
     public static function size( $id ) {
         return count( self::emails( $id ) );
+    }
+
+    /**
+     * The team's members as real accounts, in the stored order.
+     *
+     * A stored id whose account has been deleted is skipped HERE and left
+     * alone in the option, for the same reason all() does not filter: a
+     * lookup failure must never become a silent deletion. Nothing writes the
+     * membership back except a save that was actually asked for.
+     *
+     * @param string $id
+     * @return WP_User[]
+     */
+    public static function members( $id ) {
+        $team = self::get( $id );
+        if ( ! $team ) {
+            return array();
+        }
+
+        $out = array();
+        foreach ( $team['users'] as $uid ) {
+            $user = get_userdata( $uid );
+            if ( $user ) {
+                $out[] = $user;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * How many people are IN a team. The number to print beside a member list.
+     *
+     * @param string $id
+     * @return int
+     */
+    public static function member_count( $id ) {
+        return count( self::members( $id ) );
     }
 
     /**

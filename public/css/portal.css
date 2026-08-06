@@ -201,6 +201,16 @@ body.uc-portal {
 .uc-side-box h3 { margin-top: 0; }
 .uc-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--p-border); }
 
+/* ---------- Page sections ----------
+   A heading, a sentence saying what the section is for, and a rule. Users &
+   Permissions was four cards in a row down one page with nothing saying where
+   one subject ended and the next began. */
+.uc-section { margin-bottom: 34px; }
+.uc-section + .uc-section { padding-top: 28px; border-top: 2px solid var(--p-border); }
+.uc-section-head { margin-bottom: 14px; }
+.uc-section-head h2 { margin: 0 0 4px; font-size: 20px; }
+.uc-section-sub { margin: 0; font-size: 13px; color: var(--p-muted); }
+
 /* ---------- Users ---------- */
 .uc-inline-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .uc-inline-form select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background: #fff; }
@@ -224,44 +234,36 @@ body.uc-portal {
    the muted control say what it is. Nothing in this block changes when a field
    is locked except the field itself.
    ------------------------------------------------------------------------- */
-/* A GRID WITH EXPLICIT SPANS, AND align-items: start.
+/* TWO COLUMNS: TWO THIRDS AND ONE THIRD.
 
-   WHAT ACTUALLY CAUSED THE STRETCHING. A grid item defaults to
-   align-items: stretch, so Location beside Image grew to the height of the
-   taller one and left a hand's depth of empty card. That is one declaration,
-   not a reason to leave grid: align-items: start puts each card at the top of
-   its cell at its own height, with nothing measured in JavaScript.
+   THE SPLIT IS BY WHAT A CARD IS, not by how tall it happens to be. The main
+   column is the event itself: what it is, how it is found, when, where, who
+   hears about it, what people ask. The side column is secondary settings that
+   are read rarely and changed rarely: capacity, the donate link, the
+   organizer's address, which features show.
 
-   WHY MULTI-COLUMN WAS WORSE. 3.10.0 used CSS columns to solve the stretching
-   and paid too much. Columns fill TOP TO BOTTOM before moving right, so
-   Classification and Schedule stacked down a narrow left strip while the top
-   two thirds of the page beside them sat empty. Column widths are equal as
-   well, so no card could be given the width its contents need.
+   WHY NOT SIX EQUAL COLUMNS, which this replaced: a card's width said nothing
+   about what the card was for, so pairing was a height-matching exercise and
+   the page read as a scatter. WHY NOT CSS MULTI-COLUMN, which came before
+   that: columns fill top to bottom before moving right, so two cards stacked
+   down a narrow strip while the page beside them sat empty.
 
-   THE SPANS. Six columns.
-     6  Event details; then Notifications, Other details and FAQs at the foot.
-     3  Classification beside Schedule, Location beside Capacity.
-     2  Donate, Organizer contact and Display: three short cards, one row.
-   Short beside short is the rule. Nothing stretches now, but a ROW is still as
-   tall as its tallest card, so pairing a two-field card with a ten-field one
-   puts the gap back under the short one.
+   EACH COLUMN IS A FLEX STACK, so every card in it is full width and no card
+   is ever beside another. There is no row for a short card to leave a hole in,
+   which is what all the span tuning was for. align-items: start keeps the
+   columns independent: the side column ends where its content ends rather than
+   stretching to match the main one.
 
-   A CARD WITH NO SPAN CLASS IS FULL WIDTH, not one column. That is the
-   forgiving failure: a card somebody added and forgot to size reads as
-   deliberate at full width and as broken at a sixth. It matters most for the
-   "Other details" catch-all, which exists for exactly the field nobody placed.
-
-   DOM ORDER IS FILL ORDER at every width. Auto-placement is sparse, so it
-   never puts a later card ahead of an earlier one, and tab order follows the
-   DOM: the keyboard gets the form in the order it is on screen. */
-.uc-bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+   DOM ORDER IS MAIN THEN SIDE, so at one column the event comes first and the
+   settings follow, and tab order is what is on screen at both widths. The side
+   column is rendered into a buffer first in PHP for a separate reason, to do
+   with which card claims which field; see render_event_form(). */
+.uc-bento { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 16px; align-items: start; margin-bottom: 20px; }
-.uc-bento-card { grid-column: span 6; min-width: 0;
+.uc-bento-main, .uc-bento-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.uc-bento-card { min-width: 0;
     background: var(--surface-2); border: 0.5px solid var(--p-border);
     border-radius: 12px; padding: 18px; }
-.uc-bento-2 { grid-column: span 2; }
-.uc-bento-3 { grid-column: span 3; }
-.uc-bento-6 { grid-column: span 6; }
 .uc-bento-title { font-size: 16px; font-weight: 500; margin: 0 0 14px; color: var(--p-text); }
 .uc-bento-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
     flex-wrap: wrap; margin-bottom: 14px; }
@@ -290,17 +292,11 @@ body.uc-portal {
 .uc-bento .uc-bento-link a { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .uc-repeat-line { margin: 0; font-size: 13px; }
 
-/* Two across, then one. A 3 and a 2 both become a half, so the pairs stay
-   pairs and the three short cards become two and one; a 6 stays full. The
-   order on screen does not change at any step, so neither does the tab order. */
-@media (max-width: 1100px) {
-    .uc-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .uc-bento-card, .uc-bento-6 { grid-column: span 2; }
-    .uc-bento-2, .uc-bento-3 { grid-column: span 1; }
-}
-@media (max-width: 760px) {
+/* One column below 980px: the main column first, then the side column, which
+   is the order they are written in. Nothing is reordered at any width, so the
+   tab order is always what is on screen. */
+@media (max-width: 980px) {
     .uc-bento { grid-template-columns: minmax(0, 1fr); }
-    .uc-bento-card, .uc-bento-2, .uc-bento-3, .uc-bento-6 { grid-column: span 1; }
 }
 
 /* ---------- Help disclosures ----------
@@ -357,10 +353,24 @@ body.uc-portal {
 .uc-location-venue, .uc-location-custom { margin: 0 0 12px 22px; }
 .uc-location-on .uc-location-venue[hidden], .uc-location-on .uc-location-custom[hidden] { display: none; }
 
-/* ---------- Venues screen ---------- */
+/* ---------- Venues screen ----------
+   Four address fields, sized to what goes in them: street takes the room, ZIP
+   and state do not need any. Below 720px they stack, because a two-character
+   state box beside a full street on a phone is worse than a list. */
 .uc-venue { padding: 14px 0; border-top: 1px solid var(--p-border); }
 .uc-venue:first-of-type { border-top: 0; }
-.uc-venue-address { flex: 2 1 320px; }
+.uc-venue-grid { display: grid; gap: 12px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1.1fr) 90px 110px; }
+.uc-venue-grid .uc-field input { width: 100%; }
+.uc-venue-composed { margin-top: 10px; }
+@media (max-width: 900px) {
+    .uc-venue-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .uc-venue-name, .uc-venue-street { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+    .uc-venue-grid { grid-template-columns: minmax(0, 1fr); }
+    .uc-venue-name, .uc-venue-street { grid-column: auto; }
+}
 .uc-venue-actions { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
 .uc-venue-delete { margin-top: 8px; }
 .uc-venue-new { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--p-border); }
@@ -757,23 +767,89 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker-option .uc-muted { margin-left: 6px; font-size: 12px; }
 .uc-picker-empty { margin: 8px 0 0; }
 
-/* ---------- Teams (Users screen) ---------- */
-.uc-team { padding: 14px 0; border-top: 1px solid var(--p-border); }
-.uc-team:first-of-type { border-top: 0; }
-.uc-team-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.uc-team-name { flex: 1 1 260px; }
-.uc-team-size { margin: 0 0 6px; }
-.uc-team-members { border: 0; margin: 12px 0 0; padding: 0; min-width: 0; }
-.uc-team-members .uc-check-grid { max-height: 200px; overflow-y: auto; padding: 8px 10px;
-    border: 1px solid var(--p-border); border-radius: 8px; background: #fff; }
-.uc-team-actions { margin-top: 12px; }
-.uc-team-delete { margin-top: 8px; }
-.uc-team-new { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--p-border); }
-.uc-team-new > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+/* ---------- Teams (Users screen) ----------
+   A LIST OF WHAT EXISTS, not a stack of open forms. Each row is a name, a
+   count and its actions; the members are behind "Manage members" and are
+   plainly a picker when they are open. The old screen showed every calendar
+   user as a checkbox under every team, which made an empty team look full. */
+.uc-team-list { list-style: none; margin: 0; padding: 0; }
+.uc-team-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    padding: 13px 0; border-top: 1px solid var(--p-border); }
+.uc-team-row:first-child { border-top: 0; }
+.uc-team-row-open { background: var(--p-bg); border-radius: 10px; padding: 13px 12px; }
+.uc-team-id { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.uc-team-name-text { font-size: 15px; }
+.uc-team-count { font-size: 13px; color: var(--p-muted); }
+.uc-team-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.uc-team-actions form { margin: 0; }
+.uc-team-rename { flex: 1 1 100%; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.uc-team-rename .uc-team-name { flex: 1 1 260px; }
+.uc-team-members-form { flex: 1 1 100%; margin-top: 6px; }
+.uc-team-new { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-team-create { max-width: 420px; }
+.uc-team-create-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
 .uc-team-blocked { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+
+/* MEMBER ROWS ARE ONE LINE: box, name, address. They were in a
+   repeat(auto-fill, minmax(180px, 1fr)) grid, so at any real width the name
+   wrapped onto a second line while the rest of the row stayed empty. A member
+   list is a list, not a grid: one per row, full width, and the address takes
+   whatever is left after the name. */
+.uc-member-list { list-style: none; margin: 8px 0 0; padding: 6px 8px; max-height: 260px;
+    overflow-y: auto; border: 1px solid var(--p-border); border-radius: 8px; background: #fff; }
+.uc-member-row { margin: 0; }
+.uc-member-check { display: flex; align-items: baseline; gap: 9px; margin: 0;
+    padding: 5px 6px; border-radius: 6px; font-size: 13px; font-weight: 400; }
+.uc-member-check:hover { background: var(--p-bg); }
+.uc-member-check:focus-within { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+.uc-member-check input[type="checkbox"] { align-self: center; }
+.uc-member-name { font-weight: 600; white-space: nowrap; }
+.uc-member-email { flex: 1 1 auto; min-width: 0; font-size: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .uc-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Registrations ----------
+   The event's own settings, on the page where the questions get asked. A
+   disclosure, because the registrations are what the page is for; it opens
+   itself when the list is empty, which is exactly when the settings are the
+   answer. */
+.uc-rsvp-settings { padding: 0; }
+.uc-rsvp-settings-toggle { display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; padding: 14px 16px; cursor: pointer; font-size: 14px; }
+.uc-rsvp-settings-toggle::-webkit-details-marker { display: none; }
+.uc-rsvp-settings-toggle::before { content: "\25B8"; margin-right: 8px; color: var(--p-muted); }
+.uc-rsvp-settings[open] > .uc-rsvp-settings-toggle::before { content: "\25BE"; }
+.uc-rsvp-settings[open] > .uc-rsvp-settings-toggle { border-bottom: 1px solid var(--p-border); }
+.uc-rsvp-settings-form { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.uc-rsvp-settings-form .uc-form-actions { margin-top: 4px; }
+
+/* Consent is marked, and it says what it is a mark FOR. A bare tick in a
+   column headed "Updates" is not a record of anything anybody agreed to. */
+.uc-optin-yes { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600;
+    padding: 2px 8px; border-radius: 99px;
+    background: color-mix(in srgb, var(--uc-primary, #16BECF) 14%, #fff);
+    color: color-mix(in srgb, var(--uc-primary, #16BECF) 72%, #000); }
+
+/* ---------- Removing a series ----------
+   Two options, each a real block with its own consequence written under it,
+   because one of them deletes events and the other does not. */
+.uc-remove-lead { font-size: 15px; margin: 0 0 16px; }
+.uc-remove-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.uc-remove-option { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px;
+    border: 1px solid var(--p-border); border-radius: 10px; cursor: pointer; background: #fff; }
+.uc-remove-option:hover { border-color: var(--uc-accent-text); }
+.uc-remove-option:focus-within { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
+.uc-remove-option > input[type="radio"] { margin-top: 3px; flex: 0 0 auto; }
+.uc-remove-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.uc-remove-option-danger { border-color: color-mix(in srgb, #c0392b 40%, var(--p-border)); }
+.uc-remove-sub { display: flex; flex-direction: column; gap: 4px; margin-top: 8px;
+    padding-left: 12px; border-left: 2px solid var(--p-border); }
+.uc-remove-sub-label { font-size: 12px; font-weight: 600; color: var(--p-muted); }
+.uc-remove-picker { margin-left: 22px; max-width: 320px; }
+.uc-btn-danger { background: #c0392b; border-color: #c0392b; color: #fff; }
+.uc-btn-danger:hover { background: #a33025; border-color: #a33025; color: #fff; }
 
 /* ---------- Registrations ---------- */
 .uc-page-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
