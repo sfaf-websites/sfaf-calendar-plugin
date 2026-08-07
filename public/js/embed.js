@@ -483,6 +483,10 @@
                 list.appendChild(holder.firstChild);
             }
             block.setAttribute('data-page', String(next));
+            // The new cards were not in the document when bind() ran, so they
+            // have never been observed. revealCards() skips anything already
+            // carrying .uc-reveal, so this only ever reaches the new ones.
+            revealCards(container);
 
             // Nothing to reapply: the request already carried the chosen
             // category, so what just landed is page N of the filtered set.
@@ -534,6 +538,64 @@
         bindSearch(container);
         bindViewToggle(container, block);
         bindMonth(container);
+        revealCards(container);
+    }
+
+    /* -----------------------------------------------------------------------
+     * ENTRANCE: each list card as it reaches the viewport.
+     *
+     * THE TWIN OF initReveal() IN calendar.js. Two runtimes render the same
+     * markup, this file on somebody else's page, that one on the calendar site
+     *, and neither can load the other. The behaviour is deliberately identical
+     * and the CSS is literally the same file (calendar.css, adopted by
+     * adoptStylesheet), so a change to the look is one edit; a change to WHEN it
+     * fires is two, and they are cross-referenced.
+     *
+     * THIS BLOCK LIVES INSIDE SFAF.ORG'S PAGE AND MUST NOT FIGHT IT. An
+     * IntersectionObserver is a private object: no global handler, no scroll
+     * listener, no shared registry. A host theme running AOS or its own reveal
+     * script cannot see this one and this one cannot see it. The class name
+     * .uc-reveal is ours and appears nowhere in the host's stylesheet, and the
+     * rules that use it are scoped under .uc-calendar.
+     *
+     * DEGRADES TO VISIBLE, ALWAYS. .uc-reveal, the class that hides, is only
+     * ever added on the line before the element is observed. No observer, no
+     * class, no hiding: reduced motion returns early, a browser without
+     * IntersectionObserver returns early, and a card added after the block was
+     * bound is simply visible. There is no arrangement in which a card ends up
+     * invisible with nothing left to reveal it.
+     *
+     * LIST VIEW ONLY. .uc-event-list is the list panel's container. The month
+     * grid is a table of 42 cells and staggering it would look like a fault.
+     * -------------------------------------------------------------------- */
+    function revealCards(container) {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+        if (!('IntersectionObserver' in window)) {
+            return;
+        }
+
+        var cards = container.querySelectorAll('.uc-event-list .uc-event-card');
+        if (!cards.length) {
+            return;
+        }
+
+        // ONCE PER CARD: unobserved on the first crossing, so scrolling back up
+        // a long list does not replay anything.
+        var observer = new IntersectionObserver(function (entries, obs) {
+            for (var i = 0; i < entries.length; i++) {
+                if (!entries[i].isIntersecting) { continue; }
+                entries[i].target.classList.add('is-in');
+                obs.unobserve(entries[i].target);
+            }
+        }, { rootMargin: '0px 0px -40px 0px', threshold: 0.01 });
+
+        for (var j = 0; j < cards.length; j++) {
+            if (cards[j].classList.contains('uc-reveal')) { continue; }
+            cards[j].classList.add('uc-reveal');
+            observer.observe(cards[j]);
+        }
     }
 
     /* -----------------------------------------------------------------------
@@ -1151,6 +1213,7 @@
                 if (!data || !data.html) {
                     list.innerHTML = '<p class="uc-empty">No events match that search.</p>';
                 }
+                revealCards(container);
                 var block = inner(container);
                 if (block) {
                     // Page one of a different result set. Left alone, Load More

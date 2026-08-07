@@ -17,7 +17,106 @@
         initPagination();
         initViews();
         initMaps();
+        initReveal();
     });
+
+    /* -----------------------------------------------------------------------
+     * ENTRANCE: list cards on approach, the event page in two halves.
+     *
+     * SEPARATE FROM initMaps() ABOVE ON PURPOSE, and the note there is not
+     * contradicted: that comment forbids an observer that WARMS a Google
+     * iframe, because scrolling past something is not consent to contact a
+     * third party. This observer contacts nothing. It adds a class to an
+     * element that is already in the document and already rendered.
+     *
+     * NOTHING IS EVER HIDDEN WITHOUT A WAY BACK. .uc-reveal is what makes an
+     * element start invisible, and it is only ever added here, immediately
+     * before the element is handed to an observer that will reveal it. If the
+     * observer cannot be built, nothing is marked at all and the page is
+     * simply the page. There is no path through this function that leaves
+     * content invisible.
+     *
+     * THE HOST THEME IS NOT CONSULTED AND CANNOT INTERFERE. This calendar runs
+     * inside sfaf.org's page, and that page may well have its own scroll
+     * behaviour, AOS, a WOW.js, a theme's own observer. An IntersectionObserver
+     * is a per-instance object with no shared state and no global handler to
+     * collide with, and the class it sets is our own. The only way a theme
+     * could affect this is by styling .uc-reveal, which is not a name anything
+     * else uses. See the twin of this function in embed.js.
+     * -------------------------------------------------------------------- */
+    function initReveal() {
+        // Reduced motion: leave every element exactly as the server sent it.
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+        if (!('IntersectionObserver' in window)) {
+            return;
+        }
+
+        // LIST VIEW ONLY. .uc-event-list is the list panel's own container; the
+        // month grid is a <table class="uc-month-grid"> and has no cards in it.
+        revealAll(document.querySelectorAll('.uc-event-list .uc-event-card'));
+
+        // The event page. Header and picture are on screen at load, so they are
+        // revealed on the next frame rather than on approach; everything below
+        // is treated like a list card.
+        var single = document.querySelector('.uc-single');
+        if (single) {
+            var now = single.querySelectorAll('.uc-single-header, .uc-single-image');
+            Array.prototype.forEach.call(now, function (el) {
+                el.classList.add('uc-reveal', 'uc-reveal-now');
+            });
+            // Two frames: the first lets the browser paint the hidden state, so
+            // the transition has something to run from. One frame is enough in
+            // Chrome and is not in Safari.
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    Array.prototype.forEach.call(now, function (el) { el.classList.add('is-in'); });
+                });
+            });
+
+            revealAll(single.querySelectorAll(
+                '.uc-single-body, .uc-donate-block, .uc-galaxy-block, .uc-faq, .uc-series-list, .uc-map, .uc-single-card'
+            ));
+        }
+    }
+
+    /**
+     * Hide these, then reveal each one the first time it enters the viewport.
+     *
+     * ONCE PER ELEMENT: the observer stops watching on the first crossing, so a
+     * long list scrolled up and down does not replay. rootMargin brings the
+     * trigger 40px inside the bottom edge, so a card has started moving by the
+     * time it is properly on screen rather than after.
+     */
+    function revealAll(nodes) {
+        if (!nodes || !nodes.length) {
+            return;
+        }
+        var observer = new IntersectionObserver(function (entries, obs) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) { return; }
+                entry.target.classList.add('is-in');
+                obs.unobserve(entry.target);
+            });
+        }, { rootMargin: '0px 0px -40px 0px', threshold: 0.01 });
+
+        Array.prototype.forEach.call(nodes, function (el) {
+            if (el.classList.contains('uc-reveal')) { return; }
+            el.classList.add('uc-reveal');
+            observer.observe(el);
+        });
+    }
+
+    // Cards appended by "Load more" and by a filter change have never been
+    // observed, so they are picked up here. Exposed rather than called inline
+    // because the two append sites are in different functions.
+    window.sfafRevealNew = function (scope) {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
+        if (!('IntersectionObserver' in window)) { return; }
+        var root = scope || document;
+        revealAll(root.querySelectorAll('.uc-event-list .uc-event-card:not(.uc-reveal)'));
+    };
 
     /* -----------------------------------------------------------------------
      * Click to load the event map.
@@ -423,6 +522,11 @@
                 if (resp && resp.html) {
                     $container.find('.uc-event-list, .uc-upcoming-list').first().append(resp.html);
                     $container.attr('data-page', next);
+                    // Cards that were not in the document when initReveal() ran
+                    // have never been observed. Without this they would simply
+                    // be visible, which is correct but inconsistent with the
+                    // page they were appended to.
+                    if (window.sfafRevealNew) { window.sfafRevealNew($container[0]); }
                 }
                 if (!resp || !resp.has_more || next >= maxPages) {
                     finishPagination($container, $trigger);
@@ -802,6 +906,7 @@
                         if (resp && typeof resp.max_pages !== 'undefined') {
                             $block.attr('data-max-pages', String(resp.max_pages));
                         }
+                        if (window.sfafRevealNew) { window.sfafRevealNew($block[0]); }
                         setCount($block, (resp && typeof resp.total !== 'undefined') ? resp.total : null);
                         syncPagination($block, resp);
                     },

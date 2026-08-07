@@ -27,7 +27,92 @@
         initConfirmButtons();
         initCompleteness();
         initAsyncActions();
+        initDisclosures();
+        initEntrance();
     });
+
+    /* ---------------------------------------------------------------------
+     * Disclosures: keep aria-expanded in step with the <details> state.
+     *
+     * The disclosure works with no script at all, <details> is what opens and
+     * closes it, and the chevron is rotated by CSS off the [open] attribute.
+     * What a <summary> does NOT reliably expose is aria-expanded: browsers vary
+     * on whether the details state reaches the accessibility tree as one, and
+     * the attribute is what a screen reader announces. So it is written into
+     * the markup closed, and corrected here on every toggle.
+     * ------------------------------------------------------------------ */
+    function initDisclosures() {
+        document.querySelectorAll('details[data-uc-disclosure]').forEach(function (d) {
+            var summary = d.querySelector('summary');
+            if (!summary) { return; }
+            function sync() { summary.setAttribute('aria-expanded', d.open ? 'true' : 'false'); }
+            sync();
+            d.addEventListener('toggle', sync);
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * Entrance.
+     *
+     * THE SCRIPT IS WHAT TURNS IT ON, and that is the point. Every rule in the
+     * stylesheet is behind a class added here, so a page whose JavaScript never
+     * runs is a normal visible page rather than a blank one waiting to be
+     * revealed. Nothing is hidden by a base rule.
+     *
+     * THE NAV IS ONCE PER SESSION. Every caladmin screen is a full page load,
+     * so an unconditional stagger would replay on every single click. The flag
+     * lives in sessionStorage: it survives navigation within the tab and is
+     * gone by the next visit, which is what "first load" means here.
+     *
+     * sessionStorage can throw, Safari in private mode used to, and an iframe
+     * with third-party storage blocked still does, so every touch of it is
+     * wrapped. A failure means the nav simply animates, which is the harmless
+     * outcome, not an exception that stops the rest of this file.
+     * ------------------------------------------------------------------ */
+    function initEntrance() {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        var sidebar = document.getElementById('uc-sidebar');
+        if (sidebar && !navIntroSeen()) {
+            markNavIntroSeen();
+            sidebar.classList.add('uc-anim-nav');
+        }
+
+        /*
+         * The blocks of a screen, in document order. Top-level children of the
+         * content region: the page head, each card, each section. Deliberately
+         * NOT every .uc-card anywhere, because a card nested inside a section
+         * would then animate twice, once on its own and once inside its parent.
+         */
+        var content = document.querySelector('.uc-portal-content');
+        if (!content) { return; }
+        var i = 0;
+        Array.prototype.forEach.call(content.children, function (block) {
+            // A cap, so a long screen does not end with a card arriving two
+            // seconds after the page did.
+            block.style.setProperty('--uc-card-i', String(Math.min(i, 8)));
+            block.classList.add('uc-anim-in');
+            i++;
+        });
+    }
+
+    function navIntroSeen() {
+        try {
+            return window.sessionStorage.getItem('ucNavIntro') === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function markNavIntroSeen() {
+        try {
+            window.sessionStorage.setItem('ucNavIntro', '1');
+        } catch (e) {
+            /* No storage: the stagger runs again next page. Harmless. */
+        }
+    }
 
     /* ---------------------------------------------------------------------
      * Help disclosures: a "?" beside a label opening a paragraph.

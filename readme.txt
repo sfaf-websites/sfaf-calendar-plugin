@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.15.0
+Stable tag: 3.16.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,42 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.16.0 =
+
+**The sensitivity banner on Registrations is gone, and it did not "fail to take" last time, it was never touched.** It was added in 3.5.0 and no commit between then and 3.15.0 changed the line it sits on, so there was no wrong element, no second copy and no override: the removal simply never reached the file. There was exactly one of it in the entire plugin, and the CSS rule that positioned it went with it. Nothing about who can see this screen has changed. Viewing it and exporting it both still begin with the same access check, and the export still verifies its nonce; the export has never carried the warning text, so there was nothing to remove there.
+
+**Registration settings on that screen now start closed, sit hard left, and open on a real chevron.** It used to open itself whenever the list was empty, which moved the registrations down the page for a reason the reader could not see; somebody arriving here came for the registrations. The heading and the status line were thrown to opposite edges of a 1100px card by a space-between; they stack at the left now. The marker was a three-pixel grey triangle, and it is a 28px ringed teal chevron that turns a quarter circle on open. It sits on a summary element, so click, tap, Enter and Space all work with no JavaScript at all, and aria-expanded is written into the markup and kept in step on every toggle.
+
+**"New series" moved to the foot of the Series section.** It was in the page head, above both sections, which put the rarest control on the screen in its most prominent place and made the two halves work differently: Categories offered "Create a category" at the bottom of its list and Series offered its equivalent above everything. Both are now "here is what exists, and here is how to add one".
+
+**Every form control in the plugin was enumerated with a tokenizer, and the reason some were still unstyled is structural rather than a list of misses.** 346 controls across caladmin and the plugin's own WordPress screens were walked, each one resolved to the wrapper classes actually above it, and each verdict checked against the rules that exist. Until now a control was styled because it happened to sit inside a container that styled it, a field wrapper, a filters bar, a login form, a picker filter, a dozen of them, so a control rendered outside all of them fell through to the browser and nothing said so. That is why the opt-ins search box was raw browser chrome for four releases while the identical box on Registrations was not: one form carried the class that styles inputs and the other carried one that styles a select and nothing else. The previous sweep covered the controls somebody opened a screen and looked at; it could not cover the ones nobody had opened.
+
+So the baseline is now a property of being a control in this portal, and the wrappers only refine it. A new field in a new card is styled before anybody writes a rule for it. The fallback is written at zero specificity so it can never outrank a class rule, the same specificity accident that once repainted a button through a plain link rule. Checkboxes and radios are tinted with accent-color rather than boxed, which recolours the platform's own control instead of replacing it, so what a keyboard and a screen reader get is unchanged. Date, time, datetime-local, month, week and file inputs are only partly ours: the box, border, radius, font and focus ring are set here, and the calendar popover, the time spinner and the "Choose file" button are browser shadow DOM with no standard hook. Those six are listed rather than chased.
+
+The three named faults are fixed at their cause. The opt-ins search box wears the same class as every other search on the portal. Dismiss and Restore in the pending queue had a class with no rule behind it, which is invisible on a link and leaves browser chrome on a button, so they were native grey buttons in a row of links next to Publish, which is a different class and is reset, one rule now covers both elements. And the row actions were 13px, one step below body text, on the only controls on that screen that do anything; they are 14px.
+
+The plugin's own WordPress admin screens got the same treatment, scoped to those two roots and no further. The rest of wp-admin is not ours to repaint.
+
+**Fetch updates is a utility action and now looks like one.** It was a plain outline button, indistinguishable from Export CSV on a screen where the two do very different things. It is solid darkened teal with a white label, 5.35:1, its fill measuring 4.95:1 against the page background so the control's own edge clears the 3:1 floor without a separate border, and it carries a refresh mark that turns while the fetch runs. Yellow stays the single primary and is not spent on this. Refresh from source gets the same treatment, because it is the same job.
+
+**The sidebar is dark, and every pairing on it is measured.** This is the opposite case from the rest of the portal: the darkened teal that exists because brand teal fails on white is itself unreadable on Dark Gray, at 2.30:1, and brand teal at full value is the correct choice there. Inactive items are Light Gray at 8.22:1, brightening to white at 12.34:1. The active item is brand teal for both label and icon on a teal tint, with a teal edge marking its position. The tint is 10 percent rather than 15: at 15 the flattened background puts brand teal at 4.253:1, under the AA floor for a 14px semibold label, and at 10 it measures 4.638:1. Ten percent is the most tint this can carry and still let the label be brand teal, which is the point of the treatment. Every nav item has an icon that takes the row's colour rather than declaring its own. Pending carries a count of everything waiting, submitted and imported both, in brand yellow with Dark Gray on it at 8.92:1, and that is the only yellow in the sidebar, on the one thing that needs acting on. There is no collapse-to-icons: a rail of glyphs is a memory test.
+
+**The language toggle moved into the sidebar footer and became a real control.** English and Espanol were two unstyled links at the bottom of the content flow. They are a segmented control now, the same pattern as the recurrence switch, with the active language filled in brand teal and Dark Gray on it at 5.47:1. Not flags: a flag names a country and there is no country called Spanish, so the mark is a globe. It posts, carries a nonce and returns to the screen it was pressed on, and it writes WordPress's own per-user language key rather than a private one, so the choice made here and the choice on the WordPress profile screen cannot disagree. Everything that goes through WordPress follows it immediately; the portal's own sentences are still literal English in the source and will follow when they are wrapped and a translation exists.
+
+The signed-in user and their access level are in that footer too, as one block. They used to be two halves of an answer in two places: a bare role chip at the foot of the sidebar and a name in the top bar.
+
+**Soft entrance animations, and not one of them can leave anything invisible.** Every rule is behind a class that JavaScript adds, and the animations carry their hidden state in the animation itself rather than in a base rule. With the script blocked, slow, or never run, the page is a normal finished visible page. There is no state in which content waits to be revealed.
+
+In caladmin the nav items slide in from the left 30ms apart on the first load of a session, not on every navigation, because every screen here is a full page load and an unconditional stagger would replay on every click. Content blocks rise a few pixels and fade, 40ms apart, 300ms each, ease-out.
+
+On the public calendar each list card animates as it reaches the viewport, and its image eases from 1.04 down to exactly 1.0 over the same beat inside a frame that already clips, so the crop at rest is identical to the crop with no animation at all and no card is left showing a different piece of its picture than its neighbour. Once per card: the observer stops watching on the first crossing, because a long list that re-animated every time it scrolled back past something would be unusable. Never the month grid, forty-two staggering cells is a fault report, not an entrance. Cards appended by Load More and by a search are picked up too.
+
+On an event page the header and the picture play on load and the sections below are revealed on approach.
+
+The embed runs inside sfaf.org's page, where the theme may well have its own scroll behaviour. An IntersectionObserver is a private object with no global handler and no shared registry, so a host running its own reveal script cannot see ours and ours cannot see it; the class name is ours and the rules using it are scoped to our root. If the observer cannot be constructed, or the browser has none, nothing is marked at all and every card is simply visible.
+
+All of it is transform and opacity only, both composited, neither causing layout, so nothing moves while a card settles, and all of it is wrapped in prefers-reduced-motion: reduce. That matters more than usual here: motion sensitivity is not a rounding error in the audience for a health services site.
 
 = 3.15.0 =
 

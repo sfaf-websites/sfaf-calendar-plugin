@@ -183,24 +183,110 @@ body.uc-portal {
 .uc-login-error { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
 .uc-portal-brandmark { display: inline-block; background: var(--sfaf-yellow); color: #000; font-weight: 800; padding: 8px 12px; border-radius: 8px; letter-spacing: 1px; }
 
-/* ---------- Layout ---------- */
+/* ---------------------------------------------------------------------------
+   THE SIDEBAR. DARK, AND MEASURED ON THE DARK.
+
+   THIS IS THE OPPOSITE CASE FROM EVERY OTHER SURFACE IN THIS FILE, and getting
+   it wrong in the obvious way would have been easy. --uc-accent-text (#0E7680)
+   exists because brand teal #16BECF is 2.26:1 on white and cannot carry text
+   there. On #373433 the arithmetic runs the other way: #0E7680 measures 2.30:1
+   and is unreadable, and BRAND TEAL AT FULL VALUE IS THE CORRECT CHOICE. So
+   the darkened teal is banned here exactly as brand teal is banned on white.
+
+   EVERY PAIRING ON THIS BACKGROUND, MEASURED:
+
+     Dark Gray  #373433   the background, relative luminance 0.0351
+     Light Gray #D1D3D4   inactive label + icon .................. 8.22:1  AAA
+     White      #FFFFFF   hover label ........................... 12.34:1  AAA
+     White              on the hover tint (#43403F) ............. 10.28:1  AAA
+     Brand teal #16BECF   ACTIVE label + icon, on the tint below .. 4.64:1  AA
+     Brand teal #16BECF   active, against the bare background ..... 5.47:1  AA
+     Dark Gray  #373433   on the yellow Pending badge ............. 8.92:1  AAA
+     Yellow     #FFD900   the badge itself, as a shape on the bg .. 8.92:1
+     #9EA1A3              the two footer labels ................... 4.75:1  AA
+     Dark Gray  #373433   on the active teal language segment ..... 5.47:1  AA
+
+   THE ACTIVE TINT IS 10 PERCENT, NOT 15. Teal at 15% over #373433 flattens to
+   #32494A, and brand teal on that is 4.253:1, under the 4.5:1 AA floor for
+   14px semibold, which is what a nav label is. At 10% it flattens to #344243
+   and the same teal measures 4.638:1. Ten percent is the most tint this can
+   carry and still let the label be brand teal, and the label being brand teal
+   is the point of the treatment. The value is pre-flattened rather than left as
+   an alpha, for the same reason as --uc-band: a translucent fill over an
+   unknown backdrop cannot be contrast-checked and a flat colour can.
+
+   NO COLLAPSE-TO-ICONS. A 64px rail of glyphs is a memory test. The sidebar is
+   240px or it is the off-canvas drawer below 720px, and nothing in between.
+   ------------------------------------------------------------------------- */
 .uc-portal-layout { display: flex; min-height: 100vh; }
-.uc-portal-sidebar { width: 240px; background: var(--p-sidebar); color: var(--p-sidebar-text); display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh; }
-.uc-portal-brand { display: flex; align-items: center; gap: 10px; padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.uc-portal-sidebar { width: 240px; background: var(--p-sidebar); color: var(--p-sidebar-text);
+    display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh; }
+.uc-portal-brand { display: flex; align-items: center; gap: 10px; padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.10); }
 .uc-portal-logo { max-height: 32px; width: auto; }
-.uc-portal-brandtext { font-weight: 700; color: #fff; font-size: 15px; }
-.uc-portal-nav { padding: 12px 0; flex: 1; }
-.uc-nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: var(--p-sidebar-text); font-weight: 500; }
+.uc-portal-brandtext { font-weight: 700; color: #fff; font-size: 15px; letter-spacing: -0.01em; }
+
+.uc-portal-nav { padding: 12px 10px; flex: 1; min-height: 0; overflow-y: auto; }
+.uc-nav-item { position: relative; display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; margin-bottom: 2px; border-radius: 9px;
+    color: var(--p-sidebar-text); font-weight: 500; font-size: 14px;
+    transition: background-color .15s ease, color .15s ease; }
 .uc-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; text-decoration: none; }
-.uc-nav-item.active { background: rgba(255,255,255,0.10); color: #fff; box-shadow: inset 3px 0 0 var(--uc-primary); }
-.uc-nav-icon { width: 20px; text-align: center; }
-.uc-portal-rolebadge { margin: 16px 20px; padding: 6px 10px; background: rgba(255,255,255,0.08); border-radius: 6px; font-size: 12px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; }
+.uc-nav-item:focus-visible { outline: 2px solid var(--sfaf-teal); outline-offset: -2px; }
+/* Teal on the 10% tint, plus a teal edge, so the active row is marked by
+   position as well as by colour. */
+.uc-nav-item.active { background: #344243; color: var(--sfaf-teal); font-weight: 600; }
+.uc-nav-item.active::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px;
+    width: 3px; border-radius: 0 3px 3px 0; background: var(--sfaf-teal); }
+.uc-nav-item.active:hover { background: #344243; color: var(--sfaf-teal); }
+/* The icon takes the row's colour rather than declaring its own, so the active
+   and hover states cannot drift apart from the label beside them. */
+.uc-nav-icon { display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex: 0 0 auto; color: inherit; }
+.uc-nav-label { flex: 1 1 auto; min-width: 0; }
+
+/* THE ONE YELLOW THING IN THE SIDEBAR. Same discipline as the primary button:
+   yellow means "act on this", so it appears once, on the queue. */
+.uc-nav-badge { flex: 0 0 auto; min-width: 22px; padding: 1px 7px; border-radius: 99px;
+    background: var(--uc-primary); color: var(--sfaf-darkgray);
+    font-size: 12px; font-weight: 700; line-height: 1.5; text-align: center; }
+
+/* ---------- Sidebar footer: who is signed in, and in which language ---------- */
+.uc-portal-foot { padding: 14px 14px 16px; border-top: 1px solid rgba(255,255,255,0.10);
+    display: flex; flex-direction: column; gap: 14px; }
+.uc-lang-form { display: flex; flex-direction: column; gap: 7px; margin: 0; }
+.uc-lang-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; color: #9EA1A3; }
+.uc-portal-me { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.uc-portal-me-name { font-size: 13.5px; font-weight: 600; color: #fff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uc-portal-me-role { font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #9EA1A3; }
+.uc-portal-signout { margin-top: 4px; font-size: 12px; font-weight: 600; align-self: flex-start; }
+/* .uc-portal a is (0,1,1) and would paint this the page's link teal, which is
+   the colour that fails on this background. Two classes beat it. */
+.uc-portal .uc-portal-signout { color: var(--p-sidebar-text); }
+.uc-portal .uc-portal-signout:hover { color: #fff; }
+.uc-portal-signout:focus-visible { outline: 2px solid var(--sfaf-teal); outline-offset: 2px; border-radius: 4px; }
+
+/* THE SEGMENTED CONTROL, ON DARK. Same shape as the recurrence switch: one
+   boundary, one filled segment, the rest transparent. The segments are submit
+   buttons rather than radios because the preference takes effect on the press;
+   there is no Save to wait for. */
+.uc-seg-dark { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.04); }
+.uc-portal .uc-seg-btn { flex: 1 1 0; padding: 7px 10px; border: 0; border-left: 1px solid rgba(255,255,255,0.16);
+    background: none; color: var(--p-sidebar-text); font-family: inherit; font-size: 12.5px;
+    font-weight: 600; line-height: 1.3; cursor: pointer; white-space: nowrap; border-radius: 0; }
+.uc-portal .uc-seg-btn:first-child { border-left: 0; }
+.uc-portal .uc-seg-btn:hover { background: rgba(255,255,255,0.10); color: #fff; }
+.uc-portal .uc-seg-btn.is-on { background: var(--sfaf-teal); color: var(--sfaf-darkgray); }
+.uc-portal .uc-seg-btn:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.uc-lang-seg { display: flex; width: 100%; }
 
 .uc-portal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .uc-portal-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; background: var(--p-panel); border-bottom: 1px solid var(--p-border); position: sticky; top: 0; z-index: 20; }
 .uc-portal-menu-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; }
 .uc-portal-user { display: flex; align-items: center; gap: 16px; margin-left: auto; }
-.uc-portal-username { font-weight: 600; }
 .uc-portal-logout { font-size: 13px; color: var(--p-muted); }
 .uc-portal-content { padding: 28px; max-width: 1100px; width: 100%; }
 
@@ -209,6 +295,112 @@ body.uc-portal {
 /* ---------- Flash ---------- */
 .uc-flash { background: #d1fae5; color: #065f46; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; font-weight: 600; }
 .uc-flash-info { background: #dbeafe; color: #1e40af; }
+
+/* ---------------------------------------------------------------------------
+   EVERY CONTROL, INCLUDING THE ONES NOBODY HAS THOUGHT OF YET.
+
+   THE FAULT THIS FIXES IS STRUCTURAL, not a list of misses. Until now a
+   control was styled because it happened to sit inside a wrapper that styled
+   it: .uc-field, .uc-filters-bar, .uc-login-form, .uc-picker-filter and a
+   dozen others. Every one of those is a rule about a CONTAINER, so a control
+   rendered outside all of them fell through to the browser's own chrome, and
+   nothing said so. That is why the opt-ins search box was a raw Chrome input
+   for four releases while the identical search box on Registrations was not:
+   one form carried .uc-filters-bar and the other carried .uc-inline-form,
+   which styles a `select` and nothing else. Sweeping by eye finds the ones
+   somebody happens to open; it cannot find the ones nobody has opened yet.
+
+   SO THE BASELINE IS NOW A PROPERTY OF BEING A CONTROL IN THIS PORTAL, and the
+   wrappers only refine it. A new field in a new card is styled before anybody
+   writes a rule for it.
+
+   :where() IS LOad-BEARING, NOT TIDINESS. It contributes ZERO specificity, so
+   this whole block scores (0,0,0) and loses to literally every class rule in
+   this file. Written as `.uc-portal input` it would score (0,1,1) and would
+   OUTRANK .uc-btn, .uc-link-danger, .uc-seg-opt input and the rest, which is
+   precisely the specificity accident documented at .uc-btn-source below, where
+   `.uc-portal a` silently repainted a button. A fallback must never be able to
+   win an argument.
+
+   WHAT IS DELIBERATELY NOT HERE: checkbox and radio, which get sizing and an
+   accent instead of a box (a box is not a text field, see .uc-field); submit
+   and button inputs, which are buttons; and file, which the browser draws its
+   own way and is styled separately below.
+   ------------------------------------------------------------------------- */
+:where(.uc-portal) :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea
+) {
+    padding: 9px 12px;
+    border: 1px solid var(--p-border-strong);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--p-text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    max-width: 100%;
+}
+:where(.uc-portal) :where(input, select, textarea):focus-visible {
+    outline: none;
+    border-color: var(--uc-accent-text);
+    box-shadow: 0 0 0 3px rgba(22,190,207,0.18);
+}
+:where(.uc-portal) :where(textarea) { min-height: 72px; resize: vertical; }
+
+/* A BOX IS SIZED AND TINTED, NEVER BOXED. accent-color is the one property
+   that recolours a native checkbox or radio without replacing it, so the
+   control a keyboard and a screen reader get is still the platform's own. */
+:where(.uc-portal) :where(input[type="checkbox"], input[type="radio"]) {
+    width: 16px; height: 16px; flex: 0 0 auto;
+    accent-color: var(--uc-accent-text); cursor: pointer;
+}
+:where(.uc-portal) :where(input[type="checkbox"], input[type="radio"]):focus-visible {
+    outline: 2px solid var(--uc-accent-text); outline-offset: 2px;
+}
+
+/* DATE, TIME AND FILE ARE PARTLY THE BROWSER'S, AND THAT IS NOT A MISS.
+   The box, its border, its radius, its font and its focus ring are ours and
+   are set above. What is NOT ours, in any browser, is the picker chrome: the
+   calendar popover a date field opens, the spinner a time field draws, the
+   "Choose file" button and the filename beside it. Those are UA shadow DOM
+   with no standard hook. The list of every control in that category is in the
+   3.16.0 changelog rather than being chased here. What this rule does add is
+   the one thing that IS reachable: the indicator glyph, tinted to the brand.  */
+:where(.uc-portal) :where(input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"])::-webkit-calendar-picker-indicator {
+    cursor: pointer; opacity: 0.65;
+}
+:where(.uc-portal) :where(input[type="date"], input[type="time"])::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+:where(.uc-portal) :where(input[type="file"]) {
+    font-family: inherit; font-size: 13px; color: var(--p-text);
+    padding: 8px; border: 1px dashed var(--p-border-strong); border-radius: 8px;
+    background: var(--p-bg); max-width: 100%;
+}
+:where(.uc-portal) :where(input[type="file"])::file-selector-button {
+    margin-right: 10px; padding: 6px 12px; border: 1px solid var(--p-border-strong);
+    border-radius: 7px; background: #fff; color: var(--p-text);
+    font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+/* The same fallback for buttons. Zero specificity again, so .uc-btn,
+   .uc-link-danger, .uc-link-ok, .uc-picker-tab, .uc-help-btn, .uc-pencil and
+   every other button class in this file override it completely. This only ever
+   catches a button that carries no class of its own. */
+/* NO `display` AND NO `gap` HERE, deliberately. Several button classes in this
+   file position themselves (.uc-pencil is absolute, .uc-help-btn is a 16px
+   circle) and set no display of their own, so a display in the fallback would
+   silently change them even though it loses every other property. A fallback
+   should supply a surface, not a layout. */
+:where(.uc-portal) :where(button, input[type="submit"], input[type="button"], input[type="reset"]) {
+    padding: 9px 16px; border-radius: 8px;
+    border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-text);
+    font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4; cursor: pointer;
+}
+:where(.uc-portal) :where(button, input[type="submit"]):focus-visible {
+    outline: 2px solid var(--uc-accent-text); outline-offset: 2px;
+}
 
 /* ---------- Buttons ---------- */
 /* A SECONDARY BUTTON IS OUTLINED, A PRIMARY ONE IS YELLOW. That is the whole
@@ -221,6 +413,35 @@ body.uc-portal {
 .uc-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
 .uc-btn-primary { background: var(--uc-primary); border-color: #E0BE00; color: var(--sfaf-darkgray); }
 .uc-btn-primary:hover { filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
+/* ---------------------------------------------------------------------------
+   THE UTILITY BUTTON: "go and get it again".
+
+   A THIRD WEIGHT, AND IT DOES NOT COMPETE WITH YELLOW. Fetch updates fills the
+   pending queue; it is not what the queue is for. Publishing and dismissing
+   are, and those are the yellow and the links on the rows. A plain white
+   outline button said nothing about which of the two it was, which is why this
+   one was indistinguishable from "Export CSV" on a screen where they do very
+   different things.
+
+   MEASURED. Solid --uc-accent-text #0E7680 with a white label is 5.35:1, and
+   the fill against the page background #F5F6F7 is 4.95:1, well past the 3:1
+   WCAG 1.4.11 asks of a control's own boundary, so the button reads as a
+   button without a separate border. Yellow stays the single primary.
+   ------------------------------------------------------------------------- */
+.uc-btn-utility { background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
+.uc-btn-utility:hover { background: #0B5F67; border-color: #0B5F67; color: #fff; }
+.uc-portal a.uc-btn-utility { color: #fff; }
+.uc-portal a.uc-btn-utility:hover { color: #fff; }
+/* The mark turns when the fetch is running, so the button says "working"
+   without losing its label. portal.js sets [disabled] for the duration. */
+.uc-btn-utility .sfaf-icon { transition: transform .25s ease; }
+.uc-btn-utility:hover .sfaf-icon { transform: rotate(-45deg); }
+.uc-btn-utility[disabled] .sfaf-icon { animation: uc-spin 1.1s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+    .uc-btn-utility .sfaf-icon, .uc-btn-utility:hover .sfaf-icon { transition: none; transform: none; }
+    .uc-btn-utility[disabled] .sfaf-icon { animation-duration: 2.4s; }
+}
+
 .uc-btn-block { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 .uc-btn-sm { padding: 6px 12px; font-size: 13px; }
 .uc-link-danger { background: none; border: none; color: var(--p-danger); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
@@ -270,11 +491,39 @@ body.uc-portal {
 .uc-muted { color: var(--p-muted); }
 .uc-col-actions { white-space: nowrap; }
 .uc-row-actions { white-space: nowrap; }
-.uc-actions { display: flex; align-items: center; gap: 14px; }
+.uc-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .uc-actions form { display: inline; margin: 0; line-height: 1; }
+/* 14px, up from 13px. A row of actions is not helper text: Publish, Dismiss,
+   Approve and Reject are the only things on this screen that DO anything, and
+   they were being drawn one step below body size. Body size is the floor. */
 .uc-actions .uc-action-link,
 .uc-actions .uc-link-danger,
-.uc-actions .uc-link-ok { font-size: 13px; font-weight: 600; line-height: 1; }
+.uc-actions .uc-link-ok { font-size: 14px; font-weight: 600; line-height: 1; }
+
+/* ---------------------------------------------------------------------------
+   .uc-action-link ON A <button>.
+
+   IT HAD NO RULE AT ALL, only the size and weight above, which say nothing
+   about background or border. On an <a> that is fine, because .uc-portal a
+   already supplies the colour. On a <button> it left the browser's own grey
+   chrome, so Dismiss and Restore in the pending queue were native buttons
+   sitting in a row of links, next to Publish which is .uc-link-ok and IS
+   reset. Same class, two different renderings, decided by the element.
+
+   One rule, both elements, and the button is now indistinguishable from the
+   anchor beside it, which is the point of giving them the same class.
+   ------------------------------------------------------------------------- */
+.uc-portal .uc-action-link,
+.uc-portal button.uc-action-link {
+    display: inline; padding: 0; border: 0; background: none;
+    color: var(--uc-accent-text); font-family: inherit; font-size: 14px;
+    font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer;
+}
+.uc-portal .uc-action-link:hover,
+.uc-portal button.uc-action-link:hover { text-decoration: underline; }
+.uc-portal .uc-action-link:focus-visible,
+.uc-portal button.uc-action-link:focus-visible {
+    outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 3px; }
 /* Duplicate has to be a submit button, because it posts a nonce. This makes it
  * sit in the row exactly like the Edit link beside it. */
 .uc-actions button.uc-action-btn { background: none; border: 0; padding: 0; cursor: pointer;
@@ -752,6 +1001,58 @@ body.uc-portal {
 .uc-image-buttons { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 .uc-image-url-field { margin-top: 4px; }
 
+/* ---------------------------------------------------------------------------
+   ENTRANCE.
+
+   NOTHING HERE APPLIES UNTIL JAVASCRIPT SAYS SO. Every rule is behind a class
+   that portal.js adds, and the animations use `both` fill so the hidden state
+   comes from the animation rather than from a base rule. That ordering is the
+   whole safety argument: with the script blocked, broken or simply slow, the
+   page is a normal, finished, visible page. There is no state in which content
+   is invisible waiting for something to reveal it.
+
+   TRANSFORM AND OPACITY ONLY. No height, no margin, no top. Both are composited
+   and neither causes layout, so nothing on the page moves while a card settles
+  , which is the actual complaint about entrance animations, not their length.
+
+   THE NAV RUNS ONCE PER SESSION, not once per page. Every screen in caladmin is
+   a full page load, so an unconditional nav animation would replay on every
+   click and turn a sidebar into a slot machine. portal.js keeps the flag in
+   sessionStorage; see initEntrance().
+   ------------------------------------------------------------------------- */
+@keyframes uc-rise { from { opacity: 0; transform: translate3d(0, 8px, 0); } to { opacity: 1; transform: none; } }
+@keyframes uc-slide-in { from { opacity: 0; transform: translate3d(-10px, 0, 0); } to { opacity: 1; transform: none; } }
+
+/* Sidebar: 30ms apart, from the left. --uc-nav-i is set on each item in PHP,
+   so a new nav entry needs no CSS. */
+.uc-anim-nav .uc-nav-item {
+    animation: uc-slide-in 260ms cubic-bezier(0.16, 0.84, 0.44, 1) both;
+    animation-delay: calc(var(--uc-nav-i, 0) * 30ms);
+}
+.uc-anim-nav .uc-portal-brand,
+.uc-anim-nav .uc-portal-foot {
+    animation: uc-slide-in 260ms cubic-bezier(0.16, 0.84, 0.44, 1) both;
+}
+.uc-anim-nav .uc-portal-foot { animation-delay: 240ms; }
+
+/* Content: 300ms each, 40ms apart, ease-out, a few px of rise. --uc-card-i is
+   set by the script, because the blocks on a screen are whatever that screen
+   rendered and no PHP method knows its own position among them. */
+.uc-anim-in {
+    animation: uc-rise 300ms cubic-bezier(0.16, 0.84, 0.44, 1) both;
+    animation-delay: calc(var(--uc-card-i, 0) * 40ms);
+}
+
+/* ASKED FOR IT, GET NONE OF IT. This matters more than usual on a health
+   services site: motion sensitivity and vestibular disorders are not edge
+   cases here. Everything snaps to its final state. */
+@media (prefers-reduced-motion: reduce) {
+    .uc-anim-nav .uc-nav-item,
+    .uc-anim-nav .uc-portal-brand,
+    .uc-anim-nav .uc-portal-foot,
+    .uc-anim-in { animation: none; opacity: 1; transform: none; }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
     .uc-form-grid { grid-template-columns: 1fr; }
@@ -1116,18 +1417,47 @@ body.uc-modal-open { overflow: hidden; }
 .uc-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-/* ---------- Registrations ----------
-   The event's own settings, on the page where the questions get asked. A
-   disclosure, because the registrations are what the page is for; it opens
-   itself when the list is empty, which is exactly when the settings are the
-   answer. */
+/* ---------------------------------------------------------------------------
+   REGISTRATIONS: the event's settings, closed, and left aligned.
+
+   CLOSED WHEN THE PAGE OPENS, always. It used to open itself whenever the list
+   was empty. Somebody arriving here came for the registrations.
+
+   THE CHEVRON IS A REAL AFFORDANCE. It was a 3px text triangle in the muted
+   grey, which is the least a disclosure can do and still technically have a
+   marker. It is now a 28px ringed control at the head of the row, in the
+   measured teal, that rotates a quarter turn on open, so it reads as a button
+   before it is pressed and reports its state after. It sits on a <summary>,
+   which is a real interactive element: click, tap, Enter and Space all work
+   with no script at all.
+
+   EVERYTHING IS HARD LEFT. justify-content was space-between, which threw the
+   status line to the far right edge of a 1100px card, a hand-span away from
+   the heading it describes. The two lines stack under the chevron now.
+   ------------------------------------------------------------------------- */
 .uc-rsvp-settings { padding: 0; }
-.uc-rsvp-settings-toggle { display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap; padding: 14px 16px; cursor: pointer; font-size: 14px; }
+.uc-rsvp-settings-toggle { display: flex; align-items: center; justify-content: flex-start;
+    gap: 12px; padding: 14px 16px; cursor: pointer; font-size: 14px; text-align: left;
+    list-style: none; border-radius: 0 12px 0 0; }
 .uc-rsvp-settings-toggle::-webkit-details-marker { display: none; }
-.uc-rsvp-settings-toggle::before { content: "\25B8"; margin-right: 8px; color: var(--p-muted); }
-.uc-rsvp-settings[open] > .uc-rsvp-settings-toggle::before { content: "\25BE"; }
+.uc-rsvp-settings-toggle::marker { content: ""; }
+.uc-rsvp-settings-toggle:hover { background: var(--uc-band); }
+.uc-rsvp-settings-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
 .uc-rsvp-settings[open] > .uc-rsvp-settings-toggle { border-bottom: 1px solid var(--p-border); }
+.uc-rsvp-settings-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.uc-rsvp-settings-name { font-size: 14px; }
+.uc-rsvp-settings-id .uc-muted { font-size: 12px; }
+
+/* The disclosure marker, shared by anything using data-uc-disclosure. */
+.uc-disclosure-chevron { display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; flex: 0 0 auto; border-radius: 50%;
+    border: 1px solid var(--p-border-strong); background: #fff; color: var(--uc-accent-text);
+    transition: transform .18s ease, background-color .18s ease, border-color .18s ease; }
+.uc-rsvp-settings-toggle:hover .uc-disclosure-chevron {
+    background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
+[open] > .uc-rsvp-settings-toggle .uc-disclosure-chevron,
+[open] > summary .uc-disclosure-chevron { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .uc-disclosure-chevron { transition: none; } }
 .uc-rsvp-settings-form { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-settings-form .uc-form-actions { margin-top: 4px; }
 
@@ -1159,9 +1489,6 @@ body.uc-modal-open { overflow: hidden; }
 
 /* ---------- Registrations ---------- */
 .uc-page-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-/* Deliberately above the table rather than beside the button alone: it is a
- * statement about everything on the screen, not a footnote to the download. */
-.uc-rsvp-sensitivity { align-items: flex-start; margin-bottom: 16px; max-width: 90ch; }
 .uc-orphan-note { margin-top: 14px; }
 
 /* Run status. Colour is never the only signal — the word itself is the value in

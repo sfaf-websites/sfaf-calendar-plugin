@@ -21,18 +21,121 @@
     --uc-border: #E2E5EA;
     --uc-text: #1A1D21;
     --uc-muted: #9CA3AF;
+
+    /* Added 3.16.0, to match portal.css. A control's OWN boundary has to clear
+       3:1 (WCAG 1.4.11); --uc-border is the hairline BETWEEN things and does
+       not. --uc-teal-text is the darkened teal that can carry text and can be a
+       focus ring: 5.35:1 on white. Brand teal #16BECF is 2.26:1 and is fills
+       and decoration only, here as everywhere else. */
+    --uc-border-strong: #8C8D8E;
+    --uc-teal-text: #0E7680;
+    --uc-brand-yellow: #FFD900;
 }
+
+/* ---------------------------------------------------------------------------
+   EVERY CONTROL ON THE PLUGIN'S OWN ADMIN SCREENS.
+
+   THE SAME STRUCTURAL FAULT AS THE PORTAL, WITH A DIFFERENT FLOOR UNDER IT.
+   In caladmin an unclassed input fell through to the browser. Here it falls
+   through to WordPress, which is not broken but is not the brand either: a
+   plugin screen with .uc-input fields beside plain core fields reads as two
+   screens spliced together, and that is exactly what the settings pages looked
+   like, 26 unclassed text inputs, 21 unclassed checkboxes and 9 unclassed URL
+   fields sitting next to 57 controls wearing .uc-input.
+
+   SCOPED TO OUR TWO ROOTS, .uc-admin-wrap and .uc-meta-box, AND NO FURTHER.
+   The rest of wp-admin is not ours to restyle, and a plugin that repaints the
+   whole dashboard is a plugin somebody uninstalls.
+
+   NOT :where() HERE, unlike portal.css, and the difference is deliberate.
+   WordPress core styles these elements with attribute selectors, `input[type=
+   text]` is (0,1,1), so a zero-specificity fallback would lose to core and do
+   nothing at all. `.uc-admin-wrap input[type="text"]` is (0,2,1) and wins. The
+   .uc-input family below is given the identical box, so the two cannot
+   disagree whichever one a given field happens to carry.
+   ------------------------------------------------------------------------- */
+.uc-admin-wrap input[type="text"], .uc-admin-wrap input[type="search"],
+.uc-admin-wrap input[type="url"], .uc-admin-wrap input[type="email"],
+.uc-admin-wrap input[type="password"], .uc-admin-wrap input[type="number"],
+.uc-admin-wrap input[type="tel"], .uc-admin-wrap input[type="date"],
+.uc-admin-wrap input[type="time"], .uc-admin-wrap select, .uc-admin-wrap textarea,
+.uc-meta-box input[type="text"], .uc-meta-box input[type="url"],
+.uc-meta-box input[type="email"], .uc-meta-box input[type="number"],
+.uc-meta-box input[type="date"], .uc-meta-box input[type="time"],
+.uc-meta-box select, .uc-meta-box textarea,
+.uc-input, .uc-gen-input, .uc-search-input {
+    padding: 9px 12px;
+    border: 1px solid var(--uc-border-strong);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--uc-text);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+    box-shadow: none;
+    max-width: 100%;
+}
+.uc-admin-wrap input:focus, .uc-admin-wrap select:focus, .uc-admin-wrap textarea:focus,
+.uc-meta-box input:focus, .uc-meta-box select:focus, .uc-meta-box textarea:focus,
+.uc-input:focus, .uc-gen-input:focus {
+    border-color: var(--uc-teal-text);
+    box-shadow: 0 0 0 3px rgba(22,190,207,0.18);
+    outline: none;
+}
+/* A box is sized and tinted, never boxed. accent-color recolours the platform's
+   own control rather than replacing it, so what a keyboard and a screen reader
+   get is unchanged. */
+.uc-admin-wrap input[type="checkbox"], .uc-admin-wrap input[type="radio"],
+.uc-meta-box input[type="checkbox"], .uc-meta-box input[type="radio"] {
+    accent-color: var(--uc-teal-text);
+}
+.uc-admin-wrap input[type="checkbox"]:focus, .uc-admin-wrap input[type="radio"]:focus,
+.uc-meta-box input[type="checkbox"]:focus, .uc-meta-box input[type="radio"]:focus {
+    outline: 2px solid var(--uc-teal-text); outline-offset: 2px; box-shadow: none;
+}
+.uc-admin-wrap input[type="file"], .uc-meta-box input[type="file"] {
+    padding: 8px; border: 1px dashed var(--uc-border-strong); border-radius: 8px;
+    background: var(--uc-bg); font-family: inherit; font-size: 13px;
+}
+
+/* THE BUTTON FAMILY, THE SAME TWO WEIGHTS AS THE PORTAL. Yellow is the primary
+   and appears once per screen; everything else is the outline. Dark Gray on
+   SFAF yellow measures 8.92:1. WordPress's own blue primary is replaced only
+   inside our wrap, so core screens keep core's button. */
+.uc-admin-wrap .button, .uc-meta-box .button {
+    border-radius: 8px; border-color: var(--uc-border-strong);
+    color: var(--uc-text); font-weight: 600; box-shadow: none;
+}
+.uc-admin-wrap .button:hover, .uc-meta-box .button:hover {
+    border-color: var(--uc-teal-text); color: var(--uc-teal-text); background: #fff;
+}
+.uc-admin-wrap .button:focus, .uc-meta-box .button:focus {
+    outline: 2px solid var(--uc-teal-text); outline-offset: 2px; box-shadow: none;
+}
+.uc-admin-wrap .button-primary, .uc-meta-box .button-primary {
+    background: var(--uc-brand-yellow); border-color: #E0BE00;
+    color: var(--uc-dark); text-shadow: none;
+}
+.uc-admin-wrap .button-primary:hover, .uc-meta-box .button-primary:hover {
+    background: var(--uc-brand-yellow); border-color: #E0BE00;
+    color: var(--uc-dark); filter: brightness(0.94);
+}
+
+/* Rules further down this file that used to set their own box now keep only
+   what makes them different, a flex basis, a min-height, a monospace face.
+   Search for "defers to the control block" to find them. */
 
 /* Meta box styling */
 .uc-meta-box { padding: 4px 0; }
 .uc-meta-row { display: flex; gap: 16px; margin-bottom: 16px; }
 .uc-meta-field { flex: 1; }
 .uc-meta-field label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--uc-text); }
+/* Width and box-sizing only. The border, radius, padding and font come from the
+   one control block at the top of this file, so a meta box field and a settings
+   field are the same field. */
 .uc-meta-field input,
 .uc-meta-field select,
-.uc-meta-field textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--uc-border); border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-.uc-meta-field input:focus,
-.uc-meta-field select:focus { border-color: var(--uc-teal); outline: none; box-shadow: 0 0 0 2px rgba(22,190,207,0.15); }
+.uc-meta-field textarea { width: 100%; box-sizing: border-box; }
 .uc-rsvp-count { margin-top: 12px; padding: 10px; background: #f0fdf4; border-radius: 6px; font-size: 13px; }
 .uc-rsvp-count a { color: var(--uc-teal); text-decoration: none; margin-left: 8px; }
 
@@ -80,7 +183,7 @@
 
 /* Search */
 .uc-rsvp-search { display: flex; gap: 8px; padding: 16px 20px; border-bottom: 1px solid var(--uc-border); }
-.uc-search-input { flex: 1; padding: 8px 14px; border: 1px solid var(--uc-border); border-radius: 6px; font-size: 14px; }
+.uc-search-input { flex: 1; } /* box defers to the control block */
 .uc-rsvp-count-bar { padding: 10px 20px; font-size: 13px; color: var(--uc-muted); border-bottom: 1px solid var(--uc-border); background: var(--uc-bg); }
 
 /* Integration Panels */
@@ -107,8 +210,7 @@
 
 .uc-field-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .uc-field-row label:first-child { width: 220px; font-size: 13px; font-weight: 600; color: #6B7280; flex-shrink: 0; }
-.uc-input { flex: 1; padding: 9px 12px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 13px; background: var(--uc-bg); }
-.uc-input:focus { border-color: var(--uc-teal); outline: none; background: #fff; }
+.uc-input { flex: 1; } /* box defers to the control block */
 .uc-monospace { font-family: monospace; }
 
 /* Toggle switches */
@@ -153,7 +255,7 @@
 .uc-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .uc-checkbox-list-inline { flex-direction: row; flex-wrap: wrap; gap: 12px; max-height: none; }
 .uc-muted-inline { color: var(--uc-muted); font-size: 11px; }
-.uc-meta-field textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--uc-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; font-family: inherit; }
+.uc-meta-field textarea { width: 100%; box-sizing: border-box; } /* box defers to the control block */
 
 /* Field row variants */
 .uc-field-row-top { align-items: flex-start; }
@@ -179,8 +281,7 @@
 .uc-campaign-manager { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--uc-border); }
 .uc-repeater-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .uc-repeater-row { display: flex; gap: 8px; align-items: center; }
-.uc-repeater-row input { flex: 1; padding: 8px 12px; border: 1px solid var(--uc-border); border-radius: 6px; font-size: 13px; background: var(--uc-bg); }
-.uc-repeater-row input:focus { border-color: var(--uc-teal); outline: none; background: #fff; }
+.uc-repeater-row input { flex: 1; } /* box defers to the control block */
 .uc-repeater-narrow { max-width: 110px; flex: 0 0 110px !important; }
 .uc-repeater-remove { color: var(--uc-warm) !important; font-size: 18px !important; line-height: 1 !important; padding: 0 10px !important; }
 .uc-repeater-add { border-style: dashed !important; color: var(--uc-teal) !important; }
@@ -205,12 +306,12 @@
 .uc-generator-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
 .uc-gen-field { display: flex; flex-direction: column; gap: 6px; }
 .uc-gen-field label { font-size: 13px; font-weight: 600; color: var(--uc-text); }
-.uc-gen-input { padding: 9px 12px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 14px; background: var(--uc-bg); }
+/* .uc-gen-input: box defers to the control block at the top of this file. */
 .uc-gen-checkbox { flex-direction: row !important; align-items: center; gap: 8px; }
 .uc-gen-output-wrap { border-top: 1px solid var(--uc-border); padding-top: 18px; }
 .uc-gen-output-wrap > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
 .uc-gen-output-row { display: flex; gap: 10px; align-items: stretch; }
-.uc-gen-output { flex: 1; padding: 12px 16px; background: var(--uc-dark); color: #7CFFE0; border: none; border-radius: 8px; font-family: monospace; font-size: 14px; }
+.uc-gen-output { flex: 1; padding: 12px 16px; background: var(--uc-dark); color: #7CFFE0; border-color: var(--uc-dark); font-family: monospace; }
 .uc-gen-copied { display: inline-block; margin-top: 8px; color: var(--uc-green); font-size: 13px; font-weight: 600; }
 
 /* Responsive */
@@ -255,7 +356,7 @@
 
 /* Series FAQ repeater */
 .uc-faq-row { align-items: flex-start; }
-.uc-faq-row textarea { flex: 2; min-height: 40px; padding: 8px 10px; border: 1px solid var(--uc-border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.uc-faq-row textarea { flex: 2; min-height: 40px; } /* box defers to the control block */
 .uc-faq-readonly { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
 .uc-faq-readonly li { margin-bottom: 8px; }
 
@@ -304,7 +405,9 @@
 .uc-embed-field .uc-input { width: 100%; box-sizing: border-box; }
 .uc-embed-field .uc-input-narrow { width: 110px; }
 
-.uc-embed-code { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--uc-border); border-radius: 8px; background: var(--uc-bg); font-family: Consolas, Monaco, 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; color: var(--uc-text); resize: vertical; white-space: pre; }
+/* Border and radius defer to the control block; the monospace face, the tint
+   and the no-wrap are what make this one a code box. */
+.uc-embed-code { width: 100%; box-sizing: border-box; padding: 12px 14px; background: var(--uc-bg); font-family: Consolas, Monaco, 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; resize: vertical; white-space: pre; }
 .uc-embed-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .uc-embed-copied { font-size: 13px; font-weight: 600; color: var(--uc-green); }
 

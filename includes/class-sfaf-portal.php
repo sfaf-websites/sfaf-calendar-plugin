@@ -122,6 +122,22 @@ class SFAF_Portal {
     }
 
     /**
+     * What to call an access level on screen.
+     *
+     * One list, roles(), and one place that turns a key into words. The
+     * sidebar footer says "Admin" because that is what the Users screen calls
+     * the same thing, and a level that is somehow not one of the three is named
+     * "No access" rather than printed raw.
+     *
+     * @param string $role
+     * @return string
+     */
+    public static function role_label( $role ) {
+        $roles = self::roles();
+        return isset( $roles[ $role ] ) ? $roles[ $role ] : 'No access';
+    }
+
+    /**
      * Somebody's calendar access level.
      *
      * ADMINISTRATORS ARE CHECKED FIRST, AND THE STORED RECORD CANNOT OVERRIDE
@@ -251,6 +267,12 @@ class SFAF_Portal {
         }
 
         status_header( 200 );
+
+        // The portal builds its own document and never loads the admin, so
+        // WordPress does not apply the per-user language for it. Do it here,
+        // once, before anything renders. See render_language_toggle().
+        $this->apply_user_locale( $user );
+
         $page = isset( $segments[0] ) ? $segments[0] : 'dashboard';
 
         switch ( $page ) {
@@ -496,6 +518,39 @@ class SFAF_Portal {
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 wp_trash_post( intval( $_POST['event_id'] ) );
                 $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
+                break;
+
+            case 'set_language':
+                /*
+                 * WRITES `locale`, WHICH IS WORDPRESS'S OWN USER META KEY for
+                 * the per-user language, not a private one of ours. So the
+                 * choice made here is the same choice the WordPress profile
+                 * screen offers, and the two cannot disagree.
+                 *
+                 * The value is looked up in languages() rather than sanitized
+                 * and stored: an unknown key writes nothing at all.
+                 */
+                $want  = isset( $_POST['uc_lang'] ) ? sanitize_key( wp_unslash( $_POST['uc_lang'] ) ) : '';
+                $langs = $this->languages();
+                if ( isset( $langs[ $want ] ) ) {
+                    // English is the site default, so it is stored as no
+                    // preference rather than as en_US. That keeps a user who
+                    // never touches this identical to one who chose English.
+                    if ( 'en' === $want ) {
+                        delete_user_meta( $user->ID, 'locale' );
+                    } else {
+                        update_user_meta( $user->ID, 'locale', $langs[ $want ][1] );
+                    }
+                }
+                // Back to the screen the toggle was pressed on. The route is
+                // rebuilt through url(), so nothing arbitrary can be redirected
+                // to from a posted field.
+                $back = isset( $_POST['uc_return'] ) ? wp_unslash( $_POST['uc_return'] ) : '';
+                $path = '';
+                if ( $back && 0 === strpos( $back, $this->url() ) ) {
+                    $path = trim( substr( $back, strlen( $this->url() ) ), '/' );
+                }
+                $this->redirect( $path );
                 break;
 
             case 'fetch_sources':
@@ -1662,6 +1717,21 @@ class SFAF_Portal {
             $nav['pending'] = array( 'Pending', 'pending', 'clock' );
             $nav['users']   = array( 'Users', 'users', 'users' );
         }
+
+        /*
+         * THE ONE COUNT THAT EARNS A BADGE.
+         *
+         * Yellow appears once on this sidebar, on Pending, for the same reason
+         * it appears once on a form: it means "this is the thing to act on".
+         * Everything else in the nav is a place to go. Both queues are counted,
+         * because a manager reading "4" has to be able to trust that it is
+         * everything waiting, not just the locally submitted half.
+         */
+        $pending_count = 0;
+        if ( isset( $nav['pending'] ) ) {
+            $pending_count  = count( $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) ) );
+            $pending_count += count( SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING ) );
+        }
         ?>
         <div class="uc-portal-layout">
             <aside class="uc-portal-sidebar" id="uc-sidebar">
@@ -1673,28 +1743,179 @@ class SFAF_Portal {
                     <?php endif; ?>
                     <span class="uc-portal-brandtext">Calendar Admin</span>
                 </div>
-                <nav class="uc-portal-nav">
-                    <?php foreach ( $nav as $key => $item ) : ?>
-                        <a href="<?php echo esc_url( $this->url( $item[1] ) ); ?>" class="uc-nav-item<?php echo $active === $key ? ' active' : ''; ?>">
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                    <?php $i = 0; foreach ( $nav as $key => $item ) : ?>
+                        <?php
+                        // The stagger's step, set per item rather than by an
+                        // :nth-child chain, so adding a nav entry needs no CSS.
+                        // portal.js is what decides whether it ever runs.
+                        $i++;
+                        ?>
+                        <a href="<?php echo esc_url( $this->url( $item[1] ) ); ?>"
+                           class="uc-nav-item<?php echo $active === $key ? ' active' : ''; ?>"
+                           style="--uc-nav-i: <?php echo (int) $i; ?>"
+                           <?php echo $active === $key ? ' aria-current="page"' : ''; ?>>
                             <span class="uc-nav-icon"><?php echo sfaf_icon( $item[2], array( 'size' => '20px' ) ); ?></span>
-                            <span><?php echo esc_html( $item[0] ); ?></span>
+                            <span class="uc-nav-label"><?php echo esc_html( $item[0] ); ?></span>
+                            <?php if ( 'pending' === $key && $pending_count > 0 ) : ?>
+                                <span class="uc-nav-badge"><?php echo (int) $pending_count; ?><span class="uc-visually-hidden"> waiting for review</span></span>
+                            <?php endif; ?>
                         </a>
                     <?php endforeach; ?>
                 </nav>
-                <div class="uc-portal-rolebadge"><?php echo esc_html( ucfirst( $role ) ); ?></div>
+
+                <?php
+                /*
+                 * THE FOOT OF THE SIDEBAR: WHO IS SIGNED IN, AND IN WHICH
+                 * LANGUAGE.
+                 *
+                 * The name and the access level were split across two places
+                 * that answered the same question, a bare role chip down here
+                 * and a name in the top bar, so neither said "you are Ana, and
+                 * you are a Manager". They are one block now.
+                 *
+                 * THE LANGUAGE TOGGLE MOVED HERE from the bottom of the page,
+                 * where it was two unstyled links in the content flow. Same
+                 * segmented control as the recurrence editor: a radio group
+                 * whose visible surface is the sibling span, so it keeps its
+                 * focus ring and its announcement.
+                 */
+                ?>
+                <div class="uc-portal-foot">
+                    <?php $this->render_language_toggle(); ?>
+
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name"><?php echo esc_html( $user->display_name ); ?></span>
+                        <span class="uc-portal-me-role"><?php echo esc_html( self::role_label( $role ) ); ?></span>
+                        <a class="uc-portal-signout" href="<?php echo esc_url( wp_logout_url( $this->url() ) ); ?>">Sign out</a>
+                    </div>
+                </div>
             </aside>
 
             <div class="uc-portal-main">
                 <header class="uc-portal-topbar">
                     <button class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><?php echo sfaf_icon( 'menu', array( 'size' => '22px' ) ); ?></button>
+                    <?php
+                    // The name and the access level moved to the sidebar foot,
+                    // where they are one block instead of two halves of an
+                    // answer. Log out stays here as well as there, because
+                    // below 720px the sidebar is an off-canvas drawer and the
+                    // one in it would be behind a menu button.
+                    ?>
                     <div class="uc-portal-user">
-                        <span class="uc-portal-username"><?php echo esc_html( $user->display_name ); ?></span>
                         <a class="uc-portal-logout" href="<?php echo esc_url( wp_logout_url( $this->url() ) ); ?>">Log out</a>
                     </div>
                 </header>
                 <main class="uc-portal-content">
         <?php
         $this->flash();
+    }
+
+    /* =====================================================================
+     * Language
+     * ================================================================== */
+
+    /**
+     * The two languages this portal offers, and the locale each one means.
+     *
+     * ONE LIST. The toggle, the save and apply_user_locale() all read it, so a
+     * third language is one line here and nothing else. The keys are what goes
+     * in the POST and the values are real WordPress locales, which is what
+     * makes 'es' switchable at all: anything not in this list is refused on the
+     * way in rather than trusted.
+     */
+    private function languages() {
+        return array(
+            'en' => array( 'English', 'en_US' ),
+            'es' => array( 'Espanol', 'es_ES' ),
+        );
+    }
+
+    /** Which of them this user has chosen. Defaults to English. */
+    private function current_language( $user ) {
+        $locale = (string) get_user_meta( $user->ID, 'locale', true );
+        foreach ( $this->languages() as $key => $lang ) {
+            if ( $lang[1] === $locale ) {
+                return $key;
+            }
+        }
+        return 'en';
+    }
+
+    /**
+     * Render the portal in the language the signed-in user chose.
+     *
+     * switch_to_locale() rather than a filter on `locale`, because it also
+     * reloads the text domains that are already in memory. Called once, from
+     * handle(), before any output.
+     *
+     * WHAT THIS DOES AND DOES NOT CHANGE. Everything that goes through
+     * WordPress, date_i18n(), number formatting, core's own strings, follows
+     * immediately. The portal's own sentences are still literal English in
+     * these files and will follow when they are wrapped and a translation
+     * exists; the switch is what makes that possible rather than the thing that
+     * completes it.
+     *
+     * @param WP_User $user
+     */
+    private function apply_user_locale( $user ) {
+        $langs = $this->languages();
+        $key   = $this->current_language( $user );
+        if ( 'en' === $key ) {
+            return;
+        }
+        if ( function_exists( 'switch_to_locale' ) ) {
+            switch_to_locale( $langs[ $key ][1] );
+        }
+    }
+
+    /**
+     * The language toggle, in the sidebar footer.
+     *
+     * A REAL FORM, NOT TWO LINKS. It changes something about the account, so it
+     * posts, it carries a nonce, and it redirects back to the page it was on.
+     * The two segments are submit buttons rather than radios plus a Save: a
+     * preference with two values should take one press, and a segmented control
+     * that needs a second control to confirm it is not a toggle.
+     *
+     * NOT FLAGS. A flag names a country and there is no country called Spanish.
+     * The globe says the control is about language and the words say which.
+     */
+    private function render_language_toggle() {
+        $user    = wp_get_current_user();
+        $current = $this->current_language( $user );
+        $back    = $this->current_url();
+        ?>
+        <form method="post" action="<?php echo esc_url( $back ); ?>" class="uc-lang-form">
+            <input type="hidden" name="uc_action" value="set_language" />
+            <input type="hidden" name="uc_return" value="<?php echo esc_attr( $back ); ?>" />
+            <?php wp_nonce_field( 'uc_portal_set_language', 'uc_nonce' ); ?>
+            <span class="uc-lang-label">
+                <?php echo sfaf_icon( 'globe', array( 'size' => '14px' ) ); ?>
+                <span>Language</span>
+            </span>
+            <div class="uc-seg uc-seg-dark uc-lang-seg" role="group" aria-label="Language">
+                <?php foreach ( $this->languages() as $key => $lang ) : ?>
+                    <button type="submit" name="uc_lang" value="<?php echo esc_attr( $key ); ?>"
+                            class="uc-seg-btn<?php echo $current === $key ? ' is-on' : ''; ?>"
+                            <?php echo $current === $key ? ' aria-current="true"' : ''; ?>>
+                        <?php echo esc_html( $lang[0] ); ?>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        </form>
+        <?php
+    }
+
+    /**
+     * The URL of the screen being viewed, for a form that has to come back to it.
+     *
+     * Built from the portal's own route rather than from REQUEST_URI, so a
+     * query string somebody appended cannot ride along into a redirect.
+     */
+    private function current_url() {
+        $route = (string) get_query_var( 'uc_caladmin_route' );
+        return $this->url( $route );
     }
 
     private function chrome_close() {
@@ -3717,10 +3938,6 @@ class SFAF_Portal {
         ?>
         <div class="uc-page-head">
             <h1>Series &amp; Categories</h1>
-            <?php if ( $this->can_view_all( $user ) ) : ?>
-                <?php // Still here, and no longer the way in. See the note below. ?>
-                <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn">+ New series</a>
-            <?php endif; ?>
         </div>
 
         <?php
@@ -3814,6 +4031,23 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+            <?php endif; ?>
+
+            <?php
+            /*
+             * "NEW SERIES" SITS AT THE BOTTOM, LIKE "CREATE A CATEGORY".
+             *
+             * It was in the page head, above both sections, which put the
+             * rarest control on this screen in the most prominent place and
+             * made the two halves of the page work differently: one section
+             * offered its "add" at the top, the other at the foot of its list.
+             * Both are now "here is what exists, and here is how to add one".
+             */
+            ?>
+            <?php if ( $this->can_view_all( $user ) ) : ?>
+                <div class="uc-cat-new">
+                    <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-sm">+ New series</a>
+                </div>
             <?php endif; ?>
         </div>
         </section>
@@ -7023,7 +7257,15 @@ class SFAF_Portal {
                 so whoever wires this to a mailing platform later can evidence both.
                 <strong>Nothing is sent from here and nothing is pushed anywhere.</strong> This is a record.
             </p>
-            <form method="get" class="uc-inline-form">
+            <?php
+            /*
+             * .uc-filters-bar, WHICH IS WHAT EVERY OTHER SEARCH ON THIS PORTAL
+             * WEARS. It was .uc-inline-form, and that class styles a `select`
+             * and nothing else, so the search box here was the only text field
+             * in caladmin still being drawn by the browser. 3.16.0.
+             */
+            ?>
+            <form method="get" class="uc-filters-bar">
                 <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email" />
                 <button type="submit" class="uc-btn uc-btn-sm">Search</button>
             </form>
@@ -7129,23 +7371,16 @@ class SFAF_Portal {
 
         <?php
         /*
-         * SAID WHERE THE DOWNLOAD BUTTON IS.
+         * NO SENSITIVITY BANNER HERE, AND NONE ON THE EXPORT. Removed in
+         * 3.16.0 by instruction. It stood between the page head and the list
+         * from 3.5.0 to 3.15.0.
          *
-         * These rows are registrations for HIV, substance use and trans health
-         * programming, and a CSV is the moment that data stops being behind a
-         * login and starts being a file on somebody's laptop. The warning
-         * belongs next to the button that does it, not in a policy document.
+         * WHAT STILL GUARDS THIS SCREEN IS UNCHANGED, and it is the part that
+         * was ever load-bearing: render_rsvps() and export_rsvps_csv() both
+         * begin with can_view_all(), and the export also verifies the
+         * uc_portal_export nonce. Removing a paragraph removes a paragraph.
          */
         ?>
-        <div class="uc-flash uc-flash-attention uc-rsvp-sensitivity">
-            <?php echo $this->icon_needs(); ?>
-            <span><strong>This is sensitive personal data.</strong> These registrations cover HIV, substance use and
-            trans health programming, and knowing that somebody attended can disclose things about them that they
-            have not chosen to disclose. An exported file carries all of it out of here with no login in front of
-            it: keep it somewhere approved, share it with nobody who does not need it, and delete it when the work
-            is done.</span>
-        </div>
-
         <?php if ( $event ) : ?>
             <p class="uc-hint">
                 Registrations for this event only.
@@ -7173,18 +7408,37 @@ class SFAF_Portal {
              */
             $rsvp_ctx = $this->rsvp_settings_context( $user, $event_id );
             ?>
-            <?php // Open by default when there is nothing in the list, because
-                  // that is exactly when the settings are the answer. ?>
-            <details class="uc-card uc-rsvp-settings"<?php echo empty( $rsvps ) ? ' open' : ''; ?>>
-                <summary class="uc-rsvp-settings-toggle">
-                    <span><strong>Registration settings</strong> for this event</span>
-                    <span class="uc-muted">
-                        <?php
-                        $cap_now = (int) get_post_meta( $event_id, '_uc_capacity', true );
-                        $on_now  = ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) );
-                        echo esc_html( $on_now ? 'Accepting registrations' : 'Not accepting registrations' );
-                        echo esc_html( $cap_now > 0 ? ', capacity ' . $cap_now : ', no capacity limit' );
-                        ?>
+            <?php
+            /*
+             * CLOSED WHEN THE PAGE OPENS. ALWAYS.
+             *
+             * It used to open itself whenever the list was empty. Somebody
+             * arriving here came for the registrations; the settings are a
+             * convenience, and a panel that decides for itself when to be open
+             * moves the list down the page for a reason the reader cannot see.
+             *
+             * THE CHEVRON IS THE AFFORDANCE, and it is on a <summary>, which is
+             * a real interactive element: click, tap, Enter and Space all work
+             * with no script, and the disclosure still opens if portal.js never
+             * runs. aria-expanded is written here for the closed state and kept
+             * in step by initDisclosures() in portal.js, because the attribute
+             * is what a screen reader reads and the browser's own details state
+             * is not exposed consistently.
+             */
+            $cap_now = (int) get_post_meta( $event_id, '_uc_capacity', true );
+            $on_now  = ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) );
+            ?>
+            <details class="uc-card uc-rsvp-settings" data-uc-disclosure>
+                <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                    <span class="uc-rsvp-settings-id">
+                        <span class="uc-rsvp-settings-name"><strong>Registration settings</strong> for this event</span>
+                        <span class="uc-muted">
+                            <?php
+                            echo esc_html( $on_now ? 'Accepting registrations' : 'Not accepting registrations' );
+                            echo esc_html( $cap_now > 0 ? ', capacity ' . $cap_now : ', no capacity limit' );
+                            ?>
+                        </span>
                     </span>
                 </summary>
                 <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-rsvp-settings-form">
@@ -7366,9 +7620,23 @@ class SFAF_Portal {
                       data-uc-busy="Fetching&hellip;">
                     <input type="hidden" name="uc_action" value="fetch_sources" />
                     <?php wp_nonce_field( 'uc_portal_fetch_sources', 'uc_nonce' ); ?>
-                    <?php // Enabled whenever any source is built, even if none is connected.
-                          // Pressing it then reports what each one is waiting for. ?>
-                    <button type="submit" class="uc-btn"<?php echo empty( SFAF_Sources::adapters() ) ? ' disabled' : ''; ?>>Fetch updates</button>
+                    <?php
+                    /*
+                     * A UTILITY COLOUR, NOT THE PRIMARY ONE. Yellow means "this
+                     * is the action" and on this screen the actions are Publish
+                     * and Dismiss, on the rows. Fetching is how the rows get
+                     * here: solid darkened teal, white label, measured at
+                     * 5.35:1, and its own edge at 4.95:1 against the page.
+                     *
+                     * Enabled whenever any source is built, even if none is
+                     * connected. Pressing it then reports what each one is
+                     * waiting for.
+                     */
+                    ?>
+                    <button type="submit" class="uc-btn uc-btn-utility"<?php echo empty( SFAF_Sources::adapters() ) ? ' disabled' : ''; ?>>
+                        <?php echo sfaf_icon( 'refresh', array( 'size' => '16px' ) ); ?>
+                        <span>Fetch updates</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -7450,7 +7718,12 @@ class SFAF_Portal {
                 <input type="hidden" name="uc_action" value="refresh_source_event" />
                 <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                 <?php wp_nonce_field( 'uc_portal_refresh_source_event', 'uc_nonce' ); ?>
-                <button type="submit" class="uc-btn uc-btn-sm">Refresh from source</button>
+                <?php // Same family as Fetch updates on Pending: same job, same
+                      // colour, same mark. ?>
+                <button type="submit" class="uc-btn uc-btn-sm uc-btn-utility">
+                    <?php echo sfaf_icon( 'refresh', array( 'size' => '15px' ) ); ?>
+                    <span>Refresh from source</span>
+                </button>
             </form>
             <span class="uc-hint">Pulls this event's platform fields again. Your category, organizer, series and any image you chose are left alone.</span>
 

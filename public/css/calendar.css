@@ -916,3 +916,79 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-single .uc-map-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--uc-secondary); }
 .uc-single .uc-map-frame { border-radius: 12px; overflow: hidden; line-height: 0; }
 .uc-single .uc-map-frame iframe { display: block; width: 100%; max-width: 100%; border: 0; }
+
+/* ===========================================================================
+ * ENTRANCE: LIST CARDS AS THEY ARRIVE, AND THE EVENT PAGE AS IT IS READ.
+ *
+ * NOT A SINGLE RULE HERE APPLIES UNTIL JAVASCRIPT ADDS .uc-reveal. That is the
+ * safety argument and it is not a detail: with the script blocked, an old
+ * browser with no IntersectionObserver, or a host page that never runs our
+ * bundle, the calendar is a normal visible calendar. Nothing is hidden by a
+ * base rule waiting to be uncovered. The scripts also fall back to marking
+ * everything visible immediately if the observer cannot be constructed, see
+ * initReveal() in calendar.js and in embed.js.
+ *
+ * TRANSFORM AND OPACITY ONLY. Both are composited; neither triggers layout. A
+ * card settling does not move the card below it, which is the actual reason
+ * scroll animations feel cheap when they are done with height or margin.
+ *
+ * ONCE PER CARD. The observer unobserves on the first crossing. A list of forty
+ * events that re-animated every time it scrolled back past one would be
+ * unusable, and it is a long list on this calendar by design.
+ *
+ * LIST VIEW ONLY, NEVER THE MONTH GRID. Forty-two cells staggering in is not an
+ * entrance, it is a fault report. The scripts only ever collect
+ * .uc-event-list .uc-event-card.
+ *
+ * THE IMAGE SETTLES AT ITS NATURAL SIZE. It eases from scale(1.04) to exactly
+ * scale(1) over the same beat as the card, inside .uc-lc-media, which already
+ * clips (overflow: hidden, aspect-ratio 16/9). So the frame never changes, the
+ * crop at rest is identical to the crop with no animation at all, and no card
+ * is left showing a different piece of its picture than its neighbour.
+ * ======================================================================== */
+.uc-calendar .uc-reveal,
+.uc-single .uc-reveal {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    transition: opacity 320ms cubic-bezier(0.16, 0.84, 0.44, 1),
+                transform 320ms cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+.uc-calendar .uc-reveal.is-in,
+.uc-single .uc-reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+
+/* The picture inside a revealing card. Scoped to .uc-reveal so an ordinary
+ * card, or a card whose reveal has already finished, carries no transform. */
+.uc-calendar .uc-reveal .uc-lc-img,
+.uc-calendar .uc-reveal .uc-lc-ph {
+    transform: scale(1.04);
+    transition: transform 320ms cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+.uc-calendar .uc-reveal.is-in .uc-lc-img,
+.uc-calendar .uc-reveal.is-in .uc-lc-ph {
+    transform: scale(1);
+}
+
+/* The event page's two halves. The header and the picture are on screen when
+ * the page loads, so they play immediately; everything below is revealed on
+ * approach like a list card. Both wear the same class and differ only in when
+ * .is-in is added. */
+.uc-single .uc-reveal-now { transition-delay: 0ms; }
+.uc-single .uc-reveal-now + .uc-reveal-now { transition-delay: 90ms; }
+
+/* ASKED FOR IT, GET NONE OF IT. On a site about HIV services, substance use and
+ * trans health, motion sensitivity is not a rounding error in the audience.
+ * Every element lands in its final state with no transition and no transform,
+ * including the image, which sits at exactly scale(1). */
+@media (prefers-reduced-motion: reduce) {
+    .uc-calendar .uc-reveal,
+    .uc-single .uc-reveal,
+    .uc-calendar .uc-reveal .uc-lc-img,
+    .uc-calendar .uc-reveal .uc-lc-ph {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}

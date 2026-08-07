@@ -110,6 +110,24 @@ function sfaf_icon_paths() {
         // "Edit this one date", on every upcoming row of a series schedule.
         'pencil'    => '<path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5l3 3"/>',
 
+        /*
+         * A CLOSED LOOP WITH ONE ARROWHEAD, not the two-arrow 'repeat' above.
+         * 'repeat' means "this happens again on a schedule" and is what a
+         * recurring event wears; this one means "pull it again, now", and the
+         * two must not look alike on a screen that shows both. Used on Fetch
+         * updates and Refresh from source.
+         */
+        'refresh'   => '<path d="M20 11.5a8 8 0 1 0-.9 5.2"/><path d="M20 4.5v7h-7"/>',
+
+        // The disclosure marker. Points right when closed, and the rules that
+        // use it rotate it rather than swapping the glyph, so the movement is
+        // what says "this opened".
+        'chevron'   => '<path d="m9 5 7 7-7 7"/>',
+
+        // The language toggle's mark. A globe, never a flag: a flag names a
+        // country and there is no country called Spanish.
+        'globe'     => '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>',
+
         // Platform marks — solid, see note above.
         'facebook'  => '<path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/>',
         'linkedin'  => '<path d="M7.1 20H4.2V9.5h2.9zM5.65 8.2A1.7 1.7 0 1 1 5.65 4.8a1.7 1.7 0 0 1 0 3.4zM20 20h-2.9v-5.1c0-1.2 0-2.8-1.7-2.8s-2 1.35-2 2.7V20H10.5V9.5h2.8v1.45h.05A3.05 3.05 0 0 1 16.1 9.3c3 0 3.9 2 3.9 4.5z"/>',
