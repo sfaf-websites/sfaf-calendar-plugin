@@ -1638,6 +1638,43 @@ function sfaf_event_location_parts( $post_id ) {
     return $parts;
 }
 
+/**
+ * The shortest honest answer to "where is this".
+ *
+ * WHY THIS EXISTS. sfaf_event_location() returns "Strut, 470 Castro St, San
+ * Francisco, CA 94114", which is right on an event page where somebody is
+ * deciding whether they can get there, and wrong in a queue of twenty imported
+ * events that are mostly at the same address. Repeated in full on every row it
+ * is the longest thing on the row and carries the least new information.
+ *
+ * So: the venue's NAME where the event names a venue, because that is what
+ * distinguishes one row from another; otherwise the first line of the address,
+ * which is the street or the building. Never the postcode, never the state.
+ *
+ * @param int $post_id
+ * @return string '' when the event has no location at all.
+ */
+function sfaf_event_location_short( $post_id ) {
+    $post_id  = (int) $post_id;
+    $venue_id = SFAF_Venues::id_for_event( $post_id );
+    if ( $venue_id ) {
+        $venue = SFAF_Venues::get( $venue_id );
+        if ( $venue && '' !== $venue->name ) {
+            return $venue->name;
+        }
+    }
+
+    $full = sfaf_event_location( $post_id );
+    if ( '' === $full ) {
+        return '';
+    }
+    // The first comma-separated part: "470 Castro St" out of the full postal
+    // address, "Online" out of "Online", and the whole thing when there are no
+    // commas to cut on.
+    $first = explode( ',', $full );
+    return trim( $first[0] );
+}
+
 function sfaf_event_location( $post_id ) {
     $post_id = (int) $post_id;
 

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.18.0
+Stable tag: 3.19.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.19.0 =
+
+**The accent bar was never a border, which is why three passes of grepping for one found nothing.** It is a real element: `<div class="uc-compact-accent">`, absolutely positioned down the left edge inside a card that is position: relative and overflow: hidden, with its color written as an inline style in PHP. The stylesheet only ever sized and placed it. So every search for `border-left` came back clean and every one of those searches was answering a question about the wrong thing.
+
+3.18.0 made that worse by citing a git check as evidence. The check was real and its result was true: `.uc-sidebar-row` did lose its border-left in 3.17.0. But it asked "was the change I made applied", not "what is drawing the bar on screen", and those are different questions. A verified change is not a verified outcome. The check that should have run, and that ships as a build assertion now, starts from the element as rendered, works out which rules in any stylesheet can match it, and looks for a left edge by any mechanism: border, inline-start border, or a narrow full-height absolutely positioned strip. It also looks for renderers that emit one.
+
+The bar is gone from the compact rows, and the 22px of left padding that replaces it matches what the sidebar rows got in 3.18.0.
+
+**The sidebar heading reads as a heading.** It was 15px at weight 600, a hair above the row titles under it, so it looked like a first row. It is 19/700 in Montserrat now, two clear steps above them, with real space and a hairline before the first row. Because the block is pasted inside somebody else's page, where an h3 may already carry a theme's own article treatment, the rule states everything rather than relying on defaults: the face, the size, the weight, the case and the letter-spacing.
+
+**Pending events, quieter.** The timezone said "(America/Los_Angeles)" on every row of a queue run by people in America/Los_Angeles, which can never change a decision. It now appears only when it differs from the site's own, which is exactly when it is worth knowing, because an imported event in another zone is a real trap. The location was the full postal address on every row, mostly the same address repeated; it is the venue's name where the event names a venue, or the first line of the address otherwise, and it is omitted rather than padded with "Location not set" when there is none.
+
+**The removal confirmation says what happens and stops.** Three paragraphs went: that the past is never deleted because those events are the record of what happened, that the description lives on the series rather than on the events, and that registration records outlive their events on purpose. All three were true and none of them told somebody standing at that decision what to do or what would happen to them. What is left is the counts, the two options in a line each, that neither can be undone, and one short line naming what goes with the series. The yellow callout is gone, and registrations are not mentioned at all, because nothing on that screen touches them and a reassurance about something that is not at risk is one more thing to read before deciding.
+
+The same test was run over the rest of caladmin, since that screen survived the last pass. Five more justifications went with it: why team membership resolves at send time, why registrations for deleted events are kept, why the opt-in table has two evidence columns, why a series is created implicitly, and how venue addresses are stored. In every case the consequence stayed and the defence of the design went.
+
+**All events / My events, on the dashboard and the Events list.** Defaults to My events for everybody. For an admin or an editor it is a filter over a list they may see either way. For a contributor it is a genuinely different screen.
+
+Other people's events are drawn by a separate renderer that shows title, date, time, location, category, organizer and published status, which is exactly what an anonymous visitor reads off the public calendar for the same event. The separation is the safety argument, not a flag: that renderer contains no call that can produce a registration count, no link to the editor, no link to the registrations screen, no form and no anchor of any kind. It could not leak participant data by being edited carelessly, because it would have to be given the ability first. The same reasoning, and the same decision, as the read-only dashboard list against the full events table.
+
+The RSVP column is absent rather than empty. Not the number, not a dash, not a blank cell: a table has one column set for all its rows, so in that view the column does not exist. A contributor who wants their own counts switches to My events, where every row is theirs. Nothing in the wider view is clickable either, because a link would mean another surface that has to exclude participant data correctly, and the last three permission defects here were all of that shape.
+
+Widening the query takes an explicit argument. Callers that say nothing keep the access rule they were written with, so the six that predate this release behave exactly as they did, and only the two screens offering the toggle can lift it. A default that showed everything and relied on each caller to narrow it would be one forgotten argument away from a disclosure.
+
+The scope is not a way to acquire access. Recent activity and the RSVP total stay on the 3.18.0 rule under both scopes: everything for an admin or an editor, own events only for anybody else. The toggle moves which events are listed; it never moves the gate.
 
 = 3.18.0 =
 

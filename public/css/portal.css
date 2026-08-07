@@ -303,6 +303,30 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 
 .uc-page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
 
+/* ---------------------------------------------------------------------------
+   ALL EVENTS / MY EVENTS.
+
+   The same segmented shape as the recurrence control, built from two real
+   links rather than radios, because each one is a URL that can be bookmarked
+   and shared and that survives paging and sorting. The chosen segment is the
+   darkened teal with white on it, measured at 5.35:1; brand teal would have
+   been 2.26:1 and is never used behind text.
+   ------------------------------------------------------------------------- */
+.uc-scope-switch { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--p-border-strong);
+    border-radius: 9px; overflow: hidden; align-self: center; }
+.uc-portal .uc-scope-opt { display: block; padding: 8px 16px; font-size: 13px; font-weight: 600;
+    color: var(--p-text); background: #fff; border-left: 1px solid var(--p-border);
+    text-decoration: none; white-space: nowrap; }
+.uc-portal .uc-scope-opt:first-child { border-left: 0; }
+.uc-portal .uc-scope-opt:hover { background: var(--uc-band); color: var(--p-text); text-decoration: none; }
+.uc-portal .uc-scope-opt.is-on { background: var(--uc-accent-text); color: #fff; }
+.uc-portal .uc-scope-opt:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+.uc-scope-switch + .uc-view-hint { margin-top: 14px; }
+
+/* The read-only table other people's events are drawn in. No actions column,
+   no registration column, nothing clickable: see public_events_table(). */
+.uc-table-public td { vertical-align: top; }
+
 /* ---------- Flash ---------- */
 .uc-flash { background: #d1fae5; color: #065f46; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; font-weight: 600; }
 .uc-flash-info { background: #dbeafe; color: #1e40af; }
@@ -1613,6 +1637,7 @@ body.uc-modal-open { overflow: hidden; }
    Two options, each a real block with its own consequence written under it,
    because one of them deletes events and the other does not. */
 .uc-remove-lead { font-size: 15px; margin: 0 0 16px; }
+.uc-remove-goes { margin: 16px 0 0; }
 .uc-remove-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
 .uc-remove-option { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px;
     border: 1px solid var(--p-border); border-radius: 10px; cursor: pointer; background: #fff; }

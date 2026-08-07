@@ -2106,10 +2106,21 @@ class SFAF_Shortcodes {
         $start_time = get_post_meta( $post_id, '_uc_start_time', true );
         $location   = sfaf_event_location( $post_id );
 
-        // First category for the accent stripe, every slug for the filter. Same
-        // rule as the full card; see render_event_card().
+        /*
+         * NO ACCENT STRIPE. 3.19.0, and this is the one that was actually on
+         * screen.
+         *
+         * The stripe was never a border. It was a real element,
+         * <div class="uc-compact-accent"> with its colour in an inline style,
+         * pinned to the left edge by position: absolute inside a card that is
+         * position: relative; overflow: hidden. That is why searching the
+         * stylesheets for border-left found nothing: the CSS only sized and
+         * positioned it, and the colour was here in PHP.
+         *
+         * The category slugs stay, because they are what the filter bar
+         * matches on and have nothing to do with the stripe.
+         */
         $categories = sfaf_event_categories( $post_id );
-        $cat_color  = ! empty( $categories ) ? sfaf_category_color( $categories[0]->term_id ) : sfaf_default_category_color();
         $cat_slugs  = ! empty( $categories ) ? implode( ' ', wp_list_pluck( $categories, 'slug' ) ) : '';
 
         $date_ts = strtotime( $date );
@@ -2118,7 +2129,6 @@ class SFAF_Shortcodes {
         ?>
         <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" class="uc-compact-card"
            data-category="<?php echo esc_attr( $cat_slugs ); ?>">
-            <div class="uc-compact-accent" style="background: <?php echo esc_attr( $cat_color ); ?>"></div>
             <div class="uc-compact-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'thumbnail' ); ?></div>
             <div class="uc-compact-date">
                 <span class="uc-compact-month"><?php echo esc_html( date( 'M', $date_ts ) ); ?></span>

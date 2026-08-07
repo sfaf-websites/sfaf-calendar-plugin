@@ -620,10 +620,14 @@
 
 .uc-upcoming-list { display: flex; flex-direction: column; gap: 8px; }
 
-.uc-compact-card { display: flex; gap: 12px; padding: 12px; background: #fff; border-radius: 10px; border: 1px solid var(--uc-border); text-decoration: none; position: relative; overflow: hidden; transition: box-shadow 0.2s; }
+/* NO ACCENT STRIPE, AND .uc-compact-accent IS GONE ALONG WITH THE ELEMENT THAT
+   USED IT. It was the colored vertical bar down the left of every row, and it
+   was never a border: an absolutely positioned <div> whose color was an inline
+   style written in PHP, which is why grepping the stylesheets for border-left
+   found nothing three builds running. 22px of left padding takes its place,
+   the same treatment the sidebar rows got in 3.18.0. */
+.uc-compact-card { display: flex; gap: 12px; padding: 12px 12px 12px 22px; background: #fff; border-radius: 10px; border: 1px solid var(--uc-border); text-decoration: none; position: relative; overflow: hidden; transition: box-shadow 0.2s; }
 .uc-compact-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-
-.uc-compact-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
 
 .uc-compact-date { min-width: 44px; text-align: center; flex-shrink: 0; padding-left: 6px; }
 .uc-compact-month { display: block; font-size: 11px; font-weight: 700; color: var(--uc-teal-text); text-transform: uppercase; }
@@ -973,9 +977,38 @@
    that distinction survives a shortcode attribute, a data attribute and a REST
    parameter.
    ------------------------------------------------------------------------- */
-.uc-sidebar-heading { margin: 0 0 4px; padding: 0 0 10px 10px;
-    font-family: var(--uc-font-heading); font-size: 15px; font-weight: 600;
-    line-height: 1.3; color: var(--uc-text); }
+/* ---------------------------------------------------------------------------
+   THE HEADING READS AS THE HEADING OF THE BLOCK.
+
+   It was 15/600 with 10px under it, which is a hair above the row titles it
+   sits over and looked like a first row rather than a heading. It is now two
+   clear steps above them: 19px against their 14px, 700 against their 600, in
+   Montserrat, with 16px of space and a hairline before the first row so the
+   heading owns a band of its own.
+
+   EVERY PROPERTY IS STATED, INCLUDING THE ONES THAT LOOK LIKE DEFAULTS. This
+   block is pasted inside somebody else's page, where an h3 may already carry a
+   theme's article-heading treatment: a serif face, a border, uppercase,
+   letter-spacing, a top margin, a color. The scoped reset near the top of this
+   file neutralizes those for h2/h3/h4 inside our roots, and this rule then
+   says what ours is, so nothing is left to be inherited from a host we cannot
+   see. text-transform and letter-spacing in particular are here because a
+   theme setting them is the single most common way an embedded heading stops
+   matching its own design.
+   ------------------------------------------------------------------------- */
+.uc-sidebar-heading {
+    display: block;
+    margin: 2px 0 16px;
+    padding: 0 0 12px 10px;
+    border-bottom: 1px solid var(--uc-border);
+    font-family: var(--uc-font-heading);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-transform: none;
+    color: var(--uc-text);
+}
 
 .uc-sidebar-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .uc-sidebar-title { display: block; font-size: 14px; font-weight: 600; color: var(--uc-text); line-height: 1.35; }

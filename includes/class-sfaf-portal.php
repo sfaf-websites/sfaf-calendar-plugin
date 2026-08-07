@@ -2085,16 +2085,35 @@ class SFAF_Portal {
          * submissions IS an administrator's job, so those totals are exactly
          * what they can act on.
          */
-        $own        = ! $this->can_view_all( $user );
-        $total      = $this->count_events( 'publish', $own ? $user->ID : 0 );
-        $upcoming   = $this->count_events( 'publish', $own ? $user->ID : 0, true );
+        /*
+         * SCOPE CHANGES WHICH EVENTS ARE COUNTED. IT DOES NOT CHANGE WHO MAY
+         * SEE REGISTRATION DATA, AND THAT DISTINCTION IS THE POINT.
+         *
+         * "All events" answers "what is on the calendar". It is not a way to
+         * acquire access: the RSVP figure below stays scoped to this person's
+         * own events under both scopes for anyone who is not an admin or an
+         * editor, because a registration count is not one of the things the
+         * public calendar shows. The toggle moves the events; it never moves
+         * the gate.
+         */
+        $scope      = $this->scope_choice();
+        $public     = $this->is_public_scope( $user, $scope );
+        $own        = ( 'mine' === $scope );
+        $author     = $own ? $user->ID : 0;
+        $total      = $this->count_events( 'publish', $author );
+        $upcoming   = $this->count_events( 'publish', $author, true );
         $rsvp_total = $this->count_rsvps( $user );
         $pending    = $this->count_events( 'pending', 0 );
         $is_admin   = $this->is_admin_role( $user );
         $imports    = $is_admin ? SFAF_Sources::queue_count( SFAF_Sources::STATUS_PENDING ) : 0;
+
+        // Whether the RSVP figure covers everything or only this person's own,
+        // which is not the same question as the scope above.
+        $rsvps_are_own = ! $this->can_view_all( $user );
         ?>
         <div class="uc-page-head">
             <h1>Welcome, <?php echo esc_html( $user->first_name ?: $user->display_name ); ?></h1>
+            <?php $this->render_scope_toggle( $scope, '' ); ?>
         </div>
 
         <div class="uc-stats">
@@ -2110,7 +2129,7 @@ class SFAF_Portal {
             ?>
             <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $total; ?></span><span class="uc-stat-label"><?php echo $own ? 'My events' : 'Total events'; ?></span></div>
             <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $upcoming; ?></span><span class="uc-stat-label"><?php echo $own ? 'My upcoming' : 'Upcoming'; ?></span></div>
-            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $rsvp_total; ?></span><span class="uc-stat-label"><?php echo $own ? 'RSVPs to my events' : 'Total RSVPs'; ?></span></div>
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $rsvp_total; ?></span><span class="uc-stat-label"><?php echo $rsvps_are_own ? 'RSVPs to my events' : 'Total RSVPs'; ?></span></div>
             <?php if ( $is_admin ) : ?>
                 <div class="uc-stat uc-stat-accent"><span class="uc-stat-num"><?php echo (int) $pending; ?></span><span class="uc-stat-label">Pending Review</span></div>
             <?php endif; ?>
@@ -2167,13 +2186,35 @@ class SFAF_Portal {
         <div class="uc-card">
             <div class="uc-card-head">
                 <h2><?php echo $own ? 'My next events' : 'Next events'; ?></h2>
-                <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>">Manage events &rarr;</a>
+                <a href="<?php echo esc_url( add_query_arg( 'scope', $scope, $this->url( 'events' ) ) ); ?>">Manage events &rarr;</a>
             </div>
-            <?php $this->upcoming_overview( $this->query_events( $user, array( 'upcoming' => true, 'per_page' => 8 ) ), $user ); ?>
+            <?php
+            $next = $this->query_events( $user, array( 'upcoming' => true, 'per_page' => 8, 'scope' => $scope ) );
+            /*
+             * The same branch as the Events list, on the same question, into
+             * the same two renderers. upcoming_overview() carries an RSVP
+             * column, so it is only ever reached when every row is one this
+             * person may see registrations for.
+             */
+            if ( $public ) {
+                $this->public_events_table( $next );
+            } else {
+                $this->upcoming_overview( $next, $user );
+            }
+            ?>
         </div>
 
         <div class="uc-card">
-            <div class="uc-card-head"><h2><?php echo $own ? 'Recent activity on my events' : 'Recent activity'; ?></h2></div>
+            <?php
+            /*
+             * RECENT ACTIVITY DOES NOT FOLLOW THE SCOPE, and that is deliberate.
+             * It names registrants, so it stays on the 3.18.0 rule: everything
+             * for an admin or an editor, own events only for anybody else,
+             * under both scopes. Switching to All events is not a way to read
+             * who registered for somebody else's group.
+             */
+            ?>
+            <div class="uc-card-head"><h2><?php echo $rsvps_are_own ? 'Recent activity on my events' : 'Recent activity'; ?></h2></div>
             <?php $this->recent_activity( $user ); ?>
         </div>
         <?php
@@ -2528,6 +2569,8 @@ class SFAF_Portal {
             'from'    => $filters['from'],
             'to'      => $filters['to'],
             'orderby' => $sort['orderby'],
+            // Switching view must not silently put somebody back in My events.
+            'scope'   => isset( $filters['scope'] ) ? $filters['scope'] : '',
         ), function ( $v ) { return '' !== $v && null !== $v; } );
         ?>
         <div class="uc-view-tabs" role="navigation" aria-label="Which events to show">
@@ -2588,8 +2631,10 @@ class SFAF_Portal {
             'status'  => $filters['status'],
             'from'    => $filters['from'],
             'to'      => $filters['to'],
-            // Sorting inside Archived must stay inside Archived.
+            // Sorting inside Archived must stay inside Archived, and sorting
+            // inside All events must stay inside All events.
             'view'    => isset( $filters['view'] ) ? $filters['view'] : '',
+            'scope'   => isset( $filters['scope'] ) ? $filters['scope'] : '',
             'orderby' => $column,
             'order'   => $next,
         ), function ( $v ) { return '' !== $v && null !== $v; } );
@@ -2633,6 +2678,10 @@ class SFAF_Portal {
             'from'     => isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '',
             'to'       => isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '',
             'view'     => $view,
+            // Carried so paging, sorting and the view tabs keep the chosen
+            // scope. Without it, page two of All events would be page two of
+            // My events and the count above it would stop matching the table.
+            'scope'    => $this->scope_choice(),
         );
 
         // SORT LIVES IN THE URL so a view can be linked, bookmarked and shared,
@@ -2662,19 +2711,53 @@ class SFAF_Portal {
 
         $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
 
+        /*
+         * SCOPE, AND WHAT IT CHANGES BESIDES THE QUERY.
+         *
+         * For an admin or an editor this narrows or widens a list they may see
+         * either way. For a contributor, "All events" is a genuinely different
+         * screen: a read-only view of what is on the public calendar, drawn by
+         * public_events_table(), which cannot emit a registration count, a link
+         * or an action. is_public_scope() is the one question that decides it,
+         * asked once here and answered the same way everywhere below.
+         */
+        $scope  = $this->scope_choice();
+        $public = $this->is_public_scope( $user, $scope );
+
         $ids = $this->query_events( $user, array_merge( $filters, $this->event_views()[ $view ]['args'], array(
             'orderby'  => $orderby,
             'order'    => $order,
             'paged'    => $paged,
             'per_page' => 25,
+            'scope'    => $scope,
         ) ) );
         $total = $this->last_query_total;
         $pages = $this->last_query_pages;
         ?>
         <div class="uc-page-head">
-            <h1><?php echo $this->can_view_all( $user ) ? 'All Events' : 'My Events'; ?></h1>
+            <h1><?php echo 'all' === $scope ? 'All Events' : 'My Events'; ?></h1>
             <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
         </div>
+
+        <?php
+        // The scope travels with the view, the search and the sort, so
+        // switching it does not silently drop any of them.
+        $this->render_scope_toggle( $scope, 'events', array(
+            'view'    => $view,
+            's'       => $filters['s'],
+            'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'status'  => $filters['status'],
+            'orderby' => $orderby,
+            'order'   => $order,
+        ) );
+        ?>
+
+        <?php if ( $public ) : ?>
+            <p class="uc-view-hint">
+                Everything on the calendar, read-only. Events that are not yours show what the public calendar shows.
+                Switch to My events to edit, or to see registrations.
+            </p>
+        <?php endif; ?>
 
         <?php $this->view_tabs( $view, $filters, $sort ); ?>
 
@@ -2698,6 +2781,8 @@ class SFAF_Portal {
         <form method="get" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-filters-bar" data-uc-live-search>
             <?php // Filtering must not silently drop you back into Upcoming. ?>
             <input type="hidden" name="view" value="<?php echo esc_attr( $view ); ?>" />
+            <?php // Nor may filtering drop somebody back into My events. ?>
+            <input type="hidden" name="scope" value="<?php echo esc_attr( $scope ); ?>" />
             <input type="search" name="s" value="<?php echo esc_attr( $filters['s'] ); ?>" placeholder="Search events…"
                    data-uc-live-search-input autocomplete="off"
                    <?php // Typing continues where it left off after the reload
@@ -2731,7 +2816,18 @@ class SFAF_Portal {
             <div class="uc-card-head">
                 <h2><?php echo (int) $total; ?> <?php echo esc_html( 1 === (int) $total ? "event" : "events" ); ?></h2>
             </div>
-            <?php $this->events_table( $ids, $user, $sort, $filters ); ?>
+            <?php
+            /*
+             * TWO RENDERERS, ONE QUESTION, NO FLAG INSIDE EITHER. The branch is
+             * here and nowhere else: whichever table runs, it has no way to
+             * behave like the other one.
+             */
+            if ( $public ) {
+                $this->public_events_table( $ids );
+            } else {
+                $this->events_table( $ids, $user, $sort, $filters );
+            }
+            ?>
             <?php $this->events_pagination( $paged, $pages, $total, $sort, $filters ); ?>
         </div>
 
@@ -2784,6 +2880,8 @@ class SFAF_Portal {
             'to'      => $filters['to'],
             // Page 2 of Archived is page 2 of Archived.
             'view'    => isset( $filters['view'] ) ? $filters['view'] : '',
+            // And page 2 of All events is page 2 of All events.
+            'scope'   => isset( $filters['scope'] ) ? $filters['scope'] : '',
             'orderby' => $sort['orderby'],
             'order'   => $sort['order'],
         ), function ( $v ) { return '' !== $v && null !== $v; } );
@@ -2813,6 +2911,138 @@ class SFAF_Portal {
                 <?php endif; ?>
             </div>
         </div>
+        <?php
+    }
+
+    /* =====================================================================
+     * Scope: whose events am I looking at
+     * ================================================================== */
+
+    /**
+     * The chosen scope, from the URL. 'mine' unless 'all' was asked for.
+     *
+     * DEFAULTS TO MINE FOR EVERYONE. A manager arriving at their own screen is
+     * there to do their own work, and for a contributor the wider list is a
+     * read-only view of the public calendar rather than a place to work at all.
+     *
+     * @return string 'mine'|'all'
+     */
+    private function scope_choice() {
+        return ( isset( $_GET['scope'] ) && 'all' === $_GET['scope'] ) ? 'all' : 'mine';
+    }
+
+    /**
+     * The All events / My events control.
+     *
+     * TWO REAL LINKS, NOT A CONTROL WITH STATE. Each is a URL that can be
+     * bookmarked and shared, which is the same reasoning as the view tabs on
+     * the Events list, and it means the scope survives paging, sorting and
+     * filtering without anything holding state the address bar does not admit
+     * to.
+     *
+     * @param string $scope Current scope.
+     * @param string $path  Portal path this control lives on.
+     * @param array  $carry Query args to preserve across the switch.
+     */
+    private function render_scope_toggle( $scope, $path, $carry = array() ) {
+        $carry = array_filter( (array) $carry, function ( $v ) { return '' !== $v && null !== $v; } );
+        $options = array(
+            'mine' => 'My events',
+            'all'  => 'All events',
+        );
+        ?>
+        <div class="uc-scope-switch" role="group" aria-label="Which events to show">
+            <?php foreach ( $options as $key => $label ) :
+                $url = add_query_arg( array_merge( $carry, array( 'scope' => $key ) ), $this->url( $path ) );
+                ?>
+                <a class="uc-scope-opt<?php echo $scope === $key ? ' is-on' : ''; ?>"
+                   href="<?php echo esc_url( $url ); ?>"
+                   <?php echo $scope === $key ? ' aria-current="true"' : ''; ?>><?php echo esc_html( $label ); ?></a>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Whether this person is looking at other people's events read-only.
+     *
+     * @param WP_User $user
+     * @param string  $scope
+     * @return bool
+     */
+    private function is_public_scope( $user, $scope ) {
+        return ( 'all' === $scope && ! $this->can_view_all( $user ) );
+    }
+
+    /**
+     * Other people's events, showing ONLY what is already on the public
+     * calendar.
+     *
+     * A SEPARATE RENDERER, AND THAT IS THE WHOLE SAFETY ARGUMENT. events_table()
+     * could have taken a flag deciding whether to draw the registration column
+     * and the actions, and a flag like that is one refactor away from
+     * defaulting the wrong way. This method instead has NO CODE PATH that can
+     * emit any of it: there is no call to sfaf_get_rsvp_count() in it, no link
+     * to the editor, no link to the registrations screen, and no form. It
+     * cannot leak participant data by being changed carelessly, because it
+     * would have to be given the ability first. Same reasoning, and the same
+     * decision, as upcoming_overview() against events_table().
+     *
+     * THE RSVP COLUMN IS ABSENT, NOT EMPTY. Not the number, not a dash, not a
+     * blank cell: a table has one column set for all its rows, so the column
+     * does not exist in this table at all. A contributor who wants their own
+     * counts switches to My events, where every row is theirs.
+     *
+     * NOTHING IS CLICKABLE. A link would mean another surface that has to
+     * exclude participant data correctly, and the last three permission
+     * defects in this plugin were all of that shape. The public calendar is
+     * where somebody goes for detail about an event that is not theirs.
+     *
+     * FIELDS, AND WHY EACH ONE IS SAFE: title, date, time, location, category,
+     * organizer and published status are exactly what an anonymous visitor
+     * reads off the public calendar for the same event.
+     *
+     * @param int[] $ids
+     */
+    private function public_events_table( $ids ) {
+        if ( empty( $ids ) ) {
+            echo '<p class="uc-empty">No events found.</p>';
+            return;
+        }
+        _prime_post_caches( $ids, true, true );
+        ?>
+        <table class="uc-table uc-table-public">
+            <thead><tr>
+                <th>Event</th><th>Date</th><th>Time</th><th>Location</th>
+                <th>Category</th><th>Organizer</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+            <?php foreach ( $ids as $id ) :
+                $date  = (string) get_post_meta( $id, '_uc_event_date', true );
+                $cats  = wp_get_post_terms( $id, 'uc_event_category', array( 'fields' => 'names' ) );
+                $orgs  = wp_get_post_terms( $id, 'uc_organizer', array( 'fields' => 'names' ) );
+                $st    = get_post_status( $id );
+                $clock = sfaf_ap_time_range(
+                    (string) get_post_meta( $id, '_uc_start_time', true ),
+                    (string) get_post_meta( $id, '_uc_end_time', true )
+                );
+                ?>
+                <tr>
+                    <?php // Plain text. Deliberately not a link: see the note above. ?>
+                    <td><strong><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></strong></td>
+                    <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short' ) . ', ' . date_i18n( 'Y', strtotime( $date . ' 12:00:00' ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><?php echo '' !== $clock ? esc_html( $clock ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><?php
+                        $where = sfaf_event_location_short( $id );
+                        echo '' !== $where ? esc_html( $where ) : '<span class="uc-muted">None</span>';
+                    ?></td>
+                    <td><?php echo ( $cats && ! is_wp_error( $cats ) ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><?php echo ( $orgs && ! is_wp_error( $orgs ) ) ? esc_html( implode( ', ', $orgs ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
         <?php
     }
 
@@ -3928,9 +4158,8 @@ class SFAF_Portal {
             <strong>A series is an event's schedule: the event, and all of its dates.</strong> Open one to see the
             pattern it runs on, change the day or the time for everything still to come, add a date, or take one off.
             <br />
-            You do not normally create a series here. Set a repeat on a new event and its series is made from the
-            event's own name in the same step, so nobody has to name the same thing twice. Creating one by hand is for
-            the case where a program needs describing before any of its dates are known.
+            You do not normally create a series here: set a repeat on a new event and its series is made in the same
+            step. Create one by hand when a program needs describing before any of its dates are known.
         </p>
 
         <div class="uc-card">
@@ -4415,7 +4644,7 @@ class SFAF_Portal {
                 <strong><?php echo (int) $upcoming; ?> upcoming <?php echo esc_html( 1 === $upcoming ? 'event' : 'events' ); ?></strong>
                 and
                 <strong><?php echo (int) $past; ?> past <?php echo esc_html( 1 === $past ? 'event' : 'events' ); ?></strong>.
-                Choose what happens to them. Neither choice can be undone from this screen.
+                Neither choice can be undone.
             </p>
 
             <form method="post" action="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-remove-form">
@@ -4432,7 +4661,7 @@ class SFAF_Portal {
                             <span class="uc-hint">
                                 All <?php echo (int) ( $upcoming + $past ); ?>
                                 <?php echo esc_html( 1 === ( $upcoming + $past ) ? 'event stays' : 'events stay' ); ?>
-                                on the calendar, on the same date and at the same address. Only the grouping goes.
+                                on the calendar. Only the grouping goes.
                             </span>
 
                             <span class="uc-remove-sub">
@@ -4471,15 +4700,10 @@ class SFAF_Portal {
                             <span class="uc-hint">
                                 <strong><?php echo (int) $upcoming; ?> upcoming
                                 <?php echo esc_html( 1 === $upcoming ? 'event is deleted' : 'events are deleted' ); ?></strong>
-                                and moved to the trash, which is what deleting an event does everywhere else here.
+                                and moved to the trash.
                                 <strong><?php echo (int) $past; ?> past
                                 <?php echo esc_html( 1 === $past ? 'event remains' : 'events remain' ); ?></strong>
                                 on the calendar as standalone past events.
-                            </span>
-                            <span class="uc-hint uc-hint-spec">
-                                The past is never deleted by this button. Those events are the record of what actually
-                                happened, and one click must not be able to destroy them. To remove a past event,
-                                delete that event.
                             </span>
                         </span>
                     </label>
@@ -4488,42 +4712,37 @@ class SFAF_Portal {
 
                 <?php
                 /*
-                 * WHAT GOES WITH THE TERM, EITHER WAY. The description, the
-                 * image and the default FAQ set are stored on the series
-                 * itself, so removing it removes them under both options.
-                 * Named only when they are actually set: a warning about an
-                 * image on a series that has none is noise.
+                 * ONE LINE, AND ONLY WHEN THERE IS SOMETHING TO LOSE.
+                 *
+                 * This was a yellow callout explaining that the description and
+                 * image live on the series rather than on the events, and a
+                 * paragraph on why registration records outlive their events.
+                 * Both were true and neither told somebody standing at this
+                 * decision what to do or what would happen to them: one
+                 * justified where the data lives, the other justified a design
+                 * choice made two releases ago. The fact that survives is that
+                 * these things go, so it is stated and nothing else.
+                 *
+                 * Registrations are not mentioned at all now. Nothing on this
+                 * screen touches them, and a reassurance about something that
+                 * is not at risk is one more thing to read before deciding.
                  */
+                $goes = array();
+                if ( $has_desc )  { $goes[] = 'description'; }
+                if ( $has_image ) { $goes[] = 'image'; }
+                if ( $has_faq )   { $goes[] = 'default FAQ set'; }
                 ?>
-                <?php if ( $has_desc || $has_image || $has_faq ) : ?>
-                    <p class="uc-flash uc-flash-attention">
-                        <?php echo $this->icon_needs(); ?>
-                        <span>
-                            Either way, this series' own
-                            <?php
-                            $goes = array();
-                            if ( $has_desc )  { $goes[] = 'description'; }
-                            if ( $has_image ) { $goes[] = 'image'; }
-                            if ( $has_faq )   { $goes[] = 'default FAQ set'; }
-                            echo esc_html(
-                                ( 1 === count( $goes ) )
-                                    ? $goes[0]
-                                    : implode( ', ', array_slice( $goes, 0, -1 ) ) . ' and ' . $goes[ count( $goes ) - 1 ]
-                            );
-                            ?>
-                            <?php echo esc_html( 1 === count( $goes ) ? 'is removed with it' : 'are removed with it' ); ?>,
-                            because <?php echo esc_html( 1 === count( $goes ) ? 'it lives' : 'they live' ); ?> on the series
-                            and not on the events. Events that already took a copy of the FAQ questions keep their copy.
-                        </span>
+                <?php if ( ! empty( $goes ) ) : ?>
+                    <p class="uc-hint uc-remove-goes">
+                        The series' own
+                        <?php echo esc_html(
+                            ( 1 === count( $goes ) )
+                                ? $goes[0]
+                                : implode( ', ', array_slice( $goes, 0, -1 ) ) . ' and ' . $goes[ count( $goes ) - 1 ]
+                        ); ?>
+                        <?php echo esc_html( 1 === count( $goes ) ? 'goes with it.' : 'go with it.' ); ?>
                     </p>
                 <?php endif; ?>
-
-                <p class="uc-hint">
-                    Registration records are kept under both options. They are stored separately from the events and
-                    outlive them on purpose, with the event's title saved alongside them, so removing a series never
-                    loses the record that somebody came.
-                    <a href="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">See registrations</a>.
-                </p>
 
                 <div class="uc-form-actions">
                     <a class="uc-btn" href="<?php echo esc_url( $this->url( 'series/edit/' . $term_id ) ); ?>">Cancel</a>
@@ -4571,9 +4790,8 @@ class SFAF_Portal {
         <div class="uc-page-head"><h1>Venues</h1></div>
 
         <p class="uc-help">
-            The places events are held, with their addresses. An event that names a venue does not keep a copy of the
-            address: it points at the venue, so correcting an address here corrects every event held there at once,
-            including ones already published. An event somewhere one-off still takes a location typed straight onto it.
+            The places events are held, with their addresses. Correcting an address here corrects every event held
+            there, including ones already published. An event somewhere one-off takes a location typed onto it instead.
         </p>
 
         <?php if ( $err ) : ?>
@@ -7236,10 +7454,9 @@ class SFAF_Portal {
         <div class="uc-card">
             <div class="uc-card-head"><h2>What this record is</h2></div>
             <p class="uc-hint">
-                People who ticked &ldquo;Receive monthly email updates from SFAF&rdquo; on an RSVP form.
-                Each row is one act of consent, with the moment it was given and the form it came from,
-                so whoever wires this to a mailing platform later can evidence both.
-                <strong>Nothing is sent from here and nothing is pushed anywhere.</strong> This is a record.
+                People who ticked &ldquo;Receive monthly email updates from SFAF&rdquo; on an RSVP form, with the
+                moment consent was given and the form it came from.
+                <strong>Nothing is sent from here and nothing is pushed anywhere.</strong>
             </p>
             <?php
             /*
@@ -7466,9 +7683,8 @@ class SFAF_Portal {
             </details>
         <?php elseif ( $orphans ) : ?>
             <p class="uc-hint">
-                Registrations whose event has been deleted. The rows are kept deliberately: deleting an event is a
-                decision about the calendar, not a decision to forget that people came. The name shown is the title
-                the event had at the moment it was deleted.
+                Registrations whose event has been deleted. The name shown is the title the event had when it was
+                deleted.
                 <a href="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">All registrations</a>.
             </p>
         <?php elseif ( $orphan_total ) : ?>
@@ -8022,7 +8238,13 @@ class SFAF_Portal {
                 $date     = get_post_meta( $id, '_uc_event_date', true );
                 $start    = get_post_meta( $id, '_uc_start_time', true );
                 $end      = get_post_meta( $id, '_uc_end_time', true );
-                $location = sfaf_event_location( $id );
+                /*
+                 * THE VENUE'S NAME, NOT THE POSTAL ADDRESS. Most of a queue is
+                 * the same handful of venues, so a full address on every row
+                 * was the longest thing on the row carrying the least new
+                 * information. See sfaf_event_location_short().
+                 */
+                $location = sfaf_event_location_short( $id );
 
                 /*
                  * WHEN, AS ONE PHRASE. The times used to be printed as the raw
@@ -8036,7 +8258,19 @@ class SFAF_Portal {
                 if ( $when && $clock ) {
                     $when .= ', ' . $clock;
                 }
-                if ( $when && $date && $prov['timezone'] ) {
+
+                /*
+                 * THE TIMEZONE ONLY WHEN IT IS NOT THE SITE'S.
+                 *
+                 * "(America/Los_Angeles)" appeared on every row of a queue run
+                 * by people in America/Los_Angeles, which is a string that can
+                 * never change anybody's decision and was competing with the
+                 * title for attention. It is worth saying exactly when it is
+                 * surprising: an imported event in another zone is a real trap,
+                 * because the time shown is then not the time a local reader
+                 * assumes. So the comparison decides, not the presence.
+                 */
+                if ( $when && $date && $prov['timezone'] && $prov['timezone'] !== wp_timezone_string() ) {
                     $when .= ' (' . $prov['timezone'] . ')';
                 }
                 if ( '' === $when ) {
@@ -8079,7 +8313,13 @@ class SFAF_Portal {
                             <p class="uc-queue-meta">
                                 <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span>
                                 <span><?php echo esc_html( $when ); ?></span>
-                                <span><?php echo esc_html( $location ? $location : 'Location not set' ); ?></span>
+                                <?php // Omitted entirely when there is none, rather than
+                                      // printing "Location not set" on every row of a
+                                      // platform that never supplies one. The disclosure
+                                      // below is where a missing field is reported. ?>
+                                <?php if ( '' !== $location ) : ?>
+                                    <span><?php echo esc_html( $location ); ?></span>
+                                <?php endif; ?>
                             </p>
 
                             <?php if ( $prov['source_url'] ) : ?>
@@ -8367,11 +8607,9 @@ class SFAF_Portal {
                     <h2><?php echo count( $teams ); ?> <?php echo esc_html( 1 === count( $teams ) ? 'team' : 'teams' ); ?></h2>
                 </div>
                 <p class="uc-hint">
-                    A team is a name and a set of people. When an event notifies a team, it stores the team and works
-                    out who that is at the moment the reminder is sent. So taking somebody out of a team stops their
-                    notifications for every event naming it straight away, with nothing to go and correct, and adding
-                    somebody puts them on events that were set up before they joined. That is deliberate: it is what
-                    belonging to a team means.
+                    A team is a name and a set of people, resolved when the reminder is sent. So taking somebody out
+                    of a team stops their notifications for every event naming it, and adding somebody puts them on
+                    events that were set up before they joined.
                 </p>
 
                 <?php if ( $err ) : ?>
@@ -8658,8 +8896,31 @@ class SFAF_Portal {
             $q['post_status'] = array( 'publish', 'pending', 'draft', 'future' );
         }
 
-        // Contributors only see their own.
-        if ( ! $this->can_view_all( $user ) ) {
+        /*
+         * WHOSE EVENTS. THREE STATES, AND SAYING NOTHING IS THE SAFE ONE.
+         *
+         *   (unset)  the access rule, unchanged since this method was written:
+         *            a contributor sees their own, anyone who may view all
+         *            sees everything. Every caller that predates 3.19.0 is in
+         *            this state and behaves exactly as it did.
+         *   'mine'   this person's own events, whoever they are. For an admin
+         *            or an editor that is a filter, not a gate.
+         *   'all'    no author filter at all.
+         *
+         * WIDENING TAKES AN EXPLICIT ARGUMENT. Only the two screens that offer
+         * the toggle pass 'all', and each of them is then responsible for the
+         * renderer it hands the ids to. What protects other people's events is
+         * not this query: it is public_events_table(), which has no code path
+         * that can emit a registration count, a link or an action. A default
+         * that showed everything and relied on each caller to narrow it would
+         * be one forgotten argument away from a disclosure.
+         */
+        $scope = isset( $args['scope'] ) ? (string) $args['scope'] : '';
+        if ( 'all' === $scope ) {
+            // Nothing added: the caller has said so in as many words.
+        } elseif ( 'mine' === $scope ) {
+            $q['author'] = $user->ID;
+        } elseif ( ! $this->can_view_all( $user ) ) {
             $q['author'] = $user->ID;
         }
 
