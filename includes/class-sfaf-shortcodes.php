@@ -687,8 +687,7 @@ class SFAF_Shortcodes {
             // Compact header: what month this is on the left, controls on the
             // right. The date range underneath is the grid's real span, which
             // is what explains the greyed cells at each end.
-            $range = date_i18n( 'j M', strtotime( $grid['start'] . ' 12:00:00' ) )
-                . ' to ' . date_i18n( 'j M', strtotime( $grid['end'] . ' 12:00:00' ) );
+            $range = sfaf_ap_date_range( $grid['start'], $grid['end'] );
             ?>
             <div class="uc-month-head">
                 <div class="uc-month-heading">
@@ -814,7 +813,7 @@ class SFAF_Shortcodes {
                                                 <a href="<?php echo esc_url( get_permalink( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
                                                     <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
                                                     <?php if ( '' !== $start ) : ?>
-                                                        <span class="uc-day-event-time"><?php echo esc_html( date_i18n( 'g:ia', strtotime( $start ) ) ); ?></span>
+                                                        <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
                                                     <?php endif; ?>
                                                 </a>
                                             </li>
@@ -898,7 +897,20 @@ class SFAF_Shortcodes {
     }
 
     /**
-     * One sidebar row: date, title, start time. No image, no description.
+     * One sidebar row: thumbnail, title, then date and time underneath.
+     *
+     * NO ACCENT BAR. Every row carried a 3px left border in its own category
+     * colour. It is gone in 3.17.0 and nothing replaces it, because in the
+     * placement this mode is actually for, embedded on a programme or a series
+     * page, every event in the list is the same programme: the stripe was ten
+     * colours saying one thing, which is the kaleidoscope the brand guide warns
+     * against (p.18) doing no work at all. A row is now a picture, a title and
+     * a line of detail, separated from the next by a hairline.
+     *
+     * THE THUMBNAIL IS THE EVENT'S OWN IMAGE, or the branded category tile when
+     * it has none, which is the same pair the list card uses. That is where the
+     * category signal went: into the picture, where it is already carrying its
+     * weight, rather than into a bar beside it.
      *
      * @param int $post_id
      * @return string
@@ -906,28 +918,32 @@ class SFAF_Shortcodes {
     private function render_sidebar_row( $post_id ) {
         $date  = (string) get_post_meta( $post_id, '_uc_event_date', true );
         $start = (string) get_post_meta( $post_id, '_uc_start_time', true );
-        $ts    = $date ? strtotime( $date . ' 12:00:00' ) : 0;
-
-        $color = sfaf_event_category_color( $post_id );
+        $end   = (string) get_post_meta( $post_id, '_uc_end_time', true );
         $slugs = implode( ' ', wp_list_pluck( sfaf_event_categories( $post_id ), 'slug' ) );
+
+        // One quiet second line: "Tue, Aug 4 · 6-7:30 pm". Both halves are
+        // optional and the separator only appears when both are there, so an
+        // undated event does not print a stray dot.
+        $when = array();
+        if ( '' !== $date ) {
+            $when[] = sfaf_ap_date( $date, 'weekday' ) . ', ' . sfaf_ap_date( $date, 'short' );
+        }
+        $clock = sfaf_ap_time_range( $start, $end );
+        if ( '' !== $clock ) {
+            $when[] = $clock;
+        }
 
         ob_start();
         ?>
         <a class="uc-sidebar-row" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>"
-           data-category="<?php echo esc_attr( $slugs ); ?>"
-           style="--cat-color: <?php echo esc_attr( $color ); ?>">
-            <span class="uc-sidebar-date">
-                <?php if ( $ts ) : ?>
-                    <span class="uc-sidebar-mon"><?php echo esc_html( date_i18n( 'M', $ts ) ); ?></span>
-                    <span class="uc-sidebar-day"><?php echo esc_html( date_i18n( 'j', $ts ) ); ?></span>
-                <?php else : ?>
-                    <span class="uc-sidebar-mon">TBC</span>
-                <?php endif; ?>
-            </span>
+           data-category="<?php echo esc_attr( $slugs ); ?>">
+            <span class="uc-sidebar-thumb"><?php echo sfaf_thumb_media( $post_id ); ?></span>
             <span class="uc-sidebar-body">
                 <span class="uc-sidebar-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></span>
-                <?php if ( '' !== $start ) : ?>
-                    <span class="uc-sidebar-time"><?php echo esc_html( date_i18n( 'g:i A', strtotime( $start ) ) ); ?></span>
+                <?php if ( ! empty( $when ) ) : ?>
+                    <span class="uc-sidebar-when"><?php echo esc_html( implode( ' · ', $when ) ); ?></span>
+                <?php else : ?>
+                    <span class="uc-sidebar-when">Date to be confirmed</span>
                 <?php endif; ?>
             </span>
         </a>
@@ -1891,13 +1907,9 @@ class SFAF_Shortcodes {
         // date as its own. An undated event renders no date block.
         $date_ts = $date ? strtotime( $date ) : false;
 
-        $time = '';
-        if ( $start_time ) {
-            $time = date_i18n( 'g:i A', strtotime( $start_time ) );
-            if ( $end_time ) {
-                $time .= ' to ' . date_i18n( 'g:i A', strtotime( $end_time ) );
-            }
-        }
+        // "6-7:30 pm". Was "6:00 PM to 7:30 PM", which broke every one of the
+        // guide's four time rules at once. See sfaf_ap_time_range().
+        $time = sfaf_ap_time_range( $start_time, $end_time );
 
         $permalink = get_permalink( $post_id );
 
@@ -1956,8 +1968,8 @@ class SFAF_Shortcodes {
                 </div>
                 <?php if ( $date_ts ) : ?>
                     <div class="uc-lc-date">
-                        <span class="uc-lc-dow"><?php echo esc_html( date_i18n( 'D', $date_ts ) ); ?></span>
-                        <span class="uc-lc-md"><?php echo esc_html( date_i18n( 'M j', $date_ts ) ); ?></span>
+                        <span class="uc-lc-dow"><?php echo esc_html( sfaf_ap_date( $date_ts, 'weekday' ) ); ?></span>
+                        <span class="uc-lc-md"><?php echo esc_html( sfaf_ap_date( $date_ts, 'short' ) ); ?></span>
                     </div>
                 <?php endif; ?>
             </div>
@@ -2067,7 +2079,7 @@ class SFAF_Shortcodes {
                 <div class="uc-compact-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></div>
                 <div class="uc-compact-meta">
                     <?php if ( $start_time ) : ?>
-                        <?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?>
+                        <?php echo esc_html( sfaf_ap_time( $start_time ) ); ?>
                     <?php endif; ?>
                     <?php if ( $location ) : ?>
                         &middot; <?php echo esc_html( $location ); ?>

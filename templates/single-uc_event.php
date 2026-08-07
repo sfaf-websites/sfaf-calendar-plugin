@@ -140,13 +140,13 @@ while ( have_posts() ) :
                             <?php if ( $date_ts ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'calendar' ); ?></span>
-                                    <span><strong><?php echo esc_html( date_i18n( 'l, F j, Y', $date_ts ) ); ?></strong></span>
+                                    <span><strong><?php echo esc_html( sfaf_ap_date( $date_ts, 'full' ) ); ?></strong></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( $start_time ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'clock' ); ?></span>
-                                    <span><?php echo esc_html( date( 'g:i A', strtotime( $start_time ) ) ); ?><?php echo $end_time ? ' – ' . esc_html( date( 'g:i A', strtotime( $end_time ) ) ) : ''; ?></span>
+                                    <span><?php echo esc_html( sfaf_ap_time_range( $start_time, $end_time ) ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( $location ) : ?>

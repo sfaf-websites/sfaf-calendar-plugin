@@ -945,7 +945,7 @@ class SFAF_Admin {
 
             <div class="uc-admin-card">
                 <?php if ( empty( $series ) ) : ?>
-                    <p class="uc-no-data">No series yet. A series groups events that belong to the same programme &mdash; and it may hold different kinds of event, so it is not the same thing as a repeating event.</p>
+                    <p class="uc-no-data">No series yet. A series groups events that belong to the same programme, and it may hold different kinds of event, so it is not the same thing as a repeating event.</p>
                 <?php else : ?>
                     <table class="uc-admin-table">
                         <thead><tr><th>Image</th><th>Series</th><th>Upcoming events</th><th>Next date</th><th>Actions</th></tr></thead>

@@ -209,7 +209,7 @@ class SFAF_Post_Types {
                         <?php endforeach; ?>
                     </select>
                     <p class="description">
-                        A series is an umbrella for grouping and filtering &mdash; it holds events, it is not one, and
+                        A series is an umbrella for grouping and filtering. It holds events, it is not one, and
                         it may hold different kinds of event. Create and edit series under
                         <a href="<?php echo esc_url( add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) ) ); ?>">Series</a>.
                     </p>

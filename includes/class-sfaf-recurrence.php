@@ -836,7 +836,7 @@ class SFAF_Recurrence {
     }
 
     /**
-     * "6:00 PM to 7:30 PM", "from 6:00 PM", or ''.
+     * "6-7:30 pm", "from 6 pm", or ''.
      *
      * @param string $start
      * @param string $end
@@ -848,11 +848,12 @@ class SFAF_Recurrence {
         if ( '' === $start ) {
             return '';
         }
-        $from = date_i18n( 'g:i A', strtotime( $start ) );
         if ( '' === $end ) {
-            return 'from ' . $from;
+            return 'from ' . sfaf_ap_time( $start );
         }
-        return $from . ' to ' . date_i18n( 'g:i A', strtotime( $end ) );
+        // AP style, through the one formatter. This string reaches the public
+        // event page as the repeat badge, so it is not an admin-only phrase.
+        return sfaf_ap_time_range( $start, $end );
     }
 
     /**

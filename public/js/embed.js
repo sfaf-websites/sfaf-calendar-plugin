@@ -569,10 +569,17 @@
      * grid is a table of 42 cells and staggering it would look like a fault.
      * -------------------------------------------------------------------- */
     function revealCards(container) {
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        // Which branch ran, on the block rather than on <html>: this is
+        // somebody else's page and the root element is not ours to stamp.
+        // Inspect the embed container and it says on, reduced or no-observer.
+        var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        container.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+
+        if (reduced) {
             return;
         }
         if (!('IntersectionObserver' in window)) {
+            container.setAttribute('data-uc-motion', 'no-observer');
             return;
         }
 

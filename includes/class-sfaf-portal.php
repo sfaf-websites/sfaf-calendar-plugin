@@ -267,12 +267,6 @@ class SFAF_Portal {
         }
 
         status_header( 200 );
-
-        // The portal builds its own document and never loads the admin, so
-        // WordPress does not apply the per-user language for it. Do it here,
-        // once, before anything renders. See render_language_toggle().
-        $this->apply_user_locale( $user );
-
         $page = isset( $segments[0] ) ? $segments[0] : 'dashboard';
 
         switch ( $page ) {
@@ -520,39 +514,22 @@ class SFAF_Portal {
                 $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
                 break;
 
-            case 'set_language':
-                /*
-                 * WRITES `locale`, WHICH IS WORDPRESS'S OWN USER META KEY for
-                 * the per-user language, not a private one of ours. So the
-                 * choice made here is the same choice the WordPress profile
-                 * screen offers, and the two cannot disagree.
-                 *
-                 * The value is looked up in languages() rather than sanitized
-                 * and stored: an unknown key writes nothing at all.
-                 */
-                $want  = isset( $_POST['uc_lang'] ) ? sanitize_key( wp_unslash( $_POST['uc_lang'] ) ) : '';
-                $langs = $this->languages();
-                if ( isset( $langs[ $want ] ) ) {
-                    // English is the site default, so it is stored as no
-                    // preference rather than as en_US. That keeps a user who
-                    // never touches this identical to one who chose English.
-                    if ( 'en' === $want ) {
-                        delete_user_meta( $user->ID, 'locale' );
-                    } else {
-                        update_user_meta( $user->ID, 'locale', $langs[ $want ][1] );
-                    }
-                }
-                // Back to the screen the toggle was pressed on. The route is
-                // rebuilt through url(), so nothing arbitrary can be redirected
-                // to from a posted field.
-                $back = isset( $_POST['uc_return'] ) ? wp_unslash( $_POST['uc_return'] ) : '';
-                $path = '';
-                if ( $back && 0 === strpos( $back, $this->url() ) ) {
-                    $path = trim( substr( $back, strlen( $this->url() ) ), '/' );
-                }
-                $this->redirect( $path );
-                break;
-
+            /*
+             * NO set_language ACTION. There never should have been one.
+             *
+             * 3.16.0 read "move the English/Espanol control into the sidebar"
+             * as licence to build one when the plugin had none: nothing in this
+             * codebase rendered those two words, and caladmin emits its own
+             * document with no wp_head or wp_footer, so nothing could have
+             * injected one either. The control the instruction described
+             * belongs to Weglot and is not ours to move. It is hidden on these
+             * screens in portal.css and left alone everywhere else.
+             *
+             * The whole feature is gone in 3.17.0: this case, the toggle, the
+             * languages list, the locale write and the switch_to_locale() call.
+             * If a language control is ever wanted here it is a new decision,
+             * not a tidy-up.
+             */
             case 'fetch_sources':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 // The report has to survive the redirect that stops a refresh
@@ -1652,6 +1629,53 @@ class SFAF_Portal {
     <link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
     <style>:root{--uc-primary:<?php echo esc_html( $primary ); ?>;--uc-accent:<?php echo esc_html( $accent ); ?>;}</style>
     <?php
+    /*
+     * THE ENTRANCE SWITCH, IN THE HEAD, BEFORE THE FIRST PAINT.
+     *
+     * WHY IT IS NOT IN portal.js. It was, in 3.16.0, at the bottom of a chain
+     * of nineteen initialisers running on DOMContentLoaded, and that is two
+     * separate faults. One: an exception in any earlier initialiser silently
+     * takes out every one after it, and the entrance was last. Two, and worse:
+     * DOMContentLoaded fires AFTER first paint, so the page drew itself
+     * complete and only then had the elements set back to opacity 0 to fade in
+     * from. What that produces is not an entrance, it is a flicker, and on a
+     * fast machine it is over before it registers as anything at all.
+     *
+     * Here, in the head, this runs before <body> exists. The class lands on
+     * <html> before anything is painted, and the animation is then pure CSS
+     * with no further script involved: nothing in portal.js can break it.
+     *
+     * data-uc-motion IS DELIBERATE AND IS FOR READING. "The animations are not
+     * appearing" and "this machine asks for reduced motion" look identical from
+     * outside, and guessing between them is what cost this a release. The
+     * attribute says which branch shipped: inspect <html> and it reads either
+     * data-uc-motion="on" or data-uc-motion="reduced".
+     *
+     * WITH SCRIPTING OFF neither class is set, nothing is hidden, and the page
+     * is a normal finished page. That guarantee is why the hidden state lives
+     * in the animation rather than in a base rule.
+     */
+    ?>
+    <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    <?php
     if ( $this->load_media ) {
         wp_print_styles();
         wp_print_head_scripts();
@@ -1774,16 +1798,13 @@ class SFAF_Portal {
                  * and a name in the top bar, so neither said "you are Ana, and
                  * you are a Manager". They are one block now.
                  *
-                 * THE LANGUAGE TOGGLE MOVED HERE from the bottom of the page,
-                 * where it was two unstyled links in the content flow. Same
-                 * segmented control as the recurrence editor: a radio group
-                 * whose visible surface is the sibling span, so it keeps its
-                 * focus ring and its announcement.
+                 * NO LANGUAGE CONTROL HERE. 3.16.0 put one in and 3.17.0 took
+                 * it out; see the note at the removed set_language case in
+                 * dispatch_post(). The English/Espanol control that prompted it
+                 * is Weglot's, and portal.css hides it on these screens.
                  */
                 ?>
                 <div class="uc-portal-foot">
-                    <?php $this->render_language_toggle(); ?>
-
                     <div class="uc-portal-me">
                         <span class="uc-portal-me-name"><?php echo esc_html( $user->display_name ); ?></span>
                         <span class="uc-portal-me-role"><?php echo esc_html( self::role_label( $role ) ); ?></span>
@@ -1809,113 +1830,6 @@ class SFAF_Portal {
                 <main class="uc-portal-content">
         <?php
         $this->flash();
-    }
-
-    /* =====================================================================
-     * Language
-     * ================================================================== */
-
-    /**
-     * The two languages this portal offers, and the locale each one means.
-     *
-     * ONE LIST. The toggle, the save and apply_user_locale() all read it, so a
-     * third language is one line here and nothing else. The keys are what goes
-     * in the POST and the values are real WordPress locales, which is what
-     * makes 'es' switchable at all: anything not in this list is refused on the
-     * way in rather than trusted.
-     */
-    private function languages() {
-        return array(
-            'en' => array( 'English', 'en_US' ),
-            'es' => array( 'Espanol', 'es_ES' ),
-        );
-    }
-
-    /** Which of them this user has chosen. Defaults to English. */
-    private function current_language( $user ) {
-        $locale = (string) get_user_meta( $user->ID, 'locale', true );
-        foreach ( $this->languages() as $key => $lang ) {
-            if ( $lang[1] === $locale ) {
-                return $key;
-            }
-        }
-        return 'en';
-    }
-
-    /**
-     * Render the portal in the language the signed-in user chose.
-     *
-     * switch_to_locale() rather than a filter on `locale`, because it also
-     * reloads the text domains that are already in memory. Called once, from
-     * handle(), before any output.
-     *
-     * WHAT THIS DOES AND DOES NOT CHANGE. Everything that goes through
-     * WordPress, date_i18n(), number formatting, core's own strings, follows
-     * immediately. The portal's own sentences are still literal English in
-     * these files and will follow when they are wrapped and a translation
-     * exists; the switch is what makes that possible rather than the thing that
-     * completes it.
-     *
-     * @param WP_User $user
-     */
-    private function apply_user_locale( $user ) {
-        $langs = $this->languages();
-        $key   = $this->current_language( $user );
-        if ( 'en' === $key ) {
-            return;
-        }
-        if ( function_exists( 'switch_to_locale' ) ) {
-            switch_to_locale( $langs[ $key ][1] );
-        }
-    }
-
-    /**
-     * The language toggle, in the sidebar footer.
-     *
-     * A REAL FORM, NOT TWO LINKS. It changes something about the account, so it
-     * posts, it carries a nonce, and it redirects back to the page it was on.
-     * The two segments are submit buttons rather than radios plus a Save: a
-     * preference with two values should take one press, and a segmented control
-     * that needs a second control to confirm it is not a toggle.
-     *
-     * NOT FLAGS. A flag names a country and there is no country called Spanish.
-     * The globe says the control is about language and the words say which.
-     */
-    private function render_language_toggle() {
-        $user    = wp_get_current_user();
-        $current = $this->current_language( $user );
-        $back    = $this->current_url();
-        ?>
-        <form method="post" action="<?php echo esc_url( $back ); ?>" class="uc-lang-form">
-            <input type="hidden" name="uc_action" value="set_language" />
-            <input type="hidden" name="uc_return" value="<?php echo esc_attr( $back ); ?>" />
-            <?php wp_nonce_field( 'uc_portal_set_language', 'uc_nonce' ); ?>
-            <span class="uc-lang-label">
-                <?php echo sfaf_icon( 'globe', array( 'size' => '14px' ) ); ?>
-                <span>Language</span>
-            </span>
-            <div class="uc-seg uc-seg-dark uc-lang-seg" role="group" aria-label="Language">
-                <?php foreach ( $this->languages() as $key => $lang ) : ?>
-                    <button type="submit" name="uc_lang" value="<?php echo esc_attr( $key ); ?>"
-                            class="uc-seg-btn<?php echo $current === $key ? ' is-on' : ''; ?>"
-                            <?php echo $current === $key ? ' aria-current="true"' : ''; ?>>
-                        <?php echo esc_html( $lang[0] ); ?>
-                    </button>
-                <?php endforeach; ?>
-            </div>
-        </form>
-        <?php
-    }
-
-    /**
-     * The URL of the screen being viewed, for a form that has to come back to it.
-     *
-     * Built from the portal's own route rather than from REQUEST_URI, so a
-     * query string somebody appended cannot ride along into a redirect.
-     */
-    private function current_url() {
-        $route = (string) get_query_var( 'uc_caladmin_route' );
-        return $this->url( $route );
     }
 
     private function chrome_close() {
@@ -2377,6 +2291,7 @@ class SFAF_Portal {
                 $all = SFAF_Sources::adapters();
                 ?>
                 <div class="uc-card uc-card-muted">
+                    <div class="uc-card-head"><h2>Sources</h2></div>
                     <p class="uc-empty">No third-party sources are connected yet. Connect one under
                     <strong>Settings &rsaquo; Integrations</strong> in the WordPress admin, then
                     &ldquo;Fetch updates&rdquo; will pull its events into the Pending queue.</p>
@@ -2764,6 +2679,9 @@ class SFAF_Portal {
         </form>
 
         <div class="uc-card">
+            <div class="uc-card-head">
+                <h2><?php echo (int) $total; ?> <?php echo esc_html( 1 === (int) $total ? "event" : "events" ); ?></h2>
+            </div>
             <?php $this->events_table( $ids, $user, $sort, $filters ); ?>
             <?php $this->events_pagination( $paged, $pages, $total, $sort, $filters ); ?>
         </div>
@@ -3967,6 +3885,10 @@ class SFAF_Portal {
         </p>
 
         <div class="uc-card">
+            <div class="uc-card-head">
+                <?php // "series" is the same word either way, so no plural test. ?>
+                <h2><?php echo count( $series ); ?> series</h2>
+            </div>
             <?php if ( empty( $series ) ) : ?>
                 <p class="uc-empty">No series yet. Set a repeat on a new event and one is made for it.</p>
             <?php else : ?>
@@ -4295,6 +4217,7 @@ class SFAF_Portal {
             <?php wp_nonce_field( 'uc_portal_save_series', 'uc_nonce' ); ?>
 
             <div class="uc-card">
+                <div class="uc-card-head"><h2>Series details</h2></div>
                 <label class="uc-field">
                     <span class="uc-field-label">Series name</span>
                     <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" required />
@@ -4354,7 +4277,7 @@ class SFAF_Portal {
             ?>
 
             <div class="uc-card uc-card-danger">
-                <h3>Remove this series</h3>
+                <div class="uc-card-head"><h3>Remove this series</h3></div>
                 <p class="uc-hint">
                     What happens to the events in it is a real choice, and one of the answers deletes things, so it
                     is asked on its own screen with the counts in front of you rather than in a one-line dialog.
@@ -4427,6 +4350,7 @@ class SFAF_Portal {
         </div>
 
         <div class="uc-card uc-card-danger">
+            <div class="uc-card-head"><h2>What happens to the events</h2></div>
             <p class="uc-remove-lead">
                 This series holds
                 <strong><?php echo (int) $upcoming; ?> upcoming <?php echo esc_html( 1 === $upcoming ? 'event' : 'events' ); ?></strong>
@@ -5112,8 +5036,8 @@ class SFAF_Portal {
                             </label>
                             <p class="uc-hint">
                                 Left unticked, the new date joins the group, so "update all upcoming occurrences"
-                                reaches it like any other. Tick it for a genuine one-off &mdash; a special session, a
-                                different venue for one week &mdash; that should not be rewritten by a bulk edit.
+                                reaches it like any other. Tick it for a genuine one-off, a special session or a
+                                different venue for one week, that should not be rewritten by a bulk edit.
                             </p>
                         <?php endif; ?>
 
@@ -7251,6 +7175,7 @@ class SFAF_Portal {
         </div>
 
         <div class="uc-card">
+            <div class="uc-card-head"><h2>What this record is</h2></div>
             <p class="uc-hint">
                 People who ticked &ldquo;Receive monthly email updates from SFAF&rdquo; on an RSVP form.
                 Each row is one act of consent, with the moment it was given and the form it came from,
@@ -7272,6 +7197,9 @@ class SFAF_Portal {
         </div>
 
         <div class="uc-card">
+            <div class="uc-card-head">
+                <h2><?php echo count( $rows ); ?> <?php echo esc_html( 1 === count( $rows ) ? "opt-in" : "opt-ins" ); ?></h2>
+            </div>
             <?php if ( empty( $rows ) ) : ?>
                 <p class="uc-empty">No opt-ins recorded<?php echo $search ? ' for that search' : ' yet'; ?>.</p>
             <?php else : ?>
@@ -7446,11 +7374,31 @@ class SFAF_Portal {
                     <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                     <?php wp_nonce_field( 'uc_portal_save_rsvp_settings', 'uc_nonce' ); ?>
                     <?php
-                    // null: every setting this event has, so a setting added to
-                    // rsvp_setting_fields() appears here without this screen
-                    // being told about it.
-                    $this->render_rsvp_settings( $rsvp_ctx, null );
+                    /*
+                     * FOUR SUBSECTIONS, NOT ONE LONG BLOCK.
+                     *
+                     * The editor splits these across two cards, so its headings
+                     * come from the cards. Here all four settings are in one
+                     * card and the block ran top to bottom with nothing saying
+                     * where one subject ended and the next began.
+                     *
+                     * Registrations is claimed by name and given its own
+                     * section; the catch-all takes the remainder, which is the
+                     * notify block (two sections of its own) and Replies. THE
+                     * CATCH-ALL IS STILL LAST AND STILL $only === null, so the
+                     * guarantee that every setting renders exactly once is
+                     * untouched: a setting added to rsvp_setting_fields()
+                     * appears here without this screen being told about it, and
+                     * $skip is what stops these two being drawn twice. Same
+                     * rule as the manager-owned fields since 3.2.0.
+                     */
                     ?>
+                    <div class="uc-notify-section">
+                        <h4 class="uc-notify-subhead">Registrations</h4>
+                        <p class="uc-hint">Whether the form is on the event page, and how many places there are.</p>
+                        <?php $rsvp_placed = $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled', 'capacity' ) ); ?>
+                    </div>
+                    <?php $this->render_rsvp_settings( $rsvp_ctx, null, $rsvp_placed ); ?>
                     <div class="uc-form-actions">
                         <a class="uc-btn" href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>">Edit the whole event</a>
                         <button type="submit" class="uc-btn uc-btn-primary">Save settings</button>
@@ -7559,7 +7507,7 @@ class SFAF_Portal {
                                     echo '<span class="uc-optin-yes" title="Ticked &quot;SFAF news and updates&quot; on this registration">'
                                         . '<span aria-hidden="true">&#10003;</span> <span>Updates</span></span>';
                                 } else {
-                                    echo '<span class="uc-muted">&mdash;</span>';
+                                    echo '<span class="uc-muted">&ndash;</span>';
                                 }
                             ?></td>
                             <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $r->status ) ); ?></span></td>
@@ -7651,8 +7599,11 @@ class SFAF_Portal {
         $this->render_import_queue( $user );
         ?>
 
-        <h2 class="uc-section-title">Submitted for review</h2>
         <div class="uc-card">
+            <div class="uc-card-head">
+                <h2>Submitted for review</h2>
+                <?php if ( ! empty( $ids ) ) : ?><span class="uc-count-badge"><?php echo count( $ids ); ?></span><?php endif; ?>
+            </div>
             <?php if ( empty( $ids ) ) : ?>
                 <p class="uc-empty">Nothing waiting for review.</p>
             <?php else : ?>
@@ -7714,6 +7665,7 @@ class SFAF_Portal {
         }
         ?>
         <div class="uc-card uc-refresh-panel">
+            <div class="uc-card-head"><h2>Imported event</h2></div>
             <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form">
                 <input type="hidden" name="uc_action" value="refresh_source_event" />
                 <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
@@ -7887,6 +7839,7 @@ class SFAF_Portal {
         <div class="uc-page-head"><h1>FAQ Sets</h1></div>
 
         <div class="uc-card">
+            <div class="uc-card-head"><h2>What a set is</h2></div>
             <p class="uc-help">
                 A set is a reusable group of questions and answers. Applying one <strong>copies</strong> its rows onto an event,
                 so editing a set here never changes an event that already used it, and deleting a set never removes questions from anything.
@@ -7896,11 +7849,16 @@ class SFAF_Portal {
 
         <?php if ( empty( $sets ) ) : ?>
             <div class="uc-card">
+                <div class="uc-card-head"><h2>0 sets</h2></div>
                 <p class="uc-empty">No sets yet. Open an event with FAQs you would reuse, and press &ldquo;Save these FAQs as a set&rdquo;.</p>
             </div>
         <?php else : ?>
             <?php foreach ( $sets as $set ) : ?>
                 <div class="uc-card">
+                    <div class="uc-card-head">
+                        <h2><?php echo esc_html( $set['name'] ); ?></h2>
+                        <span class="uc-muted"><?php echo (int) count( $set['rows'] ); ?> <?php echo esc_html( 1 === count( $set['rows'] ) ? 'question' : 'questions' ); ?></span>
+                    </div>
                     <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>" class="uc-form">
                         <input type="hidden" name="uc_action" value="faq_set_save" />
                         <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
@@ -7937,11 +7895,21 @@ class SFAF_Portal {
         $pending   = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING );
         $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
         ?>
-        <h2 class="uc-section-title">
-            Imported, pending review
-            <?php if ( $pending ) : ?><span class="uc-count-badge"><?php echo count( $pending ); ?></span><?php endif; ?>
-        </h2>
+        <?php
+        /*
+         * THE HEADING IS IN THE CARD, NOT FLOATING ABOVE IT. These were <h2
+         * class="uc-section-title"> siblings of the card they named, which is a
+         * second way of heading a card and the reason the treatment looked
+         * partly applied: on this one screen there were cards with a band,
+         * cards with a heading outside them and cards with neither. One
+         * pattern now, everywhere.
+         */
+        ?>
         <div class="uc-card">
+            <div class="uc-card-head">
+                <h2>Imported, pending review</h2>
+                <?php if ( $pending ) : ?><span class="uc-count-badge"><?php echo count( $pending ); ?></span><?php endif; ?>
+            </div>
             <?php if ( empty( $pending ) ) : ?>
                 <p class="uc-empty">Nothing new from connected sources. Use &ldquo;Fetch updates&rdquo; on the dashboard to check again.</p>
             <?php else : ?>
@@ -7950,11 +7918,11 @@ class SFAF_Portal {
         </div>
 
         <?php if ( ! empty( $dismissed ) ) : ?>
-            <h2 class="uc-section-title">
-                Dismissed
-                <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
-            </h2>
             <div class="uc-card">
+                <div class="uc-card-head">
+                    <h2>Dismissed</h2>
+                    <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
+                </div>
                 <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the pending list.</p>
                 <?php $this->import_queue_table( $dismissed, 'dismissed' ); ?>
             </div>

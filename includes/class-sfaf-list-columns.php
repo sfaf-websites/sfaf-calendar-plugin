@@ -41,7 +41,7 @@ class SFAF_List_Columns {
                     $time = get_post_meta( $post_id, '_uc_start_time', true );
                     echo '<strong>' . esc_html( date_i18n( 'M j, Y', $ts ) ) . '</strong>';
                     if ( $time ) {
-                        echo '<br><span class="uc-col-muted">' . esc_html( date( 'g:i A', strtotime( $time ) ) ) . '</span>';
+                        echo '<br><span class="uc-col-muted">' . esc_html( sfaf_ap_time( $time ) ) . '</span>';
                     }
                 } else {
                     echo '<span class="uc-col-muted">None</span>';

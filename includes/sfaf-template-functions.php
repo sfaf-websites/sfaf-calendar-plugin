@@ -124,10 +124,6 @@ function sfaf_icon_paths() {
         // what says "this opened".
         'chevron'   => '<path d="m9 5 7 7-7 7"/>',
 
-        // The language toggle's mark. A globe, never a flag: a flag names a
-        // country and there is no country called Spanish.
-        'globe'     => '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>',
-
         // Platform marks — solid, see note above.
         'facebook'  => '<path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/>',
         'linkedin'  => '<path d="M7.1 20H4.2V9.5h2.9zM5.65 8.2A1.7 1.7 0 1 1 5.65 4.8a1.7 1.7 0 0 1 0 3.4zM20 20h-2.9v-5.1c0-1.2 0-2.8-1.7-2.8s-2 1.35-2 2.7V20H10.5V9.5h2.8v1.45h.05A3.05 3.05 0 0 1 16.1 9.3c3 0 3.9 2 3.9 4.5z"/>',
@@ -665,8 +661,17 @@ function sfaf_rsvp_block( $post_id ) {
  *                         reminder, a per-recipient cancel_url.
  */
 function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
+    /*
+     * AP STYLE, NOT THE SITE'S DATE FORMAT SETTING.
+     *
+     * This was date_i18n( get_option( 'date_format' ) ), so what a registrant
+     * read in their reminder email depended on a WordPress setting that nobody
+     * involved in the brand had ever looked at, and any site whose format
+     * carried an ordinal put "August 4th" in front of them. The email is a
+     * public surface and takes the same rules the cards do.
+     */
     $date     = get_post_meta( $event_id, '_uc_event_date', true );
-    $date_fmt = $date ? date_i18n( get_option( 'date_format' ), strtotime( $date ) ) : '';
+    $date_fmt = sfaf_ap_date( $date, 'full' );
 
     $organizers = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'names' ) );
     $organizer  = ( ! is_wp_error( $organizers ) && ! empty( $organizers ) ) ? implode( ', ', $organizers ) : '';
@@ -674,16 +679,11 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     // Start and end as one readable phrase. An event with no end time says just
     // the start rather than inventing one, and an event with neither says
     // nothing at all instead of printing an empty dash.
-    $start_raw = (string) get_post_meta( $event_id, '_uc_start_time', true );
-    $end_raw   = (string) get_post_meta( $event_id, '_uc_end_time', true );
-    $fmt       = get_option( 'time_format' ) ? get_option( 'time_format' ) : 'g:i a';
-    $start_fmt = $start_raw ? date_i18n( $fmt, strtotime( $start_raw ) ) : '';
-    $end_fmt   = $end_raw ? date_i18n( $fmt, strtotime( $end_raw ) ) : '';
-    if ( $start_fmt && $end_fmt ) {
-        $time_range = $start_fmt . ' to ' . $end_fmt;
-    } else {
-        $time_range = $start_fmt;
-    }
+    $start_raw  = (string) get_post_meta( $event_id, '_uc_start_time', true );
+    $end_raw    = (string) get_post_meta( $event_id, '_uc_end_time', true );
+    $start_fmt  = sfaf_ap_time( $start_raw );
+    $end_fmt    = sfaf_ap_time( $end_raw );
+    $time_range = sfaf_ap_time_range( $start_raw, $end_raw );
 
     // The cancel link is a whole sentence, not a bare URL, so a template can
     // drop it in without having to word it — and it collapses to nothing for a
@@ -842,9 +842,9 @@ function sfaf_series_list_html( $post_id ) {
                 $ts = $d ? strtotime( $d ) : false; ?>
                 <li>
                     <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
-                        <span class="uc-series-date"><?php echo $ts ? esc_html( date_i18n( 'M j', $ts ) ) : ''; ?></span>
+                        <span class="uc-series-date"><?php echo $ts ? esc_html( sfaf_ap_date( $ts, 'short' ) ) : ''; ?></span>
                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
-                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( date( 'g:i A', strtotime( $st ) ) ); ?></span><?php endif; ?>
+                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?>
                     </a>
                 </li>
             <?php endforeach; ?>
@@ -1907,6 +1907,178 @@ function sfaf_category_icon_key( $name ) {
  * @param string $cat_name Category name, '' when uncategorised.
  * @return string
  */
+/* =============================================================================
+ * DATES AND TIMES, AP STYLE. ONE IMPLEMENTATION.
+ *
+ * The brand guide (v3.0, p.21) follows the AP Stylebook and calls out four
+ * rules for times and one for dates. Every one of them was being broken, in
+ * eleven separate places, because each place formatted its own:
+ *
+ *   ORDINALS.     "January 10, 2024", never "January 10th, 2024".
+ *   CASE.         Lowercase am and pm.
+ *   SPACING.      One space between the number and the meridiem: "10:30 pm".
+ *   ":00".        Dropped, "especially in time ranges".
+ *   RANGES.       An en dash, and if the meridiem is the same at both ends the
+ *                 first mention is omitted: "10-10:30 am".
+ *
+ * WHY THESE ARE FUNCTIONS AND NOT A FORMAT STRING REPEATED ELEVEN TIMES. The
+ * ":00" and shared-meridiem rules are decisions about a PAIR of times, which no
+ * date() format string can express; the moment one has to be written out by
+ * hand, eleven call sites means eleven chances to write it differently, which
+ * is precisely what had happened. "6:00 PM to 7:30 PM" was on the cards,
+ * "6:00pm" in the month grid and "6:00 PM" in the sidebar, all from the same
+ * two meta fields. Same rule as the shared field lists: one list, one render.
+ *
+ * AN EN DASH IS NOT AN EM DASH. The guide asks for the first and discourages
+ * the second; U+2013 is what a range takes and is used below.
+ *
+ * WHAT IS DELIBERATELY NOT DONE HERE: AP also abbreviates Jan., Aug., Sept.,
+ * Oct., Nov. and Dec. with a full stop when they carry a specific date. The
+ * guide does not call that out, and a full stop inside a 44px date badge on a
+ * card reads as a typo rather than as style, so the compact badges stay
+ * "Aug 4". Said here rather than left for somebody to find.
+ * ========================================================================== */
+
+/**
+ * One clock time, AP style. "6 pm", "6:30 pm", or '' when there is none.
+ *
+ * @param string $raw       An H:i string out of post meta, or ''.
+ * @param bool   $meridiem  false drops the am/pm, for the open end of a range.
+ * @return string
+ */
+function sfaf_ap_time( $raw, $meridiem = true ) {
+    $raw = trim( (string) $raw );
+    if ( '' === $raw ) {
+        return '';
+    }
+    $ts = strtotime( $raw );
+    if ( false === $ts ) {
+        return '';
+    }
+    // ":00" dropped: "6 pm", not "6:00 pm".
+    $clock = ( '00' === date_i18n( 'i', $ts ) ) ? date_i18n( 'g', $ts ) : date_i18n( 'g:i', $ts );
+    if ( ! $meridiem ) {
+        return $clock;
+    }
+    return $clock . ' ' . strtolower( date_i18n( 'A', $ts ) );
+}
+
+/**
+ * A start and end as one phrase, AP style.
+ *
+ *   6 pm and 7:30 pm   ->  "6-7:30 pm"     (same meridiem, first one omitted)
+ *   11 am and 1 pm     ->  "11 am-1 pm"    (different, so both are said)
+ *   6 pm and nothing   ->  "6 pm"
+ *
+ * @param string $start
+ * @param string $end
+ * @return string
+ */
+function sfaf_ap_time_range( $start, $end = '' ) {
+    $start = trim( (string) $start );
+    $end   = trim( (string) $end );
+    if ( '' === $start ) {
+        return '';
+    }
+    if ( '' === $end ) {
+        return sfaf_ap_time( $start );
+    }
+
+    $sts = strtotime( $start );
+    $ets = strtotime( $end );
+    if ( false === $sts || false === $ets ) {
+        return sfaf_ap_time( $start );
+    }
+
+    $dash = "\xE2\x80\x93"; // en dash, U+2013
+    $same = ( date_i18n( 'A', $sts ) === date_i18n( 'A', $ets ) );
+
+    // The rule is "it's OK to omit the FIRST mention", so the meridiem is
+    // dropped from the start and kept on the end.
+    return sfaf_ap_time( $start, ! $same ) . $dash . sfaf_ap_time( $end );
+}
+
+/**
+ * A date, AP style. No ordinal, ever.
+ *
+ * @param int|string $when  Timestamp, or a Y-m-d string.
+ * @param string     $style 'full' | 'day' | 'short' | 'weekday'
+ * @return string
+ */
+function sfaf_ap_date( $when, $style = 'full' ) {
+    if ( is_string( $when ) ) {
+        // Midday, so a date-only string cannot slip a day either way when the
+        // site's timezone is applied to midnight.
+        $when = ( '' !== trim( $when ) ) ? strtotime( trim( $when ) . ' 12:00:00' ) : false;
+    }
+    if ( ! $when ) {
+        return '';
+    }
+    $formats = array(
+        'full'    => 'l, F j, Y',
+        'day'     => 'F j',
+        'short'   => 'M j',
+        'weekday' => 'D',
+    );
+    $fmt = isset( $formats[ $style ] ) ? $formats[ $style ] : $formats['full'];
+    return date_i18n( $fmt, (int) $when );
+}
+
+/**
+ * A date range, AP style, with an en dash. "1-31 Aug".
+ *
+ * @param string $start Y-m-d
+ * @param string $end   Y-m-d
+ * @return string
+ */
+function sfaf_ap_date_range( $start, $end ) {
+    $s = strtotime( trim( (string) $start ) . ' 12:00:00' );
+    $e = strtotime( trim( (string) $end ) . ' 12:00:00' );
+    if ( ! $s || ! $e ) {
+        return '';
+    }
+    $dash = "\xE2\x80\x93";
+    // Same month: the month is said once, at the end. "1-31 Aug".
+    if ( date_i18n( 'Y-m', $s ) === date_i18n( 'Y-m', $e ) ) {
+        return date_i18n( 'j', $s ) . $dash . date_i18n( 'j M', $e );
+    }
+    return date_i18n( 'j M', $s ) . $dash . date_i18n( 'j M', $e );
+}
+
+/**
+ * The small square thumbnail used by the sidebar rows.
+ *
+ * The event's image, or the branded category tile at a size where a word will
+ * not fit. The full tile (sfaf_list_card_media) carries the category name as
+ * visible text; at 44px there is room for the icon and nothing else, so the
+ * name moves to the accessible name instead of being dropped.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_thumb_media( $post_id ) {
+    $url = sfaf_event_image_url( $post_id );
+    if ( '' !== $url ) {
+        // aria-hidden and an empty alt: the title is right beside it and is the
+        // same link, so a screen reader announcing the picture as well would
+        // read the event twice.
+        return '<img class="uc-thumb-img" src="' . esc_url( $url ) . '" alt="" aria-hidden="true"'
+            . ' loading="lazy" decoding="async" />';
+    }
+
+    $primary  = sfaf_event_primary_category( $post_id );
+    $name     = $primary ? $primary->name : '';
+    $icon_key = $primary ? SFAF_Categories::icon( (int) $primary->term_id, $primary->name )
+                         : sfaf_category_icon_key( $name );
+    $color    = sfaf_event_category_color( $post_id );
+    $shades   = sfaf_category_shades( $color );
+
+    return '<span class="uc-thumb-ph" aria-hidden="true"'
+        . ' style="--uc-cat-media: ' . esc_attr( $shades['media'] ) . '; --uc-cat-ink: ' . esc_attr( $shades['ink'] ) . ';">'
+        . sfaf_icon( $icon_key, array( 'size' => '20px' ) )
+        . '</span>';
+}
+
 function sfaf_list_card_media( $post_id, $cat_name = '' ) {
     $url = sfaf_event_image_url( $post_id );
     if ( '' !== $url ) {

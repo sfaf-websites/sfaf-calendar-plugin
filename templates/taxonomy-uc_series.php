@@ -75,7 +75,7 @@ $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
                     <?php if ( empty( $upcoming ) ) : ?>
                         <?php // Not an error state. A series with no dates yet is
                               // a series somebody has set up and is about to fill. ?>
-                        <p class="uc-empty">No dates scheduled at the moment. Check back &mdash; dates are added to this series as they are confirmed.</p>
+                        <p class="uc-empty">No dates scheduled at the moment. Check back, because dates are added to this series as they are confirmed.</p>
                     <?php else : ?>
                         <ul class="uc-series-list">
                             <?php foreach ( $upcoming as $eid ) :
@@ -84,9 +84,9 @@ $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
                                 $ts = $d ? strtotime( $d ) : false; ?>
                                 <li>
                                     <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
-                                        <span class="uc-series-date"><?php echo $ts ? esc_html( date_i18n( 'M j', $ts ) ) : ''; ?></span>
+                                        <span class="uc-series-date"><?php echo $ts ? esc_html( sfaf_ap_date( $ts, 'short' ) ) : ''; ?></span>
                                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
-                                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( date( 'g:i A', strtotime( $st ) ) ); ?></span><?php endif; ?>
+                                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?>
                                     </a>
                                 </li>
                             <?php endforeach; ?>

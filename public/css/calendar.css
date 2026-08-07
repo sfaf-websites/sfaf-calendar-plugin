@@ -1,5 +1,31 @@
 /* SFAF Calendar Frontend Styles */
 
+/* ---------------------------------------------------------------------------
+   THE TWO WEB TYPEFACES, LOADED RATHER THAN HOPED FOR.
+
+   The brand guide (v3.0, p.10) is specific: Montserrat for ALL headline levels
+   on sfaf.org, Merriweather reserved for body copy. Every rule in this file
+   asked for them and nothing anywhere loaded them. The note that used to sit
+   here said "the host theme already loads these, the plugin only references
+   them", which is an assumption about ONE host, on a stylesheet whose entire
+   purpose is to be adopted by any host. On the resources site, where the single
+   event pages actually live, and inside an embed on a third-party page, both
+   families fell straight through to the fallback: Segoe UI for every heading
+   and Georgia for every paragraph of body copy. The brand was correct in the
+   source and absent on screen.
+
+   AN @import RATHER THAN AN ENQUEUE, and that is the point of putting it here.
+   embed.js adopts this stylesheet by URL from another origin and has no way to
+   enqueue anything; a wp_enqueue_style would reach the resources site and never
+   reach an embed. One line here covers the calendar site, sfaf.org and any
+   third-party page, because all three load this file.
+
+   display=swap so text is readable in the fallback immediately rather than
+   invisible while the files arrive. A host that already serves these pays for
+   one revalidation of a cached URL, not a second download.
+   ------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Merriweather:wght@300;400;700&display=swap');
+
 :root {
     /* Approved SFAF brand palette (brand guide v3.0, p.9). */
     --uc-teal: #16BECF;         /* Pantone 7710 UP — fills, borders, accents */
@@ -17,6 +43,37 @@
     --uc-text: #1A1D21;
     --uc-muted: #9CA3AF;
     --uc-secondary: #6B7280;
+
+    /* -----------------------------------------------------------------------
+       LIFT: THE CARD SEPARATES ITSELF, BECAUSE IT CANNOT SEPARATE THE PAGE.
+
+       A white card on the near-white section sfaf.org puts it in, divided from
+       the next one by a #E2E5EA hairline, is very close to no card at all. The
+       embed does not control its host's background and never will, so the
+       separation has to be a property of the card.
+
+       TWO SHADOWS, NOT ONE. The 1px one is the contact edge and is what stops
+       the card looking like it is floating unattached; the 20px one is the
+       ambient spread that does the actual lifting. A single large shadow at an
+       opacity high enough to be seen reads as a drop shadow from 2009, and the
+       brand guide is explicit that less is more (p.17). At 4% and 7% neither
+       is visible as a shadow: what is visible is that the card has an edge.
+
+       ON A DARK HOST SECTION IT CONTRIBUTES NOTHING, AND THAT IS FINE. These
+       are black-based shadows, so against a dark band they are invisible, and
+       so is the light hairline. What separates the card there is the card
+       itself: a white fill on a dark background is the highest-contrast edge
+       there is, and it needs no help. So the treatment adds separation exactly
+       where separation is missing and stands down where it is not. Nothing is
+       keyed to the host's background colour, which the embed cannot read.
+
+       --uc-border-strong is the hairline one step up from --uc-border. It is
+       the card's OWN boundary rather than a divider between two things, which
+       is the same distinction portal.css draws for form controls.
+       -------------------------------------------------------------------- */
+    --uc-border-strong: #D7DBE1;
+    --uc-lift: 0 1px 2px rgba(16, 20, 24, 0.04), 0 6px 20px rgba(16, 20, 24, 0.07);
+    --uc-lift-hover: 0 2px 4px rgba(16, 20, 24, 0.05), 0 14px 34px rgba(16, 20, 24, 0.11);
 
     /* Web brand typefaces (brand guide v3.0, p.10): Montserrat for headings and
        UI chrome, Merriweather reserved for body prose. The host theme already
@@ -248,15 +305,24 @@
  * gradient underneath it to stay readable. Nothing sits on the image now, so
  * there is nothing to rescue: the gradient is gone rather than reduced.
  * ======================================================================== */
-.uc-calendar .uc-event-card { display: block; padding: 18px; background: #fff; border-radius: 14px; border: 1px solid var(--uc-border); position: relative; overflow: hidden; transition: box-shadow 0.18s ease, border-color 0.18s ease; }
+/* The lift is on the card, never on the page. See --uc-lift for why, and for
+   what it does on a dark host section. */
+.uc-calendar .uc-event-card { display: block; padding: 18px; background: #fff; border-radius: 14px;
+    border: 1px solid var(--uc-border-strong); box-shadow: var(--uc-lift);
+    position: relative; overflow: hidden; transition: box-shadow 0.18s ease, border-color 0.18s ease; }
 
 /* HOVER MOVES NOTHING. The old card lifted itself 1px, which is a paint
    change on one card but a moving target for the pointer that is on it. The
    only hover effects on this card are colour and shadow; the single thing
    that changes size is the arrow inside the button, and it grows into the
    footer's own free space. No card ever changes row height, and no card ever
-   shifts its neighbours. */
-.uc-calendar .uc-event-card:hover { box-shadow: 0 6px 22px rgba(0,0,0,0.07); border-color: #D5D9E0; transform: none; }
+   shifts its neighbours.
+
+   THE DEEPER SHADOW IS THE SECOND HALF OF A SENTENCE the View event button
+   starts: the card says "this responds to you", the button says what to. A
+   card that only ever changed its border on hover made the button look like
+   the only live thing on it. */
+.uc-calendar .uc-event-card:hover { box-shadow: var(--uc-lift-hover); border-color: #C6CBD3; transform: none; }
 
 /* --- Header row: who and when ------------------------------------------- */
 .uc-calendar .uc-lc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -337,7 +403,24 @@
 /* --- Meta rows: icon then text, stacked ---------------------------------- */
 .uc-calendar .uc-event-card .uc-card-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--uc-secondary); }
 .uc-calendar .uc-event-card .uc-meta-item { display: flex; align-items: flex-start; gap: 7px; white-space: normal; font-weight: 400; color: var(--uc-secondary); }
-.uc-calendar .uc-event-card .uc-meta-item > .sfaf-icon { margin-top: 2px; color: var(--uc-cat-ink, var(--uc-teal-text)); }
+/* ---------------------------------------------------------------------------
+   THE CLOCK AND THE PIN ARE NEUTRAL, NOT THE CATEGORY'S COLOUR.
+
+   THIS IS THE KALEIDOSCOPE THE GUIDE WARNS ABOUT (p.18), AND IT WAS REAL. The
+   category hue was landing in THREE places on every card: the chip, the
+   placeholder tile and these two meta icons. On a twenty-card list drawing on
+   ten approved colours, that is up to sixty coloured elements and no neutral
+   field left for any of them to read against, which is exactly the effect the
+   guide describes as distracting and unprofessional. Its remedy is a neutral
+   base with one or two accents.
+
+   The colour that CARRIES INFORMATION stays: the chip names the category in
+   words and colours them, and the placeholder tile is the category's own
+   picture. What goes is the colour that carried none. A clock is a clock in
+   every category, and tinting it said nothing that the chip two lines above
+   had not already said in words.
+   ------------------------------------------------------------------------- */
+.uc-calendar .uc-event-card .uc-meta-item > .sfaf-icon { margin-top: 2px; color: var(--uc-secondary); }
 
 /* The series row names the series, so the link makes sense read out of
    context. "see all dates" is the promise; the name is what it is about. */
@@ -529,7 +612,10 @@
 .uc-no-events { padding: 40px; text-align: center; color: var(--uc-muted); }
 
 /* Upcoming Events Widget */
-.uc-upcoming-widget { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+/* Montserrat, like every other surface. This said -apple-system, which is a
+   platform UI stack and not a brand typeface, and being further down the file
+   than the scoped reset at the top it won. 3.17.0. */
+.uc-upcoming-widget { font-family: var(--uc-font-heading); }
 .uc-upcoming-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--uc-teal); }
 
 .uc-upcoming-list { display: flex; flex-direction: column; gap: 8px; }
@@ -685,7 +771,11 @@
    controls that are links there but buttons here.
    --------------------------------------------------------------------------- */
 
-.sfaf-calendar-embed { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+/* The embed shell: the loading state, the failure box and the pagination
+   wrapper all sit directly in here rather than inside .uc-calendar, so a
+   platform UI stack on this element meant the first thing a visitor saw on a
+   slow connection was in the wrong typeface. 3.17.0. */
+.sfaf-calendar-embed { font-family: var(--uc-font-heading); }
 .sfaf-embed-loading { padding: 24px 0; color: var(--uc-secondary); font-size: 14px; }
 .sfaf-embed-error { padding: 20px; border: 1px solid var(--uc-border); border-radius: 12px; font-size: 14px; line-height: 1.5; color: var(--uc-text); }
 .sfaf-embed-error p { margin: 0 0 8px; }
@@ -803,20 +893,52 @@
 /* Day panel: hidden on desktop, where the events are already in the cells. */
 .uc-month-day-panel { display: none; }
 
-/* ---------- Sidebar ---------- */
-.uc-sidebar { font-family: var(--uc-font-heading); max-width: 380px; }
-.uc-sidebar-list { display: flex; flex-direction: column; gap: 2px; }
-.uc-sidebar-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 8px; border-radius: 8px;
-    border-left: 3px solid var(--cat-color, var(--uc-teal)); text-decoration: none; color: inherit; background: #fff; }
-.uc-sidebar-row:hover { background: var(--uc-bg); }
-.uc-sidebar-date { flex: 0 0 38px; text-align: center; }
-.uc-sidebar-mon { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--uc-teal-text); }
-.uc-sidebar-day { display: block; font-size: 19px; font-weight: 800; line-height: 1.05; color: var(--uc-text); }
-.uc-sidebar-body { min-width: 0; }
-.uc-sidebar-title { display: block; font-size: 13px; font-weight: 700; color: var(--uc-text); line-height: 1.35; }
-.uc-sidebar-time { display: block; font-size: 12px; color: var(--uc-secondary); margin-top: 2px; }
-.uc-sidebar-empty { margin: 0; padding: 16px 8px; font-size: 13px; color: var(--uc-secondary); }
-.uc-sidebar-all { display: inline-block; margin-top: 10px; padding: 8px 2px; font-size: 13px; font-weight: 700; color: var(--uc-teal-text); text-decoration: none; }
+/* ---------------------------------------------------------------------------
+   SIDEBAR MODE: a thumbnail, a title, and one quiet line underneath.
+
+   THE ACCENT BARS ARE GONE AND NOTHING REPLACES THEM. Every row wore a 3px
+   left border in its own category colour. In the placement this mode is for,
+   embedded beside a programme or on a series page, every event in the list is
+   the same programme, so ten colours were saying one thing: decoration, and
+   exactly the kaleidoscope the brand guide warns against (p.18). The category
+   signal now lives in the thumbnail, where it is already doing work.
+
+   CONTRAST IS MADE WITH WEIGHT AND SIZE, NOT WITH RULES OR COLOUR, which is
+   what the guide asks for (p.17). Title 14/600 in the text colour; the detail
+   line 12.5/400 in the secondary grey. One hairline between rows and nothing
+   else: no stripes, no left borders, no boxes per row.
+
+   THE LIST IS STATIC. No auto-advance, no scrolling loop, no carousel.
+   ------------------------------------------------------------------------- */
+.uc-sidebar { font-family: var(--uc-font-heading); max-width: 380px;
+    background: #fff; border: 1px solid var(--uc-border-strong);
+    border-radius: 14px; padding: 6px 14px 14px;
+    box-shadow: var(--uc-lift); }
+.uc-sidebar-list { display: flex; flex-direction: column; }
+.uc-sidebar-row { display: flex; gap: 12px; align-items: center;
+    padding: 12px 0; border-top: 1px solid var(--uc-border);
+    text-decoration: none; color: inherit; background: none; }
+.uc-sidebar-row:first-child { border-top: 0; }
+/* The hover is a tint pulled out to the padding edge, so the row highlights
+   full width without a box being drawn around it. */
+.uc-sidebar-row:hover { background: var(--uc-bg); box-shadow: -14px 0 0 var(--uc-bg), 14px 0 0 var(--uc-bg); }
+.uc-sidebar-row:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; border-radius: 6px; }
+
+/* The rounded square. 44px is the smallest an image reads at, and the same box
+   holds the category tile so a list of half-imported events stays a straight
+   column rather than alternating shapes. */
+.uc-sidebar-thumb { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 10px;
+    overflow: hidden; background: var(--uc-bg); display: block; }
+.uc-thumb-img { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: 0; }
+.uc-thumb-ph { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+    background: var(--uc-cat-media, #D5F3F6); color: var(--uc-cat-ink, #0C666F); }
+
+.uc-sidebar-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.uc-sidebar-title { display: block; font-size: 14px; font-weight: 600; color: var(--uc-text); line-height: 1.35; }
+.uc-sidebar-when { display: block; font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); line-height: 1.4; }
+.uc-sidebar-empty { margin: 0; padding: 16px 0; font-size: 13px; color: var(--uc-secondary); }
+.uc-sidebar-all { display: inline-block; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--uc-border);
+    width: 100%; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); text-decoration: none; }
 .uc-sidebar-all:hover { text-decoration: underline; }
 
 /* ---------- Mobile: the Outlook pattern ----------

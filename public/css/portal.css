@@ -251,12 +251,9 @@ body.uc-portal {
     background: var(--uc-primary); color: var(--sfaf-darkgray);
     font-size: 12px; font-weight: 700; line-height: 1.5; text-align: center; }
 
-/* ---------- Sidebar footer: who is signed in, and in which language ---------- */
+/* ---------- Sidebar footer: who is signed in ---------- */
 .uc-portal-foot { padding: 14px 14px 16px; border-top: 1px solid rgba(255,255,255,0.10);
     display: flex; flex-direction: column; gap: 14px; }
-.uc-lang-form { display: flex; flex-direction: column; gap: 7px; margin: 0; }
-.uc-lang-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
-    letter-spacing: 0.06em; text-transform: uppercase; color: #9EA1A3; }
 .uc-portal-me { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .uc-portal-me-name { font-size: 13.5px; font-weight: 600; color: #fff;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -269,19 +266,33 @@ body.uc-portal {
 .uc-portal .uc-portal-signout:hover { color: #fff; }
 .uc-portal-signout:focus-visible { outline: 2px solid var(--sfaf-teal); outline-offset: 2px; border-radius: 4px; }
 
-/* THE SEGMENTED CONTROL, ON DARK. Same shape as the recurrence switch: one
-   boundary, one filled segment, the rest transparent. The segments are submit
-   buttons rather than radios because the preference takes effect on the press;
-   there is no Save to wait for. */
-.uc-seg-dark { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.04); }
-.uc-portal .uc-seg-btn { flex: 1 1 0; padding: 7px 10px; border: 0; border-left: 1px solid rgba(255,255,255,0.16);
-    background: none; color: var(--p-sidebar-text); font-family: inherit; font-size: 12.5px;
-    font-weight: 600; line-height: 1.3; cursor: pointer; white-space: nowrap; border-radius: 0; }
-.uc-portal .uc-seg-btn:first-child { border-left: 0; }
-.uc-portal .uc-seg-btn:hover { background: rgba(255,255,255,0.10); color: #fff; }
-.uc-portal .uc-seg-btn.is-on { background: var(--sfaf-teal); color: var(--sfaf-darkgray); }
-.uc-portal .uc-seg-btn:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
-.uc-lang-seg { display: flex; width: 100%; }
+/* ---------------------------------------------------------------------------
+   WEGLOT'S LANGUAGE DROPDOWN, HIDDEN ON THESE SCREENS AND ONLY ON THESE.
+
+   HIDING, NOT DISABLING. Weglot 5.4 is a separate plugin and its switcher is
+   appended after </html>, which every browser then reparents into <body>, so
+   it lands inside body.uc-portal and floats over the sidebar. It is not ours
+   to remove and nothing here touches how Weglot runs: this is display: none on
+   our own screens, and every public page keeps its switcher exactly as it is.
+
+   THIS IS ALSO WHAT 3.16.0 SHOULD HAVE DONE. That release read "tidy the
+   English/Espanol control" as a reason to build a language toggle the plugin
+   had never had. The control was always Weglot's.
+
+   The attribute and class list is Weglot's own switcher markup. The
+   [class*="weglot"] catch is deliberate and safe: no class in this plugin
+   contains that string, so it can only ever match theirs, and it survives them
+   renaming a wrapper.
+   ------------------------------------------------------------------------- */
+body.uc-portal aside.country-selector,
+body.uc-portal .country-selector,
+body.uc-portal .weglot-container,
+body.uc-portal .wg-drop,
+body.uc-portal .wgcurrent,
+body.uc-portal #weglot_here,
+body.uc-portal [class*="weglot"],
+body.uc-portal [id*="weglot"],
+body.uc-portal [data-wg-hidden] { display: none !important; }
 
 .uc-portal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .uc-portal-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; background: var(--p-panel); border-bottom: 1px solid var(--p-border); position: sticky; top: 0; z-index: 20; }
@@ -480,7 +491,40 @@ body.uc-portal {
 .uc-card-head { display: flex; align-items: center; justify-content: space-between;
     gap: 12px; flex-wrap: wrap; margin: -20px -20px 16px; padding: 11px 20px;
     background: var(--uc-band); border-bottom: 1px solid var(--p-border); }
-.uc-card-head h2 { font-size: 14px; }
+.uc-card-head h2, .uc-card-head h3 { font-size: 14px; }
+
+/* ---------------------------------------------------------------------------
+   A HEADING AT THE TOP OF A CARD **IS** THE CARD'S HEADING, whether or not
+   somebody wrapped it in a .uc-card-head.
+
+   THE 3.14.0 TREATMENT WAS BEING APPLIED PER SCREEN, WHICH IS WHY IT DRIFTED.
+   The band was a thing you had to remember to add, so on the series screen the
+   Schedule card had one and the details card immediately above it did not, and
+   the "Remove this series" card had a bare <h3> that took the generic subhead
+   style instead. Sixteen of thirty-nine cards in caladmin were in that state.
+   That is the same structural fault as the 3.16.0 control sweep: a rule about
+   a CONTAINER somebody has to opt into, rather than a rule about what a thing
+   is.
+
+   So the band now follows from being the first element of a card. A card
+   cannot be built without it, and a heading cannot be styled two ways
+   depending on which screen it is on. .uc-card-head is still there and still
+   preferred, because it is the only one that can also hold a count or a
+   status on the right of the band; this is what happens when it is absent.
+   ------------------------------------------------------------------------- */
+.uc-card > h2:first-child,
+.uc-card > h3:first-child {
+    font-family: var(--uc-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--sfaf-darkgray);
+    margin: -20px -20px 16px;
+    padding: 11px 20px;
+    background: var(--uc-band);
+    border-bottom: 1px solid var(--p-border);
+}
 .uc-empty { color: var(--p-muted); padding: 24px; text-align: center; }
 
 .uc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -603,6 +647,21 @@ body.uc-portal {
 .uc-side-box { background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 10px; padding: 14px; }
 .uc-side-box h3 { margin-top: 0; }
 .uc-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--p-border); }
+
+/* ---------------------------------------------------------------------------
+   A SAVE BUTTON NEEDS AIR UNDER IT, NOT JUST OVER IT.
+
+   On the series editor the Save Series row had 22px above it and nothing
+   below, and the very next thing on the page is the Schedule card. So the most
+   consequential control on the screen sat a few pixels off an unrelated
+   section, which reads as though the button belongs to what is under it. The
+   form's actions are the end of the form and the gap has to say so.
+
+   36px, not the cards' own 20px: this is a boundary between a form and the
+   next thing, which is a bigger break than the one between two cards.
+   ------------------------------------------------------------------------- */
+.uc-form > .uc-form-actions:last-child,
+form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
 /* ---------- Page sections ----------
    A heading, a sentence saying what the section is for, and a rule. Users &
@@ -801,9 +860,32 @@ body.uc-portal {
    NOTIFICATIONS: three questions, in the order they happen.
    ------------------------------------------------------------------------- */
 .uc-notify-block { display: flex; flex-direction: column; gap: 20px; }
-.uc-notify-section { display: flex; flex-direction: column; gap: 8px;
-    padding-top: 16px; border-top: 1px solid var(--p-border); }
-.uc-notify-section:first-child { padding-top: 0; border-top: 0; }
+/* ---------------------------------------------------------------------------
+   THE THREE SUBSECTIONS, READING AS THREE THINGS.
+
+   "When somebody registers", "The morning-of reminder" and "Replies" answer
+   three different questions and were running as one long block: 16px of
+   padding and a hairline between them, with headings that were the right size
+   in the scale but had no space around them to act on it. On the registrations
+   screen, where all three are in a single card with no other structure, it was
+   one column of controls from top to bottom.
+
+   SPACE IS HALF THE SIGNAL, which is the same thing the type scale says about
+   the subhead level: a heading with air over it reads as starting something.
+   28px above the rule and 22px below it, so each subhead has a clear band of
+   nothing before it. The rule itself stays a hairline rather than getting
+   heavier, because the brand guide is explicit that rules and boxes are what
+   clutter a layout (p.17), and the spacing is doing the work.
+   ------------------------------------------------------------------------- */
+.uc-notify-section { display: flex; flex-direction: column; gap: 10px;
+    margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--p-border); }
+.uc-notify-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+/* The subhead leads its section, so it takes no space of its own: the section
+   above it already supplies the break. */
+.uc-portal .uc-notify-section > .uc-notify-subhead { margin: 0; }
+/* The line under a subhead explains it and belongs to it, so it sits tight
+   under the heading rather than at the section's own gap. */
+.uc-portal .uc-notify-section > .uc-notify-subhead + .uc-hint { margin-top: -4px; }
 
 /* THE CHOSEN RECIPIENTS, AS CHIPS, under the picker. The same shape as the
    address pills below them, so the card reads one way throughout: a list is
@@ -1004,27 +1086,35 @@ body.uc-portal {
 /* ---------------------------------------------------------------------------
    ENTRANCE.
 
-   NOTHING HERE APPLIES UNTIL JAVASCRIPT SAYS SO. Every rule is behind a class
-   that portal.js adds, and the animations use `both` fill so the hidden state
-   comes from the animation rather than from a base rule. That ordering is the
-   whole safety argument: with the script blocked, broken or simply slow, the
-   page is a normal, finished, visible page. There is no state in which content
-   is invisible waiting for something to reveal it.
+   EVERYTHING HANGS OFF html.uc-anim, WHICH IS SET IN THE HEAD, BEFORE THE
+   FIRST PAINT. See the inline script in SFAF_Portal::head() for why it is
+   there and not in portal.js. The short version: in 3.16.0 these classes were
+   added on DOMContentLoaded, which is after the page has already painted
+   itself complete, so the "entrance" was really a flicker back to zero and up
+   again; and the call that added them was last in a chain of nineteen
+   initialisers, any one of which could take it out by throwing.
 
-   TRANSFORM AND OPACITY ONLY. No height, no margin, no top. Both are composited
-   and neither causes layout, so nothing on the page moves while a card settles
-  , which is the actual complaint about entrance animations, not their length.
+   NO SCRIPT IS INVOLVED PAST THAT POINT. The stagger is :nth-child, not a
+   custom property written by JavaScript, so once the class is on <html> the
+   whole thing is CSS and nothing in portal.js can break it.
 
-   THE NAV RUNS ONCE PER SESSION, not once per page. Every screen in caladmin is
-   a full page load, so an unconditional nav animation would replay on every
-   click and turn a sidebar into a slot machine. portal.js keeps the flag in
-   sessionStorage; see initEntrance().
+   NOTHING IS HIDDEN BY A BASE RULE. The hidden state lives in the animation's
+   `from` with `both` fill, so with scripting off html.uc-anim never appears,
+   no animation applies, and the page is a normal finished visible page. There
+   is no arrangement in which content waits invisibly to be revealed.
+
+   TRANSFORM AND OPACITY ONLY. No height, no margin, no top. Both are
+   composited and neither causes layout, so nothing on the page moves while a
+   card settles, which is the actual complaint about entrance animations rather
+   than their length.
    ------------------------------------------------------------------------- */
 @keyframes uc-rise { from { opacity: 0; transform: translate3d(0, 8px, 0); } to { opacity: 1; transform: none; } }
 @keyframes uc-slide-in { from { opacity: 0; transform: translate3d(-10px, 0, 0); } to { opacity: 1; transform: none; } }
 
 /* Sidebar: 30ms apart, from the left. --uc-nav-i is set on each item in PHP,
-   so a new nav entry needs no CSS. */
+   so a new nav entry needs no CSS. .uc-anim-nav is a SECOND class, set only on
+   the session's first load: every screen here is a full page load, and an
+   unconditional stagger would replay on every click. */
 .uc-anim-nav .uc-nav-item {
     animation: uc-slide-in 260ms cubic-bezier(0.16, 0.84, 0.44, 1) both;
     animation-delay: calc(var(--uc-nav-i, 0) * 30ms);
@@ -1035,22 +1125,35 @@ body.uc-portal {
 }
 .uc-anim-nav .uc-portal-foot { animation-delay: 240ms; }
 
-/* Content: 300ms each, 40ms apart, ease-out, a few px of rise. --uc-card-i is
-   set by the script, because the blocks on a screen are whatever that screen
-   rendered and no PHP method knows its own position among them. */
-.uc-anim-in {
+/* Content: every top-level block of the screen, 300ms each, 40ms apart,
+   ease-out, a few px of rise. The child selector is what makes this reach the
+   page head, each card and each section without anything enumerating them, and
+   what stops a card nested inside a section animating twice. */
+.uc-anim .uc-portal-content > * {
     animation: uc-rise 300ms cubic-bezier(0.16, 0.84, 0.44, 1) both;
-    animation-delay: calc(var(--uc-card-i, 0) * 40ms);
 }
+/* Capped at nine steps, so a long screen does not end with a card arriving
+   most of a second after the page did. */
+.uc-anim .uc-portal-content > *:nth-child(1) { animation-delay: 0ms; }
+.uc-anim .uc-portal-content > *:nth-child(2) { animation-delay: 40ms; }
+.uc-anim .uc-portal-content > *:nth-child(3) { animation-delay: 80ms; }
+.uc-anim .uc-portal-content > *:nth-child(4) { animation-delay: 120ms; }
+.uc-anim .uc-portal-content > *:nth-child(5) { animation-delay: 160ms; }
+.uc-anim .uc-portal-content > *:nth-child(6) { animation-delay: 200ms; }
+.uc-anim .uc-portal-content > *:nth-child(7) { animation-delay: 240ms; }
+.uc-anim .uc-portal-content > *:nth-child(8) { animation-delay: 280ms; }
+.uc-anim .uc-portal-content > *:nth-child(n+9) { animation-delay: 320ms; }
 
-/* ASKED FOR IT, GET NONE OF IT. This matters more than usual on a health
-   services site: motion sensitivity and vestibular disorders are not edge
-   cases here. Everything snaps to its final state. */
+/* ASKED FOR IT, GET NONE OF IT. Belt and braces: the head script already
+   refuses to set html.uc-anim when reduced motion is asked for, so none of the
+   rules above can match. This is here for the case that matters more, a
+   preference changed after the page loaded, and it is why the elements are
+   given an explicit final state rather than merely animation: none. */
 @media (prefers-reduced-motion: reduce) {
     .uc-anim-nav .uc-nav-item,
     .uc-anim-nav .uc-portal-brand,
     .uc-anim-nav .uc-portal-foot,
-    .uc-anim-in { animation: none; opacity: 1; transform: none; }
+    .uc-anim .uc-portal-content > * { animation: none; opacity: 1; transform: none; }
 }
 
 /* ---------- Responsive ---------- */
@@ -1072,8 +1175,10 @@ body.uc-portal {
 .uc-head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .uc-inline-form { display: inline; margin: 0; }
 
-.uc-section-title { display: flex; align-items: center; gap: 8px; margin: 26px 0 10px; font-size: 16px; font-weight: 700; }
-.uc-section-title:first-of-type { margin-top: 0; }
+/* .uc-section-title is gone with 3.17.0. It was the second way of heading a
+   card, a bare <h2> floating above the card it named, and it is what made the
+   heading treatment look like it had been applied to some screens and not
+   others. Everything it headed now has a .uc-card-head. */
 /* Dark on SFAF yellow, 12.22:1. It was white on yellow at 1.38:1, which is
  * unreadable — the `#0E818C` fallback beside var(--uc-primary) never applied,
  * because --uc-primary is always defined a few lines above. Used on the two
@@ -1435,13 +1540,17 @@ body.uc-modal-open { overflow: hidden; }
    status line to the far right edge of a 1100px card, a hand-span away from
    the heading it describes. The two lines stack under the chevron now.
    ------------------------------------------------------------------------- */
+/* The one card whose head is a <summary> rather than a .uc-card-head. It takes
+   the same band, because a disclosure is still a card and a manager should not
+   have to work out that this one is a different kind of thing. */
 .uc-rsvp-settings { padding: 0; }
 .uc-rsvp-settings-toggle { display: flex; align-items: center; justify-content: flex-start;
-    gap: 12px; padding: 14px 16px; cursor: pointer; font-size: 14px; text-align: left;
-    list-style: none; border-radius: 0 12px 0 0; }
+    gap: 12px; padding: 11px 16px; cursor: pointer; font-size: 14px; text-align: left;
+    list-style: none; border-radius: 0 12px 0 0;
+    background: var(--uc-band); border-bottom: 1px solid var(--p-border); }
 .uc-rsvp-settings-toggle::-webkit-details-marker { display: none; }
 .uc-rsvp-settings-toggle::marker { content: ""; }
-.uc-rsvp-settings-toggle:hover { background: var(--uc-band); }
+.uc-rsvp-settings-toggle:hover { background: var(--uc-band-alt); }
 .uc-rsvp-settings-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
 .uc-rsvp-settings[open] > .uc-rsvp-settings-toggle { border-bottom: 1px solid var(--p-border); }
 .uc-rsvp-settings-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
@@ -1520,8 +1629,17 @@ body.uc-modal-open { overflow: hidden; }
 .uc-removal-options h3 { margin: 0 0 6px; font-size: 15px; }
 .uc-removal-options .uc-hint { margin: 0 0 12px; }
 
+/* A danger card wears its warning on the band, not on the heading text. The
+   heading is already uppercase and tracked like every other card heading, so
+   colouring it as well was two signals doing one job. #7F1D1D on #FEF2F2
+   measures 9.16:1; the band's own edge carries no meaning, which is why the
+   words say "Remove" and the colour only agrees with them. */
 .uc-card-danger { border-color: #fecaca; }
-.uc-card-danger h3 { color: #b91c1c; }
+.uc-card-danger > .uc-card-head,
+.uc-card-danger > h2:first-child,
+.uc-card-danger > h3:first-child { background: #FEF2F2; border-bottom-color: #FECACA; color: #7F1D1D; }
+.uc-card-danger > .uc-card-head h2,
+.uc-card-danger > .uc-card-head h3 { color: #7F1D1D; }
 
 /* Dashboard: what needs a person, and what has happened. Read-only lists. */
 .uc-attention-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.9; }

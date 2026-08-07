@@ -7,17 +7,39 @@
     var modal = null;
     var currentEventId = null;
 
+    /**
+     * Run one initialiser without letting it take the others down.
+     *
+     * These ran as a bare list, so one exception silently killed every
+     * initialiser below it, with nothing on the page or in the console to say
+     * which. The reveal was last in that list, which is exactly the position
+     * that fails first and reports last.
+     */
+    function run(name, fn) {
+        try {
+            fn();
+        } catch (err) {
+            if (window.console && window.console.error) {
+                window.console.error('SFAF calendar: ' + name + ' failed and was skipped.', err);
+            }
+        }
+    }
+
     $(document).ready(function() {
-        initFilters();
-        initSearch();
-        initRSVP();
-        initReminders();
-        initAddToCalendar();
-        initFAQ();
-        initPagination();
-        initViews();
-        initMaps();
-        initReveal();
+        // FIRST, not last. Everything below binds handlers for things a visitor
+        // may not do for another minute; this one decides what the page looks
+        // like on arrival, so it must not sit behind eight other functions that
+        // could throw first.
+        run('reveal', initReveal);
+        run('filters', initFilters);
+        run('search', initSearch);
+        run('rsvp', initRSVP);
+        run('reminders', initReminders);
+        run('addToCalendar', initAddToCalendar);
+        run('faq', initFAQ);
+        run('pagination', initPagination);
+        run('views', initViews);
+        run('maps', initMaps);
     });
 
     /* -----------------------------------------------------------------------
@@ -45,11 +67,25 @@
      * else uses. See the twin of this function in embed.js.
      * -------------------------------------------------------------------- */
     function initReveal() {
+        /*
+         * WHICH BRANCH RAN, WRITTEN WHERE IT CAN BE READ.
+         *
+         * "The scroll animations are not appearing" and "this machine asks for
+         * reduced motion" look identical from the outside, and guessing between
+         * them is what cost 3.16.0 a release. Inspect <html> and it now says
+         * data-uc-motion="on" or data-uc-motion="reduced", and if it says
+         * neither then this function never ran at all, which is a third and
+         * quite different answer.
+         */
+        var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        document.documentElement.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+
         // Reduced motion: leave every element exactly as the server sent it.
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (reduced) {
             return;
         }
         if (!('IntersectionObserver' in window)) {
+            document.documentElement.setAttribute('data-uc-motion', 'no-observer');
             return;
         }
 

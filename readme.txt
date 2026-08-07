@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.16.0
+Stable tag: 3.17.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,44 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.17.0 =
+
+**The language toggle 3.16.0 built has been removed, and it should never have been built.** The instruction was to tidy an existing control. Nothing in this plugin rendered English or Espanol, and caladmin emits its own document with no wp_head and no wp_footer, so nothing could have injected one either; the correct answer was to report that the control does not exist here. It belongs to Weglot. Gone with it: the sidebar form, the save handler, the locale write, the switch_to_locale call and the CSS. The rule this leaves behind is worth more than the code was: when an instruction says move, style or fix something that does not exist, say so rather than creating it.
+
+Weglot's own dropdown is hidden on caladmin screens instead. Hiding only, and scoped to those screens: the switcher is appended after the closing html tag, which every browser reparents into the body, so it landed on top of the sidebar. Nothing here changes how Weglot runs and every public page keeps its switcher untouched.
+
+**Why no animation was appearing, which was two faults and one probable third.** The entrance ran on DOMContentLoaded, which fires after the first paint, so the page drew itself complete and only then set the blocks back to invisible to fade in from. That is not an entrance, it is a flicker, and on a fast machine it is over before it registers as anything. The call that did it was also the last of nineteen initialisers running as a bare list, where a single exception in any earlier one silently removes every one below it, with nothing in the console to say so.
+
+The switch now sets a class on the html element from an inline script in the head, before anything is painted, and the stagger is nth-child rather than a custom property written by JavaScript, so once that class is set the whole thing is CSS and nothing in portal.js can break it. Every initialiser in caladmin and on the public calendar is now isolated: one failing is contained to its own feature and named in the console rather than taking the rest down. The public reveal moved to the front of its list, because it decides what the page looks like on arrival and should not sit behind eight functions that could throw first.
+
+The third possibility is the one to check first and cannot be checked from here: a machine that asks for reduced motion suppresses all of this correctly. That is now readable rather than guessable. The html element carries data-uc-motion, reading "on", "reduced" or "no-observer", and inside an embed the block carries it; if the attribute is absent entirely the script never ran, which is a fourth and quite different answer. The non-reduced path was verified to contain the animation rather than being empty.
+
+**Sidebar mode rebuilt.** The coloured bar down the left of every row is gone and nothing replaces it. In the placement this mode is for, beside a programme or on a series page, every event in the list is the same programme, so ten colours were saying one thing. Each row is now a 44px rounded thumbnail, the event's own image or its branded category tile, the title as the primary line, and the date and time on a quieter line under it, with a hairline between rows and no boxes, stripes or left borders anywhere. The list is static: no scrolling loop, no auto-advance.
+
+**Cards lift themselves, because they cannot lift the page.** A white card on a near-white section divided from the next by a hairline is very close to no card at all, and the embed does not control its host's background. Two shadows: a 1px contact edge at 4 percent so the card does not float unattached, and a 20px ambient spread at 7 percent that does the lifting, with the hairline one step stronger. Neither is visible as a shadow; what is visible is that the card has an edge. Hover deepens it, which is the other half of the sentence the View event button starts. On a dark host section black-based shadows contribute nothing and neither does a light hairline, and that is the right outcome: a white card on a dark background is the highest-contrast edge there is and needs no help. Nothing is keyed to the host's background, which the embed cannot read.
+
+**The card heading treatment was being applied per screen, so it drifted.** Sixteen of thirty-nine cards in caladmin did not have it. On the series editor the Schedule card had the teal band and the details card immediately above it did not, which is what prompted this. Two cards had a bare heading taking the generic subhead style instead, and five had their heading floating above them as a separate element, which was a second way of heading a card.
+
+The fix is at the component, not the screen: a heading that is the first element of a card now gets the band by being that, so a card cannot be built without one. Every card that had no heading at all was given one, the second pattern is gone along with its now-dead rule, and danger cards colour the band rather than the heading text, since uppercase and tracked was already saying "heading" and the red was a second signal doing the same job. Dark red on the pale band measures 9.16:1. Screens that were missing it: the fetch report, Events, Series, the series editor, the series removal screen, Email Opt-ins, Pending, the imported queue, Refresh from source and FAQ Sets.
+
+The Save Series row also had 22px above it and nothing below, with the Schedule card immediately after, so the most consequential control on the screen sat a few pixels off an unrelated section. A form's actions are the end of the form and now have 36px saying so.
+
+**Registration settings read as four subsections.** "When somebody registers", "The morning-of reminder" and "Replies" had 16px and a hairline between them and headings with no room to act on their size; Registrations, the capacity and the on/off switch, had no heading at all. Each is now a section with 28px above its rule and 22px below, so every subhead has a clear band of nothing before it. The rule stays a hairline rather than getting heavier, because space is doing the work and the brand guide is explicit that rules and boxes are what clutter a layout. The shared field list is untouched: Registrations is claimed by name and the catch-all still takes the remainder, so a setting added later still appears on both screens without either being told about it.
+
+**Public brand audit, against the guide (v3.0).**
+
+TYPEFACES. Every rule asked for Montserrat and Merriweather and nothing anywhere loaded them. The stylesheet's own note said the host theme already did, which is an assumption about one host on a stylesheet whose purpose is to be adopted by any host: on the resources site, where the single event pages live, and inside an embed on a third-party page, both families fell straight through to Segoe UI for every heading and Georgia for every paragraph. The brand was correct in the source and absent on screen. Both are now loaded by the stylesheet itself, which is the only mechanism that reaches an embed, since embed.js adopts this file by URL and cannot enqueue anything. Two elements also carried a platform UI stack that overrode the brand: the upcoming-events widget and the embed's own shell, which is what a visitor sees first on a slow connection.
+
+DATES AND TIMES. Wrong on every count the guide lists, in eleven separate places, because each place formatted its own. Cards said "6:00 PM to 7:30 PM"; the month grid said "6:00pm"; the sidebar said "6:00 PM", all from the same two fields. There is one implementation now: am and pm lowercase, one space, ":00" dropped, an en dash for ranges, and the first meridiem omitted when both ends match, so "6-7:30 pm" and the guide's own "10-10:30 am". Applied to the cards, the month grid, the sidebar, the event page, the series lists and the reminder emails, which had been following whatever the site's date format setting happened to be and would have printed an ordinal on any site that set one. The ICS export is unchanged and deliberately so: its timestamps are machine fields and there is no human-formatted time in it. AP also abbreviates some months with a full stop when they carry a date; the guide does not call that out and a full stop inside a compact date badge reads as a typo, so those stay as they are.
+
+PUNCTUATION. Em dashes removed from every string a visitor or a manager can read, on the public pages and in caladmin. Headlines carry no punctuation.
+
+COLOUR. Yes, it read as a kaleidoscope, and the reason was that the category hue landed in three places on every card: the chip, the placeholder tile and the two small meta icons. Across twenty cards drawing on ten approved colours that is up to sixty coloured elements with no neutral field left for any of them to read against. The colour that carries information stays, since the chip names the category in words and the tile is its picture. The colour that carried none has gone: a clock is a clock in every category. The month grid keeps its per-event accent, examined and deliberately kept, because a month mixes categories by definition and there the bar is the only signal there is.
+
+ICONS. The premise needs correcting. The clock and pin on the cards are not generic marks from a third-party set; they are the plugin's own, drawn to the construction rules the guide sets for new icons: simplest shapes, consistent line weights and corners, and readable as shorthand. The guide also refers to a custom-designed SFAF icon set available for web and print, and those files are not in this repository. If they are supplied, swapping to them is one edit, because every icon in the plugin comes from a single table. Substituting icons that are not available was not an option.
+
+TYPOGRAPHY AND RESTRAINT. No drop shadow on text anywhere. Contrast between levels is made with weight and size rather than decoration, which is what the sidebar rebuild and the subsection spacing both do.
 
 = 3.16.0 =
 

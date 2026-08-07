@@ -4,31 +4,53 @@
 (function () {
     'use strict';
 
+    /**
+     * Run one initialiser without letting it take the others down.
+     *
+     * WHY THIS EXISTS. These ran as a bare list, so a single exception in any
+     * one of them silently killed every one below it: no error visible on the
+     * page, no clue which screen was affected, and the features nearest the
+     * bottom of the list the most likely to be missing. That is a whole class
+     * of bug that reports as "X is not working" and points nowhere.
+     *
+     * A failure is now contained to its own feature and named in the console.
+     * Never swallowed silently: a caught exception nobody can see is the same
+     * bug wearing a different hat.
+     */
+    function run(name, fn) {
+        try {
+            fn();
+        } catch (err) {
+            if (window.console && window.console.error) {
+                window.console.error('SFAF caladmin: ' + name + ' failed and was skipped.', err);
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
-        initSidebar();
-        initRepeaters();
-        initFaqSetPicker();
-        initNotifyPicker();
-        initImagePicker();
+        run('sidebar', initSidebar);
+        run('repeaters', initRepeaters);
+        run('faqSetPicker', initFaqSetPicker);
+        run('notifyPicker', initNotifyPicker);
+        run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
         // the completeness confirmation bind a click listener to the same save
         // buttons, and listeners on one element fire in the order they were
         // registered. The scope one has to go first: a manager who decides not
         // to update twelve events should never then be asked about a missing
         // image on an event they have just decided not to save.
-        initHelpToggles();
-        initCategoryChips();
-        initRecurrence();
-        initEmailPills();
-        initLocationPicker();
-        initFaqSaveAsSet();
-        initLiveSearch();
-        initEditScope();
-        initConfirmButtons();
-        initCompleteness();
-        initAsyncActions();
-        initDisclosures();
-        initEntrance();
+        run('helpToggles', initHelpToggles);
+        run('categoryChips', initCategoryChips);
+        run('recurrence', initRecurrence);
+        run('emailPills', initEmailPills);
+        run('locationPicker', initLocationPicker);
+        run('faqSaveAsSet', initFaqSaveAsSet);
+        run('liveSearch', initLiveSearch);
+        run('editScope', initEditScope);
+        run('confirmButtons', initConfirmButtons);
+        run('completeness', initCompleteness);
+        run('asyncActions', initAsyncActions);
+        run('disclosures', initDisclosures);
     });
 
     /* ---------------------------------------------------------------------
@@ -52,67 +74,15 @@
     }
 
     /* ---------------------------------------------------------------------
-     * Entrance.
-     *
-     * THE SCRIPT IS WHAT TURNS IT ON, and that is the point. Every rule in the
-     * stylesheet is behind a class added here, so a page whose JavaScript never
-     * runs is a normal visible page rather than a blank one waiting to be
-     * revealed. Nothing is hidden by a base rule.
-     *
-     * THE NAV IS ONCE PER SESSION. Every caladmin screen is a full page load,
-     * so an unconditional stagger would replay on every single click. The flag
-     * lives in sessionStorage: it survives navigation within the tab and is
-     * gone by the next visit, which is what "first load" means here.
-     *
-     * sessionStorage can throw, Safari in private mode used to, and an iframe
-     * with third-party storage blocked still does, so every touch of it is
-     * wrapped. A failure means the nav simply animates, which is the harmless
-     * outcome, not an exception that stops the rest of this file.
+     * NO ENTRANCE CODE IN THIS FILE. It moved to an inline script in
+     * SFAF_Portal::head() in 3.17.0, and the move is the fix rather than a
+     * tidy-up: from here it could only ever run on DOMContentLoaded, which is
+     * after the first paint, so the page drew itself complete and only then
+     * dropped to opacity 0 to fade back in. It was also the last call in this
+     * list, where any earlier initialiser throwing would have removed it in
+     * silence. In the head it lands before anything is painted, and the
+     * animation itself is pure CSS afterwards.
      * ------------------------------------------------------------------ */
-    function initEntrance() {
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            return;
-        }
-
-        var sidebar = document.getElementById('uc-sidebar');
-        if (sidebar && !navIntroSeen()) {
-            markNavIntroSeen();
-            sidebar.classList.add('uc-anim-nav');
-        }
-
-        /*
-         * The blocks of a screen, in document order. Top-level children of the
-         * content region: the page head, each card, each section. Deliberately
-         * NOT every .uc-card anywhere, because a card nested inside a section
-         * would then animate twice, once on its own and once inside its parent.
-         */
-        var content = document.querySelector('.uc-portal-content');
-        if (!content) { return; }
-        var i = 0;
-        Array.prototype.forEach.call(content.children, function (block) {
-            // A cap, so a long screen does not end with a card arriving two
-            // seconds after the page did.
-            block.style.setProperty('--uc-card-i', String(Math.min(i, 8)));
-            block.classList.add('uc-anim-in');
-            i++;
-        });
-    }
-
-    function navIntroSeen() {
-        try {
-            return window.sessionStorage.getItem('ucNavIntro') === '1';
-        } catch (e) {
-            return false;
-        }
-    }
-
-    function markNavIntroSeen() {
-        try {
-            window.sessionStorage.setItem('ucNavIntro', '1');
-        } catch (e) {
-            /* No storage: the stagger runs again next page. Harmless. */
-        }
-    }
 
     /* ---------------------------------------------------------------------
      * Help disclosures: a "?" beside a label opening a paragraph.
