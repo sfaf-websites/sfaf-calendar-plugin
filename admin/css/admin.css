@@ -67,7 +67,9 @@
     padding: 9px 12px;
     border: 1px solid var(--uc-border-strong);
     border-radius: 8px;
-    background: #fff;
+    /* background-color, NOT the background shorthand. See the note below the
+       block for what the shorthand was destroying. */
+    background-color: #fff;
     color: var(--uc-text);
     font-family: inherit;
     font-size: 14px;
@@ -82,7 +84,64 @@
     box-shadow: 0 0 0 3px rgba(22,190,207,0.18);
     outline: none;
 }
-/* A box is sized and tinted, never boxed. accent-color recolours the platform's
+/* ---------------------------------------------------------------------------
+   A SELECT HAS TO LOOK LIKE A SELECT, AND THIS ONE STOPPED.
+
+   THE CAUSE WAS `background: #fff` IN THE BLOCK ABOVE, and it is worth naming
+   precisely because it looks harmless. WordPress draws the dropdown arrow on
+   its own selects as a background-image, and sets appearance: none so the
+   platform does not draw a second one:
+
+       .wp-core-ui select { appearance: none; background: #fff url(...arrow) ... }
+
+   `background` is a SHORTHAND, so every declaration of it resets
+   background-image to none. Our rule is (0,2,1), the same as core's, and loads
+   after it, so it won and silently deleted the arrow while leaving
+   appearance: none in place. The result is a control with no affordance at all:
+   a plain white box that happens to open a menu. On the embed generator, where
+   four of the five controls are selects, that is most of the screen.
+
+   IS THIS THE SAME FAULT THE 3.16.0 SWEEP FOUND? No, and the difference
+   matters. That fault was a control styled only because of the container it
+   happened to sit in. This one is the opposite: the control WAS reached and
+   styled, correctly, and a shorthand inside that styling wiped something the
+   framework was supplying. A container audit could not have found it, because
+   nothing was unstyled.
+
+   NOR COULD THE :where() BASELINE HAVE CAUGHT IT. That baseline lives in
+   portal.css and is scoped to `.uc-portal`, the body class of the standalone
+   caladmin document. The embed generator is a WordPress admin screen: different
+   stylesheet, different root, and portal.css is not even loaded there. It was
+   never in range.
+
+   THE FIX DOES NOT DEPEND ON THE FRAMEWORK. Rather than putting core's arrow
+   back and hoping it stays, the chevron is ours: an inline SVG data URI, in the
+   brand's own stroke weight, on background-image so the shorthand cannot be the
+   problem again. padding-right leaves room for it, and appearance: none is
+   stated here rather than inherited from core so the control renders the same
+   whether or not WordPress styles it.
+   ------------------------------------------------------------------------- */
+.uc-admin-wrap select, .uc-meta-box select, select.uc-input, select.uc-gen-input {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 34px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+    background-size: 16px 16px;
+}
+.uc-admin-wrap select:hover, .uc-meta-box select:hover, select.uc-input:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230E7680' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+/* A multiple or sized select is a list box, not a dropdown. It has no menu to
+   open, so a chevron on it would be a lie. */
+.uc-admin-wrap select[multiple], .uc-admin-wrap select[size]:not([size="1"]),
+.uc-meta-box select[multiple] {
+    appearance: auto; -webkit-appearance: auto; background-image: none; padding-right: 12px;
+}
+
+/* A box is sized and tinted, never boxed. accent-color recolors the platform's
    own control rather than replacing it, so what a keyboard and a screen reader
    get is unchanged. */
 .uc-admin-wrap input[type="checkbox"], .uc-admin-wrap input[type="radio"],
@@ -311,7 +370,7 @@
 .uc-gen-output-wrap { border-top: 1px solid var(--uc-border); padding-top: 18px; }
 .uc-gen-output-wrap > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
 .uc-gen-output-row { display: flex; gap: 10px; align-items: stretch; }
-.uc-gen-output { flex: 1; padding: 12px 16px; background: var(--uc-dark); color: #7CFFE0; border-color: var(--uc-dark); font-family: monospace; }
+.uc-gen-output { flex: 1; padding: 12px 16px; background-color: var(--uc-dark); color: #7CFFE0; border-color: var(--uc-dark); font-family: monospace; }
 .uc-gen-copied { display: inline-block; margin-top: 8px; color: var(--uc-green); font-size: 13px; font-weight: 600; }
 
 /* Responsive */
@@ -407,7 +466,7 @@
 
 /* Border and radius defer to the control block; the monospace face, the tint
    and the no-wrap are what make this one a code box. */
-.uc-embed-code { width: 100%; box-sizing: border-box; padding: 12px 14px; background: var(--uc-bg); font-family: Consolas, Monaco, 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; resize: vertical; white-space: pre; }
+.uc-embed-code { width: 100%; box-sizing: border-box; padding: 12px 14px; background-color: var(--uc-bg); font-family: Consolas, Monaco, 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; resize: vertical; white-space: pre; }
 .uc-embed-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .uc-embed-copied { font-size: 13px; font-weight: 600; color: var(--uc-green); }
 

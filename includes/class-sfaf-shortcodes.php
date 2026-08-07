@@ -859,9 +859,44 @@ class SFAF_Shortcodes {
      * @param int   $count
      * @return string
      */
-    public function render_sidebar( $filters, $count ) {
+    /**
+     * The sidebar's heading, and the three-state rule behind it.
+     *
+     * THERE ARE TWO DIFFERENT KINDS OF EMPTY HERE and they must not collapse
+     * into one:
+     *
+     *   null  the caller never mentioned a heading  -> the default
+     *   ''    the caller asked for no heading       -> nothing rendered
+     *   'X'   the caller wrote one                  -> X
+     *
+     * Every existing embed on sfaf.org was pasted before this parameter
+     * existed, so every one of them is the null case and has to keep working
+     * with a sensible heading rather than suddenly growing a blank gap or an
+     * unwanted line. And somebody who deliberately clears the field has asked
+     * for silence, which a default would override.
+     *
+     * That is why nothing in this chain uses '' as its default: the shortcode
+     * attribute defaults to null, the REST argument declares no default at all
+     * so an absent parameter stays null, and embed.js only sends the parameter
+     * when the block actually carries the attribute.
+     *
+     * @param string|null $raw
+     * @return string '' means render no heading.
+     */
+    public static function sidebar_heading( $raw ) {
+        if ( null === $raw ) {
+            return 'Upcoming event dates';
+        }
+        // Trimmed, so a field containing only spaces means the same as a field
+        // somebody cleared. Length-capped because this arrives over a public
+        // endpoint and a heading is one line.
+        return substr( trim( sanitize_text_field( (string) $raw ) ), 0, 80 );
+    }
+
+    public function render_sidebar( $filters, $count, $heading = null ) {
         $count  = max( 1, min( 50, (int) $count ) );
         $events = $this->render_events( $count, 1, $filters, 'sidebar' );
+        $head   = self::sidebar_heading( $heading );
 
         // "See all" points at the calendar on this site, carrying the same
         // filter so the visitor lands on the programme they were looking at.
@@ -880,6 +915,12 @@ class SFAF_Shortcodes {
         ob_start();
         ?>
         <div class="uc-sidebar" data-count="<?php echo (int) $count; ?>">
+            <?php if ( '' !== $head ) : ?>
+                <?php // An h3, not an h2: this block is embedded inside somebody
+                      // else's page and must not claim a level above the heading
+                      // of the section it was pasted into. ?>
+                <h3 class="uc-sidebar-heading"><?php echo esc_html( $head ); ?></h3>
+            <?php endif; ?>
             <div class="uc-sidebar-list">
                 <?php if ( '' !== $events['html'] ) : ?>
                     <?php echo $events['html']; ?>
@@ -1287,6 +1328,14 @@ class SFAF_Shortcodes {
             'toggle'       => 'yes',
             'month'        => '',
             'count'        => '',
+            /*
+             * NULL, NOT ''. shortcode_atts returns the default only when the
+             * attribute is absent, so null here is what lets
+             * [sfaf_calendar view="sidebar"] take the default heading while
+             * [sfaf_calendar view="sidebar" heading=""] renders none. See
+             * sidebar_heading().
+             */
+            'heading'      => null,
         ), $atts );
 
         $block = $this->render_calendar_block( $atts );
@@ -1389,7 +1438,7 @@ class SFAF_Shortcodes {
                 $count = 10;
             }
             return array(
-                'html'      => $this->render_sidebar( $filters, $count ),
+                'html'      => $this->render_sidebar( $filters, $count, isset( $args['heading'] ) ? $args['heading'] : null ),
                 'total'     => 0,
                 'page'      => 1,
                 'per_page'  => $count,

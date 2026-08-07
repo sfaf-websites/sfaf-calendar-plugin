@@ -915,8 +915,11 @@
     border-radius: 14px; padding: 6px 14px 14px;
     box-shadow: var(--uc-lift); }
 .uc-sidebar-list { display: flex; flex-direction: column; }
+/* NO ACCENT BAR, AND 10px OF AIR BEFORE THE THUMBNAIL. The bar went in 3.17.0;
+   the padding is what takes its place, so the row starts with space rather
+   than with a stripe. */
 .uc-sidebar-row { display: flex; gap: 12px; align-items: center;
-    padding: 12px 0; border-top: 1px solid var(--uc-border);
+    padding: 12px 0 12px 10px; border-top: 1px solid var(--uc-border);
     text-decoration: none; color: inherit; background: none; }
 .uc-sidebar-row:first-child { border-top: 0; }
 /* The hover is a tint pulled out to the padding edge, so the row highlights
@@ -924,14 +927,55 @@
 .uc-sidebar-row:hover { background: var(--uc-bg); box-shadow: -14px 0 0 var(--uc-bg), 14px 0 0 var(--uc-bg); }
 .uc-sidebar-row:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; border-radius: 6px; }
 
-/* The rounded square. 44px is the smallest an image reads at, and the same box
-   holds the category tile so a list of half-imported events stays a straight
-   column rather than alternating shapes. */
-.uc-sidebar-thumb { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 10px;
+/* ---------------------------------------------------------------------------
+   THE THUMBNAIL, AND WHY IT WAS CROPPING BADLY.
+
+   3.17.0 gave it width: 100%, height: 100% and object-fit: cover in a 44px
+   box, which is correct and did not apply. The scoped reset at the top of this
+   file says
+
+       .uc-calendar img, .uc-sidebar img, .uc-upcoming-widget img
+           { max-width: 100%; height: auto; border: 0; }
+
+   and that is (0,2,1) against .uc-thumb-img at (0,1,0). The reset won, the
+   height went back to auto, and object-fit has nothing to work with once the
+   box is the image's own aspect ratio: a landscape photo overflowed a 44px
+   square and was clipped from the TOP by the wrapper's overflow: hidden, so
+   every picture lost its middle. Exactly the same shape of fault as the 3.10.0
+   radios: a rule that wins on paper and loses in the cascade.
+
+   Two classes beat two, so the aspect ratio is ours again. 4:3 rather than a
+   square, because event photography is landscape and a square crop of a
+   landscape photo throws away the sides where the subject usually is.
+
+   object-position: center is stated rather than left to the default. It IS the
+   default, and saying so is the point: this is the line somebody will look for
+   when a picture crops wrong, and finding it explicit is faster than working
+   out that the default was already right.
+   ------------------------------------------------------------------------- */
+.uc-sidebar-thumb { flex: 0 0 60px; width: 60px; height: 45px; border-radius: 8px;
     overflow: hidden; background: var(--uc-bg); display: block; }
-.uc-thumb-img { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: 0; }
+.uc-sidebar .uc-thumb-img,
+.uc-calendar .uc-thumb-img {
+    display: block; width: 100%; height: 100%; max-width: none;
+    object-fit: cover; object-position: center center;
+    border: 0; border-radius: 0;
+}
 .uc-thumb-ph { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
     background: var(--uc-cat-media, #D5F3F6); color: var(--uc-cat-ink, #0C666F); }
+
+/* ---------------------------------------------------------------------------
+   THE HEADING ABOVE THE LIST.
+
+   Optional and configurable, and the two blank cases are DIFFERENT: an embed
+   that never mentions a heading gets the default, and one that carries
+   data-heading="" gets none. See SFAF_Shortcodes::sidebar_heading() for how
+   that distinction survives a shortcode attribute, a data attribute and a REST
+   parameter.
+   ------------------------------------------------------------------------- */
+.uc-sidebar-heading { margin: 0 0 4px; padding: 0 0 10px 10px;
+    font-family: var(--uc-font-heading); font-size: 15px; font-weight: 600;
+    line-height: 1.3; color: var(--uc-text); }
 
 .uc-sidebar-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .uc-sidebar-title { display: block; font-size: 14px; font-weight: 600; color: var(--uc-text); line-height: 1.35; }

@@ -632,7 +632,7 @@ class SFAF_Reminders {
 
         $row = self::find_by_token( $token );
         if ( ! $row ) {
-            self::cancel_page( 'That link is not valid', 'This cancellation link has expired or was not recognised. If you need to cancel, reply to the email you received and we will sort it out.' );
+            self::cancel_page( 'That link is not valid', 'This cancellation link has expired or was not recognized. If you need to cancel, reply to the email you received and we will sort it out.' );
         }
 
         $event_title = get_the_title( $row->event_id );
@@ -648,13 +648,13 @@ class SFAF_Reminders {
                 $freed ? 'Your place has been released' : 'Nothing to cancel',
                 $freed
                     ? sprintf( 'You are no longer registered for %s. Your place has gone back to the count for someone else.', $event_title )
-                    : sprintf( 'We could not find an active registration for %s against this address. It may already have been cancelled.', $event_title )
+                    : sprintf( 'We could not find an active registration for %s against this address. It may already have been canceled.', $event_title )
             );
         }
 
         // The ask.
         $html  = '<p>Cancel your place at <strong>' . esc_html( $event_title ) . '</strong>?</p>';
-        $html .= '<p>Places are limited, so cancelling puts yours back for someone else.</p>';
+        $html .= '<p>Places are limited, so canceling puts yours back for someone else.</p>';
         $html .= '<form method="post">';
         $html .= '<input type="hidden" name="uc_cancel_token" value="' . esc_attr( $token ) . '" />';
         $html .= '<p><button type="submit">Yes, cancel my place</button></p>';

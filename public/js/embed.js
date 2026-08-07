@@ -144,6 +144,21 @@
             mode: mode || ''
         };
 
+        /*
+         * THE HEADING IS ADDED ONLY WHEN THE BLOCK CARRIES THE ATTRIBUTE.
+         *
+         * getAttribute returns null for an attribute that is not there and ''
+         * for data-heading="", and those are two different instructions: the
+         * first means "you decide" and the second means "no heading". Every
+         * embed pasted before 3.18.0 is the first case and has to keep its
+         * default. So the key is not set at all unless the attribute exists,
+         * and the empty case is carried through by the exception below.
+         */
+        var heading = container.getAttribute('data-heading');
+        if (heading !== null) {
+            params.heading = heading;
+        }
+
         if (extra) {
             for (var k in extra) {
                 if (Object.prototype.hasOwnProperty.call(extra, k)) {
@@ -152,11 +167,16 @@
             }
         }
 
+        // Empty values are dropped, because every other parameter treats empty
+        // as "not set". heading is the one that does not: an empty heading is a
+        // deliberate instruction and has to reach the endpoint to be obeyed.
+        var sendWhenEmpty = { heading: true };
+
         var query = [];
         for (var key in params) {
-            if (Object.prototype.hasOwnProperty.call(params, key) && params[key] !== '') {
-                query.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key]));
-            }
+            if (!Object.prototype.hasOwnProperty.call(params, key)) { continue; }
+            if (params[key] === '' && !sendWhenEmpty[key]) { continue; }
+            query.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key]));
         }
         return query.join('&');
     }

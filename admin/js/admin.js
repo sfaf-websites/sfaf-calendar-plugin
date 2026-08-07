@@ -833,6 +833,17 @@
                 filterName: name,
                 perPage: (perPage > 0 ? perPage : 12),
                 count: (count > 0 ? count : 10),
+                // Read raw and trimmed but NOT defaulted. An empty box means
+                // "no heading", which is a real choice, so it must survive to
+                // attrsFor() rather than being turned back into the default
+                // here. See SFAF_Shortcodes::sidebar_heading().
+                // Quotes and angle brackets stripped, not escaped: this value is
+                // pasted into an HTML attribute in generated markup that a
+                // person then copies by hand, and one stray double quote there
+                // ends the attribute and breaks the block silently. The server
+                // sanitizes again on the way in; this is about the snippet
+                // being copy-pasteable.
+                heading: $.trim($('#uc-embed-heading').val() || '').replace(/["'<>]/g, ''),
                 showFilters: $('#uc-embed-filters').is(':checked')
             };
         }
@@ -895,6 +906,16 @@
             }
             if (choices.view === 'sidebar') {
                 attrs['data-count'] = String(choices.count);
+                /*
+                 * ALWAYS WRITTEN, INCLUDING WHEN EMPTY, and that is the point
+                 * of generating it here. A block that carries data-heading=""
+                 * is saying "no heading"; a block with no data-heading at all
+                 * is an older paste that should keep the default. The
+                 * generator always states the choice, so a block it produces is
+                 * never ambiguous, and only hand-written or pre-3.18.0 blocks
+                 * fall into the default case.
+                 */
+                attrs['data-heading'] = choices.heading;
             } else {
                 attrs['data-per-page'] = String(choices.perPage);
                 attrs['data-show-filters'] = choices.showFilters ? 'yes' : 'no';

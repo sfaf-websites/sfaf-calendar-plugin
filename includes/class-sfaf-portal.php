@@ -1858,7 +1858,7 @@ class SFAF_Portal {
             'team_saved'     => 'Team saved. Events that name it will notify whoever is in it at the moment the reminder goes out.',
             'team_deleted'   => 'Team deleted. No event named it, so no notification changed.',
             'series_saved'   => 'Series saved. Nothing about the events in it changed: a series groups them, it does not overwrite them.',
-            'category_saved' => 'Category saved. Its colour and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
+            'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
             // 'series_removed' is built from real counts further down, because
@@ -1907,7 +1907,7 @@ class SFAF_Portal {
         if ( 'category_deleted' === $key ) {
             $n = isset( $_GET['freed'] ) ? max( 0, intval( $_GET['freed'] ) ) : 0;
             echo '<div class="uc-flash">' . esc_html( sprintf(
-                'Category deleted. %d %s on the calendar, uncategorised, and %s drawn in the default colour until given another category.',
+                'Category deleted. %d %s on the calendar, uncategorized, and %s drawn in the default color until given another category.',
                 $n,
                 _n( 'event stays', 'events stay', $n ),
                 _n( 'is', 'are', $n )
@@ -2071,10 +2071,24 @@ class SFAF_Portal {
     private function render_dashboard( $user ) {
         $this->chrome_open( $user, 'dashboard' );
 
+        /*
+         * EVERY NUMBER ON THIS SCREEN IS WHAT THIS PERSON CAN ACT ON.
+         *
+         * Two of them were not. The events counts have been scoped by author
+         * since they were written; Total RSVPs counted the whole table for
+         * everyone, and Recent activity read the whole table too. See
+         * count_rsvps() and recent_activity() for what that meant and why it
+         * matters on this calendar in particular.
+         *
+         * Pending Review and Needs attention are inside the is_admin gate
+         * below and stay unscoped on purpose: reviewing other people's
+         * submissions IS an administrator's job, so those totals are exactly
+         * what they can act on.
+         */
         $own        = ! $this->can_view_all( $user );
         $total      = $this->count_events( 'publish', $own ? $user->ID : 0 );
         $upcoming   = $this->count_events( 'publish', $own ? $user->ID : 0, true );
-        $rsvp_total = $this->count_rsvps();
+        $rsvp_total = $this->count_rsvps( $user );
         $pending    = $this->count_events( 'pending', 0 );
         $is_admin   = $this->is_admin_role( $user );
         $imports    = $is_admin ? SFAF_Sources::queue_count( SFAF_Sources::STATUS_PENDING ) : 0;
@@ -2084,9 +2098,19 @@ class SFAF_Portal {
         </div>
 
         <div class="uc-stats">
-            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $total; ?></span><span class="uc-stat-label"><?php echo $own ? 'My Events' : 'Total Events'; ?></span></div>
-            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $upcoming; ?></span><span class="uc-stat-label">Upcoming</span></div>
-            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $rsvp_total; ?></span><span class="uc-stat-label">Total RSVPs</span></div>
+            <?php
+            /*
+             * THE LABELS SAY WHOSE NUMBER IT IS. "Upcoming" and "Total RSVPs"
+             * were the same words whether the figure covered the whole calendar
+             * or one person's events, so a contributor reading 3 had no way to
+             * know whether that was three of theirs or three altogether. A
+             * scoped number under an unscoped label is still misleading, even
+             * once the number itself is right.
+             */
+            ?>
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $total; ?></span><span class="uc-stat-label"><?php echo $own ? 'My events' : 'Total events'; ?></span></div>
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $upcoming; ?></span><span class="uc-stat-label"><?php echo $own ? 'My upcoming' : 'Upcoming'; ?></span></div>
+            <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $rsvp_total; ?></span><span class="uc-stat-label"><?php echo $own ? 'RSVPs to my events' : 'Total RSVPs'; ?></span></div>
             <?php if ( $is_admin ) : ?>
                 <div class="uc-stat uc-stat-accent"><span class="uc-stat-num"><?php echo (int) $pending; ?></span><span class="uc-stat-label">Pending Review</span></div>
             <?php endif; ?>
@@ -2149,7 +2173,7 @@ class SFAF_Portal {
         </div>
 
         <div class="uc-card">
-            <div class="uc-card-head"><h2>Recent activity</h2></div>
+            <div class="uc-card-head"><h2><?php echo $own ? 'Recent activity on my events' : 'Recent activity'; ?></h2></div>
             <?php $this->recent_activity( $user ); ?>
         </div>
         <?php
@@ -2217,11 +2241,36 @@ class SFAF_Portal {
         global $wpdb;
         $rows = array();
 
-        // Registrations.
+        /*
+         * REGISTRATIONS, SCOPED TO WHAT THIS PERSON CAN ACT ON.
+         *
+         * This was the whole table, for everyone, and it is the worst of the
+         * three dashboard leaks because it NAMES PEOPLE: a contributor read
+         * "Ana Ruiz registered for Trans Health Drop-in" about an event they
+         * cannot open, edit or see the registrations for. A count is a fact
+         * about volume; this was a fact about an individual, and it went to
+         * somebody with no part in that event.
+         *
+         * The edits half below was already scoped, because it goes through
+         * query_events(), which applies the author filter for anyone who is not
+         * can_view_all(). This half went straight to SQL and bypassed it. That
+         * is the shape of the fault: one list built through the helper that
+         * knows the rule, one built around it.
+         */
         $table = $wpdb->prefix . 'uc_rsvps';
-        $rsvps = $wpdb->get_results(
-            "SELECT event_id, name, status, created_at FROM $table ORDER BY id DESC LIMIT 5"
-        );
+        if ( $this->can_view_all( $user ) ) {
+            $rsvps = $wpdb->get_results(
+                "SELECT event_id, name, status, created_at FROM $table ORDER BY id DESC LIMIT 5"
+            );
+        } else {
+            $rsvps = $wpdb->get_results( $wpdb->prepare(
+                "SELECT r.event_id, r.name, r.status, r.created_at FROM $table r
+                 INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id
+                 WHERE p.post_author = %d
+                 ORDER BY r.id DESC LIMIT 5",
+                (int) $user->ID
+            ) );
+        }
         foreach ( (array) $rsvps as $r ) {
             $title = get_the_title( $r->event_id );
             $rows[] = array(
@@ -2229,7 +2278,7 @@ class SFAF_Portal {
                 'text' => sprintf(
                     '%s %s for %s',
                     $r->name ? $r->name : 'Someone',
-                    'subscribed' === $r->status ? 'asked for reminders' : ( 'cancelled' === $r->status ? 'cancelled their place' : 'registered' ),
+                    'subscribed' === $r->status ? 'asked for reminders' : ( 'cancelled' === $r->status ? 'canceled their place' : 'registered' ),
                     $title ? $title : 'a deleted event'
                 ),
             );
@@ -3604,7 +3653,7 @@ class SFAF_Portal {
                     <span class="uc-field-label">Categories <?php echo $this->field_badge( $state, $label ); ?>
                         <?php echo sfaf_help(
                             'uc-help-cats-' . $uid,
-                            'An event can be in several, and it appears under each of them in the filter bar. The first one alphabetically supplies the card colour and the placeholder picture, so the order you see the chips in is the order that decides it.',
+                            'An event can be in several, and it appears under each of them in the filter bar. The first one alphabetically supplies the card color and the placeholder picture, so the order you see the chips in is the order that decides it.',
                             'categories'
                         ); ?>
                     </span>
@@ -3881,7 +3930,7 @@ class SFAF_Portal {
             <br />
             You do not normally create a series here. Set a repeat on a new event and its series is made from the
             event's own name in the same step, so nobody has to name the same thing twice. Creating one by hand is for
-            the case where a programme needs describing before any of its dates are known.
+            the case where a program needs describing before any of its dates are known.
         </p>
 
         <div class="uc-card">
@@ -4019,7 +4068,7 @@ class SFAF_Portal {
         <section class="uc-section" id="uc-categories">
             <div class="uc-section-head">
                 <h2>Categories</h2>
-                <p class="uc-section-sub">What kind of event this is. The colour and icon are what a card and its placeholder are drawn from.</p>
+                <p class="uc-section-sub">What kind of event this is. The color and icon are what a card and its placeholder are drawn from.</p>
             </div>
 
             <div class="uc-card">
@@ -4032,7 +4081,7 @@ class SFAF_Portal {
                 <?php endif; ?>
 
                 <p class="uc-hint">
-                    An event can be in several. The first one alphabetically supplies the colour of its card and the
+                    An event can be in several. The first one alphabetically supplies the color of its card and the
                     picture shown when it has no image of its own, which is why every category has both.
                 </p>
 
@@ -4126,7 +4175,7 @@ class SFAF_Portal {
             </label>
 
             <div class="uc-field">
-                <span class="uc-field-label">Colour</span>
+                <span class="uc-field-label">Color</span>
                 <div class="uc-swatches" role="radiogroup" aria-label="Category colour">
                     <?php foreach ( $palette as $hex => $label ) : ?>
                         <label class="uc-swatch" style="--cat: <?php echo esc_attr( $hex ); ?>; --cat-ink: <?php echo esc_attr( sfaf_on_color( $hex ) ); ?>;">
@@ -4137,7 +4186,7 @@ class SFAF_Portal {
                         </label>
                     <?php endforeach; ?>
                 </div>
-                <span class="uc-hint">The ten approved brand colours. Nothing outside them can be saved here.</span>
+                <span class="uc-hint">The ten approved brand colors. Nothing outside them can be saved here.</span>
             </div>
 
             <label class="uc-field uc-cat-icon">
@@ -4205,7 +4254,7 @@ class SFAF_Portal {
             <p class="uc-help">This event and all of its dates. The schedule is below the series details.</p>
         <?php else : ?>
             <p class="uc-help">
-                A series made by hand, for a programme that needs describing before its dates are known. If you already
+                A series made by hand, for a program that needs describing before its dates are known. If you already
                 know the dates, create the event instead and set a repeat on it: the series is made from the event's own
                 name in the same step.
             </p>
@@ -4276,16 +4325,26 @@ class SFAF_Portal {
             $this->render_schedule( $term_id );
             ?>
 
-            <div class="uc-card uc-card-danger">
-                <div class="uc-card-head"><h3>Remove this series</h3></div>
-                <p class="uc-hint">
-                    What happens to the events in it is a real choice, and one of the answers deletes things, so it
-                    is asked on its own screen with the counts in front of you rather than in a one-line dialog.
-                </p>
-                <?php // A LINK, NOT A SUBMIT. This used to post straight through
-                      // to deletion behind a browser confirm(), which is one
-                      // stray Return key away from acting. ?>
-                <a class="uc-btn uc-link-danger" href="<?php echo esc_url( $this->url( 'series/remove/' . (int) $term_id ) ); ?>">Remove series&hellip;</a>
+            <?php
+            /*
+             * A BUTTON, AND NOTHING ELSE. 3.18.0.
+             *
+             * There was a card here, with a heading and a paragraph explaining
+             * that removal asks before it acts. The paragraph described the
+             * next screen instead of letting the reader get to it: everything
+             * it said, the two options and the real counts, is on that screen,
+             * stated better, with the numbers filled in. Explaining a
+             * confirmation in front of the control that opens it is a longer
+             * road to the same place.
+             *
+             * A LINK, NOT A SUBMIT. This used to post straight through to
+             * deletion behind a browser confirm(), which is one stray Return
+             * key away from acting. It opens render_series_remove(), which is
+             * where the choice is actually made.
+             */
+            ?>
+            <div class="uc-series-remove-row">
+                <a class="uc-btn uc-btn-danger" href="<?php echo esc_url( $this->url( 'series/remove/' . (int) $term_id ) ); ?>">Remove series</a>
             </div>
         <?php endif; ?>
         <?php
@@ -7913,7 +7972,7 @@ class SFAF_Portal {
             <?php if ( empty( $pending ) ) : ?>
                 <p class="uc-empty">Nothing new from connected sources. Use &ldquo;Fetch updates&rdquo; on the dashboard to check again.</p>
             <?php else : ?>
-                <?php $this->import_queue_table( $pending, 'pending' ); ?>
+                <?php $this->import_queue_list( $pending, 'pending' ); ?>
             <?php endif; ?>
         </div>
 
@@ -7924,22 +7983,40 @@ class SFAF_Portal {
                     <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
                 </div>
                 <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the pending list.</p>
-                <?php $this->import_queue_table( $dismissed, 'dismissed' ); ?>
+                <?php $this->import_queue_list( $dismissed, 'dismissed' ); ?>
             </div>
         <?php endif;
     }
 
     /**
-     * One table of imported events.
+     * The imported queue, as a list of events rather than a table of columns.
+     *
+     * WHY THIS IS NO LONGER A TABLE. It was five columns wide: Source, Event,
+     * Date and time, Location, Actions. A table gives every column the same
+     * weight, so the title, the platform badge, a timezone string, an address
+     * and two verbs all arrived at once and nothing said which was the thing.
+     * On a queue that is exactly wrong: a manager is scanning for WHICH EVENT
+     * this is and then deciding about it, which is one heading and one line of
+     * supporting detail, not five equal cells.
+     *
+     * So each row leads with the event's title as a real heading, with source,
+     * when and where beneath it in the quiet line, and the actions to the
+     * right. The disclosure that carries the fields the platform cannot supply
+     * is still there and is now plainly subordinate to the row it belongs to
+     * rather than a full-width cell of its own.
+     *
+     * THE PANEL ITSELF IS UNCHANGED, and deliberately: its markup comes from
+     * render_manager_panel(), which the editor also calls, so there is no
+     * second list of fields here that could fall behind. Its own form, because
+     * forms cannot nest and this one posts and redirects on its own, carrying
+     * only these fields so saving here cannot disturb anything else.
      *
      * @param int[]  $ids
-     * @param string $section 'pending' or 'dismissed' — decides the actions.
+     * @param string $section 'pending' or 'dismissed', which decides the actions.
      */
-    private function import_queue_table( $ids, $section ) {
+    private function import_queue_list( $ids, $section ) {
         ?>
-        <table class="uc-table">
-            <thead><tr><th>Source</th><th>Event</th><th>Date &amp; time</th><th>Location</th><th class="uc-col-actions">Actions</th></tr></thead>
-            <tbody>
+        <ul class="uc-queue-list">
             <?php foreach ( $ids as $id ) :
                 $prov     = SFAF_Sources::provenance( $id );
                 $date     = get_post_meta( $id, '_uc_event_date', true );
@@ -7947,119 +8024,121 @@ class SFAF_Portal {
                 $end      = get_post_meta( $id, '_uc_end_time', true );
                 $location = sfaf_event_location( $id );
 
-                // A campaign with no date is normal, not broken — say so
-                // rather than showing a bare dash the manager has to decode.
-                $when = $date ? date_i18n( 'M j, Y', strtotime( $date ) ) : 'No date. Set it when publishing';
-                if ( $date && $start ) {
-                    $when .= ' · ' . $start . ( $end ? '–' . $end : '' );
+                /*
+                 * WHEN, AS ONE PHRASE. The times used to be printed as the raw
+                 * meta, so a 6pm event read "18:00-19:30" in a portal where
+                 * every other time is AP style. Through the one formatter now.
+                 * A campaign with no date is normal rather than broken, so it
+                 * says so instead of showing a dash somebody has to decode.
+                 */
+                $when = $date ? sfaf_ap_date( $date, 'short' ) . ', ' . date_i18n( 'Y', strtotime( $date . ' 12:00:00' ) ) : '';
+                $clock = sfaf_ap_time_range( $start, $end );
+                if ( $when && $clock ) {
+                    $when .= ', ' . $clock;
                 }
-                if ( $date && $prov['timezone'] ) {
+                if ( $when && $date && $prov['timezone'] ) {
                     $when .= ' (' . $prov['timezone'] . ')';
                 }
-                ?>
-                <?php
-                // Fields this platform will never supply and a person has not
-                // filled in yet. Amber and a pencil, never red and never "!":
-                // a GoFundMe Pro campaign arrives needing these EVERY time by
-                // design, so it is a step in the job, not a fault. The icon
-                // disappears once they are all filled, which makes a queue with
-                // no icons mean "all of these are ready to publish".
+                if ( '' === $when ) {
+                    $when = 'No date. Set it when publishing';
+                }
+
+                /*
+                 * Fields this platform will never supply and a person has not
+                 * filled in yet. Amber and a mark, never red and never "!": a
+                 * GoFundMe Pro campaign arrives needing these EVERY time by
+                 * design, so it is a step in the job, not a fault. The mark
+                 * disappears once they are all filled, which makes a queue with
+                 * no marks mean "all of these are ready to publish".
+                 */
                 $needs   = SFAF_Sources::missing_manager_fields( $id );
                 $needs_t = ! empty( $needs ) ? 'Needs ' . SFAF_Sources::field_phrase( $needs ) : '';
+                $ctx     = $this->manager_panel_context( wp_get_current_user(), $id, 'queue' );
                 ?>
-                <tr<?php echo $needs_t ? ' class="uc-row-needs"' : ''; ?>>
-                    <td><span class="uc-source-badge"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span></td>
-                    <td>
-                        <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
-                        <?php if ( $needs_t ) : ?>
-                            <?php // Reachable by hover AND by keyboard focus, so it works
-                                  // on a phone and for anyone not using a mouse. The
-                                  // aria-label names the fields rather than saying that
-                                  // something is missing, so a screen reader user gets the
-                                  // same information a sighted one does. ?>
-                            <span class="uc-needs-flag" tabindex="0" role="img"
-                                  aria-label="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>"
-                                  title="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>">
-                                <?php echo $this->icon_needs(); ?>
-                                <span class="uc-needs-tip"><?php echo esc_html( $needs_t ); ?></span>
-                            </span>
-                        <?php endif; ?>
-                        <?php if ( $prov['source_url'] ) : ?>
-                            <br /><a class="uc-source-link<?php echo $needs_t ? ' uc-source-link-strong' : ''; ?>" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php
-                                echo $needs_t ? 'Open campaign page to copy them &nearr;' : 'View on ' . esc_html( $prov['label'] ? $prov['label'] : 'source' ) . ' &nearr;';
-                            ?></a>
-                        <?php endif; ?>
-                    </td>
-                    <td><?php echo esc_html( $when ); ?></td>
-                    <td><?php echo esc_html( $location ? $location : 'Not set' ); ?></td>
-                    <td class="uc-row-actions uc-row-actions-top">
-                        <div class="uc-actions">
-                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
-                                <input type="hidden" name="uc_action" value="import_publish" />
-                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                <?php wp_nonce_field( 'uc_portal_import_publish', 'uc_nonce' ); ?>
-                                <button class="uc-link-ok" type="submit">Publish</button>
-                            </form>
-                            <?php if ( 'dismissed' === $section ) : ?>
-                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
-                                    <input type="hidden" name="uc_action" value="import_restore" />
-                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_import_restore', 'uc_nonce' ); ?>
-                                    <button class="uc-action-link" type="submit">Restore</button>
-                                </form>
-                            <?php else : ?>
-                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
-                                    <input type="hidden" name="uc_action" value="import_dismiss" />
-                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_import_dismiss', 'uc_nonce' ); ?>
-                                    <button class="uc-action-link" type="submit">Dismiss</button>
-                                </form>
+                <li class="uc-queue-item<?php echo $needs_t ? ' uc-queue-item-needs' : ''; ?>">
+                    <div class="uc-queue-row">
+                        <div class="uc-queue-id">
+                            <h3 class="uc-queue-title">
+                                <a href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
+                                <?php if ( $needs_t ) : ?>
+                                    <?php // Reachable by hover AND by keyboard focus, so it works on
+                                          // a phone and for anyone not using a mouse. The aria-label
+                                          // names the fields rather than saying something is missing,
+                                          // so a screen reader user gets what a sighted one does. ?>
+                                    <span class="uc-needs-flag" tabindex="0" role="img"
+                                          aria-label="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>"
+                                          title="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>">
+                                        <?php echo $this->icon_needs(); ?>
+                                        <span class="uc-needs-tip"><?php echo esc_html( $needs_t ); ?></span>
+                                    </span>
+                                <?php endif; ?>
+                            </h3>
+
+                            <?php // ONE quiet line, in the order somebody reads it: who it
+                                  // came from, when it is, where it is. ?>
+                            <p class="uc-queue-meta">
+                                <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span>
+                                <span><?php echo esc_html( $when ); ?></span>
+                                <span><?php echo esc_html( $location ? $location : 'Location not set' ); ?></span>
+                            </p>
+
+                            <?php if ( $prov['source_url'] ) : ?>
+                                <p class="uc-queue-links">
+                                    <a class="uc-source-link<?php echo $needs_t ? ' uc-source-link-strong' : ''; ?>" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php
+                                        echo $needs_t ? 'Open campaign page to copy them &nearr;' : 'View on ' . esc_html( $prov['label'] ? $prov['label'] : 'source' ) . ' &nearr;';
+                                    ?></a>
+                                </p>
                             <?php endif; ?>
                         </div>
-                    </td>
-                </tr>
-                <?php
-                /*
-                 * THE SAME CONTROLS AS THE EVENT EDITOR, ON THE SAME EVENT.
-                 *
-                 * Pending is a view of an event, not a different form, so it
-                 * gets the fields rather than only a pencil telling somebody
-                 * that fields exist elsewhere. The markup comes from
-                 * render_manager_panel(), which the editor also calls: there is
-                 * no second list here that could fall behind.
-                 *
-                 * Collapsed by default. A queue is for scanning, and a dozen
-                 * open panels would stop it being one; opening it is the moment
-                 * a manager has chosen this event.
-                 *
-                 * Its own <form>, because forms cannot nest and this one posts
-                 * and redirects on its own. It carries only these fields, so
-                 * saving here cannot disturb anything else about the event.
-                 */
-                $ctx = $this->manager_panel_context( wp_get_current_user(), $id, 'queue' );
-                ?>
-                <tr class="uc-queue-panel-row">
-                    <td colspan="5">
-                        <details class="uc-queue-panel">
-                            <summary>
-                                <?php echo $needs_t ? esc_html( $needs_t ) : 'Set the fields this platform does not supply'; ?>
-                            </summary>
-                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-form uc-queue-form">
-                                <input type="hidden" name="uc_action" value="save_manager_fields" />
-                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                <?php wp_nonce_field( 'uc_portal_save_manager_fields', 'uc_nonce' ); ?>
-                                <?php $this->render_manager_panel( $ctx ); ?>
-                                <div class="uc-form-actions">
-                                    <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
-                                    <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Open the full editor</a>
-                                </div>
-                            </form>
-                        </details>
-                    </td>
-                </tr>
+
+                        <div class="uc-queue-actions">
+                            <div class="uc-actions">
+                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                    <input type="hidden" name="uc_action" value="import_publish" />
+                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_import_publish', 'uc_nonce' ); ?>
+                                    <button class="uc-link-ok" type="submit">Publish</button>
+                                </form>
+                                <?php if ( 'dismissed' === $section ) : ?>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_import_restore', 'uc_nonce' ); ?>
+                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                <?php else : ?>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="import_dismiss" />
+                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_import_dismiss', 'uc_nonce' ); ?>
+                                        <button class="uc-action-link" type="submit">Dismiss</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php // Collapsed by default. A queue is for scanning, and a dozen
+                          // open panels would stop it being one; opening it is the
+                          // moment a manager has chosen this event. ?>
+                    <details class="uc-queue-panel">
+                        <summary>
+                            <?php echo $needs_t ? esc_html( $needs_t ) : 'Set the fields this platform does not supply'; ?>
+                        </summary>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-form uc-queue-form">
+                            <input type="hidden" name="uc_action" value="save_manager_fields" />
+                            <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_save_manager_fields', 'uc_nonce' ); ?>
+                            <?php $this->render_manager_panel( $ctx ); ?>
+                            <div class="uc-form-actions">
+                                <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                                <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Open the full editor</a>
+                            </div>
+                        </form>
+                    </details>
+                </li>
             <?php endforeach; ?>
-            </tbody>
-        </table>
+        </ul>
         <?php
     }
 
@@ -8681,9 +8760,40 @@ class SFAF_Portal {
         return (int) $query->found_posts;
     }
 
-    private function count_rsvps() {
+    /**
+     * Confirmed registrations, counted over what this person can act on.
+     *
+     * IT USED TO COUNT THE WHOLE TABLE, FOR EVERYONE. A contributor's editing
+     * rights stop at their own events, and the dashboard told them how many
+     * people had registered for every event on the calendar. That is the same
+     * family as the ungated RSVP screen found in 3.5.0: not a leak of names,
+     * but a statement about activity they have no part in, on a calendar
+     * carrying HIV, substance use and trans health programming where the size
+     * of a group is itself worth not saying.
+     *
+     * ORPHANS ARE INCLUDED FOR THOSE WHO CAN SEE EVERYTHING and excluded for a
+     * contributor, and that follows from the join rather than from a decision:
+     * a registration whose event has been deleted has no author to compare
+     * against. The orphan rows are reachable from the Events list, which is
+     * gated on can_view_all() already.
+     *
+     * @param WP_User|null $user null keeps the unscoped count, for callers that
+     *                           have already established the viewer may see all.
+     * @return int
+     */
+    private function count_rsvps( $user = null ) {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
+
+        if ( $user && ! $this->can_view_all( $user ) ) {
+            return (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM $table r
+                 INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id
+                 WHERE r.status = 'confirmed' AND p.post_author = %d",
+                (int) $user->ID
+            ) );
+        }
+
         return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table WHERE status = 'confirmed'" );
     }
 }

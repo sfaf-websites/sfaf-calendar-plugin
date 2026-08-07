@@ -570,7 +570,7 @@ class SFAF_Admin {
                             <th>Automated fetching</th>
                             <td><?php echo $fetch_on
                                 ? 'On. Third-party sources are fetched on every run.'
-                                : 'Off. Sources are only fetched when somebody presses "Fetch updates" on the calendar portal\'s Pending screen. Leave it off until the unpublish-on-removal behaviour has been watched through one real removal at source.'; ?></td>
+                                : 'Off. Sources are only fetched when somebody presses "Fetch updates" on the calendar portal\'s Pending screen. Leave it off until the unpublish-on-removal behavior has been watched through one real removal at source.'; ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -945,7 +945,7 @@ class SFAF_Admin {
 
             <div class="uc-admin-card">
                 <?php if ( empty( $series ) ) : ?>
-                    <p class="uc-no-data">No series yet. A series groups events that belong to the same programme, and it may hold different kinds of event, so it is not the same thing as a repeating event.</p>
+                    <p class="uc-no-data">No series yet. A series groups events that belong to the same program, and it may hold different kinds of event, so it is not the same thing as a repeating event.</p>
                 <?php else : ?>
                     <table class="uc-admin-table">
                         <thead><tr><th>Image</th><th>Series</th><th>Upcoming events</th><th>Next date</th><th>Actions</th></tr></thead>
@@ -1144,7 +1144,7 @@ class SFAF_Admin {
                         'faqs_inherited'    => 'Events that get a copy of the FAQs they used to inherit at display time',
                         'groups_stamped'    => 'Events stamped with a recurrence group, so bulk edits keep working',
                         'orphans_resolved'  => 'Occurrences whose series had gone, absorbed as ordinary events',
-                        'cancelled_dropped' => 'Cancelled-date lists dropped (those dates are already absent)',
+                        'cancelled_dropped' => 'Canceled-date lists dropped (those dates are already absent)',
                     );
                     foreach ( $rows as $key => $label ) : ?>
                         <tr>
@@ -1393,6 +1393,13 @@ class SFAF_Admin {
                         <p class="description">The next N dates. Occurrences, so a weekly group appears once per date. Fewer are shown if fewer exist.</p>
                     </div>
 
+                    <div class="uc-embed-field" data-when-view="sidebar">
+                        <label class="uc-embed-label" for="uc-embed-heading">Heading above the list</label>
+                        <input type="text" id="uc-embed-heading" class="uc-input"
+                               value="Upcoming event dates" maxlength="80" />
+                        <p class="description">Clear this field for no heading at all. The block is embedded inside a page that has its own headings, so it renders as an H3 and never claims a level above the section it sits in.</p>
+                    </div>
+
                     <?php
                     /*
                      * THE DEFAULT IS EVERYTHING, AND NOTHING IS PRESELECTED.
@@ -1421,7 +1428,7 @@ class SFAF_Admin {
                             <option value="series">One series</option>
                             <option value="category">One category</option>
                         </select>
-                        <p class="description">All events is the default, so a block shows the whole calendar unless it is deliberately narrowed. Organizer is usually the right narrowing for a programme page: a team&rsquo;s work is often several series and several categories.</p>
+                        <p class="description">All events is the default, so a block shows the whole calendar unless it is deliberately narrowed. Organizer is usually the right narrowing for a program page: a team&rsquo;s work is often several series and several categories.</p>
                     </div>
 
                     <div class="uc-embed-field" data-when-filter="organizer" hidden>
@@ -1748,7 +1755,7 @@ class SFAF_Admin {
                                 <strong>Fetch from third-party sources automatically</strong>
                                 <span>
                                     <strong>Leave this off for now.</strong> A fetch can take an event off the calendar when
-                                    it stops being returned by its source, and that behaviour has never been watched through
+                                    it stops being returned by its source, and that behavior has never been watched through
                                     a real removal. Running it unattended before then is how live events disappear overnight.
                                     Switch it on by hand once one removal has been seen go through correctly.
                                     &ldquo;Fetch updates&rdquo; on the dashboard runs it manually in the meantime.

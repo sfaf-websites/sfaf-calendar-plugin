@@ -310,7 +310,7 @@ function sfaf_rsvp_status_label( $status ) {
     $known = array(
         'confirmed'  => 'Registered',
         'subscribed' => 'Reminders only',
-        'cancelled'  => 'Cancelled',
+        'cancelled'  => 'Canceled',
     );
     $status = (string) $status;
     return isset( $known[ $status ] ) ? $known[ $status ] : ucfirst( str_replace( '_', ' ', $status ) );

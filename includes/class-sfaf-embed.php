@@ -206,6 +206,27 @@ class SFAF_Embed {
                 'count'        => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'absint' ),
 
                 /*
+                 * 3.18.0: the sidebar's heading.
+                 *
+                 * ON THIS ROUTE, AS EVERY OTHER PARAMETER IS. Every CORS
+                 * mechanism in this file is gated on is_embed_request(), which
+                 * compares the route string exactly, so a second route would
+                 * match none of preflight, the response headers or the
+                 * rest_pre_serve_request fallback: it would pass every test on
+                 * this site and be blocked by the browser the moment sfaf.org
+                 * asked for it. Same route, one more parameter, same headers.
+                 *
+                 * NO 'default' KEY, AND THAT IS THE WHOLE MECHANISM. WP_REST
+                 * fills a declared default into the request, which would make
+                 * an absent parameter indistinguishable from an empty one.
+                 * Without it, get_param() returns null when the caller said
+                 * nothing and '' when the caller sent heading= deliberately,
+                 * which is the difference between "give me the default" and
+                 * "give me no heading". See SFAF_Shortcodes::sidebar_heading().
+                 */
+                'heading'      => array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
+
+                /*
                  * 3.8.0: the category a VISITOR chose from the filter bar, kept
                  * separate from `category`, which is what the embed snippet was
                  * scoped to by whoever wrote it. The filter bar runs a real
@@ -343,6 +364,12 @@ class SFAF_Embed {
             // cannot make two visitors share a cache key for different months.
             'month'        => $this->shortcodes->normalize_month( $request->get_param( 'month' ) ),
             'count'        => min( 50, $count ),
+            /*
+             * null when the caller never sent it, '' when they sent it empty.
+             * Passed through untouched so sidebar_heading() can tell the two
+             * apart; sanitising or casting here would flatten them.
+             */
+            'heading'      => $request->get_param( 'heading' ),
         );
     }
 
@@ -935,6 +962,15 @@ class SFAF_Embed {
         if ( 'sidebar' === $params['view'] ) {
             $identity['view']  = 'sidebar';
             $identity['count'] = $params['count'];
+            /*
+             * THE HEADING IS PART OF THE CACHE KEY, because it is part of the
+             * rendered HTML. Two blocks on the same page with the same filter
+             * and count and different headings are two different responses,
+             * and leaving this out would have served the first one's heading to
+             * the second. Cast to a string that keeps null and '' apart, for
+             * the same reason they are kept apart everywhere else.
+             */
+            $identity['heading'] = ( null === $params['heading'] ) ? '~default~' : (string) $params['heading'];
             return $identity;
         }
 

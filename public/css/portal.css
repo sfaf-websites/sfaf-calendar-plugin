@@ -346,7 +346,9 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
     padding: 9px 12px;
     border: 1px solid var(--p-border-strong);
     border-radius: 8px;
-    background: #fff;
+    /* background-color, never the shorthand: `background` resets
+       background-image, which is what draws the chevron on a select. */
+    background-color: #fff;
     color: var(--p-text);
     font-family: inherit;
     font-size: 14px;
@@ -361,8 +363,35 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 }
 :where(.uc-portal) :where(textarea) { min-height: 72px; resize: vertical; }
 
+/* ---------------------------------------------------------------------------
+   THE SAME CHEVRON caladmin AND wp-admin, drawn by us in both.
+
+   The portal was not showing the fault the embed generator was, because
+   nothing here sets appearance: none, so the platform still drew its own
+   arrow. That is a working control by luck rather than by decision: the box,
+   the border and the radius are ours and the one part that says "this opens"
+   was the operating system's, which is why the two surfaces looked like
+   different controls side by side. Both draw the same mark now, and the
+   `background` shorthand in the baseline above cannot delete it, because it is
+   set after it on background-image.
+   ------------------------------------------------------------------------- */
+:where(.uc-portal) :where(select) {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 34px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6764' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+    background-size: 16px 16px;
+}
+/* A list box has no menu to open, so a chevron on it would be a lie. */
+:where(.uc-portal) :where(select[multiple], select[size]:not([size="1"])) {
+    appearance: auto; -webkit-appearance: auto; background-image: none; padding-right: 12px;
+}
+
 /* A BOX IS SIZED AND TINTED, NEVER BOXED. accent-color is the one property
-   that recolours a native checkbox or radio without replacing it, so the
+   that recolors a native checkbox or radio without replacing it, so the
    control a keyboard and a screen reader get is still the platform's own. */
 :where(.uc-portal) :where(input[type="checkbox"], input[type="radio"]) {
     width: 16px; height: 16px; flex: 0 0 auto;
@@ -604,7 +633,7 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 
 /* ---------- Filters ---------- */
 .uc-filters-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
-.uc-filters-bar input, .uc-filters-bar select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background: #fff; }
+.uc-filters-bar input, .uc-filters-bar select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background-color: #fff; }
 .uc-filters-bar input[type=search] { flex: 1; min-width: 180px; }
 
 /* ---------- Forms ---------- */
@@ -614,7 +643,7 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 /* A control's own boundary has to be visible: --p-border-strong is a darker
    variation of brand Light Gray and measures 3.33:1 on white. --p-border is
    the hairline BETWEEN things, which is decoration and does not. */
-.uc-field input, .uc-field select, .uc-field textarea { padding: 10px 12px; border: 1px solid var(--p-border-strong); border-radius: 8px; font-size: 14px; font-weight: 400; font-family: inherit; background: #fff; width: 100%; }
+.uc-field input, .uc-field select, .uc-field textarea { padding: 10px 12px; border: 1px solid var(--p-border-strong); border-radius: 8px; font-size: 14px; font-weight: 400; font-family: inherit; background-color: #fff; width: 100%; }
 .uc-field input:focus, .uc-field select:focus, .uc-field textarea:focus { outline: none; border-color: var(--uc-primary); box-shadow: 0 0 0 3px rgba(22,190,207,0.12); }
 /* A BOX IS NOT A TEXT FIELD, and the rule above does not know that.
    `.uc-field input` gives every input inside a .uc-field wrapper width: 100%,
@@ -678,7 +707,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
 /* ---------- Users ---------- */
 .uc-inline-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.uc-inline-form select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background: #fff; }
+.uc-inline-form select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background-color: #fff; }
 .uc-user-row { display: grid; grid-template-columns: 1.4fr 1.6fr auto; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--p-border); }
 .uc-user-id strong { display: block; }
 .uc-user-controls { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -835,7 +864,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
     border-radius: 7px; font-size: 14px; font-family: inherit; }
 .uc-repeat-nth { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: 22px; }
 .uc-repeat-nth select { padding: 7px 9px; border: 1px solid var(--p-border-strong);
-    border-radius: 7px; font-size: 14px; font-family: inherit; background: #fff; }
+    border-radius: 7px; font-size: 14px; font-family: inherit; background-color: #fff; }
 
 /* THE DAY CIRCLES ARE CHECKBOXES. Round is a style; what a screen reader and a
    keyboard get is a labelled checkbox in a group, which is what it is. */
@@ -1299,7 +1328,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-field-pencil-locked { position: relative; }
 .uc-field-pencil-locked input:not([type=hidden]),
 .uc-field-pencil-locked textarea,
-.uc-field-pencil-locked select { background: #FAFAFA; color: #4B5563; }
+.uc-field-pencil-locked select { background-color: #FAFAFA; color: #4B5563; }
 .uc-pencil { position: absolute; top: 0; right: 0; background: none; border: 1px solid #D1D5DB;
     border-radius: 6px; padding: 2px 6px; cursor: pointer; color: #4B5563; line-height: 1; }
 .uc-pencil:hover { border-color: var(--uc-accent, #16BECF); color: #0E818C; }
@@ -1309,7 +1338,7 @@ body.uc-modal-open { overflow: hidden; }
  * reason is printed underneath, because a control that silently refuses to open
  * reads as broken. */
 .uc-field-nobulk input, .uc-field-nobulk textarea, .uc-field-nobulk select {
-    background: #F3F4F6; color: #6B7280; }
+    background-color: #F3F4F6; color: #6B7280; }
 /* Selects and checkboxes have no readonly, so they are made inert here. */
 .uc-inert { pointer-events: none; opacity: .7; }
 
@@ -1330,7 +1359,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-flag-attention { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
 
 .uc-field-locked input, .uc-field-locked textarea, .uc-field-locked select {
-    background: #F9FAFB; color: #4B5563; border-color: #D1D5DB; cursor: not-allowed; }
+    background-color: #F9FAFB; color: #4B5563; border-color: #D1D5DB; cursor: not-allowed; }
 .uc-field-attention { border-left: 3px solid #f59e0b; padding-left: 10px; margin-left: -13px; }
 .uc-field-attention input, .uc-field-attention textarea { border-color: #f59e0b; background: #fffbeb; }
 
@@ -1374,6 +1403,9 @@ body.uc-modal-open { overflow: hidden; }
 /* Pending-queue indicator. Hover AND focus, so it is usable by keyboard, on a
  * phone and by anyone not using a mouse. The aria-label on the wrapper names
  * the fields, so a screen reader gets the same sentence the tooltip shows. */
+/* Still used by the "submitted for review" table on the same screen, which is
+   a genuine table of five short columns. The imported queue is a list now and
+   marks itself with .uc-queue-item-needs. */
 .uc-row-needs td { background: #fffdf5; }
 .uc-needs-flag { position: relative; display: inline-flex; color: #b45309; margin-left: 6px; cursor: help; }
 /* 5.02:1, up from 2.15:1. This is the keyboard focus indicator on the
@@ -1409,7 +1441,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-faq-picker-label { flex: 1 1 240px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .uc-faq-picker-label > .uc-field-label { font-size: 13px; font-weight: 600; color: var(--p-text); display: block; }
 .uc-faq-picker-label select { width: 100%; padding: 8px 10px; border: 1px solid var(--p-border);
-    border-radius: 7px; font-size: 14px; background: #fff; color: var(--p-text); }
+    border-radius: 7px; font-size: 14px; background-color: #fff; color: var(--p-text); }
 .uc-faq-picker-row .uc-btn { flex: 0 0 auto; }
 .uc-faq-picker .uc-hint { margin: 8px 0 0; }
 .uc-faq-picker-said { margin: 10px 0 0; }
@@ -1593,8 +1625,18 @@ body.uc-modal-open { overflow: hidden; }
     padding-left: 12px; border-left: 2px solid var(--p-border); }
 .uc-remove-sub-label { font-size: 12px; font-weight: 600; color: var(--p-muted); }
 .uc-remove-picker { margin-left: 22px; max-width: 320px; }
+/* White on #C0392B is 5.13:1; on the darker hover, 6.65:1. `.uc-portal a` is
+   (0,1,1) and would repaint an anchor wearing this with the page's link teal,
+   which is the same specificity accident documented at .uc-btn-source, so the
+   anchor case is named explicitly. */
 .uc-btn-danger { background: #c0392b; border-color: #c0392b; color: #fff; }
 .uc-btn-danger:hover { background: #a33025; border-color: #a33025; color: #fff; }
+.uc-portal a.uc-btn-danger, .uc-portal a.uc-btn-danger:hover { color: #fff; }
+
+/* The Remove series control, alone at the foot of the series editor. It takes
+   the space a card would have taken so the button does not sit against the
+   Schedule above it. */
+.uc-series-remove-row { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--p-border); }
 
 /* ---------- Registrations ---------- */
 .uc-page-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -1710,10 +1752,57 @@ body.uc-modal-open { overflow: hidden; }
 
 /* Collapsed by default: a queue is for scanning, and a dozen open panels
    would stop it being one. */
-.uc-queue-panel-row > td { padding-top: 0; border-top: 0; }
-.uc-queue-panel { border: 1px solid var(--uc-border, #e2e5ea); border-radius: 10px; background: #fff; }
-.uc-queue-panel > summary { cursor: pointer; padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--uc-secondary, #6b7280); list-style: revert; }
-.uc-queue-panel > summary:focus-visible { outline: 2px solid var(--uc-teal-text, #0e818c); outline-offset: -2px; border-radius: 10px; }
-.uc-queue-panel[open] > summary { border-bottom: 1px solid var(--uc-border, #e2e5ea); }
+/* ---------------------------------------------------------------------------
+   THE IMPORTED QUEUE: A LIST OF EVENTS, NOT A TABLE OF COLUMNS.
+
+   It was five columns wide, and a table gives every column the same weight, so
+   the title, the platform badge, a timezone string, an address and two verbs
+   all arrived at once with nothing saying which was the thing. A queue is
+   scanned for WHICH EVENT this is and then decided about, which is a heading
+   and a supporting line.
+
+   THE HIERARCHY IS MADE WITH SIZE AND WEIGHT, not with rules or colour, which
+   is what the brand guide asks for (p.17). Title 16/600 in the text colour;
+   everything under it 13/400 in the secondary grey. One hairline between rows.
+   ------------------------------------------------------------------------- */
+.uc-queue-list { list-style: none; margin: 0; padding: 0; }
+.uc-queue-item { padding: 16px 0; border-top: 1px solid var(--p-border); }
+.uc-queue-item:first-child { border-top: 0; padding-top: 4px; }
+/* Waiting on a person: the palest amber, pulled out to the card's padding edge
+   so the row is marked without a box being drawn around it. Never red, because
+   a GoFundMe Pro campaign arrives in this state by design every time. */
+.uc-queue-item-needs { background: #fffdf5; box-shadow: -20px 0 0 #fffdf5, 20px 0 0 #fffdf5; }
+
+.uc-queue-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.uc-queue-id { flex: 1 1 320px; min-width: 0; }
+.uc-portal .uc-queue-title { margin: 0 0 4px; font-family: var(--uc-font-heading);
+    font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: 0;
+    text-transform: none; color: var(--sfaf-darkgray); }
+.uc-queue-title a { color: inherit; }
+.uc-queue-title a:hover { color: var(--uc-accent-text); }
+
+/* Source, when and where, in the order somebody reads them. Wraps as a group
+   rather than as one run-on sentence, so a long address takes its own line
+   instead of pushing the date off the row. */
+.uc-queue-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px;
+    margin: 0; font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--p-muted); }
+.uc-queue-links { margin: 6px 0 0; font-size: 12px; }
+.uc-queue-actions { flex: 0 0 auto; padding-top: 2px; }
+
+/* The disclosure is SUBORDINATE TO ITS ROW and has to look it: indented to the
+   title's left edge, quieter than the meta line above it, and carrying no card
+   of its own. It was a full-width cell spanning all five columns, which made it
+   read as a sibling of the row rather than as part of it. */
+.uc-queue-item > .uc-queue-panel { margin: 10px 0 0; }
+.uc-queue-panel { border: 1px solid var(--p-border); border-radius: 10px; background: #fff; }
+.uc-queue-panel > summary { cursor: pointer; padding: 8px 12px; font-size: 12px; font-weight: 600;
+    color: var(--p-muted); list-style: revert; }
+.uc-queue-panel > summary:hover { color: var(--uc-accent-text); }
+.uc-queue-panel > summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; border-radius: 10px; }
+.uc-queue-panel[open] > summary { border-bottom: 1px solid var(--p-border); }
 .uc-queue-form { padding: 16px; }
 .uc-queue-form .uc-form-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+
+@media (max-width: 720px) {
+    .uc-queue-actions { flex: 1 1 100%; padding-top: 8px; }
+}
