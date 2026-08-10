@@ -8590,11 +8590,15 @@ class SFAF_Portal {
             delete_transient( 'sfaf_team_blocked_' . $user->ID );
         }
 
-        // Which row, if any, is open, and for what. Both are ordinary query
-        // args, so the state of this screen is in its address.
-        $renaming  = isset( $_GET['team_rename'] ) ? sanitize_key( wp_unslash( $_GET['team_rename'] ) ) : '';
-        $managing  = isset( $_GET['team_members'] ) ? sanitize_key( wp_unslash( $_GET['team_members'] ) ) : '';
-        $creating  = ! empty( $_GET['team_new'] );
+        /*
+         * Rename is still a query arg, because it REPLACES the row and a
+         * replaced row has to survive the redirect that a failed save sends
+         * somebody back through. Membership is no longer one: it is a
+         * <details> now, opened in place with no page load, so there is nothing
+         * to carry in the address. See render_team_row().
+         */
+        $renaming = isset( $_GET['team_rename'] ) ? sanitize_key( wp_unslash( $_GET['team_rename'] ) ) : '';
+        $creating = ! empty( $_GET['team_new'] );
         ?>
         <section class="uc-section" id="uc-teams">
             <div class="uc-section-head">
@@ -8633,7 +8637,7 @@ class SFAF_Portal {
                 <?php else : ?>
                     <ul class="uc-team-list">
                         <?php foreach ( $teams as $team ) : ?>
-                            <?php $this->render_team_row( $team, $members, $renaming, $managing ); ?>
+                            <?php $this->render_team_row( $team, $members, $renaming ); ?>
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>
@@ -8662,7 +8666,10 @@ class SFAF_Portal {
                                 <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Create team</button>
                                 <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $this->url( 'users' ) . '#uc-teams' ); ?>">Cancel</a>
                             </div>
-                            <p class="uc-hint">You choose who is in it on the next screen.</p>
+                            <?php // The old copy said "on the next screen", which
+                                  // stopped being true when membership became a
+                                  // disclosure on the row itself. ?>
+                            <p class="uc-hint">Open the team once it exists to add people to it.</p>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -8672,8 +8679,35 @@ class SFAF_Portal {
     }
 
     /**
-     * One team, as a row: its name, how many people are in it, and what can be
-     * done to it. Optionally opened into rename or member-picking mode.
+     * One team, as a row that opens into its own membership editor.
+     *
+     * WHAT THIS REPLACED, AND WHY IT WAS THE WRONG SHAPE. The old screen put
+     * EVERY calendar user under EVERY team as a ticked or unticked checkbox.
+     * That is a list of the calendar with some ticks in it, not a team: a team
+     * of four on a calendar of forty read as forty rows, an empty team looked
+     * identical to a full one at a glance, and "who is in Philanthropy" could
+     * only be answered by scanning for ticks. It also does not scale, since it
+     * grows with the calendar rather than with the team.
+     *
+     * SO THE TEAM SHOWS ITS MEMBERS. The list is SFAF_Teams::members(), the
+     * people actually stored on it, each with a remove control. Everyone else
+     * is behind "Add member", which offers only calendar users who are not
+     * already in, with a type-to-filter box over them. That is the same source
+     * rule as the notification picker: a person who has not been given calendar
+     * access under Users and Permissions is not somebody a team can name.
+     *
+     * NOTHING IS SAVED UNTIL SAVE IS PRESSED. Removals and additions are
+     * staged: a removed member stays on screen struck through and a chosen
+     * candidate stays ticked, so what is about to happen is readable before it
+     * happens, and Cancel is a plain reload that discards the lot. No control
+     * here writes on change, and there is no request between opening the panel
+     * and pressing the button.
+     *
+     * IT IS A <details>, NOT A QUERY ARG. The old "Manage members" / "Close"
+     * pair was two page loads to look at four names, and "Close" describes
+     * neither what it does nor what will happen; the chevron does both, and it
+     * is the same disclosure the RSVP settings screen uses, marked with
+     * data-uc-disclosure so initDisclosures() keeps aria-expanded honest.
      *
      * THE COUNT IS MEMBERSHIP, NOT REACH, and where those differ it says so.
      * SFAF_Teams::size() counts people who can actually be emailed, which is
@@ -8684,23 +8718,47 @@ class SFAF_Portal {
      * a number nobody can account for.
      *
      * @param array     $team
-     * @param WP_User[] $members  The calendar's users, for the picker.
+     * @param WP_User[] $members  The calendar's users, for the Add member picker.
      * @param string    $renaming Team id currently being renamed, or ''.
-     * @param string    $managing Team id whose members are open, or ''.
      */
-    private function render_team_row( $team, $members, $renaming = '', $managing = '' ) {
-        $id       = (string) $team['id'];
-        $name     = (string) $team['name'];
-        $in_team  = $team['users'];
-        $people   = SFAF_Teams::member_count( $id );
-        $reach    = SFAF_Teams::size( $id );
-        $base     = $this->url( 'users' );
-        $rename_h = add_query_arg( 'team_rename', $id, $base ) . '#uc-teams';
-        $manage_h = add_query_arg( 'team_members', $id, $base ) . '#uc-teams';
+    private function render_team_row( $team, $members, $renaming = '' ) {
+        $id        = (string) $team['id'];
+        $name      = (string) $team['name'];
+        $in_team   = $team['users'];
+        $people    = SFAF_Teams::member_count( $id );
+        $reach     = SFAF_Teams::size( $id );
+        $base      = $this->url( 'users' );
+        $rename_h  = add_query_arg( 'team_rename', $id, $base ) . '#uc-teams';
         $is_rename = ( $renaming === $id );
-        $is_manage = ( $managing === $id );
+        $panel_id  = 'uc-team-panel-' . sanitize_html_class( $id );
+
+        /*
+         * THE MEMBERS ARE THE TEAM'S, NOT THE CALENDAR'S, and that is what
+         * makes the $offered guarantee hold by construction rather than by
+         * remembering. A stored member who has since lost calendar access, or
+         * never had it, appears HERE, because this list asks the team who is in
+         * it. It therefore gets a checkbox, so it is offered, so it can be
+         * removed deliberately and cannot be dropped by accident.
+         *
+         * The one person who still has no checkbox is a member whose WordPress
+         * account has been deleted: members() cannot resolve them and skips
+         * them, exactly as all() refuses to filter, so they are NOT offered and
+         * SFAF_Teams::save() keeps them. A lookup failure must never become a
+         * silent deletion. See the $offered argument there, and the assertion
+         * in the build that checks every checkbox in this method is paired.
+         */
+        $team_members = SFAF_Teams::members( $id );
+
+        // Calendar users who are not already in. The candidates list, and the
+        // only thing "Add member" may ever contain.
+        $candidates = array();
+        foreach ( $members as $m ) {
+            if ( ! in_array( (int) $m->ID, $in_team, true ) ) {
+                $candidates[] = $m;
+            }
+        }
         ?>
-        <li class="uc-team-row<?php echo ( $is_rename || $is_manage ) ? ' uc-team-row-open' : ''; ?>">
+        <li class="uc-team-row<?php echo $is_rename ? ' uc-team-row-open' : ''; ?>">
 
             <?php if ( $is_rename ) : ?>
                 <?php // Rename turns THIS name into an input and nothing else. ?>
@@ -8717,76 +8775,159 @@ class SFAF_Portal {
                         <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $base . '#uc-teams' ); ?>">Cancel</a>
                     </div>
                 </form>
+                <?php
+                /*
+                 * NO MEMBERS POSTED, AND THAT IS THE CASE $offered EXISTS FOR.
+                 * This form carries no team_users[] and no team_offered[], so
+                 * dispatch_post() passes an empty offered set and save() keeps
+                 * the stored membership whole. Renaming a team has never been
+                 * allowed to empty it, and this is the mechanism.
+                 */
+                ?>
             <?php else : ?>
-                <div class="uc-team-id">
-                    <strong class="uc-team-name-text"><?php echo esc_html( $name ); ?></strong>
-                    <span class="uc-team-count">
-                        <?php echo (int) $people; ?> <?php echo esc_html( 1 === $people ? 'person' : 'people' ); ?>
-                        <?php if ( $people > $reach ) : ?>
-                            <?php // Said in words. A second bare number here is
-                                  // what made the old screen unreadable. ?>
-                            <span class="uc-muted">(<?php echo (int) ( $people - $reach ); ?> with no email address, so
-                            <?php echo esc_html( 1 === ( $people - $reach ) ? 'that one is' : 'those are' ); ?> skipped when a reminder goes out)</span>
-                        <?php endif; ?>
-                    </span>
-                </div>
-                <div class="uc-team-actions">
-                    <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $is_manage ? $base . '#uc-teams' : $manage_h ); ?>"><?php echo $is_manage ? 'Close' : 'Manage members'; ?></a>
-                    <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $rename_h ); ?>">Rename</a>
-                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-team-delete"
-                          onsubmit="return confirm('Delete the team &quot;<?php echo esc_attr( $name ); ?>&quot;? This is refused if any event still names it.');">
-                        <input type="hidden" name="uc_action" value="delete_team" />
-                        <input type="hidden" name="team_id" value="<?php echo esc_attr( $id ); ?>" />
-                        <?php wp_nonce_field( 'uc_portal_delete_team', 'uc_nonce' ); ?>
-                        <button class="uc-link-danger uc-btn-sm" type="submit">Delete</button>
-                    </form>
-                </div>
-            <?php endif; ?>
+                <details class="uc-team-manage" data-uc-disclosure>
+                    <summary class="uc-team-summary" aria-expanded="false" aria-controls="<?php echo esc_attr( $panel_id ); ?>">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                        <span class="uc-team-id">
+                            <strong class="uc-team-name-text"><?php echo esc_html( $name ); ?></strong>
+                            <span class="uc-team-count">
+                                <?php echo (int) $people; ?> <?php echo esc_html( 1 === $people ? 'person' : 'people' ); ?>
+                                <?php if ( $people > $reach ) : ?>
+                                    <?php // Said in words. A second bare number here is
+                                          // what made the old screen unreadable. ?>
+                                    <span class="uc-muted">(<?php echo (int) ( $people - $reach ); ?> with no email address, so
+                                    <?php echo esc_html( 1 === ( $people - $reach ) ? 'that one is' : 'those are' ); ?> skipped when a reminder goes out)</span>
+                                <?php endif; ?>
+                            </span>
+                        </span>
+                    </summary>
 
-            <?php if ( $is_manage ) : ?>
-                <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-team-members-form">
-                    <input type="hidden" name="uc_action" value="save_team" />
-                    <input type="hidden" name="team_id" value="<?php echo esc_attr( $id ); ?>" />
-                    <?php // The name travels unchanged: this form is about
-                          // membership, and save() needs a name to keep. ?>
-                    <input type="hidden" name="team_name" value="<?php echo esc_attr( $name ); ?>" />
-                    <?php wp_nonce_field( 'uc_portal_save_team', 'uc_nonce' ); ?>
+                    <div class="uc-team-panel" id="<?php echo esc_attr( $panel_id ); ?>">
+                        <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-team-members-form">
+                            <input type="hidden" name="uc_action" value="save_team" />
+                            <input type="hidden" name="team_id" value="<?php echo esc_attr( $id ); ?>" />
+                            <?php // The name travels unchanged: this form is about
+                                  // membership, and save() needs a name to keep. ?>
+                            <input type="hidden" name="team_name" value="<?php echo esc_attr( $name ); ?>" />
+                            <?php wp_nonce_field( 'uc_portal_save_team', 'uc_nonce' ); ?>
 
-                    <?php if ( empty( $members ) ) : ?>
-                        <p class="uc-muted">Add people to the calendar above first.</p>
-                    <?php else : ?>
-                        <p class="uc-hint">Ticked means in the team. Everybody on the calendar is listed, so this is who you can choose from.</p>
-                        <ul class="uc-member-list">
-                            <?php foreach ( $members as $m ) : ?>
-                                <?php
-                                /*
-                                 * WHAT THE FORM OFFERED, DECLARED. Only calendar
-                                 * users are listed, so a member without a
-                                 * calendar role has no checkbox here and would
-                                 * otherwise be dropped by this save. The ids on
-                                 * offer are posted alongside the ticks, and
-                                 * SFAF_Teams::save() keeps anything stored
-                                 * outside them. See its $offered argument.
-                                 */
-                                ?>
-                                <li class="uc-member-row">
-                                    <label class="uc-check uc-member-check">
-                                        <input type="checkbox" name="team_users[]" value="<?php echo (int) $m->ID; ?>"
-                                               <?php checked( in_array( (int) $m->ID, $in_team, true ) ); ?> />
-                                        <span class="uc-member-name"><?php echo esc_html( $m->display_name ); ?></span>
-                                        <span class="uc-member-email uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
-                                    </label>
-                                    <input type="hidden" name="team_offered[]" value="<?php echo (int) $m->ID; ?>" />
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php endif; ?>
+                            <h4 class="uc-picker-heading">In this team</h4>
+                            <?php if ( empty( $team_members ) ) : ?>
+                                <p class="uc-muted uc-team-none">Nobody is in this team yet. Add somebody below.</p>
+                            <?php else : ?>
+                                <ul class="uc-member-list">
+                                    <?php foreach ( $team_members as $m ) : ?>
+                                        <li class="uc-member-row">
+                                            <?php
+                                            /*
+                                             * THE REMOVE CONTROL IS THE CHECKBOX, and it
+                                             * is ticked. Unticking it stages the removal
+                                             * and the row goes struck through where it
+                                             * stands, so with scripting off nothing
+                                             * vanishes and what is about to happen is
+                                             * still on screen to be read. Same pattern,
+                                             * and the same reasoning, as the "anyone
+                                             * else" address pills.
+                                             */
+                                            ?>
+                                            <label class="uc-member-chip">
+                                                <input type="checkbox" name="team_users[]" value="<?php echo (int) $m->ID; ?>" checked />
+                                                <span class="uc-member-body">
+                                                    <span class="uc-member-name"><?php echo esc_html( $m->display_name ); ?></span>
+                                                    <span class="uc-member-email uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
+                                                </span>
+                                                <span class="uc-member-x" aria-hidden="true"><?php echo sfaf_icon( 'x', array( 'size' => '14px' ) ); ?></span>
+                                                <span class="uc-visually-hidden">In the team. Untick to take <?php echo esc_html( $m->display_name ); ?> out when this is saved.</span>
+                                            </label>
+                                            <input type="hidden" name="team_offered[]" value="<?php echo (int) $m->ID; ?>" />
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
 
-                    <div class="uc-team-actions">
-                        <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Save members</button>
-                        <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $base . '#uc-teams' ); ?>">Cancel</a>
+                            <?php
+                            /*
+                             * ADD MEMBER: CALENDAR USERS ONLY, AND ONLY THE ONES
+                             * NOT ALREADY IN. Three states, and each says which
+                             * of them it is, because "nobody to add" for want of
+                             * calendar users and "nobody to add" because they are
+                             * all in already are different situations with
+                             * different next steps.
+                             */
+                            ?>
+                            <?php if ( empty( $members ) ) : ?>
+                                <p class="uc-hint">Add people to the calendar above first. Only calendar users can be put in a team.</p>
+                            <?php elseif ( empty( $candidates ) ) : ?>
+                                <p class="uc-hint">Every calendar user is already in this team.</p>
+                            <?php else : ?>
+                                <details class="uc-team-add" data-uc-disclosure>
+                                    <summary class="uc-team-add-toggle" aria-expanded="false">
+                                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                                        <span>Add member</span>
+                                    </summary>
+                                    <?php // The filter, its list and its empty note are
+                                          // found within this element; see
+                                          // initFilterLists() in portal.js. ?>
+                                    <div class="uc-team-add-body" data-uc-filter-scope>
+                                        <label class="uc-picker-filter">
+                                            <span class="uc-visually-hidden">Filter people by name or address</span>
+                                            <?php
+                                            /*
+                                             * data-uc-not-a-field, for the same reason as
+                                             * the notification picker's filter: this box
+                                             * changes nothing and posts nothing, so the
+                                             * edit-scope lock must not make it readonly.
+                                             */
+                                            ?>
+                                            <input type="search" placeholder="Type to filter people&hellip;"
+                                                   data-uc-filter data-uc-not-a-field autocomplete="off" />
+                                        </label>
+                                        <div class="uc-picker-options" data-uc-filter-list>
+                                            <?php foreach ( $candidates as $c ) : ?>
+                                                <label class="uc-check uc-picker-option"
+                                                       data-uc-filter-text="<?php echo esc_attr( strtolower( $c->display_name . ' ' . $c->user_email ) ); ?>">
+                                                    <input type="checkbox" name="team_users[]" value="<?php echo (int) $c->ID; ?>" />
+                                                    <span><?php echo esc_html( $c->display_name ); ?>
+                                                        <span class="uc-muted"><?php echo esc_html( $c->user_email ); ?></span></span>
+                                                </label>
+                                                <input type="hidden" name="team_offered[]" value="<?php echo (int) $c->ID; ?>" />
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>Nobody matches that.</p>
+                                    </div>
+                                </details>
+                            <?php endif; ?>
+
+                            <div class="uc-team-actions">
+                                <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Save members</button>
+                                <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $base . '#uc-teams' ); ?>">Cancel</a>
+                            </div>
+                        </form>
+
+                        <?php
+                        /*
+                         * RENAME AND DELETE LIVE IN THE PANEL, not on the closed
+                         * row. Everything that can be done to a team is inside
+                         * the team, and the closed list is a list of teams and
+                         * their sizes rather than a grid of verbs.
+                         *
+                         * DELETE IS STILL REFUSED WHILE ANY EVENT NAMES THE
+                         * TEAM, and the refusal names the events. Unchanged; see
+                         * SFAF_Teams::delete().
+                         */
+                        ?>
+                        <div class="uc-team-admin-actions">
+                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $rename_h ); ?>">Rename</a>
+                            <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-team-delete"
+                                  onsubmit="return confirm('Delete the team &quot;<?php echo esc_attr( $name ); ?>&quot;? This is refused if any event still names it.');">
+                                <input type="hidden" name="uc_action" value="delete_team" />
+                                <input type="hidden" name="team_id" value="<?php echo esc_attr( $id ); ?>" />
+                                <?php wp_nonce_field( 'uc_portal_delete_team', 'uc_nonce' ); ?>
+                                <button class="uc-link-danger uc-btn-sm" type="submit">Delete</button>
+                            </form>
+                        </div>
                     </div>
-                </form>
+                </details>
             <?php endif; ?>
         </li>
         <?php

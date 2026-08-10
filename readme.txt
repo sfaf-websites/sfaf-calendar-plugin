@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.19.0
+Stable tag: 3.20.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,28 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.20.0 =
+
+**One line of CSS was repainting nine different things, and the sidebar was only the one somebody noticed.** The nav labels and icons looked dim because they were: `.uc-portal a` is (0,1,1) and `.uc-nav-item` is (0,1,0), so the page's link teal `#0E7680` won and the nav rendered at **2.30:1** on the dark sidebar. The rule saying `#D1D3D4` at 8.22:1 has been in the file since 3.16.0 and has never once applied, and the icons went with it because they are `currentColor`. Every measurement in the note above that rule was correct and none of it was on screen.
+
+Walking each anchor's class list against every colour rule in the stylesheet, rather than looking at screens, found eight more: `a.uc-btn` and `a.uc-btn-sm`, so every link-shaped Cancel, Rename and Manage in caladmin; `a.uc-btn-primary`, teal on SFAF yellow at **3.87:1**, an actual failure; the All events / My events tabs; the pager; Log out; `a.uc-tlink` and `a.uc-source-link`. The fix is `:where(.uc-portal) a`, which contributes zero specificity: a bare link still gets link teal, and anything declaring a colour of its own now wins by declaring it once.
+
+**The active nav item is a bar, a white label and a teal icon.** The old treatment made the whole signal out of colour, teal text on a 10% teal tint, and that is why it could not be pushed further: at 15% the tint flattens to `#32494A` and teal on it is 4.253:1, under the AA floor for a 14px semibold label. So the signal is now three things that do not compete for the same contrast budget. A 4px solid brand teal bar down the row's left edge, full height, 5.47:1 against the bare sidebar and 4.64:1 against the tint. The label white at 600, **10.47:1**, brighter than the 8.22:1 an inactive label gets rather than merely a different hue from it. The icon keeping brand teal at 4.64:1, which is an icon, so 3:1 applies. The tint stays at 10% and now has no contrast job at all: it is what makes the row read as one block behind the bar.
+
+**Control spacing is a baseline, not a fourth instance fix.** Save Series got a margin of its own in 3.18.0, the RSVP settings form got 4px, the import queue form got 16px, and each time the answer was "add a margin to that one". Counting every control row in caladmin gives nineteen, and **eleven had no vertical spacing rule of any kind**: `.uc-actions`, `.uc-cat-actions`, `.uc-cat-form-actions`, `.uc-faq-set-actions`, `.uc-head-actions`, `.uc-page-head-actions`, `.uc-queue-actions`, `.uc-schedule-actions`, `.uc-scope-switch`, `.uc-team-actions` and `.uc-user-actions`. Three of those laid out with no gap either, so their buttons were flush horizontally as well.
+
+The baseline is keyed on `[class*="-actions"]`, the naming convention the codebase already follows, so a row added tomorrow is spaced the moment it is named. It applies only to rows that are a direct child of something that stacks, the page column, a card, a section or a form, because a margin on a flex child in a horizontal row shoves the control out of alignment: `.uc-team-actions` inside `.uc-team-row` stays centred and untouched, the same class inside `.uc-team-members-form` gets its 14px. Both halves are `:where()`, so every figure that already existed still wins.
+
+**A team shows its members.** The old screen listed every calendar user under every team with ticks meaning membership, which is a list of the calendar with some ticks in it: a team of four on a calendar of forty read as forty rows, an empty team looked like a full one at a glance, and it grows with the calendar rather than with the team. The team now lists the people in it, each with a remove control, and everybody else is behind an Add member picker that offers only calendar users who are not already in, with a type-to-filter box over them. Same source rule as the notification picker. Nothing saves until Save is pressed: a removed member stays on screen struck through and a chosen candidate stays ticked, so what is about to happen is readable before it happens, and Cancel is a plain reload that discards it. "Close" is gone, replaced by the rotating chevron the RSVP settings screen uses, because Close describes neither what it does nor what will happen.
+
+The 3.13.0 `$offered` guarantee survives it, and is now structural rather than remembered: the member list asks the TEAM who is in it, so a member without calendar access appears there and gets a checkbox instead of being invisible to the form that saves them. Sixteen assertions cover it, six of them exercising the real `SFAF_Teams::save()`: a rename that posts no members keeps all three, a member outside the offered set is kept, an offered member who was unticked is removed, a ticked candidate is added, a member whose WordPress account has been deleted keeps their stored id, and the order stays stable.
+
+**The embed sidebar heading is a banner, and most of it had never applied either.** 3.19.0 gave it a top margin, 12px of padding, a left indent and a hairline underneath, and not one of those reached the screen: the scoped host-proofing reset says `.uc-sidebar h3 { margin: 0; padding: 0; border: 0 }` at (0,1,1) against the heading's (0,1,0). The reset won every property it declares and the heading rendered as a line of bold text sitting on the first row. Same fault as the thumbnail in 3.18.0 and the same fault as the nav above. Two classes beat two, and it is now a centred band across the top of the card: 10% brand teal pre-flattened to `#E8F9FA`, Montserrat 18/700 in `#1A1D21` at **15.59:1**, a hairline under it and the card's own top corners. The same restraint as the caladmin card headings, and for a stronger reason, since this renders inside somebody else's programme page. The three heading states from 3.18.0 are unchanged: absent means the default, empty means none.
+
+**Found and not fixed, because it is a different surface.** The same reset outranks fourteen single-class rules in `calendar.css`. Most are harmless, where the reset and the class agree. Two are not: `.uc-filter-btn` and `.uc-group-pill` both ask for `border-radius: 99px` and the button reset's `border-radius: 0` beats them, so every filter pill and group pill on the public calendar renders square. `.uc-card-title` loses its 6px bottom margin the same way. Reported rather than changed: nothing on the public calendar was in scope here.
+
+VERIFIED: 31 PHP files parse under PHP 8.3; the callable audit resolves 99 plugin functions, 186 `$this->` calls and 372 `Class::` members with nothing unresolved; five scripts pass `node --check`; three stylesheets balance; 16 executed assertions on the `$offered` guarantee; the anchor cascade audit goes from 9 outranked to 0. Zip extracted, diffed file by file against the tree and linted from the extract.
 
 = 3.19.0 =
 

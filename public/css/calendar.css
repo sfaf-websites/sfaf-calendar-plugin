@@ -41,6 +41,13 @@
     --uc-bg: #F7F8FA;
     --uc-border: #E2E5EA;
     --uc-text: #1A1D21;
+    /* THE HEADING BAND, 10% BRAND TEAL OVER WHITE, PRE-FLATTENED. The value is
+       a flat hex rather than an alpha for the same reason as caladmin's
+       --uc-band: a translucent fill over an unknown backdrop cannot be
+       contrast-checked, and everything this sits on is a white card of ours
+       whose background is declared, so the flat colour is both measurable and
+       correct. Text on it: --uc-text at 15.59:1. */
+    --uc-band: #E8F9FA;
     --uc-muted: #9CA3AF;
     --uc-secondary: #6B7280;
 
@@ -978,35 +985,62 @@
    parameter.
    ------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------
-   THE HEADING READS AS THE HEADING OF THE BLOCK.
+   THE HEADING IS A BANNER, AND MOST OF IT HAD NEVER APPLIED.
 
-   It was 15/600 with 10px under it, which is a hair above the row titles it
-   sits over and looked like a first row rather than a heading. It is now two
-   clear steps above them: 19px against their 14px, 700 against their 600, in
-   Montserrat, with 16px of space and a hairline before the first row so the
-   heading owns a band of its own.
+   IT WAS A PLAIN LINE FOR A REASON, AND IT WAS NOT THAT NOBODY STYLED IT.
+   3.18.0 gave this rule a top margin, 12px of padding, a left indent and a
+   hairline underneath, and NOT ONE of those reached the screen. The scoped
+   reset near the top of this file says
 
-   EVERY PROPERTY IS STATED, INCLUDING THE ONES THAT LOOK LIKE DEFAULTS. This
-   block is pasted inside somebody else's page, where an h3 may already carry a
-   theme's article-heading treatment: a serif face, a border, uppercase,
-   letter-spacing, a top margin, a color. The scoped reset near the top of this
-   file neutralizes those for h2/h3/h4 inside our roots, and this rule then
-   says what ours is, so nothing is left to be inherited from a host we cannot
-   see. text-transform and letter-spacing in particular are here because a
-   theme setting them is the single most common way an embedded heading stops
-   matching its own design.
+       .uc-sidebar h2, .uc-sidebar h3, .uc-sidebar h4
+           { margin: 0; padding: 0; border: 0; color: ...; font-family: ...;
+             text-transform: none; letter-spacing: normal; }
+
+   and that is (0,1,1) against .uc-sidebar-heading at (0,1,0). One class does
+   not beat one class plus one type, so the reset won every property it
+   declares and the heading rendered at 19/700 with no margin, no padding and
+   no rule under it: a line of bold text sitting on the first row. EXACTLY the
+   same fault as the thumbnail two blocks up, and the same fault as the
+   caladmin sidebar nav. TWO CLASSES BEAT TWO, so the selector is
+   `.uc-sidebar .uc-sidebar-heading` and the rule is now the one that applies.
+
+   WHAT IT IS NOW. A centred band across the top of the card: 10% brand teal
+   pre-flattened, Montserrat 18/700 in --uc-text, a hairline under it, and the
+   card's own top corners so the band is the top of the block rather than a
+   stripe inside it. Negative margins carry it out to the card's edges through
+   the 6px/14px padding.
+
+   THE SAME RESTRAINT AS THE CALADMIN CARD HEADINGS, and for a stronger reason
+   here: this renders inside somebody else's programme page, where a saturated
+   teal block would be the loudest thing on it. A tint with dark text is a
+   heading; a filled bar is a claim on the page. Measured: --uc-text #1A1D21 on
+   #E8F9FA is 15.59:1, and the band itself is decoration behind text rather
+   than a control or a meaningful graphic, so the hairline is what gives it an
+   edge rather than the fill needing to clear 3:1 against the card.
+
+   EVERY PROPERTY IS STATED, INCLUDING THE ONES THAT LOOK LIKE DEFAULTS,
+   because an h3 in a host theme routinely arrives with a serif face, a border,
+   uppercase, letter-spacing, a top margin and a color of its own.
+   text-align in particular is stated: centring is the point of the banner and
+   a host that sets text-align on headings would otherwise take it away.
    ------------------------------------------------------------------------- */
-.uc-sidebar-heading {
+.uc-sidebar .uc-sidebar-heading {
     display: block;
-    margin: 2px 0 16px;
-    padding: 0 0 12px 10px;
+    /* Out through the card's 6px top and 14px side padding, to its edges. */
+    margin: -6px -14px 14px;
+    padding: 13px 16px;
+    background: var(--uc-band);
+    border: 0;
     border-bottom: 1px solid var(--uc-border);
+    /* 13px, not 14px: inside the card's 1px border. */
+    border-radius: 13px 13px 0 0;
     font-family: var(--uc-font-heading);
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 700;
-    line-height: 1.25;
-    letter-spacing: -0.01em;
+    line-height: 1.3;
+    letter-spacing: -0.005em;
     text-transform: none;
+    text-align: center;
     color: var(--uc-text);
 }
 

@@ -83,7 +83,41 @@ body.uc-portal {
     line-height: 1.55;
 }
 .uc-portal .sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
-.uc-portal a { color: var(--uc-accent-text); text-decoration: none; }
+
+/* ---------------------------------------------------------------------------
+   THE LINK COLOUR IS A FLOOR, NOT A RULING. THIS ONE LINE WAS REPAINTING
+   HALF THE PORTAL.
+
+   Written as `.uc-portal a` this is (0,1,1), and an anchor that declares a
+   colour of its own through a single class is (0,1,0). One class does not beat
+   one class plus one type, so EVERY styled link in caladmin lost its own
+   colour to the page's link teal and there was no way to tell by reading the
+   rule that declared it, because that rule is correct and simply never won.
+
+   Nine distinct anchors were affected, found by walking each one's class list
+   against every colour rule in this file rather than by looking at screens:
+
+     a.uc-nav-item ............ the whole sidebar nav, the visible complaint
+     a.uc-btn, a.uc-btn-sm .... every link-shaped button: Cancel, Manage, Rename
+     a.uc-btn-primary ......... teal on SFAF yellow, 3.87:1, an actual failure
+     a.uc-view-tab ............ the All events / My events tabs
+     a.uc-page-num ............ the pager
+     a.uc-portal-logout ....... meant to be --p-muted
+     a.uc-tlink, a.uc-source-link
+
+   :where() CONTRIBUTES ZERO SPECIFICITY, so the ancestor stops counting and
+   this becomes (0,0,1): a bare <a> still gets link teal, and anything that
+   names a colour of its own now wins by declaring it once. Same instrument as
+   the control fallback further down, applied to the opposite problem: there it
+   stops a catch-all from outranking classes, here it stops a base rule from
+   doing it.
+
+   THE HOVER UNDERLINE STAYS AT (0,1,1) DELIBERATELY. Dropping it to zero too
+   would underline every button and tab that never declares text-decoration.
+   Anything that must not underline says so in its own :hover rule, which is
+   (0,2,0) and wins; .uc-btn:hover and .uc-nav-item:hover both do.
+   ------------------------------------------------------------------------- */
+:where(.uc-portal) a { color: var(--uc-accent-text); text-decoration: none; }
 .uc-portal a:hover { text-decoration: underline; }
 .uc-portal h1 { font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
 .uc-portal h2 { font-size: 17px; font-weight: 700; margin: 0; }
@@ -193,27 +227,40 @@ body.uc-portal {
    and is unreadable, and BRAND TEAL AT FULL VALUE IS THE CORRECT CHOICE. So
    the darkened teal is banned here exactly as brand teal is banned on white.
 
-   EVERY PAIRING ON THIS BACKGROUND, MEASURED:
+   NONE OF WHICH WAS ON SCREEN. Every value in the table below was correct and
+   none of it applied: `.uc-portal a` at (0,1,1) outranked `.uc-nav-item` at
+   (0,1,0), so the nav rendered in exactly the #0E7680 this note calls
+   unreadable, at 2.30:1, and the icons with it because they are currentColor.
+   The rule that says #D1D3D4 has been here since 3.16.0 and never won once.
+   See the :where() note at the top of this file for the fix and for the eight
+   other anchors it was doing the same thing to.
+
+   EVERY PAIRING ON THIS BACKGROUND, MEASURED. Floors: 4.5:1 where there is
+   text, 3:1 for anything that is only a shape.
 
      Dark Gray  #373433   the background, relative luminance 0.0351
      Light Gray #D1D3D4   inactive label + icon .................. 8.22:1  AAA
-     White      #FFFFFF   hover label ........................... 12.34:1  AAA
-     White              on the hover tint (#43403F) ............. 10.28:1  AAA
-     Brand teal #16BECF   ACTIVE label + icon, on the tint below .. 4.64:1  AA
-     Brand teal #16BECF   active, against the bare background ..... 5.47:1  AA
+     White      #FFFFFF   hover label + icon, on #43403F ......... 10.28:1  AAA
+     White      #FFFFFF   ACTIVE label 14/600, on the tint ....... 10.47:1  AAA
+     Brand teal #16BECF   ACTIVE icon, on the tint (icon, 3:1) .... 4.64:1  ok
+     Brand teal #16BECF   ACTIVE bar vs the tint (shape, 3:1) ..... 4.64:1  ok
+     Brand teal #16BECF   ACTIVE bar vs the bare bg (shape, 3:1) .. 5.47:1  ok
      Dark Gray  #373433   on the yellow Pending badge ............. 8.92:1  AAA
      Yellow     #FFD900   the badge itself, as a shape on the bg .. 8.92:1
-     #9EA1A3              the two footer labels ................... 4.75:1  AA
-     Dark Gray  #373433   on the active teal language segment ..... 5.47:1  AA
+     White      #FFFFFF   brand text, footer name ................ 12.34:1  AAA
+     #9EA1A3              the footer role label ................... 4.75:1  AA
+     Light Gray #D1D3D4   the footer Sign out link ................ 8.22:1  AAA
 
-   THE ACTIVE TINT IS 10 PERCENT, NOT 15. Teal at 15% over #373433 flattens to
-   #32494A, and brand teal on that is 4.253:1, under the 4.5:1 AA floor for
-   14px semibold, which is what a nav label is. At 10% it flattens to #344243
-   and the same teal measures 4.638:1. Ten percent is the most tint this can
-   carry and still let the label be brand teal, and the label being brand teal
-   is the point of the treatment. The value is pre-flattened rather than left as
-   an alpha, for the same reason as --uc-band: a translucent fill over an
-   unknown backdrop cannot be contrast-checked and a flat colour can.
+   THE ACTIVE TINT IS 10 PERCENT, NOT 15, AND IT NO LONGER CARRIES ANYTHING.
+   Teal at 15% over #373433 flattens to #32494A, and brand teal on that is
+   4.253:1, under the 4.5:1 AA floor for a 14px semibold nav label. At 10% it
+   flattens to #344243 and the same teal measures 4.638:1. That constraint is
+   what made "more tint" a dead end, and it is why the active state is now
+   carried by a bar and a white label instead: with the label white at 10.47:1
+   the tint has no contrast job left, so the ceiling stopped mattering rather
+   than being raised. The value stays pre-flattened, for the same reason as
+   --uc-band: a translucent fill over an unknown backdrop cannot be
+   contrast-checked and a flat colour can.
 
    NO COLLAPSE-TO-ICONS. A 64px rail of glyphs is a memory test. The sidebar is
    240px or it is the off-canvas drawer below 720px, and nothing in between.
@@ -231,16 +278,59 @@ body.uc-portal {
     padding: 10px 12px; margin-bottom: 2px; border-radius: 9px;
     color: var(--p-sidebar-text); font-weight: 500; font-size: 14px;
     transition: background-color .15s ease, color .15s ease; }
-.uc-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; text-decoration: none; }
+.uc-portal .uc-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; text-decoration: none; }
 .uc-nav-item:focus-visible { outline: 2px solid var(--sfaf-teal); outline-offset: -2px; }
-/* Teal on the 10% tint, plus a teal edge, so the active row is marked by
-   position as well as by colour. */
-.uc-nav-item.active { background: #344243; color: var(--sfaf-teal); font-weight: 600; }
-.uc-nav-item.active::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px;
-    width: 3px; border-radius: 0 3px 3px 0; background: var(--sfaf-teal); }
-.uc-nav-item.active:hover { background: #344243; color: var(--sfaf-teal); }
-/* The icon takes the row's colour rather than declaring its own, so the active
-   and hover states cannot drift apart from the label beside them. */
+
+/* ---------------------------------------------------------------------------
+   THE ACTIVE ROW: A BAR, A WHITE LABEL AND A TEAL ICON. NO MORE TINT.
+
+   The previous treatment made the whole signal out of colour: teal label on a
+   10% teal tint. That is the version that could not be pushed any further,
+   because 10% is the ceiling documented above: at 15% the tint flattens to
+   #32494A and teal on it is 4.253:1, under the AA floor for a 14px semibold
+   label. The way out is not more tint. It is to stop asking colour to do the
+   whole job.
+
+   So the signal is now three things that do not compete for the same contrast
+   budget:
+
+     POSITION  a 4px solid brand teal bar down the row's left edge, full
+               height. 5.47:1 against the bare sidebar and 4.64:1 against the
+               row's own tint, so it reads as a shape either way (3:1 applies).
+     WEIGHT    the label goes WHITE at 600. 10.47:1 on the tint, against the
+               8.22:1 an inactive label gets, so active is the brighter of the
+               two rather than merely a different hue from it.
+     HUE       the icon keeps brand teal, 4.64:1 on the tint. It is an icon,
+               so 3:1 applies and it clears it comfortably.
+
+   THE TINT IS KEPT, at the same 10%. It has no contrast job left now that the
+   label is white, but it is what makes the row read as one block behind the
+   bar rather than a bar with some text next to it. The value stays
+   pre-flattened for the reason given above.
+
+   THE LEFT CORNERS GO SQUARE WHEN ACTIVE. A full-height bar against a 9px
+   rounded corner is either a lozenge or a sliver; squaring that one edge is
+   what lets the bar be a clean rectangle flush against the row.
+
+   THE ICON DECLARES ITS OWN COLOUR IN THIS ONE STATE ONLY. Everywhere else it
+   is still color: inherit, so inactive and hover cannot drift from the label
+   beside them; active is the state where they are deliberately different, and
+   the rule says so rather than leaving it to be discovered.
+   ------------------------------------------------------------------------- */
+.uc-portal .uc-nav-item.active {
+    background: #344243; color: #fff; font-weight: 600;
+    border-radius: 0 9px 9px 0;
+}
+.uc-portal .uc-nav-item.active::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--sfaf-teal);
+}
+.uc-portal .uc-nav-item.active:hover { background: #344243; color: #fff; }
+.uc-portal .uc-nav-item.active .uc-nav-icon { color: var(--sfaf-teal); }
+
+/* The icon takes the row's colour rather than declaring its own, so the
+   inactive and hover states cannot drift apart from the label beside them.
+   Active is the one exception, and it is stated above. */
 .uc-nav-icon { display: inline-flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; flex: 0 0 auto; color: inherit; }
 .uc-nav-label { flex: 1 1 auto; min-width: 0; }
@@ -715,6 +805,71 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    ------------------------------------------------------------------------- */
 .uc-form > .uc-form-actions:last-child,
 form > .uc-form-actions:last-child { margin-bottom: 36px; }
+
+/* ---------------------------------------------------------------------------
+   THE CONTROL SPACING BASELINE.
+
+   The rule above is an instance fix, and Save Series was the third one: the
+   RSVP settings form got `margin-top: 4px`, the import queue form got 16px,
+   .uc-venue-actions and .uc-team-create-actions each got their own figure, and
+   every time the answer was "add a margin to that one". Fixing the fourth the
+   same way is what makes it a fifth.
+
+   WHAT THE AUDIT SAID. Nineteen control rows and standalone control blocks in
+   caladmin, counted by taking every class in the markup named `*-actions` plus
+   the blocks that stand alone in the flow, and asking the stylesheet whether
+   each says anything about the space above or below it. ELEVEN SAID NOTHING AT
+   ALL:
+
+     .uc-actions            .uc-page-head-actions   .uc-team-actions
+     .uc-cat-actions        .uc-queue-actions       .uc-user-actions
+     .uc-cat-form-actions   .uc-schedule-actions
+     .uc-faq-set-actions    .uc-scope-switch
+     .uc-head-actions
+
+   Three of those also lay out with no gap of any kind: .uc-queue-actions,
+   .uc-scope-switch and .uc-user-actions, so their buttons were flush
+   horizontally as well. Only .uc-form-actions, .uc-view-tabs, .uc-filters-bar,
+   .uc-image-buttons and the two rows patched by hand had any figure.
+
+   THE BASELINE IS KEYED ON THE NAME, WHICH IS WHY IT CANNOT BE FORGOTTEN.
+   `[class*="-actions"]` matches the convention the codebase already follows,
+   so a row added tomorrow and called .uc-whatever-actions is spaced the moment
+   it is named, with nothing to remember and no list to extend. Same move as
+   "a heading at the top of a card IS the card's heading": follow from what the
+   thing is rather than from a class somebody has to opt into.
+
+   :where() CONTRIBUTES ZERO SPECIFICITY, so every figure above still wins.
+   .uc-form-actions keeps its 22px, .uc-team-create-actions its 10px, the queue
+   form its 16px. This is a floor for anything that never had one, not a ruling
+   over anything that did.
+
+   THE PARENT LIST IS THE WHOLE DISCRIMINATION, and it is deliberate. A margin
+   is only ever right in block flow: on a flex child in a horizontal row it
+   shoves the control down out of alignment. So the top margin applies only to
+   rows that are a DIRECT CHILD of something that stacks: the page column, a
+   card, a section, a form. .uc-team-actions inside .uc-team-row stays
+   untouched and centred, because .uc-team-row is a horizontal flex row and is
+   not on the list; the same .uc-team-actions inside .uc-team-members-form is
+   the case that was reported and it gets its 14px, because a form stacks.
+
+   ONE DISPLAY CHANGE, NAMED RATHER THAN LEFT TO BE FOUND. A zero-specificity
+   fallback must not set `display` blind (see the control fallback further
+   down, and .uc-pencil), so this one is restricted to `div` by element type:
+   every table cell named `-actions` is a td or a th and cannot be reached, and
+   the two spans likewise. Of the 24 divs, exactly one does not already declare
+   a display: .uc-queue-actions, which holds a single .uc-actions child and
+   looks the same either way.
+   ------------------------------------------------------------------------- */
+:where(.uc-portal) :where(div[class*="-actions"]) {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+}
+:where(.uc-portal-content, .uc-card, .uc-section, .uc-form, form) >
+:where([class*="-actions"], .uc-scope-switch, .uc-view-tabs) { margin-top: 14px; }
+/* A single control standing on its own in a page or a card, with no row around
+   it. Not extended to `form >`, where a lone .uc-btn is usually an inline
+   wrapper inside a horizontal row of other people's buttons. */
+:where(.uc-portal-content, .uc-card, .uc-section) > :where(.uc-btn) { margin-top: 14px; }
 
 /* ---------- Page sections ----------
    A heading, a sentence saying what the section is for, and a rule. Users &
@@ -1535,42 +1690,102 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker-option .uc-muted { margin-left: 6px; font-size: 12px; }
 .uc-picker-empty { margin: 8px 0 0; }
 
-/* ---------- Teams (Users screen) ----------
-   A LIST OF WHAT EXISTS, not a stack of open forms. Each row is a name, a
-   count and its actions; the members are behind "Manage members" and are
-   plainly a picker when they are open. The old screen showed every calendar
-   user as a checkbox under every team, which made an empty team look full. */
+/* ---------------------------------------------------------------------------
+   TEAMS (Users screen).
+
+   A TEAM IS A DISCLOSURE THAT CONTAINS ITS OWN MEMBERS. The closed list is
+   names and sizes and nothing else; opening one shows who is in it, an Add
+   member picker of the calendar users who are not, and the Save that commits
+   both. Rename and Delete moved inside the panel too, so a team's verbs are
+   all in one place instead of half of them on the closed row.
+
+   THE ROW IS NO LONGER A HORIZONTAL FLEX OF NAME AND BUTTONS. It holds one
+   <details> at full width, which is what lets the open panel use the whole
+   card instead of the column left over beside a row of actions.
+   ------------------------------------------------------------------------- */
 .uc-team-list { list-style: none; margin: 0; padding: 0; }
 .uc-team-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
     padding: 13px 0; border-top: 1px solid var(--p-border); }
 .uc-team-row:first-child { border-top: 0; }
 .uc-team-row-open { background: var(--p-bg); border-radius: 10px; padding: 13px 12px; }
+.uc-team-manage { flex: 1 1 100%; min-width: 0; }
+
+/* The summary IS the row: chevron, name, count. Same disclosure shape as the
+   RSVP settings card, so the marker means the same thing on both screens. */
+.uc-team-summary { display: flex; align-items: center; gap: 10px; cursor: pointer;
+    padding: 4px 6px; margin: -4px -6px; border-radius: 8px; list-style: none; }
+.uc-team-summary::-webkit-details-marker { display: none; }
+.uc-team-summary::marker { content: ""; }
+.uc-team-summary:hover { background: var(--uc-band); }
+.uc-team-summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
 .uc-team-id { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .uc-team-name-text { font-size: 15px; }
 .uc-team-count { font-size: 13px; color: var(--p-muted); }
+.uc-team-panel { margin-top: 12px; padding: 14px; background: var(--p-bg);
+    border: 1px solid var(--p-border); border-radius: 10px; }
 .uc-team-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .uc-team-actions form { margin: 0; }
 .uc-team-rename { flex: 1 1 100%; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .uc-team-rename .uc-team-name { flex: 1 1 260px; }
-.uc-team-members-form { flex: 1 1 100%; margin-top: 6px; }
+.uc-team-members-form { margin: 0; }
+.uc-team-none { margin: 8px 0 0; font-size: 13px; }
+/* Rename and Delete, plainly subordinate to the membership editing above them
+   and separated from it, so Delete is never the neighbour of Save. */
+.uc-team-admin-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-team-admin-actions form { margin: 0; }
 .uc-team-new { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--p-border); }
 .uc-team-create { max-width: 420px; }
 .uc-team-create-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
 .uc-team-blocked { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
 
-/* MEMBER ROWS ARE ONE LINE: box, name, address. They were in a
-   repeat(auto-fill, minmax(180px, 1fr)) grid, so at any real width the name
-   wrapped onto a second line while the rest of the row stayed empty. A member
-   list is a list, not a grid: one per row, full width, and the address takes
-   whatever is left after the name. */
+/* Add member: a second, quieter disclosure inside the first. It is a summary
+   rather than a button because it opens something in place, which is what the
+   chevron already means one level up. */
+.uc-team-add { margin-top: 14px; }
+.uc-team-add-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 6px 12px; border: 1px solid var(--p-border-strong); border-radius: 8px;
+    background: #fff; font-size: 13px; font-weight: 600; list-style: none; }
+.uc-team-add-toggle::-webkit-details-marker { display: none; }
+.uc-team-add-toggle::marker { content: ""; }
+.uc-team-add-toggle:hover { border-color: var(--uc-accent-text); color: var(--uc-accent-text); }
+.uc-team-add-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-team-add-body { margin-top: 10px; }
+.uc-team-add-body .uc-picker-options { background: #fff; }
+
+/* MEMBER ROWS ARE ONE LINE: name, address, and the control that takes them
+   out. They were in a repeat(auto-fill, minmax(180px, 1fr)) grid, so at any
+   real width the name wrapped onto a second line while the rest of the row
+   stayed empty. A member list is a list, not a grid. */
 .uc-member-list { list-style: none; margin: 8px 0 0; padding: 6px 8px; max-height: 260px;
     overflow-y: auto; border: 1px solid var(--p-border); border-radius: 8px; background: #fff; }
 .uc-member-row { margin: 0; }
-.uc-member-check { display: flex; align-items: baseline; gap: 9px; margin: 0;
-    padding: 5px 6px; border-radius: 6px; font-size: 13px; font-weight: 400; }
-.uc-member-check:hover { background: var(--p-bg); }
-.uc-member-check:focus-within { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
-.uc-member-check input[type="checkbox"] { align-self: center; }
+
+/* ---------------------------------------------------------------------------
+   A MEMBER, AND THE CONTROL THAT REMOVES THEM.
+
+   The control is a ticked checkbox covering the whole row, drawn as an x. It
+   is not a button, because a button would have to either post on the spot or
+   carry its own staging in JavaScript, and neither is what was asked for: the
+   removal is STAGED and the form's Save is what commits it.
+
+   WITH SCRIPTING OFF NOTHING VANISHES. An unticked row stays where it is and
+   goes struck through, so "this person is about to be taken out" is on screen
+   to be read, and pressing Cancel or reloading brings them back untouched.
+   Same pattern, and the same reasoning, as the "anyone else" address pills.
+   ------------------------------------------------------------------------- */
+.uc-member-chip { position: relative; display: flex; align-items: baseline; gap: 9px;
+    margin: 0; padding: 6px 8px; border-radius: 6px; font-size: 13px; font-weight: 400;
+    cursor: pointer; }
+.uc-member-chip:hover { background: var(--p-bg); }
+.uc-member-chip input { position: absolute; opacity: 0; width: 100%; height: 100%;
+    top: 0; left: 0; margin: 0; cursor: pointer; }
+.uc-member-chip input:focus-visible ~ .uc-member-x { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+.uc-member-body { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 9px; }
+.uc-member-x { flex: 0 0 auto; align-self: center; display: inline-flex; color: var(--p-muted); opacity: 0.7; }
+.uc-member-chip:hover .uc-member-x { opacity: 1; color: var(--p-danger); }
+.uc-member-chip input:not(:checked) ~ .uc-member-body { text-decoration: line-through; opacity: 0.55; }
+.uc-member-chip input:not(:checked) ~ .uc-member-x { opacity: 1; color: var(--p-danger); }
 .uc-member-name { font-weight: 600; white-space: nowrap; }
 .uc-member-email { flex: 1 1 auto; min-width: 0; font-size: 12px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1622,6 +1837,10 @@ body.uc-modal-open { overflow: hidden; }
     background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
 [open] > .uc-rsvp-settings-toggle .uc-disclosure-chevron,
 [open] > summary .uc-disclosure-chevron { transform: rotate(90deg); }
+/* The Add member toggle is a small pill, not a card header, so its marker is
+   the glyph without the 28px ring the card version wears. */
+.uc-team-add-toggle .uc-disclosure-chevron { width: auto; height: auto;
+    border: 0; background: none; color: inherit; }
 @media (prefers-reduced-motion: reduce) { .uc-disclosure-chevron { transition: none; } }
 .uc-rsvp-settings-form { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-settings-form .uc-form-actions { margin-top: 4px; }

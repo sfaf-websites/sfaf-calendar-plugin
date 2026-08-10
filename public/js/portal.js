@@ -51,6 +51,7 @@
         run('completeness', initCompleteness);
         run('asyncActions', initAsyncActions);
         run('disclosures', initDisclosures);
+        run('filterLists', initFilterLists);
     });
 
     /* ---------------------------------------------------------------------
@@ -70,6 +71,68 @@
             function sync() { summary.setAttribute('aria-expanded', d.open ? 'true' : 'false'); }
             sync();
             d.addEventListener('toggle', sync);
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * Type-to-filter over any list of choices.
+     *
+     * THE NOTIFY PICKER HAD THIS AND NOTHING ELSE COULD USE IT. Its filter is
+     * bound inside initNotifyPicker(), scoped to that picker's root and keyed
+     * on data-uc-picker-filter="people", so the team member picker would have
+     * meant a second copy of the same twenty lines. This is the same behaviour
+     * with the container found from the input rather than named by it: an
+     * <input data-uc-filter> filters the [data-uc-filter-text] elements inside
+     * the nearest [data-uc-filter-list] after it, and toggles the
+     * [data-uc-filter-empty] note.
+     *
+     * A TICKED CHOICE IS NEVER FILTERED OUT OF SIGHT, which is the one rule
+     * that matters here and the reason this is not a plain string match.
+     * Losing track of somebody already chosen is how a filter turns into an
+     * accidental deselection, and on this screen the choices are staged and
+     * not yet saved.
+     *
+     * THE EMPTY NOTE RUNS ONCE ON LOAD, so the message on screen always
+     * describes the list on screen, and it only ever answers a query: with the
+     * box empty there is nothing to fail to match.
+     * ------------------------------------------------------------------ */
+    function initFilterLists() {
+        document.querySelectorAll('input[data-uc-filter]').forEach(function (input) {
+            // The list is the closest following one within a shared ancestor,
+            // so a screen may carry several without them reaching each other.
+            var scope = input.closest('[data-uc-filter-scope]') || input.parentNode.parentNode;
+            var list = scope ? scope.querySelector('[data-uc-filter-list]') : null;
+            if (!list) { return; }
+            var note = scope.querySelector('[data-uc-filter-empty]');
+
+            function apply() {
+                var q = input.value.replace(/\s+/g, ' ').trim().toLowerCase();
+                var shown = 0;
+                Array.prototype.forEach.call(
+                    list.querySelectorAll('[data-uc-filter-text]'),
+                    function (opt) {
+                        var hay = opt.getAttribute('data-uc-filter-text') || '';
+                        var box = opt.querySelector('input[type="checkbox"]');
+                        var keep = !q || hay.indexOf(q) !== -1 || (box && box.checked);
+                        opt.hidden = !keep;
+                        if (keep) { shown++; }
+                    }
+                );
+                if (note) { note.hidden = (shown !== 0 || q === ''); }
+            }
+
+            input.addEventListener('input', apply);
+            // Escape clears the filter before the browser closes the <details>
+            // out from under somebody mid-search.
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && input.value !== '') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    input.value = '';
+                    apply();
+                }
+            });
+            apply();
         });
     }
 
