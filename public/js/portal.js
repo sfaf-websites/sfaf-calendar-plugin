@@ -1135,14 +1135,114 @@
      * removes data-uc-confirm while the manager works. Binding only to the
      * buttons that already had the attribute would have frozen the warning at
      * page load — which is the bug this pair of functions exists to fix. */
+    /* A REAL DIALOG, NOT window.confirm.
+     *
+     * Every destructive action behind data-uc-confirm was going through the
+     * browser's own confirm(), which cannot be styled, cannot carry the
+     * portal's type, and, the reason it was reported, gives no clue which
+     * row it belongs to. A native box reading "Remove calendar access for this
+     * user?" over a list of six users names nobody.
+     *
+     * The message now arrives in a <dialog> opened with showModal(), which the
+     * scope switcher already uses further down: the top layer makes the page
+     * inert, traps Tab, and closes on Escape without any of that being written
+     * here. Cancel is first in the source, so showModal() focuses it and the
+     * safe answer is the default one.
+     *
+     * confirm() REMAINS THE FALLBACK, and deliberately: if <dialog> is missing
+     * a destructive action must still ask, and asking badly beats not asking. */
+    function ucConfirm(message, btn, onYes) {
+        var supported = false;
+        try {
+            supported = typeof document.createElement('dialog').showModal === 'function';
+        } catch (err) {
+            supported = false;
+        }
+
+        if (!supported) {
+            if (window.confirm(message)) {
+                onYes();
+            }
+            return;
+        }
+
+        // The button's own label is the verb on the confirming button, so the
+        // dialog answers with the same word the manager pressed.
+        var verb = (btn.textContent || '').trim() || 'Continue';
+        var danger = btn.classList.contains('uc-link-danger') || btn.classList.contains('uc-btn-danger');
+
+        var dialog = document.createElement('dialog');
+        dialog.className = 'uc-confirm-modal';
+
+        var form = document.createElement('form');
+        form.method = 'dialog';
+
+        var text = document.createElement('p');
+        text.className = 'uc-confirm-msg';
+        text.textContent = message;
+
+        var actions = document.createElement('div');
+        actions.className = 'uc-confirm-actions';
+
+        var cancel = document.createElement('button');
+        cancel.type = 'submit';
+        cancel.value = 'cancel';
+        cancel.className = 'uc-btn uc-btn-sm';
+        cancel.textContent = 'Cancel';
+
+        var ok = document.createElement('button');
+        ok.type = 'submit';
+        ok.value = 'ok';
+        ok.className = 'uc-btn uc-btn-sm ' + (danger ? 'uc-btn-danger' : 'uc-btn-primary');
+        ok.textContent = verb;
+
+        actions.appendChild(cancel);
+        actions.appendChild(ok);
+        form.appendChild(text);
+        form.appendChild(actions);
+        dialog.appendChild(form);
+        document.body.appendChild(dialog);
+
+        dialog.addEventListener('close', function () {
+            document.body.classList.remove('uc-modal-open');
+            var answer = dialog.returnValue;
+            dialog.remove();
+            if ('ok' === answer) {
+                onYes();
+            }
+        });
+
+        document.body.classList.add('uc-modal-open');
+        dialog.showModal();
+    }
+
     function initConfirmButtons() {
         var sel = '[data-uc-confirm], [data-uc-confirm-template]';
         document.querySelectorAll(sel).forEach(function (btn) {
             btn.addEventListener('click', function (e) {
-                var message = btn.getAttribute('data-uc-confirm');
-                if (message && !window.confirm(message)) {
-                    e.preventDefault();
+                // The replay after the manager said yes. Cleared immediately so
+                // a second press asks again.
+                if (btn.hasAttribute('data-uc-confirmed')) {
+                    btn.removeAttribute('data-uc-confirmed');
+                    return;
                 }
+
+                // Read at click time: initCompleteness() adds and removes this
+                // attribute while the manager works.
+                var message = btn.getAttribute('data-uc-confirm');
+                if (!message) {
+                    return;
+                }
+
+                e.preventDefault();
+                ucConfirm(message, btn, function () {
+                    // Replayed as a click rather than form.submit() so the
+                    // button still acts as the submitter: these buttons carry
+                    // `form=` attributes and named values that a bare submit()
+                    // would drop.
+                    btn.setAttribute('data-uc-confirmed', '1');
+                    btn.click();
+                });
             });
         });
     }
@@ -1259,8 +1359,10 @@
                     return;
                 }
                 wrap.classList.toggle('uc-field-attention', !filled);
+                // The badge is what marks an individual field as waiting. The
+                // sentence explaining why is said once per event now, not once
+                // per field, so there is no per-field note left to toggle.
                 toggle(wrap.querySelector('[data-uc-attention-badge]'), filled);
-                toggle(wrap.querySelector('[data-uc-attention-note]'), filled);
             });
 
             if (text) {

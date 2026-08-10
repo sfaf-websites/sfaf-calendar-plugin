@@ -1261,7 +1261,26 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-user-cats summary { cursor: pointer; color: var(--uc-accent-text); }
 .uc-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; margin-top: 8px; }
 .uc-check-grid .uc-check { margin-bottom: 0; font-size: 13px; }
-.uc-user-actions, .uc-user-remove { display: flex; align-items: center; }
+/* Save and Remove, together, in the row's third column. .uc-user-remove is
+   gone: it was a second form rendered after the row's closing tag, which is
+   what put a bare "Remove" link under the list instead of against a person. */
+.uc-user-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; }
+
+/* ---------------------------------------------------------------------------
+   THE CONFIRMATION DIALOG.
+
+   Sized to a question, not to a form: this asks one thing and offers two
+   answers. Cancel is first in the source so showModal() lands focus on the
+   safe one, and the destructive answer carries the danger colour rather than
+   the primary yellow, which is reserved for the action a screen is FOR.
+   --------------------------------------------------------------------------- */
+.uc-confirm-modal { width: min(440px, calc(100vw - 32px)); max-width: none; padding: 0;
+    border: 0; border-radius: 12px; background: #fff; color: var(--p-text, #1a1d21);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); }
+.uc-confirm-modal::backdrop { background: rgba(15, 23, 42, 0.55); }
+.uc-confirm-msg { margin: 0; padding: 22px 24px 18px; font-size: 15px; line-height: 1.5; }
+.uc-confirm-actions { display: flex; justify-content: flex-end; gap: 10px;
+    padding: 0 24px 20px; }
 
 /* ---------- Settings ---------- */
 .uc-settings-section h2 { margin-bottom: 14px; }
@@ -1423,9 +1442,35 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
 .uc-fetch-guard { margin: 6px 0 0; padding: 5px 9px; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 12px; }
 .uc-fetch-guard-ok { background: #ecfdf5; color: #065f46; }
-.uc-fetch-images { margin-top: 8px; font-size: 12px; }
-.uc-fetch-images summary { cursor: pointer; color: #6B7280; }
-.uc-fetch-images table { margin-top: 8px; }
+
+/* ---------------------------------------------------------------------------
+   QUIET SUCCESS, LOUD FAILURE.
+
+   Every row of this panel used to look the same: a left border in one of three
+   colours and everything else at one weight. So "4 events updated" and "the
+   source failed" were the same size, the same colour and the same distance
+   from the edge, and the one row that needed to stop the reader did not.
+
+   A failure now carries its own tint and states its line in the row's own
+   weight. That is the whole difference: no icon, no second border, no box. The
+   tint is the third instrument in the house order (space, hairline, tint), and
+   it is reached for here because this is the one case on the screen where
+   missing the row is the expensive outcome.
+   --------------------------------------------------------------------------- */
+.uc-fetch-line { font-weight: 600; }
+.uc-fetch-fail { background: #fef2f2; border-radius: 0 6px 6px 0; }
+.uc-fetch-fail .uc-fetch-line { color: #991b1b; }
+.uc-fetch-skip .uc-fetch-line { font-weight: 500; }
+
+/* WHICH EVENTS CHANGED. Subordinate to the summary line by size and colour,
+   not by a box: this is supporting detail for the sentence above it, and a
+   bordered panel here would be the third border in a card that already has
+   one. Space and a quieter type size are enough to say "these belong to that". */
+.uc-fetch-changed { margin: 6px 0 0; padding: 0 0 0 14px; list-style: none; font-size: 13px; }
+.uc-fetch-changed > li { padding: 2px 0; }
+.uc-fetch-changed > li + li { border-top: 1px solid var(--p-border); }
+.uc-fetch-what { color: var(--p-muted); font-size: 12px; }
+.uc-fetch-what::before { content: "changed: "; }
 .uc-break { word-break: break-all; }
 
 /* ---------------------------------------------------------------------------
@@ -2010,7 +2055,10 @@ body.uc-modal-open { overflow: hidden; }
    everything under it 13/400 in the secondary grey. One hairline between rows.
    ------------------------------------------------------------------------- */
 .uc-queue-list { list-style: none; margin: 0; padding: 0; }
-.uc-queue-item { padding: 16px 0; border-top: 1px solid var(--p-border); }
+/* 22px, not 16. Rows carrying a title, a meta line, a link and a disclosure
+   need more air between two of them than there is inside one, or the hairline
+   is doing all the separating on its own and the list reads as one block. */
+.uc-queue-item { padding: 22px 0; border-top: 1px solid var(--p-border); }
 .uc-queue-item:first-child { border-top: 0; padding-top: 4px; }
 /* Waiting on a person: the palest amber, pulled out to the card's padding edge
    so the row is marked without a box being drawn around it. Never red, because
@@ -2033,18 +2081,32 @@ body.uc-modal-open { overflow: hidden; }
 .uc-queue-links { margin: 6px 0 0; font-size: 12px; }
 .uc-queue-actions { flex: 0 0 auto; padding-top: 2px; }
 
-/* The disclosure is SUBORDINATE TO ITS ROW and has to look it: indented to the
-   title's left edge, quieter than the meta line above it, and carrying no card
-   of its own. It was a full-width cell spanning all five columns, which made it
-   read as a sibling of the row rather than as part of it. */
+/* ---------------------------------------------------------------------------
+   THE DISCLOSURE IS SUBORDINATE TO ITS ROW, AND NOW LOOKS IT.
+
+   The comment here already said "quieter than the meta line above it, and
+   carrying no card of its own" while the rule underneath gave it a 1px border,
+   a 10px radius and a white background. So the subordinate element was the
+   only thing on the screen wearing a card, the row it belonged to was not, and
+   the most prominent object in the queue was a collapsed disclosure. The
+   description was right and had simply never been what the code did.
+
+   No border, no fill, no radius. The summary is sized to its own text instead
+   of spanning the row, so it reads as a link under the row rather than as a
+   bar across it, and `width: fit-content` gets that without changing `display`
+   away from list-item, which would take the marker with it.
+
+   Open, the form is grouped by ONE HAIRLINE down its left and an indent. That
+   is the house order: space first, then a hairline, and a box not at all.
+   --------------------------------------------------------------------------- */
 .uc-queue-item > .uc-queue-panel { margin: 10px 0 0; }
-.uc-queue-panel { border: 1px solid var(--p-border); border-radius: 10px; background: #fff; }
-.uc-queue-panel > summary { cursor: pointer; padding: 8px 12px; font-size: 12px; font-weight: 600;
-    color: var(--p-muted); list-style: revert; }
+.uc-queue-panel { border: 0; border-radius: 0; background: none; }
+.uc-queue-panel > summary { width: fit-content; cursor: pointer; padding: 2px 0;
+    font-size: 12px; font-weight: 500; color: var(--p-muted); list-style: revert; }
 .uc-queue-panel > summary:hover { color: var(--uc-accent-text); }
-.uc-queue-panel > summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; border-radius: 10px; }
-.uc-queue-panel[open] > summary { border-bottom: 1px solid var(--p-border); }
-.uc-queue-form { padding: 16px; }
+.uc-queue-panel > summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+.uc-queue-panel[open] > summary { margin-bottom: 10px; }
+.uc-queue-form { padding: 0 0 4px 16px; border-left: 2px solid var(--p-border); }
 .uc-queue-form .uc-form-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
 
 @media (max-width: 720px) {

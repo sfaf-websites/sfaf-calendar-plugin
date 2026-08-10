@@ -2433,21 +2433,49 @@ class SFAF_Portal {
                     }
                     ?>
                     <li class="<?php echo esc_attr( $row_class ); ?>">
-                        <?php echo esc_html( SFAF_Sources::summarize( $result ) ); ?>
+                        <span class="uc-fetch-line"><?php echo esc_html( SFAF_Sources::summarize( $result ) ); ?></span>
+
+                        <?php
+                        /*
+                         * WHICH EVENTS CHANGED, BY NAME.
+                         *
+                         * The gap this closes: the panel said four were updated
+                         * and never said which four. A source overwriting a
+                         * field a manager cares about is the thing they are
+                         * reading this to catch, and a count cannot tell them.
+                         *
+                         * Each row links to the editor, because the next thing
+                         * after "it changed the description" is looking at it.
+                         */
+                        if ( ! empty( $result['changed'] ) ) : ?>
+                            <ul class="uc-fetch-changed">
+                                <?php foreach ( $result['changed'] as $ch ) :
+                                    $phrase = ( 'new' === $ch['kind'] )
+                                        ? 'added'
+                                        : SFAF_Sources::field_change_phrase( $ch['fields'] );
+                                    ?>
+                                    <li>
+                                        <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $ch['id'] ) ); ?>"><?php
+                                            echo esc_html( '' !== trim( (string) $ch['title'] ) ? $ch['title'] : '(untitled)' ); ?></a>
+                                        <?php if ( '' !== $phrase ) : ?>
+                                            <span class="uc-fetch-what"><?php echo esc_html( $phrase ); ?></span>
+                                        <?php endif; ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
 
                         <?php // Whether removal handling was allowed to run at all is
                               // the thing worth being loudest about — it is the step
                               // that takes live events off the calendar.
+                              //
+                              // ONLY THE SKIP IS REPORTED NOW. The success branch said
+                              // "Removal check ran on a complete result set, nothing
+                              // had gone", which is an internal guard answering a
+                              // question nobody asked. A guard that did its job is not
+                              // news; a guard that could not run is.
                         if ( ! empty( $result['removal_skip'] ) ) : ?>
                             <div class="uc-fetch-guard">Removal check skipped. <?php echo esc_html( $result['removal_skip'] ); ?>. No event was unpublished by this source.</div>
-                        <?php elseif ( ! empty( $result['removal_ran'] ) ) : ?>
-                            <div class="uc-fetch-guard uc-fetch-guard-ok">Removal check ran on a complete result set<?php
-                                if ( (int) $result['unpublished'] > 0 ) {
-                                    echo ': ' . (int) $result['ended'] . ' closed at source, ' . (int) $result['vanished'] . ' gone entirely.';
-                                } else {
-                                    echo ', nothing had gone.';
-                                }
-                            ?></div>
                         <?php endif; ?>
 
                         <?php // FAQ movement, counted per source. Its own line rather
@@ -2467,27 +2495,6 @@ class SFAF_Portal {
                                     <li><?php echo esc_html( $note ); ?></li>
                                 <?php endforeach; ?>
                             </ul>
-                        <?php endif; ?>
-
-                        <?php // Which image field each item resolved to. Shipped
-                              // because the GoFundMe Pro mapping is a best guess and
-                              // we need to see what actually came back.
-                        if ( ! empty( $result['images'] ) ) : ?>
-                            <details class="uc-fetch-images">
-                                <summary>Image field used (<?php echo (int) count( $result['images'] ); ?>)</summary>
-                                <table class="uc-table">
-                                    <thead><tr><th>Event</th><th>Field</th><th>URL</th></tr></thead>
-                                    <tbody>
-                                    <?php foreach ( $result['images'] as $img ) : ?>
-                                        <tr>
-                                            <td><?php echo esc_html( $img['title'] ); ?></td>
-                                            <td><code><?php echo esc_html( $img['field'] ); ?></code></td>
-                                            <td class="uc-break"><?php echo $img['url'] ? esc_html( $img['url'] ) : 'None'; ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </details>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
@@ -3738,10 +3745,20 @@ class SFAF_Portal {
         ?>
         <div class="uc-manager-panel" data-uc-manager-panel>
             <?php if ( 'queue' === $ctx['screen'] ) : ?>
+                <?php /*
+                  * ONCE, HERE, FOR THE WHOLE PANEL. The adapter's note used to
+                  * print beside each waiting field, which on a GoFundMe Pro
+                  * campaign meant the same paragraph twice per event, every
+                  * event, down the queue. Saying it at the top of the panel the
+                  * fields belong to costs one sentence and covers all of them.
+                  */ ?>
                 <p class="uc-help">
                     These are the fields
                     <?php echo $imported ? esc_html( $ctx['prov']['label'] ) . ' does not supply' : 'a person sets'; ?>.
                     They are the same controls as the event editor, on the same event: whatever is set here is set there.
+                    <?php if ( $imported && '' !== $ctx['note'] ) : ?>
+                        <?php echo esc_html( $ctx['note'] ); ?>
+                    <?php endif; ?>
                 </p>
             <?php endif; ?>
 
@@ -3783,9 +3800,19 @@ class SFAF_Portal {
                         <span class="uc-img-source-tag"><?php echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source ); ?></span>
                         <?php echo $this->field_badge( $state, $label ); ?>
                     </span>
-                    <?php if ( ( 'attention' === $state || 'filled' === $state ) && '' !== $note ) : ?>
-                        <p class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $state ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $note ); ?></span></p>
-                    <?php endif; ?>
+                    <?php /*
+                      * THE ADAPTER'S NOTE IS NOT REPEATED HERE. It used to print
+                      * in full beside every field that was waiting, so a queue
+                      * row opened to two identical paragraphs about GoFundMe Pro
+                      * not supplying images or descriptions, once under the
+                      * image and once under the description, on every event.
+                      *
+                      * It is said ONCE per event now: at the top of this panel
+                      * on the queue, and in the missing-fields banner in the
+                      * editor. The field keeps its badge, which is what marks
+                      * WHICH field is waiting; the sentence explaining why is
+                      * the same sentence every time and belongs in one place.
+                      */ ?>
                     <input type="hidden" name="featured_image_id" id="uc-featured-image-id-<?php echo esc_attr( $uid ); ?>" data-uc-image-id value="<?php echo (int) $thumb_id; ?>" />
                     <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $uid ); ?>" data-uc-image-preview<?php echo $preview ? '' : ' style="display:none;"'; ?>>
                         <img src="<?php echo esc_url( $preview ); ?>" alt="" data-uc-image-preview-img />
@@ -3834,9 +3861,8 @@ class SFAF_Portal {
                 ?>
                 <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'description', $state ); ?>>
                     <span class="uc-field-label">Description <?php echo $this->field_badge( $state, $label ); ?></span>
-                    <?php if ( ( 'attention' === $state || 'filled' === $state ) && '' !== $note ) : ?>
-                        <span class="uc-field-note uc-field-note-attention" data-uc-attention-note<?php echo ( 'filled' === $state ) ? ' hidden' : ''; ?>><?php echo $this->icon_needs(); ?><span><?php echo esc_html( $note ); ?></span></span>
-                    <?php endif; ?>
+                    <?php // The note is said once per event, not once per field. See
+                          // the image case above for why. ?>
                     <textarea name="description" rows="8"<?php echo $this->field_disabled( $state ); ?>><?php echo esc_textarea( $ctx['post'] ? $ctx['post']->post_content : '' ); ?></textarea>
                 </label>
                 <?php
@@ -8495,6 +8521,43 @@ class SFAF_Portal {
                             </select>
                         </label>
                     </div>
+                    <?php
+                    /*
+                     * SAVE AND REMOVE SIT TOGETHER, IN THE ROW, BEFORE THE
+                     * CATEGORIES DISCLOSURE.
+                     *
+                     * Remove used to be a second <form> that opened after this
+                     * one closed, so it was a SIBLING of the row rather than
+                     * part of it, and it rendered under the row's bottom border
+                     * as a bare link with nothing tying it to a person. On a
+                     * list where only one user can be removed it read as one
+                     * "Remove" floating below the whole table.
+                     *
+                     * Forms cannot nest, so the button stays in this row and
+                     * points at its own form by id with the `form` attribute.
+                     * The form itself is rendered empty and hidden after the
+                     * row. Nothing about which user is removed has changed; it
+                     * was always this row's id, but now the screen says so.
+                     *
+                     * Ordered before the disclosure deliberately: .uc-user-cats
+                     * spans the full grid, so anything after it is pushed onto
+                     * a new line. The actions were landing under the name
+                     * column instead of in the row's third column.
+                     */
+                    ?>
+                    <div class="uc-user-actions">
+                        <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Save</button>
+                        <?php if ( ! $is_self ) : ?>
+                            <button type="submit" class="uc-link-danger uc-btn-sm"
+                                    form="uc-remove-user-<?php echo (int) $m->ID; ?>"
+                                    data-uc-confirm="<?php echo esc_attr( $is_wpadm
+                                        ? sprintf( 'Take %s off the calendar list? They keep full calendar access, because they are a WordPress administrator. They come off every team.', $m->display_name )
+                                        : sprintf( 'Remove calendar access for %s? They come off every team. Their WordPress account and role are not changed, and you can add them back at any time.', $m->display_name )
+                                    ); ?>">Remove</button>
+                        <?php else : ?>
+                            <span class="uc-muted">(you)</span>
+                        <?php endif; ?>
+                    </div>
                     <details class="uc-user-cats">
                         <summary>Contributor categories</summary>
                         <p class="uc-hint">Leave all unchecked to allow all categories.</p>
@@ -8504,24 +8567,17 @@ class SFAF_Portal {
                             <?php endforeach; endif; ?>
                         </div>
                     </details>
-                    <div class="uc-user-actions">
-                        <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Save</button>
-                    </div>
-                    <?php if ( ! $is_self ) : ?>
-                        </form>
-                        <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-remove"
-                              onsubmit="return confirm('<?php echo $is_wpadm
-                                  ? 'Take this administrator off the calendar list? They keep full access, because they are a WordPress administrator. They come off every team.'
-                                  : 'Remove calendar access for this user?'; ?>');">
-                            <input type="hidden" name="uc_action" value="remove_user" />
-                            <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
-                            <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
-                            <button class="uc-link-danger uc-btn-sm" type="submit">Remove</button>
-                        </form>
-                    <?php else : ?>
-                        <div class="uc-user-remove"><span class="uc-muted">(you)</span></div>
-                        </form>
-                    <?php endif; ?>
+                </form>
+                <?php if ( ! $is_self ) : ?>
+                    <?php // Carries the fields only. Its button lives in the row above
+                          // and reaches it by id. ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>"
+                          id="uc-remove-user-<?php echo (int) $m->ID; ?>" hidden>
+                        <input type="hidden" name="uc_action" value="remove_user" />
+                        <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
+                    </form>
+                <?php endif; ?>
             <?php endforeach; endif; ?>
         </div>
         </section>

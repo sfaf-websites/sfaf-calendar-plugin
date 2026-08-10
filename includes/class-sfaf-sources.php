@@ -1232,9 +1232,7 @@ class SFAF_Sources {
             'faq_removed'  => 0,
             'error'        => (string) $error,
             'notes'        => array(),
-            'images'       => array(),
-            'new_ids'      => array(),
-            'updated_ids'  => array(),
+            'changed'      => array(),
         );
     }
 
@@ -1262,9 +1260,21 @@ class SFAF_Sources {
             'faq_removed'   => 0,
             'error'         => '',
             'notes'         => array(),
-            'images'        => array(),
-            'new_ids'       => array(),
-            'updated_ids'   => array(),
+            /*
+             * WHICH EVENTS MOVED, BY NAME.
+             *
+             * The report counted four updated and never said which four, which
+             * is the one thing a manager cannot reconstruct: a source quietly
+             * overwriting a date or a description is exactly what they are
+             * reading this panel to catch. Each entry is
+             * { id, title, kind: new|updated, fields: [] }.
+             *
+             * It replaces new_ids/updated_ids, which carried post IDs nothing
+             * ever read, and the images[] diagnostic, which existed only to
+             * answer the GoFundMe Pro image question. That answer is known and
+             * permanent, so the collection goes with the table.
+             */
+            'changed'       => array(),
         );
 
         $response = $adapter->fetch();
@@ -1314,17 +1324,6 @@ class SFAF_Sources {
             $seen[ $key ]           = true;
             $seen_ids[]             = (string) $event['external_id'];
 
-            // Adapters may report which of the platform's image fields they
-            // resolved to, so the report can show what was actually picked up
-            // rather than just that something was.
-            if ( ! empty( $event['image_field'] ) ) {
-                $result['images'][] = array(
-                    'title' => isset( $event['title'] ) ? (string) $event['title'] : (string) $event['external_id'],
-                    'field' => (string) $event['image_field'],
-                    'url'   => isset( $event['image_url'] ) ? (string) $event['image_url'] : '',
-                );
-            }
-
             $existing = self::find_existing( $event['external_source'], $event['external_id'] );
 
             if ( $existing ) {
@@ -1367,7 +1366,16 @@ class SFAF_Sources {
                     $result['unchanged']++;
                 } else {
                     $result['updated']++;
-                    $result['updated_ids'][] = (int) $existing;
+                    $result['changed'][] = array(
+                        'id'     => (int) $existing,
+                        'title'  => isset( $event['title'] ) ? (string) $event['title'] : (string) $event['external_id'],
+                        'kind'   => 'updated',
+                        // The keys ARE the labels: update_event() names them
+                        // "Title", "Description", "Source image" and so on, so
+                        // the panel prints what changed without a second list
+                        // that could fall behind the first.
+                        'fields' => array_keys( $update['changed'] ),
+                    );
                 }
                 continue;
             }
@@ -1385,7 +1393,12 @@ class SFAF_Sources {
             }
 
             $result['new']++;
-            $result['new_ids'][] = (int) $post_id;
+            $result['changed'][] = array(
+                'id'     => (int) $post_id,
+                'title'  => isset( $event['title'] ) ? (string) $event['title'] : (string) $event['external_id'],
+                'kind'   => 'new',
+                'fields' => array(),
+            );
             if ( ! empty( $faq_counts['added'] ) ) {
                 $result['faq_added'] += (int) $faq_counts['added'];
             }
@@ -1517,7 +1530,18 @@ class SFAF_Sources {
     }
 
     /**
-     * A one-line summary of a run, e.g. "Eventbrite: 2 new".
+     * A one-line summary of a run, in the words a manager would use.
+     *
+     * WHAT THIS USED TO SAY, AND WHY IT CHANGED. Every run printed the full
+     * counter set whether or not anything had happened, so a quiet fetch read
+     * "GoFundMe Pro: 0 new, 4 updated, 19 unchanged (of 23 fetched)". Five
+     * numbers, four of them zero or irrelevant, and the reader still had to
+     * work out whether that was a good outcome.
+     *
+     * The rule now is QUIET SUCCESS, LOUD FAILURE. Nothing happening is one
+     * short clause. Something happening names only what happened. A source
+     * that failed, timed out, or went silent keeps its own sentence and is
+     * marked at the row so it cannot be skimmed past.
      *
      * @param array $result One entry from run_all().
      * @return string
@@ -1532,45 +1556,95 @@ class SFAF_Sources {
         }
 
         // A source that ran and found nothing has to say so in its own words:
-        // "0 new" beside "connected" reads very differently from silence.
+        // silence here and "nothing new" mean very different things, and a
+        // platform that has stopped answering must not read as a quiet week.
         if ( 0 === (int) $result['fetched'] ) {
-            return sprintf( '%s: connected, but the source returned no events at all.', $result['label'] );
+            return sprintf( '%s: connected, but the source returned nothing at all.', $result['label'] );
         }
 
-        $parts = array(
-            sprintf( '%d new', (int) $result['new'] ),
-            sprintf( '%d updated', (int) $result['updated'] ),
-            sprintf( '%d unchanged', (int) $result['unchanged'] ),
-        );
+        $moved = array();
+        if ( $result['new'] ) {
+            $moved[] = sprintf( '%d %s added', (int) $result['new'], self::plural( (int) $result['new'], 'event' ) );
+        }
+        if ( $result['updated'] ) {
+            $moved[] = sprintf( '%d %s updated', (int) $result['updated'], self::plural( (int) $result['updated'], 'event' ) );
+        }
         if ( $result['unpublished'] ) {
-            $parts[] = sprintf( '%d unpublished', (int) $result['unpublished'] );
+            $moved[] = sprintf( '%d taken off the calendar', (int) $result['unpublished'] );
         }
         if ( $result['reappeared'] ) {
-            $parts[] = sprintf( '%d back at source', (int) $result['reappeared'] );
-        }
-        if ( $result['untouched'] ) {
-            $parts[] = sprintf( '%d dismissed, left alone', (int) $result['untouched'] );
-        }
-        if ( $result['invalid'] ) {
-            $parts[] = sprintf( '%d unusable', (int) $result['invalid'] );
+            $moved[] = sprintf( '%d back at the source', (int) $result['reappeared'] );
         }
         if ( $result['failed'] ) {
-            $parts[] = sprintf( '%d could not be saved', (int) $result['failed'] );
+            $moved[] = sprintf( '%d could not be saved', (int) $result['failed'] );
+        }
+        if ( $result['invalid'] ) {
+            $moved[] = sprintf( '%d could not be read', (int) $result['invalid'] );
         }
 
-        // FAQ movement is counted separately from event movement: an event
-        // whose only change was its FAQ rows still says so.
-        $faq = array();
-        foreach ( array( 'faq_added' => 'added', 'faq_updated' => 'updated', 'faq_removed' => 'removed' ) as $key => $word ) {
-            if ( ! empty( $result[ $key ] ) ) {
-                $faq[] = sprintf( '%d %s', (int) $result[ $key ], $word );
+        $checked = sprintf( '%d checked.', (int) $result['fetched'] );
+
+        if ( empty( $moved ) ) {
+            return sprintf( '%s: nothing new. %s', $result['label'], $checked );
+        }
+
+        return sprintf( '%s: %s. %s', $result['label'], implode( ', ', $moved ), $checked );
+    }
+
+    /**
+     * Singular or plural for a counted noun.
+     *
+     * @param int    $n
+     * @param string $word
+     * @return string
+     */
+    private static function plural( $n, $word ) {
+        return ( 1 === (int) $n ) ? $word : $word . 's';
+    }
+
+    /**
+     * The fields that changed on one event, as a readable phrase.
+     *
+     * update_event() keys its change list by label already ("Title",
+     * "Description", "Source image"), so most of these pass straight through.
+     * The exceptions are the adapter's own meta extras, which are keyed by
+     * meta key because that is what the writer had: those get a name here
+     * rather than showing a manager "_uc_gofundme_goal".
+     *
+     * @param string[] $fields
+     * @return string
+     */
+    public static function field_change_phrase( $fields ) {
+        $names = array(
+            '_uc_gofundme_url'    => 'donate link',
+            '_uc_gofundme_goal'   => 'fundraising goal',
+            '_uc_gofundme_raised' => 'amount raised',
+        );
+
+        $out = array();
+        foreach ( (array) $fields as $field ) {
+            $field = (string) $field;
+            if ( isset( $names[ $field ] ) ) {
+                $out[] = $names[ $field ];
+                continue;
             }
-        }
-        if ( ! empty( $faq ) ) {
-            $parts[] = sprintf( 'FAQs: %s', implode( ', ', $faq ) );
+            // An unmapped meta key would otherwise reach the screen raw.
+            if ( 0 === strpos( $field, '_uc_' ) ) {
+                $out[] = str_replace( '_', ' ', substr( $field, 4 ) );
+                continue;
+            }
+            $out[] = strtolower( $field );
         }
 
-        return sprintf( '%s: %s (of %d fetched)', $result['label'], implode( ', ', $parts ), (int) $result['fetched'] );
+        $out = array_values( array_unique( array_filter( $out ) ) );
+        if ( empty( $out ) ) {
+            return '';
+        }
+        if ( 1 === count( $out ) ) {
+            return $out[0];
+        }
+        $last = array_pop( $out );
+        return implode( ', ', $out ) . ' and ' . $last;
     }
 
     /* ---------------------------------------------------------------------

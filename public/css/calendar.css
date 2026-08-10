@@ -177,7 +177,34 @@
 .uc-calendar tr:nth-child(even) th, .uc-calendar tr:nth-child(even) td,
 .uc-calendar tr:nth-child(odd) th, .uc-calendar tr:nth-child(odd) td { background: none; }
 
-/* Buttons. A theme button rule would otherwise repaint every control we ship. */
+/* ---------------------------------------------------------------------------
+   Buttons. A theme button rule would otherwise repaint every control we ship.
+
+   SPLIT IN 3.21.0, AND THE SPLIT IS THE WHOLE FIX. This was one rule at
+   `.uc-calendar button`, which is (0,1,1). Every control we ship names itself
+   with a single class, which is (0,1,0), and one class does not beat one class
+   plus one type. So the reset won every property it declared and five controls
+   were dead without looking dead:
+
+     .uc-filter-btn ....... border-radius: 99px -> 0   every filter pill square
+     .uc-group-pill ....... border-radius: 99px -> 0   every group pill square
+     .uc-addcal-toggle .... border-radius:  8px -> 0   Add to Calendar
+     .uc-reminder-btn ..... border-radius:  8px -> 0   Get Reminders
+     .uc-load-more ........ border-radius:  8px -> 0   the pagination button
+
+   The two halves want opposite things, which is why one rule could not serve
+   both. `text-transform`, `letter-spacing` and the shadows are DEFENCES: no
+   control of ours ever wants a theme's uppercase or drop shadow back, so they
+   stay at (0,1,1) and keep outranking a themed `.entry-content button`.
+   `border-radius` and `margin` are a FLOOR: they exist so an unstyled button
+   starts from nothing, and anything that names a shape of its own should win.
+
+   The floor keeps its type selector rather than becoming :where(button) too.
+   At (0,0,1) it still beats a theme's bare `button {}` on source order; at
+   (0,0,0) it would lose to it, which is the fault this rule was written to
+   prevent. Same instrument as `:where(.uc-portal) a` in portal.css, set one
+   notch higher because here there is a theme on the other side.
+   --------------------------------------------------------------------------- */
 .uc-calendar button, .uc-sidebar button, .uc-upcoming-widget button {
     font-family: inherit;
     line-height: 1.2;
@@ -187,6 +214,8 @@
     text-shadow: none;
     width: auto;
     min-height: 0;
+}
+:where(.uc-calendar, .uc-sidebar, .uc-upcoming-widget) button {
     border-radius: 0;
     margin: 0;
 }
@@ -273,7 +302,13 @@
    the current one is a button, because the commonest thing after narrowing
    twice is wanting to be one level out. */
 .uc-crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; font-size: 13px; }
-.uc-crumb { border: 0; background: none; padding: 0; font: inherit; color: var(--uc-teal-text); cursor: pointer; text-decoration: underline; }
+/* `font: inherit` here was two thirds dead and read as though it were not: the
+   shorthand's font-family and line-height both lose to the scoped button rules
+   above, which are (0,1,1) to this rule's (0,1,0). Only the size, weight and
+   style ever applied, so those are what it now says. Rendering is unchanged,
+   and the brand heading font keeps reaching the crumb, which is correct: type
+   is set explicitly here, never inherited from a theme. */
+.uc-crumb { border: 0; background: none; padding: 0; font-size: inherit; font-weight: inherit; font-style: inherit; color: var(--uc-teal-text); cursor: pointer; text-decoration: underline; }
 .uc-crumb:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 .uc-crumb-here { color: var(--uc-secondary); font-weight: 700; text-decoration: none; cursor: default; }
 .uc-crumb-sep { color: var(--uc-muted); }
@@ -612,7 +647,11 @@
 
 /* RSVP form: consent and disclaimer */
 .uc-rsvp-note { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--uc-secondary); }
-.uc-rsvp-optin { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 2px; font-size: 13px; line-height: 1.45; color: var(--uc-text); cursor: pointer; }
+/* Two classes, same reason as .uc-sidebar-all: this is a <label>, and
+   `.uc-rsvp-form label` sets `display: block` at (0,1,1), so the opt-in row's
+   `display: flex` never applied and its checkbox sat on the line above its
+   text. The gap and align-items had nothing to act on either. */
+.uc-rsvp-form .uc-rsvp-optin { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 2px; font-size: 13px; line-height: 1.45; color: var(--uc-text); cursor: pointer; }
 .uc-rsvp-optin input { margin: 2px 0 0; flex: 0 0 auto; }
 
 /* No events */
@@ -1050,7 +1089,12 @@
 .uc-sidebar-empty { margin: 0; padding: 16px 0; font-size: 13px; color: var(--uc-secondary); }
 .uc-sidebar-all { display: inline-block; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--uc-border);
     width: 100%; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); text-decoration: none; }
-.uc-sidebar-all:hover { text-decoration: underline; }
+/* TWO CLASSES, NOT ONE, AND FOR THE OPPOSITE REASON TO THE BUTTON FLOOR ABOVE.
+   `.uc-sidebar a:hover` sets `text-decoration: none` at (0,1,1), so this rule
+   at (0,1,0) never won and "See all events" was the one link on the sidebar
+   that did not underline on hover. The base rule is right to outrank a bare
+   anchor, so the remedy here is to raise the component rather than lower it. */
+.uc-sidebar .uc-sidebar-all:hover { text-decoration: underline; }
 
 /* ---------- Mobile: the Outlook pattern ----------
  *

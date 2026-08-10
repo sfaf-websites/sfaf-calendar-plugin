@@ -211,8 +211,14 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             }
             $items = $kept;
             if ( ! empty( $filtered_ids ) ) {
+                /*
+                 * NO FILTER NAME. This said "Change this with the
+                 * sfaf_gfmp_import_statuses filter", which names a PHP hook to
+                 * a manager who will never write one and cannot act on it. The
+                 * count and the reason are the whole of what is useful here.
+                 */
                 $notes[] = sprintf(
-                    '%d campaign(s) skipped for not being %s. Change this with the sfaf_gfmp_import_statuses filter.',
+                    '%d campaign(s) skipped because they are not %s.',
                     count( $filtered_ids ),
                     implode( ' or ', $allowed )
                 );
