@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.21.0
+Stable tag: 3.21.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,28 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.21.1 =
+
+Four findings from the public-surface audit. No structural change: the single event page's missing host-proofing layer and the RSVP modal's are the next build.
+
+**The public stylesheet was still on the superseded teal, and the comment above it is why.** `--uc-teal-text` was `#0E818C` under a note reading "this is 4.63:1 and passes". That is true on plain white and on nothing else this colour lands on: `4.36:1` on the page canvas `#F7F8FA`, `4.27:1` on the `#E8F9FA` band, and `4.33:1` on the 8% teal tint, all against a 4.5:1 floor. Two of those were live, `.uc-filter-btn.active` and `.uc-series-link`, both putting teal text on `rgba(22,190,207,0.08)`. DESIGN.md mandates `#0E7680`, which measures 5.35 / 5.04 / 4.94 / 5.01 across the same four; the portal moved to it in 3.20.0 and this file had not followed. The old note is not trimmed but replaced with the full four-way table, because a comment asserting a pass is exactly what makes somebody revert the fix. The reversed pairings improve with it: white on the primary action button's fill goes from 4.63:1 to 5.35:1.
+
+**One secondary text colour, not two.** `--uc-muted` was `#9CA3AF`, which measures **2.54:1 on white and 2.39:1 on the page canvas**, and it carried thirteen text elements: the compact card's date and time line, the single page's back link, the month grid's out-of-month numbers, the event count, the capacity text, the modal subtitle, the series time, the empty-state line, the group label, the crumb separator, the share label, the loading indicator and the mobile day dot. The variable is deleted rather than darkened, because two greys a shade apart invite the question "which one is this" at every call site, and DESIGN.md names exactly one public secondary. Everything that was muted is now `#6B7280`, 4.83:1 on white and 4.55:1 on the canvas.
+
+The card's own date line had already got this right, with a note saying `--uc-muted` "fails as text at any size" sitting directly above the one rule that used the correct colour while thirteen others did not.
+
+**The month grid's out-of-month day numbers were not treated as an exception.** They are the most defensible candidate, since days outside the current month look like disabled text. They are not: each cell is `role="gridcell"` with a real `aria-label`, and the roving tabindex means the arrow keys move focus onto them, so they are keyboard-reachable content rather than a disabled control. They also sit on the tinted `#F7F8FA` cell, where the old grey was 2.39:1, its worst pairing anywhere. They now read at 4.55:1 and still recede clearly, because an in-month number is `#1A1D21` at 16.91:1 and drops a weight step as well.
+
+**The RSVP failure message was the hardest text on the surface to read.** `.uc-rsvp-error` used `--uc-warm #F04937` at 13px, which is **3.68:1**, and DESIGN.md permits Red as text only at large sizes. It is now `#AD1C0D`, the Red family's ink from the category ramp: **7.12:1** on the modal's white and 6.70:1 on the canvas, still unmistakably red rather than body copy.
+
+**The compact card's date tile was reading the server's clock.** It called `date( 'M', $ts )` and `date( 'j', $ts )`, not `date_i18n()`, so the month and day on every compact card came from the server timezone rather than the site's and an evening event could render on the wrong day. It is a real bug, not a styling one. Both now go through `sfaf_ap_date()`, which gained `'month'` and `'daynum'` styles: a tile that stacks "Aug" over "4" as two elements still cannot use one formatted string, but splitting a date into two spans is still formatting a date and belongs in the formatter.
+
+The month grid's cell label was `date_i18n( 'l j F Y' )`, giving "Monday 4 August 2026" in day-month-year order rather than AP's. It is the label a screen reader reads on every arrow-key move, and it now goes through the formatter's `'full'` style.
+
+**Fifteen more call sites format a date outside the formatter, and they are reported rather than changed.** A sweep of all 36 source files classified every `date`, `date_i18n`, `wp_date`, `gmdate` and `->format` call by its format string: 50 are machine formats that have to be exactly what they are (`Y-m-d` keys, the ICS stamp, month slugs) and are not violations. Of the human-facing ones, the two fixed here were public. The highest-priority remainder is also public and is a hard DESIGN.md violation: `SFAF_Recurrence::pattern_label()` uses `date_i18n( 'jS' )`, so a monthly event's single event page reads "Every month on the 4th" where the guide says no ordinals, ever. The rest are caladmin, wp-admin and the reminder email, including one more server-clock `date()` in the WordPress admin's RSVP table.
+
+VERIFIED: 31 files parse under PHP 8.3; the callable audit reports nothing unresolved across 99 functions and 27 classes, and its self-test finds 7 of 7 planted faults; the cascade audit holds at 8 findings, all previously confirmed deliberate; 14 measured pairings move from below their floor to above it and none remains below. Both gates re-run against the extracted zip, which diffs clean against the staged tree and has no backslash entries.
 
 = 3.21.0 =
 

@@ -34,10 +34,28 @@
     --uc-green: #8CC745;        /* Pantone 3561 UP */
     --uc-yellow: #FFD900;       /* Pantone 109 CP */
     --uc-purple: #8D54A2;       /* Pantone 258 CP */
-    /* Darkened teal for TEXT only (p.18 permits darker variations). The brand
-       teal is 2.26:1 on white and fails as text; this is 4.63:1 and passes.
-       Fills, borders and accent bars keep #16BECF. */
-    --uc-teal-text: #0E818C;
+    /* -----------------------------------------------------------------------
+       DARKENED TEAL FOR TEXT ONLY (p.18 permits darker variations). Brand teal
+       is 2.26:1 on white and fails as text. Fills, borders and accent bars keep
+       #16BECF.
+
+       #0E7680, NOT THE GUIDE'S OWN #0E818C, AND THE NOTE THAT USED TO SIT HERE
+       IS WHY THIS TOOK TWO RELEASES. It said "this is 4.63:1 and passes", which
+       is true on plain white and on nothing else this colour actually lands on:
+
+           on white                  4.63:1  passes
+           on --uc-bg #F7F8FA        4.36:1  FAILS
+           on --uc-band #E8F9FA      4.27:1  FAILS
+           on the 8% teal tint       4.33:1  FAILS
+
+       Two of those were live: .uc-filter-btn.active and .uc-series-link both
+       put this colour on rgba(22,190,207,0.08). A measurement against one
+       backdrop is not a pass, and a comment asserting a pass is exactly what
+       makes somebody revert the fix, so it is stated in full rather than
+       trimmed. #0E7680 measures 5.35 / 5.04 / 4.94 / 5.01 across the same four.
+       The portal moved to it in 3.20.0; this file follows in 3.21.1.
+       -------------------------------------------------------------------- */
+    --uc-teal-text: #0E7680;
     --uc-bg: #F7F8FA;
     --uc-border: #E2E5EA;
     --uc-text: #1A1D21;
@@ -48,7 +66,21 @@
        whose background is declared, so the flat colour is both measurable and
        correct. Text on it: --uc-text at 15.59:1. */
     --uc-band: #E8F9FA;
-    --uc-muted: #9CA3AF;
+    /* -----------------------------------------------------------------------
+       ONE SECONDARY TEXT COLOUR, NOT TWO.
+
+       --uc-muted was #9CA3AF, which measures 2.54:1 on white and 2.39:1 on
+       --uc-bg against a 4.5:1 floor, and it carried THIRTEEN text elements:
+       the compact card's date and time line, the single page's back link, the
+       month grid's out-of-month numbers, the event count, the capacity text,
+       the modal subtitle, the series time, the empty-state line, the group
+       label, the crumb separator, the share label and the loading indicator.
+
+       It is deleted rather than darkened. Two variables a shade apart invite
+       the question "which one is this" at every call site, and DESIGN.md names
+       exactly one public secondary, #6B7280, which measures 4.83:1 on white
+       and 4.55:1 on --uc-bg. Everything that was muted is now secondary.
+       -------------------------------------------------------------------- */
     --uc-secondary: #6B7280;
 
     /* -----------------------------------------------------------------------
@@ -276,7 +308,7 @@
    state, and it sits indented under the bar it belongs to.
    ------------------------------------------------------------------------ */
 .uc-groups { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 10px 0 0; border-top: 1px solid var(--uc-border); }
-.uc-groups-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--uc-muted); flex-shrink: 0; }
+.uc-groups-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--uc-secondary); flex-shrink: 0; }
 .uc-groups-pills { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .uc-group-pill { padding: 4px 12px; border-radius: 99px; border: 1px solid var(--uc-border); background: #fff;
     color: var(--uc-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
@@ -311,10 +343,10 @@
 .uc-crumb { border: 0; background: none; padding: 0; font-size: inherit; font-weight: inherit; font-style: inherit; color: var(--uc-teal-text); cursor: pointer; text-decoration: underline; }
 .uc-crumb:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 .uc-crumb-here { color: var(--uc-secondary); font-weight: 700; text-decoration: none; cursor: default; }
-.uc-crumb-sep { color: var(--uc-muted); }
+.uc-crumb-sep { color: var(--uc-secondary); }
 
 /* Event count */
-.uc-event-count { font-size: 14px; color: var(--uc-muted); margin-bottom: 12px; }
+.uc-event-count { font-size: 14px; color: var(--uc-secondary); margin-bottom: 12px; }
 .uc-count-number { font-weight: 700; }
 
 /* Event list */
@@ -389,8 +421,12 @@
    starts a line of its own underneath them however many chips there are. */
 .uc-calendar .uc-lc-byline { display: block; flex-basis: 100%; margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--uc-secondary); }
 
-/* --uc-secondary, not --uc-muted: muted is #9CA3AF, which is 2.54:1 on white
-   and fails as text at any size. Secondary is 4.83:1. */
+/* This rule got the secondary colour right first, and was the only one that
+   did. The note here used to read "--uc-secondary, not --uc-muted: muted is
+   #9CA3AF, which is 2.54:1 on white and fails as text at any size", which was
+   correct, load-bearing, and applied to this one date line while thirteen
+   other elements kept the failing value. There is one secondary colour now, so
+   the choice cannot be made wrongly at the next call site. */
 .uc-calendar .uc-lc-date { flex-shrink: 0; text-align: right; }
 .uc-calendar .uc-lc-dow { display: block; font-size: 11px; font-weight: 600; line-height: 1.4; letter-spacing: 0.09em; text-transform: uppercase; color: var(--uc-secondary); }
 .uc-calendar .uc-lc-md { display: block; font-size: 26px; font-weight: 500; line-height: 1.08; color: var(--uc-text); white-space: nowrap; }
@@ -613,7 +649,7 @@
 .uc-capacity-bar { flex: 1; min-width: 120px; height: 6px; background: #E5E7EB; border-radius: 99px; overflow: hidden; }
 .uc-capacity-fill { height: 100%; background: linear-gradient(90deg, var(--uc-green), var(--uc-teal)); border-radius: 99px; transition: width 0.5s ease; }
 
-.uc-capacity-text { font-size: 12px; color: var(--uc-muted); white-space: nowrap; }
+.uc-capacity-text { font-size: 12px; color: var(--uc-secondary); white-space: nowrap; }
 
 
 /* RSVP Modal */
@@ -622,7 +658,7 @@
 
 .uc-rsvp-modal { background: #fff; border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
 .uc-rsvp-modal h3 { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: var(--uc-text); }
-.uc-rsvp-modal .uc-modal-subtitle { font-size: 14px; color: var(--uc-muted); margin: 0 0 20px; }
+.uc-rsvp-modal .uc-modal-subtitle { font-size: 14px; color: var(--uc-secondary); margin: 0 0 20px; }
 
 .uc-rsvp-form { display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-form label { font-size: 13px; font-weight: 600; color: var(--uc-text); display: block; margin-bottom: 4px; }
@@ -638,7 +674,13 @@
 .uc-rsvp-success { text-align: center; padding: 20px 0; }
 .uc-rsvp-success .uc-check { font-size: 48px; margin-bottom: 12px; }
 .uc-rsvp-success p { font-size: 16px; color: var(--uc-text); font-weight: 600; }
-.uc-rsvp-error { color: var(--uc-warm); font-size: 13px; text-align: center; }
+/* THE RED FAMILY'S DARKEST STOP, NOT ITS BASE. --uc-warm #F04937 is 3.68:1 on
+   white, and DESIGN.md allows Red as text only at large sizes; this is 13px,
+   and it is the line telling somebody their registration failed, which is the
+   worst place on the surface for text that is hard to read. #AD1C0D is the
+   Red ink from the category ramp, measured 7.12:1 here and 6.70:1 on --uc-bg,
+   and it still reads as red rather than as body copy. */
+.uc-rsvp-error { color: #AD1C0D; font-size: 13px; text-align: center; }
 
 /* The subscribe bar (.uc-subscribe / .uc-subscribe-btn) was removed in 2.11.0
    along with its markup: calendar feed subscription is out of scope, and the
@@ -655,7 +697,7 @@
 .uc-rsvp-optin input { margin: 2px 0 0; flex: 0 0 auto; }
 
 /* No events */
-.uc-no-events { padding: 40px; text-align: center; color: var(--uc-muted); }
+.uc-no-events { padding: 40px; text-align: center; color: var(--uc-secondary); }
 
 /* Upcoming Events Widget */
 /* Montserrat, like every other surface. This said -apple-system, which is a
@@ -681,11 +723,11 @@
 
 .uc-compact-info { min-width: 0; }
 .uc-compact-title { font-size: 14px; font-weight: 600; color: var(--uc-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.uc-compact-meta { font-size: 12px; color: var(--uc-muted); margin-top: 2px; }
+.uc-compact-meta { font-size: 12px; color: var(--uc-secondary); margin-top: 2px; }
 
 /* Social share */
 .uc-share { display: flex; align-items: center; gap: 6px; }
-.uc-share-label { font-size: 12px; color: var(--uc-muted); font-weight: 600; }
+.uc-share-label { font-size: 12px; color: var(--uc-secondary); font-weight: 600; }
 .uc-share-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); text-decoration: none; font-size: 13px; font-weight: 700; transition: all 0.2s; }
 .uc-share-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); transform: translateY(-1px); }
 .uc-share-icon { line-height: 1; }
@@ -724,7 +766,7 @@
 .uc-single-inner { max-width: 980px; margin: 0 auto; }
 .uc-single-brand { margin-bottom: 16px; }
 .uc-single-logo { max-height: 48px; width: auto; }
-.uc-single-back { display: inline-block; margin-bottom: 16px; font-size: 13px; color: var(--uc-muted); text-decoration: none; }
+.uc-single-back { display: inline-block; margin-bottom: 16px; font-size: 13px; color: var(--uc-secondary); text-decoration: none; }
 .uc-single-back:hover { color: var(--uc-teal-text); }
 .uc-single-header { border-left: 4px solid var(--event-color); padding-left: 18px; margin-bottom: 28px; }
 .uc-single-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -772,7 +814,7 @@
 .uc-series-list li a:hover { border-color: var(--uc-teal); }
 .uc-series-date { font-weight: 700; color: var(--uc-teal-text); min-width: 52px; }
 .uc-series-title { flex: 1; font-weight: 600; }
-.uc-series-time { font-size: 13px; color: var(--uc-muted); }
+.uc-series-time { font-size: 13px; color: var(--uc-secondary); }
 
 /* Galaxy Digital volunteer needs */
 .uc-badge-volunteer { background: rgba(123,97,255,0.12); color: var(--uc-purple); --badge-color: var(--uc-purple); }
@@ -809,7 +851,7 @@
 .uc-page-num.current { background: var(--uc-teal); border-color: var(--uc-teal); color: var(--uc-dark); }
 .uc-pagination-infinite { flex-direction: column; }
 .uc-infinite-sentinel { width: 100%; height: 1px; }
-.uc-loading-indicator { font-size: 13px; color: var(--uc-muted); padding: 12px; display: none; }
+.uc-loading-indicator { font-size: 13px; color: var(--uc-secondary); padding: 12px; display: none; }
 .uc-pagination-infinite.is-loading .uc-loading-indicator { display: block; }
 
 /* ---------------------------------------------------------------------------
@@ -873,7 +915,7 @@
 .uc-calendar .uc-month-range { margin: 2px 0 0; font-size: 12px; color: var(--uc-secondary); }
 .uc-month-count { position: relative; margin-left: 10px; padding-left: 11px; }
 .uc-month-count::before { content: ""; position: absolute; left: 0; top: 50%; width: 3px; height: 3px; margin-top: -1px;
-    border-radius: 50%; background: var(--uc-muted); }
+    border-radius: 50%; background: var(--uc-secondary); }
 
 /* Previous / Today / Next as one segmented control. */
 .uc-month-nav-group { display: inline-flex; margin-left: auto; border: 1px solid var(--uc-border); border-radius: 8px; overflow: hidden; background: #fff; }
@@ -911,7 +953,7 @@
 .uc-day-today .uc-day-num { background: var(--uc-dark); color: var(--uc-yellow); font-weight: 800; }
 .uc-day-out { background: var(--uc-bg); }
 .uc-calendar .uc-month-grid td.uc-day-out { background: var(--uc-bg); }
-.uc-day-out .uc-day-num { color: var(--uc-muted); font-weight: 600; }
+.uc-day-out .uc-day-num { color: var(--uc-secondary); font-weight: 600; }
 .uc-day-selected { box-shadow: inset 0 0 0 2px var(--uc-teal-text); }
 
 /* Events: small bordered blocks, tight leading, title first then time. */

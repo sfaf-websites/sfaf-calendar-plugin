@@ -749,7 +749,11 @@ class SFAF_Shortcodes {
                             $in_month  = ( substr( $day, 0, 7 ) === $prefix );
                             $is_today  = ( $day === $today );
                             $day_num   = (int) substr( $day, 8, 2 );
-                            $readable  = date_i18n( 'l j F Y', strtotime( $day . ' 12:00:00' ) );
+                            // Through the formatter: this was 'l j F Y', which is
+                            // "Monday 4 August 2026", day-month-year rather than
+                            // AP's order. It is the cell's screen-reader label,
+                            // so it is read aloud on every arrow-key move.
+                            $readable  = sfaf_ap_date( $day, 'full' );
 
                             $classes = array( 'uc-day' );
                             if ( ! $in_month ) { $classes[] = 'uc-day-out'; }
@@ -2131,8 +2135,11 @@ class SFAF_Shortcodes {
            data-category="<?php echo esc_attr( $cat_slugs ); ?>">
             <div class="uc-compact-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'thumbnail' ); ?></div>
             <div class="uc-compact-date">
-                <span class="uc-compact-month"><?php echo esc_html( date( 'M', $date_ts ) ); ?></span>
-                <span class="uc-compact-day"><?php echo esc_html( date( 'j', $date_ts ) ); ?></span>
+                <?php // Through the one formatter, which is date_i18n() and so the
+                      // SITE's clock. These were date( 'M' ) and date( 'j' ), the
+                      // server's, so an evening event could show the wrong day. ?>
+                <span class="uc-compact-month"><?php echo esc_html( sfaf_ap_date( $date_ts, 'month' ) ); ?></span>
+                <span class="uc-compact-day"><?php echo esc_html( sfaf_ap_date( $date_ts, 'daynum' ) ); ?></span>
             </div>
             <div class="uc-compact-info">
                 <div class="uc-compact-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></div>

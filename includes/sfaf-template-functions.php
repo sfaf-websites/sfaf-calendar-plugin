@@ -2038,8 +2038,15 @@ function sfaf_ap_time_range( $start, $end = '' ) {
 /**
  * A date, AP style. No ordinal, ever.
  *
+ * 'month' AND 'daynum' EXIST FOR THE DATE TILE, which stacks "Aug" over "4" as
+ * two separate elements and therefore cannot use a single formatted string.
+ * They are here rather than at the call site because the call site was doing
+ * `date( 'M', $ts )`, which is PHP's date() and not date_i18n(), so it read the
+ * SERVER clock instead of the site's and an evening event could render on the
+ * wrong day. Splitting a date into two spans is still formatting a date.
+ *
  * @param int|string $when  Timestamp, or a Y-m-d string.
- * @param string     $style 'full' | 'day' | 'short' | 'weekday'
+ * @param string     $style 'full' | 'day' | 'short' | 'weekday' | 'month' | 'daynum'
  * @return string
  */
 function sfaf_ap_date( $when, $style = 'full' ) {
@@ -2056,6 +2063,8 @@ function sfaf_ap_date( $when, $style = 'full' ) {
         'day'     => 'F j',
         'short'   => 'M j',
         'weekday' => 'D',
+        'month'   => 'M',
+        'daynum'  => 'j',
     );
     $fmt = isset( $formats[ $style ] ) ? $formats[ $style ] : $formats['full'];
     return date_i18n( $fmt, (int) $when );
