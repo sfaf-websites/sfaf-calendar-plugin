@@ -122,7 +122,7 @@
 }
 
 /* ===========================================================================
- * SCOPED RESET (2.10.1)
+ * SCOPED RESET (2.10.1, extended to every public surface in 3.22.0)
  *
  * The embed renders inside a stylesheet we do not control and cannot see. On
  * sfaf.org the host theme was supplying underlined links, a yellow table
@@ -132,15 +132,47 @@
  *
  * So everything the month grid depends on is now declared rather than assumed.
  *
- * ON SPECIFICITY, NOT !important. Each rule is scoped to one of our roots
- * (.uc-calendar, .uc-sidebar, .uc-upcoming-widget), which puts it at (0,2,x)
- * against a theme's typical (0,1,x) element or single-class rule. That is
- * enough to win without an escalation war, and it leaves a host free to
- * deliberately override us if they ever need to. The one exception is [hidden]
- * below, and it is explained there.
+ * FIVE ROOTS, AND TWO OF THEM WERE ADDED IN 3.22.0 BECAUSE THEY HAD NONE:
+ *
+ *   .uc-calendar             the calendar block
+ *   .uc-sidebar              the sidebar list
+ *   .uc-upcoming-widget      the upcoming-events widget
+ *   .uc-single               the event page AND the series page      (3.22.0)
+ *   .uc-rsvp-modal-overlay   the registration modal                  (3.22.0)
+ *
+ * .uc-single WAS THE WHOLE EVENT PAGE, UNDEFENDED. It appeared in none of the
+ * three lists above, so nothing on that page had a reset for links, headings,
+ * paragraphs, lists, buttons or images, and box-sizing: border-box was left to
+ * the theme, which means every padded box on the page was doing its width
+ * arithmetic under rules a host could change. Its own rules all sat at (0,1,0)
+ * to (0,2,0), so a theme's `.entry-content h1` or `.entry-content button` at
+ * (0,1,1) outranked the title, the facts list, the FAQ buttons and the back
+ * link. The page renders through template_include rather than inside the
+ * theme's content wrapper, so `.entry-content` does not usually reach it, but
+ * `h1 {}`, `body button {}` and `.site-content a {}` all do and all beat
+ * (0,1,0). Both public templates use this root, so the series page is covered
+ * by the same block.
+ *
+ * .uc-rsvp-modal-overlay IS APPENDED TO <body>, WHICH IS WHY IT NEEDED ITS OWN
+ * ROOT RATHER THAN A NEW HOME. See the block that styles it, below, for why the
+ * modal is not moved inside .uc-calendar instead.
+ *
+ * ON SPECIFICITY, NOT !important. Each rule is scoped to one of our roots,
+ * which puts it at (0,1,1) or better against a theme's typical (0,0,1) element
+ * rule or (0,1,0) single class. That is enough to win without an escalation
+ * war, and it leaves a host free to deliberately override us if they ever need
+ * to. The one exception is [hidden] below, and it is explained there.
+ *
+ * THE COROLLARY, AND IT HAS COST THIS FILE FOUR DEFECTS: every rule here is
+ * (0,1,1), so ANY component of ours that names itself with one class is now
+ * OUTRANKED BY ITS OWN RESET. Adding a root to a list above is therefore never
+ * a free change. Everything raised to two classes for that reason carries a
+ * note saying so, and the two shapes of remedy are the ones set out at the
+ * button rules: raise the component where the reset is right to be strong, and
+ * drop the reset into :where() where it is only meant to be a floor.
  * ======================================================================== */
 
-.uc-calendar, .uc-sidebar, .uc-upcoming-widget {
+.uc-calendar, .uc-sidebar, .uc-upcoming-widget, .uc-single, .uc-rsvp-modal-overlay {
     font-family: var(--uc-font-heading);
     font-size: 15px;
     line-height: 1.5;
@@ -148,19 +180,38 @@
     text-align: left;
     box-sizing: border-box;
 }
-.uc-calendar *, .uc-sidebar *, .uc-upcoming-widget * { box-sizing: border-box; }
+.uc-calendar *, .uc-sidebar *, .uc-upcoming-widget *,
+.uc-single *, .uc-rsvp-modal-overlay * { box-sizing: border-box; }
 
 /* Links. The host's underline-everything rule was the most visible bleed. */
-.uc-calendar a, .uc-sidebar a, .uc-upcoming-widget a {
+.uc-calendar a, .uc-sidebar a, .uc-upcoming-widget a,
+.uc-single a, .uc-rsvp-modal-overlay a {
     text-decoration: none;
     box-shadow: none;
     border-bottom: 0;
 }
-.uc-calendar a:hover, .uc-sidebar a:hover, .uc-upcoming-widget a:hover { text-decoration: none; }
+.uc-calendar a:hover, .uc-sidebar a:hover, .uc-upcoming-widget a:hover,
+.uc-single a:hover, .uc-rsvp-modal-overlay a:hover { text-decoration: none; }
 
-/* Headings inside our blocks are ours, not the theme's article headings. */
+/* THE EVENT PAGE STATES ITS LINK COLOUR, WHICH THE CALENDAR BLOCK DOES NOT.
+   On a card every link is inside a component that names its own colour, so
+   there is nothing left over to catch. The event page has prose in it, and a
+   link a manager typed into an event description belongs to no component of
+   ours at all: with nothing said, it took the theme's link colour, which on an
+   unknown host is not necessarily legible on our background. Everything of ours
+   that carries a colour of its own is raised to two classes to keep outranking
+   this. See .uc-single-back, .uc-series-link, .uc-share-btn and .uc-badge. */
+.uc-single a { color: var(--uc-teal-text); }
+
+/* Headings inside our blocks are ours, not the theme's article headings.
+   h1 is here for .uc-single only, because that is the only root that owns one:
+   the event title. Prose headings inside .uc-single-body get their spacing back
+   in the prose island below. */
 .uc-calendar h2, .uc-calendar h3, .uc-calendar h4,
-.uc-sidebar h2, .uc-sidebar h3, .uc-sidebar h4 {
+.uc-sidebar h2, .uc-sidebar h3, .uc-sidebar h4,
+.uc-upcoming-widget h2, .uc-upcoming-widget h3, .uc-upcoming-widget h4,
+.uc-single h1, .uc-single h2, .uc-single h3, .uc-single h4,
+.uc-rsvp-modal-overlay h2, .uc-rsvp-modal-overlay h3, .uc-rsvp-modal-overlay h4 {
     margin: 0;
     padding: 0;
     font-family: var(--uc-font-heading);
@@ -171,21 +222,28 @@
 }
 
 /* Lists. Themes routinely add bullets, margins and indents to every ul. */
-.uc-calendar ul, .uc-calendar ol, .uc-sidebar ul, .uc-upcoming-widget ul {
+.uc-calendar ul, .uc-calendar ol, .uc-sidebar ul, .uc-upcoming-widget ul,
+.uc-single ul, .uc-single ol {
     list-style: none;
     margin: 0;
     padding: 0;
 }
-.uc-calendar li, .uc-sidebar li, .uc-upcoming-widget li {
+.uc-calendar li, .uc-sidebar li, .uc-upcoming-widget li, .uc-single li {
     list-style: none;
     margin: 0;
     padding: 0;
     background: none;
 }
+/* NOT EXTENDED TO .uc-single, AND DELIBERATELY. This kills a theme's bulleted
+   li::before, and on the event page the same selector would kill the markers of
+   a real bulleted list somebody wrote in an event description. The event page
+   gets it on its OWN two lists instead, where there is no prose to damage. */
 .uc-calendar li::before, .uc-calendar li::marker { content: none; }
+.uc-single .uc-single-facts li::before, .uc-single .uc-series-list li::before { content: none; }
 
 /* Paragraphs. */
-.uc-calendar p, .uc-sidebar p { margin: 0; }
+.uc-calendar p, .uc-sidebar p, .uc-upcoming-widget p,
+.uc-single p, .uc-rsvp-modal-overlay p { margin: 0; }
 
 /* Tables. The theme owned all of this: header background, cell padding,
    striping, and the border model itself. */
@@ -236,8 +294,14 @@
    (0,0,0) it would lose to it, which is the fault this rule was written to
    prevent. Same instrument as `:where(.uc-portal) a` in portal.css, set one
    notch higher because here there is a theme on the other side.
+
+   .uc-single AND THE MODAL JOIN BOTH HALVES IN 3.22.0, and the split earns its
+   keep immediately: .uc-faq-q, .uc-rsvp-submit and .uc-rsvp-cancel are all
+   `width: 100%` at (0,1,0) and would have been reset to `width: auto` by the
+   defence half. All three are raised to two classes at their own rules.
    --------------------------------------------------------------------------- */
-.uc-calendar button, .uc-sidebar button, .uc-upcoming-widget button {
+.uc-calendar button, .uc-sidebar button, .uc-upcoming-widget button,
+.uc-single button, .uc-rsvp-modal-overlay button {
     font-family: inherit;
     line-height: 1.2;
     text-transform: none;
@@ -247,13 +311,42 @@
     width: auto;
     min-height: 0;
 }
-:where(.uc-calendar, .uc-sidebar, .uc-upcoming-widget) button {
+:where(.uc-calendar, .uc-sidebar, .uc-upcoming-widget, .uc-single, .uc-rsvp-modal-overlay) button {
     border-radius: 0;
     margin: 0;
 }
 
+/* ---------------------------------------------------------------------------
+   FORM CONTROLS. The modal is the only root that carries any, and it carries
+   the only form a visitor ever fills in on a public surface.
+
+   NO `appearance: none` AND NO SIZING HERE, WHICH IS THE POINT OF THE RULE
+   BEING THIS SHORT. A blanket `input` rule that sets width, padding or
+   appearance reaches the consent checkbox as well as the three text fields,
+   and that is the recorded `.uc-field input` fault: a checkbox is an input,
+   takes width and padding like any other, and comes out as an empty rounded
+   box the size of the form. What is safe to state for every control is what a
+   theme actually breaks: the typeface, the size, the colour and the casing.
+   The look of the text fields is set at .uc-rsvp-form, on text fields only.
+
+   font-family is NAMED rather than inherited: form controls do not inherit it
+   from their ancestors at all, so `inherit` would be doing nothing here.
+   --------------------------------------------------------------------------- */
+.uc-rsvp-modal-overlay input, .uc-rsvp-modal-overlay select,
+.uc-rsvp-modal-overlay textarea, .uc-rsvp-modal-overlay label {
+    font-family: var(--uc-font-heading);
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--uc-text);
+    text-transform: none;
+    letter-spacing: normal;
+    max-width: 100%;
+    text-shadow: none;
+}
+
 /* Images inside our blocks never exceed their box, whatever the theme says. */
-.uc-calendar img, .uc-sidebar img, .uc-upcoming-widget img { max-width: 100%; height: auto; border: 0; }
+.uc-calendar img, .uc-sidebar img, .uc-upcoming-widget img,
+.uc-single img, .uc-rsvp-modal-overlay img { max-width: 100%; height: auto; border: 0; }
 
 /* THE ONE !important, and the reason for it.
  *
@@ -265,7 +358,49 @@
  * nothing. There is no specificity available that reliably outranks an unknown
  * selector on the same element, so this restores the behaviour the attribute is
  * supposed to have. It is enforcing the HTML spec, not winning an argument. */
-.uc-calendar [hidden], .uc-sidebar [hidden] { display: none !important; }
+.uc-calendar [hidden], .uc-sidebar [hidden], .uc-upcoming-widget [hidden],
+.uc-single [hidden], .uc-rsvp-modal-overlay [hidden] { display: none !important; }
+
+/* ===========================================================================
+ * THE PROSE ISLAND: WHAT THE RESET ABOVE MUST GIVE BACK.
+ *
+ * .uc-single-body is an event description a manager wrote, and .uc-faq-a is an
+ * answer they wrote. Both are ordinary editorial HTML, and the reset above is
+ * built for chrome: `ul { list-style: none }` and `p { margin: 0 }` are correct
+ * for a facts list and wrong for a paragraph of prose. Extending the reset to
+ * the event page without this block would have deleted every bullet and run
+ * every paragraph together, which is a worse outcome than the theme bleed it
+ * was fixing.
+ *
+ * (0,2,1) AGAINST THE RESET'S (0,1,1), so it wins on specificity rather than on
+ * source order. Ordering these after the reset would be enough today and would
+ * quietly stop being enough the first time somebody moves a block.
+ *
+ * The link colour and the hover underline are stated here too. An underline on
+ * a link in a paragraph is not decoration, it is the only thing distinguishing
+ * the link from the words around it for anyone who cannot rely on the colour.
+ * ======================================================================== */
+.uc-single .uc-single-body p, .uc-single .uc-faq-a p { margin: 0 0 1em; }
+.uc-single .uc-single-body p:last-child, .uc-single .uc-faq-a p:last-child { margin-bottom: 0; }
+
+.uc-single .uc-single-body ul, .uc-single .uc-faq-a ul { list-style: disc; margin: 0 0 1em; padding-left: 1.4em; }
+.uc-single .uc-single-body ol, .uc-single .uc-faq-a ol { list-style: decimal; margin: 0 0 1em; padding-left: 1.6em; }
+.uc-single .uc-single-body li, .uc-single .uc-faq-a li { list-style: inherit; margin: 0 0 0.4em; padding: 0; }
+
+.uc-single .uc-single-body h2, .uc-single .uc-single-body h3, .uc-single .uc-single-body h4 {
+    font-family: var(--uc-font-heading); font-weight: 700; line-height: 1.3;
+    color: var(--uc-text); margin: 1.5em 0 0.5em;
+}
+.uc-single .uc-single-body h2 { font-size: 22px; }
+.uc-single .uc-single-body h3 { font-size: 18px; }
+.uc-single .uc-single-body h4 { font-size: 16px; }
+
+.uc-single .uc-single-body a, .uc-single .uc-faq-a a { color: var(--uc-teal-text); text-decoration: underline; }
+.uc-single .uc-single-body a:hover, .uc-single .uc-faq-a a:hover { color: #0B666F; text-decoration: underline; }
+.uc-single .uc-single-body a:focus-visible, .uc-single .uc-faq-a a:focus-visible {
+    outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px;
+}
+.uc-single .uc-single-body img { border-radius: 10px; }
 
 
 /* Calendar container */
@@ -275,12 +410,25 @@
    Brand typography (p.10). Set explicitly rather than by inheritance: an
    inherited font-family loses to any direct theme rule on h1/h3/p, and form
    controls don't inherit font-family at all.
+
+   A SEVEN-CLASS HEADING LIST USED TO SIT HERE AND WAS DELETED IN 3.22.0 for
+   the same reason as the four card rules further down: it had become dead, and
+   dead rules that read like the canonical statement of something are what
+   people edit. It named .uc-card-title, .uc-compact-title, .uc-upcoming-title,
+   .uc-single-title, .uc-faq-heading, .uc-faq-q and .uc-series-heading at
+   (0,1,0). Every one of those is a heading or a button inside a reset root, and
+   the reset now sets font-family on all five roots' headings and buttons at
+   (0,1,1), so the list lost every declaration it made and changed nothing
+   because it was asking for the same font. The resets are the effective rules.
+
+   THE FORM-CONTROL LINE STAYS AND IS NOT THE SAME CASE. Controls do not inherit
+   font-family from an ancestor at all, so nothing here is redundant: without
+   this line a <select> falls back to the platform UI font whatever the root
+   says. The modal's controls are covered by their own rule in the reset block.
    --------------------------------------------------------------------------- */
-.uc-card-title, .uc-compact-title, .uc-upcoming-title,
-.uc-single-title, .uc-faq-heading, .uc-faq-q, .uc-series-heading { font-family: var(--uc-font-heading); }
 .uc-calendar button, .uc-calendar input, .uc-calendar select, .uc-calendar textarea,
 .uc-upcoming-widget button, .uc-upcoming-widget input, .uc-upcoming-widget select { font-family: var(--uc-font-heading); }
-.uc-card-excerpt, .uc-single-body, .uc-single-body p { font-family: var(--uc-font-body); }
+.uc-card-excerpt, .uc-single-body, .uc-single .uc-single-body p { font-family: var(--uc-font-body); }
 
 /* Icon set — inherits currentColor, sits on the text baseline. */
 .sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
@@ -288,8 +436,14 @@
 /* Filters */
 .uc-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--uc-border); margin-bottom: 16px; }
 .uc-search-wrap { flex-shrink: 0; }
-.uc-search { padding: 8px 14px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 14px; width: 200px; outline: none; transition: border-color 0.2s; }
-.uc-search:focus { border-color: var(--uc-teal); box-shadow: 0 0 0 3px rgba(22,190,207,0.1); }
+.uc-search { padding: 8px 14px; border: 1px solid var(--uc-border-strong); border-radius: 8px; font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4; color: var(--uc-text); background: #fff; width: 200px; transition: border-color 0.2s; }
+/* A6, and the same fault as the modal's fields: this said `outline: none` and
+   put brand teal on the border in its place, which is 2.26:1 against the white
+   field and under the 3:1 floor for a focus indicator, with a 10% alpha shadow
+   contributing nothing measurable behind it. --uc-teal-text #0E7680 is 5.35:1
+   on white and 5.04:1 on --uc-bg. See the modal's field rules for the full
+   reasoning and for why this is :focus-visible rather than :focus. */
+.uc-search:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-color: var(--uc-teal-text); }
 
 .uc-filter-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
 .uc-filter-btn { padding: 6px 14px; border-radius: 99px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
@@ -626,22 +780,72 @@
 .uc-calendar .uc-event-card a:focus-visible,
 .uc-calendar .uc-event-card button:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px; }
 
-/* Badges survive for the single event template, which still uses them. */
-.uc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--badge-color, var(--uc-teal)) 12%, transparent); color: var(--badge-color, var(--uc-teal)); }
-.uc-badge-recurrence { background: #f3f4f6; color: var(--uc-secondary); font-size: 11px; --badge-color: var(--uc-secondary); }
+/* ===========================================================================
+ * THE EVENT PAGE'S BADGES, AND THE YELLOW-ON-YELLOW CHIP.
+ *
+ * WHAT WAS ACTUALLY DRAWING IT. There are two category-chip renderers, not
+ * one. sfaf_category_chips_html() emits `.uc-lc-chip` for a list card and
+ * `.uc-badge` for an event page, and only the card branch was converted in
+ * 3.15.0. The card takes --uc-cat-tint and --uc-cat-ink, which is the measured
+ * pair out of sfaf_category_shades(). The event page took the RAW category
+ * colour in a custom property called --badge-color and used it TWICE: as a 12%
+ * tint for the background and, unchanged, as the text colour.
+ *
+ * So the pair was never outranked. The event page was never asking for it. On
+ * a Fundraising event the chip was #FFD900 text on color-mix(#FFD900 12%,
+ * transparent) over white, which flattens to #FFFAE0. Measured: 1.32:1,
+ * against a 4.5:1 requirement. Purple was the best of the ten at 2.63:1 and
+ * every single family failed.
+ *
+ * The 12% tint was not the problem and is nearly the answer: #FFFAE0 is to
+ * three decimal places the Yellow row of the shades table. What was wrong was
+ * the ink. Both surfaces now read the same two custom properties, set by the
+ * same function, so there is ONE contract for what a category chip is coloured
+ * with and it cannot be honoured on one surface and not the other.
+ *
+ * THE TWO NON-CATEGORY BADGES MOVE INTO THE RAMP AS WELL. The volunteer badge
+ * was rgba(123,97,255,0.12) behind brand Purple, and #7B61FF is not a colour in
+ * the brand palette at all; it now takes the Purple family's own pair at
+ * 6.02:1. The recurrence badge was --uc-secondary #6B7280 on #F3F4F6, which
+ * measures 4.39:1 at 11px and misses 4.5:1; it takes the Dark Gray family's
+ * pair, 9.98:1, which is also the only pair in the table whose tint is dark
+ * enough to read as a pill against a white page.
+ *
+ * Scoped to .uc-single because both public templates that render a badge use
+ * that root, and because `.uc-single a` states a link colour: an unscoped
+ * `.uc-badge` at (0,1,0) would lose its own colour to the reset.
+ * ======================================================================== */
+.uc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-family: var(--uc-font-heading); font-size: 12px; font-weight: 600; line-height: 1.5; }
+.uc-single .uc-badge { background: var(--uc-cat-tint, #E3F7F9); color: var(--uc-cat-ink, #0C666F); }
+.uc-single .uc-badge-recurrence { background: #E7E7E7; color: #373433; --uc-cat-ink: #373433; font-size: 11px; }
 /* A category badge on an event page goes back to the calendar, filtered. */
 .uc-badge-link { text-decoration: none; cursor: pointer; transition: filter 0.12s ease; }
-.uc-badge-link:hover, .uc-badge-link:focus-visible { filter: brightness(0.94); text-decoration: none; }
-.uc-badge-link:focus-visible { outline: 2px solid var(--badge-color, var(--uc-teal)); outline-offset: 2px; }
+.uc-single .uc-badge-link:hover, .uc-single .uc-badge-link:focus-visible { filter: brightness(0.94); text-decoration: none; }
+.uc-single .uc-badge-link:focus-visible { outline: 2px solid var(--uc-cat-ink, #0C666F); outline-offset: 2px; }
 
-.uc-card-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 6px; line-height: 1.3; }
-.uc-card-title a { color: inherit; text-decoration: none; }
-.uc-card-title a:hover { color: var(--uc-teal-text); }
+/* ---------------------------------------------------------------------------
+   B2: FOUR CARD RULES USED TO SIT HERE AND ARE DELETED RATHER THAN REPAIRED.
 
-.uc-card-excerpt { font-size: 14px; color: var(--uc-secondary); margin: 0 0 10px; line-height: 1.5; }
+   They were `.uc-card-title`, `.uc-card-excerpt`, `.uc-card-meta` and
+   `.uc-meta-item`, each at (0,1,0), and they read like the canonical
+   description of a card: an 18/700 title with a 6px margin, a 14px excerpt, a
+   horizontal meta row. Not one of them ever applied. All four classes are
+   rendered by render_event_card() and by nothing else, so every one of them is
+   always inside .uc-event-card, where the scoped rules at
+   `.uc-calendar .uc-event-card .uc-card-title` and its siblings are (0,3,0) and
+   win every property in common.
 
-.uc-card-meta { display: flex; gap: 16px; font-size: 13px; color: var(--uc-secondary); flex-wrap: wrap; align-items: center; }
-.uc-meta-item { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+   DELETED, NOT PROMOTED, and the choice is between two real options. Promoting
+   them would mean merging four rules into four that already say the same thing
+   more precisely, which leaves the file no clearer. Deleting them leaves ONE
+   description of the card, at the top of the list-card block, where somebody
+   changing the title size will actually see the change. Nothing rendered
+   differently before this edit and nothing renders differently after it; what
+   is removed is the invitation to edit the wrong rule.
+
+   The classes themselves stay in the markup. calendar.js and embed.js search
+   and filter through .uc-card-title, .uc-card-excerpt and .uc-card-meta.
+   ------------------------------------------------------------------------ */
 
 /* RSVP section */
 .uc-card-rsvp { margin-top: 14px; padding: 12px 14px; background: var(--uc-bg); border-radius: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -652,28 +856,120 @@
 .uc-capacity-text { font-size: 12px; color: var(--uc-secondary); white-space: nowrap; }
 
 
-/* RSVP Modal */
+/* ===========================================================================
+ * RSVP MODAL
+ *
+ * A2: IT IS APPENDED TO <body> AND HAD NO PROTECTED ROOT AT ALL.
+ *
+ * calendar.js does $('body').append(modalHTML), so the modal is a sibling of
+ * the page rather than a descendant of .uc-calendar, and not one line of the
+ * scoped reset reached it. Its heading, paragraphs, labels, inputs and buttons
+ * were defended only by their own .uc-rsvp-* classes at (0,1,0) to (0,1,1),
+ * which is the same exposure that produced the 3.21.0 consent-checkbox fault:
+ * `.uc-rsvp-form label { display: block }` beat `.uc-rsvp-optin`'s
+ * `display: flex` and put a consent tick on the line above its own text.
+ *
+ * THE FIX IS ITS OWN ROOT, NOT A NEW PARENT, and that is a deliberate choice
+ * between the two options. Appending inside .uc-calendar would have made the
+ * modal a child of an element belonging to the host page:
+ *
+ *   - The overlay is position: fixed. A transform, filter, backdrop-filter,
+ *     perspective or `contain` on ANY ancestor makes a fixed element resolve
+ *     against that ancestor instead of the viewport, so the overlay would stop
+ *     covering the page. Themes put transforms on section wrappers routinely
+ *     for reveal animations.
+ *   - overflow: hidden or clip on an ancestor clips it.
+ *   - A z-index of 99999 means nothing from inside a stacking context the host
+ *     created.
+ *   - There can be more than one .uc-calendar on a page. The modal is a
+ *     singleton, so there is no correct one to pick.
+ *
+ * So the element stays where it is and .uc-rsvp-modal-overlay is added to the
+ * reset roots at the top of this file. Being outside the host's content
+ * wrapper is now an advantage rather than a liability: `.entry-content input`
+ * and its kind cannot reach the modal at all, and what remains reachable is
+ * bare `input {}`, `button {}`, `h3 {}` and `body label {}`, all of which lose
+ * to the reset's (0,1,1).
+ *
+ * EVERY RULE IN THIS BLOCK IS AT TWO CLASSES for the reason the reset section
+ * sets out: the root that now defends the modal also outranks any component
+ * that names itself once. .uc-rsvp-submit and .uc-rsvp-cancel are `width: 100%`
+ * and would have been reset to `width: auto`; .uc-rsvp-note carries the only
+ * paragraph margin in the modal.
+ * ======================================================================== */
 .uc-rsvp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .uc-rsvp-modal-overlay.active { opacity: 1; pointer-events: all; }
 
-.uc-rsvp-modal { background: #fff; border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-.uc-rsvp-modal h3 { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: var(--uc-text); }
-.uc-rsvp-modal .uc-modal-subtitle { font-size: 14px; color: var(--uc-secondary); margin: 0 0 20px; }
+.uc-rsvp-modal-overlay .uc-rsvp-modal { background: #fff; border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); text-align: left; }
+.uc-rsvp-modal-overlay .uc-rsvp-modal h3 { font-family: var(--uc-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; margin: 0 0 4px; color: var(--uc-text); }
+.uc-rsvp-modal .uc-modal-subtitle { font-size: 14px; line-height: 1.45; color: var(--uc-secondary); margin: 0 0 20px; }
 
 .uc-rsvp-form { display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-form label { font-size: 13px; font-weight: 600; color: var(--uc-text); display: block; margin-bottom: 4px; }
-.uc-rsvp-form input { width: 100%; padding: 10px 14px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box; }
-.uc-rsvp-form input:focus { border-color: var(--uc-teal); box-shadow: 0 0 0 3px rgba(22,190,207,0.1); }
 
-.uc-rsvp-submit { padding: 12px 0; border-radius: 10px; border: none; background: var(--uc-teal); color: var(--uc-dark); font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; transition: background 0.2s; }
-.uc-rsvp-submit:hover { background: #13a8b8; }
-.uc-rsvp-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+/* ---------------------------------------------------------------------------
+   TEXT FIELDS ONLY, AND :not() IS DOING REAL WORK HERE.
 
-.uc-rsvp-cancel { padding: 10px 0; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; cursor: pointer; width: 100%; }
+   This rule used to be `.uc-rsvp-form input`, which is every input in the form
+   INCLUDING the consent checkbox, and it set `width: 100%` and `padding: 10px
+   14px` on it. A checkbox takes width and padding like any other replaced
+   control, so the tick beside "Receive monthly email updates" was being drawn
+   as a form-width rounded box. `.uc-rsvp-optin input` set margin and flex and
+   neither of those puts a width back. Exactly the recorded `.uc-field input`
+   fault from the caladmin side, on the one form a member of the public fills
+   in. Excluding the two boxy types is what makes the rule mean what it says.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-modal-overlay .uc-rsvp-form input:not([type="checkbox"]):not([type="radio"]) {
+    width: 100%; padding: 10px 14px;
+    -webkit-appearance: none; appearance: none;
+    border: 1px solid var(--uc-border-strong); border-radius: 8px;
+    background: #fff; color: var(--uc-text);
+    font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+}
+/* ---------------------------------------------------------------------------
+   A6: A REAL FOCUS INDICATOR, BECAUSE THERE WAS NOT ONE.
+
+   This rule said `outline: none` and replaced it with `border-color:
+   var(--uc-teal)` plus `box-shadow: 0 0 0 3px rgba(22,190,207,0.1)`. Brand
+   teal #16BECF measures 2.26:1 against the white field and the white modal,
+   which is under the 3:1 that WCAG 1.4.11 asks of a focus indicator, and a 10%
+   alpha shadow over white is #E8FAFC at roughly 1.05:1 against the modal,
+   which is not a boundary at all. Taken together a keyboard user filling in
+   the registration form could not see which of the three fields they were in.
+
+   #0E7680, the darkened teal this file already uses for text, measures 5.35:1
+   on white and 5.04:1 on --uc-bg. It is used twice over on purpose: as a 2px
+   outline offset clear of the field, which is what a screen magnifier and a
+   forced-colours mode can both find, and as the field's own border, so the
+   indicator does not depend on the outline surviving a host's `outline: 0`.
+
+   :focus-visible, not :focus. Browsers match :focus-visible on a text input
+   for pointer focus as well as keyboard focus, so a mouse user sees it too;
+   what it avoids is the ring appearing on a programmatic .focus() call.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-modal-overlay .uc-rsvp-form input:focus-visible {
+    outline: 2px solid var(--uc-teal-text);
+    outline-offset: 2px;
+    border-color: var(--uc-teal-text);
+}
+
+.uc-rsvp-modal .uc-rsvp-submit { padding: 12px 0; border-radius: 10px; border: 1px solid var(--uc-teal); background: var(--uc-teal); color: var(--uc-dark); font-family: var(--uc-font-heading); font-size: 15px; font-weight: 700; line-height: 1.2; cursor: pointer; width: 100%; transition: background 0.2s; }
+.uc-rsvp-modal .uc-rsvp-submit:hover { background: #13a8b8; border-color: #13a8b8; }
+.uc-rsvp-modal .uc-rsvp-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.uc-rsvp-modal .uc-rsvp-cancel { padding: 10px 0; border-radius: 8px; border: 1px solid var(--uc-border-strong); background: #fff; color: var(--uc-secondary); font-family: var(--uc-font-heading); font-size: 13px; line-height: 1.2; cursor: pointer; width: 100%; }
+.uc-rsvp-modal .uc-rsvp-cancel:hover { border-color: var(--uc-teal-text); color: var(--uc-teal-text); }
+
+/* One ring for every control in the modal, the same one the calendar uses. */
+.uc-rsvp-modal-overlay button:focus-visible,
+.uc-rsvp-modal-overlay .uc-rsvp-optin:focus-within { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 
 .uc-rsvp-success { text-align: center; padding: 20px 0; }
-.uc-rsvp-success .uc-check { font-size: 48px; margin-bottom: 12px; }
-.uc-rsvp-success p { font-size: 16px; color: var(--uc-text); font-weight: 600; }
+.uc-rsvp-success .uc-check { font-size: 48px; line-height: 1; margin-bottom: 12px; color: var(--uc-teal-text); }
+.uc-rsvp-modal .uc-rsvp-success p { font-size: 16px; color: var(--uc-text); font-weight: 600; margin: 0; }
+.uc-rsvp-modal .uc-rsvp-success .uc-modal-subtitle { margin: 6px 0 0; font-weight: 400; }
 /* THE RED FAMILY'S DARKEST STOP, NOT ITS BASE. --uc-warm #F04937 is 3.68:1 on
    white, and DESIGN.md allows Red as text only at large sizes; this is 13px,
    and it is the line telling somebody their registration failed, which is the
@@ -687,14 +983,18 @@
    three buttons pointed at a query string nothing handled. Per-event "Add to
    Calendar" is a different feature and is still here. */
 
-/* RSVP form: consent and disclaimer */
-.uc-rsvp-note { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--uc-secondary); }
+/* RSVP form: consent and disclaimer.
+   Raised: margin, against `.uc-rsvp-modal-overlay p { margin: 0 }`. */
+.uc-rsvp-form .uc-rsvp-note { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--uc-secondary); }
 /* Two classes, same reason as .uc-sidebar-all: this is a <label>, and
    `.uc-rsvp-form label` sets `display: block` at (0,1,1), so the opt-in row's
    `display: flex` never applied and its checkbox sat on the line above its
    text. The gap and align-items had nothing to act on either. */
 .uc-rsvp-form .uc-rsvp-optin { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 2px; font-size: 13px; line-height: 1.45; color: var(--uc-text); cursor: pointer; }
-.uc-rsvp-optin input { margin: 2px 0 0; flex: 0 0 auto; }
+/* width and height are STATED, not left to the user agent. The checkbox is the
+   one control on this form that is not a text field, so it is the one a theme's
+   bare `input {}` rule reaches without any of our field styling in the way. */
+.uc-rsvp-form .uc-rsvp-optin input { width: 16px; height: 16px; margin: 2px 0 0; padding: 0; flex: 0 0 auto; accent-color: var(--uc-teal-text); }
 
 /* No events */
 .uc-no-events { padding: 40px; text-align: center; color: var(--uc-secondary); }
@@ -704,7 +1004,14 @@
    platform UI stack and not a brand typeface, and being further down the file
    than the scoped reset at the top it won. 3.17.0. */
 .uc-upcoming-widget { font-family: var(--uc-font-heading); }
-.uc-upcoming-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--uc-teal); }
+/* TWO CLASSES, AND B4 IS WHY. .uc-upcoming-widget was missing from the heading
+   reset and from the paragraph reset, so this <h3> was taking the host's
+   margin, padding, text-transform, letter-spacing and border. Adding the widget
+   to those resets fixes the bleed and puts the reset at (0,1,1) against this
+   rule's (0,1,0), which would have deleted the margin, the padding and the rule
+   underneath. Same remedy as .uc-sidebar-heading: raise the component, because
+   the reset is right to outrank a bare themed h3. */
+.uc-upcoming-widget .uc-upcoming-title { font-size: 18px; font-weight: 700; color: var(--uc-text); margin: 0 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--uc-teal); }
 
 .uc-upcoming-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -728,7 +1035,10 @@
 /* Social share */
 .uc-share { display: flex; align-items: center; gap: 6px; }
 .uc-share-label { font-size: 12px; color: var(--uc-secondary); font-weight: 600; }
-.uc-share-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); text-decoration: none; font-size: 13px; font-weight: 700; transition: all 0.2s; }
+/* Raised: colour, against `.uc-single a`. Two classes rather than a .uc-single
+   prefix, so the block keeps working wherever it is rendered. */
+.uc-share .uc-share-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); text-decoration: none; font-size: 13px; font-weight: 700; transition: all 0.2s; }
+.uc-share .uc-share-btn:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 .uc-share-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); transform: translateY(-1px); }
 .uc-share-icon { line-height: 1; }
 .uc-share-facebook:hover { border-color: #1877F2; color: #1877F2; }
@@ -747,12 +1057,23 @@
 .uc-addcal-toggle:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
 .uc-addcal-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 50; min-width: 190px; background: #fff; border: 1px solid var(--uc-border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); padding: 6px; display: none; }
 .uc-addcal.open .uc-addcal-menu { display: block; }
-.uc-addcal-menu a { display: block; padding: 9px 12px; font-size: 13px; color: var(--uc-text); text-decoration: none; border-radius: 6px; }
-.uc-addcal-menu a:hover { background: var(--uc-bg); color: var(--uc-teal-text); }
+/* Raised to (0,2,1): `.uc-single a` is (0,1,1) and this was too, so which one
+   won was a question about source order rather than about specificity. */
+.uc-addcal .uc-addcal-menu a { display: block; padding: 9px 12px; font-size: 13px; color: var(--uc-text); text-decoration: none; border-radius: 6px; }
+.uc-addcal .uc-addcal-menu a:hover { background: var(--uc-bg); color: var(--uc-teal-text); }
+.uc-addcal .uc-addcal-menu a:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; }
 
 /* Reminder button */
 .uc-reminder-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .uc-reminder-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+/* IN AN EMBED THIS CONTROL IS AN ANCHOR, NOT A BUTTON, and `border-bottom: 0`
+   in the link reset is (0,1,1) against the shorthand above at (0,1,0). So the
+   anchor form would draw three sides of a box and no fourth. The type selector
+   puts this at (0,1,1) and later in the file, which is enough. Nothing calls
+   the embed branch of sfaf_reminders_button() today; this is here so that the
+   day something does, the control is not missing an edge. */
+a.uc-reminder-btn { border-bottom: 1px solid var(--uc-border); }
+a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 
 /* Card style variations (set via Branding). The minimal variant no longer
    nudges its left padding: it was aligning content with the 4px category
@@ -761,26 +1082,46 @@
 .sfaf-card-minimal .uc-event-card:hover { box-shadow: none; transform: none; }
 .sfaf-card-shadow .uc-event-card { border-color: transparent; box-shadow: 0 6px 24px rgba(0,0,0,0.08); }
 
-/* Single event template */
+/* ===========================================================================
+ * SINGLE EVENT TEMPLATE (and the series page, which uses the same root)
+ *
+ * EVERY RULE FROM HERE THAT NAMES A COLOUR, A MARGIN, A LIST-STYLE OR A WIDTH
+ * IS AT TWO CLASSES, and 3.22.0 is when that became necessary rather than
+ * tidy. .uc-single is a reset root now, so `.uc-single h1`, `.uc-single ul`,
+ * `.uc-single p`, `.uc-single a` and `.uc-single button` all sit at (0,1,1),
+ * and a component naming itself with one class loses to its own reset. The
+ * eight rules raised below are exactly the ones that collided.
+ * ======================================================================== */
 .uc-single { --event-color: var(--uc-teal); padding: 32px 16px 60px; font-family: var(--uc-font-heading); }
 .uc-single-inner { max-width: 980px; margin: 0 auto; }
 .uc-single-brand { margin-bottom: 16px; }
 .uc-single-logo { max-height: 48px; width: auto; }
-.uc-single-back { display: inline-block; margin-bottom: 16px; font-size: 13px; color: var(--uc-secondary); text-decoration: none; }
-.uc-single-back:hover { color: var(--uc-teal-text); }
+/* Raised: colour, against `.uc-single a`. */
+.uc-single .uc-single-back { display: inline-block; margin-bottom: 16px; font-size: 13px; color: var(--uc-secondary); text-decoration: none; }
+.uc-single .uc-single-back:hover { color: var(--uc-teal-text); }
+.uc-single .uc-single-back:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px; }
 .uc-single-header { border-left: 4px solid var(--event-color); padding-left: 18px; margin-bottom: 28px; }
 .uc-single-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-.uc-single-title { font-size: 34px; font-weight: 800; line-height: 1.2; color: var(--uc-text); margin: 0 0 8px; }
-.uc-single-organizer { font-size: 15px; color: var(--uc-secondary); margin: 0; }
+/* Raised: font-size, weight, colour and margin, against `.uc-single h1`. */
+.uc-single .uc-single-title { font-size: 34px; font-weight: 800; line-height: 1.2; color: var(--uc-text); margin: 0 0 8px; }
+.uc-single .uc-single-organizer { font-size: 15px; color: var(--uc-secondary); margin: 0; }
 .uc-single-grid { display: grid; grid-template-columns: 1fr 320px; gap: 32px; align-items: start; }
-.uc-single-image img { width: 100%; height: auto; border-radius: 14px; margin-bottom: 20px; }
+/* Raised: height and border, against `.uc-single img`. The second rule further
+   down (with the 16:9 wrapper) is the one that decides the height; this one
+   keeps the radius and the space under it. */
+.uc-single .uc-single-image img { width: 100%; border-radius: 14px; margin-bottom: 20px; }
 .uc-single-body { font-size: 16px; line-height: 1.7; color: var(--uc-text); }
-.uc-single-body p { margin: 0 0 1em; }
+/* Paragraph, list and heading spacing inside the prose live in the prose island
+   next to the reset, at (0,2,1), so the reset cannot flatten them. */
 .uc-single-sidebar { position: sticky; top: 24px; }
 .uc-single-card { background: #fff; border: 1px solid var(--uc-border); border-radius: 14px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); }
-.uc-single-facts { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.uc-single-facts li { display: flex; gap: 10px; font-size: 14px; color: var(--uc-text); align-items: flex-start; }
+/* Raised: margin, against `.uc-single ul`. */
+.uc-single .uc-single-facts { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.uc-single .uc-single-facts li { display: flex; gap: 10px; font-size: 14px; color: var(--uc-text); align-items: flex-start; }
 .uc-fact-icon { flex-shrink: 0; }
+/* The series page's "no dates yet" line. A <p>, so `.uc-single p { margin: 0 }`
+   reaches it and it needs its own spacing back. */
+.uc-single .uc-empty { margin: 0; font-size: 14px; line-height: 1.5; color: var(--uc-secondary); }
 .uc-single-card .uc-card-rsvp { margin-top: 0; }
 .uc-single-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .uc-single-actions .uc-addcal, .uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-reminder-btn { width: 100%; }
@@ -798,26 +1139,39 @@
        shape-changes-with-width problem back at one breakpoint. */
     .uc-single-grid { grid-template-columns: 1fr; }
     .uc-single-sidebar { position: static; }
-    .uc-single-title { font-size: 26px; }
+    /* Two classes here as well. A media query changes when a rule applies,
+       never how strongly, so an unscoped .uc-single-title would be (0,1,0)
+       against the heading reset's (0,1,1) and the phone would keep the 34px
+       desktop title. Same trap the month grid documents at 640px. */
+    .uc-single .uc-single-title { font-size: 26px; }
 }
 
 /* Series link + list. .uc-series-link is the single event template's badge;
    the list card has its own row, styled with the card above. */
-.uc-series-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); background: rgba(22,190,207,0.08); padding: 3px 10px; border-radius: 99px; text-decoration: none; }
-.uc-series-link:hover { background: rgba(22,190,207,0.16); }
-.uc-single-series-link { margin: 8px 0 0; }
+/* Raised: colour, against `.uc-single a`. */
+.uc-single .uc-series-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); background: rgba(22,190,207,0.08); padding: 3px 10px; border-radius: 99px; text-decoration: none; }
+.uc-single .uc-series-link:hover { background: rgba(22,190,207,0.16); }
+.uc-single .uc-series-link:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+/* Raised: margin, against `.uc-single p`. */
+.uc-single .uc-single-series-link { margin: 8px 0 0; }
 
 .uc-series-box { margin-top: 28px; padding: 20px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 14px; }
-.uc-series-heading { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
-.uc-series-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+/* Raised: margin, against `.uc-single h2`. */
+.uc-single .uc-series-heading { font-size: 16px; font-weight: 700; margin: 0 0 12px; color: var(--uc-text); }
+/* Raised: it declares list-style, margin and padding, all three of which the
+   list reset also declares. The values happen to agree today, so nothing moved;
+   at one class the first person to give this list a margin would have watched
+   it do nothing. */
+.uc-single .uc-series-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .uc-series-list li a { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: #fff; border: 1px solid var(--uc-border); border-radius: 10px; text-decoration: none; color: var(--uc-text); transition: border-color 0.2s; }
 .uc-series-list li a:hover { border-color: var(--uc-teal); }
 .uc-series-date { font-weight: 700; color: var(--uc-teal-text); min-width: 52px; }
 .uc-series-title { flex: 1; font-weight: 600; }
 .uc-series-time { font-size: 13px; color: var(--uc-secondary); }
 
-/* Galaxy Digital volunteer needs */
-.uc-badge-volunteer { background: rgba(123,97,255,0.12); color: var(--uc-purple); --badge-color: var(--uc-purple); }
+/* Galaxy Digital volunteer needs. The Purple family's own measured pair,
+   6.02:1, replacing an off-palette #7B61FF tint behind brand Purple. */
+.uc-single .uc-badge-volunteer { background: #F1EAF4; color: #7F3A98; --uc-cat-ink: #7F3A98; }
 .uc-galaxy-block { margin-top: 14px; padding: 14px 16px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .uc-galaxy-spots { font-size: 13px; font-weight: 600; color: var(--uc-text); display: inline-flex; align-items: center; gap: 6px; }
 
@@ -826,18 +1180,27 @@
 .uc-compact-thumb { width: 56px; height: 56px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--uc-bg); }
 .uc-compact-thumb img, .uc-compact-thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
 .uc-single-image { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
-.uc-single-image img, .uc-single-image svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Raised: height, against `.uc-single img { height: auto }`. This is the same
+   fault the sidebar thumbnail documents above, and it would have produced the
+   same result: a landscape photo overflowing the 16:9 box and losing its
+   middle to the wrapper's overflow: hidden. */
+.uc-single .uc-single-image img, .uc-single .uc-single-image svg { width: 100%; max-width: none; height: 100%; object-fit: cover; object-position: center center; display: block; border-radius: 0; }
 
-/* FAQ accordion */
+/* FAQ accordion. The question is a <button> and the answer is prose, so both
+   halves of the event page's reset land on this block. Raised: the heading's
+   margin against `.uc-single h3`, and the question's width, background, border,
+   padding and text-align against `.uc-single button`, which sets width: auto.
+   Left unraised at (0,1,0) the questions would have shrunk to their text and
+   the toggle would have stopped sitting at the right-hand edge. */
 .uc-faq { margin-top: 28px; }
-.uc-faq-heading { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: var(--uc-text); }
+.uc-single .uc-faq-heading { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: var(--uc-text); }
 .uc-faq-item { border: 1px solid var(--uc-border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; background: #fff; }
-.uc-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: none; border: none; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--uc-text); text-align: left; }
-.uc-faq-q:hover { color: var(--uc-teal-text); }
+.uc-single .uc-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: none; border: none; border-radius: 0; cursor: pointer; font-family: var(--uc-font-heading); font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--uc-text); text-align: left; }
+.uc-single .uc-faq-q:hover { color: var(--uc-teal-text); }
+.uc-single .uc-faq-q:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; }
 .uc-faq-toggle { font-size: 22px; line-height: 1; color: var(--uc-teal-text); flex-shrink: 0; }
 .uc-faq-a { display: none; padding: 0 16px 16px; font-size: 14px; color: var(--uc-secondary); line-height: 1.6; }
 .uc-faq-item.open .uc-faq-a { display: block; }
-.uc-faq-a p { margin: 0 0 0.8em; }
 
 /* Pagination */
 .uc-pagination { margin: 24px 0 8px; display: flex; justify-content: center; align-items: center; }
@@ -1128,7 +1491,9 @@
 .uc-sidebar-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .uc-sidebar-title { display: block; font-size: 14px; font-weight: 600; color: var(--uc-text); line-height: 1.35; }
 .uc-sidebar-when { display: block; font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); line-height: 1.4; }
-.uc-sidebar-empty { margin: 0; padding: 16px 0; font-size: 13px; color: var(--uc-secondary); }
+/* Raised for the same reason as .uc-series-list: `.uc-sidebar p` declares
+   margin, and this rule declares it too. */
+.uc-sidebar .uc-sidebar-empty { margin: 0; padding: 16px 0; font-size: 13px; color: var(--uc-secondary); }
 .uc-sidebar-all { display: inline-block; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--uc-border);
     width: 100%; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); text-decoration: none; }
 /* TWO CLASSES, NOT ONE, AND FOR THE OPPOSITE REASON TO THE BUTTON FLOOR ABOVE.

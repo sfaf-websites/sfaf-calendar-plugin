@@ -1036,9 +1036,16 @@
             e.preventDefault();
             currentEventId = $(this).data('event-id');
             
-            // Get event title from card
-            var card = $(this).closest('.uc-event-card');
-            var title = card.find('.uc-card-title').text().trim();
+            // The event name, from the button that knows it. This used to read
+            // .uc-card-title out of the enclosing .uc-event-card, which only
+            // exists in a list: pressing RSVP on the event page itself found
+            // no card, no title, and opened the modal with a blank subtitle.
+            // The card is still the fallback for any older markup that has the
+            // class but not the attribute.
+            var title = ($(this).data('event-title') || '').toString().trim();
+            if (!title) {
+                title = $(this).closest('.uc-event-card').find('.uc-card-title').text().trim();
+            }
             $('#uc-rsvp-event-title').text(title);
 
             // Reset form. The opt-in is cleared with everything else: it must

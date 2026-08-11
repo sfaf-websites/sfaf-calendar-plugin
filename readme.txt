@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.21.1
+Stable tag: 3.22.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -165,6 +165,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.22.0 =
+
+Nothing visitor-facing is left defenceless against the host stylesheet. The scoped reset had three roots and covered the calendar block, the sidebar and the widget; it now has five and covers the event page and the registration modal as well.
+
+**The single event page had no host-proofing at all.** `.uc-single` appeared in none of the reset's selector lists, so there was no reset for links, headings, paragraphs, lists, buttons or images, and `box-sizing: border-box` was left to the theme, which means every padded box on the page was doing its width arithmetic under rules a host could change. All seventy of the page's own rules sat between (0,1,0) and (0,2,0), so a themed `h1`, `ul`, `button` or `a` at (0,1,1) outranked the title, the facts list, the FAQ questions and the back link. The page now states its colours, sizes, list-style, link decoration, button appearance, image sizing and spacing rather than inheriting them, on specificity rather than `!important`. The series page uses the same root and is covered by the same block.
+
+Extending a reset root is never a free change, and this is the fourth build to be caught by it: every rule in the reset is (0,1,1), so any component naming itself with a single class is now outranked by its own reset. Ten rules were raised to two classes for that reason and each carries a note saying which property it would otherwise have lost. `.uc-faq-q` is the clearest: it is a `<button>` at `width: 100%`, and the reset's `width: auto` would have shrunk every question to its own text and moved the toggle off the right-hand edge.
+
+**The prose is exempt, deliberately.** An event description and an FAQ answer are editorial HTML, and `ul { list-style: none }` with `p { margin: 0 }` is correct for a facts list and wrong for a paragraph. A prose island at (0,2,1) gives bullets, paragraph spacing, heading rhythm and underlined links back inside `.uc-single-body` and `.uc-faq-a`.
+
+**The RSVP modal sat outside every protected root.** It is appended to `<body>`, so nothing in the reset reached it and its inputs, labels, buttons, headings and paragraphs were defended only by their own classes at (0,1,0) to (0,1,1) — the same exposure that produced the 3.21.0 consent-checkbox fault. It keeps its position and gains its own root class, `.uc-rsvp-modal-overlay`, covered by the same resets. Moving it inside `.uc-calendar` was the other option and was rejected: the overlay is `position: fixed`, and a transform, filter or `contain` on any ancestor makes a fixed element resolve against that ancestor instead of the viewport, `overflow: hidden` clips it, and there can be more than one calendar on a page.
+
+Two live faults surfaced there. `.uc-rsvp-form input` set `width: 100%` and `padding: 10px 14px` on **every** input in the form including the consent checkbox, which takes width and padding like any other control, so the tick was being drawn as a form-width rounded box; the rule now excludes checkboxes and radios. And pressing RSVP on the event page itself opened a modal with a blank subtitle, because the title was read from the `.uc-card-title` of an enclosing list card that does not exist there; the button carries the event name now, exactly as the reminders button already did.
+
+**The registration form had no visible focus.** `.uc-rsvp-form input` set `outline: none` and replaced it with brand teal on the border plus a 10 percent alpha shadow. Brand teal `#16BECF` is **2.26:1** against the white field, under the 3:1 floor WCAG 1.4.11 asks of a focus indicator, and the shadow flattens to `#E8F9FA` at **1.08:1**, which is not a boundary at all. Both fields and the calendar's search box now take a 2px `#0E7680` outline at **5.35:1** on white and **5.04:1** on the page canvas, plus the same colour on the border so the indicator does not depend on the outline surviving a host's `outline: 0`.
+
+**The yellow category chip was yellow on yellow, and the cause was a second renderer rather than a lost rule.** `sfaf_category_shades()` was never being asked. There are two chip renderers: the list card emits `.uc-lc-chip` and reads the measured tint-and-ink pair, and the event page emitted `.uc-badge` and passed the **raw** category colour in a property of its own, used both as a 12% tint and, unchanged, as the text colour. On Fundraising that is `#FFD900` on `#FFFAE0`: **1.32:1**. Every family failed, the best of them Purple at 2.63:1. Both renderers now emit the same two custom properties from the same function, so the pair cannot be honoured on one surface and skipped on the other. Measured across all ten as they render: Yellow 6.01, Orange 6.11, Red 6.10, Burgundy 6.35, Pink 6.07, Purple 6.02, Teal 6.02, Green 6.08, Light Gray 11.80, Dark Gray 9.98. Nothing is near the floor; the ramp was built with headroom and was simply not reaching this surface.
+
+The two non-category badges join the ramp with it. The volunteer badge was brand Purple on `rgba(123,97,255,0.12)`, and `#7B61FF` is not in the brand palette at all; it takes the Purple family's own pair, 6.02:1. The recurrence badge was `#6B7280` on `#F3F4F6`, which measures **4.39:1** at 11px and misses 4.5:1; it takes the Dark Gray pair, 9.98:1.
+
+**Two sets of dead rules removed.** Four card rules read as the canonical card spec and never applied, because `.uc-card-title` and its siblings only ever render inside `.uc-event-card`, where the scoped rules are (0,3,0). They are deleted rather than promoted: the effective rules already say the same thing more precisely, so promoting them would leave two descriptions of the card and deleting them leaves one. A seven-class heading list went the same way, having become redundant the moment the reset started setting `font-family` on all five roots' headings. Nothing rendered differently before either deletion or after it; what is removed is the invitation to edit the wrong rule.
+
+**The upcoming-events widget was missing from two resets.** `.uc-upcoming-widget` was absent from the heading reset and the paragraph reset, so `.uc-upcoming-title` was taking the host's margin, padding, text-transform, letter-spacing and border.
 
 = 3.21.1 =
 

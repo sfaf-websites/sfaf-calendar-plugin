@@ -632,7 +632,16 @@ function sfaf_rsvp_block( $post_id ) {
             'label'   => 'RSVP',
             'variant' => 'primary',
             'class'   => 'uc-rsvp-btn',
-            'attrs'   => array( 'data-event-id' => (int) $post_id ),
+            // data-event-title carried on the button, exactly as the reminders
+            // button already carries it. The modal used to read the event name
+            // out of the .uc-card-title beside it, which exists on a list card
+            // and does not exist on the event page, so a visitor registering
+            // from the page itself met a modal whose subtitle was blank. The
+            // button knows what event it is for; nothing else has to guess.
+            'attrs'   => array(
+                'data-event-id'    => (int) $post_id,
+                'data-event-title' => get_the_title( $post_id ),
+            ),
         ) );
 
     ob_start();
@@ -1498,6 +1507,30 @@ function sfaf_category_filter_url( $slug ) {
 /**
  * The category chips for one event, as links.
  *
+ * TWO RENDERERS, ONE COLOUR CONTRACT, AND UNTIL 3.22.0 THAT WAS NOT TRUE.
+ *
+ * The card branch prints .uc-lc-chip and takes its colours from --uc-cat-tint
+ * and --uc-cat-ink, which the card wrapper sets from sfaf_category_shades().
+ * The event-page branch printed .uc-badge and passed the RAW category colour in
+ * a property of its own, --badge-color, which the stylesheet used both as a 12%
+ * tint AND, unchanged, as the text colour. On the Yellow family that is #FFD900
+ * on #FFFAE0: 1.32:1. Every one of the ten families failed, the best of them at
+ * 2.63:1, on a chip whose entire job is to be read as a word.
+ *
+ * The tint and ink pair is contrast-checked per family and always has been. It
+ * simply was not being asked for here. Both branches now emit the same two
+ * custom properties from the same function, so the pair cannot be honoured on
+ * one surface and skipped on the other, and a new surface that wants a chip has
+ * one thing to copy rather than two to choose between.
+ *
+ * PER CHIP, NOT PER EVENT, and that is the difference from the card. The card
+ * wrapper carries ONE set of these properties, taken from the first category,
+ * because the card is drawn in one colour; the chips inherit it, so the second
+ * chip on a two-category event wears the first category's colour. On the event
+ * page there is no card to colour, so each chip states its own pair and an
+ * event tagged Fundraising and Workshops shows one yellow chip and one of
+ * whatever Workshops is.
+ *
  * @param int    $post_id
  * @param string $context 'card' inside a calendar block, 'single' on an event page.
  * @return string
@@ -1515,10 +1548,10 @@ function sfaf_category_chips_html( $post_id, $context = 'card' ) {
             : sfaf_category_filter_url( $cat->slug );
 
         if ( 'single' === $context ) {
-            $color = sfaf_category_color( $cat->term_id );
-            $out  .= '<a class="uc-badge uc-badge-link" href="' . esc_url( $url ) . '"'
+            $shades = sfaf_category_shades( sfaf_category_color( $cat->term_id ) );
+            $out   .= '<a class="uc-badge uc-badge-link" href="' . esc_url( $url ) . '"'
                 . ' data-uc-cat="' . esc_attr( $cat->slug ) . '"'
-                . ' style="--badge-color: ' . esc_attr( $color ) . '">'
+                . ' style="--uc-cat-tint: ' . esc_attr( $shades['tint'] ) . '; --uc-cat-ink: ' . esc_attr( $shades['ink'] ) . '">'
                 . esc_html( $cat->name ) . '</a>';
         } else {
             $out .= '<a class="uc-lc-chip uc-lc-chip-link" href="' . esc_url( $url ) . '"'
