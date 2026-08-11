@@ -539,12 +539,12 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 }
 
 /* The same fallback for buttons. Zero specificity again, so .uc-btn,
-   .uc-link-danger, .uc-link-ok, .uc-picker-tab, .uc-help-btn, .uc-pencil and
+   .uc-link-danger, .uc-link-ok, .uc-picker-tab, .uc-help-btn and
    every other button class in this file override it completely. This only ever
    catches a button that carries no class of its own. */
 /* NO `display` AND NO `gap` HERE, deliberately. Several button classes in this
-   file position themselves (.uc-pencil is absolute, .uc-help-btn is a 16px
-   circle) and set no display of their own, so a display in the fallback would
+   file position themselves (.uc-help-btn is a 16px circle, .uc-chip-remove sits
+   inside a pill) and set no display of their own, so a display in the fallback would
    silently change them even though it loses every other property. A fallback
    should supply a surface, not a layout. */
 :where(.uc-portal) :where(button, input[type="submit"], input[type="button"], input[type="reset"]) {
@@ -855,7 +855,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
    ONE DISPLAY CHANGE, NAMED RATHER THAN LEFT TO BE FOUND. A zero-specificity
    fallback must not set `display` blind (see the control fallback further
-   down, and .uc-pencil), so this one is restricted to `div` by element type:
+   down), so this one is restricted to `div` by element type:
    every table cell named `-actions` is a td or a th and cannot be reached, and
    the two spans likewise. Of the 24 divs, exactly one does not already declare
    a display: .uc-queue-actions, which holds a single .uc-actions child and
@@ -1058,6 +1058,39 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-day input:checked + span { background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
 .uc-day input:focus-visible + span { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
 
+/* ---------------------------------------------------------------------------
+   THE DATES PICKER: Custom's whole schedule, or extras beside a pattern.
+
+   ONE BLOCK FOR BOTH, because they are one control. What changes between the
+   two readings is the label above it, which portal.js sets, and whether the
+   event's own date is pinned to the top of the list.
+
+   THE LIST IS AN <ol> AND IS NUMBERED, deliberately. The summary says "5 dates"
+   and the manager has to be able to count five things on screen to believe it;
+   an unnumbered list of five makes that a counting exercise. Each row holds a
+   hidden input, so the row IS the field rather than a picture of one.
+
+   .uc-dates-slots is the no-script path and is hidden by portal.js rather than
+   by this file. A stylesheet that hid it would hide it from a browser with no
+   script as well, which is the one case it exists for.
+   ------------------------------------------------------------------------- */
+.uc-dates-add { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.uc-dates-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+.uc-dates-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;
+    counter-reset: uc-date; }
+.uc-dates-list:empty { display: none; }
+.uc-dates-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+    background: #fff; border: 1px solid var(--p-border); border-radius: 8px; font-size: 13px; }
+.uc-dates-row::before { counter-increment: uc-date; content: counter(uc-date) "."; flex: 0 0 auto;
+    min-width: 18px; color: var(--p-muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.uc-dates-when { flex: 1 1 auto; min-width: 0; font-weight: 600; color: var(--p-text); }
+/* The event's own date, pinned and not removable: it is the date the form
+   above already carries, shown here so the count in the summary matches the
+   number of rows a person can see. Tinted rather than merely unlabelled,
+   because "why can I not remove this one" is the obvious question. */
+.uc-dates-row-own { background: var(--uc-band); border-color: var(--sfaf-teal); }
+.uc-dates-own-tag { flex: 0 0 auto; font-size: 12px; color: var(--p-muted); }
+
 /* The sentence that says what all of it comes to, and how many events that is.
    Yellow is not used here: this is information, not an action. */
 .uc-repeat-summary { margin: 0; padding: 10px 12px; border-radius: 8px;
@@ -1247,6 +1280,19 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-schedule-time, .uc-schedule-meta { font-size: 13px; color: var(--p-muted); }
 .uc-schedule-actions { display: flex; align-items: center; gap: 8px; justify-self: end; }
 .uc-schedule-actions form { margin: 0; }
+/* A date somebody chose rather than one the pattern produced. Tagged rather
+   than left to the muted meta line, because this is the row a manager goes
+   looking for when they wonder why one date did not move with the others, and
+   it has to be findable by eye down a list of twenty. The Purple family's
+   measured pair, 6.02:1, from sfaf_category_shades(); no new colour. */
+.uc-tag-extra { display: inline-block; padding: 1px 8px; border-radius: 999px;
+    background: #F1EAF4; color: #7F3A98; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.01em; }
+/* A warning that is read before a button is pressed rather than after. Amber,
+   like .uc-scope-banner-all and .uc-flash-attention, which are the other two
+   "this will do something wide" surfaces. #92400E on #FFFBEB is 7.53:1. */
+.uc-hint-warn { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d;
+    border-radius: 8px; padding: 8px 11px; }
 /* The past is legible and plainly finished, not disabled-looking: nothing there
    offers an action, so nothing has to look switched off. */
 .uc-schedule-past .uc-schedule-row { opacity: 0.72; }
@@ -1547,24 +1593,24 @@ body.uc-modal-open { overflow: hidden; }
  * is reinforcement and never the only signal. */
 .uc-scope-banner-all { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
 
-/* A field waiting behind its pencil. Muted rather than greyed out: it is
- * readable, it is simply not being edited yet. */
-.uc-field-pencil-locked { position: relative; }
-.uc-field-pencil-locked input:not([type=hidden]),
-.uc-field-pencil-locked textarea,
-.uc-field-pencil-locked select { background-color: #FAFAFA; color: #4B5563; }
-.uc-pencil { position: absolute; top: 0; right: 0; background: none; border: 1px solid #D1D5DB;
-    border-radius: 6px; padding: 2px 6px; cursor: pointer; color: #4B5563; line-height: 1; }
-.uc-pencil:hover { border-color: var(--uc-accent, #16BECF); color: #0E818C; }
-.uc-pencil:focus-visible { outline: 2px solid var(--uc-accent, #16BECF); outline-offset: 2px; }
+/* ---------------------------------------------------------------------------
+   THE PER-FIELD PENCIL IS GONE (3.23.0), AND SO ARE ITS THREE RULES.
 
-/* No pencil at all: this field cannot meaningfully apply to many events. The
- * reason is printed underneath, because a control that silently refuses to open
- * reads as broken. */
+   .uc-field-pencil-locked, .uc-pencil and .uc-inert were the affordance for
+   unlocking one field at a time after a scope had been chosen. The scope modal
+   asks that question once, in front of everything else, so the pencil was the
+   same question a second time and a click on every field of every recurring
+   event. Deleted rather than hidden: a rule for a control nothing renders is
+   the thing somebody restyles and then wonders why nothing changed.
+
+   WHAT STAYS IS THE ONE THING THAT WAS NEVER A LOCK. A field the chosen scope
+   FORBIDS is not waiting to be opened, because no gesture opens it: the scope is
+   what forbids it and changing the scope is the answer. It is disabled, greyed,
+   and carries its reason underneath, because a control that silently refuses
+   reads as broken and one that opens and then quietly does nothing is worse.
+   --------------------------------------------------------------------------- */
 .uc-field-nobulk input, .uc-field-nobulk textarea, .uc-field-nobulk select {
-    background-color: #F3F4F6; color: #6B7280; }
-/* Selects and checkboxes have no readonly, so they are made inert here. */
-.uc-inert { pointer-events: none; opacity: .7; }
+    background-color: #F3F4F6; color: #6B7280; cursor: not-allowed; }
 
 /* The locked fieldset carries no border of its own — it is a mechanism, not a
  * visible grouping. */
@@ -1660,8 +1706,8 @@ body.uc-modal-open { overflow: hidden; }
     border: 1px solid var(--p-border, #e3e7ec); border-radius: 10px; }
 .uc-faq-picker-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
 /* Its own class rather than .uc-field, on purpose: see the note in
-   SFAF_Portal::faq_set_picker() about pencils. So it has to state the layout
-   .uc-field would have given it. */
+   SFAF_Portal::faq_set_picker(). So it has to state the layout .uc-field would
+   have given it. */
 .uc-faq-picker-label { flex: 1 1 240px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .uc-faq-picker-label > .uc-field-label { font-size: 13px; font-weight: 600; color: var(--p-text); display: block; }
 .uc-faq-picker-label select { width: 100%; padding: 8px 10px; border: 1px solid var(--p-border);

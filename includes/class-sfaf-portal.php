@@ -1120,8 +1120,19 @@ class SFAF_Portal {
          * resubmit cannot double them, and nothing ever runs this again.
          */
         $generated = 0;
-        list( $pattern, $until, $limit ) = $this->recurrence_from_post();
-        if ( ! $is_imported && '' !== $pattern && ( '' !== $until || $limit > 0 ) ) {
+        list( $pattern, $until, $limit, $extra_dates ) = $this->recurrence_from_post();
+        /*
+         * TWO WAYS TO HAVE SOMETHING TO GENERATE, AND EITHER IS ENOUGH.
+         *
+         * A bounded pattern is the original condition. A list of explicit dates
+         * is the second: under Custom it is the only instruction there is, and
+         * beside a pattern whose "Ends" answer was unusable it is still a set of
+         * dates somebody typed. Both make events, both make a group, and the
+         * series is created for both, because an event on several dates is a
+         * series however those dates were arrived at.
+         */
+        $has_pattern = ( '' !== $pattern && ( '' !== $until || $limit > 0 ) );
+        if ( ! $is_imported && ( $has_pattern || ! empty( $extra_dates ) ) ) {
             /*
              * THE SERIES IS MADE HERE, FROM THE EVENT, BEFORE THE DATES ARE.
              *
@@ -1142,7 +1153,11 @@ class SFAF_Portal {
                 SFAF_Series::create_for_event( $event_id );
             }
 
-            $made      = SFAF_Recurrence::generate( $event_id, $pattern, $until, $limit );
+            // 'custom' with dates behind it is a real pattern to store; a
+            // pattern whose "Ends" answer was unusable is not, and generate()
+            // treats an empty one as "produce nothing from a cadence", which
+            // leaves the explicit dates as the whole set.
+            $made      = SFAF_Recurrence::generate( $event_id, $pattern, $until, $limit, $extra_dates );
             $generated = count( $made['created'] );
         }
 
@@ -1197,7 +1212,8 @@ class SFAF_Portal {
      *   CAPACITY, WHERE RSVPS EXIST. Places are held against one date, so a
      *   single capacity written across the set can land under the confirmed
      *   count on a date nobody is looking at. bulk_locked_fields() decides, and
-     *   the editor hides the pencil on exactly what it names.
+     *   the editor renders exactly what it names as disabled, with the reason
+     *   under the control.
      *
      *   ANYTHING A TARGET'S OWN SOURCE OWNS. A generated event has no source,
      *   so this should never trigger — but if an imported event ever ends up in
@@ -1940,12 +1956,25 @@ class SFAF_Portal {
         }
 
         if ( 'schedule_updated' === $key ) {
-            $n = isset( $_GET['written'] ) ? max( 0, intval( $_GET['written'] ) ) : 0;
-            echo '<div class="uc-flash">' . esc_html( sprintf(
-                'Schedule updated. %d upcoming %s changed. Past dates were not touched.',
+            $n    = isset( $_GET['written'] ) ? max( 0, intval( $_GET['written'] ) ) : 0;
+            $left = isset( $_GET['left'] ) ? max( 0, intval( $_GET['left'] ) ) : 0;
+            $said = sprintf(
+                'Schedule updated. %d upcoming %s changed.',
                 $n,
                 _n( 'occurrence was', 'occurrences were', $n )
-            ) ) . '</div>';
+            );
+            // Named, not implied. The screen warned that a day change leaves
+            // extra dates alone; this is where it says that it did.
+            if ( $left > 0 ) {
+                $said .= ' ' . sprintf(
+                    '%d extra %s not moved, because %s never on the pattern.',
+                    $left,
+                    _n( 'date was', 'dates were', $left ),
+                    _n( 'it was', 'they were', $left )
+                );
+            }
+            $said .= ' Past dates were not touched.';
+            echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
             return;
         }
 
@@ -3311,13 +3340,15 @@ class SFAF_Portal {
         <div class="uc-faq-picker" data-uc-faq-picker hidden>
             <?php
             /*
-             * NOT class="uc-field". That class is one of the wrappers the edit
-             * scope script hangs a pencil on, so labelling this control with
-             * it would put a second pencil inside the FAQ block: one for the
-             * dropdown and one for the questions, unlocking half the block
-             * each. Without it the whole block resolves to the one .uc-card
-             * wrapper and gets a single pencil that opens the set picker and
-             * the rows together, which is how a manager thinks of them.
+             * NOT class="uc-field", and the reason changed in 3.23.0 without
+             * the answer changing. It used to be that .uc-field was one of the
+             * wrappers the edit-scope script hung a pencil on, so labelling
+             * this control with it would have put two pencils inside the FAQ
+             * block, one for the dropdown and one for the questions, each
+             * unlocking half of it. The pencils are gone. What remains is the
+             * plain reason: .uc-field is the label-and-control layout for a
+             * field on the event, and this is a picker that writes rows into
+             * the block below it rather than a value onto the event.
              */
             ?>
             <div class="uc-faq-picker-row">
@@ -4976,10 +5007,21 @@ class SFAF_Portal {
             $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_imported' ) );
         }
 
+        /*
+         * A DAY CHANGE MOVES PATTERN DATES; A TIME CHANGE MOVES EVERYTHING.
+         *
+         * reday_group() reports how many extra dates it left alone, and that
+         * number is carried into the confirmation message rather than being
+         * recomputed here: the screen warned about it before the button was
+         * pressed and has to account for it afterwards, or the manager is left
+         * checking the list to find out whether the warning happened.
+         */
         $moved = 0;
+        $left  = 0;
         if ( isset( $_POST['weekday'] ) && '' !== $_POST['weekday'] ) {
             $result = SFAF_Recurrence::reday_group( $group, intval( $_POST['weekday'] ) );
             $moved  = (int) $result['moved'];
+            $left   = ( $moved > 0 ) ? (int) $result['left'] : 0;
         }
 
         $start   = isset( $_POST['start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['start_time'] ) ) : '';
@@ -4990,6 +5032,7 @@ class SFAF_Portal {
         $this->redirect( 'series/edit/' . $term_id, array(
             'msg'     => $written ? 'schedule_updated' : 'schedule_unchanged',
             'written' => $written,
+            'left'    => $left,
         ) );
     }
 
@@ -5160,6 +5203,16 @@ class SFAF_Portal {
         $sentence = SFAF_Recurrence::schedule_sentence( $pattern, $anchor, $start, $end );
 
         $in_group = ( '' !== $group ) ? SFAF_Recurrence::upcoming_in_group( $group ) : array();
+        /*
+         * THE TWO KINDS OF DATE IN ONE GROUP, counted once and used three
+         * times: the hint above the form, the confirmation on the button and
+         * the labels on the rows. One call, so the number in the warning and the
+         * number of labelled rows in the list cannot disagree.
+         */
+        $split      = ( '' !== $group ) ? SFAF_Recurrence::split_group( $group ) : array( 'pattern' => array(), 'extra' => array() );
+        $n_pattern  = count( $split['pattern'] );
+        $n_extra    = count( $split['extra'] );
+        $is_custom  = ( 'custom' === $pattern );
         $movable  = SFAF_Recurrence::weekday_is_movable( $pattern );
         $days     = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
         $cur_dow  = $anchor ? (int) date( 'w', strtotime( $anchor . ' 12:00:00' ) ) : -1;
@@ -5207,6 +5260,39 @@ class SFAF_Portal {
                             in this group. Dates that have already been are the record of what happened and are never
                             rewritten.
                         </p>
+                        <?php
+                        /*
+                         * WHAT A WEEKDAY CHANGE WILL NOT TOUCH, SAID BEFORE IT
+                         * IS PRESSED RATHER THAN AFTER.
+                         *
+                         * An extra date was never on the pattern, so there is
+                         * nothing about it for a pattern edit to recompute and
+                         * shifting it by the same offset would land it on a day
+                         * nobody chose. That is correct behaviour and it is also
+                         * surprising, which is exactly the combination that has
+                         * to be stated. The time fields below are a different
+                         * matter and reach every date in the group, so the two
+                         * halves of this form are described separately.
+                         */
+                        ?>
+                        <?php if ( $n_extra > 0 && $movable ) : ?>
+                            <p class="uc-hint uc-hint-warn">
+                                <strong><?php echo (int) $n_extra; ?></strong>
+                                of these <?php echo esc_html( _n( 'is an extra date', 'are extra dates', $n_extra ) ); ?>
+                                added by hand rather than produced by the pattern. Changing the day moves the
+                                <?php echo (int) $n_pattern; ?> pattern
+                                <?php echo esc_html( _n( 'date', 'dates', $n_pattern ) ); ?>
+                                and leaves <?php echo esc_html( _n( 'that one', 'those', $n_extra ) ); ?> where
+                                <?php echo esc_html( _n( 'it is', 'they are', $n_extra ) ); ?>.
+                                A time change applies to every date in the group.
+                            </p>
+                        <?php elseif ( $n_extra > 0 && ! $is_custom ) : ?>
+                            <p class="uc-hint">
+                                <strong><?php echo (int) $n_extra; ?></strong>
+                                of these <?php echo esc_html( _n( 'is an extra date', 'are extra dates', $n_extra ) ); ?>
+                                added by hand. A time change applies to every date in the group.
+                            </p>
+                        <?php endif; ?>
                         <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
                             <input type="hidden" name="uc_action" value="schedule_pattern" />
                             <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
@@ -5235,7 +5321,11 @@ class SFAF_Portal {
 
                             <?php if ( ! $movable ) : ?>
                                 <p class="uc-hint">
-                                    <?php if ( 'daily' === $pattern ) : ?>
+                                    <?php if ( $is_custom ) : ?>
+                                        These dates were chosen one at a time rather than from a pattern, so there is no
+                                        weekday to move them to. The time can still be changed here, and a single date
+                                        can be moved from its own event.
+                                    <?php elseif ( 'daily' === $pattern ) : ?>
                                         This happens every day, so there is no weekday to move it to. The time can still
                                         be changed here, and a single date can be moved from its own event.
                                     <?php else : ?>
@@ -5247,9 +5337,34 @@ class SFAF_Portal {
                                 </p>
                             <?php endif; ?>
 
+                            <?php
+                            /*
+                             * THE CONFIRMATION NAMES THE EXTRA DATES TOO. It is
+                             * the last thing read before a term's worth of
+                             * programming moves, and "23 occurrences" without
+                             * "2 of them stay put" is a true sentence that
+                             * leaves somebody with the wrong picture.
+                             */
+                            $confirm = sprintf(
+                                'Update %d upcoming %s?',
+                                count( $in_group ),
+                                _n( 'occurrence', 'occurrences', count( $in_group ) )
+                            );
+                            if ( $n_extra > 0 && $movable ) {
+                                $confirm .= sprintf(
+                                    ' A day change moves the %d pattern %s; the %d extra %s stay on the %s they are on.',
+                                    $n_pattern,
+                                    _n( 'date', 'dates', $n_pattern ),
+                                    $n_extra,
+                                    _n( 'date', 'dates', $n_extra ),
+                                    _n( 'date', 'dates', $n_extra )
+                                );
+                            }
+                            $confirm .= ' Dates that have already been are not touched.';
+                            ?>
                             <div class="uc-form-actions">
                                 <button type="submit" class="uc-btn uc-btn-primary"
-                                        data-uc-confirm="Update <?php echo (int) count( $in_group ); ?> upcoming <?php echo esc_attr( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>? Dates that have already been are not touched.">
+                                        data-uc-confirm="<?php echo esc_attr( $confirm ); ?>">
                                     Update <?php echo (int) count( $in_group ); ?> upcoming
                                     <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>
                                 </button>
@@ -5339,8 +5454,10 @@ class SFAF_Portal {
                             </label>
                             <p class="uc-hint">
                                 Left unticked, the new date joins the group, so "update all upcoming occurrences"
-                                reaches it like any other. Tick it for a genuine one-off, a special session or a
-                                different venue for one week, that should not be rewritten by a bulk edit.
+                                reaches it like any other and a time change here applies to it. It is marked as an
+                                extra date, because you chose it rather than the pattern producing it, so changing the
+                                day of the group leaves it where it is. Tick the box for a genuine one-off, a special
+                                session or a different venue for one week, that no bulk edit should rewrite.
                             </p>
                         <?php endif; ?>
 
@@ -5373,6 +5490,26 @@ class SFAF_Portal {
         $ts    = $date ? strtotime( $date . ' 12:00:00' ) : 0;
         $rsvps = sfaf_get_rsvp_count( $eid );
         $solo  = ( '' !== $group && SFAF_Recurrence::group_of( $eid ) !== $group );
+        /*
+         * THREE STATES, NOT TWO, AND THE ROW SAYS WHICH.
+         *
+         *   (nothing)  a pattern date. The cadence made it, and a pattern edit
+         *              moves it.
+         *   extra      in the group, so a bulk edit and a time change reach it,
+         *              but a pattern edit leaves it alone. This is the row
+         *              somebody needs to be able to find when they wonder why
+         *              one date did not move with the others.
+         *   one-off    not in the group at all. Nothing bulk reaches it.
+         *
+         * "extra" is meaningless on a row that is not in the group, so the two
+         * are exclusive rather than stacked. It is equally meaningless in a
+         * group that has no pattern, where every date was chosen by hand and
+         * the tag would be on every row saying nothing: has_cadence() is the
+         * question that settles that.
+         */
+        $extra = ( ! $solo && '' !== $group
+            && SFAF_Recurrence::is_extra_date( $eid )
+            && SFAF_Recurrence::has_cadence( SFAF_Recurrence::pattern_of( $eid ) ) );
         ?>
         <li class="uc-schedule-row">
             <span class="uc-schedule-date"><?php echo $ts ? esc_html( date_i18n( 'D, M j, Y', $ts ) ) : '<span class="uc-muted">No date</span>'; ?></span>
@@ -5385,6 +5522,10 @@ class SFAF_Portal {
                 <?php if ( $solo ) : ?>
                     <?php // Said out loud, because it is why a bulk edit will skip it. ?>
                     &middot; <span class="uc-muted">one-off</span>
+                <?php elseif ( $extra ) : ?>
+                    <?php // Said out loud, because it is why a pattern change
+                          // will skip it while a time change will not. ?>
+                    &middot; <span class="uc-tag-extra" title="Added by hand rather than produced by the pattern. A day change leaves it where it is.">extra date</span>
                 <?php endif; ?>
             </span>
             <?php if ( $editable ) : ?>
@@ -6027,13 +6168,25 @@ class SFAF_Portal {
                 ); ?>
             </span>
 
-            <?php // ---- How often. A radio group that looks like a switch. -- ?>
+            <?php
+            /*
+             * ---- How often. A radio group that looks like a switch. ----
+             *
+             * CUSTOM IS THE FIFTH OPTION AND IT IS NOT A PATTERN. It covers the
+             * programme that meets on a Monday one week, a Tuesday the next and
+             * a Wednesday after that: there is no cadence to express, so nothing
+             * is stored as one. Choosing it reveals the same date picker the
+             * other four modes get, and in that mode the picker holds the whole
+             * schedule rather than additions to it.
+             */
+            ?>
             <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
                 <?php foreach ( array(
                     ''        => 'Never',
                     'daily'   => 'Daily',
                     'weekly'  => 'Weekly',
                     'monthly' => 'Monthly',
+                    'custom'  => 'Custom',
                 ) as $val => $label ) : ?>
                     <label class="uc-seg-opt">
                         <input type="radio" name="repeat_mode" value="<?php echo esc_attr( $val ); ?>"
@@ -6048,7 +6201,7 @@ class SFAF_Portal {
                 <div class="uc-repeat-every">
                     <span>Every</span>
                     <input type="number" name="repeat_weekly_interval" value="1" min="1" max="52"
-                           class="uc-repeat-num" data-uc-not-a-field aria-label="Weeks between occurrences" />
+                           class="uc-repeat-num" aria-label="Weeks between occurrences" />
                     <span>week(s) on</span>
                 </div>
                 <div class="uc-days" role="group" aria-label="Which days of the week">
@@ -6075,12 +6228,12 @@ class SFAF_Portal {
                     <span>On the</span>
                 </label>
                 <div class="uc-repeat-nth">
-                    <select name="repeat_nth" aria-label="Which occurrence in the month" data-uc-not-a-field>
+                    <select name="repeat_nth" aria-label="Which occurrence in the month">
                         <?php foreach ( array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', -1 => 'last' ) as $n => $word ) : ?>
                             <option value="<?php echo (int) $n; ?>" <?php selected( $nth && (int) $nth['nth'] === (int) $n ); ?>><?php echo esc_html( $word ); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <select name="repeat_nth_dow" aria-label="Which weekday" data-uc-not-a-field>
+                    <select name="repeat_nth_dow" aria-label="Which weekday">
                         <?php foreach ( $days as $i => $name ) : ?>
                             <option value="<?php echo (int) $i; ?>" <?php selected( $i === $dow ); ?>><?php echo esc_html( $name ); ?></option>
                         <?php endforeach; ?>
@@ -6104,13 +6257,13 @@ class SFAF_Portal {
                     <input type="radio" name="repeat_ends" value="on" data-uc-repeat-ends />
                     <span>On</span>
                     <input type="date" name="repeat_until" value="" class="uc-repeat-date"
-                           aria-label="Repeat until this date" data-uc-not-a-field />
+                           aria-label="Repeat until this date" />
                 </label>
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_ends" value="after" data-uc-repeat-ends />
                     <span>After</span>
                     <input type="number" name="repeat_count" value="12" min="2" max="366" class="uc-repeat-num"
-                           aria-label="How many occurrences in total" data-uc-not-a-field />
+                           aria-label="How many occurrences in total" />
                     <span>occurrences</span>
                 </label>
                 <?php
@@ -6132,16 +6285,69 @@ class SFAF_Portal {
 
             <?php
             /*
+             * ---- The dates picker: Custom's whole schedule, or extras ----
+             *
+             * ONE CONTROL FOR BOTH JOBS, and one field name, because they are
+             * the same job. In Custom mode the list IS the schedule. Beside
+             * Daily, Weekly or Monthly the same list is dates the pattern does
+             * not cover: a weekly Wednesday group that also meets on one
+             * Saturday. Either way each entry becomes an event in the same
+             * recurrence group, so "edit all upcoming occurrences" reaches
+             * them. Only the label changes, and portal.js changes it.
+             *
+             * NO JAVASCRIPT: FOUR EMPTY SLOTS. Adding rows without script is
+             * the one thing this control cannot do, so the server renders four
+             * ordinary date inputs carrying the same repeat_dates[] name. With
+             * script they are hidden and the add-and-list interaction replaces
+             * them; without it, four dates can still be typed and saved. One
+             * field name, one parser, in both cases.
+             */
+            ?>
+            <div class="uc-repeat-panel uc-dates" data-uc-repeat-panel="dates">
+                <span class="uc-field-label" data-uc-dates-label>Dates</span>
+
+                <?php // The add row. Hidden until portal.js takes it over, so a
+                      // browser with no script is never shown a button that
+                      // does nothing. ?>
+                <div class="uc-dates-add" data-uc-dates-add hidden>
+                    <input type="date" class="uc-repeat-date" data-uc-dates-input
+                           aria-label="A date this also happens on" />
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-dates-addbtn>Add date</button>
+                </div>
+
+                <ol class="uc-dates-list" data-uc-dates-list></ol>
+
+                <div class="uc-dates-slots" data-uc-dates-slots>
+                    <?php for ( $i = 0; $i < 4; $i++ ) : ?>
+                        <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="<?php echo esc_attr( sprintf( 'Date %d', $i + 1 ) ); ?>" />
+                    <?php endfor; ?>
+                </div>
+
+                <p class="uc-hint" data-uc-dates-hint>
+                    Every date here becomes its own event, at the same start and end time, in the same group as the
+                    rest. A date the pattern already covers is not added twice.
+                </p>
+            </div>
+
+            <?php
+            /*
              * THE SUMMARY, AND THE COUNT.
              *
              * Rendered by the server for the page load and recomputed by
              * portal.js on every change, from the same rules. The number is
              * the whole point: this creates N independent events and nobody
              * should meet that number for the first time afterwards.
+             *
+             * BOTH SIDES CALL A FUNCTION RATHER THAN ASSEMBLING A SENTENCE.
+             * SFAF_Recurrence::summary() is the server's, ucRecurrenceSummary()
+             * is the mirror, and .claude/recurrence-crosscheck.php runs the two
+             * against each other. A count that disagrees with what generation
+             * makes is the one bug on this screen that costs real posts.
              */
             ?>
             <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
-                Does not repeat.
+                <?php echo esc_html( SFAF_Recurrence::summary( $date, '', '', 0, array(), '' ) ); ?>
             </p>
         </div>
         <?php
@@ -6160,7 +6366,15 @@ class SFAF_Portal {
      * missing end, a count of zero: each returns something that generates
      * nothing, because this function's mistakes create posts.
      *
-     * @return array{0:string,1:string,2:int} pattern, end date, occurrence limit.
+     * THE EXPLICIT DATES ARE READ FOR EVERY MODE EXCEPT "NEVER", and that is
+     * the one place this function does not follow "read the mode and ignore the
+     * rest". The picker is a single control shown in five of the six states, so
+     * repeat_dates[] belongs to the mode rather than to a branch of it: under
+     * Custom it is the schedule, beside a pattern it is the additions. Under
+     * Never the whole control is off and nothing is read.
+     *
+     * @return array{0:string,1:string,2:int,3:string[]} pattern, end date,
+     *         occurrence limit, explicit dates.
      */
     private function recurrence_from_post() {
         $mode = isset( $_POST['repeat_mode'] ) ? sanitize_key( wp_unslash( $_POST['repeat_mode'] ) ) : '';
@@ -6170,7 +6384,26 @@ class SFAF_Portal {
         if ( '' === $mode && isset( $_POST['repeat'] ) ) {
             $legacy = SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['repeat'] ) );
             $until  = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
-            return array( $legacy, $until, 0 );
+            return array( $legacy, $until, 0, array() );
+        }
+
+        // Cleaned against the event's own date, so a date on or before it never
+        // reaches the generator. SFAF_Recurrence::clean_dates() is the only
+        // implementation of that rule; this does not re-state it.
+        $own_date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
+        $extra    = ( '' !== $mode && isset( $_POST['repeat_dates'] ) )
+            ? SFAF_Recurrence::clean_dates( wp_unslash( $_POST['repeat_dates'] ), $own_date )
+            : array();
+
+        /*
+         * CUSTOM ENDS HERE. There is no cadence, so there is no interval to
+         * read, no weekday to read and nothing for "Ends" to bound: the list is
+         * the whole answer. A Custom save with an empty list generates nothing
+         * and leaves a perfectly good one-off event, which is the right outcome
+         * for somebody who chose Custom and then changed their mind.
+         */
+        if ( 'custom' === $mode ) {
+            return array( empty( $extra ) ? '' : 'custom', '', 0, $extra );
         }
 
         $spec = null;
@@ -6205,21 +6438,31 @@ class SFAF_Portal {
         }
 
         if ( ! $spec ) {
-            return array( '', '', 0 );
+            return array( '', '', 0, $extra );
         }
         $pattern = SFAF_Recurrence::pattern_string( $spec );
         if ( '' === $pattern ) {
-            return array( '', '', 0 );
+            return array( '', '', 0, $extra );
         }
 
         $ends  = isset( $_POST['repeat_ends'] ) ? sanitize_key( wp_unslash( $_POST['repeat_ends'] ) ) : 'never';
         $until = '';
         $limit = 0;
 
+        /*
+         * AN UNUSABLE "ENDS" ANSWER DROPS THE PATTERN AND KEEPS THE EXTRAS.
+         *
+         * Those are two separate instructions and only one of them is broken. A
+         * manager who ticked Weekly, forgot the end date and added a Saturday
+         * has asked for the Saturday unambiguously; throwing it away because the
+         * other half of the form is incomplete would silently discard a date
+         * they typed. The pattern is dropped because "until" with no date is not
+         * an instruction, and the summary said so before the save.
+         */
         if ( 'on' === $ends ) {
             $until = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
             if ( '' === $until ) {
-                return array( '', '', 0 ); // "until" with no date is not an instruction
+                return array( '', '', 0, $extra );
             }
         } elseif ( 'after' === $ends ) {
             // The control counts the event itself as the first occurrence,
@@ -6228,14 +6471,14 @@ class SFAF_Portal {
             $total = isset( $_POST['repeat_count'] ) ? (int) $_POST['repeat_count'] : 0;
             $limit = max( 0, $total - 1 );
             if ( $limit <= 0 ) {
-                return array( '', '', 0 );
+                return array( '', '', 0, $extra );
             }
         } else {
             // No end date. Bounded at a year, and the control says so.
             $limit = self::REPEAT_OPEN_ENDED_LIMIT;
         }
 
-        return array( $pattern, $until, $limit );
+        return array( $pattern, $until, $limit, $extra );
     }
 
     /**
@@ -6944,7 +7187,7 @@ class SFAF_Portal {
 
                     <div class="uc-email-add">
                         <input type="email" name="notify_email_new" id="uc-notify-email-new"
-                               data-uc-email-input data-uc-not-a-field
+                               data-uc-email-input
                                placeholder="supervisor@example.org" autocomplete="off"
                                <?php echo $notify_invalid ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-notify-emails-error"' : ''; ?> />
                         <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-email-add>Add</button>
@@ -7184,23 +7427,32 @@ class SFAF_Portal {
                                 <span class="uc-visually-hidden">Filter people by name or address</span>
                                 <?php
                                 /*
-                                 * data-uc-not-a-field IS THE FIX, AND IT IS A
-                                 * CATEGORY CORRECTION RATHER THAN A PATCH.
+                                 * THIS BOX IS NOT A FIELD ON THE EVENT, AND
+                                 * THAT DISTINCTION USED TO BE LOAD-BEARING.
                                  *
-                                 * The edit-scope lock walks every input in the
-                                 * form and makes it readonly until its field's
-                                 * pencil is pressed. This box is not a field on
-                                 * the event: it changes nothing, saves nothing
-                                 * and posts nothing, it only narrows the list
-                                 * below it. Locking it made the picker
-                                 * unusable at any real size on exactly the
-                                 * events that need it most, since a recurring
-                                 * event is the one that has a scope choice.
-                                 * See initEditScope() in portal.js.
+                                 * It changes nothing, saves nothing and posts
+                                 * nothing: it narrows the list below it. The
+                                 * edit-scope lock used to walk every input in
+                                 * the form and make it readonly until that
+                                 * field's pencil was pressed, which made this
+                                 * picker unusable at any real size on exactly
+                                 * the events that need it most, since a
+                                 * recurring event is the one with a scope
+                                 * choice. It carried data-uc-not-a-field to opt
+                                 * out of that walk.
+                                 *
+                                 * The pencils went in 3.23.0 and nothing walks
+                                 * the form's inputs any more, so the attribute
+                                 * went with the code that read it rather than
+                                 * being left as markup nothing consults. The
+                                 * category it recorded is written down here
+                                 * instead: if anything ever again treats "every
+                                 * input in this form" as "every field on this
+                                 * event", this control is the counterexample.
                                  */
                                 ?>
                                 <input type="search" placeholder="Type to filter people…"
-                                       data-uc-picker-filter="people" data-uc-not-a-field autocomplete="off" />
+                                       data-uc-picker-filter="people" autocomplete="off" />
                             </label>
                             <div class="uc-picker-options" data-uc-picker-options="people">
                                 <?php foreach ( $pickable as $pu ) : ?>
@@ -7439,11 +7691,10 @@ class SFAF_Portal {
 
         <?php
         /*
-         * The chosen scope, and the fields that carry no pencil when it is
-         * "all upcoming". Both are read straight back by
-         * save_event_from_post(), which re-derives the locked list server-side
-         * rather than trusting this — the markup is the affordance, not the
-         * rule.
+         * The chosen scope, and the fields that scope FORBIDS when it is "all
+         * upcoming". Both are read straight back by save_event_from_post(),
+         * which re-derives the forbidden list server-side rather than trusting
+         * this: the markup is the affordance, not the rule.
          */
         ?>
         <input type="hidden" name="edit_scope" value="this" data-uc-scope-input />
@@ -8929,14 +9180,17 @@ class SFAF_Portal {
                                             <span class="uc-visually-hidden">Filter people by name or address</span>
                                             <?php
                                             /*
-                                             * data-uc-not-a-field, for the same reason as
+                                             * A UI control, not a field, exactly like
                                              * the notification picker's filter: this box
-                                             * changes nothing and posts nothing, so the
-                                             * edit-scope lock must not make it readonly.
+                                             * changes nothing and posts nothing. It is
+                                             * on the teams screen, which has no scope
+                                             * choice at all, so it was never reached by
+                                             * the lock that made that distinction
+                                             * matter. See the longer note there.
                                              */
                                             ?>
                                             <input type="search" placeholder="Type to filter people&hellip;"
-                                                   data-uc-filter data-uc-not-a-field autocomplete="off" />
+                                                   data-uc-filter autocomplete="off" />
                                         </label>
                                         <div class="uc-picker-options" data-uc-filter-list>
                                             <?php foreach ( $candidates as $c ) : ?>

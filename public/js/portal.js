@@ -249,7 +249,12 @@
                     // A chip is only removable while the field is editable. On
                     // an imported event whose categories a platform owns, the
                     // checkbox is disabled and the chip is a label.
-                    if (!box.disabled && !box.classList.contains('uc-inert')) {
+                    //
+                    // The `uc-inert` half of this test went with the pencils in
+                    // 3.23.0: that class was how the scope lock made a checkbox
+                    // unusable, since a checkbox has no readonly. Nothing sets
+                    // it now, so `disabled` is the whole question again.
+                    if (!box.disabled) {
                         var kill = document.createElement('button');
                         kill.type = 'button';
                         kill.className = 'uc-chip-remove';
@@ -1395,21 +1400,41 @@
     /* ---------------------------------------------------------------------
      * Edit scope: choose before editing.
      *
+     * THE MODAL IS THE ONLY GATE, AND 3.23.0 IS WHEN THAT BECAME TRUE.
+     *
      * The lock is server-rendered — the fieldset arrives `disabled` — so
      * nothing is editable before this runs rather than merely after it. What
-     * happens here is the unlocking, and it is deliberately in this order:
+     * happens here is the unlocking:
      *
-     *   1. a scope is chosen. The fieldset opens, but every field is still
-     *      individually read-only.
-     *   2. a pencil is pressed. That one field becomes editable.
+     *   1. a scope is chosen. The fieldset opens and everything that scope
+     *      permits is directly editable.
+     *   2. the two fields the scope FORBIDS are disabled, each with a line
+     *      saying why.
      *   3. everything changed is saved once, at the end, under the scope from
      *      step 1 — not per field.
      *
-     * In "all upcoming" mode the fields that cannot meaningfully apply to many
-     * events get no pencil at all, from the list the server sends. The banner
-     * states the scope and the count and stays put while the form scrolls,
-     * because the manager needs to know what the save will do at the moment
-     * they press the button, not only at the moment they chose.
+     * WHAT WENT, AND WHY. Between steps 1 and 2 there used to be a per-field
+     * pencil: every field arrived read-only and each one had to be unlocked by
+     * pressing its own button. That made sense before the modal, when the scope
+     * was two quiet buttons at the top of a long form that were easy to miss and
+     * the pencil was the thing that made "this is a bulk edit" impossible to
+     * walk past. The modal now asks that question once, in front of everything
+     * else, and cannot be missed. Keeping the pencils meant asking it twice and
+     * charging a click for every field of every recurring event.
+     *
+     * A FORBIDDEN FIELD IS NOT A LOCKED ONE, and it must not look like one. It
+     * is disabled with the reason printed under it, because there is no gesture
+     * that would open it: the scope is what forbids it, so the answer is to
+     * change the scope, not to find a key. `disabled` is safe here precisely
+     * because these two are the two: save_event_from_post() guards `date` with
+     * isset() and save_rsvp_settings_from_post() guards `capacity` the same way,
+     * so a control that posts nothing leaves its stored value alone. That is not
+     * true of fields in general, which is why nothing else on this form is ever
+     * disabled by script.
+     *
+     * The banner states the scope and the count and stays put while the form
+     * scrolls, because the manager needs to know what the save will do at the
+     * moment they press the button, not only at the moment they chose.
      *
      * THE QUESTION IS ASKED AS A MODAL. The server sends the choice as an
      * ordinary block at the top of the form; what happens here is that it is
@@ -1455,9 +1480,9 @@
             try { locked = JSON.parse(lockedNode.textContent || '{}'); } catch (err) { locked = {}; }
         }
 
-        /* Which editor control belongs to which field name, for the pencils and
-         * for the no-pencil list. Only the fields that can be locked out of a
-         * bulk edit need naming; everything else just gets a pencil. */
+        /* Which editor control carries which field name. Only the fields a
+         * scope can forbid need naming: everything else is simply editable and
+         * this function never looks at it. */
         var CONTROLS = {
             date: ['date'],
             capacity: ['capacity']
@@ -1471,135 +1496,59 @@
             return out;
         }
 
-        /* readonly, not disabled: a disabled control submits nothing, so
-         * locking a field that way would silently blank it on save. A readonly
-         * field still posts the value it already had, which is exactly right
-         * for a field nobody chose to change. Selects and checkboxes have no
-         * readonly, so they get a class the stylesheet makes inert. */
-        function setLocked(el, isLocked) {
-            if (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio') {
-                el.classList.toggle('uc-inert', isLocked);
-                if (isLocked) { el.setAttribute('aria-disabled', 'true'); }
-                else { el.removeAttribute('aria-disabled'); }
-                return;
-            }
-            el.readOnly = !!isLocked;
-        }
-
-        function eachEditable(fn) {
-            var all = form.querySelectorAll('input, textarea, select');
-            Array.prototype.forEach.call(all, function (el) {
-                if (el.type === 'hidden' || el.type === 'submit' || el.type === 'button') {
-                    return;
-                }
-                if (el.hasAttribute('disabled')) {
-                    return; // a platform owns this one; not ours to unlock
-                }
-                /* NOT EVERY INPUT IN A FORM IS A FIELD ON THE EVENT.
-                 *
-                 * The notification picker's filter box is in this form because
-                 * that is where the picker is, but it saves nothing, posts
-                 * nothing and changes nothing: it narrows a list. Locking it
-                 * behind a pencil made it impossible to type into on exactly
-                 * the events that have a scope choice, which is to say every
-                 * recurring one. Anything carrying data-uc-not-a-field is a
-                 * control over the form's own UI and is left alone. */
-                if (el.hasAttribute('data-uc-not-a-field')) {
-                    return;
-                }
-                fn(el);
-            });
-        }
-
-        /* The block a pencil belongs to, closest first.
-         *
-         * .uc-side-box and .uc-card are in this list as well as .uc-field
-         * because the sidebar boxes (RSVP, Display) and the FAQ block are
-         * coherent groups a manager edits as one thing — a pencil per checkbox
-         * in a list of five display toggles would be noise. Without them those
-         * controls matched nothing, and a control that matches nothing never
-         * gets a pencil and so can never be unlocked. */
-        var WRAPPERS = ['uc-field', 'uc-side-box', 'uc-card'];
-
+        /* The wrapper a field's explanation belongs under, closest first. Only
+         * used to place the note now that nothing is locked per field, so a
+         * control with no wrapper simply gets its note as a sibling. */
         function fieldWrapOf(el) {
             var node = el.parentElement;
             while (node && node !== form) {
-                if (node.classList) {
-                    for (var i = 0; i < WRAPPERS.length; i++) {
-                        if (node.classList.contains(WRAPPERS[i])) {
-                            return node;
-                        }
-                    }
+                if (node.classList && node.classList.contains('uc-field')) {
+                    return node;
                 }
                 node = node.parentElement;
             }
-            return null;
+            return el.parentElement;
         }
 
-        /* One pencil per wrapper, added after a scope is chosen. Pressing it
-         * unlocks that field and takes the pencil away — there is nothing to
-         * press twice. */
-        function addPencils(scope) {
-            var noPencil = [];
-            if (scope === 'all_upcoming') {
-                Object.keys(locked).forEach(function (field) {
-                    noPencil = noPencil.concat(controlsFor(CONTROLS[field] || [field]));
-                });
+        /* The fields this scope forbids, disabled, each with its reason.
+         *
+         * "this event only" forbids nothing: an event edited on its own can
+         * have its date and its capacity changed like anything else, so the
+         * list the server sent is only consulted for a bulk edit. */
+        function lockForbidden(scope) {
+            if (scope !== 'all_upcoming') {
+                return;
             }
-
-            var seen = [];
-            eachEditable(function (el) {
-                var wrap = fieldWrapOf(el);
-                if (!wrap) {
-                    // Nothing to hang a pencil on, so this control is left
-                    // open rather than locked. A field nobody can ever unlock
-                    // is worse than one that was never locked.
-                    setLocked(el, false);
-                    return;
+            Object.keys(locked).forEach(function (field) {
+                var els = controlsFor(CONTROLS[field] || [field]);
+                if (!els.length) {
+                    return;   // not on this form: nothing to say and nothing to lock
                 }
-                if (seen.indexOf(wrap) !== -1) {
-                    return;
-                }
-
-                if (noPencil.indexOf(el) !== -1) {
-                    // No pencil at all, and a reason in place of one. A control
-                    // that silently refuses to open reads as broken.
-                    var field = null;
-                    Object.keys(locked).forEach(function (f) {
-                        if (controlsFor(CONTROLS[f] || [f]).indexOf(el) !== -1) { field = f; }
-                    });
+                var wraps = [];
+                els.forEach(function (el) {
+                    el.disabled = true;
+                    el.setAttribute('aria-disabled', 'true');
+                    var wrap = fieldWrapOf(el);
+                    if (wrap && wraps.indexOf(wrap) === -1) { wraps.push(wrap); }
+                });
+                wraps.forEach(function (wrap) {
                     wrap.classList.add('uc-field-nobulk');
                     var why = document.createElement('p');
                     why.className = 'uc-field-note uc-field-note-locked';
-                    why.textContent = field ? locked[field] : 'Not available when editing several occurrences.';
-                    wrap.appendChild(why);
-                    seen.push(wrap);
-                    return;
-                }
-
-                seen.push(wrap);
-                var pencil = document.createElement('button');
-                pencil.type = 'button';
-                pencil.className = 'uc-pencil';
-                pencil.setAttribute('aria-label', 'Edit this field');
-                pencil.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">'
-                    + '<path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg>';
-                pencil.addEventListener('click', function () {
-                    Array.prototype.forEach.call(wrap.querySelectorAll('input, textarea, select'), function (c) {
-                        if (!c.hasAttribute('disabled')) { setLocked(c, false); }
-                    });
-                    // Buttons that write into this block rather than fields in
-                    // it. Unlocked with the block they belong to.
-                    Array.prototype.forEach.call(wrap.querySelectorAll('[data-uc-faq-apply]'), function (c) {
-                        c.disabled = false;
-                    });
-                    wrap.classList.remove('uc-field-pencil-locked');
-                    pencil.remove();
-                    var first = wrap.querySelector('input:not([type=hidden]), textarea, select');
-                    if (first) { first.focus(); }
+                    why.textContent = locked[field] || 'Not available when editing several occurrences.';
+                    /* AFTER THE LABEL, NOT INSIDE IT. Every .uc-field on this
+                     * form is a <label>, and anything inside a label is part of
+                     * that label's accessible name: appended as a child, this
+                     * sentence turned the field's name into "Capacity Some of
+                     * these dates already have RSVPs against them, and capacity
+                     * is counted per date." for anybody using a screen reader.
+                     * It is a note about the control, not a name for it. */
+                    if (wrap.tagName === 'LABEL' && wrap.parentNode) {
+                        wrap.parentNode.insertBefore(why, wrap.nextSibling);
+                    } else {
+                        wrap.appendChild(why);
+                    }
                 });
-                wrap.classList.add('uc-field-pencil-locked');
-                wrap.appendChild(pencil);
             });
         }
 
@@ -1677,22 +1626,16 @@
             input.value = scope;
             answered = true;
 
+            /* ONE INSTRUCTION UNLOCKS THE WHOLE FORM, and it is the same one
+             * that locked it: the fieldset the server sent disabled. Every
+             * control inside it becomes editable at once, and the individual
+             * `disabled` attributes on fields a platform owns are untouched by
+             * this, because they are their own attributes on their own
+             * elements. Then the two the scope forbids are put back. */
             if (fields) {
                 fields.removeAttribute('disabled');
             }
-            // Everything starts locked behind its own pencil, including in
-            // "this event" mode: the affordance is the same either way, so the
-            // form does not behave differently depending on a choice made
-            // seconds earlier.
-            eachEditable(function (el) { setLocked(el, true); });
-            addPencils(scope);
-
-            // The apply-a-set button is a <button>, so it is not one of the
-            // controls eachEditable() locks, and it writes rows into the FAQ
-            // block. Locked with the rest until that block's pencil is pressed.
-            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-faq-apply]'), function (btn) {
-                btn.disabled = true;
-            });
+            lockForbidden(scope);
 
             if (dialog) {
                 dialog.close();
@@ -1782,11 +1725,20 @@
      * count in the summary has to be the count that will actually be created,
      * so this mirrors SFAF_Recurrence::dates() step for step: the same week
      * blocks, the same "a month without a fifth Friday is skipped", the same
-     * distinction between last and fifth, the same caps. Two implementations
-     * of one rule can drift, so they are cross-checked against each other over
-     * a matrix of patterns rather than trusted to stay in step by inspection.
-     * If you change one, change the other and re-run that check.
+     * distinction between last and fifth, the same caps, the same merge of
+     * hand-picked dates. Two implementations of one rule can drift, so they are
+     * cross-checked against each other over a matrix of cases rather than
+     * trusted to stay in step by inspection. If you change one, change the
+     * other and re-run that check.
+     *
+     * THE MARKERS BELOW ARE LOAD-BEARING. .claude/recurrence-crosscheck.php
+     * slices this file between them and evaluates what it finds, so the check
+     * runs against the code that ships rather than against a copy of it that
+     * somebody remembered to update. Everything between the markers must be
+     * free of DOM access and of anything outside this block, because that is
+     * all the harness gives it.
      * ------------------------------------------------------------------- */
+    /* --8<-- recurrence engine start --8<-- */
     var UC_MAX_OCCURRENCES = 366;
     var UC_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1826,10 +1778,63 @@
         return (d.getUTCMonth() === month) ? d : null;
     }
 
-    /** The mirror of SFAF_Recurrence::dates(). */
-    function ucRecurrenceDates(startYmd, endYmd, spec, limit) {
+    /** The mirror of SFAF_Recurrence::clean_dates(). */
+    function ucCleanDates(list, after) {
+        var seen = {};
+        var out = [];
+        (list || []).forEach(function (raw) {
+            var d = String(raw == null ? '' : raw).replace(/^\s+|\s+$/g, '');
+            var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+            if (!m) { return; }
+            // A real calendar day, not merely the shape of one. Date.UTC rolls
+            // 2026-02-31 forward to March, so the round trip is the check,
+            // the same thing checkdate() does on the PHP side.
+            var probe = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+            if (ucYmd(probe) !== d) { return; }
+            if (after && d <= after) { return; }
+            if (seen[d]) { return; }
+            seen[d] = true;
+            out.push(d);
+        });
+        out.sort();
+        return out;
+    }
+
+    /** The mirror of SFAF_Recurrence::merge_dates(). */
+    function ucMergeDates(patternDates, extra) {
+        var seen = {};
+        var out = [];
+        (patternDates || []).concat(extra || []).forEach(function (d) {
+            if (seen[d]) { return; }
+            seen[d] = true;
+            out.push(d);
+        });
+        out.sort();
+        return out.slice(0, UC_MAX_OCCURRENCES);
+    }
+
+    /**
+     * The mirror of SFAF_Recurrence::dates().
+     *
+     * `extra` is the hand-picked list and is merged in on the same terms the
+     * PHP applies: cleaned against the start date, de-duplicated against the
+     * pattern's own dates, sorted, and the whole set capped.
+     */
+    function ucRecurrenceDates(startYmd, endYmd, spec, limit, extra) {
+        if (!startYmd) { return []; }
+        return ucMergeDates(
+            ucPatternDates(startYmd, endYmd, spec, limit),
+            ucCleanDates(extra, startYmd)
+        );
+    }
+
+    /** The mirror of SFAF_Recurrence::pattern_dates(): the cadence alone. */
+    function ucPatternDates(startYmd, endYmd, spec, limit) {
         var from = ucParseYmd(startYmd);
         if (!from || !spec || !spec.type) { return []; }
+        // A custom schedule has no cadence. Every date it has was chosen by
+        // hand and arrives through `extra`.
+        if (spec.type === 'custom') { return []; }
         limit = Math.max(0, limit | 0);
         if (!endYmd && limit <= 0) { return []; }
 
@@ -1895,6 +1900,7 @@
         var interval = Math.max(1, spec.interval || 1);
         var i, list;
 
+        if (spec.type === 'custom') { return 'On chosen dates'; }
         if (spec.type === 'daily') {
             return interval === 1 ? 'Every day' : 'Every ' + interval + ' days';
         }
@@ -1939,6 +1945,50 @@
         var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' ' + d.getUTCFullYear();
     }
+    function ucPlural(n, one, many) { return n === 1 ? one : many; }
+
+    /**
+     * The mirror of SFAF_Recurrence::summary().
+     *
+     * The sentence AND the number, from one function, because the number is a
+     * promise about how many posts a save is going to create and the sentence
+     * is what somebody reads instead of counting. Splitting them is how a
+     * summary comes to say 21 while the generator makes 23.
+     */
+    function ucRecurrenceSummary(startYmd, endYmd, spec, limit, extra, tail) {
+        if (!spec || !spec.type) {
+            return 'Does not repeat. One event will be created.';
+        }
+        if (!startYmd) {
+            return 'Set the event date first, since every repeat is counted from it.';
+        }
+
+        var clean = ucCleanDates(extra, startYmd);
+        var made = ucRecurrenceDates(startYmd, endYmd, spec, limit, clean);
+        var total = made.length + 1;   // the event itself is the first occurrence
+
+        if (spec.type === 'custom') {
+            if (!clean.length) {
+                return 'Add the dates this happens on.';
+            }
+            return total + ' ' + ucPlural(total, 'date', 'dates') + '. '
+                + total + ' ' + ucPlural(total, 'event', 'events') + ' will be created.';
+        }
+
+        // The extras that ADD a date, not the ones in the box: a date the
+        // pattern already produces is one event, so counting it here would
+        // announce an event that is not going to exist. See the PHP note.
+        var fromPattern = ucPatternDates(startYmd, endYmd, spec, limit);
+        var net = clean.filter(function (d) { return fromPattern.indexOf(d) === -1; });
+        var plus = '';
+        if (net.length) {
+            plus = ', plus ' + net.length + ' extra ' + ucPlural(net.length, 'date', 'dates');
+        }
+
+        return ucRecurrenceLabel(spec, startYmd) + (tail || '') + plus + '. '
+            + total + ' ' + ucPlural(total, 'event', 'events') + ' will be created.';
+    }
+    /* --8<-- recurrence engine end --8<-- */
 
     function initRecurrence() {
         Array.prototype.forEach.call(document.querySelectorAll('[data-uc-repeat]'), function (root) {
@@ -1969,6 +2019,7 @@
             }
             function currentSpec() {
                 var m = mode();
+                if (m === 'custom') { return { type: 'custom', interval: 1, days: [] }; }
                 if (m === 'daily') { return { type: 'daily', interval: 1 }; }
                 if (m === 'weekly') {
                     var n = parseInt((root.querySelector('[name="repeat_weekly_interval"]') || {}).value, 10);
@@ -1992,59 +2043,186 @@
                 return on ? on.value : 'never';
             }
 
+            /* ---- The dates picker -----------------------------------------
+             *
+             * ONE LIST, TWO MEANINGS, AND THE MEANING IS THE MODE. Under Custom
+             * it is the schedule; beside a pattern it is the dates the pattern
+             * does not cover. Same markup, same repeat_dates[] field name, same
+             * parser on the server, so there is no second idea of what a chosen
+             * date is.
+             *
+             * EACH ROW CARRIES A HIDDEN INPUT rather than the list being
+             * serialised on submit. A hidden input is a real form field: it
+             * survives a browser restoring the form, it needs no submit
+             * handler, and if this script throws after the rows are built the
+             * dates still post. Removing a row removes its field, which is the
+             * whole of what "remove" has to mean.
+             *
+             * THE FOUR SERVER-RENDERED SLOTS ARE THE NO-SCRIPT PATH and are
+             * hidden here rather than emptied: a hidden input with no value
+             * posts an empty string, which clean_dates() drops, so leaving them
+             * in place costs nothing and keeps the markup honest for anybody
+             * reading it with script switched off.
+             */
+            var datesPanel = panels.dates;
+            var addRow = root.querySelector('[data-uc-dates-add]');
+            var addInput = root.querySelector('[data-uc-dates-input]');
+            var addBtn = root.querySelector('[data-uc-dates-addbtn]');
+            var list = root.querySelector('[data-uc-dates-list]');
+            var slots = root.querySelector('[data-uc-dates-slots]');
+            var datesLabel = root.querySelector('[data-uc-dates-label]');
+            var chosen = [];
+
+            if (addRow) { addRow.removeAttribute('hidden'); }
+            if (slots) { slots.hidden = true; }
+
+            function renderDates() {
+                if (!list) { return; }
+                list.textContent = '';
+
+                /* THE EVENT'S OWN DATE IS SHOWN AS THE FIRST ROW IN CUSTOM
+                 * MODE, and it is not removable. The summary says "5 dates" and
+                 * counts the event itself as one of them, so five rows have to
+                 * be on screen or the sentence is describing something the
+                 * manager cannot see. Beside a pattern it is not shown, because
+                 * there the list means "extra" and the event's date is not one
+                 * of the extras. */
+                var start = startDate();
+                if (mode() === 'custom' && start) {
+                    var own = document.createElement('li');
+                    own.className = 'uc-dates-row uc-dates-row-own';
+                    var ownText = document.createElement('span');
+                    ownText.className = 'uc-dates-when';
+                    ownText.textContent = ucPrettyDate(start);
+                    var ownTag = document.createElement('span');
+                    ownTag.className = 'uc-dates-own-tag';
+                    ownTag.textContent = "the event's own date";
+                    own.appendChild(ownText);
+                    own.appendChild(ownTag);
+                    list.appendChild(own);
+                }
+
+                chosen.forEach(function (ymd) {
+                    var li = document.createElement('li');
+                    li.className = 'uc-dates-row';
+
+                    var hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'repeat_dates[]';
+                    hidden.value = ymd;
+
+                    var when = document.createElement('span');
+                    when.className = 'uc-dates-when';
+                    when.textContent = ucPrettyDate(ymd);
+
+                    var remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.className = 'uc-link-danger uc-btn-sm';
+                    remove.textContent = 'Remove';
+                    remove.setAttribute('aria-label', 'Remove ' + ucPrettyDate(ymd));
+                    remove.addEventListener('click', function () {
+                        chosen = chosen.filter(function (d) { return d !== ymd; });
+                        renderDates();
+                        refresh();
+                        if (addInput) { addInput.focus(); }
+                    });
+
+                    li.appendChild(hidden);
+                    li.appendChild(when);
+                    li.appendChild(remove);
+                    list.appendChild(li);
+                });
+            }
+
+            function addDate() {
+                if (!addInput) { return; }
+                // Cleaned by the same rules the server uses, against the event's
+                // own date, so a date the save would silently drop is refused
+                // here instead of appearing in a list and then not existing.
+                var got = ucCleanDates([addInput.value], startDate());
+                if (!got.length) { return; }
+                if (chosen.indexOf(got[0]) === -1) {
+                    chosen.push(got[0]);
+                    chosen.sort();
+                }
+                addInput.value = '';
+                renderDates();
+                refresh();
+            }
+
+            if (addBtn) { addBtn.addEventListener('click', addDate); }
+            if (addInput) {
+                // Enter in a date field would otherwise submit the whole form,
+                // which on this screen creates the event.
+                addInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addDate();
+                    }
+                });
+            }
+
             function refresh() {
                 var m = mode();
                 if (panels.weekly) { panels.weekly.hidden = (m !== 'weekly'); }
                 if (panels.monthly) { panels.monthly.hidden = (m !== 'monthly'); }
-                if (panels.ends) { panels.ends.hidden = (m === ''); }
+                // No cadence under Custom, so nothing for "Ends" to bound.
+                if (panels.ends) { panels.ends.hidden = (m === '' || m === 'custom'); }
+                if (datesPanel) { datesPanel.hidden = (m === ''); }
+                if (datesLabel) {
+                    datesLabel.textContent = (m === 'custom') ? 'Dates' : 'Extra dates';
+                }
 
                 if (!summary) { return; }
                 var spec = currentSpec();
-                if (!spec) {
-                    summary.textContent = 'Does not repeat. One event will be created.';
-                    return;
-                }
-                if (spec.type === 'weekly' && !spec.days.length) {
+                var start = startDate();
+
+                // The two prompts that are about a control rather than about a
+                // count, so they are answered before the engine is asked for a
+                // number it cannot produce.
+                if (spec && spec.type === 'weekly' && !spec.days.length) {
                     summary.textContent = 'Pick at least one day of the week.';
                     return;
                 }
 
-                var start = startDate();
-                if (!start) {
-                    summary.textContent = 'Set the event date first, since every repeat is counted from it.';
-                    return;
-                }
-
                 var how = ends(), until = '', limit = 0, tail = '';
-                if (how === 'on') {
-                    until = (root.querySelector('[name="repeat_until"]') || {}).value || '';
-                    if (!until) {
-                        summary.textContent = 'Choose the date it runs until.';
-                        return;
+                if (spec && spec.type !== 'custom' && start) {
+                    if (how === 'on') {
+                        until = (root.querySelector('[name="repeat_until"]') || {}).value || '';
+                        if (!until) {
+                            summary.textContent = 'Choose the date it runs until.';
+                            return;
+                        }
+                        tail = ', until ' + ucPrettyDate(until);
+                    } else if (how === 'after') {
+                        var total = parseInt((root.querySelector('[name="repeat_count"]') || {}).value, 10);
+                        if (!(total > 1)) {
+                            summary.textContent = 'Choose how many occurrences there should be.';
+                            return;
+                        }
+                        limit = total - 1;
+                    } else {
+                        limit = 52;      // must equal SFAF_Portal::REPEAT_OPEN_ENDED_LIMIT
+                        tail = ', for a year';
                     }
-                    tail = ', until ' + ucPrettyDate(until);
-                } else if (how === 'after') {
-                    var total = parseInt((root.querySelector('[name="repeat_count"]') || {}).value, 10);
-                    if (!(total > 1)) {
-                        summary.textContent = 'Choose how many occurrences there should be.';
-                        return;
-                    }
-                    limit = total - 1;
-                } else {
-                    limit = 52;      // must equal SFAF_Portal::REPEAT_OPEN_ENDED_LIMIT
-                    tail = ', for a year';
                 }
 
-                // +1 for the event being edited: it is the first occurrence,
-                // and it is an event on the calendar like all the others.
-                var made = ucRecurrenceDates(start, until, spec, limit);
-                summary.textContent = ucRecurrenceLabel(spec, start) + tail + '. '
-                    + (made.length + 1) + ' events will be created.';
+                summary.textContent = ucRecurrenceSummary(start, until, spec, limit, chosen, tail);
             }
 
             root.addEventListener('change', refresh);
             root.addEventListener('input', refresh);
-            if (dateInput) { dateInput.addEventListener('change', refresh); }
+            if (dateInput) {
+                dateInput.addEventListener('change', function () {
+                    // The event's own date anchors everything, and moving it
+                    // can make a chosen date invalid (on or before it). Re-clean
+                    // rather than leaving a row that will be dropped on save.
+                    chosen = ucCleanDates(chosen, startDate());
+                    renderDates();
+                    refresh();
+                });
+            }
+            renderDates();
             refresh();
         });
     }

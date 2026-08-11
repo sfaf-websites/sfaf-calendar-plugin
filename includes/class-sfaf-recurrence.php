@@ -56,6 +56,26 @@ class SFAF_Recurrence {
     /** Which pattern produced a group, kept so screens can say so. */
     const PATTERN_META = '_uc_recurrence_pattern';
 
+    /**
+     * "This date was chosen by hand, not produced by the pattern."
+     *
+     * WHY A GROUP NEEDS TO KNOW THE DIFFERENCE. A weekly Wednesday group may
+     * also meet on one Saturday, and that Saturday belongs to the programme: it
+     * is in the group, a bulk edit reaches it, and a time change applies to it.
+     * What it is NOT is an instance of the pattern, so a later pattern edit that
+     * moves Wednesdays to Tuesdays must leave it exactly where it is. Without a
+     * marker there is nothing to tell reday_group() which dates it may move, and
+     * the Saturday would be shifted to a Sunday nobody chose.
+     *
+     * ABSENT MEANS "PATTERN DATE", which is what every occurrence generated
+     * before 3.23.0 is. That is the correct reading for them: they came out of
+     * the generator. Dates added by hand from the series screen before this
+     * existed are indistinguishable from pattern dates and keep being treated as
+     * pattern dates, which is exactly what happens today; from now on they are
+     * marked and are left alone.
+     */
+    const EXTRA_META = '_uc_recurrence_extra';
+
     /** Hard ceiling on one generation run. A guard, not a feature. */
     const MAX_OCCURRENCES = 366;
 
@@ -148,10 +168,18 @@ class SFAF_Recurrence {
      *   monthly_nth           every month on the seed's own nth weekday
      *   monthly_nth:1:1       the first Monday of every month
      *   monthly_nth:-1:5      the LAST Friday of every month
+     *   custom                no pattern at all: the dates were chosen by hand
      *
      * Weekdays are 0 for Sunday through 6 for Saturday, matching date('w').
      * An ordinal of -1 means last, which is NOT the same as 5: a month with
      * four Fridays has a last Friday and no fifth one.
+     *
+     * 'custom' IS A PATTERN THAT PRODUCES NO DATES, and that is not a
+     * contradiction. It is stored so that a screen looking at a group can say
+     * what kind of group it is: "these dates were chosen individually" rather
+     * than "the pattern has been lost". dates() returns nothing for it and the
+     * explicit list supplies everything, so there is no arithmetic to get wrong
+     * and nothing for a pattern edit to move.
      *
      * @param string $raw
      * @return array|null {type, interval, days[], nth, dow} or null if unusable.
@@ -178,6 +206,9 @@ class SFAF_Recurrence {
         };
 
         switch ( $type ) {
+            case 'custom':
+                return array( 'type' => 'custom', 'interval' => 1, 'days' => array(), 'nth' => 0, 'dow' => -1 );
+
             case 'daily':
                 return array( 'type' => 'daily', 'interval' => $interval( $num ?: 1 ), 'days' => array(), 'nth' => 0, 'dow' => -1 );
 
@@ -227,6 +258,9 @@ class SFAF_Recurrence {
         $interval = isset( $spec['interval'] ) ? max( 1, min( (int) $spec['interval'], self::MAX_INTERVAL ) ) : 1;
 
         switch ( $spec['type'] ) {
+            case 'custom':
+                return 'custom';
+
             case 'daily':
                 return ( 1 === $interval ) ? 'daily' : 'daily:' . $interval;
 
@@ -297,6 +331,13 @@ class SFAF_Recurrence {
         $names = self::weekday_names();
 
         switch ( $spec['type'] ) {
+            case 'custom':
+                // No cadence to describe. What there is instead is a list, and
+                // the caller has it: summary() counts it and the schedule screen
+                // prints it. Saying "on chosen dates" is the whole of what is
+                // true about a custom group without reading that list.
+                return 'On chosen dates';
+
             case 'daily':
                 return ( 1 === $spec['interval'] ) ? 'Every day' : sprintf( 'Every %d days', $spec['interval'] );
 
@@ -410,15 +451,122 @@ class SFAF_Recurrence {
      * it is why monthly_nth exists as a separate choice for anybody who means
      * "the last Friday" rather than "the 31st".
      *
-     * @param string $start Y-m-d
-     * @param string $end   Y-m-d inclusive, or '' when $limit is doing the work.
-     * @param string $pattern
-     * @param int    $limit Maximum dates to return; 0 for no count limit.
-     * @return string[] Y-m-d
+     * EXPLICIT DATES ARRIVE ALONGSIDE THE PATTERN AND ARE MERGED HERE, so that
+     * one function answers "what dates does this produce" for all three cases:
+     * a pattern on its own, a pattern with one-off dates beside it, and a set of
+     * dates with no pattern at all. Every count anybody is shown comes from
+     * this, so there is no second arithmetic to disagree with it.
+     *
+     * @param string   $start Y-m-d
+     * @param string   $end   Y-m-d inclusive, or '' when $limit is doing the work.
+     * @param string   $pattern
+     * @param int      $limit Maximum PATTERN dates to return; 0 for no count limit.
+     * @param string[] $extra Explicit Y-m-d dates chosen by hand.
+     * @return string[] Y-m-d, ascending, unique, none of them the start date.
      */
-    public static function dates( $start, $end, $pattern, $limit = 0 ) {
+    public static function dates( $start, $end, $pattern, $limit = 0, $extra = array() ) {
+        $start = (string) $start;
+        if ( '' === $start ) {
+            return array();
+        }
+        return self::merge_dates(
+            $start,
+            self::pattern_dates( $start, $end, $pattern, $limit ),
+            $extra
+        );
+    }
+
+    /**
+     * Merge pattern dates with hand-picked ones into the set that gets created.
+     *
+     * THE RULES, AND BOTH ENGINES FOLLOW THEM IN THIS ORDER:
+     *
+     *   1. An explicit date must be a real Y-m-d. Anything else is dropped
+     *      rather than guessed at, because a guess here creates a post.
+     *   2. A date on or before the start is dropped. The start date is the event
+     *      being created and already exists; an explicit date equal to it would
+     *      produce a second event on the same day, and one before it would put
+     *      an occurrence in front of the event that anchors the pattern.
+     *   3. Duplicates go, including a date the pattern already produces. Ticking
+     *      a Wednesday that the weekly pattern was going to make anyway asks for
+     *      one event, not two.
+     *   4. The result is sorted ascending, so the count and the list are in the
+     *      order somebody reads a calendar in.
+     *   5. MAX_OCCURRENCES caps the WHOLE set, not each half. It is a guard on
+     *      how many posts one save may create, and it does not care which half
+     *      a date came from.
+     *
+     * @param string   $start
+     * @param string[] $pattern_dates
+     * @param string[] $extra
+     * @return string[]
+     */
+    private static function merge_dates( $start, $pattern_dates, $extra ) {
+        $out = array();
+        foreach ( (array) $pattern_dates as $d ) {
+            $out[ (string) $d ] = true;
+        }
+        foreach ( self::clean_dates( $extra, $start ) as $d ) {
+            $out[ $d ] = true;
+        }
+        $out = array_keys( $out );
+        sort( $out );
+        return array_slice( $out, 0, self::MAX_OCCURRENCES );
+    }
+
+    /**
+     * A submitted list of explicit dates, reduced to the ones that are usable.
+     *
+     * Public because the editor's save path needs the same reduction before it
+     * decides whether there is anything to generate, and a second copy of rules
+     * 1 and 2 above is exactly how the two would drift.
+     *
+     * @param mixed  $dates
+     * @param string $after Y-m-d; dates on or before this are dropped. '' keeps all.
+     * @return string[] Ascending, unique.
+     */
+    public static function clean_dates( $dates, $after = '' ) {
+        $after = (string) $after;
+        $out   = array();
+        foreach ( (array) $dates as $d ) {
+            $d = trim( (string) $d );
+            if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $d ) ) {
+                continue;
+            }
+            // A real calendar day, not merely four digits and two dashes:
+            // "2026-02-31" matches the shape and is not a date.
+            list( $y, $m, $day ) = array_map( 'intval', explode( '-', $d ) );
+            if ( ! checkdate( $m, $day, $y ) ) {
+                continue;
+            }
+            if ( '' !== $after && $d <= $after ) {
+                continue;
+            }
+            $out[ $d ] = true;
+        }
+        $out = array_keys( $out );
+        sort( $out );
+        return $out;
+    }
+
+    /**
+     * The dates the PATTERN alone produces. See dates() for the merged set.
+     *
+     * @param string $start
+     * @param string $end
+     * @param string $pattern
+     * @param int    $limit
+     * @return string[]
+     */
+    private static function pattern_dates( $start, $end, $pattern, $limit = 0 ) {
         $spec = self::parse_pattern( $pattern );
         if ( ! $spec || ! $start ) {
+            return array();
+        }
+        // A custom group has no cadence: every date it has was chosen by hand
+        // and arrives through $extra. Returning here rather than falling into
+        // the switch is what makes "custom" cost nothing to support.
+        if ( 'custom' === $spec['type'] ) {
             return array();
         }
         $limit = max( 0, (int) $limit );
@@ -540,6 +688,96 @@ class SFAF_Recurrence {
         return $dates;
     }
 
+    /**
+     * The sentence under the repeat control: what this will do, and to how many.
+     *
+     * WHY THIS IS A FUNCTION AND NOT A TEMPLATE STRING. Generation creates real
+     * posts, once, and the number in this sentence is the number that will
+     * exist afterwards. It therefore has to be produced by the same code that
+     * produces the dates, not assembled beside it: a sentence that says 21 while
+     * dates() makes 23 is worse than no sentence, because somebody read it and
+     * pressed the button.
+     *
+     * The server renders this on page load and portal.js recomputes it on every
+     * change from a mirror of this function. The two are cross-checked over a
+     * matrix of cases by .claude/recurrence-crosscheck.php.
+     *
+     * THE PROMPTS ARE PART OF THE CONTRACT. An incomplete control returns the
+     * one thing missing rather than a count, because a count computed from an
+     * unanswered question is a number somebody will believe.
+     *
+     * @param string   $start   Y-m-d of the event itself.
+     * @param string   $end     Y-m-d the pattern runs until, or ''.
+     * @param string   $pattern
+     * @param int      $limit   Pattern dates to create after the seed.
+     * @param string[] $extra   Explicit dates.
+     * @param string   $tail    ", until Dec 31 2026" or ", for a year". Caller's words.
+     * @return string
+     */
+    public static function summary( $start, $end, $pattern, $limit = 0, $extra = array(), $tail = '' ) {
+        $spec = self::parse_pattern( $pattern );
+        if ( ! $spec ) {
+            return 'Does not repeat. One event will be created.';
+        }
+        if ( '' === (string) $start ) {
+            return 'Set the event date first, since every repeat is counted from it.';
+        }
+
+        $clean = self::clean_dates( $extra, $start );
+        $made  = self::dates( $start, $end, $pattern, $limit, $clean );
+        $total = count( $made ) + 1; // the event itself is the first occurrence
+
+        if ( 'custom' === $spec['type'] ) {
+            if ( empty( $clean ) ) {
+                return 'Add the dates this happens on.';
+            }
+            // "5 dates. 5 events will be created." The two numbers are the same
+            // number on purpose: on a custom schedule a date IS an event, and
+            // saying both is what makes that obvious without a sentence about
+            // it. The event's own date is one of them, and the list on screen
+            // shows it as such.
+            return sprintf(
+                '%d %s. %d %s will be created.',
+                $total, _n( 'date', 'dates', $total ),
+                $total, _n( 'event', 'events', $total )
+            );
+        }
+
+        /*
+         * "PICK AT LEAST ONE DAY" IS NOT HANDLED HERE, AND THAT IS DELIBERATE.
+         *
+         * A weekly pattern with no day ticked is a valid instruction to this
+         * engine: dates() reads the weekday off the start date, which is what
+         * the bare 'weekly' shorthand has always meant. The prompt belongs to
+         * the CONTROL, where a manager has just unticked the last circle and the
+         * form is momentarily saying nothing; portal.js shows it there before it
+         * asks for a count. Putting it here as well would make this function
+         * return a prompt for a case it can answer, and the mirror would have to
+         * grow the same unreachable branch to keep the cross-check quiet.
+         */
+        /*
+         * "PLUS N EXTRA DATES" COUNTS THE ONES THAT ADD A DATE, NOT THE ONES
+         * IN THE BOX.
+         *
+         * Tick a Wednesday next to a weekly Wednesday pattern and the merge
+         * collapses it: one event, not two. Saying "plus 1 extra date" beside a
+         * count that did not move describes an event that is not going to
+         * exist, and the manager is left deciding which of the two numbers to
+         * believe. This is also exactly the set generate() marks with
+         * EXTRA_META, so the sentence describes the stored outcome rather than
+         * the contents of a control.
+         */
+        $net  = array_diff( $clean, self::dates( $start, $end, $pattern, $limit ) );
+        $plus = '';
+        if ( ! empty( $net ) ) {
+            $n    = count( $net );
+            $plus = sprintf( ', plus %d extra %s', $n, _n( 'date', 'dates', $n ) );
+        }
+
+        return self::pattern_label( $pattern, $start ) . (string) $tail . $plus . '. '
+            . sprintf( '%d %s will be created.', $total, _n( 'event', 'events', $total ) );
+    }
+
     /* =====================================================================
      * Generation — runs once, at creation, and never again
      * ================================================================== */
@@ -557,15 +795,22 @@ class SFAF_Recurrence {
      * exists because a browser back-button resubmit is a real thing, not
      * because anything regenerates.
      *
-     * @param int    $seed_id
-     * @param string $pattern
-     * @param string $end_date Y-m-d, inclusive. '' when $limit ends it instead.
-     * @param int    $limit    Occurrences to create AFTER the seed; 0 for none.
-     * @return array{group:string,created:int[],dates:string[],skipped:int}
+     * EXTRA DATES JOIN THE SAME GROUP AND SAY SO. A Saturday added beside a
+     * weekly Wednesday pattern is part of the same programme: "edit all upcoming
+     * occurrences" must reach it, a time change must apply to it, and it must
+     * appear on the same schedule. What it must NOT do is move when the pattern
+     * moves, so each one is stamped with EXTRA_META and reday_group() reads it.
+     *
+     * @param int      $seed_id
+     * @param string   $pattern
+     * @param string   $end_date Y-m-d, inclusive. '' when $limit ends it instead.
+     * @param int      $limit    Pattern occurrences to create AFTER the seed; 0 for none.
+     * @param string[] $extra    Explicit dates chosen by hand.
+     * @return array{group:string,created:int[],dates:string[],extra:string[],skipped:int}
      */
-    public static function generate( $seed_id, $pattern, $end_date, $limit = 0 ) {
+    public static function generate( $seed_id, $pattern, $end_date, $limit = 0, $extra = array() ) {
         $seed_id = (int) $seed_id;
-        $out     = array( 'group' => '', 'created' => array(), 'dates' => array(), 'skipped' => 0 );
+        $out     = array( 'group' => '', 'created' => array(), 'dates' => array(), 'extra' => array(), 'skipped' => 0 );
 
         $seed = get_post( $seed_id );
         if ( ! $seed || 'uc_event' !== $seed->post_type ) {
@@ -577,20 +822,53 @@ class SFAF_Recurrence {
 
         $pattern = self::clean_pattern( $pattern );
         $start   = (string) get_post_meta( $seed_id, '_uc_event_date', true );
-        $dates   = self::dates( $start, $end_date, $pattern, $limit );
+        $chosen  = self::clean_dates( $extra, $start );
+        $dates   = self::dates( $start, $end_date, $pattern, $limit, $chosen );
         if ( empty( $dates ) ) {
             return $out;
         }
+
+        /*
+         * A GROUP WITH NO CADENCE IS RECORDED AS 'custom', NOT AS BLANK.
+         *
+         * Those are different facts and the schedule screen has to tell them
+         * apart: 'custom' means "these dates were chosen one at a time", and an
+         * empty pattern means "this event is not on a pattern at all", which is
+         * what an event carrying no group says. Storing blank here would put a
+         * group on screen under a sentence saying it has no pattern to change,
+         * with a weekday selector offering to move dates that were never on a
+         * weekday. This is the only place the two can be confused, so it is
+         * settled here rather than guessed at by every reader.
+         */
+        if ( '' === $pattern ) {
+            $pattern = 'custom';
+        }
+
+        /*
+         * WHICH OF THE MERGED DATES IS AN EXTRA IS DECIDED HERE, ONCE.
+         *
+         * A date that the pattern also produces is NOT an extra even if
+         * somebody typed it in: merge_dates() has already collapsed the two
+         * into one date, and that one date came out of the pattern, so a
+         * pattern edit is entitled to move it. So the test is "chosen by hand
+         * AND not produced by the pattern", not merely "chosen by hand".
+         */
+        $from_pattern = self::dates( $start, $end_date, $pattern, $limit );
+        $is_extra     = array_fill_keys( array_diff( $chosen, $from_pattern ), true );
 
         $group = self::new_group_id();
         update_post_meta( $seed_id, self::GROUP_META, $group );
         update_post_meta( $seed_id, self::PATTERN_META, $pattern );
 
         foreach ( $dates as $date ) {
-            $id = self::create_occurrence( $seed, $date, $group, $pattern );
+            $extra_date = isset( $is_extra[ $date ] );
+            $id         = self::create_occurrence( $seed, $date, $group, $pattern, $extra_date );
             if ( $id ) {
                 $out['created'][] = $id;
                 $out['dates'][]   = $date;
+                if ( $extra_date ) {
+                    $out['extra'][] = $date;
+                }
             } else {
                 $out['skipped']++;
             }
@@ -617,9 +895,10 @@ class SFAF_Recurrence {
      * @param string  $date
      * @param string  $group
      * @param string  $pattern
+     * @param bool    $is_extra Chosen by hand rather than produced by the pattern.
      * @return int New post ID, or 0.
      */
-    private static function create_occurrence( $seed, $date, $group, $pattern ) {
+    private static function create_occurrence( $seed, $date, $group, $pattern, $is_extra = false ) {
         $base = $seed->post_name ? $seed->post_name : sanitize_title( $seed->post_title );
 
         $id = wp_insert_post( array(
@@ -657,8 +936,68 @@ class SFAF_Recurrence {
         update_post_meta( $id, '_uc_event_date', $date );
         update_post_meta( $id, self::GROUP_META, $group );
         update_post_meta( $id, self::PATTERN_META, $pattern );
+        // Written only when true. Absent is the answer for every pattern date
+        // and for every occurrence made before this marker existed, so there is
+        // one meaning for "no row" rather than two.
+        if ( $is_extra ) {
+            update_post_meta( $id, self::EXTRA_META, '1' );
+        }
 
         return $id;
+    }
+
+    /**
+     * Whether one occurrence was chosen by hand rather than produced by the
+     * pattern.
+     *
+     * @param int $post_id
+     * @return bool
+     */
+    public static function is_extra_date( $post_id ) {
+        return '1' === (string) get_post_meta( (int) $post_id, self::EXTRA_META, true );
+    }
+
+    /**
+     * Whether a pattern describes a cadence, as opposed to a list of dates.
+     *
+     * WHY THE DISTINCTION IS WORTH A FUNCTION. "Extra date" means "chosen by
+     * hand rather than produced by the pattern", and in a group with no pattern
+     * every date was chosen by hand. Marking them is still correct and the
+     * marker is still written, because it means what it says; SHOWING it on
+     * every row of a custom group would be labelling every date with the one
+     * thing they all have in common, which tells a manager nothing and buries
+     * the case where the label is the whole point. So the screens ask this
+     * before they show the tag.
+     *
+     * @param string $pattern
+     * @return bool
+     */
+    public static function has_cadence( $pattern ) {
+        $spec = self::parse_pattern( $pattern );
+        return ( $spec && 'custom' !== $spec['type'] );
+    }
+
+    /**
+     * The upcoming occurrences of a group split into the two kinds.
+     *
+     * Used by the schedule screen to label its rows and by the pattern-edit
+     * confirmation to name how many dates it is about to leave alone. One
+     * function, so the number in the warning and the number of labelled rows
+     * cannot disagree.
+     *
+     * @param string $group
+     * @return array{pattern:int[],extra:int[]}
+     */
+    public static function split_group( $group ) {
+        $out = array( 'pattern' => array(), 'extra' => array() );
+        foreach ( self::upcoming_in_group( $group ) as $id ) {
+            if ( self::is_extra_date( $id ) ) {
+                $out['extra'][] = (int) $id;
+            } else {
+                $out['pattern'][] = (int) $id;
+            }
+        }
+        return $out;
     }
 
     /* =====================================================================
@@ -892,6 +1231,17 @@ class SFAF_Recurrence {
          * schedule. Multi-day groups are edited date by date on the series
          * screen, which is where the dates are.
          */
+        /*
+         * A CUSTOM GROUP HAS NO WEEKDAY AT ALL. Its dates were chosen one at a
+         * time and may be a Monday, a Tuesday and a Wednesday; there is no
+         * pattern for "move it to Thursdays" to act on, and acting on it anyway
+         * would collapse three different days onto one. The times can still be
+         * changed for the whole group, and any single date can be moved from
+         * its own event, which is the same answer daily gets.
+         */
+        if ( 'custom' === $spec['type'] ) {
+            return false;
+        }
         if ( 'weekly' === $spec['type'] ) {
             return count( $spec['days'] ) <= 1;
         }
@@ -940,6 +1290,20 @@ class SFAF_Recurrence {
      * alone rather than quietly moved a week early, which is the same rule the
      * generator follows.
      *
+     * EXTRA DATES ARE LEFT EXACTLY WHERE THEY ARE, AND THAT IS THE POINT OF
+     * MARKING THEM. A weekly Wednesday group that also meets on one Saturday is
+     * two different statements: "every Wednesday" and "and also the 14th". This
+     * function changes the first one. The Saturday was never on the pattern, so
+     * there is nothing about it for a pattern edit to recompute, and shifting it
+     * by the same offset would land it on a Sunday nobody chose. The count of
+     * what was left alone is returned so the screen can say so BEFORE the
+     * button is pressed as well as after.
+     *
+     * A TIME CHANGE IS THE OPPOSITE CASE and reaches everything: see
+     * retime_group(), which is bounded by upcoming_in_group() and reads no
+     * marker. The group meets at the same time on every date it meets, whether
+     * or not the pattern chose the date.
+     *
      * THE SLUG DOES NOT MOVE WITH THE DATE. Occurrence permalinks contain the
      * date they were generated for and they are live URLs; renaming them would
      * break every link anybody has to a session that is still happening, just on
@@ -947,16 +1311,18 @@ class SFAF_Recurrence {
      *
      * @param string $group
      * @param int    $target_dow 0 (Sunday) to 6 (Saturday).
-     * @return array{moved:int,skipped:int}
+     * @return array{moved:int,skipped:int,left:int}
      */
     public static function reday_group( $group, $target_dow ) {
-        $out        = array( 'moved' => 0, 'skipped' => 0 );
+        $out        = array( 'moved' => 0, 'skipped' => 0, 'left' => 0 );
         $target_dow = (int) $target_dow;
         if ( $target_dow < 0 || $target_dow > 6 ) {
             return $out;
         }
 
-        $ids = self::upcoming_in_group( $group );
+        $split = self::split_group( $group );
+        $ids   = $split['pattern'];
+        $out['left'] = count( $split['extra'] );
         if ( empty( $ids ) ) {
             return $out;
         }
@@ -1076,7 +1442,15 @@ class SFAF_Recurrence {
         $group   = $join_group ? self::group_of( $seed->ID ) : '';
         $pattern = $join_group ? self::pattern_of( $seed->ID ) : '';
 
-        $id = self::create_occurrence( $seed, $date, $group, $pattern );
+        /*
+         * A DATE ADDED FROM THE SCHEDULE SCREEN IS AN EXTRA DATE BY DEFINITION.
+         * Somebody typed it; the pattern did not produce it. Marking it here is
+         * what stops a later "move this group to Tuesdays" from dragging a
+         * one-off Saturday session along with the Wednesdays, and it is the same
+         * marker the editor's extra-dates picker writes, so there is one meaning
+         * of "extra" rather than one per screen.
+         */
+        $id = self::create_occurrence( $seed, $date, $group, $pattern, (bool) $join_group );
         if ( ! $id ) {
             return new WP_Error( 'sfaf_add_date_failed', 'The date could not be added.' );
         }
@@ -1091,6 +1465,7 @@ class SFAF_Recurrence {
         if ( ! $join_group ) {
             delete_post_meta( $id, self::GROUP_META );
             delete_post_meta( $id, self::PATTERN_META );
+            delete_post_meta( $id, self::EXTRA_META );
         }
 
         if ( '' !== trim( (string) $start ) ) {
@@ -1104,7 +1479,15 @@ class SFAF_Recurrence {
     }
 
     /**
-     * Fields that carry no pencil in "all upcoming" mode, and why.
+     * Fields the "all upcoming" scope FORBIDS, and why.
+     *
+     * THESE ARE NOT LOCKS WAITING TO BE OPENED. Until 3.23.0 every field was
+     * locked behind its own pencil and this list named the two that had no
+     * pencil at all; the pencils are gone and the modal is the only gate, so
+     * this is now the whole of what a chosen scope refuses. The editor renders
+     * exactly these disabled, with the reason printed under the control, because
+     * a field that silently refuses to open reads as broken and a field that
+     * opens and then quietly does nothing is worse.
      *
      * DATE, ALWAYS. The dates are the only thing that makes the occurrences
      * distinct; one date written across twelve of them would collapse the group
@@ -1115,14 +1498,14 @@ class SFAF_Recurrence {
      * set can land below the confirmed count on a date the manager is not
      * looking at — quietly showing an event as full, or as having room it does
      * not have. With no confirmed RSVPs anywhere in the set there is nothing to
-     * contradict, so the pencil stays.
+     * contradict, so it stays editable.
      *
      * @param int[] $ids The events the save would write.
      * @return array<string,string> field => the reason, shown to the manager.
      */
     public static function bulk_locked_fields( $ids ) {
         $locked = array(
-            'date' => 'Each occurrence has its own date. Change one from its own event.',
+            'date' => 'Each occurrence has its own date, so this is edited on one event at a time. Change the scope above to edit this date.',
         );
 
         foreach ( (array) $ids as $id ) {
