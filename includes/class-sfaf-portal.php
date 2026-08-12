@@ -414,17 +414,27 @@ class SFAF_Portal {
                 $this->redirect( 'series/edit/' . $id, array( 'msg' => 'series_saved' ) );
                 break;
 
-            /* ---- The schedule. Three writes, all bounded by "upcoming". ----
+            /* ---- The schedule. Four writes. ------------------------------
              *
              * Gated exactly as series editing is, because that is what this is:
              * the schedule screen IS the series screen. Each one re-derives its
              * targets from the stored data rather than from the form, so a POST
              * naming an event in another series, or a date that has passed,
              * achieves nothing.
+             *
+             * THREE OF THE FOUR ARE BOUNDED BY "UPCOMING" and cannot reach a
+             * session that has already happened. Extend is the fourth and is
+             * bounded the other way: it only ever creates dates after the last
+             * one the series already holds, and never before today.
              */
             case 'schedule_pattern':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
                 $this->schedule_pattern_from_post();
+                break;
+
+            case 'schedule_extend':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $this->schedule_extend_from_post();
                 break;
 
             case 'schedule_add_date':
@@ -1891,9 +1901,14 @@ class SFAF_Portal {
             'rsvp_settings_saved' => 'Registration settings saved. These are the same controls the event editor shows, on the same event, so it now reads the same in both places.',
 
             // The schedule.
-            'schedule_added'    => 'Date added. It is an ordinary event, identical to the others, with nobody registered yet.',
-            'schedule_removed'  => 'Date removed. Nothing regenerates it, so it stays removed. Any registrations against it are kept.',
+            'schedule_added'    => 'Date added. It is an ordinary event, identical to the others, with nobody registered yet. A time change to the group reaches it; a change to the pattern leaves it where it is.',
+            'schedule_removed'  => 'Date removed. Nothing regenerates it, including extending the series later, so it stays removed. Any registrations against it are kept.',
             'schedule_unchanged'=> 'Nothing to change: the schedule already says that.',
+            'schedule_pattern_refused' => 'That pattern could not be laid out across every upcoming date, so nothing was moved. Choose a different pattern, or remove some dates first.',
+            'schedule_extend_bad_date' => 'Give the date to run through as a real date.',
+            'schedule_extend_no_cadence' => 'These dates were chosen one at a time rather than produced by a pattern, so there is no cadence to carry forward. Add each new date below.',
+            'schedule_extend_nothing'  => 'Nothing to add: every date the pattern produces up to then is already on the schedule, or was removed on purpose.',
+            'schedule_extend_failed'   => 'The series could not be extended.',
             'schedule_no_group' => 'These dates are not on a repeating pattern, so there is no pattern to change. Each date can still be edited on its own.',
             'schedule_nothing_upcoming' => 'There are no upcoming dates to change. Dates that have already been are the record of what happened and are never rewritten.',
             'schedule_imported' => 'This event comes from another platform, which decides when it happens. Changing the schedule here would be undone by the next fetch.',
@@ -1963,7 +1978,21 @@ class SFAF_Portal {
                 $n,
                 _n( 'occurrence was', 'occurrences were', $n )
             );
-            // Named, not implied. The screen warned that a day change leaves
+            /*
+             * WHERE THE GROUP NOW RUNS FROM AND TO, IN DATES.
+             *
+             * A cadence change can move a term's programming a long way: twelve
+             * daily sessions become twelve weekly ones and the last of them is
+             * eleven weeks further out than it was. "12 occurrences were
+             * changed" is true and says nothing about that, and the schedule
+             * list below is the only other place to find out. Naming the first
+             * and last date is one sentence and settles it.
+             */
+            $span = $this->schedule_span_phrase();
+            if ( '' !== $span ) {
+                $said .= ' ' . $span;
+            }
+            // Named, not implied. The screen warned that a cadence change leaves
             // extra dates alone; this is where it says that it did.
             if ( $left > 0 ) {
                 $said .= ' ' . sprintf(
@@ -1975,6 +2004,39 @@ class SFAF_Portal {
             }
             $said .= ' Past dates were not touched.';
             echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
+            return;
+        }
+
+        if ( 'schedule_extended' === $key ) {
+            $made    = isset( $_GET['made'] ) ? max( 0, intval( $_GET['made'] ) ) : 0;
+            $from    = $this->schedule_date_arg( 'from' );
+            $through = $this->schedule_date_arg( 'through' );
+
+            $said = sprintf( '%d %s added on the existing pattern.', $made, _n( 'date was', 'dates were', $made ) );
+            if ( '' !== $from ) {
+                $said .= ' ' . sprintf( 'The series ran to %s and now runs to %s.', $from, $through );
+            }
+            $said .= ' Nothing already on the schedule was changed, and dates you had removed stayed removed.';
+            echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
+            return;
+        }
+
+        if ( 'schedule_extend_not_further' === $key ) {
+            $from = $this->schedule_date_arg( 'from' );
+            echo '<div class="uc-flash">' . esc_html(
+                '' !== $from
+                    ? sprintf( 'That date is not past the end of the series, which already runs to %s. Choose a later one.', $from )
+                    : 'That date is not past the end of the series. Choose a later one.'
+            ) . '</div>';
+            return;
+        }
+
+        if ( 'schedule_extend_nothing' === $key ) {
+            $from = $this->schedule_date_arg( 'from' );
+            echo '<div class="uc-flash">' . esc_html(
+                'Nothing to add: every date the pattern produces up to then is already on the schedule, or was removed on purpose.'
+                . ( '' !== $from ? sprintf( ' The series still runs to %s.', $from ) : '' )
+            ) . '</div>';
             return;
         }
 
@@ -4971,7 +5033,126 @@ class SFAF_Portal {
      * ================================================================== */
 
     /**
-     * Change the day, the time, or both, across a group's upcoming dates.
+     * A Y-m-d carried back on the redirect, rendered AP style.
+     *
+     * THROUGH THE ONE FORMATTER, like every other date this plugin prints. A
+     * confirmation is user-facing copy and the AP rules apply to it exactly as
+     * they apply to the calendar.
+     *
+     * SHAPE-CHECKED BEFORE IT IS FORMATTED, because this is a query string and
+     * anything at all can be in it. An unusable value renders as nothing rather
+     * than as today's date, so a tampered URL cannot make the screen assert a
+     * date that was never written.
+     *
+     * @param string $arg
+     * @return string '' when there is no usable date.
+     */
+    private function schedule_date_arg( $arg ) {
+        if ( ! isset( $_GET[ $arg ] ) ) {
+            return '';
+        }
+        $raw = sanitize_text_field( wp_unslash( $_GET[ $arg ] ) );
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw ) ) {
+            return '';
+        }
+        return sfaf_ap_date( $raw, 'full' );
+    }
+
+    /**
+     * "The group now runs Aug 18 through Nov 3.", or nothing.
+     *
+     * Only a cadence change carries these two, so a save that only touched the
+     * times says nothing extra rather than repeating dates that did not move.
+     *
+     * @return string
+     */
+    private function schedule_span_phrase() {
+        $first = $this->schedule_date_arg( 'first' );
+        $last  = $this->schedule_date_arg( 'last' );
+        if ( '' === $first || '' === $last ) {
+            return '';
+        }
+        if ( $first === $last ) {
+            return sprintf( 'The one upcoming date is now %s.', $first );
+        }
+        return sprintf( 'Upcoming dates now run %s through %s.', $first, $last );
+    }
+
+    /**
+     * Read the pattern control back into a stored pattern string.
+     *
+     * THE CHOSEN FREQUENCY DECIDES WHICH FIELDS ARE READ, and the others are
+     * not looked at. Every row of the control posts, always, because there is
+     * no script hiding any of them; honouring the weekly interval on a form
+     * submitted as Monthly would be honouring a value nobody chose. Same rule as
+     * recurrence_from_post() and as the location picker.
+     *
+     * AN UNANSWERABLE FORM RETURNS '', AND '' MEANS "DO NOT MOVE ANYTHING".
+     * Weekly with no day ticked is the case that matters: it is a form in the
+     * middle of being filled in, not an instruction, and the alternative to
+     * refusing it is inventing a weekday and moving a term's programming onto
+     * it. The times on the same form are a separate instruction and still apply.
+     *
+     * @return string A pattern in stored form, or '' when there is none to read.
+     */
+    private function schedule_pattern_from_fields() {
+        $freq = isset( $_POST['sp_freq'] ) ? sanitize_key( wp_unslash( $_POST['sp_freq'] ) ) : '';
+
+        $interval = function ( $key ) {
+            $n = isset( $_POST[ $key ] ) ? (int) $_POST[ $key ] : 1;
+            return ( $n >= 1 ) ? $n : 1;
+        };
+
+        switch ( $freq ) {
+            case 'daily':
+                return SFAF_Recurrence::pattern_string( array(
+                    'type'     => 'daily',
+                    'interval' => $interval( 'sp_daily_interval' ),
+                ) );
+
+            case 'weekly':
+                $days = array();
+                if ( isset( $_POST['sp_days'] ) && is_array( $_POST['sp_days'] ) ) {
+                    foreach ( wp_unslash( $_POST['sp_days'] ) as $d ) {
+                        $d = (int) $d;
+                        if ( $d >= 0 && $d <= 6 ) {
+                            $days[] = $d;
+                        }
+                    }
+                }
+                if ( empty( $days ) ) {
+                    return '';
+                }
+                return SFAF_Recurrence::pattern_string( array(
+                    'type'     => 'weekly',
+                    'interval' => $interval( 'sp_weekly_interval' ),
+                    'days'     => $days,
+                ) );
+
+            case 'monthly':
+                return SFAF_Recurrence::pattern_string( array(
+                    'type'     => 'monthly',
+                    'interval' => $interval( 'sp_monthly_interval' ),
+                ) );
+
+            case 'monthly_nth':
+                $nth = isset( $_POST['sp_nth'] ) ? (int) $_POST['sp_nth'] : 0;
+                $dow = isset( $_POST['sp_nth_dow'] ) ? (int) $_POST['sp_nth_dow'] : -1;
+                if ( 0 === $nth || $dow < 0 || $dow > 6 ) {
+                    return '';
+                }
+                return SFAF_Recurrence::pattern_string( array(
+                    'type' => 'monthly_nth',
+                    'nth'  => $nth,
+                    'dow'  => $dow,
+                ) );
+        }
+
+        return '';
+    }
+
+    /**
+     * Change the cadence, the times, or both, across a group's upcoming dates.
      *
      * THE GROUP IS RE-DERIVED FROM THE SERIES, never taken from the form. The
      * form carries a series id and nothing else that decides what is written, so
@@ -4979,9 +5160,24 @@ class SFAF_Portal {
      * allowed to edit, at the same set of upcoming events the screen showed
      * them.
      *
-     * THE PATTERN META IS LEFT ALONE. A weekly group moved from Wednesdays to
-     * Tuesdays is still weekly; what changed is which day, and that is recorded
-     * where it has always been recorded, in the dates themselves.
+     * ANY SUBSET OF THE CONTROL IS A VALID EDIT, and it needs no "which of these
+     * am I changing" question to be true. Every field is prefilled with what the
+     * group says today, so submitting the form having touched only the times
+     * produces a pattern identical to the stored one, and identical patterns do
+     * not move dates. First Monday to second Monday, 5-6pm to 6-7pm, or both at
+     * once, are the same operation with different fields touched.
+     *
+     * THE COMPARISON IS MADE ON CANONICAL FORMS. 'weekly' and 'weekly:1:3' are
+     * one schedule for a Wednesday group, and a form that prefills the day
+     * circles from the anchor returns the explicit spelling. Comparing the two
+     * as text would report a change on every save. See canonical_pattern().
+     *
+     * A CADENCE CHANGE MOVES PATTERN DATES; A TIME CHANGE MOVES EVERYTHING.
+     * repattern_group() reports how many extra dates it left alone, and that
+     * number is carried into the confirmation message rather than being
+     * recomputed here: the screen warned about it before the button was pressed
+     * and has to account for it afterwards, or the manager is left checking the
+     * list to find out whether the warning happened.
      */
     private function schedule_pattern_from_post() {
         $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
@@ -5007,37 +5203,136 @@ class SFAF_Portal {
             $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_imported' ) );
         }
 
+        $current = SFAF_Recurrence::pattern_of( $ids[0] );
+        $anchor  = (string) get_post_meta( $ids[0], '_uc_event_date', true );
+        $moved   = 0;
+        $left    = 0;
+        $recast  = false;
+        $first   = '';
+        $last    = '';
+
         /*
-         * A DAY CHANGE MOVES PATTERN DATES; A TIME CHANGE MOVES EVERYTHING.
-         *
-         * reday_group() reports how many extra dates it left alone, and that
-         * number is carried into the confirmation message rather than being
-         * recomputed here: the screen warned about it before the button was
-         * pressed and has to account for it afterwards, or the manager is left
-         * checking the list to find out whether the warning happened.
+         * A CUSTOM GROUP IS NOT OFFERED A CADENCE AND IS NOT GIVEN ONE HERE.
+         * Its dates were chosen one at a time; laying them out on a weekly
+         * pattern would throw away the exact thing somebody picked. The control
+         * is not rendered for it and this is what makes that a rule.
          */
-        $moved = 0;
-        $left  = 0;
-        if ( isset( $_POST['weekday'] ) && '' !== $_POST['weekday'] ) {
-            $result = SFAF_Recurrence::reday_group( $group, intval( $_POST['weekday'] ) );
-            $moved  = (int) $result['moved'];
-            $left   = ( $moved > 0 ) ? (int) $result['left'] : 0;
+        if ( SFAF_Recurrence::has_cadence( $current ) ) {
+            $wanted = $this->schedule_pattern_from_fields();
+            if ( '' !== $wanted && $wanted !== SFAF_Recurrence::canonical_pattern( $current, $anchor ) ) {
+                $result = SFAF_Recurrence::repattern_group( $group, $wanted );
+                if ( $result['refused'] ) {
+                    $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_pattern_refused' ) );
+                }
+                $recast = ( '' !== $result['pattern'] );
+                $moved  = (int) $result['moved'];
+                $left   = $recast ? (int) $result['left'] : 0;
+                $first  = (string) $result['first'];
+                $last   = (string) $result['last'];
+            }
         }
 
         $start   = isset( $_POST['start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['start_time'] ) ) : '';
         $end     = isset( $_POST['end_time'] ) ? sanitize_text_field( wp_unslash( $_POST['end_time'] ) ) : '';
         $retimed = ( '' !== $start ) ? SFAF_Recurrence::retime_group( $group, $start, $end ) : 0;
 
+        /*
+         * "0 OCCURRENCES CHANGED" AFTER A REAL CADENCE CHANGE IS NOT NOTHING.
+         * Moving a weekly Wednesday group to "every week on Wednesday and
+         * Friday" would be refused for a different reason, but moving one from
+         * 'weekly' to 'weekly:1:3' on a Wednesday group lands every date on the
+         * day it was already on. Nothing moved and the group is genuinely
+         * recorded differently, so $recast rather than $moved decides whether
+         * this reports a change.
+         */
         $written = max( $moved, $retimed );
+        $changed = ( $written > 0 || $recast );
+
         $this->redirect( 'series/edit/' . $term_id, array(
-            'msg'     => $written ? 'schedule_updated' : 'schedule_unchanged',
+            'msg'     => $changed ? 'schedule_updated' : 'schedule_unchanged',
             'written' => $written,
             'left'    => $left,
+            'first'   => $first,
+            'last'    => $last,
         ) );
     }
 
     /**
-     * Add one date to a series.
+     * Carry the existing pattern further into the future.
+     *
+     * NOTHING ABOUT THE PATTERN CHANGES AND NOTHING ALREADY THERE IS TOUCHED.
+     * This is a pure append: the dates the cadence would have produced between
+     * the last one that exists and the new end date. Every rule that makes that
+     * safe lives in SFAF_Recurrence::extend_group(), including the one that
+     * matters most, which is that a date somebody REMOVED is not put back.
+     *
+     * THE REASON CODE IS TRANSLATED HERE, NOT THERE. extend_group() is written
+     * to be callable by a scheduled top-up that has nobody to talk to, so it
+     * returns a reason rather than a sentence, and this is the screen that turns
+     * one into the other.
+     */
+    private function schedule_extend_from_post() {
+        $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
+        if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
+            $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
+        }
+
+        $group = SFAF_Series::recurrence_group( $term_id );
+        if ( '' === $group ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_no_group' ) );
+        }
+
+        $all = SFAF_Recurrence::all_in_group( $group );
+        if ( ! empty( $all ) ) {
+            $prov = SFAF_Sources::provenance( $all[0] );
+            if ( '' !== $prov['source'] ) {
+                $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_imported' ) );
+            }
+        }
+
+        $until  = isset( $_POST['extend_until'] ) ? sanitize_text_field( wp_unslash( $_POST['extend_until'] ) ) : '';
+        $result = SFAF_Recurrence::extend_group( $group, $until );
+
+        if ( empty( $result['created'] ) ) {
+            $said = array(
+                'bad_date'        => 'schedule_extend_bad_date',
+                'not_further'     => 'schedule_extend_not_further',
+                'no_cadence'      => 'schedule_extend_no_cadence',
+                'nothing_missing' => 'schedule_extend_nothing',
+            );
+            $key = isset( $said[ $result['reason'] ] ) ? $said[ $result['reason'] ] : 'schedule_extend_failed';
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => $key, 'from' => (string) $result['from'] ) );
+        }
+
+        $this->redirect( 'series/edit/' . $term_id, array(
+            'msg'     => 'schedule_extended',
+            'made'    => count( $result['created'] ),
+            'from'    => (string) $result['from'],
+            'through' => (string) end( $result['dates'] ),
+        ) );
+    }
+
+    /**
+     * Add one date to a series, by copying the event onto it.
+     *
+     * THERE IS NO CHOICE TO MAKE HERE ANY MORE, AND THAT IS THE CHANGE.
+     * This used to carry a checkbox reading "Keep this date out of the group",
+     * with four sentences under it about recurrence groups and extra-date
+     * marking. It was asking a manager to understand the internals in order to
+     * add a date to a Tuesday class, and the two answers were not equally
+     * useful: one of them was right almost every time.
+     *
+     * SO THE RIGHT ANSWER IS THE ONLY ANSWER. A date added here JOINS the group,
+     * so a time change reaches it like any other date, AND is marked as an extra
+     * date, so a cadence change leaves it alone. That is exactly what the
+     * unticked box did. The genuinely different case, an event on another date
+     * with another location and another description, is not a variant of this
+     * one and is not offered as a tickbox on it: it is a second route on the
+     * screen, which goes to the event editor with this series already chosen.
+     *
+     * A TITLE OVERRIDE IS THE ONE FIELD A COPY MAY DIFFER IN. "Annual picnic"
+     * or "Guest speaker" on one date of a weekly group is a real and common
+     * need, and it is not a reason to rebuild the event from scratch.
      */
     private function schedule_add_date_from_post() {
         $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
@@ -5066,12 +5361,26 @@ class SFAF_Portal {
             $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_imported' ) );
         }
 
+        /*
+         * NOT INTO THE PAST, AND THE RULE IS HERE AS WELL AS ON THE CONTROL.
+         * The date field carries min="today", which is what a manager meets;
+         * this is what makes it a rule. A date added behind today lands in the
+         * folded-away past section, which carries no controls at all by design,
+         * so it could then be neither edited nor removed from this screen.
+         */
+        $wanted = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
+        if ( '' !== $wanted && $wanted < current_time( 'Y-m-d' ) ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_past' ) );
+        }
+
         $new_id = SFAF_Recurrence::add_occurrence(
             $seed_id,
-            isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '',
+            $wanted,
             isset( $_POST['start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['start_time'] ) ) : '',
             isset( $_POST['end_time'] ) ? sanitize_text_field( wp_unslash( $_POST['end_time'] ) ) : '',
-            empty( $_POST['independent'] )
+            // Always. See the docblock: this route has one behaviour, not two.
+            true,
+            isset( $_POST['title_override'] ) ? sanitize_text_field( wp_unslash( $_POST['title_override'] ) ) : ''
         );
 
         if ( is_wp_error( $new_id ) ) {
@@ -5150,6 +5459,20 @@ class SFAF_Portal {
      * upcoming occurrences" in the event editor has always targeted. Same
      * marker, same "today or later" bound, same idea of what a set of
      * occurrences is. There is no second grouping here to disagree with it.
+     *
+     * FOUR ACTIONS, AND EACH ONE ANSWERS A QUESTION SOMEBODY ARRIVED WITH.
+     *
+     *   Change the pattern   "it moves to second Tuesdays and starts at 6"
+     *   Extend the series    "it runs to December and we need January too"
+     *   Add a date           "there is one extra session on the 14th"
+     *   Remove a date        "we are closed that week"
+     *
+     * They are separate because they are separate questions, not because the
+     * code is arranged that way. The two that create events are deliberately
+     * different shapes: extending is bulk and follows the cadence, adding is one
+     * date somebody chose. Offering "add a date" with a count field, or
+     * "extend" with a title override, would blur two things a manager keeps
+     * apart in their head.
      * ================================================================== */
 
     /**
@@ -5212,11 +5535,56 @@ class SFAF_Portal {
         $split      = ( '' !== $group ) ? SFAF_Recurrence::split_group( $group ) : array( 'pattern' => array(), 'extra' => array() );
         $n_pattern  = count( $split['pattern'] );
         $n_extra    = count( $split['extra'] );
-        $is_custom  = ( 'custom' === $pattern );
-        $movable  = SFAF_Recurrence::weekday_is_movable( $pattern );
-        $days     = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
-        $cur_dow  = $anchor ? (int) date( 'w', strtotime( $anchor . ' 12:00:00' ) ) : -1;
-        $back     = 'series/edit/' . $term_id;
+        /*
+         * A CADENCE IS THE THING THE PATTERN CONTROL EDITS, and a custom group
+         * has none. Its dates were chosen one at a time and may be a Monday, a
+         * Tuesday and a Wednesday; laying them out on a weekly pattern would
+         * throw away the exact thing somebody picked. So the frequency control
+         * is not rendered for it, the times still are, and the same test gates
+         * the write in schedule_pattern_from_post().
+         */
+        $has_cadence = SFAF_Recurrence::has_cadence( $pattern );
+
+        /*
+         * WHAT THE CONTROL IS PREFILLED WITH, AND WHY IT IS RESOLVED RATHER
+         * THAN READ. A group stored as bare 'weekly' means "the anchor's own
+         * weekday", and a control that showed no day ticked for it would be
+         * describing the group as something it is not; a manager changing only
+         * the interval would then submit a weekly pattern with no day and be
+         * told to pick one. canonical_pattern() resolves both implied values
+         * from the anchor and it is the same function the save compares
+         * against, so what is shown and what is compared cannot drift.
+         */
+        $spec = SFAF_Recurrence::parse_pattern( SFAF_Recurrence::canonical_pattern( $pattern, $anchor ) );
+        $f_type     = $spec ? $spec['type'] : '';
+        $f_interval = $spec ? (int) $spec['interval'] : 1;
+        $f_days     = ( $spec && ! empty( $spec['days'] ) ) ? $spec['days'] : array();
+        $f_nth      = $spec ? (int) $spec['nth'] : 0;
+        $f_ndow     = $spec ? (int) $spec['dow'] : -1;
+
+        $days     = SFAF_Recurrence::weekday_names();
+        $abbr     = SFAF_Recurrence::weekday_names( true );
+        $cur_dow  = ( null !== SFAF_Recurrence::dow_of( $anchor ) ) ? (int) SFAF_Recurrence::dow_of( $anchor ) : -1;
+        if ( empty( $f_days ) && $cur_dow >= 0 ) {
+            $f_days = array( $cur_dow );
+        }
+        if ( $f_ndow < 0 && $cur_dow >= 0 ) {
+            $f_ndow = $cur_dow;
+        }
+        if ( 0 === $f_nth ) {
+            $derived = $anchor ? SFAF_Recurrence::nth_weekday_of_month( $anchor ) : null;
+            $f_nth   = $derived ? (int) $derived['nth'] : 1;
+        }
+        $day_num = $anchor ? sfaf_ap_date( $anchor, 'daynum' ) : '';
+
+        /*
+         * HOW FAR OUT THE SERIES IS GENERATED, which is what somebody extending
+         * it is extending FROM. Named as a date rather than left to be worked
+         * out by scrolling to the bottom of the list: the whole question
+         * "does this need extending" is answered by this one line.
+         */
+        $horizon = ( '' !== $group ) ? SFAF_Recurrence::horizon( $group ) : '';
+        $back    = 'series/edit/' . $term_id;
         ?>
         <div class="uc-card uc-schedule">
             <div class="uc-card-head">
@@ -5252,125 +5620,37 @@ class SFAF_Portal {
                     </p>
                 <?php else : ?>
 
-                    <details class="uc-schedule-edit">
-                        <summary>Change the pattern</summary>
-                        <p class="uc-hint">
-                            Applies to the <strong><?php echo (int) count( $in_group ); ?></strong>
-                            upcoming <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>
-                            in this group. Dates that have already been are the record of what happened and are never
-                            rewritten.
-                        </p>
-                        <?php
-                        /*
-                         * WHAT A WEEKDAY CHANGE WILL NOT TOUCH, SAID BEFORE IT
-                         * IS PRESSED RATHER THAN AFTER.
-                         *
-                         * An extra date was never on the pattern, so there is
-                         * nothing about it for a pattern edit to recompute and
-                         * shifting it by the same offset would land it on a day
-                         * nobody chose. That is correct behaviour and it is also
-                         * surprising, which is exactly the combination that has
-                         * to be stated. The time fields below are a different
-                         * matter and reach every date in the group, so the two
-                         * halves of this form are described separately.
-                         */
-                        ?>
-                        <?php if ( $n_extra > 0 && $movable ) : ?>
-                            <p class="uc-hint uc-hint-warn">
-                                <strong><?php echo (int) $n_extra; ?></strong>
-                                of these <?php echo esc_html( _n( 'is an extra date', 'are extra dates', $n_extra ) ); ?>
-                                added by hand rather than produced by the pattern. Changing the day moves the
-                                <?php echo (int) $n_pattern; ?> pattern
-                                <?php echo esc_html( _n( 'date', 'dates', $n_pattern ) ); ?>
-                                and leaves <?php echo esc_html( _n( 'that one', 'those', $n_extra ) ); ?> where
-                                <?php echo esc_html( _n( 'it is', 'they are', $n_extra ) ); ?>.
-                                A time change applies to every date in the group.
-                            </p>
-                        <?php elseif ( $n_extra > 0 && ! $is_custom ) : ?>
-                            <p class="uc-hint">
-                                <strong><?php echo (int) $n_extra; ?></strong>
-                                of these <?php echo esc_html( _n( 'is an extra date', 'are extra dates', $n_extra ) ); ?>
-                                added by hand. A time change applies to every date in the group.
-                            </p>
-                        <?php endif; ?>
-                        <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
-                            <input type="hidden" name="uc_action" value="schedule_pattern" />
-                            <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
-                            <?php wp_nonce_field( 'uc_portal_schedule_pattern', 'uc_nonce' ); ?>
-
-                            <div class="uc-field-row">
-                                <?php if ( $movable ) : ?>
-                                    <label class="uc-field">
-                                        <span class="uc-field-label">Day</span>
-                                        <select name="weekday">
-                                            <?php foreach ( $days as $i => $day ) : ?>
-                                                <option value="<?php echo (int) $i; ?>" <?php selected( $cur_dow, $i ); ?>><?php echo esc_html( $day ); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </label>
-                                <?php endif; ?>
-                                <label class="uc-field">
-                                    <span class="uc-field-label">Start time</span>
-                                    <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>" />
-                                </label>
-                                <label class="uc-field">
-                                    <span class="uc-field-label">End time</span>
-                                    <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>" />
-                                </label>
-                            </div>
-
-                            <?php if ( ! $movable ) : ?>
-                                <p class="uc-hint">
-                                    <?php if ( $is_custom ) : ?>
-                                        These dates were chosen one at a time rather than from a pattern, so there is no
-                                        weekday to move them to. The time can still be changed here, and a single date
-                                        can be moved from its own event.
-                                    <?php elseif ( 'daily' === $pattern ) : ?>
-                                        This happens every day, so there is no weekday to move it to. The time can still
-                                        be changed here, and a single date can be moved from its own event.
-                                    <?php else : ?>
-                                        This repeats on a day of the month rather than a day of the week, so moving it to
-                                        a weekday would turn it into a different pattern from the one it was set up with.
-                                        The time can still be changed here, and a single date can be moved from its own
-                                        event.
-                                    <?php endif; ?>
-                                </p>
-                            <?php endif; ?>
-
-                            <?php
-                            /*
-                             * THE CONFIRMATION NAMES THE EXTRA DATES TOO. It is
-                             * the last thing read before a term's worth of
-                             * programming moves, and "23 occurrences" without
-                             * "2 of them stay put" is a true sentence that
-                             * leaves somebody with the wrong picture.
-                             */
-                            $confirm = sprintf(
-                                'Update %d upcoming %s?',
-                                count( $in_group ),
-                                _n( 'occurrence', 'occurrences', count( $in_group ) )
-                            );
-                            if ( $n_extra > 0 && $movable ) {
-                                $confirm .= sprintf(
-                                    ' A day change moves the %d pattern %s; the %d extra %s stay on the %s they are on.',
-                                    $n_pattern,
-                                    _n( 'date', 'dates', $n_pattern ),
-                                    $n_extra,
-                                    _n( 'date', 'dates', $n_extra ),
-                                    _n( 'date', 'dates', $n_extra )
-                                );
-                            }
-                            $confirm .= ' Dates that have already been are not touched.';
-                            ?>
-                            <div class="uc-form-actions">
-                                <button type="submit" class="uc-btn uc-btn-primary"
-                                        data-uc-confirm="<?php echo esc_attr( $confirm ); ?>">
-                                    Update <?php echo (int) count( $in_group ); ?> upcoming
-                                    <?php echo esc_html( _n( 'occurrence', 'occurrences', count( $in_group ) ) ); ?>
-                                </button>
-                            </div>
-                        </form>
-                    </details>
+                    <?php
+                    /*
+                     * ONE CONTEXT ARRAY, NOT SEVENTEEN ARGUMENTS. Everything
+                     * below is derived above, once, so the count in a hint, the
+                     * count in a confirmation and the count of labelled rows are
+                     * the same count. Passing it as one value is what keeps that
+                     * true as the form grows; a positional argument list of this
+                     * length is where a pair of them gets swapped.
+                     */
+                    $ctx = array(
+                        'term_id'  => $term_id,
+                        'back'     => $back,
+                        'in_group' => $in_group,
+                        'cadence'  => $has_cadence,
+                        'n_pat'    => $n_pattern,
+                        'n_extra'  => $n_extra,
+                        'start'    => $start,
+                        'end'      => $end,
+                        'type'     => $f_type,
+                        'interval' => $f_interval,
+                        'wdays'    => $f_days,
+                        'nth'      => $f_nth,
+                        'ndow'     => $f_ndow,
+                        'names'    => $days,
+                        'abbr'     => $abbr,
+                        'daynum'   => $day_num,
+                        'horizon'  => $horizon,
+                    );
+                    $this->render_schedule_pattern_form( $ctx );
+                    $this->render_schedule_extend_form( $ctx );
+                    ?>
                 <?php endif; ?>
 
                 <h4 class="uc-schedule-head">Upcoming</h4>
@@ -5420,54 +5700,386 @@ class SFAF_Portal {
             <?php endif; ?>
 
             <?php if ( ! $imported && $seed_id ) : ?>
-                <details class="uc-schedule-add">
-                    <summary>Add a date</summary>
-                    <p class="uc-hint">
-                        Creates one more event exactly like the others: same title, description, location, times,
-                        capacity, categories and series. It starts with nobody registered, because registrations belong
-                        to the date they were made for.
+                <?php
+                /*
+                 * =========================================================
+                 * ONE MORE DATE: TWO ROUTES, AND THE QUESTION IS ABOUT THE
+                 * EVENT RATHER THAN ABOUT THE SOFTWARE.
+                 *
+                 * WHAT WENT. A single form with a checkbox reading "Keep this
+                 * date out of the group" and four sentences under it about
+                 * recurrence groups, bulk edits and extra-date marking. It was
+                 * asking somebody adding one session to a Tuesday class to
+                 * first understand what a recurrence group is, and the two
+                 * answers were not equally likely: almost every date added
+                 * here belongs to the programme.
+                 *
+                 * WHAT REPLACED IT. The two cases that actually differ, told
+                 * apart by a fact about the event rather than by a fact about
+                 * the data model:
+                 *
+                 *   the details are already right   -> copy this event onto
+                 *                                      another date
+                 *   the details genuinely differ    -> make a new event, in
+                 *                                      this series
+                 *
+                 * Nobody has to know what a group is to pick between those.
+                 * The behaviour the checkbox was offering is now the behaviour
+                 * of the first route and is not a choice: the copy joins the
+                 * group, so a time change reaches it, and it is marked as an
+                 * extra date, so a cadence change leaves it alone. That is
+                 * stated in one sentence rather than four, because it is now a
+                 * consequence to know rather than a decision to make.
+                 * =========================================================
+                 */
+                ?>
+                <div class="uc-schedule-routes">
+                    <h4 class="uc-schedule-head">Add a date</h4>
+
+                    <details class="uc-schedule-add">
+                        <summary>Use this event's details on another date</summary>
+                        <p class="uc-hint">
+                            Copies this event onto a date you choose: same location, description, times, category,
+                            organizer and questions. It starts with nobody registered, because registrations belong to
+                            the date they were made for. A time change to the group reaches it; a change to the pattern
+                            leaves it where you put it.
+                        </p>
+                        <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
+                            <input type="hidden" name="uc_action" value="schedule_add_date" />
+                            <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_schedule_add_date', 'uc_nonce' ); ?>
+
+                            <div class="uc-field-row">
+                                <label class="uc-field">
+                                    <span class="uc-field-label">Date</span>
+                                    <?php // min is today: this route copies an event forward, and a date in the
+                                          // past would create a session that never happened. ?>
+                                    <input type="date" name="date" min="<?php echo esc_attr( $today ); ?>" required />
+                                </label>
+                                <label class="uc-field">
+                                    <span class="uc-field-label">Start time</span>
+                                    <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>" />
+                                </label>
+                                <label class="uc-field">
+                                    <span class="uc-field-label">End time</span>
+                                    <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>" />
+                                </label>
+                            </div>
+
+                            <label class="uc-field">
+                                <span class="uc-field-label">Title for this date <span class="uc-muted">(optional)</span></span>
+                                <input type="text" name="title_override" maxlength="120"
+                                       placeholder="<?php echo esc_attr( $seed_id ? get_the_title( $seed_id ) : '' ); ?>" />
+                                <span class="uc-hint">Leave blank to use the same title as the other dates. Fill it in
+                                    to call this one "Annual picnic" or "Guest speaker".</span>
+                            </label>
+
+                            <div class="uc-form-actions">
+                                <button type="submit" class="uc-btn uc-btn-primary">Add this date</button>
+                            </div>
+                        </form>
+                    </details>
+
+                    <?php
+                    /*
+                     * A LINK, NOT A FORM, AND THAT IS THE POINT OF IT. This
+                     * case needs a location, a description and possibly a
+                     * picture, all of which the event editor already asks for
+                     * properly. Rebuilding a third of that editor inside a
+                     * <details> on this screen would be a second place to
+                     * maintain the same fields and a worse place to fill them
+                     * in. The series arrives already chosen, which is the only
+                     * thing this screen knows that the editor does not.
+                     */
+                    ?>
+                    <p class="uc-schedule-route">
+                        <a class="uc-btn" href="<?php echo esc_url( add_query_arg( 'series', (int) $term_id, $this->url( 'events/new' ) ) ); ?>">
+                            Create a new event in this series
+                        </a>
+                        <span class="uc-hint">For a date with different details: another location, another
+                            description. It joins the series for browsing and filtering, and is not tied to this
+                            schedule, so a change to the pattern or the times does not reach it.</span>
                     </p>
-                    <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
-                        <input type="hidden" name="uc_action" value="schedule_add_date" />
-                        <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
-                        <?php wp_nonce_field( 'uc_portal_schedule_add_date', 'uc_nonce' ); ?>
-
-                        <div class="uc-field-row">
-                            <label class="uc-field">
-                                <span class="uc-field-label">Date</span>
-                                <input type="date" name="date" required />
-                            </label>
-                            <label class="uc-field">
-                                <span class="uc-field-label">Start time</span>
-                                <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>" />
-                            </label>
-                            <label class="uc-field">
-                                <span class="uc-field-label">End time</span>
-                                <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>" />
-                            </label>
-                        </div>
-
-                        <?php if ( '' !== $group ) : ?>
-                            <label class="uc-check">
-                                <input type="checkbox" name="independent" value="1" />
-                                Keep this date out of the group
-                            </label>
-                            <p class="uc-hint">
-                                Left unticked, the new date joins the group, so "update all upcoming occurrences"
-                                reaches it like any other and a time change here applies to it. It is marked as an
-                                extra date, because you chose it rather than the pattern producing it, so changing the
-                                day of the group leaves it where it is. Tick the box for a genuine one-off, a special
-                                session or a different venue for one week, that no bulk edit should rewrite.
-                            </p>
-                        <?php endif; ?>
-
-                        <div class="uc-form-actions">
-                            <button type="submit" class="uc-btn uc-btn-primary">Add this date</button>
-                        </div>
-                    </form>
-                </details>
+                </div>
             <?php endif; ?>
         </div>
+        <?php
+    }
+
+    /**
+     * Change the pattern: the whole of it, and any part of it.
+     *
+     * FIVE THINGS ARE EDITABLE HERE AND THEY USED TO BE TWO. The old form
+     * offered a weekday and two times, so a group that had to move from the
+     * first Monday of the month to the second could not be moved at all, and
+     * one that had to go from weekly to fortnightly had to be rebuilt by hand.
+     * What is here now is frequency, interval, weekday, monthly ordinal and the
+     * two times, and any subset of them is one edit.
+     *
+     * NO "WHICH OF THESE AM I CHANGING" QUESTION, because every field arrives
+     * holding what the group says today. Touch the times and submit and the
+     * pattern reads back identical, so nothing moves; touch the ordinal and the
+     * times and both apply. See schedule_pattern_from_post() for how sameness is
+     * decided, which is on canonical forms rather than on stored text.
+     *
+     * EACH FREQUENCY CARRIES ITS OWN PARAMETERS ON ITS OWN ROW, and the row is
+     * the radio. That is what lets this work with no script at all: every row is
+     * visible, every control is a real input, and the server reads sp_freq and
+     * then looks at nothing belonging to the rows that lost. Same rule as the
+     * location picker and the create form's repeat control.
+     *
+     * THE COUNT DOES NOT CHANGE, and the button says the count. Twelve upcoming
+     * sessions are twelve upcoming sessions afterwards, on the new cadence.
+     * Nothing here creates an event and nothing here deletes one, which is what
+     * makes a single number honest on both sides of the press.
+     *
+     * @param array $ctx See render_schedule().
+     */
+    private function render_schedule_pattern_form( $ctx ) {
+        $n_up    = count( $ctx['in_group'] );
+        $n_extra = (int) $ctx['n_extra'];
+        $n_pat   = (int) $ctx['n_pat'];
+        ?>
+        <details class="uc-schedule-edit">
+            <summary>Change the pattern</summary>
+            <p class="uc-hint">
+                Applies to the <strong><?php echo (int) $n_up; ?></strong>
+                upcoming <?php echo esc_html( _n( 'occurrence', 'occurrences', $n_up ) ); ?>
+                in this group, and creates and deletes nothing: the same dates move.
+                Dates that have already been are the record of what happened and are never rewritten.
+            </p>
+
+            <?php
+            /*
+             * WHAT A CADENCE CHANGE WILL NOT TOUCH, SAID BEFORE IT IS PRESSED
+             * RATHER THAN AFTER.
+             *
+             * An extra date was never on the pattern, so there is nothing about
+             * it for a pattern edit to recompute and moving it with the rest
+             * would land it on a day nobody chose. That is correct behaviour and
+             * it is also surprising, which is exactly the combination that has
+             * to be stated. The time fields are a different matter and reach
+             * every date in the group, so the two halves are described apart.
+             */
+            ?>
+            <?php if ( $n_extra > 0 && $ctx['cadence'] ) : ?>
+                <p class="uc-hint uc-hint-warn">
+                    <strong><?php echo (int) $n_extra; ?></strong>
+                    of these <?php echo esc_html( _n( 'is an extra date', 'are extra dates', $n_extra ) ); ?>
+                    added by hand rather than produced by the pattern. Changing the pattern moves the
+                    <?php echo (int) $n_pat; ?> pattern
+                    <?php echo esc_html( _n( 'date', 'dates', $n_pat ) ); ?>
+                    and leaves <?php echo esc_html( _n( 'that one', 'those', $n_extra ) ); ?> where
+                    <?php echo esc_html( _n( 'it is', 'they are', $n_extra ) ); ?>.
+                    A time change applies to every date in the group.
+                </p>
+            <?php elseif ( $n_extra > 0 ) : ?>
+                <p class="uc-hint">
+                    <strong><?php echo (int) $n_extra; ?></strong>
+                    of these <?php echo esc_html( _n( 'is an extra date', 'are extra dates', $n_extra ) ); ?>
+                    added by hand. A time change applies to every date in the group.
+                </p>
+            <?php endif; ?>
+
+            <form method="post" action="<?php echo esc_url( $this->url( $ctx['back'] ) ); ?>" class="uc-form">
+                <input type="hidden" name="uc_action" value="schedule_pattern" />
+                <input type="hidden" name="series_id" value="<?php echo (int) $ctx['term_id']; ?>" />
+                <?php wp_nonce_field( 'uc_portal_schedule_pattern', 'uc_nonce' ); ?>
+
+                <?php if ( $ctx['cadence'] ) : ?>
+                    <div class="uc-sched-freq" role="radiogroup" aria-label="How often this repeats">
+                        <span class="uc-field-label">How often</span>
+
+                        <label class="uc-radio-row">
+                            <input type="radio" name="sp_freq" value="daily" <?php checked( 'daily', $ctx['type'] ); ?> />
+                            <span>Every
+                                <input type="number" name="sp_daily_interval" class="uc-repeat-num" min="1" max="52"
+                                       value="<?php echo ( 'daily' === $ctx['type'] ) ? (int) $ctx['interval'] : 1; ?>"
+                                       aria-label="Days between occurrences" />
+                                day(s)</span>
+                        </label>
+
+                        <label class="uc-radio-row">
+                            <input type="radio" name="sp_freq" value="weekly" <?php checked( 'weekly', $ctx['type'] ); ?> />
+                            <span>Every
+                                <input type="number" name="sp_weekly_interval" class="uc-repeat-num" min="1" max="52"
+                                       value="<?php echo ( 'weekly' === $ctx['type'] ) ? (int) $ctx['interval'] : 1; ?>"
+                                       aria-label="Weeks between occurrences" />
+                                week(s) on</span>
+                        </label>
+                        <div class="uc-days uc-sched-days" role="group" aria-label="Which days of the week">
+                            <?php foreach ( $ctx['abbr'] as $i => $letter ) : ?>
+                                <label class="uc-day">
+                                    <input type="checkbox" name="sp_days[]" value="<?php echo (int) $i; ?>"
+                                           <?php checked( in_array( (int) $i, $ctx['wdays'], true ) ); ?> />
+                                    <span aria-hidden="true"><?php echo esc_html( $letter ); ?></span>
+                                    <span class="uc-visually-hidden"><?php echo esc_html( $ctx['names'][ $i ] ); ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <label class="uc-radio-row">
+                            <input type="radio" name="sp_freq" value="monthly" <?php checked( 'monthly', $ctx['type'] ); ?> />
+                            <span>Every
+                                <input type="number" name="sp_monthly_interval" class="uc-repeat-num" min="1" max="52"
+                                       value="<?php echo ( 'monthly' === $ctx['type'] ) ? (int) $ctx['interval'] : 1; ?>"
+                                       aria-label="Months between occurrences" />
+                                month(s) on the <strong><?php echo esc_html( $ctx['daynum'] ? $ctx['daynum'] : 'same date' ); ?></strong></span>
+                        </label>
+
+                        <label class="uc-radio-row">
+                            <input type="radio" name="sp_freq" value="monthly_nth" <?php checked( 'monthly_nth', $ctx['type'] ); ?> />
+                            <span>On the</span>
+                        </label>
+                        <div class="uc-repeat-nth">
+                            <select name="sp_nth" aria-label="Which occurrence in the month">
+                                <?php foreach ( array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', -1 => 'last' ) as $n => $word ) : ?>
+                                    <option value="<?php echo (int) $n; ?>" <?php selected( (int) $ctx['nth'], (int) $n ); ?>><?php echo esc_html( $word ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <select name="sp_nth_dow" aria-label="Which weekday">
+                                <?php foreach ( $ctx['names'] as $i => $name ) : ?>
+                                    <option value="<?php echo (int) $i; ?>" <?php selected( (int) $ctx['ndow'], (int) $i ); ?>><?php echo esc_html( $name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span>of every month</span>
+                        </div>
+                        <?php // "last" is not "fifth": a month with four Fridays has a last
+                              // Friday and no fifth one, and the engine skips the months a
+                              // fifth would fall outside rather than serving a fourth. ?>
+                        <p class="uc-hint">Choose <em>last</em> rather than <em>fourth</em> if you mean the final one,
+                            since some months have five.</p>
+                    </div>
+                <?php else : ?>
+                    <p class="uc-hint">
+                        These dates were chosen one at a time rather than produced by a pattern, so there is no
+                        cadence to change. The times can still be set for the whole group here, and a single date can
+                        be moved from its own event.
+                    </p>
+                <?php endif; ?>
+
+                <div class="uc-field-row">
+                    <label class="uc-field">
+                        <span class="uc-field-label">Start time</span>
+                        <input type="time" name="start_time" value="<?php echo esc_attr( $ctx['start'] ); ?>" />
+                    </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">End time</span>
+                        <input type="time" name="end_time" value="<?php echo esc_attr( $ctx['end'] ); ?>" />
+                    </label>
+                </div>
+
+                <?php
+                /*
+                 * THE CONFIRMATION NAMES THE EXTRA DATES TOO. It is the last
+                 * thing read before a term's worth of programming moves, and
+                 * "23 occurrences" without "2 of them stay put" is a true
+                 * sentence that leaves somebody with the wrong picture.
+                 */
+                $confirm = sprintf(
+                    'Update %d upcoming %s?',
+                    $n_up,
+                    _n( 'occurrence', 'occurrences', $n_up )
+                );
+                if ( $n_extra > 0 && $ctx['cadence'] ) {
+                    $confirm .= sprintf(
+                        ' A pattern change moves the %d pattern %s; the %d extra %s stay on the %s they are on.',
+                        $n_pat,
+                        _n( 'date', 'dates', $n_pat ),
+                        $n_extra,
+                        _n( 'date', 'dates', $n_extra ),
+                        _n( 'date', 'dates', $n_extra )
+                    );
+                }
+                $confirm .= ' Dates that have already been are not touched.';
+                ?>
+                <div class="uc-form-actions">
+                    <button type="submit" class="uc-btn uc-btn-primary"
+                            data-uc-confirm="<?php echo esc_attr( $confirm ); ?>">
+                        Update <?php echo (int) $n_up; ?> upcoming
+                        <?php echo esc_html( _n( 'occurrence', 'occurrences', $n_up ) ); ?>
+                    </button>
+                </div>
+            </form>
+        </details>
+        <?php
+    }
+
+    /**
+     * Keep going: the same pattern, further out.
+     *
+     * THE COMMON CASE, AND IT HAD NO CONTROL AT ALL. A series set up to run to
+     * December 31 needs to continue into the new year, and until now that meant
+     * adding January's dates one at a time, five clicks each, none of which the
+     * pattern knew about. Nothing about the cadence changes here: this is the
+     * dates the pattern would have made, made.
+     *
+     * IT SAYS WHERE THE SERIES CURRENTLY ENDS, WHICH IS THE QUESTION BEHIND THE
+     * QUESTION. "Does this need extending" cannot be answered without it, and
+     * the alternative was scrolling to the bottom of a list of forty dates. The
+     * date field's own minimum is the day after, so a date that would add
+     * nothing cannot be chosen by accident.
+     *
+     * A CUSTOM GROUP IS TOLD PLAINLY THAT THERE IS NOTHING TO CARRY FORWARD.
+     * Its dates were chosen one at a time; there is no arithmetic in it to run
+     * further, and inventing one would put sessions on days nobody picked.
+     *
+     * @param array $ctx See render_schedule().
+     */
+    private function render_schedule_extend_form( $ctx ) {
+        $horizon = (string) $ctx['horizon'];
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $horizon ) ) {
+            return;
+        }
+        /*
+         * THE SITE'S CLOCK, NOT THE SERVER'S. This is a machine value going
+         * into a min attribute rather than a sentence, and it is still a date:
+         * date()/strtotime() read the server's timezone, so on a server an hour
+         * ahead the day after December 31 can be computed as December 31. A day
+         * either way here is the difference between offering a date that adds
+         * nothing and refusing one that would have worked. Midday for the same
+         * reason every date-only string in this plugin is handled at midday.
+         */
+        try {
+            $next_day = ( new DateTimeImmutable( $horizon . ' 12:00:00', wp_timezone() ) )
+                ->modify( '+1 day' )->format( 'Y-m-d' );
+        } catch ( Exception $e ) {
+            return;
+        }
+        ?>
+        <details class="uc-schedule-extend">
+            <summary>Extend the series</summary>
+
+            <p class="uc-hint">
+                Generated through <strong><?php echo esc_html( sfaf_ap_date( $ctx['horizon'], 'full' ) ); ?></strong>.
+            </p>
+
+            <?php if ( ! $ctx['cadence'] ) : ?>
+                <p class="uc-hint">
+                    These dates were chosen one at a time rather than produced by a pattern, so there is no cadence to
+                    carry forward. Add each new date below.
+                </p>
+            <?php else : ?>
+                <p class="uc-hint">
+                    Adds the dates this pattern would have made between then and the date you choose. Nothing already on
+                    the schedule changes, and a date you removed stays removed.
+                </p>
+                <form method="post" action="<?php echo esc_url( $this->url( $ctx['back'] ) ); ?>" class="uc-form">
+                    <input type="hidden" name="uc_action" value="schedule_extend" />
+                    <input type="hidden" name="series_id" value="<?php echo (int) $ctx['term_id']; ?>" />
+                    <?php wp_nonce_field( 'uc_portal_schedule_extend', 'uc_nonce' ); ?>
+
+                    <label class="uc-field">
+                        <span class="uc-field-label">Run through</span>
+                        <input type="date" name="extend_until" min="<?php echo esc_attr( $next_day ); ?>" required />
+                    </label>
+
+                    <div class="uc-form-actions">
+                        <button type="submit" class="uc-btn uc-btn-primary">Add the missing dates</button>
+                    </div>
+                </form>
+            <?php endif; ?>
+        </details>
         <?php
     }
 
@@ -5487,7 +6099,11 @@ class SFAF_Portal {
         $date  = (string) get_post_meta( $eid, '_uc_event_date', true );
         $start = (string) get_post_meta( $eid, '_uc_start_time', true );
         $end   = (string) get_post_meta( $eid, '_uc_end_time', true );
-        $ts    = $date ? strtotime( $date . ' 12:00:00' ) : 0;
+        // Through the one formatter, like every other date this plugin prints.
+        // This used to be two hand-written date_i18n( 'D, M j, Y' ) calls, one
+        // in the row and one in the confirmation, which is exactly how a screen
+        // ends up spelling the same date two ways.
+        $shown = $date ? sfaf_ap_date( $date, 'full' ) : '';
         $rsvps = sfaf_get_rsvp_count( $eid );
         $solo  = ( '' !== $group && SFAF_Recurrence::group_of( $eid ) !== $group );
         /*
@@ -5512,7 +6128,7 @@ class SFAF_Portal {
             && SFAF_Recurrence::has_cadence( SFAF_Recurrence::pattern_of( $eid ) ) );
         ?>
         <li class="uc-schedule-row">
-            <span class="uc-schedule-date"><?php echo $ts ? esc_html( date_i18n( 'D, M j, Y', $ts ) ) : '<span class="uc-muted">No date</span>'; ?></span>
+            <span class="uc-schedule-date"><?php echo '' !== $shown ? esc_html( $shown ) : '<span class="uc-muted">No date</span>'; ?></span>
             <span class="uc-schedule-time"><?php echo esc_html( SFAF_Recurrence::time_phrase( $start, $end ) ); ?></span>
             <span class="uc-schedule-meta">
                 <?php echo esc_html( sfaf_status_label( get_post_status( $eid ) ) ); ?>
@@ -5538,7 +6154,7 @@ class SFAF_Portal {
                         <input type="hidden" name="event_id" value="<?php echo (int) $eid; ?>" />
                         <?php wp_nonce_field( 'uc_portal_schedule_remove_date', 'uc_nonce' ); ?>
                         <button type="submit" class="uc-link-danger uc-btn-sm"
-                                data-uc-confirm="Remove <?php echo esc_attr( $ts ? date_i18n( 'D, M j, Y', $ts ) : 'this date' ); ?> from the schedule?<?php echo $rsvps > 0 ? ' ' . (int) $rsvps . ' people have registered; their registrations are kept and stay in the RSVP list.' : ''; ?> Nothing puts it back.">Remove</button>
+                                data-uc-confirm="Remove <?php echo esc_attr( '' !== $shown ? $shown : 'this date' ); ?> from the schedule?<?php echo $rsvps > 0 ? ' ' . (int) $rsvps . ' people have registered; their registrations are kept and stay in the RSVP list.' : ''; ?> Nothing puts it back.">Remove</button>
                     </form>
                 </span>
             <?php endif; ?>
@@ -5921,6 +6537,31 @@ class SFAF_Portal {
                      */
                     $all_series = SFAF_Series::all();
                     $cur_series = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
+
+                    /*
+                     * A NEW EVENT MAY ARRIVE WITH ITS SERIES ALREADY CHOSEN.
+                     *
+                     * The schedule screen's second route, "create a new event in
+                     * this series", is for the date whose details genuinely
+                     * differ: another location, another description. It sends
+                     * somebody here because this is where those are asked for
+                     * properly, and the one thing that screen knew and this one
+                     * does not is which series they came from. Carrying it in
+                     * the URL is the whole of that.
+                     *
+                     * CHECKED, NOT TRUSTED. It is a query string, so it is an
+                     * integer that must name a series that exists; anything else
+                     * leaves the field on "Not part of a series" rather than
+                     * preselecting something that is not there. It only
+                     * preselects a control the manager can still change, so the
+                     * worst a valid-but-unintended id can do is need one click.
+                     */
+                    if ( ! $event_id && isset( $_GET['series'] ) ) {
+                        $pre = intval( $_GET['series'] );
+                        if ( $pre > 0 && SFAF_Series::exists( $pre ) ) {
+                            $cur_series = $pre;
+                        }
+                    }
                     ?>
                     <label class="uc-field">
                         <span class="uc-field-label">Series</span>
@@ -5934,10 +6575,12 @@ class SFAF_Portal {
                         </select>
                     </label>
 
-                    <?php if ( $cur_series ) : ?>
+                    <?php if ( $cur_series && $event_id ) : ?>
                         <?php // ONE SHORT LINK, not a sentence with a link inside
                               // it. The old wording wrapped mid-phrase and left
-                              // the link broken across two lines. ?>
+                              // the link broken across two lines. Not shown on a
+                              // new event: there is no event yet to be one date
+                              // of, and the schedule is where they just came from. ?>
                         <p class="uc-bento-link">
                             <a href="<?php echo esc_url( $this->url( 'series/edit/' . $cur_series ) ); ?>">
                                 <?php echo sfaf_icon( 'repeat', array( 'size' => '15px' ) ); ?>

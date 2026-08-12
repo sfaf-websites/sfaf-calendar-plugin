@@ -966,17 +966,25 @@ class SFAF_Shortcodes {
         $end   = (string) get_post_meta( $post_id, '_uc_end_time', true );
         $slugs = implode( ' ', wp_list_pluck( sfaf_event_categories( $post_id ), 'slug' ) );
 
-        // One quiet second line: "Tue, Aug 4 · 6-7:30 pm". Both halves are
-        // optional and the separator only appears when both are there, so an
-        // undated event does not print a stray dot.
-        $when = array();
-        if ( '' !== $date ) {
-            $when[] = sfaf_ap_date( $date, 'weekday' ) . ', ' . sfaf_ap_date( $date, 'short' );
-        }
+        /*
+         * One quiet second line: "Tue, Aug 4 · 6-7:30 pm".
+         *
+         * THE TWO HALVES ARE SEPARATE ELEMENTS, WHICH IS A LAYOUT DECISION AND
+         * NOT A TIDINESS ONE. As one string this line breaks wherever the
+         * column runs out, so in a narrow placement it wrapped as "Tue, Aug 4 ·
+         * 6-7:30" / "pm" or "Tue, / Aug 4 · 6-7:30 pm": a date split from its
+         * month, or a clock split from its meridiem. With the date and the
+         * clock each in their own span the CSS can hold each one whole and put
+         * the only break between them, and at the narrowest widths stack them
+         * and drop the separator. See .uc-when-date in calendar.css.
+         *
+         * Both halves are optional and the separator only appears when both are
+         * there, so an undated event does not print a stray dot.
+         */
+        $when  = ( '' !== $date )
+            ? sfaf_ap_date( $date, 'weekday' ) . ', ' . sfaf_ap_date( $date, 'short' )
+            : '';
         $clock = sfaf_ap_time_range( $start, $end );
-        if ( '' !== $clock ) {
-            $when[] = $clock;
-        }
 
         ob_start();
         ?>
@@ -985,10 +993,20 @@ class SFAF_Shortcodes {
             <span class="uc-sidebar-thumb"><?php echo sfaf_thumb_media( $post_id ); ?></span>
             <span class="uc-sidebar-body">
                 <span class="uc-sidebar-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></span>
-                <?php if ( ! empty( $when ) ) : ?>
-                    <span class="uc-sidebar-when"><?php echo esc_html( implode( ' · ', $when ) ); ?></span>
+                <?php if ( '' !== $when || '' !== $clock ) : ?>
+                    <span class="uc-sidebar-when">
+                        <?php if ( '' !== $when ) : ?>
+                            <span class="uc-when-date"><?php echo esc_html( $when ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( '' !== $when && '' !== $clock ) : ?>
+                            <span class="uc-when-sep" aria-hidden="true">·</span>
+                        <?php endif; ?>
+                        <?php if ( '' !== $clock ) : ?>
+                            <span class="uc-when-time"><?php echo esc_html( $clock ); ?></span>
+                        <?php endif; ?>
+                    </span>
                 <?php else : ?>
-                    <span class="uc-sidebar-when">Date to be confirmed</span>
+                    <span class="uc-sidebar-when"><span class="uc-when-date">Date to be confirmed</span></span>
                 <?php endif; ?>
             </span>
         </a>

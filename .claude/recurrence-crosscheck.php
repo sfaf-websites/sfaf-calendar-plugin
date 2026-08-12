@@ -257,9 +257,19 @@ function describe( $f ) {
  * These run on every invocation, before the matrix, because a matrix that
  * passes against a broken rule is worse than no matrix.
  * ------------------------------------------------------------------------ */
+/*
+ * THE COUNT IS COUNTED, NOT WRITTEN DOWN. It used to be a literal 20 in the
+ * printf below, which is a number that stays right until somebody adds a rule
+ * and stops being evidence the moment it is wrong. A hardcoded total also
+ * cannot tell "every rule ran and held" from "the block was never reached",
+ * which is the failure this line is supposed to rule out.
+ */
+$GLOBALS['sfaf_behaviour_ran'] = 0;
+
 function assert_behaviour() {
     $fails = array();
     $check = function ( $what, $got, $want ) use ( &$fails ) {
+        $GLOBALS['sfaf_behaviour_ran']++;
         if ( $got !== $want ) {
             $fails[] = sprintf(
                 "  %s\n      got:  %s\n      want: %s\n",
@@ -289,8 +299,47 @@ function assert_behaviour() {
     $check( 'custom returns exactly the dates it was given',
         SFAF_Recurrence::dates( '2026-07-01', '', 'custom', 0, array( '2026-08-04', '2026-07-14' ) ),
         array( '2026-07-14', '2026-08-04' ) );
-    $check( 'a custom group has no weekday to move',
-        SFAF_Recurrence::weekday_is_movable( 'custom' ), false );
+    $check( 'a custom group has no cadence, so no pattern edit acts on it',
+        SFAF_Recurrence::has_cadence( 'custom' ), false );
+    $check( 'a real cadence says so', SFAF_Recurrence::has_cadence( 'weekly:2:3' ), true );
+
+    // --- canonical_pattern: two spellings of one schedule ------------------
+    // 2026-07-01 is a Wednesday, and it is the 1st, so it is the first
+    // Wednesday of its month.
+    $check( 'a bare weekly resolves to the anchor\'s own weekday',
+        SFAF_Recurrence::canonical_pattern( 'weekly', '2026-07-01' ), 'weekly:1:3' );
+    $check( 'biweekly and weekly:2 are one schedule',
+        SFAF_Recurrence::canonical_pattern( 'biweekly', '2026-07-01' ), 'weekly:2:3' );
+    $check( 'a bare monthly_nth resolves to the anchor\'s ordinal and weekday',
+        SFAF_Recurrence::canonical_pattern( 'monthly_nth', '2026-07-01' ), 'monthly_nth:1:3' );
+    $check( 'an explicit pattern canonicalises to itself',
+        SFAF_Recurrence::canonical_pattern( 'weekly:1:2,4', '2026-07-01' ), 'weekly:1:2,4' );
+
+    // --- plan_from: the anchor's own period is IN the answer ---------------
+    // This is the whole difference from dates(), which excludes the seed.
+    $check( 'the anchor week is laid out, not skipped',
+        SFAF_Recurrence::plan_from( 'weekly:1:2', '2026-07-01', 3 ),
+        array( '2026-06-30', '2026-07-07', '2026-07-14' ) );
+    $check( 'the floor drops the leading date and the count still comes out',
+        SFAF_Recurrence::plan_from( 'weekly:1:2', '2026-07-01', 3, '2026-07-01' ),
+        array( '2026-07-07', '2026-07-14', '2026-07-21' ) );
+    $check( 'an interval walks in blocks from the anchor\'s week',
+        SFAF_Recurrence::plan_from( 'weekly:2:3', '2026-07-01', 3 ),
+        array( '2026-07-01', '2026-07-15', '2026-07-29' ) );
+    $check( 'two days a week come out in date order',
+        SFAF_Recurrence::plan_from( 'weekly:1:2,4', '2026-07-01', 4 ),
+        array( '2026-06-30', '2026-07-02', '2026-07-07', '2026-07-09' ) );
+    $check( 'the second Tuesday of each month',
+        SFAF_Recurrence::plan_from( 'monthly_nth:2:2', '2026-07-01', 3 ),
+        array( '2026-07-14', '2026-08-11', '2026-09-08' ) );
+    $check( 'the last Friday of each month',
+        SFAF_Recurrence::plan_from( 'monthly_nth:-1:5', '2026-07-01', 3 ),
+        array( '2026-07-31', '2026-08-28', '2026-09-25' ) );
+    $check( 'daily counts from the anchor itself',
+        SFAF_Recurrence::plan_from( 'daily:3', '2026-07-01', 3 ),
+        array( '2026-07-01', '2026-07-04', '2026-07-07' ) );
+    $check( 'custom cannot be laid out, because there is no arithmetic in it',
+        SFAF_Recurrence::plan_from( 'custom', '2026-07-01', 3 ), array() );
 
     // --- extras beside a pattern ------------------------------------------
     // 2026-07-01 is a Wednesday. Weekly to the 29th makes the 8th, 15th, 22nd
@@ -360,7 +409,10 @@ if ( ! empty( $behaviour ) ) {
     foreach ( $behaviour as $f ) { echo $f; }
     exit( 1 );
 }
-printf( "behaviour: 20 rules hold (reductions, custom, extras, all three summary shapes)\n" );
+printf(
+    "behaviour: %d rules hold (reductions, custom, canonical forms, plan_from, extras, all three summary shapes)\n",
+    (int) $GLOBALS['sfaf_behaviour_ran']
+);
 
 /* ------------------------------- self test -------------------------------- */
 if ( $self_test ) {

@@ -64,7 +64,7 @@ class SFAF_Recurrence {
      * is in the group, a bulk edit reaches it, and a time change applies to it.
      * What it is NOT is an instance of the pattern, so a later pattern edit that
      * moves Wednesdays to Tuesdays must leave it exactly where it is. Without a
-     * marker there is nothing to tell reday_group() which dates it may move, and
+     * marker there is nothing to tell repattern_group() which dates it may move, and
      * the Saturday would be shifted to a Sunday nobody chose.
      *
      * ABSENT MEANS "PATTERN DATE", which is what every occurrence generated
@@ -153,7 +153,7 @@ class SFAF_Recurrence {
      *
      * THE STORED FORM IS STILL A SINGLE STRING, deliberately. PATTERN_META has
      * held one since 3.0.0 and is read by pattern_label(), schedule_sentence(),
-     * weekday_is_movable() and reday_group(); giving it a second, structured
+     * has_cadence() and repattern_group(); giving it a second, structured
      * shape would have meant every one of those learning which it was holding.
      * So the structure is IN the string, after a colon:
      *
@@ -799,7 +799,7 @@ class SFAF_Recurrence {
      * weekly Wednesday pattern is part of the same programme: "edit all upcoming
      * occurrences" must reach it, a time change must apply to it, and it must
      * appear on the same schedule. What it must NOT do is move when the pattern
-     * moves, so each one is stamped with EXTRA_META and reday_group() reads it.
+     * moves, so each one is stamped with EXTRA_META and repattern_group() reads it.
      *
      * @param int      $seed_id
      * @param string   $pattern
@@ -891,20 +891,41 @@ class SFAF_Recurrence {
      * what every occurrence created before 3.0.0 already uses and those URLs
      * are live. WordPress appends a numeric suffix only on a genuine collision.
      *
+     * A TITLE OVERRIDE IS THE ONE THING A COPY MAY DIFFER IN, and the slug
+     * follows it. "Use this event's details on another date" exists so that one
+     * date of a weekly group can be called "Annual picnic" or "Guest speaker"
+     * while keeping the location, description, times, category, organizer and
+     * FAQs of the rest; a copy that kept the group's title would make that date
+     * indistinguishable in a list, which is the thing somebody renaming it is
+     * trying to fix. Everything else about the copy is untouched, so this stays
+     * one idea of what an occurrence is rather than becoming two.
+     *
      * @param WP_Post $seed
      * @param string  $date
      * @param string  $group
      * @param string  $pattern
      * @param bool    $is_extra Chosen by hand rather than produced by the pattern.
+     * @param string  $title    Replaces the seed's title. '' keeps it.
      * @return int New post ID, or 0.
      */
-    private static function create_occurrence( $seed, $date, $group, $pattern, $is_extra = false ) {
-        $base = $seed->post_name ? $seed->post_name : sanitize_title( $seed->post_title );
+    private static function create_occurrence( $seed, $date, $group, $pattern, $is_extra = false, $title = '' ) {
+        $title = trim( (string) $title );
+        $title = ( '' !== $title ) ? sanitize_text_field( $title ) : '';
+        $use   = ( '' !== $title ) ? $title : $seed->post_title;
+
+        // The slug follows whichever title is being used, so a renamed date
+        // does not sit at the group's URL with somebody else's words in it.
+        $base = ( '' !== $title )
+            ? sanitize_title( $title )
+            : ( $seed->post_name ? $seed->post_name : sanitize_title( $seed->post_title ) );
+        if ( '' === $base ) {
+            $base = 'event';
+        }
 
         $id = wp_insert_post( array(
             'post_type'    => 'uc_event',
             'post_status'  => $seed->post_status,
-            'post_title'   => $seed->post_title,
+            'post_title'   => $use,
             'post_name'    => $base . '-' . $date,
             'post_content' => $seed->post_content,
             'post_excerpt' => $seed->post_excerpt,
@@ -1196,59 +1217,6 @@ class SFAF_Recurrence {
     }
 
     /**
-     * Whether the weekday of a whole group can be moved sensibly.
-     *
-     * WEEKLY AND BIWEEKLY, YES: every occurrence moves by the same few days and
-     * the interval between them is untouched, so "Wednesdays" becomes
-     * "Tuesdays" and nothing else about the group changes.
-     *
-     * MONTHLY-ON-THE-SAME-WEEKDAY, YES, but by a different calculation: each
-     * date is recomputed as the same ordinal weekday of its own month, so "the
-     * second Friday" becomes "the second Tuesday".
-     *
-     * DAILY AND MONTHLY-ON-THE-DATE, NO, and not because it is hard. Daily
-     * happens on every weekday already, so there is no weekday to change.
-     * Monthly-on-the-date is anchored to a day number, and shifting it to a
-     * weekday would silently convert it into a different pattern from the one
-     * the manager chose. Both take a time change like anything else, and a
-     * single date can always be moved from its own event.
-     *
-     * @param string $pattern
-     * @return bool
-     */
-    public static function weekday_is_movable( $pattern ) {
-        $spec = self::parse_pattern( $pattern );
-        if ( ! $spec ) {
-            return false;
-        }
-        /*
-         * A GROUP ON SEVERAL WEEKDAYS HAS NO SINGLE WEEKDAY TO MOVE.
-         *
-         * "Move this group to Thursdays" is a coherent instruction for a
-         * Wednesday group and a meaningless one for a group that meets
-         * Tuesdays and Thursdays: it cannot say which of the two moved, and
-         * reday_group() would collapse both onto one day, silently halving the
-         * schedule. Multi-day groups are edited date by date on the series
-         * screen, which is where the dates are.
-         */
-        /*
-         * A CUSTOM GROUP HAS NO WEEKDAY AT ALL. Its dates were chosen one at a
-         * time and may be a Monday, a Tuesday and a Wednesday; there is no
-         * pattern for "move it to Thursdays" to act on, and acting on it anyway
-         * would collapse three different days onto one. The times can still be
-         * changed for the whole group, and any single date can be moved from
-         * its own event, which is the same answer daily gets.
-         */
-        if ( 'custom' === $spec['type'] ) {
-            return false;
-        }
-        if ( 'weekly' === $spec['type'] ) {
-            return count( $spec['days'] ) <= 1;
-        }
-        return 'monthly_nth' === $spec['type'];
-    }
-
-    /**
      * Write a start and end time across the upcoming occurrences of a group.
      *
      * @param string $group
@@ -1274,137 +1242,47 @@ class SFAF_Recurrence {
     }
 
     /**
-     * Move the upcoming occurrences of a group onto a different weekday.
+     * A pattern with everything it implies written out.
      *
-     * WEEKLY AND BIWEEKLY MOVE BY A SINGLE UNIFORM OFFSET. Every upcoming date
-     * shifts by the same number of days, so the gap between occurrences is
-     * exactly what it was, the order is what it was, and two of them cannot land
-     * on the same day. The offset takes the SHORT way round: Wednesday to
-     * Tuesday is one day back, not six forward, unless going back would push
-     * the first upcoming occurrence into the past, in which case the whole group
-     * goes forward instead. Nothing here may produce a date earlier than today.
+     * WHY IT EXISTS: TO COMPARE TWO PATTERNS HONESTLY. 'weekly' and
+     * 'weekly:1:3' are the same schedule for a group anchored on a Wednesday,
+     * because the bare shorthand means "the seed's own weekday". A form that
+     * prefills the day circles from the anchor and is submitted unchanged
+     * produces the explicit string, and comparing that to the stored shorthand
+     * as text says the pattern changed when nothing did. The screen would then
+     * report "schedule updated, 0 occurrences changed", which is two sentences
+     * contradicting each other over a button somebody pressed by mistake.
      *
-     * MONTHLY-ON-THE-SAME-WEEKDAY IS RECOMPUTED PER MONTH, because a uniform
-     * offset would not preserve "the second one". Each date becomes the same
-     * ordinal weekday of its own month. A month with no fifth Tuesday is left
-     * alone rather than quietly moved a week early, which is the same rule the
-     * generator follows.
+     * WHAT IT RESOLVES: the weekday a bare 'weekly' or 'biweekly' implies, and
+     * the ordinal and weekday a bare 'monthly_nth' implies. Both come from the
+     * anchor, which is the same place pattern_label() and pattern_dates() take
+     * them from, so a canonical string describes exactly the schedule the
+     * shorthand described.
      *
-     * EXTRA DATES ARE LEFT EXACTLY WHERE THEY ARE, AND THAT IS THE POINT OF
-     * MARKING THEM. A weekly Wednesday group that also meets on one Saturday is
-     * two different statements: "every Wednesday" and "and also the 14th". This
-     * function changes the first one. The Saturday was never on the pattern, so
-     * there is nothing about it for a pattern edit to recompute, and shifting it
-     * by the same offset would land it on a Sunday nobody chose. The count of
-     * what was left alone is returned so the screen can say so BEFORE the
-     * button is pressed as well as after.
-     *
-     * A TIME CHANGE IS THE OPPOSITE CASE and reaches everything: see
-     * retime_group(), which is bounded by upcoming_in_group() and reads no
-     * marker. The group meets at the same time on every date it meets, whether
-     * or not the pattern chose the date.
-     *
-     * THE SLUG DOES NOT MOVE WITH THE DATE. Occurrence permalinks contain the
-     * date they were generated for and they are live URLs; renaming them would
-     * break every link anybody has to a session that is still happening, just on
-     * a different day. Same reasoning as apply_to_group().
-     *
-     * @param string $group
-     * @param int    $target_dow 0 (Sunday) to 6 (Saturday).
-     * @return array{moved:int,skipped:int,left:int}
+     * @param string $pattern
+     * @param string $anchor Y-m-d the pattern is anchored to.
+     * @return string
      */
-    public static function reday_group( $group, $target_dow ) {
-        $out        = array( 'moved' => 0, 'skipped' => 0, 'left' => 0 );
-        $target_dow = (int) $target_dow;
-        if ( $target_dow < 0 || $target_dow > 6 ) {
-            return $out;
+    public static function canonical_pattern( $pattern, $anchor = '' ) {
+        $spec   = self::parse_pattern( $pattern );
+        $anchor = (string) $anchor;
+        if ( ! $spec ) {
+            return '';
         }
-
-        $split = self::split_group( $group );
-        $ids   = $split['pattern'];
-        $out['left'] = count( $split['extra'] );
-        if ( empty( $ids ) ) {
-            return $out;
-        }
-
-        $pattern = self::pattern_of( $ids[0] );
-        if ( ! self::weekday_is_movable( $pattern ) ) {
-            return $out;
-        }
-
-        $tz    = wp_timezone();
-        $today = current_time( 'Y-m-d' );
-
-        $dates = array();
-        foreach ( $ids as $id ) {
-            $dates[ $id ] = (string) get_post_meta( $id, '_uc_event_date', true );
-        }
-
-        if ( 'monthly_nth' === $pattern ) {
-            $names = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
-            foreach ( $dates as $id => $date ) {
-                $nth = self::nth_weekday_of_month( $date );
-                if ( ! $nth ) {
-                    $out['skipped']++;
-                    continue;
-                }
-                try {
-                    $month = new DateTimeImmutable( substr( $date, 0, 7 ) . '-01', $tz );
-                } catch ( Exception $e ) {
-                    $out['skipped']++;
-                    continue;
-                }
-                $hit = $month->modify( sprintf( '%s %s of this month', self::ordinal_word( $nth["nth"] ), $names[ $target_dow ] ) );
-                if ( ! $hit || $hit->format( 'Y-m' ) !== $month->format( 'Y-m' ) || $hit->format( 'Y-m-d' ) < $today ) {
-                    $out['skipped']++;
-                    continue;
-                }
-                update_post_meta( $id, '_uc_event_date', $hit->format( 'Y-m-d' ) );
-                $out['moved']++;
+        if ( 'weekly' === $spec['type'] && empty( $spec['days'] ) && '' !== $anchor ) {
+            $dow = self::dow_of( $anchor );
+            if ( null !== $dow ) {
+                $spec['days'] = array( $dow );
             }
-            return $out;
         }
-
-        /*
-         * Weekly and biweekly: one offset for the whole group.
-         *
-         * ANCHORED AT MIDDAY. _uc_event_date is a plain calendar day held as
-         * text, not an instant, and adding days to a midnight timestamp is the
-         * one arithmetic here that a daylight-saving boundary could move by an
-         * hour and therefore by a day. Midday has an hour of slack either side.
-         */
-        $first    = reset( $dates );
-        $first_ts = $first ? strtotime( $first . ' 12:00:00' ) : false;
-        if ( ! $first_ts ) {
-            return $out;
-        }
-
-        $offset = ( $target_dow - (int) date( 'w', $first_ts ) + 7 ) % 7;
-        if ( $offset > 3 ) {
-            $offset -= 7; // the short way round
-        }
-        if ( 0 === $offset ) {
-            return $out; // already on that day
-        }
-        if ( $offset < 0 && date( 'Y-m-d', strtotime( $first . ' 12:00:00 ' . $offset . ' days' ) ) < $today ) {
-            $offset += 7; // backwards would land the next session in the past
-        }
-
-        foreach ( $dates as $id => $date ) {
-            $ts = $date ? strtotime( $date . ' 12:00:00 ' . sprintf( '%+d', $offset ) . ' days' ) : false;
-            if ( ! $ts ) {
-                $out['skipped']++;
-                continue;
+        if ( 'monthly_nth' === $spec['type'] && ( 0 === $spec['nth'] || $spec['dow'] < 0 ) && '' !== $anchor ) {
+            $derived = self::nth_weekday_of_month( $anchor );
+            if ( $derived ) {
+                $spec['nth'] = $derived['nth'];
+                $spec['dow'] = $derived['dow'];
             }
-            $moved = date( 'Y-m-d', $ts );
-            if ( $moved < $today ) {
-                $out['skipped']++;
-                continue;
-            }
-            update_post_meta( $id, '_uc_event_date', $moved );
-            $out['moved']++;
         }
-        return $out;
+        return self::pattern_string( $spec );
     }
 
     /**
@@ -1426,9 +1304,10 @@ class SFAF_Recurrence {
      * @param string $start       H:i, '' to keep the seed's.
      * @param string $end         H:i, '' to keep the seed's.
      * @param bool   $join_group  Whether it joins the seed's recurrence group.
+     * @param string $title       Replaces the copy's title. '' keeps the seed's.
      * @return int|WP_Error New post ID.
      */
-    public static function add_occurrence( $seed_id, $date, $start = '', $end = '', $join_group = true ) {
+    public static function add_occurrence( $seed_id, $date, $start = '', $end = '', $join_group = true, $title = '' ) {
         $seed = get_post( (int) $seed_id );
         if ( ! $seed || 'uc_event' !== $seed->post_type ) {
             return new WP_Error( 'sfaf_add_date_no_seed', 'There is no event to copy this date from.' );
@@ -1443,26 +1322,37 @@ class SFAF_Recurrence {
         $pattern = $join_group ? self::pattern_of( $seed->ID ) : '';
 
         /*
+         * "JOIN THE GROUP" AND "THERE IS A GROUP TO JOIN" ARE TWO QUESTIONS.
+         * A series whose dates were never generated from a pattern has no group
+         * marker on any of them, so asking to join one has nothing to join.
+         * Deciding that here rather than downstream is what keeps the two
+         * markers and the cleanup below in agreement: without it a seed with no
+         * group produced an occurrence carrying an EMPTY group meta row and an
+         * extra-date marker describing a group that does not exist.
+         */
+        $joined = ( '' !== $group );
+
+        /*
          * A DATE ADDED FROM THE SCHEDULE SCREEN IS AN EXTRA DATE BY DEFINITION.
          * Somebody typed it; the pattern did not produce it. Marking it here is
-         * what stops a later "move this group to Tuesdays" from dragging a
-         * one-off Saturday session along with the Wednesdays, and it is the same
-         * marker the editor's extra-dates picker writes, so there is one meaning
-         * of "extra" rather than one per screen.
+         * what stops a later pattern change from dragging a one-off Saturday
+         * session along with the Wednesdays, and it is the same marker the
+         * editor's extra-dates picker writes, so there is one meaning of "extra"
+         * rather than one per screen.
          */
-        $id = self::create_occurrence( $seed, $date, $group, $pattern, (bool) $join_group );
+        $id = self::create_occurrence( $seed, $date, $group, $pattern, $joined, $title );
         if ( ! $id ) {
             return new WP_Error( 'sfaf_add_date_failed', 'The date could not be added.' );
         }
 
         /*
-         * A DATE THAT IS DELIBERATELY NOT IN THE GROUP CARRIES NEITHER MARKER.
+         * A DATE THAT IS NOT IN A GROUP CARRIES NEITHER MARKER.
          * create_occurrence() writes whatever it is given, so an empty group
          * would leave an empty meta row behind and upcoming_in_group() matches
          * on value, not existence. Removing them outright is what makes this a
          * genuine one-off that no bulk edit can reach.
          */
-        if ( ! $join_group ) {
+        if ( ! $joined ) {
             delete_post_meta( $id, self::GROUP_META );
             delete_post_meta( $id, self::PATTERN_META );
             delete_post_meta( $id, self::EXTRA_META );
@@ -1476,6 +1366,434 @@ class SFAF_Recurrence {
         }
 
         return $id;
+    }
+
+    /**
+     * Lay out N dates on a pattern, starting from the period a date is in.
+     *
+     * WHY THIS IS NOT dates(). dates() answers "what does this pattern produce
+     * AFTER the seed", which is the generator's question: the seed is an event
+     * that already exists and must not be produced twice. This answers "where
+     * would N occurrences sit if this pattern had been the one all along",
+     * which is what changing a group's pattern needs, and the difference is
+     * that the anchor's own period is IN the answer rather than excluded from
+     * it. A weekly Wednesday group moved to Tuesdays has to be able to land on
+     * the Tuesday of the same week; through dates() the first Tuesday available
+     * is in the week after, and the whole group would slip forward by six days
+     * for no reason a manager could see.
+     *
+     * THE FLOOR IS NOT THE ANCHOR AND THE TWO ARE BOTH NEEDED. The anchor says
+     * which week or month to start laying out from; the floor says what may not
+     * be crossed, and it is today. A group whose next date is this Wednesday can
+     * legitimately move back to this Tuesday if that Tuesday has not been yet,
+     * and must not if it has.
+     *
+     * THE ARITHMETIC IS THE SAME ARITHMETIC pattern_dates() USES, deliberately,
+     * including the "+N month" behaviour that carries a 31st into the following
+     * month and the rule that a month with no fifth Friday is skipped rather
+     * than served a fourth. A second monthly calculation in this file would be
+     * a second answer to the same question.
+     *
+     * @param string $pattern
+     * @param string $anchor Y-m-d whose week or month the lay-out starts from.
+     * @param int    $count  How many dates to return.
+     * @param string $floor  Y-m-d; nothing earlier is returned. '' for no floor.
+     * @return string[] Y-m-d, ascending. Fewer than $count if it ran out of room.
+     */
+    public static function plan_from( $pattern, $anchor, $count, $floor = '' ) {
+        $spec   = self::parse_pattern( $pattern );
+        $count  = (int) $count;
+        $anchor = (string) $anchor;
+        $floor  = (string) $floor;
+
+        if ( ! $spec || 'custom' === $spec['type'] || $count < 1 || '' === $anchor ) {
+            return array();
+        }
+        $count = min( $count, self::MAX_OCCURRENCES );
+
+        $tz = wp_timezone();
+        try {
+            $from = new DateTimeImmutable( $anchor, $tz );
+        } catch ( Exception $e ) {
+            return array();
+        }
+
+        // Twice the cap, because the floor can legitimately reject the first
+        // period or two before anything is emitted. A guard, not a feature.
+        $rounds = self::MAX_OCCURRENCES * 2;
+        $out    = array();
+
+        $keep = function ( $ymd ) use ( &$out, $floor ) {
+            if ( '' !== $floor && $ymd < $floor ) {
+                return;
+            }
+            $out[] = $ymd;
+        };
+
+        switch ( $spec['type'] ) {
+
+            case 'daily':
+                $cur = $from;
+                for ( $i = 0; $i < $rounds && count( $out ) < $count; $i++ ) {
+                    $keep( $cur->format( 'Y-m-d' ) );
+                    $cur = $cur->modify( '+' . $spec['interval'] . ' day' );
+                }
+                break;
+
+            case 'weekly':
+                $days = $spec['days'];
+                if ( empty( $days ) ) {
+                    $days = array( (int) $from->format( 'w' ) );
+                }
+                sort( $days );
+                // Week blocks from the Sunday of the anchor's own week, which is
+                // the block the generator would have used had this pattern
+                // produced the group. Same shape as pattern_dates().
+                $week0 = $from->modify( '-' . (int) $from->format( 'w' ) . ' days' );
+                for ( $b = 0; $b < $rounds && count( $out ) < $count; $b++ ) {
+                    $base = $week0->modify( '+' . ( $b * $spec['interval'] ) . ' weeks' );
+                    foreach ( $days as $dw ) {
+                        if ( count( $out ) >= $count ) {
+                            break;
+                        }
+                        $keep( $base->modify( '+' . (int) $dw . ' days' )->format( 'Y-m-d' ) );
+                    }
+                }
+                break;
+
+            case 'monthly':
+                // The day of the month comes from the anchor, because it is the
+                // only date in the question that has one.
+                $cur = $from;
+                for ( $i = 0; $i < $rounds && count( $out ) < $count; $i++ ) {
+                    $keep( $cur->format( 'Y-m-d' ) );
+                    $cur = $cur->modify( '+' . $spec['interval'] . ' month' );
+                }
+                break;
+
+            case 'monthly_nth':
+                $nth = $spec['nth'];
+                $dow = $spec['dow'];
+                if ( 0 === $nth || $dow < 0 ) {
+                    $derived = self::nth_weekday_of_month( $anchor );
+                    if ( ! $derived ) {
+                        return array();
+                    }
+                    $nth = $derived['nth'];
+                    $dow = $derived['dow'];
+                }
+                $names = self::weekday_names();
+                $day   = $names[ $dow ];
+                $month = new DateTimeImmutable( $from->format( 'Y-m-01' ), $tz );
+
+                for ( $i = 0; $i < $rounds && count( $out ) < $count; $i++ ) {
+                    $cursor = $month->modify( '+' . $i . ' months' );
+                    if ( -1 === $nth ) {
+                        $hit = $cursor->modify( 'last ' . $day . ' of this month' );
+                    } else {
+                        $hit = $cursor->modify( sprintf( '%s %s of this month', self::ordinal_word( $nth ), $day ) );
+                        // A month with no fifth Friday is skipped, never served
+                        // a fourth. Same rule as the generator.
+                        if ( ! $hit || $hit->format( 'Y-m' ) !== $cursor->format( 'Y-m' ) ) {
+                            continue;
+                        }
+                    }
+                    if ( ! $hit ) {
+                        continue;
+                    }
+                    $keep( $hit->format( 'Y-m-d' ) );
+                }
+                break;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Move a group's upcoming pattern dates onto a different pattern.
+     *
+     * WHAT CHANGES AND WHAT DOES NOT. The dates move; the number of them does
+     * not. A group with twelve upcoming sessions has twelve upcoming sessions
+     * afterwards, on the new cadence, and nothing is created and nothing is
+     * deleted. That is what makes this safe to offer beside a button that says
+     * "update 12 occurrences": the number in the sentence is the number of
+     * events before and after, so there is no second outcome to explain.
+     *
+     * THE PAST IS NOT TOUCHED, and cannot be. split_group() is built on
+     * upcoming_in_group(), which is "today or later" at the query, so there is
+     * no code path from here that reaches a session that has already happened.
+     *
+     * EXTRA DATES ARE LEFT WHERE THEY ARE, which is the same guarantee
+     * repattern_group() gives and for the same reason: a Saturday somebody added
+     * beside a weekly Wednesday group was never on the pattern, so there is
+     * nothing about it for a pattern change to recompute. They stay in the
+     * group, so a time change still reaches them, and the count of what was
+     * left alone is returned so the screen can say so.
+     *
+     * THE PATTERN IS WRITTEN ON EVERY UPCOMING OCCURRENCE, EXTRAS INCLUDED.
+     * pattern_of() is read off whichever occurrence a screen happens to have,
+     * so a group carrying two different pattern strings would describe itself
+     * differently depending on which date was opened. The past keeps the
+     * pattern that actually produced it, which is the true record.
+     *
+     * WHY IT REFUSES RATHER THAN HALF-MOVING. If the lay-out cannot produce a
+     * date for every occurrence, writing the ones it did produce would leave
+     * the rest of the group sitting on the old cadence with no way to tell
+     * which was which. Nothing is written in that case and 'refused' says so.
+     *
+     * @param string $group
+     * @param string $pattern The new pattern, in stored form.
+     * @return array{moved:int,left:int,first:string,last:string,pattern:string,refused:bool}
+     */
+    public static function repattern_group( $group, $pattern ) {
+        $out = array(
+            'moved'   => 0,
+            'left'    => 0,
+            'first'   => '',
+            'last'    => '',
+            'pattern' => '',
+            'refused' => false,
+        );
+
+        $pattern = self::clean_pattern( $pattern );
+        // 'custom' is not a cadence to move a group onto: it means "these dates
+        // were chosen one at a time", and there is no arithmetic in it to lay
+        // anything out with.
+        if ( '' === $pattern || ! self::has_cadence( $pattern ) ) {
+            return $out;
+        }
+
+        $split       = self::split_group( $group );
+        $ids         = $split['pattern'];
+        $out['left'] = count( $split['extra'] );
+        if ( empty( $ids ) ) {
+            return $out;
+        }
+
+        $anchor = (string) get_post_meta( $ids[0], '_uc_event_date', true );
+        if ( '' === $anchor ) {
+            return $out;
+        }
+
+        $dates = self::plan_from( $pattern, $anchor, count( $ids ), current_time( 'Y-m-d' ) );
+        if ( count( $dates ) < count( $ids ) ) {
+            $out['refused'] = true;
+            return $out;
+        }
+
+        foreach ( $ids as $i => $id ) {
+            $old = (string) get_post_meta( $id, '_uc_event_date', true );
+            if ( $dates[ $i ] !== $old ) {
+                update_post_meta( $id, '_uc_event_date', $dates[ $i ] );
+                $out['moved']++;
+            }
+        }
+
+        foreach ( self::upcoming_in_group( $group ) as $id ) {
+            update_post_meta( $id, self::PATTERN_META, $pattern );
+        }
+
+        $out['first']   = $dates[0];
+        $out['last']    = $dates[ count( $ids ) - 1 ];
+        $out['pattern'] = $pattern;
+        return $out;
+    }
+
+    /**
+     * The last date a group has been generated out to.
+     *
+     * "Generated to" is the last date that EXISTS, extra dates included, because
+     * that is what somebody looking at the schedule can see. The anchor a new
+     * run is calculated from is a different question and is answered inside
+     * extend_group(), which needs the last PATTERN date rather than this one.
+     *
+     * @param string $group
+     * @return string Y-m-d, or ''.
+     */
+    public static function horizon( $group ) {
+        $ids = self::all_in_group( $group );
+        if ( empty( $ids ) ) {
+            return '';
+        }
+        return (string) get_post_meta( (int) end( $ids ), '_uc_event_date', true );
+    }
+
+    /**
+     * Every date a group has ever held, INCLUDING ONES THAT WERE REMOVED.
+     *
+     * Trashing an occurrence leaves its meta intact, so a removed date is still
+     * findable, and finding it is the whole point: a holiday somebody took off
+     * the schedule in December must not reappear because somebody extended the
+     * series in January. This is what makes "nothing regenerates it" survive the
+     * arrival of a generator that runs more than once.
+     *
+     * @param string $group
+     * @return array<string,true> Y-m-d keys.
+     */
+    private static function group_dates_including_removed( $group ) {
+        $group = (string) $group;
+        if ( '' === $group ) {
+            return array();
+        }
+
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => array_merge( SFAF_Series::editable_statuses(), array( 'trash' ) ),
+            'posts_per_page'         => -1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                'group'      => array( 'key' => self::GROUP_META, 'value' => $group ),
+                'event_date' => array( 'key' => '_uc_event_date', 'compare' => 'EXISTS' ),
+            ),
+        ) );
+
+        $out = array();
+        foreach ( $q->posts as $id ) {
+            $d = (string) get_post_meta( (int) $id, '_uc_event_date', true );
+            if ( '' !== $d ) {
+                $out[ $d ] = true;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Carry a group's existing pattern further into the future.
+     *
+     * THE COMMON CASE THIS IS FOR: a series runs to December 31 and has to keep
+     * going into the new year. Nothing about the cadence changes. Until now the
+     * only way to do it was to add the dates one at a time.
+     *
+     * IT ONLY EVER ADDS, AND ONLY EVER AFTER WHAT IS ALREADY THERE. Three
+     * separate rules make that true and each one is load-bearing:
+     *
+     *   1. The lay-out starts from the last PATTERN date, not the last date. A
+     *      group whose latest occurrence is a Saturday somebody added by hand
+     *      would otherwise be re-anchored onto Saturdays.
+     *   2. A date the group already holds is skipped, and "already holds"
+     *      includes TRASHED occurrences. Removing December 24 is meant to stick;
+     *      an extend run three weeks later must not quietly put it back. See
+     *      group_dates_including_removed().
+     *   3. Nothing before today is created. A dormant group whose last date was
+     *      in March would otherwise be back-filled with six months of sessions
+     *      that never happened.
+     *
+     * WHAT IT MAKES ARE PATTERN DATES, not extras: the cadence produced them,
+     * so a later pattern change is entitled to move them.
+     *
+     * THIS IS THE FUNCTION A SCHEDULED TOP-UP WOULD CALL, and it is written to
+     * be called that way rather than adapted later. It takes a group and a
+     * date and nothing else; it derives its own seed, anchor and pattern from
+     * the stored data; it touches no request state and returns rather than
+     * redirects; and it is idempotent, because a second run with the same
+     * horizon finds every date already taken and creates nothing. An "ongoing
+     * series" cron would call it once a week with today plus twelve months and
+     * need no other entry point.
+     *
+     * @param string $group
+     * @param string $until Y-m-d, inclusive.
+     * @return array{created:int[],dates:string[],from:string,anchor:string,skipped:int,reason:string}
+     */
+    public static function extend_group( $group, $until ) {
+        $out = array(
+            'created' => array(),
+            'dates'   => array(),
+            'from'    => '',
+            'anchor'  => '',
+            'skipped' => 0,
+            'reason'  => '',
+        );
+
+        $group = (string) $group;
+        $until = trim( (string) $until );
+
+        if ( '' === $group ) {
+            $out['reason'] = 'no_group';
+            return $out;
+        }
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $until ) ) {
+            $out['reason'] = 'bad_date';
+            return $out;
+        }
+
+        $ids = self::all_in_group( $group );
+        if ( empty( $ids ) ) {
+            $out['reason'] = 'no_dates';
+            return $out;
+        }
+
+        /*
+         * THE CADENCE IS CHECKED FIRST, AND THE ORDER OF THESE TWO IS A BUG
+         * THAT WAS CAUGHT RATHER THAN A STYLE. Every date in a Custom group is
+         * marked as an extra date, because every one of them was chosen by
+         * hand, so the "last pattern date" search below finds nothing there and
+         * returned 'no_pattern_date'. That reason reads as a fault in the data;
+         * the truth is that the group has no cadence to carry forward, which is
+         * a normal state with its own sentence. The pattern is on every
+         * occurrence in a group, so any of them answers this.
+         */
+        $pattern = self::pattern_of( (int) end( $ids ) );
+        if ( ! self::has_cadence( $pattern ) ) {
+            $out['reason'] = 'no_cadence';
+            return $out;
+        }
+
+        // The anchor and the content both come from the LAST PATTERN
+        // OCCURRENCE. One post, for two reasons that happen to agree: it is
+        // where the cadence's arithmetic has to resume from, and it is the
+        // occurrence whose title and details are the group's own rather than a
+        // one-off's. A date added through "use this event's details on another
+        // date" may carry a title of its own, and copying that forward would
+        // name every new session after one picnic.
+        $seed_id = 0;
+        foreach ( array_reverse( $ids ) as $id ) {
+            if ( self::is_extra_date( $id ) ) {
+                continue;
+            }
+            $seed_id       = (int) $id;
+            $out['anchor'] = (string) get_post_meta( $seed_id, '_uc_event_date', true );
+            break;
+        }
+        if ( ! $seed_id || '' === $out['anchor'] ) {
+            $out['reason'] = 'no_pattern_date';
+            return $out;
+        }
+
+        $out['from'] = self::horizon( $group );
+        if ( $until <= $out['from'] ) {
+            $out['reason'] = 'not_further';
+            return $out;
+        }
+
+        $seed = get_post( $seed_id );
+        if ( ! $seed || 'uc_event' !== $seed->post_type ) {
+            $out['reason'] = 'no_pattern_date';
+            return $out;
+        }
+
+        $taken = self::group_dates_including_removed( $group );
+        $today = current_time( 'Y-m-d' );
+
+        foreach ( self::dates( $out['anchor'], $until, $pattern, 0 ) as $date ) {
+            if ( isset( $taken[ $date ] ) || $date < $today ) {
+                $out['skipped']++;
+                continue;
+            }
+            $new = self::create_occurrence( $seed, $date, $group, $pattern, false );
+            if ( $new ) {
+                $out['created'][] = $new;
+                $out['dates'][]   = $date;
+            } else {
+                $out['skipped']++;
+            }
+        }
+
+        if ( empty( $out['created'] ) && '' === $out['reason'] ) {
+            $out['reason'] = 'nothing_missing';
+        }
+        return $out;
     }
 
     /**

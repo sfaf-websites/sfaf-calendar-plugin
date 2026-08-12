@@ -56,6 +56,27 @@ function ac_php_files( $root ) {
         if ( false !== stripos( $path, '/Old Calendar Files/' ) ) {
             continue;
         }
+        /*
+         * AND THE BUILD TOOLS THEMSELVES, INCLUDING THIS ONE.
+         *
+         * .claude/ holds the checkers, and two of them stub WordPress with an
+         * in-memory store so the engine can be run without a site. Those stubs
+         * are deliberately narrower than core: group-ops-test.php declares
+         * wp_set_object_terms() with the three arguments it needs, and core
+         * takes four. Auditing them therefore did BOTH kinds of damage at once.
+         * A false positive, because the stub became the definition every caller
+         * in the plugin was checked against, and class-sfaf-series.php was
+         * reported for passing four arguments to a real function that accepts
+         * them. And, more quietly, a false NEGATIVE waiting to happen: a stub is
+         * a definition, so a plugin file calling a core function that is not
+         * declared anywhere would look resolved as soon as some harness happened
+         * to stub it.
+         *
+         * The audit's subject is the plugin that ships. These are not it.
+         */
+        if ( preg_match( '#/\.claude/#', $path ) ) {
+            continue;
+        }
         $out[] = $path;
     }
     sort( $out );

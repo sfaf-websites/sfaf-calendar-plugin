@@ -403,8 +403,33 @@
 .uc-single .uc-single-body img { border-radius: 10px; }
 
 
-/* Calendar container */
-.uc-calendar { max-width: 900px; margin: 0 auto; font-family: var(--uc-font-heading); }
+/* ---------------------------------------------------------------------------
+   Calendar container
+
+   IT IS ITS OWN QUERY CONTAINER, FOR THE REASON SET OUT ON .uc-sidebar. Both
+   display modes this root carries, the list and the month grid, are pasted
+   into columns of unknown width through the embed, and every "narrow" rule
+   they had was gated on the viewport. On a 1440px desktop showing a 280px
+   column, `@media (max-width: 640px)` is unreachable, so the month grid's
+   phone treatment could not fire and seven columns were rendered into 40px
+   cells. See the container queries at the foot of the month grid section.
+
+   `max-width: 900px` is a cap, not a size; a block already fills its parent
+   and the margin: 0 auto centres it once it stops growing.
+
+   NOTHING IN HERE IS POSITIONED AGAINST THE VIEWPORT. Layout containment
+   arrives with inline-size containment and makes this element the containing
+   block for absolutely and fixed positioned descendants, so that had to be
+   checked rather than assumed: .uc-addcal-menu resolves against .uc-addcal,
+   .uc-month-count::before against .uc-month-count and .uc-month-loading::after
+   against .uc-month, all of which are position: relative and closer than this.
+   .uc-visually-hidden is absolute, 1px square and clipped, so it has no
+   position to lose. The RSVP modal is the one thing that would have broken and
+   it is appended to <body>, outside this root, which is documented at its own
+   rules and is now load-bearing for a second reason.
+   ------------------------------------------------------------------------- */
+.uc-calendar { max-width: 900px; margin: 0 auto; font-family: var(--uc-font-heading);
+    container-type: inline-size; container-name: uc-calendar; }
 
 /* ---------------------------------------------------------------------------
    Brand typography (p.10). Set explicitly rather than by inheritance: an
@@ -435,8 +460,16 @@
 
 /* Filters */
 .uc-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--uc-border); margin-bottom: 16px; }
-.uc-search-wrap { flex-shrink: 0; }
-.uc-search { padding: 8px 14px; border: 1px solid var(--uc-border-strong); border-radius: 8px; font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4; color: var(--uc-text); background: #fff; width: 200px; transition: border-color 0.2s; }
+/* THE ONE CONTROL THAT ACTUALLY OVERFLOWED. `flex-shrink: 0` around a field
+   declaring `width: 200px` is a 230px reservation once its padding and border
+   are counted, and in a 200px column that is 30px of the host's page it walked
+   into. `flex: 0 1 200px` keeps the desktop size exactly (basis 200, no grow)
+   and lets it give way when there is not 200px to give; the field takes its
+   width from the wrapper instead of restating it, so the two cannot disagree.
+   min-width: 0 because a flex item's automatic minimum size is its content,
+   which would have made "may shrink" untrue. */
+.uc-search-wrap { flex: 0 1 200px; min-width: 0; }
+.uc-search { padding: 8px 14px; border: 1px solid var(--uc-border-strong); border-radius: 8px; font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4; color: var(--uc-text); background: #fff; width: 100%; transition: border-color 0.2s; }
 /* A6, and the same fault as the modal's fields: this said `outline: none` and
    put brand teal on the border in its place, which is 2.26:1 against the white
    field and under the 3:1 floor for a focus indicator, with a 10% alpha shadow
@@ -1348,6 +1381,110 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 /* Day panel: hidden on desktop, where the events are already in the cells. */
 .uc-month-day-panel { display: none; }
 
+/* ===========================================================================
+ * LIST AND MONTH GRID: HOW THEY REFLOW IN A NARROW COLUMN
+ *
+ * THE FAULT THIS FIXES IS NOT THAT THE RULES WERE MISSING. The month grid has
+ * had a complete phone layout since 2.x, twenty lines down from here, and it
+ * could not fire in the placement that needed it most. It is gated on
+ * `@media (max-width: 640px)`, which asks about the WINDOW; an embed dropped
+ * into a 280px column on a 1440px desktop is 280px wide inside a 1440px
+ * window, so the query is false and the desktop grid rendered into 40px cells:
+ * seven columns, a truncated event title of two or three characters, and a
+ * "6-7:30 pm" wrapping under it. Nothing overflowed, because the table is
+ * `table-layout: fixed; width: 100%`, so nothing looked broken enough to
+ * report.
+ *
+ * SO THE QUESTION IS ASKED OF THE CONTAINER INSTEAD. Same declarations, same
+ * intent, measured against .uc-calendar's own width. The viewport copy STAYS,
+ * further down, as the fallback for a browser with no container query support,
+ * and the two agree by construction: on a phone the embed fills the screen, so
+ * both are true and both say the same thing. THEY MUST BE EDITED TOGETHER, and
+ * the viewport copy is marked as the copy.
+ *
+ * MINIMUM SUPPORTED WIDTHS: 260px for the list, 300px for the month grid.
+ * Below those they still render and still do not overflow; what goes is
+ * comfort, the date block and the seven day columns being the two things with
+ * a hard floor. Documented in readme.txt rather than enforced with min-width,
+ * for the reason given at the sidebar's own block.
+ * ======================================================================== */
+
+/* ---- Month grid: the Outlook pattern, by container width ----------------
+ * 560 rather than 640, because a container is measured inside the host's own
+ * page padding while a viewport is not, so the same layout is reached a little
+ * later. SPECIFICITY MUST MATCH THE DESKTOP RULES ABOVE for the reason spelled
+ * out at the viewport copy: a container query changes when a rule applies,
+ * never how strongly, and .uc-month-grid td alone at (0,1,1) would lose to the
+ * scoped (0,2,1) it is trying to replace. */
+@container uc-calendar (max-width: 560px) {
+    .uc-calendar .uc-month-grid td { height: auto; min-height: 44px; padding: 4px 2px; text-align: center; }
+    .uc-calendar .uc-month-grid th { padding: 6px 2px; letter-spacing: 0; }
+    .uc-day-name-full { display: none; }
+    .uc-day-name-min { display: inline; }
+    .uc-calendar .uc-day-events { display: none; }
+    .uc-day-num { margin-bottom: 2px; }
+
+    .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
+    .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
+
+    .uc-month-day-panel { display: block; margin-top: 16px; }
+    .uc-calendar .uc-day-panel-title { margin: 0 0 8px; font-size: 14px; font-weight: 800; color: var(--uc-text); }
+    .uc-calendar .uc-day-panel-empty { margin: 0; font-size: 13px; color: var(--uc-secondary); }
+    .uc-calendar .uc-month-day-panel .uc-day-events { display: flex; gap: 6px; }
+    .uc-calendar .uc-month-day-panel .uc-day-event a { padding: 10px 12px; font-size: 14px; text-align: left; }
+    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; }
+    .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
+
+    .uc-month-head { align-items: flex-start; }
+}
+
+/* ---- Both modes: the chrome above them --------------------------------- */
+@container uc-calendar (max-width: 420px) {
+    /* The month name is the largest thing on the block and the first to make
+       the header wrap into three lines. */
+    .uc-calendar .uc-month-label { font-size: 17px; }
+    .uc-calendar .uc-month-range { font-size: 11px; }
+
+    /* The card gives up four of its eighteen points of padding, which is four
+       points back on every line of every title. */
+    .uc-calendar .uc-event-card { padding: 14px; }
+    .uc-calendar .uc-lc-head { gap: 10px; }
+    /* 26px of `white-space: nowrap` date is the hard floor in a card header:
+       "Sept 24" will not break and will not shrink, so it is what decides when
+       the chips beside it run out of room. Dropping it to 22 buys 12px. */
+    .uc-calendar .uc-lc-md { font-size: 22px; }
+    .uc-calendar .uc-event-card .uc-card-title { font-size: 16px; }
+}
+
+/* ---- The list card, stacked ---------------------------------------------
+ * Below this the header cannot hold a category chip and a date side by side:
+ * the date takes 78px of a 204px content box and the chip wraps inside its own
+ * pill, which reads as a broken control rather than as a narrow one. Stacked,
+ * each gets the full width and the reading order is unchanged, because the
+ * chips already come first in the source. */
+@container uc-calendar (max-width: 340px) {
+    .uc-calendar .uc-lc-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .uc-calendar .uc-lc-date { text-align: left; }
+    .uc-calendar .uc-lc-dow { display: inline; }
+    .uc-calendar .uc-lc-md { display: inline; font-size: 20px; margin-left: 6px; }
+
+    .uc-calendar .uc-event-card .uc-lc-foot { flex-direction: column; align-items: stretch; gap: 10px; }
+    .uc-calendar .uc-event-card .uc-lc-actions { margin-left: 0; }
+    /* THE TRUNCATION IS LIFTED HERE, AND THAT IS NOT AN OVERSIGHT. The note is
+       `white-space: nowrap` with an ellipsis so that the button growing on
+       hover can never push it to a second line and change the card's height.
+       Stacked, the button is on its own row and cannot push anything, so the
+       reason for the truncation is gone and the whole note can be read. */
+    .uc-calendar .uc-event-card .uc-lc-note { white-space: normal; overflow: visible; text-overflow: clip; }
+}
+
+@container uc-calendar (max-width: 300px) {
+    /* Seven columns of day numbers, and nothing else in the cell. */
+    .uc-calendar .uc-month-grid td { padding: 3px 1px; }
+    .uc-day-num { min-width: 19px; height: 19px; padding: 0 3px; font-size: 10px; }
+    .uc-calendar .uc-event-card { padding: 12px; }
+}
+
 /* ---------------------------------------------------------------------------
    SIDEBAR MODE: a thumbnail, a title, and one quiet line underneath.
 
@@ -1365,10 +1502,35 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 
    THE LIST IS STATIC. No auto-advance, no scrolling loop, no carousel.
    ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   IT FILLS THE COLUMN IT IS GIVEN, AND max-width IS A CAP RATHER THAN A SIZE.
+
+   This block is pasted into columns of whatever width a page happens to have,
+   on sfaf.org and on sites we do not control. `max-width: 380px` was already
+   the right kind of rule: a block element fills its parent and stops at 380,
+   so the card itself has never assumed a width. What DID assume one were the
+   things inside it, and they are handled by the container queries at the foot
+   of this section.
+
+   IT IS ITS OWN QUERY CONTAINER, WHICH IS THE WHOLE POINT. A media query asks
+   how wide the WINDOW is, and the window is 1440px while this card is 280.
+   Every "narrow" rule in this file that is gated on the viewport is therefore
+   unreachable in a sidebar placement, which is exactly the fault this fixes.
+   `container-type: inline-size` makes the card the thing its own contents
+   measure themselves against.
+
+   SAFE, BECAUSE OF WHAT IS NOT IN HERE. inline-size containment also applies
+   layout containment, which makes an element the containing block for
+   absolutely and fixed positioned descendants. Nothing inside a sidebar row is
+   positioned, and the RSVP modal is appended to <body> rather than living in
+   here, so there is nothing for that to catch. Paint is NOT contained, so the
+   row hover's ±14px box-shadow bleed still reaches the card's padding edge.
+   ------------------------------------------------------------------------- */
 .uc-sidebar { font-family: var(--uc-font-heading); max-width: 380px;
     background: #fff; border: 1px solid var(--uc-border-strong);
     border-radius: 14px; padding: 6px 14px 14px;
-    box-shadow: var(--uc-lift); }
+    box-shadow: var(--uc-lift);
+    container-type: inline-size; container-name: uc-sidebar; }
 .uc-sidebar-list { display: flex; flex-direction: column; }
 /* NO ACCENT BAR, AND 10px OF AIR BEFORE THE THUMBNAIL. The bar went in 3.17.0;
    the padding is what takes its place, so the row starts with space rather
@@ -1489,8 +1651,28 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 }
 
 .uc-sidebar-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.uc-sidebar-title { display: block; font-size: 14px; font-weight: 600; color: var(--uc-text); line-height: 1.35; }
+/* overflow-wrap: anywhere, and it is not decoration. Event titles here include
+   "TransLife Galaxy Mental Health Series"; a single unbroken token longer than
+   the column (a URL, a hashtag, a hyphen-free compound) would otherwise push
+   the row wider than the card and take the whole block with it. */
+.uc-sidebar-title { display: block; font-size: 14px; font-weight: 600; color: var(--uc-text); line-height: 1.35;
+    overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------------------
+   THE DATE AND TIME LINE BREAKS IN ONE PLACE, AND ONLY THERE.
+
+   "Tue, Aug 4 · 6-7:30 pm" as a single string breaks wherever the column runs
+   out, which in a narrow placement meant "Tue," on one line and "Aug 4" on the
+   next, or a clock separated from its "pm". Neither is a wrap; both read as a
+   defect. The two halves are separate spans (see render_sidebar_row()), each
+   held whole with white-space: nowrap, so the only place the line CAN break is
+   between them, at the separator. Below 200px they stack and the dot goes,
+   because a separator between two stacked lines is punctuation with nothing
+   left to separate.
+   ------------------------------------------------------------------------- */
 .uc-sidebar-when { display: block; font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); line-height: 1.4; }
+.uc-sidebar .uc-when-date, .uc-sidebar .uc-when-time { white-space: nowrap; }
+.uc-sidebar .uc-when-sep { margin: 0 3px; }
 /* Raised for the same reason as .uc-series-list: `.uc-sidebar p` declares
    margin, and this rule declares it too. */
 .uc-sidebar .uc-sidebar-empty { margin: 0; padding: 16px 0; font-size: 13px; color: var(--uc-secondary); }
@@ -1503,12 +1685,70 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    anchor, so the remedy here is to raise the component rather than lower it. */
 .uc-sidebar .uc-sidebar-all:hover { text-decoration: underline; }
 
+/* ===========================================================================
+ * SIDEBAR: HOW IT REFLOWS IN A NARROW COLUMN
+ *
+ * WHAT IT DID BEFORE, AND WHY IT WAS NOT VISIBLE HERE. The card was fluid and
+ * the row was not: `flex: 0 0 60px` on the thumbnail is a hard reservation
+ * that does not shrink, and at a 200px placement it took 60 of the 160px a row
+ * has for content, leaving 88px for a title. "TransLife Galaxy Mental Health
+ * Series" is five or six lines in 88px. Nothing overflowed and nothing looked
+ * broken, which is why it survived: it just quietly became unreadable.
+ *
+ * THE THUMBNAIL GIVES WAY BEFORE THE WORDS DO. It shrinks at 320 and goes at
+ * 240. That order is the argument: in the placement this block is for, beside
+ * a programme, every row is the same programme and the pictures are often the
+ * same picture, so the thumbnail is the least load-bearing thing in the row.
+ * The title is the only part that says which date this is.
+ *
+ * MINIMUM SUPPORTED WIDTH: 220px. Below that it still renders and nothing
+ * overflows, but the card's own 14px of side padding starts to be a
+ * significant share of the column and a title routinely runs to three lines.
+ * That is documented in readme.txt rather than enforced here, because a hard
+ * min-width would make the block overflow a column it was put in by mistake,
+ * which is worse than being cramped in it.
+ *
+ * THESE ARE @container QUERIES, NOT @media. The width that matters is the
+ * column's, and the window is no guide to it. See the note on .uc-sidebar.
+ * ======================================================================== */
+@container uc-sidebar (max-width: 320px) {
+    /* Still a picture, just a smaller one. 4:3 is kept, because the crop is
+       decided by the ratio and changing it here would crop differently in a
+       narrow column than in a wide one. */
+    .uc-sidebar-thumb { flex: 0 0 48px; width: 48px; height: 36px; }
+    .uc-sidebar-row { gap: 10px; padding-left: 6px; }
+    .uc-sidebar .uc-sidebar-heading { font-size: 16px; padding: 11px 12px; }
+}
+
+@container uc-sidebar (max-width: 240px) {
+    /* The picture goes rather than shrinking to a stamp. At 36px it is no
+       longer a photograph, it is a coloured square, and the room it takes is
+       the room the title needs. */
+    .uc-sidebar-thumb { display: none; }
+    .uc-sidebar-row { padding-left: 2px; }
+    .uc-sidebar .uc-sidebar-heading { font-size: 15px; }
+}
+
+@container uc-sidebar (max-width: 200px) {
+    /* Stacked, and the separator goes with the line it was separating. */
+    .uc-sidebar .uc-when-date, .uc-sidebar .uc-when-time { display: block; }
+    .uc-sidebar .uc-when-sep { display: none; }
+}
+
 /* ---------- Mobile: the Outlook pattern ----------
  *
  * Seven columns do not work at phone width, so each cell drops to its date
  * number and one dot per event, and the tapped day events render in full
  * underneath the grid. No expand/collapse gesture: at three events on the
  * busiest day it would be effort spent on the fiddliest part of the pattern.
+ *
+ * THIS IS THE COPY, NOT THE ORIGINAL. The authority is the
+ * `@container uc-calendar (max-width: 560px)` block in the month grid section
+ * above; this one exists for browsers that do not support container queries,
+ * where it is the only thing that can fire. EDIT THE TWO TOGETHER. They cannot
+ * disagree in practice, because on a phone the embed fills the screen and both
+ * are true at once declaring the same values, but only because somebody
+ * keeps them the same, and this note is the whole of that mechanism.
  */
 @media (max-width: 640px) {
     /* SPECIFICITY MUST MATCH THE DESKTOP RULES ABOVE.

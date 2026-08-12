@@ -1271,7 +1271,54 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
 /* ---------- The schedule (series screen) ---------- */
 .uc-schedule-sentence { margin: 0 0 14px; font-family: var(--uc-font-heading, inherit); font-size: 17px; font-weight: 700; }
-.uc-schedule-edit > summary, .uc-schedule-add > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; margin-bottom: 8px; }
+/* Four actions now, and the fourth (Remove) lives on each row. The three that
+   fold are one family and read as one, rather than as two controls and a new
+   thing bolted on beside them. */
+.uc-schedule-edit > summary, .uc-schedule-add > summary,
+.uc-schedule-extend > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; margin-bottom: 8px; }
+.uc-schedule-extend { margin-top: 10px; }
+/* One field on its own row. `.uc-field input` is width: 100%, which is right in
+   a two-up field row and reads as a fault when a single date field spans the
+   whole card. Capped rather than dropped, so it still matches the date fields
+   in the forms above it. */
+.uc-schedule-extend .uc-field { max-width: 260px; }
+
+/* ---------------------------------------------------------------------------
+   THE PATTERN CONTROL: EACH FREQUENCY CARRIES ITS OWN PARAMETERS.
+
+   The number field and the day circles sit INSIDE the radio's own label, so the
+   row is one statement: "Every [2] week(s) on [M][W]". That is what lets the
+   whole control work with no script at all, since every row is visible and the
+   server reads sp_freq and ignores the rows that lost.
+
+   .uc-radio-row is already `display: flex; align-items: center` with its span
+   at `flex: 1 1 auto`, so the inline inputs need only to be allowed to sit on
+   the text baseline and not to stretch. The wrap is what stops "Every [n]
+   month(s) on the 14th" pushing the card wider on a narrow screen.
+   ------------------------------------------------------------------------- */
+.uc-sched-freq { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+.uc-sched-freq .uc-radio-row span { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+/* `flex: 0 0 auto` against a flex item's default `0 1 auto`: the interval field
+   declares width: 74px and, as a shrinkable item on a row that wraps, would be
+   squeezed narrower than its own two digits before the row chose to wrap. */
+.uc-sched-freq .uc-repeat-num { flex: 0 0 auto; }
+/* Indented to the width of the radio and its gap, so the circles read as
+   belonging to the Weekly row above rather than as a control of their own. */
+.uc-sched-freq .uc-sched-days { margin: 2px 0 8px 24px; }
+.uc-sched-freq .uc-repeat-nth { margin: 2px 0 4px 24px; }
+.uc-sched-freq > .uc-hint { margin: 0 0 4px 24px; }
+
+/* ---------------------------------------------------------------------------
+   ADD A DATE: TWO ROUTES, PRESENTED AS TWO.
+
+   They are deliberately different shapes, because they are different weights of
+   action. The first folds open into a form, because it is three fields and is
+   finished here. The second is a link out to the event editor and stays a link:
+   dressing it as a second <details> would promise a form that is not there.
+   ------------------------------------------------------------------------- */
+.uc-schedule-routes { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-schedule-route { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 12px 0 0; }
+.uc-schedule-route .uc-hint { margin: 0; }
 .uc-schedule-list { list-style: none; margin: 0; padding: 0; }
 .uc-schedule-row { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
                    gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--p-border); font-size: 14px; }

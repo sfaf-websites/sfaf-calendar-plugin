@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.23.0
+Stable tag: 3.24.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -64,6 +64,43 @@ Pro campaigns will never have a picture, because the API does not expose one.
 
 The same target is stated beside the image control in both editors: the
 /caladmin event form and the Event Image box in the WordPress admin.
+
+== Embed Widths ==
+
+**Every display mode fills the column it is given. There is no width setting
+and there should not be one.**
+
+Paste an embed into a 280px sidebar, a 500px middle column or a full-width
+section and it reflows to fit. Each mode measures its own container rather than
+the browser window, so a narrow column inside a wide page gets the narrow
+layout, which is the case a viewport media query cannot see and the case these
+blocks are most often in.
+
+**Minimum widths.** Below these the block still renders and still does not
+overflow its column. What goes is comfort, so they are the width to design a
+placement around rather than a limit the software enforces:
+
+* Sidebar mode: **220px**
+* List mode: **260px**
+* Month grid: **300px**
+
+Nothing enforces a minimum in CSS, deliberately. A `min-width` would make a
+block pushed into a column that is too narrow overflow the host's page instead
+of being cramped inside it, which is a worse failure and one that is not ours to
+cause.
+
+**What changes as the column narrows.** In sidebar mode the thumbnail shrinks
+and then goes, because in the placement that mode is for every row is the same
+programme and the picture is the least load-bearing thing in it; the title is
+what says which date this is. In list mode the card's header stacks so a
+category chip and a date are not fighting over the same 200px. The month grid
+switches to the same treatment it uses on a phone: a date number and one dot per
+event in each cell, with the tapped day's events in full underneath.
+
+Browsers without container query support (Chrome and Edge before 105, Safari
+before 16, Firefox before 110) get the previous behaviour, which is the desktop
+layout at whatever width the column is. Phones still get the phone layout there,
+because that has always been driven by the window as well.
 
 == Installation ==
 
@@ -166,6 +203,34 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.24.0 =
+
+**Every embed mode now measures its own column, not the browser window.** The sidebar block is going into columns of varying width across sfaf.org and possibly other sites, so this had to be checked rather than assumed. What it did at 280px was fill the column correctly and hold a row that did not: `flex: 0 0 60px` on the thumbnail is a hard reservation that never shrinks, so of the 160px a row has for content the picture took 60 and left 88 for a title. "TransLife Galaxy Mental Health Series" is five or six lines in 88px. Nothing overflowed and nothing looked broken, which is why it survived.
+
+**The month grid was the worse case and had a complete fix sitting in the stylesheet unreachable.** Its phone layout has been there since 2.x and is gated on `@media (max-width: 640px)`, which asks about the WINDOW. An embed in a 280px column on a 1440px desktop is 280px wide inside a 1440px window, so the query is false: seven columns were rendered into 40px cells, with event titles truncated to two or three characters and "6-7:30 pm" wrapping underneath. The table is `table-layout: fixed; width: 100%`, so it did not overflow either.
+
+The question is asked of the container instead. `.uc-calendar` and `.uc-sidebar` are `container-type: inline-size`, and the narrow layouts are `@container` queries. Both roots were checked for what inline-size containment brings with it, because layout containment makes an element the containing block for absolutely and fixed positioned descendants: everything absolute inside the calendar resolves against a nearer `position: relative` ancestor, and the RSVP modal, the one thing that would have broken, is appended to `<body>` and outside both roots. The viewport copy of the month grid's phone layout stays as the fallback for browsers without container query support and is marked as the copy.
+
+**Documented minimum widths, in readme rather than in CSS: 220px sidebar, 260px list, 300px month grid.** Below those they still render and still do not overflow. A `min-width` would make a block pushed into a column too narrow for it overflow the host's page rather than be cramped inside it, which is a worse failure and not ours to cause.
+
+The one control that genuinely overflowed was the calendar's search box: `flex-shrink: 0` around a field declaring `width: 200px` is a 230px reservation once padding and border are counted, so in a 200px column it walked 30px into the host's page. It is `flex: 0 1 200px` now, identical at desktop width and able to give way. The sidebar's date and time line is two spans rather than one string, each held whole, so the only place it can break is at the separator instead of splitting "Tue," from "Aug 4" or a clock from its "pm". No width setting was added to the embed generator: responsive is the answer and a fixed width would work against it.
+
+**The schedule screen has four properly built actions where it had three partial ones.**
+
+**Change the pattern, all of it.** The old form offered a weekday and two times, so a group that had to move from the first Monday of the month to the second could not be moved at all and one going from weekly to fortnightly had to be rebuilt by hand. Frequency, interval, weekday, monthly ordinal and both times are editable now, and any subset of them is one edit: every field arrives holding what the group says today, so touching only the times produces an identical pattern and moves nothing. Sameness is decided on canonical forms rather than on stored text, because `weekly` and `weekly:1:3` are one schedule for a Wednesday group and comparing them as strings would report a change on every save.
+
+The dates move and the count does not. Twelve upcoming sessions are twelve upcoming sessions afterwards, on the new cadence; nothing is created and nothing is deleted, which is what makes the number on the button honest on both sides of the press. The confirmation afterwards names the new first and last date, because "12 occurrences were changed" says nothing about twelve daily sessions becoming twelve weekly ones. Extra dates are still left exactly where they are, warned about before the button, named in the confirmation and accounted for after it. `reday_group()` and `weekday_is_movable()` are gone rather than left sitting beside their replacement: a dead function that reads like the canonical statement of something is what the next person edits.
+
+**Extend the series, which had no control at all.** A series running to December 31 that needs to continue into the new year was previously January's dates added one at a time. Set an end date and the missing occurrences are generated from the existing pattern; nothing about the pattern changes. The screen says how far out the series is currently generated, in a date, because "does this need extending" cannot be answered without it and the alternative was scrolling to the bottom of a list of forty. Three rules make it safe and each was tested: it resumes from the last PATTERN date rather than the last date, so a Saturday somebody added by hand cannot re-anchor a weekly group onto Saturdays; a date the group already holds is skipped, and that includes TRASHED occurrences, so a holiday removed in December is not put back by an extend run in January; and nothing before today is created, so a dormant group is not back-filled with six months of sessions that never happened.
+
+`SFAF_Recurrence::extend_group()` takes a group and a date, derives its own seed, anchor and pattern from stored data, touches no request state, returns rather than redirects, and creates nothing on a second run with the same horizon. **A scheduled top-up for the coming "ongoing series" option can call it as it stands**, once a week with today plus twelve months, and needs no other entry point.
+
+**Add a date, reframed as two routes, with the checkbox and its explanation gone.** It was a date field plus a tickbox reading "Keep this date out of the group" under four sentences about recurrence groups, bulk edits and extra-date marking, which asked somebody adding one session to a Tuesday class to first understand the data model. The two cases that actually differ are now told apart by a fact about the event: **use this event's details on another date**, which copies the occurrence with its location, description, times, category, organizer and FAQs and takes an optional title override so one date can be "Annual picnic"; and **create a new event in this series**, a link to the event editor with the series already chosen, for the date whose details genuinely differ. The behaviour the checkbox was offering is now the only behaviour of the first route and not a choice: the copy joins the group so a time change reaches it, and is marked as an extra date so a pattern change leaves it alone.
+
+**Remove a date is unchanged, and now has one more thing that must not undo it.** Regeneration went in 3.0.0 and nothing brought it back; the new extend path is the first code since then that creates occurrences into an existing group, and it is the reason removed dates are matched against trashed posts rather than live ones.
+
+**Two committed checks, both made to fail on purpose before being trusted.** `.claude/group-ops-test.php` runs the two new group operations against an in-memory WordPress stub: 47 assertions covering first Monday to second Monday, an extra date staying put through a cadence change and moving with a time change, the past never being reached, weekly to monthly holding its count, extend being idempotent, a removed date staying removed, a dormant group not being back-filled, and the title override reaching both the title and the slug. The recurrence cross-check gained 13 rules for `plan_from()` and `canonical_pattern()`, and its "20 rules hold" line is counted rather than written down, since a hardcoded total stops being evidence the moment somebody adds a rule.
+
 = 3.23.0 =
 
 **The per-field edit pencils are gone. The modal is the only gate.** Opening a recurring event asked the scope question in a modal, and then every field still had to be unlocked by pressing its own pencil. That was the same question twice, and a click on every field of every recurring event. The pencils made sense before the modal existed, when the scope was two quiet buttons at the top of a long form that were easy to walk past; the modal cannot be walked past, so the second lock was paying for a problem that had already been solved. Once a scope is chosen, everything that scope permits is directly editable.
@@ -176,7 +241,7 @@ A field the scope FORBIDS is a different thing and must not look like a locked o
 
 **Extra dates alongside a pattern.** A weekly Wednesday group may also meet on one Saturday. The same picker sits beside Daily, Weekly and Monthly, and the dates it holds generate events in the **same recurrence group**, so "edit all upcoming occurrences" reaches them and a time change applies to them. The summary states both halves: "Every week on Wednesday, until Dec 31 2026, plus 2 extra dates. 23 events will be created." A date the pattern already produces is not an extra date and is not counted as one, because the merge collapses it into a single event and announcing an event that will not exist is the one thing this sentence must never do.
 
-The consequence is surfaced rather than left to be discovered. **A later pattern edit, moving Wednesdays to Tuesdays, does not move an extra date**, because that date was never on the pattern and shifting it by the same offset would land it on a day nobody chose. Each such date carries a marker, `reday_group()` reads it, the schedule screen warns before the button is pressed and names how many dates it will leave alone, the confirmation dialog says the same, and the message afterwards accounts for them. A time change is the opposite case and reaches every date in the group. The schedule list tags extra dates so the row can be found by eye, and does not tag them in a Custom group, where every date was chosen by hand and the tag would be on every row saying nothing.
+The consequence is surfaced rather than left to be discovered. **A later pattern edit, moving Wednesdays to Tuesdays, does not move an extra date**, because that date was never on the pattern and shifting it by the same offset would land it on a day nobody chose. Each such date carries a marker, the pattern edit reads it (`reday_group()` then, `repattern_group()` since 3.24.0), the schedule screen warns before the button is pressed and names how many dates it will leave alone, the confirmation dialog says the same, and the message afterwards accounts for them. A time change is the opposite case and reaches every date in the group. The schedule list tags extra dates so the row can be found by eye, and does not tag them in a Custom group, where every date was chosen by hand and the tag would be on every row saying nothing.
 
 **The count is cross-checked, and now so are the rules behind it.** Generating occurrences creates real posts, so the number under the control has to be the number. Both engines gained the merge, Custom, and one `summary()` function each so that the sentence and the count come from the same place rather than being assembled beside each other. The check is a committed script, `.claude/recurrence-crosscheck.php`, and it slices the JS engine out of `public/js/portal.js` between two markers so it runs the code that ships rather than a copy somebody remembered to update. It covers **4,321 cases**, up from 525, of which 3,780 carry extra dates and 288 are Custom, comparing dates, labels and sentences. Two engines agreeing on a wrong answer is the failure the matrix cannot see, so 20 rules are also asserted as values: what a date on the start day does, what a duplicate does, what a date beyond the end date does, and what each of the three summary shapes reads like. Both layers were made to fail on purpose before being trusted.
 
