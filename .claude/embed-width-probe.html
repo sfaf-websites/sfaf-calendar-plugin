@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SFAF Calendar: embed width probe</title>
+<!--
+  WHAT THIS IS FOR.
+
+  readme.txt publishes a minimum width for each embed display mode. Those
+  numbers were derived by arithmetic in 3.24.0 and were wrong in the same build
+  that published them: the sidebar's stated 220px minimum lost its thumbnail
+  entirely, because a container query measures the CONTENT box and the card
+  carries 30px of border and padding. This page measures instead.
+
+  IT INCLUDES THE TWO LAYOUTS THAT BROKE AND THAT NOTHING TESTED. A block
+  parent, which is the easy case and the only one anybody had tried, and then a
+  TABLE CELL and a FLEX ITEM, both of which size themselves from their
+  contents. Those are the parents that `container-type: inline-size` destroys,
+  because size containment makes an element's intrinsic contribution zero. The
+  live regression was a table.
+
+  RUN IT HEADLESS, since the answers are printed into the DOM:
+
+      chrome --headless --disable-gpu --virtual-time-budget=4000 \
+             --dump-dom file:///.../embed-width-probe.html
+
+  or just open it in a browser and read the tables.
+
+  The stylesheet is loaded from ../public/css/calendar.css, so this always
+  measures the working tree rather than a copy.
+-->
+<link rel="stylesheet" href="../public/css/calendar.css">
+<style>
+  body { margin: 0; padding: 20px; font: 13px/1.5 system-ui, sans-serif; color: #373433; background: #f4f5f7; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  h2 { font-size: 13px; margin: 26px 0 8px; text-transform: uppercase; letter-spacing: .06em; color: #6B7280; }
+  p.note { color: #6B7280; margin: 0 0 8px; max-width: 70ch; }
+  /* The three parent shapes. Each is given the SAME set of widths. */
+  .as-block > div { margin-bottom: 18px; }
+  table.cells { border-collapse: collapse; }
+  table.cells td { vertical-align: top; padding: 0 10px; }
+  .as-flex { display: flex; align-items: flex-start; gap: 20px; }
+  .ruler { font: 700 11px/1 system-ui; color: #6B7280; margin-bottom: 6px; }
+  pre#out { margin-top: 22px; background: #fff; padding: 14px; border: 1px solid #ccc;
+            font: 12px/1.5 ui-monospace, Consolas, monospace; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Embed width probe</h1>
+<p class="note">Each mode is measured on its own, in three kinds of parent. A block parent
+takes its width from the page; a table cell and a flex item take theirs from their contents,
+which is the case that broke in 3.24.0 and the case nothing was testing.</p>
+<p class="note">THE TWO MODES ARE MEASURED IN SEPARATE CELLS ON PURPOSE. The first version of
+this page put a sidebar and a list card in the same cell, and in the table and flex sections
+every column came out at 260px whatever it had been asked for: the list card's own 260px
+min-width was setting the floor and the sidebar beside it was never the thing being measured.
+One mode per cell, or the number belongs to the other one.</p>
+
+<div id="grids"></div>
+
+<pre id="out">measuring…</pre>
+
+<script>
+/* ---------------------------------------------------------------------------
+ * The markup below is copied from SFAF_Shortcodes::render_sidebar_row() and
+ * render_events(). Two sidebar rows on purpose: one with a real image and one
+ * with the branded category placeholder, because five of six rows on the live
+ * feed are the placeholder and it is the case that must never disappear.
+ * ------------------------------------------------------------------------- */
+/* 270/271/272 are here to pin the exact width the sidebar row stacks at, which
+   the arithmetic says is 272 and which nobody should have to take on trust. */
+var WIDTHS = [180, 200, 220, 240, 260, 270, 271, 272, 280, 320, 400];
+
+var IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+
+function sidebarRow(kind) {
+  var media = (kind === 'img')
+    ? '<img class="uc-thumb-img" src="' + IMG + '" alt="" aria-hidden="true" loading="lazy" decoding="async" />'
+    : '<span class="uc-thumb-ph" aria-hidden="true" style="--uc-cat-media: #D5F3F6; --uc-cat-ink: #0C666F;">'
+      + '<svg class="sfaf-icon" width="20px" height="20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/></svg>'
+      + '</span>';
+  var title = (kind === 'img') ? 'Programa Latino: Grupo de Apoyo'
+                               : 'TransLife Galaxy Mental Health Series';
+  return '<a class="uc-sidebar-row" href="#" data-category="support-groups" data-kind="' + kind + '">' +
+    '<span class="uc-sidebar-thumb">' + media + '</span>' +
+    '<span class="uc-sidebar-body">' +
+      '<span class="uc-sidebar-title">' + title + '</span>' +
+      '<span class="uc-sidebar-when">' +
+        '<span class="uc-when-date">Wed, Aug 12</span>' +
+        '<span class="uc-when-sep" aria-hidden="true">·</span>' +
+        '<span class="uc-when-time">1–2:30 pm</span>' +
+      '</span>' +
+    '</span>' +
+  '</a>';
+}
+
+var SIDEBAR =
+  '<div class="uc-sidebar" data-count="2">' +
+    '<h3 class="uc-sidebar-heading">Upcoming event dates</h3>' +
+    '<div class="uc-sidebar-list">' + sidebarRow('ph') + sidebarRow('img') + '</div>' +
+    '<a class="uc-sidebar-all" href="#">See all events →</a>' +
+  '</div>';
+
+var LIST =
+  '<div class="uc-calendar">' +
+    '<div class="uc-event-list">' +
+      '<a class="uc-event-card" href="#">' +
+        '<div class="uc-lc-head">' +
+          '<span class="uc-lc-ident"><span class="uc-lc-chip">Support Groups</span>' +
+          '<span class="uc-lc-byline">SFAF Community Programs</span></span>' +
+          '<span class="uc-lc-date"><span class="uc-lc-dow">Wed</span><span class="uc-lc-md">Aug 12</span></span>' +
+        '</div>' +
+        '<div class="uc-lc-media"><a href="#"><img class="uc-lc-img" src="' + IMG + '" alt="" /></a></div>' +
+        '<h3 class="uc-card-title"><a href="#">TransLife Galaxy Mental Health Series</a></h3>' +
+        '<div class="uc-lc-foot"><span class="uc-lc-note">Drop in, no booking needed</span>' +
+        '<span class="uc-lc-actions"><span class="uc-actionbtn uc-actionbtn-secondary">View event</span></span></div>' +
+      '</a>' +
+    '</div>' +
+  '</div>';
+
+/* The month grid, cut down to the parts that decide whether it fits: the header,
+   the seven columns, a day number, the dots the narrow layout uses and one event
+   block the wide layout uses. */
+var MONTH = (function () {
+  var th = '', td = '';
+  ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].forEach(function (d) {
+    th += '<th><abbr title="' + d + '"><span class="uc-day-name-full">' + d.slice(0, 3) +
+          '</span><span class="uc-day-name-min">' + d.slice(0, 1) + '</span></abbr></th>';
+  });
+  for (var i = 1; i <= 7; i++) {
+    td += '<td><span class="uc-day-num">' + (i + 10) + '</span>' +
+          '<span class="uc-day-dots"><span class="uc-day-dot" style="background:#0E7680"></span></span>' +
+          '<div class="uc-day-events"><div class="uc-day-event"><a href="#">' +
+          '<span class="uc-day-event-title">TransLife Galaxy</span>' +
+          '<span class="uc-day-event-time">1–2:30 pm</span></a></div></div></td>';
+  }
+  return '<div class="uc-calendar"><div class="uc-month">' +
+    '<div class="uc-month-head"><div class="uc-month-heading">' +
+      '<span class="uc-month-label">August 2026</span>' +
+      '<p class="uc-month-range">Aug 1 to Aug 31</p></div>' +
+      '<span class="uc-month-nav-group"><button class="uc-month-nav uc-month-prev"><span>&lsaquo;</span></button>' +
+      '<button class="uc-month-nav">Today</button>' +
+      '<button class="uc-month-nav uc-month-next"><span>&rsaquo;</span></button></span></div>' +
+    '<div class="uc-month-wrap"><table class="uc-month-grid"><thead><tr>' + th +
+    '</tr></thead><tbody><tr>' + td + '</tr></tbody></table></div>' +
+    '<div class="uc-month-day-panel"><h4 class="uc-day-panel-title">Wed, Aug 12</h4>' +
+    '<div class="uc-day-events"><div class="uc-day-event"><a href="#">' +
+    '<span class="uc-day-event-title">TransLife Galaxy Mental Health Series</span>' +
+    '<span class="uc-day-event-time">1–2:30 pm</span></a></div></div></div>' +
+    '</div></div>';
+})();
+
+var MODES   = [ { key: 'sidebar', label: 'Sidebar', html: SIDEBAR },
+                { key: 'list',    label: 'List',    html: LIST },
+                { key: 'month',   label: 'Month grid', html: MONTH } ];
+var PARENTS = [ { key: 'block', label: 'Block parent (width on the parent)' },
+                { key: 'table', label: 'Table cell (width on the td, table-layout auto)' },
+                { key: 'flex',  label: 'Flex item (flex-basis, shrink allowed)' } ];
+
+/* One grid per (mode, parent) pair, so nothing in a cell can prop up the thing
+   being measured in it. */
+(function build() {
+  var host = document.getElementById('grids');
+  MODES.forEach(function (mode) {
+    PARENTS.forEach(function (parent) {
+      var h2 = document.createElement('h2');
+      h2.textContent = mode.label + ' in: ' + parent.label;
+      host.appendChild(h2);
+
+      var wrap;
+      if ('table' === parent.key) {
+        wrap = document.createElement('table');
+        wrap.className = 'cells';
+        var tb = document.createElement('tbody'), tr = document.createElement('tr');
+        tb.appendChild(tr); wrap.appendChild(tb);
+        var target = tr;
+      } else {
+        wrap = document.createElement('div');
+        wrap.className = ('flex' === parent.key) ? 'as-flex' : 'as-block';
+        target = wrap;
+      }
+      wrap.dataset.mode = mode.key;
+      wrap.dataset.parent = parent.key;
+      wrap.classList.add('probe-grid');
+
+      WIDTHS.forEach(function (w) {
+        var cell = document.createElement('table' === parent.key ? 'td' : 'div');
+        if ('flex' === parent.key) {
+          cell.style.flex = '0 1 ' + w + 'px';   // the shape an auto-sized flex track has
+        } else {
+          cell.style.width = w + 'px';
+        }
+        cell.dataset.w = w;
+        cell.innerHTML = '<div class="ruler">' + w + 'px</div>' + mode.html;
+        target.appendChild(cell);
+      });
+      host.appendChild(wrap);
+    });
+  });
+})();
+
+window.addEventListener('load', function () {
+  var L = [];
+  function pad(s, n) { s = String(s); return s + ' '.repeat(Math.max(1, n - s.length)); }
+
+  L.push('supports @container: ' + (window.CSS && CSS.supports('container-type: inline-size')));
+  L.push('');
+
+  document.querySelectorAll('.probe-grid').forEach(function (grid) {
+    var cells = grid.querySelectorAll('[data-w]');
+    L.push('=== ' + grid.dataset.mode.toUpperCase() + ' in ' + grid.dataset.parent.toUpperCase() + ' ===');
+
+    if ('sidebar' === grid.dataset.mode) {
+      L.push(pad('asked', 7) + pad('parent', 8) + pad('card', 6) + pad('content', 9) +
+             pad('layout', 9) + pad('thumb(ph)', 14) + pad('thumb(img)', 14) + 'title px');
+    } else if ('month' === grid.dataset.mode) {
+      L.push(pad('asked', 7) + pad('parent', 8) + pad('block', 7) + pad('cell', 7) +
+             pad('layout', 9) + pad('grid fits', 11) + 'overflows parent by');
+    } else {
+      L.push(pad('asked', 7) + pad('parent', 8) + pad('block', 7) + 'overflows parent by');
+    }
+
+    cells.forEach(function (cell) {
+      var parentW = Math.round(cell.getBoundingClientRect().width);
+      if ('sidebar' === grid.dataset.mode) {
+        var card = cell.querySelector('.uc-sidebar');
+        var cs = getComputedStyle(card);
+        var contentW = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        var rows = cell.querySelectorAll('.uc-sidebar-row');
+        function m(row) {
+          var th = row.querySelector('.uc-sidebar-thumb');
+          var r = th.getBoundingClientRect();
+          return { d: getComputedStyle(th).display, w: Math.round(r.width), h: Math.round(r.height) };
+        }
+        var ph = m(rows[0]), im = m(rows[1]);
+        var rowCS = getComputedStyle(rows[0]);
+        var rowInner = rows[0].clientWidth - parseFloat(rowCS.paddingLeft) - parseFloat(rowCS.paddingRight);
+        L.push(pad(cell.dataset.w, 7) + pad(parentW, 8) +
+               pad(Math.round(card.getBoundingClientRect().width), 6) +
+               pad(Math.round(contentW), 9) +
+               pad(ph.w > rowInner - 1 ? 'STACKED' : 'side', 9) +
+               pad(ph.d + ' ' + ph.w + 'x' + ph.h, 14) +
+               pad(im.d + ' ' + im.w + 'x' + im.h, 14) +
+               Math.round(rows[0].querySelector('.uc-sidebar-title').getBoundingClientRect().width));
+      } else if ('month' === grid.dataset.mode) {
+        var blk = cell.querySelector('.uc-calendar');
+        var bw  = Math.round(blk.getBoundingClientRect().width);
+        var tbl = cell.querySelector('.uc-month-grid');
+        var tdw = cell.querySelector('.uc-month-grid tbody td').getBoundingClientRect().width;
+        // The narrow layout is the one where the per-cell event blocks are
+        // replaced by dots and the tapped day renders below the grid.
+        var dots = getComputedStyle(cell.querySelector('.uc-day-dots')).display !== 'none';
+        // The grid must not be wider than the wrapper that clips its corners.
+        var wrapW = cell.querySelector('.uc-month-wrap').getBoundingClientRect().width;
+        var fits  = tbl.getBoundingClientRect().width <= wrapW + 0.5;
+        L.push(pad(cell.dataset.w, 7) + pad(parentW, 8) + pad(bw, 7) +
+               pad(tdw.toFixed(1), 7) + pad(dots ? 'dots' : 'blocks', 9) +
+               pad(fits ? 'yes' : 'NO', 11) +
+               (bw > parentW ? (bw - parentW) + 'px (min-width floor, deliberate)' : '0'));
+      } else {
+        var blk = cell.querySelector('.uc-calendar');
+        var bw = Math.round(blk.getBoundingClientRect().width);
+        L.push(pad(cell.dataset.w, 7) + pad(parentW, 8) + pad(bw, 7) +
+               (bw > parentW ? (bw - parentW) + 'px (min-width floor, deliberate)' : '0'));
+      }
+    });
+    L.push('');
+  });
+
+  L.push('PASS CHECKS');
+  var fails = [];
+  document.querySelectorAll('.uc-sidebar-thumb').forEach(function (th) {
+    var r = th.getBoundingClientRect();
+    if (getComputedStyle(th).display === 'none' || r.width < 1 || r.height < 1) {
+      fails.push('a thumbnail slot is not rendered');
+    }
+  });
+  document.querySelectorAll('.uc-thumb-ph').forEach(function (p) {
+    var r = p.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) { fails.push('a category placeholder is not rendered'); }
+  });
+  // Nothing may be wider than the parent it was put in.
+  document.querySelectorAll('.uc-sidebar').forEach(function (c) {
+    var p = c.parentElement;
+    if (c.getBoundingClientRect().width > p.getBoundingClientRect().width + 0.5) {
+      fails.push('a sidebar card overflows its parent at ' + p.dataset.w + 'px');
+    }
+  });
+  L.push(fails.length ? 'FAIL: ' + Array.from(new Set(fails)).join(' | ')
+                      : 'ok: every thumbnail slot and every placeholder renders, at every width, in all three parents; no sidebar card overflows its parent');
+  document.getElementById('out').textContent = L.join('\n');
+});
+</script>
+
+</body>
+</html>

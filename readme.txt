@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.24.0
+Stable tag: 3.24.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -76,29 +76,43 @@ the browser window, so a narrow column inside a wide page gets the narrow
 layout, which is the case a viewport media query cannot see and the case these
 blocks are most often in.
 
-**Minimum widths.** Below these the block still renders and still does not
-overflow its column. What goes is comfort, so they are the width to design a
-placement around rather than a limit the software enforces:
+**Minimum widths, measured rather than calculated:**
 
-* Sidebar mode: **220px**
+* Sidebar mode: **200px**
 * List mode: **260px**
-* Month grid: **300px**
+* Month grid: **260px**
 
-Nothing enforces a minimum in CSS, deliberately. A `min-width` would make a
-block pushed into a column that is too narrow overflow the host's page instead
-of being cramped inside it, which is a worse failure and one that is not ours to
-cause.
+These come from `.claude/embed-width-probe.html`, which renders each mode at
+eleven widths in three kinds of parent and prints what it measures. The 3.24.0
+numbers were arrived at by arithmetic and one of them was wrong in the same
+build that published it: the sidebar was documented at 220px and lost its
+thumbnail entirely at any column under 270px.
 
-**What changes as the column narrows.** In sidebar mode the thumbnail shrinks
-and then goes, because in the placement that mode is for every row is the same
-programme and the picture is the least load-bearing thing in it; the title is
-what says which date this is. In list mode the card's header stacks so a
-category chip and a date are not fighting over the same 200px. The month grid
-switches to the same treatment it uses on a phone: a date number and one dot per
-event in each cell, with the tapped day's events in full underneath.
+**The two calendar modes now enforce their minimum and the sidebar does not.**
+`.uc-calendar` carries `min-width: 260px`, so in a narrower column it overflows
+rather than shrinking. That is a deliberate reversal of what 3.24.0 said, and
+the reason is in the stylesheet next to the rule: the block is a container query
+container, and size containment means it contributes nothing to a parent that
+sizes itself from its contents. Without a floor it does not get cramped in a
+table cell or a flex track, it collapses to nothing and takes the host's layout
+with it. The sidebar needs no such floor because it is not a query container.
 
-Browsers without container query support (Chrome and Edge before 105, Safari
-before 16, Firefox before 110) get the previous behaviour, which is the desktop
+**What changes as the column narrows.** In sidebar mode the row reflows: above
+271px the thumbnail sits left of the text as usual, and at 271px and below the
+row stacks, with the thumbnail becoming a full-width 16:9 band above the title.
+The picture gets more room as the column narrows, not less. It is never removed
+at any width, because on real data most rows carry the branded category tile
+rather than a photograph and that tile is the row's only category signal.
+
+In list mode the card's header stacks so a category chip and a date are not
+fighting over the same 200px. The month grid switches to the same treatment it
+uses on a phone: a date number and one dot per event in each cell, with the
+tapped day's events in full underneath.
+
+The sidebar's reflow uses no container query and no media query at all, so
+nothing about it depends on any element reporting a width correctly. The list
+and the month grid do use container queries; browsers without support (Chrome
+and Edge before 105, Safari before 16, Firefox before 110) get the desktop
 layout at whatever width the column is. Phones still get the phone layout there,
 because that has always been driven by the window as well.
 
@@ -202,6 +216,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.24.1 =
+
+**The sidebar thumbnail was missing at every width, and the cause was the thing that was supposed to make the block responsive.** Reported after testing at 180, 220, 280 and 400px on a live page: no thumbnail in any column, including 400px, which had them before 3.24.0.
+
+The markup was never at fault. The live feed emits the thumbnail slot on every row, filled with either a real `<img src>` or the branded category tile, and the deployed stylesheet was byte-identical to the repository. The only rule that could hide it fires below 240px, which a 400px column should never reach. It was reaching it.
+
+**`container-type: inline-size` applies size containment, and size containment means an element's intrinsic sizes are computed as if it had no contents.** 3.24.0 put one on `.uc-sidebar`. On the live page that card sat in a table cell, and a table cell is sized from its contents. The card's min-content contribution fell from roughly 150px, a 60px thumbnail plus the longest word in a title, to 30px of its own border and padding. Every column in that table collapsed, every card fell under the breakpoint, and the thumbnail was hidden everywhere. The comment above the declaration read "SAFE, BECAUSE OF WHAT IS NOT IN HERE" and reasoned only about absolutely positioned descendants: one mechanism verified carefully, and the conclusion generalised to a second that was never checked. That shape of error, not just the rule, is written into DESIGN.md.
+
+**The sidebar is no longer a query container and has no queries at all.** The row reflows intrinsically instead, so nothing about it depends on an element reporting a width correctly and no host layout can defeat it. Above 271px the thumbnail sits left of the text exactly as before, at 60 by 45. At 271px and below the row stacks and the thumbnail becomes a full-width 16:9 band above the title, cropped from the centre, capped at 120px so a ten-date sidebar does not become a column of pictures. Measured band sizes: 130x73 at a 180px column, 150x84 at 200, 170x96 at 220, 190x107 at 240, 210x118 at 260 and 221x120 at 271, where the cap engages. The wrap is decided by flex, on a 60px thumbnail and a 150px text column plus a 12px gap; the 150px is a `flex-basis` rather than a `min-width` because a real minimum cannot shrink below itself and would overflow a 180px column.
+
+**The picture is never removed at any width now, and the old argument for removing it was wrong on the data.** It ran: every row in this placement is the same programme, so the picture is the least load-bearing thing in it. On the live feed five of six rows carry no photograph and render the branded category tile, and roughly half of imported GoFundMe Pro campaigns can never have one because the API does not expose it. What `display: none` deleted was not a repeated photograph, it was the category's colour and icon, permanently, for the events that most need it.
+
+**`.uc-calendar` keeps its container queries and gains `min-width: 260px`, which reverses what 3.24.0 argued and must not be undone from the old reasoning.** That build said a hard minimum makes a block in a too-narrow column overflow the host's page rather than be cramped in it, and that the overflow is the worse failure. Sound about readability, and it missed containment. The month grid genuinely needs a layout switch so the queries stay, which means the collapse hazard stays with them, and a definite `min-width` is the only thing that puts an intrinsic floor back under a parent that sizes from its contents. Without it the block is not cramped, it is destroyed, and the host's layout goes with it.
+
+**The published minimum widths are now measured rather than calculated: 200px sidebar, 260px list, 260px month grid.** 3.24.0 derived them by arithmetic and got the sidebar wrong in the same build that published it, since a container query measures the content box and the card carries 30px of border and padding, so the documented 220px minimum was 30px inside the width at which the thumbnail vanished. `.claude/embed-width-probe.html` is committed and renders every mode at eleven widths in three kinds of parent, printing card width, content box, layout state, both thumbnail sizes and any overflow. It includes a **table cell** and a **flex item**, the two content-sized parents that broke and that nothing was testing, and it caught a fault in its own first draft: with a sidebar and a list card in one cell, every table column came out at 260px because the list card's new floor was holding it open and the sidebar was never the thing being measured.
 
 = 3.24.0 =
 

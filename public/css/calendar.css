@@ -427,8 +427,35 @@
    position to lose. The RSVP modal is the one thing that would have broken and
    it is appended to <body>, outside this root, which is documented at its own
    rules and is now load-bearing for a second reason.
+
+   ---------------------------------------------------------------------------
+   min-width IS NOT A STYLE CHOICE HERE. IT IS WHAT KEEPS THE ELEMENT FROM
+   BEING ERASED, AND IT REVERSES WHAT 3.24.0 SAID.
+
+   3.24.0 argued against a min-width on these roots, in readme and in this file:
+   a hard minimum makes a block pushed into a column that is too narrow overflow
+   the host's page rather than be cramped inside it, which is the worse failure.
+   That reasoning was sound about READABILITY and it missed what containment
+   does, so DO NOT UNDO THIS FROM THE OLD ARGUMENT.
+
+   `container-type: inline-size` applies size containment in the inline axis,
+   which means this element's intrinsic sizes are computed AS IF IT HAD NO
+   CONTENTS. Its min-content contribution therefore falls to zero. Any parent
+   that sizes itself FROM its contents (a table cell, a float, an inline-block,
+   an auto-sized flex or grid track) then has nothing to size from, and both the
+   block and the host's layout collapse. That is exactly what happened to the
+   sidebar in 3.24.0: four table columns folded and the thumbnail vanished from
+   every one of them.
+
+   A definite min-width DOES contribute to intrinsic sizing, so this one line
+   gives the parent a floor to size from again. 260px is the list mode's
+   documented minimum, so it is the same number readme.txt publishes rather than
+   a second one invented here. Without it the block does not get cramped, it
+   gets destroyed, and it takes the host's layout with it; that is a worse
+   failure than overflowing a column by a few pixels, which is what changes the
+   answer.
    ------------------------------------------------------------------------- */
-.uc-calendar { max-width: 900px; margin: 0 auto; font-family: var(--uc-font-heading);
+.uc-calendar { max-width: 900px; min-width: 260px; margin: 0 auto; font-family: var(--uc-font-heading);
     container-type: inline-size; container-name: uc-calendar; }
 
 /* ---------------------------------------------------------------------------
@@ -1506,37 +1533,91 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    IT FILLS THE COLUMN IT IS GIVEN, AND max-width IS A CAP RATHER THAN A SIZE.
 
    This block is pasted into columns of whatever width a page happens to have,
-   on sfaf.org and on sites we do not control. `max-width: 380px` was already
-   the right kind of rule: a block element fills its parent and stops at 380,
-   so the card itself has never assumed a width. What DID assume one were the
-   things inside it, and they are handled by the container queries at the foot
-   of this section.
+   on sfaf.org and on sites we do not control. `max-width: 380px` is the right
+   kind of rule: a block element fills its parent and stops at 380, so the card
+   itself has never assumed a width. What DID assume one were the things inside
+   it, and they are handled by the row's own flex rules below, with no query of
+   any kind.
 
-   IT IS ITS OWN QUERY CONTAINER, WHICH IS THE WHOLE POINT. A media query asks
-   how wide the WINDOW is, and the window is 1440px while this card is 280.
-   Every "narrow" rule in this file that is gated on the viewport is therefore
-   unreachable in a sidebar placement, which is exactly the fault this fixes.
-   `container-type: inline-size` makes the card the thing its own contents
-   measure themselves against.
+   THERE IS NO container-type HERE, AND 3.24.0 PUT ONE ON. It was removed in
+   3.24.1 because it broke the block outright, and the failure is worth keeping
+   written down.
 
-   SAFE, BECAUSE OF WHAT IS NOT IN HERE. inline-size containment also applies
-   layout containment, which makes an element the containing block for
-   absolutely and fixed positioned descendants. Nothing inside a sidebar row is
-   positioned, and the RSVP modal is appended to <body> rather than living in
-   here, so there is nothing for that to catch. Paint is NOT contained, so the
-   row hover's ±14px box-shadow bleed still reaches the card's padding edge.
+   `container-type: inline-size` applies SIZE containment in the inline axis,
+   which means the element's intrinsic sizes are computed AS IF IT HAD NO
+   CONTENTS. On a page where this card sat in a table cell, its min-content
+   contribution fell from "a 60px thumbnail plus the longest word in a title",
+   about 150px, to nothing but its own border and padding: 30px. A table cell is
+   sized FROM its contents, so every column in that table collapsed, every card
+   fell under the 240px breakpoint the container queries used, and the thumbnail
+   was hidden in all four test columns including the one labelled 400px.
+
+   THE COMMENT THAT USED TO BE HERE SAID "SAFE, BECAUSE OF WHAT IS NOT IN HERE"
+   and then reasoned only about absolutely positioned descendants. That was one
+   true fact about layout containment, checked carefully, and then generalised
+   to a second mechanism nobody had looked at. See the containment rule in
+   DESIGN.md: this element's width can come from its contents, and an embed
+   handed to other sites can never guarantee it will not.
    ------------------------------------------------------------------------- */
 .uc-sidebar { font-family: var(--uc-font-heading); max-width: 380px;
     background: #fff; border: 1px solid var(--uc-border-strong);
     border-radius: 14px; padding: 6px 14px 14px;
-    box-shadow: var(--uc-lift);
-    container-type: inline-size; container-name: uc-sidebar; }
+    box-shadow: var(--uc-lift); }
 .uc-sidebar-list { display: flex; flex-direction: column; }
-/* NO ACCENT BAR, AND 10px OF AIR BEFORE THE THUMBNAIL. The bar went in 3.17.0;
-   the padding is what takes its place, so the row starts with space rather
-   than with a stripe. */
-.uc-sidebar-row { display: flex; gap: 12px; align-items: center;
-    padding: 12px 0 12px 10px; border-top: 1px solid var(--uc-border);
+
+/* ===========================================================================
+ * THE ROW REFLOWS, AND IT DOES IT WITH NO QUERY AT ALL.
+ *
+ * TWO STATES, ONE SET OF RULES. Wide enough, the thumbnail sits left and the
+ * text right, exactly as before. Too narrow for that, the row STACKS: the
+ * thumbnail becomes a full-width band above the title and the text sits under
+ * it. The picture gets MORE room as the column narrows, not less, which is the
+ * opposite of what 3.24.0 did to it.
+ *
+ * WHY THERE IS NO CONTAINER QUERY. Two reasons, and the second is the one that
+ * matters. The first is that 3.24.0's queries fired at the wrong widths: a
+ * container query measures the CONTENT box, and this card carries 30px of
+ * border and padding, so every threshold landed 30px early and the thumbnail
+ * vanished at a 270px column while readme.txt was publishing 220px as
+ * supported. The second is that making the card a query container is what broke
+ * it: see the note on .uc-sidebar above.
+ *
+ * So the reflow is intrinsic. Nothing here depends on any element reporting a
+ * width correctly, which means nothing here can be defeated by the layout the
+ * host happens to put the block in.
+ *
+ * HOW IT WORKS, BECAUSE FLEX WRAPPING IS NOT OBVIOUS.
+ *
+ *   Wrapping is decided on each item's HYPOTHETICAL main size, which is its
+ *   flex-basis clamped by min/max-width, NOT the size it would shrink to. The
+ *   thumbnail's is 60px and the text column's is 150px; with the 12px gap that
+ *   is 222px. The row's content box is the card's content box less its own
+ *   20px of padding, so the two sit side by side while
+ *
+ *       column - 30 (card border and padding) - 20 (row padding) >= 222
+ *
+ *   which is a column of 272px or wider, and stack below it.
+ *
+ *   THE 150px LIVES IN flex-basis, NOT min-width, and that is deliberate. A
+ *   real min-width cannot shrink below itself, so in a 180px column the text
+ *   column would be 150px wide inside a 130px line and overflow the host's
+ *   page. As a basis it states the same intention, triggers the wrap at the
+ *   same width, and still gives way once it is alone on its own line.
+ *
+ *   WHEN IT WRAPS, THE THUMBNAIL GROWS TO FILL ITS LINE, and that is what the
+ *   lopsided grow factors are for. Alone on a line the thumbnail's flex-grow: 1
+ *   takes all the free space, so the band is full width. Sharing a line with a
+ *   text column whose grow factor is 999, it receives one thousandth of the
+ *   free space, which at any real width is a fraction of a pixel: it stays 60px
+ *   and the text takes the rest. One declaration, both states.
+ * ======================================================================== */
+/* NO ACCENT BAR, AND 10px OF AIR EITHER SIDE OF THE ROW. The bar went in
+   3.17.0 and the left padding took its place, so the row starts with space
+   rather than with a stripe. The right side matches it as of 3.24.1: the
+   stacked band spans the row's content box, and a band inset 10px on one side
+   and flush on the other reads as a mistake. */
+.uc-sidebar-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 12px 10px; border-top: 1px solid var(--uc-border);
     text-decoration: none; color: inherit; background: none; }
 .uc-sidebar-row:first-child { border-top: 0; }
 /* The hover is a tint pulled out to the padding edge, so the row highlights
@@ -1570,8 +1651,35 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    when a picture crops wrong, and finding it explicit is faster than working
    out that the default was already right.
    ------------------------------------------------------------------------- */
-.uc-sidebar-thumb { flex: 0 0 60px; width: 60px; height: 45px; border-radius: 8px;
-    overflow: hidden; background: var(--uc-bg); display: block; }
+/* ---------------------------------------------------------------------------
+   ONE RATIO AND TWO CLAMPS DO BOTH STATES.
+
+   NO width AND NO height ANY MORE, because a fixed pair of those is what made
+   this a hard 60px reservation that never gave way. What is here instead:
+
+     flex: 1 1 60px   60px beside the text, the whole line when it wraps. The
+                      grow factor is explained at .uc-sidebar-row.
+     aspect-ratio     16:9, the same shape the list card and the event page use
+                      and the same shape a 1200x675 upload is, so one picture is
+                      cropped identically everywhere it appears.
+     min-height 45px  At 60px wide, 16:9 works out to 33.75px, which is a strip
+                      rather than a picture. The floor holds the small state at
+                      60x45, which is the 4:3 thumbnail 3.18.0 arrived at and is
+                      exactly what shipped before this build. The ratio takes
+                      over the moment the box is wider than 80px, which in
+                      practice means the moment it wraps.
+     max-height 120px The ceiling on the band. Without it, at the widest column
+                      that still stacks the band would be 136px tall and a
+                      ten-date sidebar would be most of a screen of pictures.
+                      120px is the point where the band still reads as a
+                      photograph and the row still reads as a row.
+
+   object-fit: cover on the image below crops from the centre in both states, so
+   nothing about which part of the picture survives depends on the column.
+   ------------------------------------------------------------------------- */
+.uc-sidebar-thumb { flex: 1 1 60px; aspect-ratio: 16 / 9;
+    min-height: 45px; max-height: 120px;
+    border-radius: 8px; overflow: hidden; background: var(--uc-bg); display: block; }
 .uc-sidebar .uc-thumb-img,
 .uc-calendar .uc-thumb-img {
     display: block; width: 100%; height: 100%; max-width: none;
@@ -1650,7 +1758,12 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
     color: var(--uc-text);
 }
 
-.uc-sidebar-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/* THE TEXT COLUMN'S MINIMUM IS 150px AND IT IS THE THING THAT DECIDES THE
+   STACK. See .uc-sidebar-row for why it is a flex-basis rather than a
+   min-width. `min-width: 0` stays and is a different rule doing a different
+   job: it lets a long unbroken word be wrapped by overflow-wrap below instead
+   of setting a floor under the whole line. */
+.uc-sidebar-body { min-width: 0; flex: 999 1 150px; display: flex; flex-direction: column; gap: 2px; }
 /* overflow-wrap: anywhere, and it is not decoration. Event titles here include
    "TransLife Galaxy Mental Health Series"; a single unbroken token longer than
    the column (a URL, a hashtag, a hyphen-free compound) would otherwise push
@@ -1686,54 +1799,28 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-sidebar .uc-sidebar-all:hover { text-decoration: underline; }
 
 /* ===========================================================================
- * SIDEBAR: HOW IT REFLOWS IN A NARROW COLUMN
+ * SIDEBAR: WHAT USED TO BE HERE, AND WHY NOTHING IS
  *
- * WHAT IT DID BEFORE, AND WHY IT WAS NOT VISIBLE HERE. The card was fluid and
- * the row was not: `flex: 0 0 60px` on the thumbnail is a hard reservation
- * that does not shrink, and at a 200px placement it took 60 of the 160px a row
- * has for content, leaving 88px for a title. "TransLife Galaxy Mental Health
- * Series" is five or six lines in 88px. Nothing overflowed and nothing looked
- * broken, which is why it survived: it just quietly became unreadable.
+ * 3.24.0 put three @container queries in this space: shrink the thumbnail at
+ * 320, drop it at 240, stack the date and time at 200. All three are gone and
+ * nothing replaced them, because the reflow they were doing is now done by the
+ * row's own flex rules, which need no query and cannot be defeated by the
+ * layout the host puts the block in. See the long note above .uc-sidebar-row.
  *
- * THE THUMBNAIL GIVES WAY BEFORE THE WORDS DO. It shrinks at 320 and goes at
- * 240. That order is the argument: in the placement this block is for, beside
- * a programme, every row is the same programme and the pictures are often the
- * same picture, so the thumbnail is the least load-bearing thing in the row.
- * The title is the only part that says which date this is.
+ * THE THUMBNAIL IS NEVER DROPPED NOW, AND THE OLD ARGUMENT FOR DROPPING IT WAS
+ * WRONG ON THE DATA. It ran: in the placement this block is for every row is
+ * the same programme, the pictures are often the same picture, so the picture
+ * is the least load-bearing thing in the row. On the live feed five of six rows
+ * carry no photograph at all and render the branded category tile instead, and
+ * roughly half of imported GoFundMe Pro campaigns can never have one because
+ * the API does not expose it. So what `display: none` was deleting was not a
+ * repeated photograph. It was the category's colour and icon, which is the only
+ * signal of that kind in the row, and it was deleting it permanently for the
+ * events that most need it.
  *
- * MINIMUM SUPPORTED WIDTH: 220px. Below that it still renders and nothing
- * overflows, but the card's own 14px of side padding starts to be a
- * significant share of the column and a title routinely runs to three lines.
- * That is documented in readme.txt rather than enforced here, because a hard
- * min-width would make the block overflow a column it was put in by mistake,
- * which is worse than being cramped in it.
- *
- * THESE ARE @container QUERIES, NOT @media. The width that matters is the
- * column's, and the window is no guide to it. See the note on .uc-sidebar.
+ * The band gets BIGGER as the column narrows, which is the reverse of what was
+ * here, and the row stacks rather than the picture being squeezed out of it.
  * ======================================================================== */
-@container uc-sidebar (max-width: 320px) {
-    /* Still a picture, just a smaller one. 4:3 is kept, because the crop is
-       decided by the ratio and changing it here would crop differently in a
-       narrow column than in a wide one. */
-    .uc-sidebar-thumb { flex: 0 0 48px; width: 48px; height: 36px; }
-    .uc-sidebar-row { gap: 10px; padding-left: 6px; }
-    .uc-sidebar .uc-sidebar-heading { font-size: 16px; padding: 11px 12px; }
-}
-
-@container uc-sidebar (max-width: 240px) {
-    /* The picture goes rather than shrinking to a stamp. At 36px it is no
-       longer a photograph, it is a coloured square, and the room it takes is
-       the room the title needs. */
-    .uc-sidebar-thumb { display: none; }
-    .uc-sidebar-row { padding-left: 2px; }
-    .uc-sidebar .uc-sidebar-heading { font-size: 15px; }
-}
-
-@container uc-sidebar (max-width: 200px) {
-    /* Stacked, and the separator goes with the line it was separating. */
-    .uc-sidebar .uc-when-date, .uc-sidebar .uc-when-time { display: block; }
-    .uc-sidebar .uc-when-sep { display: none; }
-}
 
 /* ---------- Mobile: the Outlook pattern ----------
  *

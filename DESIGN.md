@@ -275,7 +275,7 @@ it.
 
 ## 5. CSS discipline
 
-Five separate defects where a rule was correct and never reached the screen.
+Six separate defects where a rule was correct and never reached the screen.
 These are not style preferences; they are the failure modes this codebase
 actually has.
 
@@ -324,6 +324,73 @@ with its color written as an inline style in PHP. The stylesheet only sized and
 placed it. Every search for `border-left` came back clean and every one of those
 searches was answering a question about the wrong thing. Check the renderers for
 an element that **is** the effect.
+
+### `container-type: inline-size` erases the element's intrinsic size
+
+**Never put `container-type` on an element whose width can come from its
+contents, and an embed handed to other sites can never guarantee it will not.**
+
+`container-type: inline-size` is not only a way to ask questions. It applies
+**size containment in the inline axis**, and size containment means the
+element's intrinsic sizes are computed *as if it had no contents*. Its
+min-content and max-content contributions both collapse to whatever its own
+border and padding come to.
+
+That is harmless when the width arrives from the parent, which is the case
+everybody tests. It is fatal when the parent sizes itself from its contents,
+and there are more of those than you think:
+
+- a table cell
+- a float
+- an `inline-block`
+- a flex item, or a grid track sized `auto` / `min-content` / `max-content`
+- an absolutely positioned box with no width
+
+3.24.0 put `container-type` on `.uc-sidebar`, which lives inside whatever
+markup a host page happens to have. On the live test page that was a table.
+The card's min-content contribution fell from about 150px, a 60px thumbnail
+plus the longest word in a title, to 30px of border and padding. Every column
+in that table collapsed, every card fell under the 240px breakpoint its own
+container queries used, and the thumbnail disappeared from all four columns
+including the one labelled 400px. Nobody could reproduce it from the CSS,
+because the CSS was correct: the element it was measuring had been erased.
+
+Two remedies, and pick by whether the element needs to be a container at all:
+
+- **It does not.** Take `container-type` off and make the component reflow
+  intrinsically, with `flex-wrap` and a declared basis on the column that
+  should win. That is what the sidebar row does now, and it cannot be defeated
+  by any parent, because it asks nothing about width.
+- **It does.** Keep it and give the element a definite `min-width`. A definite
+  `min-width` does contribute to intrinsic sizing, so the parent has a floor to
+  size from again. `.uc-calendar` carries `min-width: 260px` for exactly this,
+  and it overrides the general rule that these blocks never enforce a minimum:
+  without it the block does not get cramped, it gets destroyed and takes the
+  host's layout with it.
+
+### The shape of the error, which is worth more than the rule
+
+The comment above that declaration read **"SAFE, BECAUSE OF WHAT IS NOT IN
+HERE"** and then reasoned, carefully and correctly, about absolutely positioned
+descendants: containment makes an element their containing block, so every
+absolute box inside was traced to a nearer `position: relative` ancestor and the
+RSVP modal was confirmed to live on `<body>`. All of that was true. None of it
+was about size.
+
+**One mechanism was verified, the element was declared safe, and the conclusion
+was generalised to a mechanism nobody had checked.** That is the same move as
+citing `git log -S` to answer "why does this still look like that": real
+evidence, answering a question next to the one being asked. When a property
+brings several behaviours with it, the checklist is the behaviours, not the one
+that came to mind. Write down which ones you checked, so the ones you did not
+are visible as a gap rather than covered by the word "safe".
+
+The corollary for published numbers: **`readme.txt`'s minimum widths are
+measured, not calculated.** 3.24.0 derived them by arithmetic and shipped a
+220px sidebar minimum in the same build that made the thumbnail vanish below
+270px. `.claude/embed-width-probe.html` renders every mode at eleven widths in
+three kinds of parent, including a table cell and a flex item, and prints what
+it measures. Run it before changing a published number.
 
 ---
 
