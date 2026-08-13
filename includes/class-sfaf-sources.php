@@ -771,7 +771,13 @@ class SFAF_Sources {
             return $out[0];
         }
         $last = array_pop( $out );
-        return implode( ', ', $out ) . ' and ' . $last;
+        if ( 1 === count( $out ) ) {
+            return $out[0] . " and " . $last;
+        }
+        // The serial comma, SFAF house style: "an image, a description, and a
+        // category". phrase() in portal.js is the same joining on the browser
+        // side and carries the same rule.
+        return implode( ", ", $out ) . ", and " . $last;
     }
 
     /**
@@ -1644,7 +1650,13 @@ class SFAF_Sources {
             return $out[0];
         }
         $last = array_pop( $out );
-        return implode( ', ', $out ) . ' and ' . $last;
+        if ( 1 === count( $out ) ) {
+            return $out[0] . " and " . $last;
+        }
+        // The serial comma, SFAF house style: "an image, a description, and a
+        // category". phrase() in portal.js is the same joining on the browser
+        // side and carries the same rule.
+        return implode( ", ", $out ) . ", and " . $last;
     }
 
     /* ---------------------------------------------------------------------

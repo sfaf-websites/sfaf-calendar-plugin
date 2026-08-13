@@ -2205,3 +2205,20 @@ body.uc-modal-open { overflow: hidden; }
 @media (max-width: 720px) {
     .uc-queue-actions { flex: 1 1 100%; padding-top: 8px; }
 }
+
+/* ---------------------------------------------------------------------------
+   THE FOUR EMAILS, BEHIND A DISCLOSURE (3.25.0).
+
+   Reuses the team picker's inline disclosure rather than inventing a third
+   kind: same summary pill, same chevron, same states. What is added here is
+   only the spacing between a switch and the line that explains it, because
+   these labels are a sentence each and read as a block without it.
+
+   THE NOTE UNDER EACH SWITCH IS INDENTED TO THE LABEL TEXT, not to the
+   checkbox, so the four notes line up with the four things they describe
+   rather than with the boxes.
+   ------------------------------------------------------------------------- */
+.uc-notify-kinds { margin-top: 6px; }
+.uc-notify-kinds .uc-check { margin-top: 12px; }
+.uc-notify-kinds .uc-check:first-of-type { margin-top: 4px; }
+.uc-notify-kind-note { margin: 2px 0 0 26px; }

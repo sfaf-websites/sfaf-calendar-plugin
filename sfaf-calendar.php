@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.24.2
+ * Version: 3.25.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.24.2' );
+define( 'SFAF_VERSION', '3.25.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.24.2' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '3' );
+define( 'SFAF_DB_VERSION', '4' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -88,6 +88,10 @@ $sfaf_includes = array(
     'includes/class-sfaf-embed.php',
     'includes/class-sfaf-rsvp.php',
     'includes/class-sfaf-optins.php',
+    // The mail layer, before anything that sends: SFAF_Email builds and hands
+    // to wp_mail(), SFAF_Notifications decides who gets what.
+    'includes/class-sfaf-email.php',
+    'includes/class-sfaf-notifications.php',
     'includes/class-sfaf-reminders.php',
     'includes/class-sfaf-cron.php',
     'includes/class-sfaf-recurrence.php',
@@ -524,6 +528,25 @@ function sfaf_install_tables() {
     // person ever registered — but they used to outlive it unreadable, because
     // the list joins on the post and rendered a blank Event column once the
     // post had gone. Written once, at the last moment the title can be known.
+    //
+    // token IS THE CANCEL LINK'S ONLY CREDENTIAL, and it is on the registration
+    // rather than on the reminder ledger because the confirmation email goes out
+    // the moment somebody registers, hours or weeks before any reminder row
+    // exists. 32 hex characters is 128 bits from random_bytes: not guessable,
+    // and it identifies exactly one registration, so it can cancel that one and
+    // nothing else. Rows written before 3.25.0 have an empty token and simply
+    // have no cancel link, which is what they had before.
+    //
+    // THE KEY ON token IS NOT UNIQUE, AND IT CANNOT BE. Every row that already
+    // exists gets the default '', so a unique index would refuse to be created
+    // on any site with more than one registration in it and dbDelta would report
+    // nothing wrong. The uniqueness that matters is enforced where it can be:
+    // the value is 128 random bits, and every lookup rejects an empty token
+    // before it queries, so '' can never match the legacy rows it is shared by.
+    //
+    // cancelled_at records WHEN somebody released their place. The status column
+    // already says that they did; this says when, which is the question an
+    // organizer looking at a half-empty room actually asks.
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         event_id bigint(20) unsigned NOT NULL,
@@ -532,10 +555,13 @@ function sfaf_install_tables() {
         email varchar(200) NOT NULL,
         phone varchar(50) DEFAULT '',
         status varchar(20) DEFAULT 'confirmed',
+        token char(32) NOT NULL DEFAULT '',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        cancelled_at datetime NULL,
         PRIMARY KEY (id),
         KEY event_id (event_id),
-        KEY email (email)
+        KEY email (email),
+        KEY token (token)
     ) $charset;";
 
     // THE REMINDER LEDGER, AND THE UNIQUE KEY THAT IS THE SEND-ONCE GUARANTEE.
@@ -589,7 +615,79 @@ function sfaf_install_tables() {
         dbDelta( $statement );
     }
 
+    sfaf_migrate_notification_lists();
+
     update_option( 'sfaf_db_version', SFAF_DB_VERSION );
+}
+
+/**
+ * Fold the old single registration-alert address into the notification list.
+ *
+ * 3.25.0 merged two lists into one. Until then, "email somebody when an RSVP
+ * comes in" was a checkbox plus one address field, and the reminder copy went to
+ * the picker of people, teams and typed addresses. Both are now the picker.
+ *
+ * NOTHING IS DELETED AND NOTHING IS INVENTED. The old address is APPENDED to the
+ * event's typed-address list if it is not already reachable, and the old
+ * checkbox is translated rather than ignored: an event that said "no, do not
+ * email me when somebody registers" still says that afterwards, recorded as the
+ * new per-event switch. An event that never expressed a preference gets the new
+ * default, which is on.
+ *
+ * The legacy meta is left in place. It is the evidence for what this did, it
+ * costs two rows, and reading it is the only way to answer "why is this address
+ * on the list" in six months.
+ *
+ * Runs once, from the schema upgrade, and is idempotent: a second run finds the
+ * address already present and the switch already recorded.
+ */
+function sfaf_migrate_notification_lists() {
+    $ids = get_posts( array(
+        'post_type'      => 'uc_event',
+        'post_status'    => 'any',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'meta_query'     => array(
+            'relation' => 'OR',
+            array( 'key' => '_uc_organizer_email', 'compare' => 'EXISTS' ),
+            array( 'key' => '_uc_notify_organizer', 'compare' => 'EXISTS' ),
+        ),
+    ) );
+
+    $moved = 0;
+    foreach ( (array) $ids as $id ) {
+        $legacy = trim( (string) get_post_meta( $id, '_uc_organizer_email', true ) );
+        if ( $legacy && is_email( $legacy ) ) {
+            $emails = get_post_meta( $id, SFAF_Reminders::NOTIFY_EMAILS_META, true );
+            $emails = is_array( $emails ) ? $emails : array();
+
+            // Already reachable? notify_list() resolves people and teams as well
+            // as typed addresses, so the test is against the resolved list
+            // rather than against the typed one.
+            $already = array_key_exists( strtolower( $legacy ), SFAF_Reminders::notify_list( $id ) );
+            if ( ! $already ) {
+                $emails[] = $legacy;
+                update_post_meta( $id, SFAF_Reminders::NOTIFY_EMAILS_META, array_values( array_unique( $emails ) ) );
+                $moved++;
+            }
+        }
+
+        // The old checkbox wrote '0' on every save, so an explicit "off" is a
+        // real answer and is carried over. Absent meta means nobody ever said,
+        // and that becomes the new default of on.
+        $flag = get_post_meta( $id, '_uc_notify_organizer', true );
+        if ( '0' === (string) $flag ) {
+            $off = get_post_meta( $id, SFAF_Notifications::OFF_META, true );
+            $off = is_array( $off ) ? $off : array();
+            if ( ! in_array( 'alert', $off, true ) ) {
+                $off[] = 'alert';
+                update_post_meta( $id, SFAF_Notifications::OFF_META, array_values( $off ) );
+            }
+        }
+    }
+
+    update_option( 'sfaf_notify_merge_moved', (int) $moved, false );
 }
 
 /**
@@ -723,6 +821,20 @@ function sfaf_rest_submit_rsvp( $request ) {
 function &sfaf_rsvp_count_store() {
     static $store = array();
     return $store;
+}
+
+/**
+ * Forget one event's cached count.
+ *
+ * The store exists so a list screen does not run one COUNT per row, and it
+ * lives for one request. That is fine for reading, and wrong the moment the
+ * same request CHANGES the number: a cancellation reads the count, releases
+ * the place and then reports capacity from the copy it took beforehand. One
+ * caller, cancel_rsvp(), and it is the only place a count moves down.
+ */
+function sfaf_clear_rsvp_count_cache( $event_id ) {
+    $store =& sfaf_rsvp_count_store();
+    unset( $store[ (int) $event_id ] );
 }
 
 /**

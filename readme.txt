@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.24.2
+Stable tag: 3.25.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -22,15 +22,16 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * Date, time, location, and recurrence fields
 * RSVP system with capacity tracking
 * Per-event social share, donate button, add-to-calendar (.ics + Google), and reminder signup
-* Morning-of reminder emails on the day of the event, with a per-event notification list
-* An hourly scheduled runner with a run lock, a run log and failure notices
+* Four branded emails: a confirmation when somebody registers, an alert to staff, the morning-of reminder, and a list of who is coming two hours before
+* One notification list per event, holding people, teams, and outside addresses, resolved when the mail goes out
+* A cancel link in every registrant email, working with no account, which frees the place
+* An hourly scheduled runner with a run lock, a run log, and failure notices, nudged by any page carrying a calendar
 * Styled single event template (auto-loaded, theme-overridable)
-* Per-event display toggles and confirmation/organizer email overrides
+* Per-event display toggles, per-event email switches, and confirmation copy overrides
 * Category filter buttons and search on the public calendar
 * Shortcode generator and branding controls (logo, colors, card style)
 * REST API for multi-site event sync
 * Integration panels for GoFundMe Pro, Eventbrite, Pardot/Salesforce, Google Calendar, Galaxy Digital, and Webhooks
-* RSVP data routing with confirmation/organizer emails
 * CSV export of RSVPs (compatible with Google Sheets import)
 * Responsive, modern UI
 
@@ -138,16 +139,34 @@ because that has always been driven by the window as well.
 4. Add `[sfaf_calendar]` to any page to display the calendar
 5. Configure integrations under Events > Settings
 
-== Scheduled Tasks (required for reminders) ==
+== Scheduled Tasks ==
 
-Reminder emails go out at 6:00am on the day of the event. WordPress cannot do
-that on its own, and this is the single most important thing to set up before
-launch.
+Reminder emails go out at 6:00am on the day of the event, and the "who is
+coming" summary two hours before it starts. WordPress cannot do that on its own.
 
 **Why WordPress cannot do it on its own.** WP-Cron is not a scheduler. It is a
 check that runs when somebody visits the site. On a calendar with no traffic at
 6am, a 6am job simply does not happen; it waits until the first visitor, which
-might be 10am, or the next day. The fix is a real system cron job.
+might be 10am, or the next day.
+
+**Since 3.25.0 the plugin brings its own trigger, and it needs nothing set up.**
+Every sfaf.org page carrying a calendar asks the calendar site to run its jobs,
+once the page has finished loading and at most once every fifteen minutes. The
+calendar site has almost no traffic of its own; sfaf.org has plenty, and this
+lends it a heartbeat. Three things keep it cheap: it waits for an idle moment
+after load, so it never competes with the page; a timestamp in the visitor's
+browser means one person reading six programme pages sends one request rather
+than six; and the endpoint answers in a few milliseconds when the interval has
+not elapsed, which is almost every time. Nothing is configured, nothing is
+installed, and it travels with the plugin.
+
+Its status is on **Events > Automation > Page-view nudge**, which says when a
+page last started a run.
+
+**A real system cron is still better where it is available**, because it does
+not depend on anybody visiting anything. The steps below set one up. With both
+in place they cannot collide: a run lock stands the second one down, and the
+reminder ledger refuses a second send per person per event even if it did not.
 
 **Setting it up on Bluehost (cPanel).**
 
@@ -200,6 +219,67 @@ by hand, under Events > Settings > Scheduled Tasks, only after one real removal
 has been seen go through correctly. Until then use "Fetch updates" on the
 portal's Pending screen, which runs the same fetch with somebody watching.
 
+== Email ==
+
+Four emails, all on by default, all switchable per event.
+
+1. **The confirmation**, to the person, the moment they register. Date, time,
+   location, add-to-calendar links for Google and for Apple or Outlook, a link
+   to the event page, and a link to cancel.
+2. **The alert**, to the event's notification list, the moment somebody
+   registers. Says who, and how many places are taken.
+3. **The morning-of reminder**, to everybody registered, at 6:00am on the day
+   (or at midnight when the event starts before 6). The notification list is
+   copied in, so staff see what participants were sent.
+4. **Who is coming**, to the notification list, two hours before the event
+   starts, listing everybody registered. Nothing is sent when nobody has
+   registered.
+
+**One list, per event.** The same people are told about all three staff emails:
+individuals, whole teams, and outside addresses, picked in one place on the
+event. Teams resolve when the mail goes out, so somebody added to a team today
+starts receiving mail for events chosen before they joined, and somebody removed
+stops immediately. Nobody gets two copies of anything: the list is deduplicated
+by address, so being picked individually and sitting in a chosen team is one
+email.
+
+**It starts with whoever created the event**, which is what makes the common
+path free. Create an event with a title, a date, a time, a place, a category and
+an image, press Save, and it has working email with a real recipient. Nothing on
+the Notifications card has to be touched. Turning one of the four off, adding
+people, or writing your own copy is behind a fold that says what the default is
+currently doing.
+
+**Cancelling.** Every email to somebody holding a place carries a cancel link
+with a token in it. No account and no password. **The link opens a page that
+asks**; it never cancels on being opened, because mail scanners and safe-link
+rewriters fetch the URLs in an email before a person has read it, and a
+one-click cancel would drop people's places for them. Cancelling marks the
+registration cancelled rather than deleting it, so the organizer can see that
+somebody registered and then cancelled, and the place is free immediately: it
+leaves the count, the reminder send, and the who-is-coming list at the same
+moment.
+
+**Where it comes from.** Set the from name and address under **Events >
+Settings > Email**. It ships as San Francisco AIDS Foundation
+<websites@sfaf.org> and is a setting rather than a constant because
+events@calendar.sfaf.org is being set up and will replace it: when the mailbox
+exists, type it in and nothing is deployed. Replies go somewhere else on
+purpose, per event: the event's own reply-to address, or the person who created
+it, or the site default, whichever is set. The registration alert is the one
+exception, and it replies to the person who just registered.
+
+**Delivery is handled by the site's mail plugin.** Everything goes out through
+wp_mail(), so the Postmark plugin already installed picks it up. This plugin
+adds no SMTP settings and no second delivery path.
+
+**Test it before you trust it.** **Events > Automation > Send a test email**
+builds any of the four against a real event and sends it to you. What to check
+in what arrives: press reply and read who it is addressed to; view the source
+and look for a `text/plain` part; confirm the banner loads; and open it once in
+Outlook on Windows, where the buttons should be rectangles rather than bare
+links.
+
 == Google Maps on the event page ==
 
 Optional. Paste a Maps Embed API key under **Events > Settings > Integrations >
@@ -230,6 +310,54 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.25.0 =
+
+**None of this has ever run.** No email has ever been sent by this plugin. Everything below is built and statically verified, and delivery, rendering, the Reply-To header and the cancel flow are unverified until somebody presses send on a live site. **Events > Automation > Send a test email** exists for exactly that, and it is the first thing to do after installing this build.
+
+**Four emails, all on by default, all switchable per event.** A confirmation to the person who registers, carrying the date, the time, the place, add-to-calendar links for Google and for Apple or Outlook, a link to the event page, and a link to cancel. An alert to staff the moment somebody registers, saying who and how many places are taken. The morning-of reminder, unchanged in timing and now in the branded template. And a list of who is coming, two hours before the event starts, which is not sent at all when nobody has registered.
+
+**No event image in any of them, and that is a decision.** The banner is already a large picture; a second one pushes the date, the time and the address below the fold on a phone, which is the part somebody opens the email to re-read. Half the imported events have no photograph and would render a flat color block in its place.
+
+**One notification list, which reverses a decision this project made deliberately and wrote down.** Until now, "email somebody when an RSVP comes in" was a checkbox and a single address, while the morning-of reminder went to a full picker of people, teams and typed addresses. The note in the code argued the split was correct: "The two are genuinely separate mechanisms and are not merged. Presenting them as one list would be a lie about what the software does."
+
+That argument was about the code as it stood, and the code has changed. Both fields answered the same question, who finds out, and the only real difference between them was that one had been upgraded and the other had not: a manager had to name the same colleague twice in two different shapes, and a team could not be told about a registration at all. There is now one list, it is the picker, and everybody on it gets all three staff emails. All or nothing per person; per-recipient control can come later if anybody ever wants it.
+
+**Nothing that used to be told stops being told.** On upgrade, every event's old single address is folded into its notification list unless that address is already reachable through a person or a team, and the old checkbox is translated rather than ignored: an event that said "do not email me when somebody registers" still says that, recorded as the new per-event switch. An event that never expressed a preference gets the new default, which is on. The legacy meta is left in place as the evidence for what moved.
+
+**The controls that used to write those two fields are gone from both editors**, in the portal and in the WordPress admin, because nothing reads them any more and two live-looking controls that change nothing are worse than none: somebody would type an address into one and believe it. The WordPress metabox now lists who is currently on the event's list and links to the portal to change it. The site-wide fallback address is gone too: every event's list starts with a real person, whoever created it, so the case it existed for cannot arise.
+
+**Registrations can be cancelled, which was not possible before.** Every email to somebody holding a place carries a link with a 128-bit token in it, working with no account, the same pattern the reminder subscriptions use.
+
+**The link opens a page that asks, and never cancels on being opened.** Mail scanners and link previewers fetch the URLs in an email before a person has read it, and Outlook is already rewriting SFAF mail through safelinks, so a one-click cancel would fire during scanning and drop people's places for them. A GET shows the question; the POST from that page is what acts.
+
+Cancelling marks the registration cancelled rather than deleting it, so an organizer can see that somebody registered and then changed their mind. The place is free at the same moment for all three things that count it: capacity, the reminder send, and the who-is-coming list all select on status, so moving the status is the whole of it. There is no counter to decrement.
+
+**A visitor-powered cron trigger, needing nothing set up on a server.** WordPress cron only fires on site traffic and the calendar site has almost none, so a 6am reminder could go out at noon or not at all. Every sfaf.org page carrying a calendar now asks the calendar site to run its jobs, after the page has loaded and in an idle moment. It costs a page nothing: it never runs during load, a timestamp in the browser means one visitor reading six programme pages sends one request rather than six, and the endpoint returns an empty 204 in a few milliseconds unless fifteen minutes have passed. The request is fire-and-forget, so there is no CORS requirement and nothing on the page waits for it or notices if it fails.
+
+It is on admin-ajax rather than a REST route on purpose. Every CORS mechanism in the embed is gated on an exact route-string match, so a second REST route would have matched none of preflight, the response headers or the serve fallback, and would have been blocked by the browser the moment sfaf.org asked for it.
+
+**The interval is fifteen minutes rather than an hour** because the new summary is due two hours before an event starts, and an hourly run can be up to an hour late for that. Every job is idempotent and most passes find nothing due, so a run with no work is one query.
+
+**Table-based markup with inline styles, 600px wide.** Outlook on Windows renders with Word's engine: no flexbox, no grid, no reliable border-radius. The SFAF skyline banner is bundled in the plugin at public/images and served from this site, so it travels with the plugin rather than depending on a media library entry, and it carries real alt text because many clients block images. No yellow rule under it: the banner is the header. Montserrat with a real fallback stack, one yellow button per message with Dark Gray text, #0E7680 for links and the outline button, and the postal address in the footer.
+
+**A plain-text alternative for every message, and one caveat that cannot be resolved from here.** WordPress attaches the text part by setting AltBody on the phpmailer_init action. That works with core's mailer and with any SMTP plugin routing through PHPMailer, and it cannot work with a plugin that replaces wp_mail() outright and posts to an HTTP API, because PHPMailer is never constructed. The Postmark plugin is the second kind. The hook is attached because it is correct wherever PHPMailer is involved, and whether a text/plain part actually arrives is a fact about the transport that is visible in a delivered message and nowhere else. Check it in the test send.
+
+**From name and address are a setting, not a constant.** It ships as San Francisco AIDS Foundation <websites@sfaf.org>; events@calendar.sfaf.org is being set up and will replace it, and when it exists somebody types it into Settings and nothing is deployed. Reply-To is unchanged and still per event: the event's address, or the person who created it, or the site default. The registration alert is the one exception and replies to the person who just registered, because that is who a staff member pressing reply means to write to.
+
+**Delivery is not this plugin's problem and must not become it.** Everything goes through wp_mail() and stops. No SMTP layer, no transport, no library.
+
+**Creating an event still requires nothing.** Title, description, date, time, location, category, image, Save, and the event has working email with a real recipient: the notification list starts with whoever created it and all four emails are on. Custom copy, extra recipients and switching one off live behind a fold whose closed line says what the default is currently doing, so the state is visible without being a decision.
+
+**.claude/email-render-test.php is committed.** It builds all five message shapes with WordPress stubbed and checks what came out: both parts present, table layout rather than divs, 600px stated twice, the banner and its alt text, the postal address in both parts, no modern CSS, a closed palette, no em dash, absolute links, one yellow button, the cancel link present in exactly the messages that should carry one, and every fact in the HTML also in the text. Five faults were planted in it to prove it fails: a removed alt attribute, a border-radius, the banned brand teal, a cancel link dropped from the text part, and a cancel link leaked into the staff alert. It catches all five.
+
+**It found a real defect the moment it rendered.** The "Registered" column in the who-is-coming list was empty for everybody. The one formatter anchors a bare date at midday to stop a timezone shift moving it a day, and it was doing that to stored datetimes too, producing "2026-08-04 21:30:00 12:00:00", which cannot be parsed at all. The same call sites that did parse were reading a site-local timestamp as UTC and rendering it back in the site's zone, which moved a nine-in-the-evening registration to two the next morning: the same class of fault as the compact card tile in 3.21.1 and the RSVP table in 3.24.2, one layer further in. sfaf_local_timestamp() now tells the two kinds of string apart and parses a stored datetime in the zone it was written in. The test grew an "empty cell under a heading" check, which catches the original.
+
+**SFAF uses the serial comma, and the list-joining helpers are where that is decided.** Four of them, two in PHP and two mirrored in JavaScript, joined "A, B and C". They now produce "A, B, and C", with two items still taking no comma. That changes labels a visitor reads: "Every week on Monday, Wednesday, and Friday". Seven user-facing sentences elsewhere were fixed by hand. The recurrence cross-check compares the PHP and JS labels on 4,321 cases and is what proves the mirrored pair still agree.
+
+Also: the RSVP table gains a token column and a cancelled_at column (schema version 4). The key on token is not unique and cannot be, because every existing row would share the default empty value; every lookup rejects an empty token before it queries, which is what keeps a blank link from matching the entire history. Confirmation emails are on when nothing has been saved, which they were not before: the setting was read as "absent means off", so an install where nobody had pressed Save in Settings sent none and gave no sign of it. The Settings switch now reads the same function the sending path reads, so it cannot show off while the code is sending.
+
+Lint: 38 files parse. Callable audit: clean, self-test passes. Email render test: five messages, every rule, self-tested by planted faults. Recurrence cross-check: 4,321 cases, PHP and JS agree on every date, label and count. Group operations harness: passing. Date sweep: zero human-facing call sites outside the formatter. All re-run against the extracted zip.
 
 = 3.24.2 =
 

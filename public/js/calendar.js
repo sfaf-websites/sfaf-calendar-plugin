@@ -1012,7 +1012,7 @@
                         // list, so this is its own decision and it starts off.
                         '<label class="uc-rsvp-optin">' +
                             '<input type="checkbox" id="uc-rsvp-optin" value="1" />' +
-                            '<span>Receive monthly email updates from SFAF with events, news and updates.</span>' +
+                            '<span>Receive monthly email updates from SFAF with events, news, and updates.</span>' +
                         '</label>' +
                         '<div class="uc-rsvp-error" id="uc-rsvp-error" style="display:none;"></div>' +
                         '<button class="uc-rsvp-submit" id="uc-rsvp-submit-btn">Register Now</button>' +

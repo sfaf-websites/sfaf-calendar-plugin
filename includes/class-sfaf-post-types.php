@@ -157,7 +157,7 @@ class SFAF_Post_Types {
         );
         add_meta_box(
             'uc_event_organizer',
-            'Organizer Notifications',
+            'Who hears about this event',
             array( $this, 'render_organizer_meta_box' ),
             'uc_event',
             'side',
@@ -389,21 +389,40 @@ class SFAF_Post_Types {
     }
 
     /**
-     * Organizer notification email + toggle.
+     * Who hears about this event.
+     *
+     * THE TWO CONTROLS THAT USED TO BE HERE ARE GONE, AND THAT IS THE POINT.
+     * This box held an "Organizer Email" field and an "Email organizer on new
+     * RSVP" checkbox. In 3.25.0 the registration alert moved onto the same
+     * notification list as everything else, and nothing reads that pair any
+     * more: SFAF_RSVP::route_submission() resolves the list instead. Leaving
+     * two live-looking controls that change nothing is worse than not having
+     * them, because somebody would type an address into one and believe it.
+     *
+     * NO PICKER IS REBUILT HERE. The list is people, teams and typed addresses,
+     * with its own validation and its own resolution rules, and a second
+     * implementation of it in the WordPress admin would be a second thing to
+     * keep in step. This box says where the list is and shows who is currently
+     * on it, which is the part somebody standing on this screen actually needs.
      */
     public function render_organizer_meta_box( $post ) {
-        $organizer_email = get_post_meta( $post->ID, '_uc_organizer_email', true );
-        $notify          = get_post_meta( $post->ID, '_uc_notify_organizer', true );
+        $list = SFAF_Reminders::notify_list( $post->ID );
         ?>
         <div class="uc-meta-box">
-            <div class="uc-meta-field">
-                <label for="uc_organizer_email">Organizer Email</label>
-                <input type="email" id="uc_organizer_email" name="uc_organizer_email" value="<?php echo esc_attr( $organizer_email ); ?>" placeholder="organizer@sfaf.org" />
-            </div>
-            <label class="uc-display-toggle">
-                <input type="checkbox" name="uc_notify_organizer" value="1" <?php checked( $notify, '1' ); ?> />
-                Email organizer on new RSVP
-            </label>
+            <?php if ( empty( $list ) ) : ?>
+                <p class="description" style="margin-top:0;">Nobody is on this event's notification list.</p>
+            <?php else : ?>
+                <p class="description" style="margin-top:0;">These people are told when somebody registers, get a copy of the morning-of reminder, and get the list of who is coming two hours before.</p>
+                <ul class="uc-meta-list">
+                    <?php foreach ( $list as $email => $label ) : ?>
+                        <li><?php echo esc_html( $label ); ?> <span class="uc-muted-inline"><?php echo esc_html( $email ); ?></span></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+            <p class="description">
+                <a href="<?php echo esc_url( SFAF_Portal::link( 'events/edit/' . (int) $post->ID ) ); ?>">Edit the list on the calendar portal</a>,
+                where people, teams, and outside addresses are all picked in one place.
+            </p>
         </div>
         <?php
     }
@@ -680,9 +699,12 @@ class SFAF_Post_Types {
         }
 
         // Email addresses.
+        //
+        // uc_organizer_email is not here any more. The box that offered it does
+        // not render it (see render_organizer_meta_box), and a save may only
+        // speak for the fields its form actually showed.
         $email_fields = array(
-            'uc_organizer_email' => '_uc_organizer_email',
-            'uc_email_replyto'   => '_uc_email_replyto',
+            'uc_email_replyto' => '_uc_email_replyto',
         );
         foreach ( $email_fields as $post_key => $meta_key ) {
             if ( isset( $_POST[ $post_key ] ) ) {
@@ -764,9 +786,14 @@ class SFAF_Post_Types {
         }
 
         // Toggles ('1' / '0').
+        //
+        // THIS LOOP WRITES WHETHER OR NOT THE BOX WAS ON SCREEN, which is why
+        // uc_notify_organizer had to come out of it rather than just off the
+        // form: left here, every save from this screen would have written '0'
+        // to a key that no longer has a control, quietly re-answering a question
+        // nobody was asked.
         $toggles = array(
             'uc_rsvp_enabled'     => '_uc_rsvp_enabled',
-            'uc_notify_organizer' => '_uc_notify_organizer',
             'uc_show_rsvp'        => '_uc_show_rsvp',
             'uc_show_donate'      => '_uc_show_donate',
             'uc_show_social'      => '_uc_show_social',

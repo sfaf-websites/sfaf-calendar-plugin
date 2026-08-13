@@ -221,6 +221,17 @@ class SFAF_Portal {
      * ================================================================== */
 
     public function url( $path = '' ) {
+        return self::link( $path );
+    }
+
+    /**
+     * The same URL, reachable without an instance.
+     *
+     * The emails link into the portal and are built from static context, and a
+     * second copy of "/caladmin" in another file is a second thing to change if
+     * the base ever moves. One definition, two callers.
+     */
+    public static function link( $path = '' ) {
         $base = home_url( '/caladmin' );
         return $path ? $base . '/' . ltrim( $path, '/' ) : $base;
     }
@@ -1000,21 +1011,39 @@ class SFAF_Portal {
             update_post_meta( $event_id, '_uc_gofundme_url', esc_url_raw( wp_unslash( $_POST['gofundme_url'] ) ) );
         }
         /*
-         * WHO GETS TOLD ON A NEW REGISTRATION. Both halves of it, guarded by
-         * one marker, because they moved into the Notifications card together
-         * and a form either carries that block or it does not. Without the
-         * marker an unticked box would be indistinguishable from a form that
-         * never asked, which is the same trap the notify list is guarded
-         * against further down.
+         * WHO GETS TOLD ON A NEW REGISTRATION.
+         *
+         * NO LONGER A FIELD OF ITS OWN. Until 3.25.0 this was a checkbox and a
+         * single address, separate from the notification list that received the
+         * reminder copy; both are now the one list, and whether the alert goes
+         * at all is one of the four switches below. The old address was folded
+         * into the list by sfaf_migrate_notification_lists() on upgrade.
+         *
+         * NOTHING WRITES THOSE TWO KEYS ANY MORE, here or in the WordPress
+         * admin. The controls are gone from both editors, and a write with no
+         * control behind it is a stored answer to a question nobody was asked.
+         * The meta itself is left alone: it is the evidence for what the
+         * migration folded into the list, and it is worth being able to read in
+         * six months when somebody asks why an address is on it.
          */
-        if ( isset( $_POST['uc_org_notify_present'] ) ) {
-            update_post_meta( $event_id, '_uc_notify_organizer', isset( $_POST['notify_organizer'] ) ? '1' : '0' );
-            if ( isset( $_POST['organizer_email'] ) ) {
-                update_post_meta( $event_id, '_uc_organizer_email', sanitize_email( wp_unslash( $_POST['organizer_email'] ) ) );
-            }
-        } elseif ( isset( $_POST['organizer_email'] ) ) {
-            // An older form that carried the address on its own.
-            update_post_meta( $event_id, '_uc_organizer_email', sanitize_email( wp_unslash( $_POST['organizer_email'] ) ) );
+
+        /*
+         * WHICH OF THE FOUR EMAILS THIS EVENT SENDS.
+         *
+         * GUARDED BY A MARKER, for the reason every list on this form is: an
+         * absent checkbox and a form that never asked are the same bytes, and
+         * only the marker tells them apart. Without it, saving from the pending
+         * queue would switch off every email on the event.
+         *
+         * STORED AS THE EXCEPTION. The ticked boxes are the ones that are ON,
+         * so what is written is the complement: the keys the form offered and
+         * did not get back. An event with all four on stores nothing at all,
+         * which is what makes the default free.
+         */
+        if ( isset( $_POST['uc_notify_kinds_present'] ) ) {
+            $offered = array_keys( SFAF_Notifications::kinds() );
+            $on      = isset( $_POST['notify_kinds'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['notify_kinds'] ) ) : array();
+            SFAF_Notifications::set_off( $event_id, array_diff( $offered, $on ) );
         }
 
         // The RSVP settings: capacity, whether to accept them, who is notified
@@ -1023,9 +1052,9 @@ class SFAF_Portal {
         $this->save_rsvp_settings_from_post( $user, $event_id, $is_locked );
 
         $toggles = array(
-            // 'notify_organizer' is written above, with the address it belongs
-            // to, under its own marker. It is not an unconditional toggle any
-            // more because the block it lives in is not on every form.
+            // 'notify_organizer' is not here, and is not written anywhere any
+            // more: whether a registration alert goes out is one of the four
+            // per-event email switches, saved above under its own marker.
             'show_rsvp'       => '_uc_show_rsvp',
             'show_donate'     => '_uc_show_donate',
             'show_social'     => '_uc_show_social',
@@ -1892,7 +1921,7 @@ class SFAF_Portal {
             'fetched'        => 'Fetch complete. See the results below.',
             'import_dismissed' => 'Event dismissed. It stays in the Dismissed list and will not be fetched again.',
             'import_restored'  => 'Event restored to Pending.',
-            'import_review'    => 'Assign a category, organizer and series, then press Publish to put this event on the calendar.',
+            'import_review'    => 'Assign a category, organizer, and series, then press Publish to put this event on the calendar.',
             'refreshed'        => 'Refreshed from the source. See below for what changed.',
             'faq_set_applied'  => 'FAQ set applied.',
             'faq_set_saved'    => 'FAQ set saved.',
@@ -6244,7 +6273,7 @@ class SFAF_Portal {
                 <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ); ?></span>
                 Imported from <?php echo esc_html( $prov['label'] ); ?>. Fields marked
                 <?php echo $this->icon_lock(); ?> <strong>not editable</strong> are kept in step with <?php echo esc_html( $prov['label'] ); ?> and are overwritten on every fetch. Change those at the source.
-                Set the <strong>category, organizer and series</strong> below, then press Publish to put it on the calendar.
+                Set the <strong>category, organizer, and series</strong> below, then press Publish to put it on the calendar.
                 <?php if ( $prov['source_url'] ) : ?>
                     <a href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer">Edit on <?php echo esc_html( $prov['label'] ); ?> &nearr;</a>
                 <?php endif; ?>
@@ -7722,11 +7751,7 @@ class SFAF_Portal {
         $chosen_users  = array_map( 'intval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, true ) );
         $extra_emails  = (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true );
         $reminders_on  = SFAF_Reminders::enabled();
-
-        $org_email  = (string) get_post_meta( $event_id, '_uc_organizer_email', true );
-        $org_notify = ( '1' === (string) get_post_meta( $event_id, '_uc_notify_organizer', true ) );
-
-        $portal_users = $this->calendar_people();
+        $portal_users  = $this->calendar_people();
 
         // Addresses the last save could not use. Reported rather than dropped
         // in silence, because a typo that vanishes without comment reads as
@@ -7741,36 +7766,12 @@ class SFAF_Portal {
               // Notifications card, which supplies the heading. ?>
         <div class="uc-notify-block">
 
-            <?php // ---- 1. WHEN SOMEBODY REGISTERS. --------------------- ?>
+            <?php // ---- 1. THE ONE LIST. --------------------------------- ?>
             <div class="uc-notify-section">
-                <h4 class="uc-notify-subhead">When somebody registers</h4>
+                <h4 class="uc-notify-subhead">Who hears about this event</h4>
                 <p class="uc-hint">
-                    One email, as it happens, to one address. Use a shared mailbox rather than a person if more than
-                    one of you needs to see them.
-                </p>
-                <input type="hidden" name="uc_org_notify_present" value="1" />
-                <label class="uc-check">
-                    <input type="checkbox" name="notify_organizer" value="1" <?php checked( $org_notify ); ?> />
-                    Email somebody each time an RSVP comes in
-                </label>
-                <label class="uc-field">
-                    <span class="uc-field-label">Send those to</span>
-                    <input type="email" name="organizer_email" value="<?php echo esc_attr( $org_email ); ?>"
-                           placeholder="events@sfaf.org" />
-                    <span class="uc-hint">
-                        <?php if ( '' === $org_email ) : ?>
-                            Nothing is set here, so registrations go to the site-wide address in Settings if there is one.
-                        <?php endif; ?>
-                    </span>
-                </label>
-            </div>
-
-            <?php // ---- 2. THE MORNING-OF REMINDER. --------------------- ?>
-            <div class="uc-notify-section">
-                <h4 class="uc-notify-subhead">The morning-of reminder</h4>
-                <p class="uc-hint">
-                    Everyone who has registered gets this automatically. Below is who <em>else</em> receives a copy,
-                    so staff can see what participants are sent. It changes nothing about who can edit this event.
+                    Everybody here is told when somebody registers, gets a copy of the morning-of reminder, and gets the
+                    list of who is coming two hours before. It changes nothing about who can edit this event.
                 </p>
 
                 <?php if ( ! $reminders_on ) : ?>
@@ -7851,6 +7852,54 @@ class SFAF_Portal {
                         off the list.
                     </span>
                 </div>
+            </div>
+
+            <?php
+            /*
+             * ---- 2. THE FOUR EMAILS, BEHIND A DISCLOSURE. -----------------
+             *
+             * ALL FOUR ARE ON AND NOBODY HAS TO KNOW THAT. Creating an event is
+             * a title, a date, a time, a place, a category and a picture. If
+             * working email costs six more decisions, it will be got wrong or
+             * skipped, so the decisions are not asked: the defaults are the
+             * answer and this fold is where somebody goes who wants a different
+             * one.
+             *
+             * THE SUMMARY LINE STATES WHAT THE DEFAULT IS DOING, which is the
+             * point of a disclosure rather than a hidden panel. Closed, it says
+             * all four are on, or names how many are not. Either way the state
+             * is visible without being a decision, and nothing is switched off
+             * without the closed line saying so.
+             */
+            $off_count = SFAF_Notifications::off_count( $event_id );
+            ?>
+            <div class="uc-notify-section">
+                <?php // The same disclosure the team picker uses: a real <summary>,
+                      // so click, tap, Enter and Space all work with no script. ?>
+                <details class="uc-notify-kinds" data-uc-disclosure <?php echo $off_count ? 'open' : ''; ?>>
+                    <summary class="uc-team-add-toggle" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                        <span>
+                            <?php if ( ! $off_count ) : ?>
+                                Emails for this event: all four are on
+                            <?php else : ?>
+                                Emails for this event: <?php echo (int) $off_count; ?> of 4 switched off
+                            <?php endif; ?>
+                        </span>
+                    </summary>
+                    <div class="uc-team-add-body">
+                        <p class="uc-hint">Untick one to stop it for this event only.</p>
+                        <input type="hidden" name="uc_notify_kinds_present" value="1" />
+                        <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : ?>
+                            <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="<?php echo esc_attr( $key ); ?>"
+                                       <?php checked( SFAF_Notifications::on( $event_id, $key ) ); ?> />
+                                <?php echo esc_html( $kind['label'] ); ?>
+                            </label>
+                            <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>
+                        <?php endforeach; ?>
+                    </div>
+                </details>
             </div>
 
             <?php

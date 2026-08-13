@@ -2069,6 +2069,54 @@ function sfaf_ap_time_range( $start, $end = '' ) {
 }
 
 /**
+ * A stored date or datetime string, as a real timestamp on the site's clock.
+ *
+ * TWO KINDS OF STRING REACH THE FORMATTER AND THEY NEED DIFFERENT TREATMENT.
+ *
+ *   '2026-08-04'            an event date. A calendar day, no time in it.
+ *   '2026-08-04 21:30:00'   a stored moment, written by current_time( 'mysql' ),
+ *                           which is the site's WALL CLOCK with no zone on it.
+ *
+ * WordPress runs PHP in UTC, so strtotime() reads both as UTC. For the first
+ * that is harmless as long as the time of day is nowhere near midnight, which
+ * is why this has always anchored a bare date at MIDDAY: midday UTC is the same
+ * calendar day everywhere anybody reading this lives.
+ *
+ * FOR THE SECOND IT WAS WRONG, and the wrongness had shipped for a while. The
+ * old code appended ' 12:00:00' to whatever it was given, so a datetime came
+ * out as "2026-08-04 21:30:00 12:00:00", which strtotime() cannot read at all:
+ * the RSVP table's "Registered" column rendered EMPTY. Where it did parse, via
+ * the separate date_i18n( ..., strtotime( $mysql ) ) call sites, the string was
+ * read as UTC and then rendered in the site's zone, moving a 9pm registration
+ * to 2am the next day.
+ *
+ * So a datetime is parsed IN THE SITE'S TIMEZONE, which is the zone it was
+ * written in, and the resulting instant renders back to the same wall clock it
+ * started as. A round trip that changes nothing is the correct behaviour for a
+ * value that was never in any other zone.
+ *
+ * @param string $when
+ * @return int|false
+ */
+function sfaf_local_timestamp( $when ) {
+    $when = trim( (string) $when );
+    if ( '' === $when ) {
+        return false;
+    }
+
+    // Does it carry a time? A bare Y-m-d does not, and neither does anything
+    // else without a colon in it.
+    $has_time = ( false !== strpos( $when, ':' ) );
+
+    try {
+        $dt = new DateTime( $has_time ? $when : $when . ' 12:00:00', wp_timezone() );
+    } catch ( Exception $e ) {
+        return false;
+    }
+    return $dt->getTimestamp();
+}
+
+/**
  * A date, AP style. No ordinal, ever.
  *
  * 'month' AND 'daynum' EXIST FOR THE DATE TILE, which stacks "Aug" over "4" as
@@ -2092,9 +2140,7 @@ function sfaf_ap_time_range( $start, $end = '' ) {
  */
 function sfaf_ap_date( $when, $style = 'full' ) {
     if ( is_string( $when ) ) {
-        // Midday, so a date-only string cannot slip a day either way when the
-        // site's timezone is applied to midnight.
-        $when = ( '' !== trim( $when ) ) ? strtotime( trim( $when ) . ' 12:00:00' ) : false;
+        $when = sfaf_local_timestamp( $when );
     }
     if ( ! $when ) {
         return '';
@@ -2133,7 +2179,10 @@ function sfaf_ap_date( $when, $style = 'full' ) {
  */
 function sfaf_ap_datetime( $when, $style = 'short_year' ) {
     if ( is_string( $when ) ) {
-        $when = ( '' !== trim( $when ) ) ? strtotime( trim( $when ) ) : false;
+        // The site's clock, not UTC. See sfaf_local_timestamp(): these strings
+        // come from current_time( 'mysql' ) and carry no zone, and reading them
+        // as UTC is what moved a late-evening registration to the next day.
+        $when = sfaf_local_timestamp( $when );
     }
     if ( ! $when ) {
         return '';

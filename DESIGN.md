@@ -478,3 +478,56 @@ An embedded block renders inside somebody else's page. Every property is stated
 including the ones that look like defaults, because an `h3` in a host theme
 routinely arrives with a serif face, a border, uppercase, letter-spacing, a top
 margin and a color of its own.
+
+---
+
+## 7. Email
+
+**An email is not a web page and the rules do not carry over.** Outlook on
+Windows renders with Word's engine. There is no flexbox, no grid, no reliable
+`border-radius`, and a stylesheet in `<head>` is unreliable across clients
+generally. Everything below is enforced by `.claude/email-render-test.php`,
+which builds all four messages and fails on any of it.
+
+- **Tables for layout, inline styles for everything.** A div with modern CSS
+  renders as a stack of full-width blocks in the client a large share of these
+  recipients use. The only `<div>` in a message is the hidden preheader.
+- **600px, stated twice**: `width="600"` for Outlook and `max-width:600px` for
+  everyone else.
+- **The banner is the header.** No yellow rule under it: the band would be a
+  second header competing with the first, and yellow means "act on this", which
+  a stripe does not. It carries real alt text, because many clients block
+  images and the message has to read without it.
+- **Every message has a plain-text alternative.** Not optional. A text-only
+  client shows an empty message without one, and it scores badly with filters.
+  The test checks that every fact in the HTML is also in the text.
+- **One yellow button per message**, and `#373433` is the only text color on it.
+  Links and the outline button are `#0E7680`. The palette is closed, and the
+  test rejects any hex outside it.
+- **A picture of the event does not go in.** Two large images push the date,
+  the time and the address below the fold on a phone, which is the part
+  somebody opens the email to re-read, and half the imported events have no
+  photograph and would render a flat color block.
+
+**Delivery is somebody else's job.** Everything goes through `wp_mail()` and
+stops there. The site has a Postmark plugin that overrides `wp_mail()`, so no
+SMTP layer, no transport and no second delivery path may be added here.
+
+**The one thing that cannot be checked from here.** WordPress attaches a
+text alternative by setting `AltBody` on the `phpmailer_init` action, and a
+plugin that replaces `wp_mail()` outright and talks to an HTTP API never
+constructs PHPMailer, so the action never fires. Whether a `text/plain` part
+survives on this site is a fact about the transport, visible only in a
+delivered message. Automation > Send a test email exists to answer it.
+
+### Copy
+
+Per the SFAF editorial style guide: short sentences, strong verbs, active
+voice, second person, warm rather than stuffy, person first. Straightforward
+beats creative in a subject line.
+
+**SFAF uses the serial comma.** "Monday, Wednesday, and Friday". Two items take
+no comma. The list-joining helpers are the place this is decided, not the call
+sites: `SFAF_Recurrence::join_words()`, `SFAF_Sources::field_phrase()`, and
+their mirrors `ucJoinWords()` and `phrase()` in `portal.js`. Change one, change
+its pair, and the recurrence cross-check will tell you if you did not.

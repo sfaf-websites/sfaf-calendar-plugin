@@ -155,15 +155,24 @@ class SFAF_RSVP {
             }
         }
 
-        // Insert RSVP
+        // Insert RSVP.
+        //
+        // THE TOKEN IS WRITTEN HERE, WITH THE ROW, because the confirmation
+        // email carries the cancel link and goes out in the next few lines. It
+        // is 128 random bits from SFAF_Reminders::new_token(), the same
+        // generator the reminder ledger uses, and it is the only credential the
+        // cancel page accepts: no account, no session, nothing derived from the
+        // address.
+        $token    = SFAF_Reminders::new_token();
         $inserted = $wpdb->insert( $table, array(
             'event_id'   => $data['event_id'],
             'name'       => $data['name'],
             'email'      => $data['email'],
             'phone'      => $data['phone'] ?? '',
             'status'     => 'confirmed',
+            'token'      => $token,
             'created_at' => current_time( 'mysql' ),
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s' ) );
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         if ( $inserted ) {
             // The marketing opt-in, if it was ticked. Recorded separately from
@@ -172,6 +181,11 @@ class SFAF_RSVP {
             if ( ! empty( $data['optin'] ) ) {
                 SFAF_Optins::record( $data['email'], $data['name'], $data['event_id'], 'rsvp' );
             }
+
+            // The token travels with the data so the routed emails can build a
+            // cancel link without a second query for the row just written.
+            $data['token']   = $token;
+            $data['rsvp_id'] = (int) $wpdb->insert_id;
 
             // Fire action for integrations (email, Google Sheets, Pardot, etc.)
             do_action( 'uc_rsvp_submitted', $wpdb->insert_id, $data );
@@ -224,14 +238,18 @@ class SFAF_RSVP {
             return array( 'success' => true, 'message' => "You're already on the reminder list for this event." );
         }
 
+        // A token here too, for the same reason the registration gets one: this
+        // row is a promise to email somebody, so it needs a way for them to
+        // stop it that works with no account.
         $inserted = $wpdb->insert( $table, array(
             'event_id'   => $event_id,
             'name'       => '',
             'email'      => $email,
             'phone'      => '',
             'status'     => 'subscribed',
+            'token'      => SFAF_Reminders::new_token(),
             'created_at' => current_time( 'mysql' ),
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s' ) );
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         if ( $inserted ) {
             do_action( 'uc_reminder_subscribed', $wpdb->insert_id, $event_id, $email );
@@ -252,50 +270,43 @@ class SFAF_RSVP {
         $settings = get_option( 'uc_settings', array() );
         $event_id = $data['event_id'];
 
-        // 1) Confirmation email to the attendee (gated by global toggle).
-        if ( ! empty( $settings['route_confirmation_email'] ) && $settings['route_confirmation_email'] === '1' ) {
-            $subject = get_post_meta( $event_id, '_uc_email_subject', true );
-            $body    = get_post_meta( $event_id, '_uc_email_body', true );
-            $replyto = get_post_meta( $event_id, '_uc_email_replyto', true );
+        /*
+         * ONE SHAPE FOR THE PERSON, PASSED TO BOTH BUILDERS.
+         *
+         * The confirmation needs their name and their token; the alert needs
+         * their name and address. Handing both the same object means the two
+         * emails cannot disagree about who just registered.
+         */
+        $person = (object) array(
+            'name'  => isset( $data['name'] ) ? (string) $data['name'] : '',
+            'email' => isset( $data['email'] ) ? (string) $data['email'] : '',
+            'token' => isset( $data['token'] ) ? (string) $data['token'] : '',
+        );
 
-            if ( '' === $subject ) {
-                $subject = ! empty( $settings['email_rsvp_subject'] ) ? $settings['email_rsvp_subject'] : "You're registered for {event_name}";
-            }
-            if ( '' === $body ) {
-                $body = ! empty( $settings['email_rsvp_body'] ) ? $settings['email_rsvp_body'] : "Hi {attendee_name},\n\nYou're registered for {event_name} on {event_date}.\n\nWe look forward to seeing you!";
-            }
-            if ( '' === $replyto && ! empty( $settings['email_rsvp_replyto'] ) ) {
-                $replyto = $settings['email_rsvp_replyto'];
-            }
-
-            $subject = sfaf_replace_tokens( $subject, $event_id, $data );
-            $body    = sfaf_replace_tokens( $body, $event_id, $data );
-
-            $headers = array();
-            if ( $replyto ) {
-                $headers[] = 'Reply-To: ' . $replyto;
-            }
-            wp_mail( $data['email'], $subject, $body, $headers );
+        /*
+         * 1) THE CONFIRMATION, to the person.
+         *
+         * Two switches, and they mean different things. The site-wide one in
+         * Settings is "this site sends confirmations at all"; the per-event one
+         * is "this event does". The site-wide default is ON when nothing has
+         * been saved, which is the 3.25.0 change: a fresh install used to send
+         * nothing until somebody found a toggle.
+         */
+        if ( self::confirmations_enabled() && SFAF_Notifications::on( $event_id, 'confirmation' ) ) {
+            SFAF_Notifications::send_confirmation( $event_id, $person );
         }
 
-        // 2) Organizer notification.
-        $notify_event  = get_post_meta( $event_id, '_uc_notify_organizer', true ) === '1';
-        $route_global  = ! empty( $settings['route_email_organizer'] ) && $settings['route_email_organizer'] === '1';
-        $organizer     = get_post_meta( $event_id, '_uc_organizer_email', true );
-        if ( ! $organizer && ! empty( $settings['route_organizer_email'] ) ) {
-            $organizer = $settings['route_organizer_email'];
-        }
-
-        if ( ( $notify_event || $route_global ) && $organizer && is_email( $organizer ) ) {
-            $subject = sprintf( 'New RSVP: %s', get_the_title( $event_id ) );
-            $body    = sprintf(
-                "%s (%s) just registered for %s.",
-                $data['name'],
-                $data['email'],
-                get_the_title( $event_id )
-            );
-            wp_mail( $organizer, $subject, $body );
-        }
+        /*
+         * 2) THE REGISTRATION ALERT, to the event's notification list.
+         *
+         * ONE LIST NOW. This used to read a single address field, falling back
+         * to a single site-wide address, while the morning-of reminder went to
+         * a resolved list of people, teams and typed addresses. Both answered
+         * "who finds out"; only one of them had been upgraded. The old address
+         * was folded into the list by sfaf_migrate_notification_lists() on
+         * upgrade, so nothing that used to be told stops being told.
+         */
+        SFAF_Notifications::send_alert( $event_id, $person );
 
         // 3) Pardot prospect / Google Sheet row — third-party, mocked for the demo.
         if ( ! empty( $settings['route_pardot'] ) && $settings['route_pardot'] === '1' ) {
@@ -304,6 +315,20 @@ class SFAF_RSVP {
         if ( ! empty( $settings['route_google_sheet'] ) && $settings['route_google_sheet'] === '1' ) {
             do_action( 'uc_mock_google_sheet_row', $event_id, $data );
         }
+    }
+
+    /**
+     * Whether this site sends confirmation emails at all.
+     *
+     * ON UNLESS SWITCHED OFF, which reverses the old reading of the same
+     * setting. It used to be `! empty( $settings['route_confirmation_email'] )`,
+     * so an install where nobody had opened Settings and pressed Save sent no
+     * confirmations and gave no sign of it. Absent now means on, and an explicit
+     * '0' still means off, exactly like SFAF_Reminders::enabled().
+     */
+    public static function confirmations_enabled() {
+        $settings = get_option( 'uc_settings', array() );
+        return ! isset( $settings['route_confirmation_email'] ) || '1' === (string) $settings['route_confirmation_email'];
     }
 
     /**

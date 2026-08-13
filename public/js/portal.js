@@ -1328,7 +1328,7 @@
             return false;
         }
 
-        /* "an image, a description and a category" — the same joining as
+        /* "an image, a description, and a category": the same joining as
          * SFAF_Sources::field_phrase(). */
         function phrase(list) {
             if (!list.length) {
@@ -1337,7 +1337,11 @@
             if (list.length === 1) {
                 return list[0];
             }
-            return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+            if (list.length === 2) {
+                return list[0] + ' and ' + list[1];
+            }
+            // The serial comma, matching SFAF_Sources::field_phrase().
+            return list.slice(0, -1).join(', ') + ', and ' + list[list.length - 1];
         }
 
         function toggle(el, hidden) {
@@ -1935,7 +1939,11 @@
     function ucJoinWords(list) {
         if (!list.length) { return ''; }
         if (list.length === 1) { return list[0]; }
-        return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+        if (list.length === 2) { return list[0] + ' and ' + list[1]; }
+        // The serial comma, matching SFAF_Recurrence::join_words(). The
+        // cross-check compares this function's output against that one's, so
+        // they change together.
+        return list.slice(0, -1).join(', ') + ', and ' + list[list.length - 1];
     }
     function ucPrettyDate(ymd) {
         var d = ucParseYmd(ymd);

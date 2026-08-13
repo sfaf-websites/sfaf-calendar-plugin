@@ -83,6 +83,23 @@ class SFAF_Cron {
     /** How often the health check is allowed to actually look. */
     const HEALTH_CHECK_EVERY = 900; // 15 minutes
 
+    /** The admin-ajax action a page carrying a calendar pings. */
+    const PING_ACTION = 'sfaf_cron_ping';
+
+    /** When a ping last got through to a run. */
+    const PING_AT_OPTION = 'sfaf_cron_pinged_at';
+
+    /**
+     * The shortest gap between two ping-driven runs.
+     *
+     * Fifteen minutes, not an hour, and the pre-event summary is why: it is due
+     * two hours before an event starts, and a run that only happens hourly can
+     * be up to an hour late for it. Four cheap runs an hour is what buys that
+     * accuracy. Every job in the run is idempotent and most passes find nothing
+     * due, so the cost of a run that has no work is one WP_Query.
+     */
+    const PING_EVERY = 900;
+
     /**
      * How long a bad state must persist before it is repeated by email.
      *
@@ -94,6 +111,24 @@ class SFAF_Cron {
     public function register() {
         add_action( self::HOOK, array( $this, 'run_scheduled' ) );
         add_action( 'admin_notices', array( $this, 'admin_notice' ) );
+
+        /*
+         * THE VISITOR-POWERED HEARTBEAT.
+         *
+         * Registered on admin-ajax rather than as a REST route on purpose. Every
+         * CORS mechanism in SFAF_Embed is gated on is_embed_request(), which
+         * compares the route string EXACTLY, so a second REST route would match
+         * none of preflight, the response headers or the rest_pre_serve_request
+         * fallback, and would be blocked by the browser the moment sfaf.org
+         * asked for it. admin-ajax is outside that machinery entirely, and the
+         * request is sent no-cors anyway, so there is nothing to preflight.
+         *
+         * Both the logged-in and logged-out hooks: the visitor firing this is
+         * almost always anonymous, but a signed-in editor reading a programme
+         * page should nudge it too.
+         */
+        add_action( 'wp_ajax_nopriv_' . self::PING_ACTION, array( $this, 'handle_ping' ) );
+        add_action( 'wp_ajax_' . self::PING_ACTION, array( $this, 'handle_ping' ) );
 
         /*
          * THE HEALTH CHECK IS NOT INSIDE THE THING IT MONITORS.
@@ -167,6 +202,76 @@ class SFAF_Cron {
     }
 
     /* ---------------------------------------------------------------------
+     * The ping
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Spawn a run, if one is due. Called by any page carrying a calendar.
+     *
+     * IT DOES NOTHING ELSE, AND THAT IS THE WHOLE SECURITY ARGUMENT. It reads
+     * no parameters, writes nothing a caller controls and returns no data, so
+     * being reachable by anybody from any origin costs nothing: the only thing
+     * a stranger can make it do is what it does for a visitor, which is run the
+     * jobs this site was going to run anyway.
+     *
+     * THE INTERVAL IS THE THROTTLE AND IT IS CHECKED FIRST. A ping inside the
+     * window costs one option read and a 204. The embed script also keeps its
+     * own timestamp so most visitors never send anything, but that is a
+     * courtesy to the network: this check is what makes the endpoint safe to
+     * hammer, because it is on the server where the work would happen.
+     *
+     * THE MARKER IS WRITTEN BEFORE THE RUN, NOT AFTER. Two simultaneous pings
+     * would otherwise both pass the check and both start work. The second one
+     * now finds the marker moved and stands down; if they are simultaneous
+     * enough that both get through, the run lock catches it, which is the layer
+     * that was there before this existed.
+     */
+    public function handle_ping() {
+        nocache_headers();
+        // Any origin, because the calendar is embedded on sites we do not own
+        // and this must work from all of them. There is nothing in the response
+        // to protect: it has no body.
+        header( 'Access-Control-Allow-Origin: *' );
+
+        $now  = time();
+        $last = (int) get_option( self::PING_AT_OPTION, 0 );
+
+        if ( $last && ( $now - $last ) < self::PING_EVERY ) {
+            status_header( 204 );
+            wp_die( '', '', array( 'response' => 204 ) );
+        }
+
+        update_option( self::PING_AT_OPTION, $now, false );
+
+        status_header( 202 );
+
+        /*
+         * Let the browser go before doing the work. The visitor's page has
+         * nothing to wait for, and holding the connection open for the length
+         * of a mail run is the one way this could become a cost to them.
+         * fastcgi_finish_request() is the supported way and is present on most
+         * PHP-FPM hosts; where it is not, the run simply happens with the
+         * connection still open, which is slower for nobody in particular.
+         */
+        if ( function_exists( 'fastcgi_finish_request' ) ) {
+            fastcgi_finish_request();
+        }
+
+        self::run( 'ping' );
+        exit;
+    }
+
+    /** The URL the embed script pings. Shown in the admin so it can be tested. */
+    public static function ping_url() {
+        return admin_url( 'admin-ajax.php?action=' . self::PING_ACTION );
+    }
+
+    /** When a ping last started a run, or 0. */
+    public static function last_ping() {
+        return (int) get_option( self::PING_AT_OPTION, 0 );
+    }
+
+    /* ---------------------------------------------------------------------
      * The run
      * ------------------------------------------------------------------- */
 
@@ -199,6 +304,7 @@ class SFAF_Cron {
         $tasks = array();
         try {
             $tasks[] = self::run_task( 'reminders', 'Reminder emails', array( 'SFAF_Reminders', 'run' ) );
+            $tasks[] = self::run_task( 'summaries', 'Who is coming (two hours before)', array( 'SFAF_Notifications', 'run_summaries' ) );
 
             if ( self::auto_fetch_enabled() ) {
                 $tasks[] = self::run_task( 'fetch', 'Fetch from sources', array( __CLASS__, 'run_fetch' ) );

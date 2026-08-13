@@ -453,6 +453,14 @@ class SFAF_Reminders {
             return $result;
         }
 
+        // The per-event switch. The event is still marked done at the end, so a
+        // reminder switched off does not leave the event being reconsidered on
+        // every run for the rest of the day.
+        if ( ! SFAF_Notifications::on( $event_id, 'reminder' ) ) {
+            update_post_meta( $event_id, self::EVENT_DONE_META, time() );
+            return $result;
+        }
+
         foreach ( self::recipients( $event_id ) as $email => $type ) {
             $result['recipients']++;
 
@@ -528,8 +536,13 @@ class SFAF_Reminders {
     /**
      * An unguessable per-recipient, per-event token for the cancel link.
      * No account, no session, and nothing derivable from the email address.
+     *
+     * PUBLIC SINCE 3.25.0, because the registration row needs one too: the
+     * confirmation email carries a cancel link and goes out when somebody
+     * registers, which is long before any reminder ledger row exists. One
+     * generator, so there is one answer to "how strong is that token".
      */
-    private static function new_token() {
+    public static function new_token() {
         if ( function_exists( 'random_bytes' ) ) {
             try {
                 return bin2hex( random_bytes( 16 ) );
@@ -549,50 +562,38 @@ class SFAF_Reminders {
      * No provider is named or depended on anywhere in this file.
      */
     private static function send_one( $event_id, $email, $type, $token ) {
-        $settings = get_option( 'uc_settings', array() );
+        /*
+         * THE CANCEL LINK BELONGS TO PEOPLE WHO HOLD A PLACE. A staff member on
+         * the notification list has nothing to cancel, so the token is left out
+         * of their copy entirely rather than rendering a link that would tell
+         * them there is no registration. is_staff also changes the opening line:
+         * "your event is today" is wrong for somebody who is not attending.
+         */
+        $holds_a_place = in_array( $type, array( 'rsvp', 'subscriber' ), true );
 
-        $subject = isset( $settings['email_dayof_subject'] ) ? (string) $settings['email_dayof_subject'] : '';
-        $body    = isset( $settings['email_dayof_body'] ) ? (string) $settings['email_dayof_body'] : '';
-        if ( '' === $subject ) {
-            $subject = 'Today: {event_name}';
-        }
-        if ( '' === $body ) {
-            $body = self::default_body();
-        }
-
-        // The cancel link belongs to people who actually hold a place. A staff
-        // member on the notification list has nothing to cancel, so the token
-        // is left out of their copy entirely rather than rendering a link that
-        // would tell them there is no registration.
-        $cancel = in_array( $type, array( 'rsvp', 'subscriber' ), true ) ? self::cancel_url( $token ) : '';
-
-        $data = array(
-            'email'      => $email,
-            'cancel_url' => $cancel,
+        $person = (object) array(
+            'email'    => $email,
+            'token'    => $holds_a_place ? $token : '',
+            'is_staff' => ! $holds_a_place,
         );
 
-        $subject = sfaf_replace_tokens( $subject, $event_id, $data );
-        $body    = sfaf_replace_tokens( $body, $event_id, $data );
-
-        $headers = array( 'Content-Type: text/plain; charset=UTF-8' );
-
-        $from_name  = isset( $settings['email_from_name'] ) ? trim( (string) $settings['email_from_name'] ) : '';
-        $from_email = isset( $settings['email_from_address'] ) ? trim( (string) $settings['email_from_address'] ) : '';
-        if ( $from_email && is_email( $from_email ) ) {
-            $headers[] = $from_name
-                ? sprintf( 'From: %s <%s>', $from_name, $from_email )
-                : sprintf( 'From: %s', $from_email );
+        $built = SFAF_Notifications::build( 'reminder', $event_id, $person );
+        if ( ! $built ) {
+            return false;
         }
 
-        // Per event, falling back to the creator and then to the site default.
-        // See reply_to_for(): replies to a reminder reach the person running
-        // the event, not a mailbox nobody reads.
-        $reply_to = self::reply_to_for( $event_id );
-        if ( $reply_to ) {
-            $headers[] = 'Reply-To: ' . $reply_to;
-        }
-
-        return (bool) wp_mail( $email, $subject, $body, $headers );
+        // From, Reply-To and the plain-text alternative are SFAF_Email's job
+        // now, so there is one place that knows how this plugin's mail is
+        // addressed. Reply-To is still per event, falling back to the creator
+        // and then to the site default: replies to a reminder reach the person
+        // running the event, not a mailbox nobody reads.
+        return SFAF_Email::send(
+            $email,
+            $built['subject'],
+            $built['html'],
+            $built['text'],
+            self::reply_to_for( $event_id )
+        );
     }
 
     /** The shipped default body. Every field the spec asks for, plain text. */
@@ -630,7 +631,7 @@ class SFAF_Reminders {
             return;
         }
 
-        $row = self::find_by_token( $token );
+        $row = self::resolve_token( $token );
         if ( ! $row ) {
             self::cancel_page( 'That link is not valid', 'This cancellation link has expired or was not recognized. If you need to cancel, reply to the email you received and we will sort it out.' );
         }
@@ -662,11 +663,44 @@ class SFAF_Reminders {
         self::cancel_page( "Can't make it?", $html, false );
     }
 
-    /** Look a claim row up by its token. */
-    private static function find_by_token( $token ) {
+    /**
+     * Which registration a cancel token belongs to.
+     *
+     * TWO PLACES CARRY A TOKEN AND BOTH ARE CHECKED. The registration row gets
+     * one when somebody registers, which is what the confirmation email links
+     * to. The reminder ledger gets one per recipient per event, which is what
+     * the morning-of reminder links to. They are different rows describing the
+     * same person's place, and either link must work: somebody may cancel from
+     * the confirmation three weeks later or from the reminder that morning.
+     *
+     * AN EMPTY TOKEN IS REJECTED BEFORE ANY QUERY. Registrations written before
+     * 3.25.0 all carry '', so a blank token in a URL would otherwise match the
+     * whole history and offer to cancel a stranger's place.
+     *
+     * @return object|null with ->event_id and ->email.
+     */
+    private static function resolve_token( $token ) {
         global $wpdb;
+
+        $token = trim( (string) $token );
+        if ( '' === $token ) {
+            return null;
+        }
+
+        $rsvps = $wpdb->prefix . 'uc_rsvps';
+        $row   = $wpdb->get_row( $wpdb->prepare(
+            "SELECT event_id, email FROM $rsvps WHERE token = %s AND token <> '' LIMIT 1",
+            $token
+        ) );
+        if ( $row ) {
+            return $row;
+        }
+
         $table = self::table();
-        return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE token = %s", $token ) );
+        return $wpdb->get_row( $wpdb->prepare(
+            "SELECT event_id, email FROM $table WHERE token = %s AND token <> '' LIMIT 1",
+            $token
+        ) );
     }
 
     /**
@@ -679,10 +713,26 @@ class SFAF_Reminders {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
         $rows  = $wpdb->query( $wpdb->prepare(
-            "UPDATE $table SET status = 'cancelled' WHERE event_id = %d AND email = %s AND status IN ('confirmed','subscribed')",
+            "UPDATE $table SET status = 'cancelled', cancelled_at = %s WHERE event_id = %d AND email = %s AND status IN ('confirmed','subscribed')",
+            current_time( 'mysql' ),
             $event_id,
             $email
         ) );
+
+        if ( $rows > 0 ) {
+            /*
+             * THE PLACE IS FREE THE MOMENT THIS RETURNS, and nothing has to be
+             * told about it. Capacity is counted with a COUNT of rows at status
+             * 'confirmed' (sfaf_get_rsvp_count), the reminder recipients are
+             * selected on the same statuses, and the pre-event summary lists
+             * confirmed rows only. Moving the status out of 'confirmed' removes
+             * this person from all three at once. There is no counter to
+             * decrement and no cache to clear beyond the request-local one.
+             */
+            sfaf_clear_rsvp_count_cache( (int) $event_id );
+            do_action( 'uc_rsvp_cancelled', (int) $event_id, (string) $email );
+        }
+
         return ( $rows > 0 );
     }
 

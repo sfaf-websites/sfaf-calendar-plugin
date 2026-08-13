@@ -415,7 +415,13 @@ class SFAF_Recurrence {
         $n    = count( $list );
         if ( 0 === $n ) { return ''; }
         if ( 1 === $n ) { return $list[0]; }
-        return implode( ', ', array_slice( $list, 0, -1 ) ) . ' and ' . $list[ $n - 1 ];
+        if ( 2 === $n ) { return $list[0] . ' and ' . $list[1]; }
+        // SERIAL COMMA, WHICH IS SFAF HOUSE STYLE: "Monday, Wednesday, and
+        // Friday". Two items take no comma at all; three or more take one
+        // before the "and". ucJoinWords() in portal.js is the same function on
+        // the other side and the cross-check compares their output, so these
+        // two change together or the check fails.
+        return implode( ', ', array_slice( $list, 0, -1 ) ) . ', and ' . $list[ $n - 1 ];
     }
 
     /** date('w') for a Y-m-d, or null. */

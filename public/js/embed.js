@@ -1359,11 +1359,98 @@
         }
     }
 
+    /* -----------------------------------------------------------------------
+     * THE CRON NUDGE
+     *
+     * WordPress's "cron" is not a scheduler. It is a check that runs when
+     * somebody loads a page of the site the jobs live on, and the site these
+     * jobs live on gets almost no traffic. A reminder due at 6am on a site
+     * nobody visits until the afternoon goes out in the afternoon, or not at
+     * all. That is not a theoretical concern: it is the difference between the
+     * morning-of reminder working and not working.
+     *
+     * This block is the fix, and it works because of where this file runs: on
+     * sfaf.org, which has plenty of visitors, while the calendar and its jobs
+     * live on another site entirely. Every page carrying a calendar can lend
+     * that site a heartbeat.
+     *
+     * IT COSTS ALMOST NOTHING, AND THERE ARE THREE SEPARATE REASONS.
+     *
+     *   1. IT DOES NOT RUN DURING PAGE LOAD. It waits for the window load
+     *      event and then for an idle moment, so it cannot compete with the
+     *      calendar's own request, with images, or with anything the host page
+     *      is doing. On a page that never goes idle it never fires at all,
+     *      which is the correct outcome: that visitor is busy.
+     *   2. MOST VISITORS SEND NOTHING. A timestamp in localStorage means one
+     *      browser sends at most one ping per interval no matter how many
+     *      calendar pages it opens, so a person reading six programme pages
+     *      costs one request, not six.
+     *   3. THE ONES THAT DO SEND COST THE SERVER NOTHING. The endpoint reads
+     *      one option and returns 204 when the interval has not elapsed. Only
+     *      the first ping after the interval does any work.
+     *
+     * It is fire-and-forget: no-cors, so there is no preflight and no CORS
+     * requirement on the response, and the reply is never read. Nothing on this
+     * page depends on it, nothing waits for it, and a failure is silent by
+     * design. A blocked request, a firewalled origin or a browser with no
+     * fetch() leaves the page exactly as it was.
+     *
+     * SAFE TO CALL FROM ANYWHERE, because it carries no parameters and cannot
+     * ask for anything: the endpoint takes no input and does one thing.
+     * -------------------------------------------------------------------- */
+
+    var PING_URL = ROOT + '/wp-admin/admin-ajax.php?action=sfaf_cron_ping';
+    var PING_KEY = 'sfafCronPingAt';
+    var PING_EVERY_MS = 15 * 60 * 1000;
+
+    function pingDue() {
+        try {
+            var last = parseInt(window.localStorage.getItem(PING_KEY), 10);
+            if (last && (Date.now() - last) < PING_EVERY_MS) {
+                return false;
+            }
+            window.localStorage.setItem(PING_KEY, String(Date.now()));
+        } catch (e) {
+            // Private mode, a blocked cookie policy, a browser with storage
+            // switched off. Ping anyway: the server-side interval is the real
+            // guard, and this one is only here to spare it the requests.
+            return true;
+        }
+        return true;
+    }
+
+    function nudgeCron() {
+        if (!window.fetch || !pingDue()) {
+            return;
+        }
+        try {
+            window.fetch(PING_URL, {
+                method: 'GET',
+                mode: 'no-cors',
+                cache: 'no-store',
+                credentials: 'omit',
+                keepalive: true
+            })['catch'](function () { /* nothing here depends on it */ });
+        } catch (e) { /* nothing here depends on it */ }
+    }
+
+    function scheduleNudge() {
+        var idle = window.requestIdleCallback || function (fn) { return window.setTimeout(fn, 1200); };
+        idle(nudgeCron, { timeout: 5000 });
+    }
+
     window.sfafCalendarEmbed = { scan: scan };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', scan);
     } else {
         scan();
+    }
+
+    // After load, not with it.
+    if (document.readyState === 'complete') {
+        scheduleNudge();
+    } else {
+        window.addEventListener('load', scheduleNudge);
     }
 })();

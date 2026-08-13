@@ -475,6 +475,20 @@ class SFAF_Admin {
             wp_safe_redirect( add_query_arg( 'cleared', '1', $base ) );
             exit;
         }
+        if ( 'send_test' === $action ) {
+            $to    = isset( $_POST['uc_test_to'] ) ? sanitize_email( wp_unslash( $_POST['uc_test_to'] ) ) : '';
+            $type  = isset( $_POST['uc_test_type'] ) ? sanitize_key( wp_unslash( $_POST['uc_test_type'] ) ) : '';
+            $event = isset( $_POST['uc_test_event'] ) ? absint( $_POST['uc_test_event'] ) : 0;
+
+            $result = SFAF_Email::send_test( $to, $type, $event );
+
+            // The outcome is a sentence, not a flag: "it went" and "it went and
+            // here is what to look at in it" are different messages, and the
+            // second is the useful one.
+            set_transient( 'sfaf_test_email_result_' . get_current_user_id(), $result, 120 );
+            wp_safe_redirect( add_query_arg( 'tested', '1', $base ) );
+            exit;
+        }
     }
 
     /**
@@ -546,6 +560,21 @@ class SFAF_Admin {
                             <td><code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code></td>
                         </tr>
                         <tr>
+                            <th>Page-view nudge</th>
+                            <td>
+                                <?php $last_ping = SFAF_Cron::last_ping(); ?>
+                                <?php if ( $last_ping ) : ?>
+                                    A page carrying a calendar last started a run <?php echo esc_html( SFAF_Cron::local_time( $last_ping ) ); ?>.
+                                <?php else : ?>
+                                    No page has started a run yet.
+                                <?php endif; ?>
+                                Every sfaf.org page with a calendar on it asks this site to run its jobs, at most
+                                once every <?php echo (int) ( SFAF_Cron::PING_EVERY / 60 ); ?> minutes. This needs nothing set up
+                                on a server and covers the case a real system cron is there for.
+                                <br /><code><?php echo esc_html( SFAF_Cron::ping_url() ); ?></code>
+                            </td>
+                        </tr>
+                        <tr>
                             <th>Lock</th>
                             <td><?php echo $locked
                                 ? 'Held since ' . esc_html( SFAF_Cron::local_time( $locked ) ) . '. A run is in progress, or one was interrupted and the lock will be broken automatically.'
@@ -580,6 +609,98 @@ class SFAF_Admin {
                 </p>
             </div>
 
+            <?php
+            /*
+             * THE TEST SEND.
+             *
+             * Every email this plugin sends was written, reviewed and shipped
+             * without one of them ever having been delivered to a mailbox. This
+             * card is how that stops being true: it builds a real message
+             * through the real builders and hands it to wp_mail(), so what
+             * arrives is what a registrant would get.
+             *
+             * FOUR THINGS CAN ONLY BE CHECKED IN A DELIVERED MESSAGE, and they
+             * are listed on the card rather than left as folklore: whether the
+             * Postmark plugin forwards Reply-To, whether a text/plain part
+             * survives it, whether the banner loads from this site, and whether
+             * Outlook renders the buttons as rectangles.
+             */
+            $test_result = get_transient( 'sfaf_test_email_result_' . get_current_user_id() );
+            if ( $test_result ) {
+                delete_transient( 'sfaf_test_email_result_' . get_current_user_id() );
+            }
+            $test_events = get_posts( array(
+                'post_type'      => 'uc_event',
+                'post_status'    => 'publish',
+                'posts_per_page' => 25,
+                'meta_key'       => '_uc_event_date',
+                'orderby'        => 'meta_value',
+                'order'          => 'DESC',
+            ) );
+            ?>
+            <div class="uc-admin-card">
+                <h2>Send a test email</h2>
+
+                <?php if ( $test_result ) : ?>
+                    <div class="notice <?php echo ! empty( $test_result['sent'] ) ? 'notice-success' : 'notice-error'; ?>">
+                        <p><?php echo esc_html( $test_result['message'] ); ?></p>
+                    </div>
+                <?php endif; ?>
+
+                <p class="description">
+                    Builds the real message against a real event and sends it to you. Nobody is registered and no place
+                    is held. The subject is prefixed with [Test].
+                </p>
+
+                <?php if ( empty( $test_events ) ) : ?>
+                    <p class="uc-no-data">Publish an event first: a test message is built from a real one.</p>
+                <?php else : ?>
+                    <form method="post" class="uc-test-email-form">
+                        <?php wp_nonce_field( 'uc_cron_action', 'uc_cron_nonce' ); ?>
+                        <input type="hidden" name="uc_cron_action" value="send_test" />
+                        <p>
+                            <label for="uc_test_type">Which email</label><br />
+                            <select name="uc_test_type" id="uc_test_type">
+                                <option value="confirmation">Confirmation, to the person who registers</option>
+                                <option value="alert">Alert, when somebody registers</option>
+                                <option value="reminder">Morning-of reminder</option>
+                                <option value="summary">Who is coming, two hours before</option>
+                            </select>
+                        </p>
+                        <p>
+                            <label for="uc_test_event">Built from</label><br />
+                            <select name="uc_test_event" id="uc_test_event">
+                                <?php foreach ( $test_events as $ev ) : ?>
+                                    <option value="<?php echo (int) $ev->ID; ?>">
+                                        <?php echo esc_html( get_the_title( $ev ) ); ?>
+                                        <?php $ev_date = get_post_meta( $ev->ID, '_uc_event_date', true ); ?>
+                                        <?php echo $ev_date ? esc_html( ' (' . sfaf_ap_date( $ev_date, 'short_year' ) . ')' ) : ''; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </p>
+                        <p>
+                            <label for="uc_test_to">Send it to</label><br />
+                            <input type="email" name="uc_test_to" id="uc_test_to" class="regular-text"
+                                   value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" required />
+                        </p>
+                        <p><button type="submit" class="button button-primary" data-uc-busy="Sending&hellip;">Send it</button></p>
+                    </form>
+
+                    <p class="description">
+                        <strong>When it arrives, check four things.</strong> The Reply-To address, by pressing reply and
+                        reading who it is addressed to. Whether the message has a plain-text part, by viewing its source
+                        and looking for <code>text/plain</code>. That the banner loads. And, in Outlook on Windows, that
+                        the buttons are rectangles rather than bare links.
+                    </p>
+                    <p class="description">
+                        The summary email needs somebody registered for the event you pick, and the confirmation and
+                        reminder carry a cancel link. The link in a test message points at a token that does not exist,
+                        so it opens the "not valid" page. That is the correct answer, and it is worth seeing once.
+                    </p>
+                <?php endif; ?>
+            </div>
+
             <div class="uc-admin-card">
                 <h2>Run log</h2>
                 <?php if ( empty( $log ) ) : ?>
@@ -591,7 +712,17 @@ class SFAF_Admin {
                             <?php foreach ( $log as $entry ) : ?>
                                 <tr>
                                     <td><?php echo esc_html( SFAF_Cron::local_time( isset( $entry['started_ts'] ) ? $entry['started_ts'] : 0 ) ); ?></td>
-                                    <td><?php echo esc_html( isset( $entry['trigger'] ) ? $entry['trigger'] : '' ); ?></td>
+                                    <?php
+                                    // The raw value is a machine name and one of
+                                    // them, "ping", means nothing to a reader.
+                                    $trigger_labels = array(
+                                        'cron'   => 'Scheduled',
+                                        'manual' => 'Run now',
+                                        'ping'   => 'A page view',
+                                    );
+                                    $trigger_raw = isset( $entry['trigger'] ) ? (string) $entry['trigger'] : '';
+                                    ?>
+                                    <td><?php echo esc_html( isset( $trigger_labels[ $trigger_raw ] ) ? $trigger_labels[ $trigger_raw ] : $trigger_raw ); ?></td>
                                     <td class="uc-cron-<?php echo esc_attr( isset( $entry['status'] ) ? $entry['status'] : '' ); ?>"><?php echo esc_html( isset( $entry['status'] ) ? $entry['status'] : '' ); ?></td>
                                     <td><?php echo esc_html( isset( $entry['duration'] ) ? $entry['duration'] . 's' : '' ); ?></td>
                                     <td>
@@ -652,7 +783,12 @@ class SFAF_Admin {
         }
 
         // Email addresses.
-        foreach ( array( 'email_rsvp_replyto', 'route_organizer_email', 'email_from_address', 'email_reply_to', 'cron_alert_email' ) as $field ) {
+        //
+        // route_organizer_email is gone: its control was removed in 3.25.0 when
+        // registrations moved onto the event's notification list, and since
+        // uc_settings is rebuilt wholesale on every save, dropping the key from
+        // this list is what actually retires it.
+        foreach ( array( 'email_rsvp_replyto', 'email_from_address', 'email_reply_to', 'cron_alert_email' ) as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_email( $input[ $field ] ) : '';
         }
 
@@ -710,7 +846,7 @@ class SFAF_Admin {
             'galaxy_import_events', 'galaxy_active_only',
             'webhook_event_created', 'webhook_event_updated',
             'webhook_event_deleted', 'webhook_event_rsvp',
-            'route_email_organizer', 'route_pardot',
+            'route_pardot',
             'route_google_sheet', 'route_confirmation_email',
             // Scheduled tasks. auto_fetch_enabled is absent-means-off, which is
             // what makes unattended fetching off by default and off after any
@@ -1144,7 +1280,7 @@ class SFAF_Admin {
                     <?php
                     $rows = array(
                         'series_converted'  => 'Series converted from events into groupings',
-                        'parents_demoted'   => 'Old series events that keep their ID, slug and URL and become ordinary events',
+                        'parents_demoted'   => 'Old series events that keep their ID, slug, and URL and become ordinary events',
                         'events_migrated'   => 'Events assigned to a series',
                         'faqs_moved'        => 'Events whose FAQs move into the single storage key',
                         'faqs_inherited'    => 'Events that get a copy of the FAQs they used to inherit at display time',
@@ -1681,13 +1817,31 @@ class SFAF_Admin {
                             <label class="uc-toggle uc-toggle-disabled"><input type="checkbox" checked disabled /><span class="uc-toggle-slider"></span></label>
                         </div>
 
+                        <?php
+                        /*
+                         * THE SITE-WIDE "EMAIL ORGANIZER" ADDRESS AND TOGGLE ARE
+                         * GONE, and nothing replaced them here on purpose.
+                         *
+                         * They were a fallback address used when an event named
+                         * nobody. Since 3.25.0 every event has a notification
+                         * list that already starts with a real person, whoever
+                         * created it, so the case the fallback existed for
+                         * cannot arise: an event with an empty list is an event
+                         * somebody emptied.
+                         *
+                         * A site-wide address would also have been the one
+                         * recipient nobody could see from the event they were
+                         * being emailed about, which is the failure the merge
+                         * was for.
+                         */
+                        ?>
                         <div class="uc-routing-row">
-                            <span class="uc-status-dot <?php echo $s( 'route_email_organizer' ) === '1' ? 'uc-dot-green' : 'uc-dot-gray'; ?>"></span>
+                            <span class="uc-status-dot uc-dot-green"></span>
                             <div class="uc-routing-info">
-                                <strong>Email organizer</strong>
-                                <input type="email" name="uc_settings[route_organizer_email]" value="<?php echo esc_attr( $s( 'route_organizer_email' ) ); ?>" class="uc-input" placeholder="organizer@sfaf.org (global default)" />
+                                <strong>Tell the event's notification list</strong>
+                                <span>Always on, per event. Each event carries its own list of people, teams, and addresses, and it starts with whoever created the event. Edit it on the event.</span>
                             </div>
-                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_email_organizer]" value="1" <?php checked( $s( 'route_email_organizer' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>
+                            <label class="uc-toggle uc-toggle-disabled"><input type="checkbox" checked disabled /><span class="uc-toggle-slider"></span></label>
                         </div>
 
                         <div class="uc-routing-row">
@@ -1708,10 +1862,24 @@ class SFAF_Admin {
                             <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_google_sheet]" value="1" <?php checked( $s( 'route_google_sheet' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>
                         </div>
 
+                        <?php
+                        /*
+                         * ON WHEN NOTHING HAS BEEN SAVED, AND THE CONTROL HAS TO
+                         * SAY SO. This row read the raw setting, so on an
+                         * install where nobody had ever pressed Save it drew a
+                         * grey dot and an empty switch while the code, which
+                         * treats absent as on, was sending confirmations. A
+                         * control that disagrees with the behaviour it controls
+                         * is worse than no control. Both the dot and the switch
+                         * ask SFAF_RSVP::confirmations_enabled(), which is the
+                         * same function the sending path asks.
+                         */
+                        $confirm_on = SFAF_RSVP::confirmations_enabled();
+                        ?>
                         <div class="uc-routing-row">
-                            <span class="uc-status-dot <?php echo $s( 'route_confirmation_email' ) === '1' ? 'uc-dot-green' : 'uc-dot-gray'; ?>"></span>
-                            <div class="uc-routing-info"><strong>Send confirmation email</strong><span>Emails the attendee using your template below.</span></div>
-                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_confirmation_email]" value="1" <?php checked( $s( 'route_confirmation_email' ), '1' ); ?> /><span class="uc-toggle-slider"></span></label>
+                            <span class="uc-status-dot <?php echo $confirm_on ? 'uc-dot-green' : 'uc-dot-gray'; ?>"></span>
+                            <div class="uc-routing-info"><strong>Send confirmation email</strong><span>Emails the person who registered. On unless you switch it off here, and switchable per event.</span></div>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_confirmation_email]" value="1" <?php checked( $confirm_on ); ?> /><span class="uc-toggle-slider"></span></label>
                         </div>
                     </div>
                 </div>
@@ -1912,7 +2080,7 @@ class SFAF_Admin {
                             <input type="text" name="uc_settings[google_maps_embed_key]" value="<?php echo esc_attr( $c( 'google_maps_embed_key' ) ); ?>" class="uc-input uc-monospace" placeholder="Leave blank for no map" />
                         </div>
                         <p class="description">
-                            <strong>Nothing is sent to Google until a visitor presses "Show map".</strong> The event page renders the address as an ordinary Google Maps link and an empty placeholder; the iframe is created on click and not before. Event pages cover HIV services, substance use and trans health programming, so a map that loaded itself would report every page view to Google. Leave this blank and the page shows the address link alone, with no map affordance and no error.
+                            <strong>Nothing is sent to Google until a visitor presses "Show map".</strong> The event page renders the address as an ordinary Google Maps link and an empty placeholder; the iframe is created on click and not before. Event pages cover HIV services, substance use, and trans health programming, so a map that loaded itself would report every page view to Google. Leave this blank and the page shows the address link alone, with no map affordance and no error.
                         </p>
                         <p class="description">
                             <strong>Restrict the key before you paste it in.</strong> In the Google Cloud console set <em>Application restrictions</em> to HTTP referrers and list both <code>resources.sfaf.org/*</code> and <code>sfaf.org/*</code>, then set <em>API restrictions</em> to the <strong>Maps Embed API</strong> and nothing else. The Embed API has no usage cap, so an unrestricted key is a billing exposure rather than a map risk: anyone who copies it can run it up on their own site against this account.
