@@ -79,12 +79,16 @@ $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
                     <?php else : ?>
                         <ul class="uc-series-list">
                             <?php foreach ( $upcoming as $eid ) :
+                                // THE STORED STRING, NOT strtotime() OF IT. WordPress runs PHP
+                                // in UTC, so strtotime( '2026-08-04' ) is midnight UTC, and a
+                                // site-timezone formatter renders that as the 3rd anywhere
+                                // west of Greenwich. sfaf_ap_date() takes the date string and
+                                // anchors it at midday for exactly this reason.
                                 $d  = get_post_meta( $eid, '_uc_event_date', true );
-                                $st = get_post_meta( $eid, '_uc_start_time', true );
-                                $ts = $d ? strtotime( $d ) : false; ?>
+                                $st = get_post_meta( $eid, '_uc_start_time', true ); ?>
                                 <li>
                                     <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
-                                        <span class="uc-series-date"><?php echo $ts ? esc_html( sfaf_ap_date( $ts, 'short' ) ) : ''; ?></span>
+                                        <span class="uc-series-date"><?php echo esc_html( sfaf_ap_date( $d, 'short' ) ); ?></span>
                                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
                                         <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?>
                                     </a>
@@ -99,11 +103,11 @@ $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
                         <h2 class="uc-series-heading">Previously in this series</h2>
                         <ul class="uc-series-list">
                             <?php foreach ( $past as $eid ) :
-                                $d  = get_post_meta( $eid, '_uc_event_date', true );
-                                $ts = $d ? strtotime( $d ) : false; ?>
+                                // The stored string, for the reason given in the block above.
+                                $d = get_post_meta( $eid, '_uc_event_date', true ); ?>
                                 <li>
                                     <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
-                                        <span class="uc-series-date"><?php echo $ts ? esc_html( date_i18n( 'M j, Y', $ts ) ) : ''; ?></span>
+                                        <span class="uc-series-date"><?php echo esc_html( sfaf_ap_date( $d, 'short_year' ) ); ?></span>
                                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
                                     </a>
                                 </li>

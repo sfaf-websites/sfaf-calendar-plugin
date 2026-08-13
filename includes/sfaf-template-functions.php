@@ -2078,8 +2078,16 @@ function sfaf_ap_time_range( $start, $end = '' ) {
  * SERVER clock instead of the site's and an evening event could render on the
  * wrong day. Splitting a date into two spans is still formatting a date.
  *
+ * 'short_year' AND 'month_year' WERE ADDED IN 3.24.2 BECAUSE THE CALL SITES
+ * ALREADY EXISTED. Fourteen places were spelling out 'M j, Y' or 'F Y' by hand,
+ * which is what "one formatter" is supposed to prevent; a style missing from
+ * this list is the reason a call site writes its own, so the list is what has to
+ * grow. Both are AP style already: no ordinal, month abbreviated in the short
+ * form, spelled out in the month-and-year heading.
+ *
  * @param int|string $when  Timestamp, or a Y-m-d string.
- * @param string     $style 'full' | 'day' | 'short' | 'weekday' | 'month' | 'daynum'
+ * @param string     $style 'full' | 'day' | 'short' | 'short_year' | 'month_year'
+ *                          | 'weekday' | 'month' | 'daynum'
  * @return string
  */
 function sfaf_ap_date( $when, $style = 'full' ) {
@@ -2092,15 +2100,49 @@ function sfaf_ap_date( $when, $style = 'full' ) {
         return '';
     }
     $formats = array(
-        'full'    => 'l, F j, Y',
-        'day'     => 'F j',
-        'short'   => 'M j',
-        'weekday' => 'D',
-        'month'   => 'M',
-        'daynum'  => 'j',
+        'full'       => 'l, F j, Y',
+        'day'        => 'F j',
+        'short'      => 'M j',
+        'short_year' => 'M j, Y',
+        'month_year' => 'F Y',
+        'weekday'    => 'D',
+        'month'      => 'M',
+        'daynum'     => 'j',
     );
     $fmt = isset( $formats[ $style ] ) ? $formats[ $style ] : $formats['full'];
     return date_i18n( $fmt, (int) $when );
+}
+
+/**
+ * A date and a clock time as one phrase. "Aug 4, 2026 at 6 pm".
+ *
+ * FOR THE THREE PLACES THAT RECORD WHEN SOMETHING HAPPENED: the RSVP tables in
+ * wp-admin and in the portal, and the reminder email. Each was formatting both
+ * halves itself, and one of them was doing it with PHP's date() rather than
+ * date_i18n(), which reads the SERVER clock. That is the same defect as the
+ * compact card tile fixed in 3.21.1 and it is not cosmetic: a registration taken
+ * at nine in the evening in San Francisco is already tomorrow on a UTC server,
+ * so the table showed the wrong day.
+ *
+ * The time half is sfaf_ap_time()'s rules, applied to a timestamp: ":00" is
+ * dropped and the meridiem is lowercase.
+ *
+ * @param int|string $when  Timestamp, or anything strtotime() reads.
+ * @param string     $style Any sfaf_ap_date() style; the date half.
+ * @return string
+ */
+function sfaf_ap_datetime( $when, $style = 'short_year' ) {
+    if ( is_string( $when ) ) {
+        $when = ( '' !== trim( $when ) ) ? strtotime( trim( $when ) ) : false;
+    }
+    if ( ! $when ) {
+        return '';
+    }
+    $when  = (int) $when;
+    $date  = sfaf_ap_date( $when, $style );
+    $clock = ( '00' === date_i18n( 'i', $when ) ) ? date_i18n( 'g', $when ) : date_i18n( 'g:i', $when );
+
+    return $date . ' at ' . $clock . ' ' . strtolower( date_i18n( 'A', $when ) );
 }
 
 /**

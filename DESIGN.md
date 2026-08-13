@@ -206,9 +206,9 @@ sixteen of thirty-nine cards they did not.
 
 ## 3. Dates and times, AP style
 
-Per the guide. **One formatter, `sfaf_ap_date()` / `sfaf_ap_time()` /
-`sfaf_ap_time_range()` / `sfaf_ap_date_range()`. Never format a date at the
-call site.**
+Per the guide. **One formatter, `sfaf_ap_date()` / `sfaf_ap_datetime()` /
+`sfaf_ap_time()` / `sfaf_ap_time_range()` / `sfaf_ap_date_range()`. Never format
+a date at the call site.**
 
 - **No ordinals.** "August 4", never "August 4th".
 - **Lowercase `am` and `pm`, set off by one space.** "6 pm", not "6PM" or
@@ -221,6 +221,34 @@ call site.**
 
 Times stored as raw meta (`18:00-19:30`) must never reach a screen. That
 shipped in the pending queue and was fixed in 3.18.0.
+
+**The rule is checked, not asserted.** `php .claude/date-callsite-sweep.php`
+tokenises every PHP file and prints every human-facing date format outside the
+formatter; the count is zero and a build that raises it fails the check. The
+rule was set in 3.17.0 and fifteen call sites were still in place seven builds
+later, two of them added after it, which is the whole argument for a checker
+over a paragraph. Run it with `--self-test` first: it plants nine cases and
+proves it can reject them.
+
+**A missing style is why a call site writes its own format**, so add the style
+rather than the format. `short_year` and `month_year` exist for that reason.
+
+**Machine formats are not this rule's business.** `Y-m-d` keys, `Y-m` slugs, the
+ICS stamp, `H:i` meta and the `w` weekday numbers the recurrence engine compares
+are storage and protocol. Putting them through a localised formatter breaks
+them, and the sweep classifies them apart on purpose.
+
+**Two traps, both of which have shipped as wrong days rather than wrong
+formats.** PHP's `date()` reads the SERVER clock, and WordPress runs it in UTC,
+so an evening event or an evening registration renders as tomorrow: always
+`date_i18n()`, which is what the formatter uses. And `strtotime( '2026-08-04' )`
+is midnight UTC, which a site-timezone formatter renders as the 3rd anywhere
+west of Greenwich: hand `sfaf_ap_date()` the stored date STRING, which it
+anchors at midday for exactly this reason, rather than a timestamp made from it.
+
+**Two engines, one wording.** `SFAF_Recurrence::pattern_label()` has a mirror in
+`public/js/portal.js`, so a copy change is two files and
+`.claude/recurrence-crosscheck.php` is what proves they still agree.
 
 ---
 
@@ -367,6 +395,48 @@ Two remedies, and pick by whether the element needs to be a container at all:
   and it overrides the general rule that these blocks never enforce a minimum:
   without it the block does not get cramped, it gets destroyed and takes the
   host's layout with it.
+
+### A floor nobody declared is a floor nobody chose
+
+**Every block handed to a host page states its own `min-width`, whether or not
+it is a query container.** The containment case above is the dramatic one. The
+quiet one is a block with no floor at all: in a content-sized parent the browser
+still asks it how narrow it can be, and it still answers. `.uc-sidebar` answered
+196px, which was the longest word in its heading plus the one date span carrying
+`white-space: nowrap` plus 30px of border and padding, in whatever face the page
+had loaded. Nothing about that number was a decision, and shortening the heading
+would have moved it under the width the readme publishes as supported. It
+carries `min-width: 200px` since 3.24.2, which is the published number.
+
+**A floor is not a way to make a parent honour a width it has not got, and
+raising one makes that case worse.** Four columns asking 180 + 220 + 280 + 400
+are asking for 1080px; in a 700px content area the auto table algorithm has
+nothing to distribute and pins every column at its floor, so they all render
+identically. That is arithmetic. Measure it across page widths before treating
+"all the columns are the same" as a fault in the block.
+
+### An `<img>` is the one element a host page is certain to have a rule for
+
+**Never let a picture's fill depend on `width` / `height` when the same slot can
+hold a `<span>`.** The sidebar row's placeholder is a span, which no theme
+targets, and its photograph is an `<img>`, which every WordPress theme targets
+with some form of `img { width: auto; height: auto }` for responsive images. A
+component rule at `(0,2,0)` outranks a bare `img` and loses outright to the same
+rule carrying `!important`, and when it loses the picture falls back to its
+intrinsic size. A 150px crop in a 210px band is not obviously a cascade problem
+when you look at it: it looks like a small picture, and the band around it
+measures perfectly correct.
+
+The remedy is layout, not specificity: make the slot a flex container and the
+media a flex item that grows and stretches, so the used size comes from flexing
+and `align-self` rather than from properties on the element. That holds against
+rules nobody has seen yet, which `!important` does not.
+
+**And when two things share a slot, test both with the difference intact.** The
+probe that cleared this pair in 3.24.1 used a 1x1 GIF as its photograph. An
+image with no intrinsic size fills any box whatever the cascade does to it, so
+the one property that distinguishes an `<img>` from a `<span>` was the one the
+probe had removed. It measured the band and never the picture inside it.
 
 ### The shape of the error, which is worth more than the rule
 

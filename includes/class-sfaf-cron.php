@@ -622,11 +622,18 @@ class SFAF_Cron {
         return (bool) wp_mail( $to, $subject, $body, array( 'Content-Type: text/plain; charset=UTF-8' ) );
     }
 
-    /** Format a timestamp in the site's timezone. */
+    /**
+     * A timestamp in the site's timezone, for the run log and the alert email.
+     *
+     * ONE FORMATTER. This held its own copy of "M j, Y \a\t g:i a", which is
+     * sfaf_ap_datetime()'s output spelled out by hand, so the reminder email and
+     * the RSVP tables could drift apart on the house date style. 'never' stays
+     * here: it is this method's answer for "no run yet", not a date.
+     */
     public static function local_time( $timestamp ) {
         if ( ! $timestamp ) {
             return 'never';
         }
-        return wp_date( 'M j, Y \a\t g:i a', (int) $timestamp );
+        return sfaf_ap_datetime( (int) $timestamp );
     }
 }

@@ -37,9 +37,11 @@ class SFAF_List_Columns {
             case 'uc_event_date':
                 $date = get_post_meta( $post_id, '_uc_event_date', true );
                 if ( $date ) {
-                    $ts   = strtotime( $date );
                     $time = get_post_meta( $post_id, '_uc_start_time', true );
-                    echo '<strong>' . esc_html( date_i18n( 'M j, Y', $ts ) ) . '</strong>';
+                    // The stored string, not strtotime() of it: PHP runs in UTC
+                    // here, so a timestamp taken from a bare Y-m-d is midnight
+                    // UTC and renders as the previous day on the site's clock.
+                    echo '<strong>' . esc_html( sfaf_ap_date( $date, 'short_year' ) ) . '</strong>';
                     if ( $time ) {
                         echo '<br><span class="uc-col-muted">' . esc_html( sfaf_ap_time( $time ) ) . '</span>';
                     }

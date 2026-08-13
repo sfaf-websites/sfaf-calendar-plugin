@@ -845,7 +845,13 @@ class SFAF_Admin {
                                     <td><?php echo esc_html( $rsvp->email ); ?></td>
                                     <td><?php echo esc_html( $rsvp->phone ); ?></td>
                                     <td><span class="uc-status uc-status-<?php echo esc_attr( $rsvp->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $rsvp->status ) ); ?></span></td>
-                                    <td><?php echo esc_html( date( 'M j, Y g:i A', strtotime( $rsvp->created_at ) ) ); ?></td>
+                                    <?php /* THIS WAS date(), NOT date_i18n(), AND THAT IS A BUG RATHER
+                                             THAN A FORMATTING PREFERENCE. PHP's date() reads the SERVER
+                                             clock, which WordPress runs in UTC, so a registration taken
+                                             at nine in the evening in San Francisco was recorded here as
+                                             tomorrow. Same class as the compact card date tile fixed in
+                                             3.21.1, and it is now the one formatter, on the site's clock. */ ?>
+                                    <td><?php echo esc_html( sfaf_ap_datetime( $rsvp->created_at ) ); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -971,7 +977,7 @@ class SFAF_Admin {
                                     // a fault, so it says so rather than showing a
                                     // dash somebody has to interpret.
                                     echo $next
-                                        ? esc_html( date_i18n( 'M j, Y', strtotime( $next ) ) )
+                                        ? esc_html( sfaf_ap_date( $next, 'short_year' ) )
                                         : '<span class="uc-col-muted">No dates yet</span>';
                                 ?></td>
                                 <td>

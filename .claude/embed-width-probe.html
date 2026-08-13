@@ -72,7 +72,16 @@ One mode per cell, or the number belongs to the other one.</p>
    the arithmetic says is 272 and which nobody should have to take on trust. */
 var WIDTHS = [180, 200, 220, 240, 260, 270, 271, 272, 280, 320, 400];
 
-var IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+/* A REAL RASTER, 150x150, AND THE 1x1 GIF THAT USED TO BE HERE WAS A DEFECT IN
+   THIS PAGE. 3.24.1 reported from this probe that "both the photo row and the
+   placeholder row measure identically at every width", and on the live page they
+   did not. A 1x1 image has no intrinsic size worth the name, so it fills any box
+   it is put in whatever the cascade does to its width and height: the one thing
+   that separates a photograph from the placeholder <span> was the one thing the
+   probe had removed. 150x150 is what WordPress serves for the `thumbnail` size,
+   and a picture that falls back to that size inside a stacked band is exactly
+   the "small block" that was reported. */
+var IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAIAAACzY+a1AAAA9ElEQVR42u3RAQkAAAgEse+PQQxgQGOIMLgEt1SPXhcLEAqhECJ0AaEQCiFCIRRCIUQohEIohAiFUAiFEKEQCqEQIhRCIRRChEIohEKIUAiFUAgRCqEQCiFCIRRCIUQohEIohAiFUAiFEKEQCqEQIhRCIRRChEIohEKIUAiFUAgRCqEQCiFCIRRCIUQohEIohAiFUAiFEKEQCqEQIhRCIRRChEIohEKIUAiFUAgRCqEQCiFCIRRCIUQohEIohAiFUAiFEKEQCqEQIhRCIRRChEIohEKIUAiFEKELCIVQCBEKoRAKIUIhFEIhRCiEQiiECIVQNy0OqpRq1uKkbgAAAABJRU5ErkJggg==';
 
 function sidebarRow(kind) {
   var media = (kind === 'img')
@@ -168,35 +177,90 @@ var PARENTS = [ { key: 'block', label: 'Block parent (width on the parent)' },
       h2.textContent = mode.label + ' in: ' + parent.label;
       host.appendChild(h2);
 
-      var wrap;
-      if ('table' === parent.key) {
-        wrap = document.createElement('table');
-        wrap.className = 'cells';
-        var tb = document.createElement('tbody'), tr = document.createElement('tr');
-        tb.appendChild(tr); wrap.appendChild(tb);
-        var target = tr;
-      } else {
-        wrap = document.createElement('div');
-        wrap.className = ('flex' === parent.key) ? 'as-flex' : 'as-block';
-        target = wrap;
-      }
+      var wrap = document.createElement('div');
+      wrap.className = 'as-block';
       wrap.dataset.mode = mode.key;
       wrap.dataset.parent = parent.key;
       wrap.classList.add('probe-grid');
 
       WIDTHS.forEach(function (w) {
-        var cell = document.createElement('table' === parent.key ? 'td' : 'div');
-        if ('flex' === parent.key) {
-          cell.style.flex = '0 1 ' + w + 'px';   // the shape an auto-sized flex track has
-        } else {
+        var cell;
+        if ('table' === parent.key) {
+          /* ONE TABLE PER WIDTH, AND THE FIRST DRAFT PUT THEM IN ONE ROW. Eleven
+             columns asking 180 through 400 is 2913px of request; in any window
+             this page is opened in there is nothing left to distribute, so the
+             auto table algorithm pins EVERY column at its floor and all eleven
+             come out the same. That is a true and useful fact about tables, and
+             it is not the question this section is asking. Each width gets its
+             own table so the answer is about the width. */
+          var tbl = document.createElement('table');
+          tbl.className = 'cells';
+          var tb = document.createElement('tbody'), tr = document.createElement('tr');
+          cell = document.createElement('td');
+          tr.appendChild(cell); tb.appendChild(tr); tbl.appendChild(tb);
           cell.style.width = w + 'px';
+          wrap.appendChild(tbl);
+        } else if ('flex' === parent.key) {
+          /* One flex row per width, for the reason the table above gives: eleven
+             items in one row is a squeeze, and a squeeze answers a different
+             question. */
+          var rowEl = document.createElement('div');
+          rowEl.className = 'as-flex';
+          cell = document.createElement('div');
+          cell.style.flex = '0 1 ' + w + 'px';     // the shape an auto-sized flex track has
+          rowEl.appendChild(cell);
+          wrap.appendChild(rowEl);
+        } else {
+          cell = document.createElement('div');
+          cell.style.width = w + 'px';
+          wrap.appendChild(cell);
         }
         cell.dataset.w = w;
         cell.innerHTML = '<div class="ruler">' + w + 'px</div>' + mode.html;
-        target.appendChild(cell);
       });
       host.appendChild(wrap);
     });
+  });
+})();
+
+/* ---------------------------------------------------------------------------
+   THE LIVE SHAPE: FOUR COLUMNS IN ONE TABLE, ON PAGES OF DIFFERENT WIDTHS.
+
+   The report that started 3.24.2 was a page with columns of 180, 220, 280 and
+   400px on which all four rendered identically and all four stacked. That is
+   1080px of request. When the content area cannot cover the four floors the
+   auto table algorithm has nothing to distribute and pins every column at its
+   floor, which is why they came out the same; the card is not ignoring the
+   width, the page has not got it. This section is here so that stays measured
+   rather than argued, and so the width at which the 400px column comes back is
+   a number somebody can read off.
+   ------------------------------------------------------------------------- */
+(function fourColumns() {
+  var host = document.getElementById('grids');
+  [700, 800, 860, 1000, 1100].forEach(function (page) {
+    var h2 = document.createElement('h2');
+    h2.textContent = 'Sidebar in: four columns (180/220/280/400) on a ' + page + 'px page';
+    host.appendChild(h2);
+
+    var pageEl = document.createElement('div');
+    pageEl.style.width = page + 'px';
+    var tbl = document.createElement('table');
+    tbl.className = 'cells';
+    tbl.style.width = '100%';
+    var tb = document.createElement('tbody'), tr = document.createElement('tr');
+    tb.appendChild(tr); tbl.appendChild(tb); pageEl.appendChild(tbl);
+    pageEl.dataset.mode = 'sidebar';
+    pageEl.dataset.parent = page + 'px page';
+    pageEl.classList.add('probe-grid');
+
+    [180, 220, 280, 400].forEach(function (w) {
+      var td = document.createElement('td');
+      td.style.width = w + 'px';
+      td.dataset.w = w;
+      td.innerHTML = '<div class="ruler">' + w + 'px</div>' + SIDEBAR;
+      tr.appendChild(td);
+    });
+    host.appendChild(pageEl);
   });
 })();
 
@@ -280,15 +344,37 @@ window.addEventListener('load', function () {
     var r = p.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) { fails.push('a category placeholder is not rendered'); }
   });
-  // Nothing may be wider than the parent it was put in.
+  /* THE PICTURE MUST FILL THE BAND, AND MEASURING THE BAND DOES NOT PROVE IT.
+     The band is sized by the row's flex rules and was never the thing that went
+     wrong; what went wrong was a photograph sitting small inside a correct band
+     with the grey showing round it. So this compares the media element against
+     the slot that holds it, for both kinds, which is the check that separates
+     them. Overflow is allowed: object-fit and the band's overflow: hidden crop
+     it deliberately. Falling short is not. */
+  document.querySelectorAll('.uc-sidebar-thumb').forEach(function (th) {
+    var pic = th.querySelector('.uc-thumb-img, .uc-thumb-ph');
+    if (!pic) { return; }
+    var b = th.getBoundingClientRect(), p = pic.getBoundingClientRect();
+    if (p.width < b.width - 0.5 || p.height < b.height - 0.5) {
+      fails.push('a ' + (pic.classList.contains('uc-thumb-img') ? 'photograph' : 'placeholder') +
+                 ' does not fill its band (' + Math.round(p.width) + 'x' + Math.round(p.height) +
+                 ' in ' + Math.round(b.width) + 'x' + Math.round(b.height) + ')');
+    }
+  });
+  /* Nothing may be wider than the parent it was put in, EXCEPT by the declared
+     min-width, which is the published minimum for the mode and is deliberate:
+     below it the card overflows rather than compressing. Same allowance the
+     list and month rows already print in their overflow column. */
   document.querySelectorAll('.uc-sidebar').forEach(function (c) {
     var p = c.parentElement;
-    if (c.getBoundingClientRect().width > p.getBoundingClientRect().width + 0.5) {
+    var floor = parseFloat(getComputedStyle(c).minWidth) || 0;
+    var pw = p.getBoundingClientRect().width;
+    if (c.getBoundingClientRect().width > Math.max(pw, floor) + 0.5) {
       fails.push('a sidebar card overflows its parent at ' + p.dataset.w + 'px');
     }
   });
   L.push(fails.length ? 'FAIL: ' + Array.from(new Set(fails)).join(' | ')
-                      : 'ok: every thumbnail slot and every placeholder renders, at every width, in all three parents; no sidebar card overflows its parent');
+                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width');
   document.getElementById('out').textContent = L.join('\n');
 });
 </script>

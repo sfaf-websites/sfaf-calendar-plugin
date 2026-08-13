@@ -368,9 +368,27 @@ class SFAF_Recurrence {
                 return sprintf( 'Every %d weeks', $spec['interval'] ) . $on;
 
             case 'monthly':
-                $day = $start ? date_i18n( 'jS', strtotime( $start ) ) : '';
+                /*
+                 * NO ORDINAL. This read "Every month on the 4th" and it reaches
+                 * a visitor: pattern_label() is what schedule_sentence() prints
+                 * on the single event page. The brand guide's date rule is "no
+                 * ordinals, ever", and DESIGN.md §3 states it as "August 4,
+                 * never August 4th"; a bare "the 4th" is the same construction
+                 * with the month left off.
+                 *
+                 * "on day 4" keeps the fact, which is the thing a person needs
+                 * to know about a monthly pattern, and says it without the
+                 * suffix. The alternative considered was the sibling wording
+                 * below, "on the same weekday", which needs no number at all -
+                 * but that case has a weekday to name and this one would have
+                 * been throwing the date away.
+                 *
+                 * The day number comes from the formatter's 'daynum' style, so
+                 * it is the site's clock rather than the server's.
+                 */
+                $day   = $start ? sfaf_ap_date( $start, 'daynum' ) : '';
                 $every = ( 1 === $spec['interval'] ) ? 'Every month' : sprintf( 'Every %d months', $spec['interval'] );
-                return $day ? $every . ' on the ' . $day : $every;
+                return ( '' !== $day ) ? $every . ' on day ' . $day : $every;
 
             case 'monthly_nth':
                 $nth = $spec['nth'];
@@ -413,8 +431,15 @@ class SFAF_Recurrence {
     /**
      * Which weekday-of-the-month a date is: the 2nd Friday, the 4th Tuesday.
      *
+     * THE 'weekday' KEY IS GONE, AND NOTHING READ IT. It held $d->format( 'l' ),
+     * an English weekday name built at the call site, and all five callers use
+     * 'nth' and 'dow' only: the labels come from weekday_names(), which is the
+     * one list the whole class names weekdays from. A spare formatted string
+     * that nobody displays is a second source of wording waiting to be picked
+     * up, so it is removed rather than routed through the formatter.
+     *
      * @param string $date Y-m-d
-     * @return array{nth:int,weekday:string,dow:int}|null
+     * @return array{nth:int,dow:int}|null
      */
     public static function nth_weekday_of_month( $date ) {
         try {
@@ -424,9 +449,8 @@ class SFAF_Recurrence {
         }
         $day = (int) $d->format( 'j' );
         return array(
-            'nth'     => (int) ceil( $day / 7 ),
-            'weekday' => $d->format( 'l' ),
-            'dow'     => (int) $d->format( 'w' ),
+            'nth' => (int) ceil( $day / 7 ),
+            'dow' => (int) $d->format( 'w' ),
         );
     }
 
@@ -1187,8 +1211,13 @@ class SFAF_Recurrence {
         // patterns there would have been far more room for the two to drift.
         $when = self::pattern_label( $pattern, $date );
         if ( '' === $when ) {
-            $ts   = $date ? strtotime( (string) $date ) : false;
-            $when = $ts ? date_i18n( 'l, F j, Y', $ts ) : 'No repeating pattern';
+            // The formatter's 'full' style IS 'l, F j, Y'. Spelling it out here
+            // was a second copy of the house date format, which is the thing
+            // one formatter exists to prevent.
+            $when = $date ? sfaf_ap_date( (string) $date, 'full' ) : '';
+            if ( '' === $when ) {
+                $when = 'No repeating pattern';
+            }
         }
 
         $clock = self::time_phrase( $start, $end );

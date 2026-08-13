@@ -1559,7 +1559,45 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    DESIGN.md: this element's width can come from its contents, and an embed
    handed to other sites can never guarantee it will not.
    ------------------------------------------------------------------------- */
-.uc-sidebar { font-family: var(--uc-font-heading); max-width: 380px;
+/* ---------------------------------------------------------------------------
+   min-width: 200px, AND WHAT IT IS AND IS NOT FOR.
+
+   THE FLOOR EXISTED ALREADY; IT WAS JUST NOT DECLARED. A table cell and a flex
+   item are sized FROM their contents, so in those parents the browser asks this
+   card how narrow it can go and uses the answer. Measured, the answer was
+   186.8px with fallback faces and about 196px with Montserrat loaded, and
+   NEITHER NUMBER IS A DECISION ANYBODY MADE. It is the longest word in the
+   heading, plus the one date span that carries white-space: nowrap, plus the
+   card's own 30px of border and padding, in whatever font the page ended up
+   with. Change "Upcoming event dates" to "Dates" and that floor drops to about
+   130px: the card would then render at 130 in a content-sized parent, under the
+   200px readme.txt publishes as this mode's minimum, and nothing in this file
+   would have changed.
+
+   So the number is stated here instead, at the value that is already published.
+   Same reasoning as `.uc-calendar`'s min-width: 260px in 3.24.1, and the same
+   trade: in a parent narrower than 200px the card now overflows by the
+   difference rather than compressing below its supported width. 200 is the
+   supported width, which is what publishing a minimum means.
+
+   WHAT IT DOES NOT DO, MEASURED, so nobody expects it to. It does not make a
+   content-sized parent honour a width it has not got. A page with four columns
+   asking 180 + 220 + 280 + 400 is asking for 1080px; in a content area of about
+   700px the auto table algorithm has nothing left to distribute and pins every
+   column at its floor, so all four come out identical and all four stack. That
+   is arithmetic, not a fault in this card, and a bigger floor makes it worse
+   rather than better. Measured in .claude/embed-width-probe.html, which renders
+   exactly those four columns on pages of five widths: they are still identical
+   at 860px, they differentiate by 1000px, and 1000px is where the 400px column
+   crosses back over the 272px stacking threshold and puts its thumbnail beside
+   the title again.
+
+   GIVEN THE ROOM IT IS HONOURED EXACTLY, which is the part that was broken and
+   is now measured in all three parents: a 400px table cell or flex track renders
+   the card at its 380px cap, side by side; a 200px one renders it at 200,
+   stacked; and the changeover is at 272px to the pixel.
+   ------------------------------------------------------------------------- */
+.uc-sidebar { font-family: var(--uc-font-heading); min-width: 200px; max-width: 380px;
     background: #fff; border: 1px solid var(--uc-border-strong);
     border-radius: 14px; padding: 6px 14px 14px;
     box-shadow: var(--uc-lift); }
@@ -1677,14 +1715,63 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    object-fit: cover on the image below crops from the centre in both states, so
    nothing about which part of the picture survives depends on the column.
    ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   THE BAND IS A FLEX CONTAINER, AND THAT IS WHAT MAKES THE PICTURE FILL IT.
+
+   THE PLACEHOLDER ROWS AND THE PHOTO ROWS DID NOT MATCH ON THE LIVE PAGE. The
+   branded placeholder filled the band; a real photograph drew a small block
+   inside it with the grey showing round the outside. The band was never the
+   thing that was wrong: it is sized by the row's flex rules and it measures the
+   same for both kinds at every width. What differed was the picture inside it.
+
+   THE ASYMMETRY IS THAT ONE OF THEM IS AN <img>. The placeholder is a <span>,
+   which no host stylesheet has an opinion about. The photograph is the one
+   element in this row that EVERY WordPress theme writes a rule for, and the
+   usual rule is some form of `img { width: auto; height: auto }` for responsive
+   images. Ours is `.uc-sidebar .uc-thumb-img` at (0,2,0), which outranks a bare
+   `img` and outranks `.uc-single img` at (0,1,1) - and loses outright to any of
+   them carrying !important, which the responsive-image reset routinely does.
+   When it loses, the photograph falls back to its INTRINSIC size, and the sizes
+   WordPress serves are smaller than a stacked band: a 150px crop in a 210px
+   band is exactly "a small block". Reproduced in the probe under
+   `img { width: auto !important; height: auto !important }`.
+
+   SO THE FILL NO LONGER DEPENDS ON A PROPERTY A HOST CAN OVERWRITE. The band is
+   display: flex, and the picture is a flex item that grows and stretches. A
+   flex item's used main size comes from flexing and its cross size from
+   align-self: stretch, so `width: auto !important` and `height: auto !important`
+   on the <img> no longer decide anything. Same principle as the row's intrinsic
+   reflow above: nothing here depends on an element reporting its own size.
+
+   width/height: 100% STAY. They are what sizes the picture in the ordinary case
+   and they are still correct; the flexing is the belt behind them. object-fit:
+   cover keeps doing the cropping in both states, and overflow: hidden on the
+   band still clips anything a hostile rule manages to push wider.
+
+   NO !important HERE. There is one in this file, on [hidden], and its note
+   explains why that one is enforcing the HTML spec rather than winning an
+   argument. This is a layout mechanism instead, which is better: it holds
+   against rules we have not seen rather than against the ones we have.
+   ------------------------------------------------------------------------- */
 .uc-sidebar-thumb { flex: 1 1 60px; aspect-ratio: 16 / 9;
     min-height: 45px; max-height: 120px;
-    border-radius: 8px; overflow: hidden; background: var(--uc-bg); display: block; }
+    border-radius: 8px; overflow: hidden; background: var(--uc-bg); display: flex; }
 .uc-sidebar .uc-thumb-img,
 .uc-calendar .uc-thumb-img {
     display: block; width: 100%; height: 100%; max-width: none;
     object-fit: cover; object-position: center center;
     border: 0; border-radius: 0;
+}
+/* The stretch pair, on both kinds of media so the band behaves the same
+   whichever one it is holding. flex-basis is auto rather than 0 so the picture
+   still has width: 100% to start from where that rule survives.
+
+   SCOPED TO THE SIDEBAR, because .uc-sidebar-thumb is the only band that is a
+   flex container. `.uc-calendar .uc-thumb-img` is the compact card, whose
+   .uc-compact-thumb is a plain block, and these two declarations would do
+   nothing there. */
+.uc-sidebar .uc-thumb-img, .uc-sidebar .uc-thumb-ph {
+    flex: 1 1 auto; align-self: stretch;
 }
 .uc-thumb-ph { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
     background: var(--uc-cat-media, #D5F3F6); color: var(--uc-cat-ink, #0C666F); }

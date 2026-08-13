@@ -2335,7 +2335,7 @@ class SFAF_Portal {
                 $st   = get_post_status( $id ); ?>
                 <tr>
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
-                    <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php
                         /*
                          * THE SAME LINK THE EVENTS LIST HAS. It was added there
@@ -3178,7 +3178,7 @@ class SFAF_Portal {
                 ?>
                 <tr>
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
-                    <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
+                    <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php
                         /*
@@ -4337,7 +4337,7 @@ class SFAF_Portal {
                                 // series is a normal state, not a fault, and a
                                 // dash makes a manager go looking for the fault.
                                 echo $next
-                                    ? esc_html( date_i18n( 'M j, Y', strtotime( $next ) ) )
+                                    ? esc_html( sfaf_ap_date( $next, 'short_year' ) )
                                     : '<span class="uc-muted">No dates yet</span>';
                             ?></td>
                             <td class="uc-row-actions">
@@ -5924,7 +5924,9 @@ class SFAF_Portal {
                                 <input type="number" name="sp_monthly_interval" class="uc-repeat-num" min="1" max="52"
                                        value="<?php echo ( 'monthly' === $ctx['type'] ) ? (int) $ctx['interval'] : 1; ?>"
                                        aria-label="Months between occurrences" />
-                                month(s) on the <strong><?php echo esc_html( $ctx['daynum'] ? $ctx['daynum'] : 'same date' ); ?></strong></span>
+                                <?php // "on day 4", the same words SFAF_Recurrence::pattern_label()
+                                      // prints for this pattern on the event page. No ordinal. ?>
+                                month(s) on <strong><?php echo esc_html( $ctx['daynum'] ? 'day ' . $ctx['daynum'] : 'the same date' ); ?></strong></span>
                         </label>
 
                         <label class="uc-radio-row">
@@ -6798,7 +6800,9 @@ class SFAF_Portal {
         $days = SFAF_Recurrence::weekday_names();
         $abbr = SFAF_Recurrence::weekday_names( true );
 
-        $day_num = $date ? date_i18n( 'jS', strtotime( $date ) ) : '';
+        // Through the formatter, and with no ordinal suffix: see the note in
+        // SFAF_Recurrence::pattern_label(). The old 'jS' here read "the 4th".
+        $day_num = $date ? sfaf_ap_date( $date, 'daynum' ) : '';
         $nth     = $date ? SFAF_Recurrence::nth_weekday_of_month( $date ) : null;
         ?>
         <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="<?php echo esc_attr( $date ); ?>">
@@ -6864,7 +6868,7 @@ class SFAF_Portal {
             <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_monthly_mode" value="date" checked data-uc-repeat-monthly />
-                    <span>On the <strong><?php echo esc_html( $day_num ? $day_num : 'same date' ); ?></strong> of each month</span>
+                    <span>On <strong><?php echo esc_html( $day_num ? 'day ' . $day_num : 'the same date' ); ?></strong> of each month</span>
                 </label>
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_monthly_mode" value="nth" data-uc-repeat-monthly />
@@ -8706,7 +8710,7 @@ class SFAF_Portal {
                                 }
                             ?></td>
                             <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $r->status ) ); ?></span></td>
-                            <td><?php echo esc_html( date_i18n( 'M j, Y g:i A', strtotime( $r->created_at ) ) ); ?></td>
+                            <td><?php echo esc_html( sfaf_ap_datetime( $r->created_at ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -8810,9 +8814,13 @@ class SFAF_Portal {
                         $date   = get_post_meta( $id, '_uc_event_date', true ); ?>
                         <tr>
                             <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
-                            <td><?php echo $date ? esc_html( date_i18n( 'M j, Y', strtotime( $date ) ) ) : 'Not set'; ?></td>
+                            <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : 'Not set'; ?></td>
                             <td><?php echo esc_html( $author ? $author->display_name : 'Unknown' ); ?></td>
-                            <td><?php echo esc_html( get_the_date( 'M j, Y', $id ) ); ?></td>
+                            <?php // The submission date, through the formatter as well. get_the_date()
+                                  // with a format string is the same call-site formatting as date_i18n(),
+                                  // and it is the one that hid from the first sweep. 'U' is a timestamp,
+                                  // not a display format, so it stays. ?>
+                            <td><?php echo esc_html( sfaf_ap_date( (int) get_the_date( 'U', $id ), 'short_year' ) ); ?></td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
                                     <a class="uc-action-link" href="<?php echo esc_url( get_permalink( $id ) ); ?>" target="_blank" rel="noopener">Preview</a>

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.24.1
+Stable tag: 3.24.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -88,14 +88,28 @@ numbers were arrived at by arithmetic and one of them was wrong in the same
 build that published it: the sidebar was documented at 220px and lost its
 thumbnail entirely at any column under 270px.
 
-**The two calendar modes now enforce their minimum and the sidebar does not.**
-`.uc-calendar` carries `min-width: 260px`, so in a narrower column it overflows
-rather than shrinking. That is a deliberate reversal of what 3.24.0 said, and
-the reason is in the stylesheet next to the rule: the block is a container query
-container, and size containment means it contributes nothing to a parent that
-sizes itself from its contents. Without a floor it does not get cramped in a
-table cell or a flex track, it collapses to nothing and takes the host's layout
-with it. The sidebar needs no such floor because it is not a query container.
+**Every mode enforces its minimum.** `.uc-calendar` carries `min-width: 260px`
+and, since 3.24.2, `.uc-sidebar` carries `min-width: 200px`. In a column
+narrower than that they overflow rather than shrinking, which is what publishing
+a minimum means. For the calendar modes the reason is containment: they are
+container query containers, so without a floor they contribute nothing to a
+parent that sizes itself from its contents and do not get cramped in a table
+cell, they collapse. The sidebar is not a query container and had no such
+hazard, but it had no stated floor either: in a table cell or a flex track it
+was sized by whatever its narrowest possible rendering happened to be, which was
+the longest word in its heading plus the one date line that cannot break, in
+whatever font the page loaded. That measured 196px, nobody chose it, and editing
+the heading would have moved it.
+
+**A width the column has not got cannot be honoured by any of this.** Four
+columns asking 180, 220, 280 and 400px are asking for 1080px; in a content area
+of around 700px the table algorithm has nothing to distribute and pins every
+column at its floor, so all four render identically. That is arithmetic rather
+than a fault in the block, and a floor cannot fix it. Given the room, the width
+is honoured exactly: measured in a table cell and a flex track, a 400px column
+renders the card at its 380px cap with the thumbnail beside the title, a 200px
+column renders it at 200 with the thumbnail stacked above, and the changeover is
+at 272px.
 
 **What changes as the column narrows.** In sidebar mode the row reflows: above
 271px the thumbnail sits left of the text as usual, and at 271px and below the
@@ -216,6 +230,34 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.24.2 =
+
+**The sidebar ignored the width of the column it was in, and it had no floor of its own to state.** In a table cell or a flex track the browser sizes the box from its contents, and what it asked the card was "how narrow can you be". The answer was 196px, and nobody had chosen that number: it was the longest word in the heading, plus the one date span that is not allowed to break, plus the card's 30px of border and padding, in whatever typeface the page had loaded. Change the heading and the number moves.
+
+`.uc-sidebar` now carries **`min-width: 200px`**, the minimum this readme already publishes for the mode, and the same treatment `.uc-calendar` was given in 3.24.1. Below 200px the card overflows rather than compressing, which is what publishing a minimum means. Measured in a table cell and a flex track: a 400px column renders the card at its 380px cap with the thumbnail beside the title; a 200px column renders it at 200 with the thumbnail stacked above; the changeover is at 272px to the pixel.
+
+**A page cannot honour widths it has not got, and no floor changes that.** The report was four columns at 180, 220, 280 and 400px all rendering identically. That is 1080px of request in a content area of about 700; the table algorithm has nothing left to distribute and pins every column at its floor. Measured across five page widths in the probe: still identical at 860px, differentiated by 1000px, which is also where the 400px column crosses back over 272 and puts its thumbnail beside the title again.
+
+**Photograph rows and placeholder rows did not match, and the band was never the thing that was wrong.** The branded placeholder filled the full-width band; a real photograph drew a small block inside it with the grey showing round the outside. Both bands measure the same at every width, because the band is sized by the row's flex rules. What differed was the picture in it.
+
+The asymmetry is that one of them is an `<img>`. The placeholder is a `<span>`, which no host stylesheet has an opinion about; the photograph is the one element in the row that every WordPress theme writes a rule for, and the usual rule is a responsive-images reset of `width: auto; height: auto`. Ours outranks a bare `img` selector and loses outright to the same rule carrying `!important`, at which point the photograph falls back to its intrinsic size, and the sizes WordPress serves are smaller than a stacked band. A 150px crop in a 210px band is exactly the reported "small block".
+
+**So the fill no longer depends on a property a host can overwrite.** The band is a flex container and the picture is a flex item that grows and stretches, so its used size comes from layout rather than from `width` and `height` on the element. Reproduced under three shapes of theme reset, including `width: auto !important; height: auto !important`, and the picture fills its band in all of them. No `!important` was added: this file has exactly one and it is enforcing the `hidden` attribute.
+
+**The probe was measuring a case the live page does not produce.** 3.24.1 reported from `.claude/embed-width-probe.html` that the photo row and the placeholder row measure identically at every width, and on the live page they did not. Its "photograph" was a 1x1 GIF, which has no intrinsic size to fall back to and therefore fills any box whatever the cascade does to it: the one thing that separates a photograph from a `<span>` was the one thing the probe had removed. It now uses a real 150x150 raster, it compares the picture against the band rather than measuring the band alone, and its table and flex sections give each width its own row, because eleven columns in one row is a squeeze and a squeeze answers a different question than the one those sections ask. It also renders the four-column page that was reported, at five page widths.
+
+**Every human-facing date now goes through the one formatter, and it is checked rather than asserted.** DESIGN.md has required this since 3.17.0 and fifteen call sites were still spelling out their own format, two of which were found after the rule was set. `.claude/date-callsite-sweep.php` is committed: it tokenises every PHP file, finds every `date_i18n`, `date`, `gmdate`, `wp_date`, `get_the_date`, `mysql2date` and `->format()` with a literal format, and splits them into human-facing and machine. It carries a `--self-test` that plants nine cases and proves it rejects what it should. The count outside the formatter is now zero. Machine formats are untouched: `Y-m-d` keys, `Y-m` slugs, the ICS stamp and the `w` weekday numbers the recurrence engine compares are storage and protocol, and putting them through a localised formatter would break them.
+
+**"Every month on the 4th" was a hard violation on a visitor-facing page.** `SFAF_Recurrence::pattern_label()` reaches the single event page, and the brand guide's rule is no ordinals, ever. It reads **"Every month on day 4"** now, which keeps the fact and drops the suffix, and the same words are used by both schedule editors and by the JavaScript engine. The cross-check caught the drift immediately, which is what it is for: `public/js/portal.js` had its own copy of the label and was still saying "the 31st" after PHP had stopped. `ucOrdinalDate()` is deleted rather than left unused.
+
+**Two of these were wrong days, not wrong formats.** The RSVP table in wp-admin was using PHP's `date()`, which reads the server clock, so a registration taken at nine in the evening in San Francisco was filed under tomorrow. Same class as the compact card date tile fixed in 3.21.1. Several others took `strtotime()` of a bare `Y-m-d` and handed the result to a site-timezone formatter: WordPress runs PHP in UTC, so that is midnight UTC and renders as the previous day anywhere west of Greenwich. `sfaf_ap_date()` anchors a date string at midday for exactly this reason, and those call sites now pass it the stored string instead of a timestamp.
+
+**Two styles and one helper were added to the formatter rather than to the call sites.** `short_year` is "Aug 4, 2026" and `month_year` is "August 2026"; a missing style is the reason a call site writes its own format, so the list is the thing that has to grow. `sfaf_ap_datetime()` is "Aug 4, 2026 at 6 pm" for the three places that record when something happened: the two RSVP tables and the cron alert email.
+
+Also: `nth_weekday_of_month()` no longer returns a `weekday` key. It held an English weekday name built at the call site, all five callers use `nth` and `dow` only, and a spare formatted string nobody displays is a second source of wording waiting to be picked up. The schedule editor's dates in the browser read "Aug 4, 2026" rather than "Aug 4 2026".
+
+Lint: 35 files parse. Callable audit: clean, self-test passes. Recurrence cross-check: 4,321 cases, PHP and JS agree on every date, label and count. Group operations harness: passing. Date sweep: zero human-facing call sites outside the formatter, self-test passes. All re-run against the extracted zip.
 
 = 3.24.1 =
 

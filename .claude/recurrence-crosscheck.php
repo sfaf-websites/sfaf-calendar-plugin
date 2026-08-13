@@ -55,6 +55,21 @@ function date_i18n( $format, $timestamp_with_offset = false, $gmt = false ) {
 }
 function _n( $single, $plural, $n ) { return ( 1 === (int) $n ) ? $single : $plural; }
 function sfaf_ap_time( $t ) { return (string) $t; }
+/* THE REAL BEHAVIOUR, NOT A PASS-THROUGH, because pattern_label() now takes its
+   day number from here and this file asserts on the words that come out. The
+   styles are the ones the recurrence code asks for; the midday anchor is
+   sfaf_ap_date()'s, and it is the reason a date-only string does not slip a day. */
+function sfaf_ap_date( $when, $style = 'full' ) {
+    if ( is_string( $when ) ) {
+        $when = ( '' !== trim( $when ) ) ? strtotime( trim( $when ) . ' 12:00:00' ) : false;
+    }
+    if ( ! $when ) { return ''; }
+    $formats = array(
+        'full' => 'l, F j, Y', 'day' => 'F j', 'short' => 'M j', 'short_year' => 'M j, Y',
+        'month_year' => 'F Y', 'weekday' => 'D', 'month' => 'M', 'daynum' => 'j',
+    );
+    return date( isset( $formats[ $style ] ) ? $formats[ $style ] : $formats['full'], (int) $when );
+}
 function sfaf_ap_time_range( $s, $e ) { return trim( $s . '-' . $e ); }
 
 require $root . '/includes/class-sfaf-recurrence.php';

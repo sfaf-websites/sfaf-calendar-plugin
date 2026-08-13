@@ -1916,7 +1916,9 @@
         }
         if (spec.type === 'monthly') {
             var every = interval === 1 ? 'Every month' : 'Every ' + interval + ' months';
-            return from ? every + ' on the ' + ucOrdinalDate(from.getUTCDate()) : every;
+            // "on day 4". No ordinal: see SFAF_Recurrence::pattern_label(), whose
+            // words this has to match exactly or the cross-check fails.
+            return from ? every + ' on day ' + from.getUTCDate() : every;
         }
         if (spec.type === 'monthly_nth') {
             var nth = spec.nth, dow = spec.dow;
@@ -1935,15 +1937,14 @@
         if (list.length === 1) { return list[0]; }
         return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
     }
-    function ucOrdinalDate(n) {
-        var s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-        return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    }
     function ucPrettyDate(ymd) {
         var d = ucParseYmd(ymd);
         if (!d) { return ymd; }
         var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' ' + d.getUTCFullYear();
+        // "Aug 4, 2026". The comma was missing, and this is the same 'M j, Y'
+        // that sfaf_ap_date( ..., 'short_year' ) renders on the PHP side: these
+        // dates sit in the same schedule editor as the ones the server writes.
+        return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ', ' + d.getUTCFullYear();
     }
     function ucPlural(n, one, many) { return n === 1 ? one : many; }
 

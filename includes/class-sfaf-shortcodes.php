@@ -502,7 +502,14 @@ class SFAF_Shortcodes {
             'last'  => $last->format( 'Y-m-d' ),
             'start' => $start->format( 'Y-m-d' ),
             'end'   => $end->format( 'Y-m-d' ),
-            'label' => $first->format( 'F Y' ),
+            /* Through the one formatter, and via the Y-m-d STRING rather than
+               the timestamp. This DateTimeImmutable is UTC on purpose (see the
+               docblock: the day arithmetic must not meet a DST transition), so
+               its instant for the 1st at midnight is the previous evening in
+               San Francisco, and handing that timestamp to a site-timezone
+               formatter would label August as July. The string carries the
+               calendar date without the instant, which is the fact wanted here. */
+            'label' => sfaf_ap_date( $first->format( 'Y-m-d' ), 'month_year' ),
             'prev'  => $first->modify( '-1 month' )->format( 'Y-m' ),
             'next'  => $first->modify( '+1 month' )->format( 'Y-m' ),
         );
