@@ -980,6 +980,24 @@ class SFAF_Sources {
                 if ( '_uc_image_url' === $meta_key || '_uc_image_override' === $meta_key ) {
                     continue;
                 }
+                /*
+                 * NOR THE PRIVACY FLAG, EVER, WHATEVER AN ADAPTER SENDS.
+                 *
+                 * A hard refusal rather than a $may_write() gate, because this
+                 * is not a field a source can have a wrong opinion about: it
+                 * has no opinion at all. GoFundMe Pro and Eventbrite have no
+                 * concept of a private event, so any _uc_private arriving from
+                 * one is a coincidence of key naming, and the cost of honouring
+                 * it once would be a donor reception quietly appearing on the
+                 * public calendar at the next hourly fetch.
+                 *
+                 * The declared manager_fields() entry is what makes the editor
+                 * badge it as permanently the manager's. This is what makes
+                 * that true rather than declared.
+                 */
+                if ( SFAF_Privacy::META === $meta_key ) {
+                    continue;
+                }
                 // The Donate box has an editor control, so it is gated by the
                 // declaration like any other visible field. Without this an
                 // adapter could write a box the editor left editable.

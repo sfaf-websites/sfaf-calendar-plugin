@@ -88,7 +88,7 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
      * @return string[]
      */
     public function manager_fields() {
-        return array( 'category', 'organizer' );
+        return array( 'category', 'organizer', 'private' );
     }
 
     /**

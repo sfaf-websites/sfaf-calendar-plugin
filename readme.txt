@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.28.0
+Stable tag: 3.29.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -48,6 +48,58 @@ and this one gets used about twice a year, but the page is still registered and
 still works. It is at:
 
 `/wp-admin/edit.php?post_type=uc_event&page=uc-shortcode-generator`
+
+== Private events ==
+
+**An event that cannot be found, and works normally for anybody holding its
+link.** The use case is a reception for donors above a giving level. One
+checkbox on the event, off by default.
+
+**This is an unlisted link, not access control, and the difference matters.** A
+link can be forwarded, and SFAF accepts that: it is true of every unlisted-link
+system. What the feature guarantees is that the event cannot be FOUND by
+somebody who was not sent the link.
+
+**Privacy is on the event, never on the series.** A private event is hidden
+whatever series it belongs to, and a private event in a public series does not
+appear on that series page. A wholly private series is every event in it marked
+private. There is deliberately no series-level setting: two settings that can
+contradict each other are worse than one rule. The event still belongs to its
+series for authoring, so creating one into a series still pulls in the series
+details, and "use this event's details on another date" works normally.
+
+**Every route it is hidden from:**
+
+* The web address becomes 32 random hex characters, so a plausible address
+  cannot be typed. Each date of a repeating private event gets its own token,
+  so being sent one date does not hand somebody the others.
+* `noindex, nofollow` on the page.
+* Out of the calendar list, the month grid and the sidebar.
+* Out of search, public and embedded.
+* Out of the series page and the series term archive.
+* Out of the REST payload the embed serves, and out of core's own
+  `/wp-json/wp/v2/uc_event` collection.
+* Out of the WordPress sitemap and out of Yoast's, by two independent
+  mechanisms: the event is stamped with Yoast's own noindex meta, which takes it
+  out of Yoast's sitemap by itself, and its id is also added to Yoast's
+  exclusion filter.
+* No JSON-LD, no Open Graph tags and no Twitter card, so a forwarded link does
+  not unfurl into a titled preview in a public channel.
+* Out of the dormant multi-site feed, because a satellite would render it on a
+  page this plugin does not control.
+* The `.ics` download requires the event's token as well as its id. Without that
+  the page would be unguessable while `?uc_ics=417` was not.
+
+**What does not change, for anybody with the link:** the page renders normally,
+registration works, all four emails send, add to calendar, the map, capacity and
+cancellation all behave as usual.
+
+**In the portal**, private events appear in the Events list like any other, with
+a "Private" marker beside the status. They are never hidden from managers.
+
+**Imported events**: private is a manager-set field applied after approval, and
+it is declared manager-owned so a refetch can never clear it, exactly like the
+fundraising progress toggle.
 
 == The multi-site events feed is dormant ==
 
@@ -373,6 +425,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.29.0 =
+
+**Private events.** See the section above for what it is and every route it covers. One checkbox on the event, off by default, hiding the event from the calendar, the month grid, the sidebar, search, its series page, the series archive, both sitemaps, the embed payload, core's REST collection, the multi-site feed, and the JSON-LD and social tags on its own page. The address becomes 32 random hex characters. Everything on the page works normally for anybody holding the link, including registration and all four emails.
+
+**Privacy is on the event and there is no series-level setting.** Two settings that can contradict each other are worse than one rule: the moment a series says private and an event in it says public, something has to decide which wins and it will be wrong for somebody. A wholly private series is every event in it marked private.
+
+**Each date of a repeating private event gets its own token.** Occurrence slugs are normally `{seed-slug}-{date}`, so inheriting one token would mean that being sent one date hands somebody every other date by editing the URL. One forwarded link is one forwarded link.
+
+**The `.ics` download was the route that almost got missed.** Making the page unguessable does nothing for a second door addressed differently: `?uc_ics=417` is four digits, and walking them would have returned a file carrying the title, date, time and address of every private event on the calendar. A private event's `.ics` now requires its token as well as its id. Add to calendar still works for anybody holding the link, because they reached the page by that token.
+
+**Two independent mechanisms for Yoast**, because neither can be verified from a machine with no Yoast on it. Making an event private stamps Yoast's own noindex meta, and Yoast leaves a noindexed post out of its sitemap without being asked; the event's id is also added to Yoast's sitemap exclusion filter, which covers the case where that write did not happen. Core's sitemap is handled separately and directly.
+
+**`.claude/private-events-test.php` is committed, and it is a whitelist rather than a checklist.** A checklist of routes to hide from is only as complete as the person writing it, and the failure here is a route nobody thought of. So it sweeps every query in the source that builds against `uc_event` and requires each one to either exclude private events or be named, with a reason, as a place a private event belongs: a manager screen, or a mechanism like the reminder runner that must act on an event regardless of who can see it. 29 queries found, 4 exclude, 25 whitelisted, none unaccounted for.
+
+That sweep is per function rather than per file, and it is worth saying why: the first version asked "does this file exclude anywhere", and it passed with the exclusion deleted from the calendar list builder, because the month grid in the same file still had one. The list would have carried private events while the grid beside it did not. Four faults were planted and caught before the test was trusted.
 
 = 3.28.0 =
 

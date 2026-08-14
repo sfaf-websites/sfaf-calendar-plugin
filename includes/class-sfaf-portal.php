@@ -3314,6 +3314,23 @@ class SFAF_Portal {
                                       . ', ' . human_time_diff( $removed_at, time() ) . ' ago. It was taken off the calendar and kept as a draft.'
                                   ); ?>">Removed at source</span>
                         <?php endif; ?>
+                        <?php
+                        /*
+                         * PRIVATE EVENTS ARE IN THIS LIST LIKE ANY OTHER, AND
+                         * SAY SO. Hiding them from managers would hide them
+                         * from the people running them, which is the one group
+                         * that has to be able to find them.
+                         *
+                         * THE WORDS ARE THE MARKER. Not a padlock on its own and
+                         * not "Unlisted": somebody who did not build this has to
+                         * read the row and know what it means, and "Private" is
+                         * the word the editor's own control uses. The title
+                         * attribute carries the rest for anybody who hovers.
+                         */
+                        if ( SFAF_Privacy::is_private( $id ) ) : ?>
+                            <span class="uc-pill uc-pill-private"
+                                  title="Hidden from the calendar, search, its series page and the sitemap. Reachable only by its direct link.">Private</span>
+                        <?php endif; ?>
                     </td>
                     <td><?php
                         // NO SERIES EVER APPEARS IN THIS TABLE. It is a list of
@@ -3765,7 +3782,7 @@ class SFAF_Portal {
      * @return string[]
      */
     private function manager_field_order() {
-        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress' );
+        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
     }
 
     /**
@@ -3829,6 +3846,27 @@ class SFAF_Portal {
         $fields     = array_diff( $fields, array( 'fundraising_progress' ) );
         if ( $has_donate ) {
             $fields[] = 'fundraising_progress';
+        }
+
+        /*
+         * PRIVATE IS ON EVERY EVENT, NATIVE OR IMPORTED, AND ONLY ONCE SAVED.
+         *
+         * Native and imported both get it because it is a decision about this
+         * calendar rather than about where the event came from. It is in the
+         * manager-owned list for the imported case specifically: a source has
+         * no concept of private, so a refetch must never be able to clear it,
+         * exactly like the fundraising toggle. See SFAF_Sources::import_event()
+         * and the guard on the adapter meta loop.
+         *
+         * NOT OFFERED BEFORE THE EVENT EXISTS. Making an event private rewrites
+         * its slug, and there is no post to rewrite until the first save. A
+         * manager ticking it on the new-event form would be ticking something
+         * that could not take effect, so the control appears the moment there
+         * is an event to apply it to.
+         */
+        $fields = array_diff( $fields, array( 'private' ) );
+        if ( $ctx['event_id'] ) {
+            $fields[] = 'private';
         }
 
         // Canonical order, and nothing this method does not recognise.
@@ -4161,6 +4199,55 @@ class SFAF_Portal {
                 </div>
                 <?php
                 break;
+
+            case 'private':
+                $is_private = SFAF_Privacy::is_private( $event_id );
+                ?>
+                <div class="uc-field uc-private-field">
+                    <span class="uc-field-label">Who can find this event</span>
+                    <?php // Hidden 0 first, same reason as the toggle above: the
+                          // pending queue posts this control on its own, so an
+                          // absent checkbox has to mean off rather than
+                          // "not submitted". ?>
+                    <input type="hidden" name="uc_private" value="0" />
+                    <label class="uc-check">
+                        <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
+                        Private: hide this event everywhere, reachable only by its direct link
+                    </label>
+                    <?php
+                    /*
+                     * WHAT IT DOES AND WHAT IT DOES NOT DO, IN THAT ORDER, AND
+                     * THE SECOND HALF IS NOT OPTIONAL.
+                     *
+                     * A manager choosing this for a donor reception is deciding
+                     * who can find the event, and they need to know that
+                     * forwarding is possible before they rely on it. Saying
+                     * only "private" would let somebody believe it is access
+                     * control. It is not, and the honest sentence is short.
+                     */
+                    ?>
+                    <p class="uc-hint">
+                        Off by default. A private event is left out of the calendar, the month grid, search,
+                        its series page, the sitemap and everything this site publishes. Anybody with the link
+                        sees a normal event page and can register normally.
+                    </p>
+                    <p class="uc-hint">
+                        <strong>The link is the only thing protecting it, and a link can be forwarded.</strong>
+                        Turning this on changes the event's web address to an unguessable one, so the old
+                        address stops working. Turning it off again restores it.
+                    </p>
+                    <?php if ( $is_private ) : ?>
+                        <p class="uc-hint uc-private-link">
+                            Send this address:
+                            <code><?php echo esc_html( get_permalink( $event_id ) ); ?></code>
+                        </p>
+                    <?php endif; ?>
+                    <?php if ( '' !== $ctx['prov']['source'] ) : ?>
+                        <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
+                    <?php endif; ?>
+                </div>
+                <?php
+                break;
         }
     }
 
@@ -4259,6 +4346,23 @@ class SFAF_Portal {
                 sfaf_fundraising_progress_meta_key(),
                 ( '1' === (string) wp_unslash( $_POST['show_fund_progress'] ) ) ? '1' : '0'
             );
+        }
+
+        /*
+         * PRIVATE. Same marker discipline as the toggle above: written only
+         * when the control was on the form, and the control always posts a
+         * hidden 0 beside the checkbox so a screen that offers it always says
+         * which way.
+         *
+         * THROUGH SFAF_Privacy::set() RATHER THAN update_post_meta(), because
+         * the meta is only half of the state. The other half is the slug, and
+         * an event whose meta says private with a readable address at
+         * /events/donor-reception is not private. set() is the one place both
+         * move together, and it is a no-op when nothing changed, so re-saving
+         * an event does not churn the address.
+         */
+        if ( isset( $_POST['uc_private'] ) ) {
+            SFAF_Privacy::set( $event_id, '1' === (string) wp_unslash( $_POST['uc_private'] ) );
         }
     }
 

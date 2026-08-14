@@ -730,6 +730,21 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-pill-removed { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d;
     text-transform: none; margin-left: 5px; cursor: help; }
 
+/* Private, beside the status rather than replacing it: a private event is still
+ * published, and this says who can find it. Slate rather than a warning colour,
+ * because being private is a choice somebody made and not a problem. Same
+ * text-transform: none as the removed pill, so the word reads as the word the
+ * editor's own control uses. */
+.uc-pill-private { background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe;
+    text-transform: none; margin-left: 5px; cursor: help; }
+
+/* The address to send, on the editor's privacy control. Wraps, because a
+ * 32-character token plus the site URL does not fit a form column and a
+ * horizontally scrolling code element is one somebody copies half of. */
+.uc-private-field .uc-private-link code { display: inline-block; max-width: 100%;
+    word-break: break-all; font-size: 12px; padding: 2px 6px; border-radius: 4px;
+    background: var(--p-bg); }
+
 /* ---------- Views ----------
  * Which events are being looked at, asked before the refinements below it.
  * A row of links rather than a segmented control, because each one is a real

@@ -29,6 +29,26 @@ class SFAF_SEO {
         }
         $id = get_queried_object_id();
 
+        /*
+         * NOTHING AT ALL ON A PRIVATE EVENT. Not the JSON-LD, not the Open
+         * Graph tags, not the Twitter card.
+         *
+         * The page itself still renders in full: this is the direct link and it
+         * has to work. What is suppressed is everything on it whose only
+         * audience is a machine that catalogues pages. Event JSON-LD is an
+         * invitation to a search engine to list the event with its date, place
+         * and registration link, which is precisely what a private event is
+         * not for, and the Open Graph tags are what makes a forwarded link
+         * unfurl into a titled preview card in a public channel.
+         *
+         * SFAF_Privacy::robots() marks the page noindex and nofollow, and a
+         * crawler that honours that will not read this block anyway. This is
+         * the half that does not depend on anybody honouring anything.
+         */
+        if ( SFAF_Privacy::is_private( $id ) ) {
+            return;
+        }
+
         $this->open_graph( $id );
         $this->twitter_card( $id );
         $this->json_ld( '/* Event */', $this->event_schema( $id ) );

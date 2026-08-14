@@ -372,7 +372,19 @@ function sfaf_event_datetimes( $post_id ) {
  * URL that triggers the .ics download for a single event.
  */
 function sfaf_ics_url( $post_id ) {
-    return add_query_arg( 'uc_ics', (int) $post_id, home_url( '/' ) );
+    $url = add_query_arg( 'uc_ics', (int) $post_id, home_url( '/' ) );
+
+    // A private event's .ics is addressed by its token as well as its id, so an
+    // id nobody was given cannot be walked. See sfaf_output_ics(). The token is
+    // the slug, which whoever is looking at this page already has.
+    if ( SFAF_Privacy::is_private( $post_id ) ) {
+        $post = get_post( (int) $post_id );
+        if ( $post && '' !== $post->post_name ) {
+            $url = add_query_arg( 'k', $post->post_name, $url );
+        }
+    }
+
+    return $url;
 }
 
 /**
@@ -801,6 +813,10 @@ function sfaf_get_series_events( $term_id, $upcoming_only = false ) {
             'upcoming' => (bool) $upcoming_only,
             'status'   => array( 'publish' ),
             'limit'    => 50,
+            // THE PUBLIC SIDE OF A SERIES. This is what the event page's
+            // "Upcoming in this series" list is built from, and it is a theme
+            // facing function, so it must never hand back a private event.
+            'public_only' => true,
         ) );
     }
     return $cache[ $key ];

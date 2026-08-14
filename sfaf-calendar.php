@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.28.0
+ * Version: 3.29.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.28.0' );
+define( 'SFAF_VERSION', '3.29.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -95,6 +95,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-embed.php',
     'includes/class-sfaf-rsvp.php',
     'includes/class-sfaf-optins.php',
+    'includes/class-sfaf-privacy.php',
     // The mail layer, before anything that sends: SFAF_Email builds and hands
     // to wp_mail(), SFAF_Notifications decides who gets what.
     'includes/class-sfaf-email.php',
@@ -150,6 +151,11 @@ function sfaf_init() {
     // The one posts_clauses filter that widens an event search beyond the post
     // table. Inert on every query that does not ask for it. See SFAF_Search.
     SFAF_Search::register();
+
+    // Private events: the hooks for the routes WordPress owns (search, the
+    // archives, feeds, both sitemaps, core REST and the robots tag). The routes
+    // this plugin owns are excluded at the query builders themselves.
+    SFAF_Privacy::register();
 
     $post_types = new SFAF_Post_Types();
     $post_types->register();
@@ -386,6 +392,34 @@ function sfaf_output_ics() {
     if ( ! $post || $post->post_type !== 'uc_event' || $post->post_status !== 'publish' ) {
         status_header( 404 );
         exit;
+    }
+
+    /*
+     * A PRIVATE EVENT'S .ics IS ADDRESSED BY ITS TOKEN, NOT BY ITS ID.
+     *
+     * THIS IS THE ROUTE THAT ALMOST GOT MISSED, and it is worth writing down
+     * because of the shape of the mistake rather than the fix. Making the page
+     * unguessable does nothing for a second door into the same event that is
+     * addressed differently: ?uc_ics=417 is four digits, and walking them
+     * returns a file carrying the title, the date, the time and the address of
+     * every private event on the calendar. The page was unguessable and the
+     * event was not.
+     *
+     * So a private event requires k=<its slug>, which is the same 128-bit token
+     * the URL carries and is therefore knowable by exactly the people who were
+     * sent the link. sfaf_ics_url() adds it. Public events are unchanged and
+     * still answer to a bare id, because there is nothing to protect.
+     *
+     * Add to calendar keeps working for somebody holding the link, which
+     * section 3 requires: they reached the page by its token, so the button on
+     * it is built with that token.
+     */
+    if ( SFAF_Privacy::is_private( $post_id ) ) {
+        $key = isset( $_GET['k'] ) ? sanitize_title( wp_unslash( $_GET['k'] ) ) : '';
+        if ( '' === $key || ! hash_equals( (string) $post->post_name, $key ) ) {
+            status_header( 404 );
+            exit;
+        }
     }
 
     $dt = sfaf_event_datetimes( $post_id );
@@ -914,6 +948,15 @@ function sfaf_rest_get_events( $request ) {
         'orderby'        => 'meta_value',
         'order'          => 'ASC',
     );
+
+    /*
+     * PRIVATE EVENTS DO NOT LEAVE THIS SITE, even though this feed is dormant
+     * and gated on a key. A satellite renders what it is given on a public
+     * page, so an event that reached one would be findable on a site this
+     * plugin does not control and cannot fix. The key says who may read the
+     * feed; it says nothing about where the answer ends up.
+     */
+    SFAF_Privacy::exclude( $args );
 
     $category = $request->get_param( 'category' );
     if ( $category ) {

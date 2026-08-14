@@ -984,6 +984,29 @@ class SFAF_Recurrence {
             set_post_thumbnail( $id, $thumb );
         }
 
+        /*
+         * PRIVACY TRAVELS WITH THE COPY, AND EACH DATE GETS ITS OWN TOKEN.
+         *
+         * A private event repeated weekly must not produce twelve public dates:
+         * "the reception is private" is a fact about the event, and every
+         * occurrence is the same event on another day.
+         *
+         * THE INDEPENDENT TOKEN IS THE PART THAT IS NOT OBVIOUS. Occurrence
+         * slugs are {seed-slug}-{date}, so if the seed's token were simply
+         * inherited, being sent one date would hand somebody every other date
+         * by editing the date on the end of the URL. One forwarded link has to
+         * be one forwarded link, so each occurrence is randomized separately.
+         *
+         * Not in $copied_meta, because copying the flag without replacing the
+         * slug would produce an event that claims to be private at a guessable
+         * address, which is the one state this feature cannot have.
+         */
+        if ( SFAF_Privacy::is_private( $seed->ID ) ) {
+            update_post_meta( $id, SFAF_Privacy::META, '1' );
+            update_post_meta( $id, SFAF_Privacy::YOAST_NOINDEX_META, '1' );
+            SFAF_Privacy::randomize_slug( $id );
+        }
+
         update_post_meta( $id, '_uc_event_date', $date );
         update_post_meta( $id, self::GROUP_META, $group );
         update_post_meta( $id, self::PATTERN_META, $pattern );

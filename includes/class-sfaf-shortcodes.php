@@ -187,6 +187,22 @@ class SFAF_Shortcodes {
             ),
         );
 
+        /*
+         * PRIVATE EVENTS COME OUT HERE, WHICH IS ALSO WHY THE EMBED IS COVERED.
+         *
+         * This is the one builder behind the list, the sidebar, the search
+         * results and every payload SFAF_Embed serves, because build_payload()
+         * calls render_events() and render_calendar_block() and both come
+         * through here. Excluding at the builder rather than at each renderer
+         * is what makes "hidden from the shortcode but still in the embed
+         * payload" impossible rather than merely unlikely.
+         *
+         * Before the date window and before the search, so nothing downstream
+         * can widen it back. See SFAF_Privacy::exclude() for why the clause
+         * nests rather than appends.
+         */
+        SFAF_Privacy::exclude( $args );
+
         if ( $per_page <= 0 ) {
             $args['posts_per_page'] = -1;
         } else {
@@ -568,6 +584,14 @@ class SFAF_Shortcodes {
                 ),
             ),
         );
+
+        // The month grid is a second builder, so it needs the exclusion of its
+        // own: a private event kept out of the list and left on the calendar
+        // grid beside it would be found by anybody clicking a date. Appended as
+        // a sibling of the named clause above, never wrapped around it, for the
+        // double-join reason set out in the note there. See
+        // SFAF_Privacy::exclude().
+        SFAF_Privacy::exclude( $args );
 
         foreach ( array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer', 'venue' => 'uc_venue' ) as $key => $taxonomy ) {
             if ( '' !== $filters[ $key ] ) {

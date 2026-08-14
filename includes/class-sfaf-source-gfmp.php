@@ -118,7 +118,7 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      * @return string[]
      */
     public function manager_fields() {
-        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress' );
+        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
     }
 
     /**

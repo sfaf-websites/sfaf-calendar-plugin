@@ -338,6 +338,43 @@ class SFAF_Post_Types {
                     <?php echo esc_html( $label ); ?>
                 </label>
             <?php endforeach; ?>
+
+            <?php
+            /*
+             * PRIVATE, HERE TOO, BECAUSE THIS EDITOR STILL EXISTS.
+             *
+             * /caladmin is where events are managed and its control is the
+             * fuller one. This screen is the administrator's fallback, and a
+             * fallback that can edit an event but cannot see or change whether
+             * it is findable is the kind of gap somebody discovers at the worst
+             * moment. Same meta, same SFAF_Privacy::set(), so the two screens
+             * cannot disagree.
+             *
+             * OFFERED ONLY ON A SAVED EVENT, for the reason the portal control
+             * gives: making an event private rewrites its slug and there is no
+             * post to rewrite until the first save.
+             */
+            if ( $post->ID && 'auto-draft' !== $post->post_status ) :
+                $is_private = SFAF_Privacy::is_private( $post->ID );
+                ?>
+                <hr style="margin:14px 0;" />
+                <input type="hidden" name="uc_private_present" value="1" />
+                <label class="uc-display-toggle">
+                    <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
+                    <strong>Private</strong>
+                </label>
+                <p class="description">
+                    Hidden from the calendar, search, its series page and the sitemap. Anybody with the
+                    direct link sees a normal event page and can register normally. Turning this on changes
+                    the event's web address to an unguessable one; turning it off restores the old address.
+                    <strong>A link can be forwarded.</strong>
+                </p>
+                <?php if ( $is_private ) : ?>
+                    <p class="description">Send this address:<br />
+                        <code style="word-break:break-all;"><?php echo esc_html( get_permalink( $post->ID ) ); ?></code>
+                    </p>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -833,6 +870,23 @@ class SFAF_Post_Types {
         );
         foreach ( $toggles as $post_key => $meta_key ) {
             update_post_meta( $post_id, $meta_key, isset( $_POST[ $post_key ] ) ? '1' : '0' );
+        }
+
+        /*
+         * PRIVATE. NOT IN THE LOOP ABOVE, AND THE MARKER IS WHY.
+         *
+         * That loop writes whether or not the box was on screen, which is
+         * correct for a toggle that is always rendered and wrong here: the
+         * control is only drawn once the event exists, so on the very first
+         * save it is absent, and a bare isset() would write "not private" to an
+         * event nobody had been asked about. uc_private_present says the
+         * control was there, exactly like uc_rsvp_toggle_present in the portal.
+         *
+         * Through SFAF_Privacy::set(), because the slug is the other half of
+         * the state and only that function moves both.
+         */
+        if ( isset( $_POST['uc_private_present'] ) ) {
+            SFAF_Privacy::set( $post_id, isset( $_POST['uc_private'] ) );
         }
 
         // Which series this event belongs to. A plain term assignment: nothing

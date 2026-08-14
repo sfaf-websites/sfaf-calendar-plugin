@@ -70,6 +70,29 @@ class SFAF_Series {
 }
 
 /**
+ * Privacy, as create_occurrence() uses it.
+ *
+ * The real class is not loaded here because this test stubs WordPress rather
+ * than running it, and the two calls the recurrence path makes are all that
+ * matters to these cases: does a private seed produce private occurrences, and
+ * does each one get its OWN address. Occurrence slugs are {seed-slug}-{date},
+ * so a shared token would mean being sent one date hands somebody every other
+ * date by editing the URL.
+ */
+class SFAF_Privacy {
+    const META = '_uc_private';
+    const YOAST_NOINDEX_META = '_yoast_wpseo_meta-robots-noindex';
+    public static function is_private( $id ) {
+        return '1' === (string) get_post_meta( (int) $id, self::META, true );
+    }
+    public static function randomize_slug( $id ) {
+        // Posts are objects in this harness, as they are in WordPress.
+        $GLOBALS['posts'][ (int) $id ]->post_name = 'tok' . str_pad( (string) $GLOBALS['token_seq']++, 4, '0', STR_PAD_LEFT );
+    }
+}
+$GLOBALS['token_seq'] = 1;
+
+/**
  * Only the two shapes the recurrence class builds: a group clause, optionally
  * with a date bound, ordered by date ascending.
  */
@@ -266,6 +289,38 @@ $new2 = SFAF_Recurrence::add_occurrence( $ids[0], '2026-08-14', '', '', true, ''
 t( 'same title as the rest', get_post( $new2 )->post_title, 'Tuesday Support Group' );
 t( 'and the slug scheme is unchanged', get_post( $new2 )->post_name, 'tuesday-support-group-2026-08-14' );
 
+/* -------------------------------------------------------------------------
+ * A PRIVATE EVENT'S DATES ARE PRIVATE, AND EACH HAS ITS OWN ADDRESS.
+ *
+ * Two separate guarantees and the second is the one that is easy to miss.
+ * Occurrence slugs are normally {seed-slug}-{date}, so a private seed whose
+ * token was simply inherited would mean that being sent one date hands somebody
+ * every other date by editing the date on the end of the URL. A donor
+ * reception that repeats monthly would be twelve leaks from one forwarded link.
+ * ---------------------------------------------------------------------- */
+echo "\n--- a private seed produces private dates, each with its own token ---\n";
+$pseed = mkpost( array( 'post_title' => 'Donor Reception', 'post_name' => 'donor-reception' ) );
+update_post_meta( $pseed, '_uc_event_date', '2026-09-01' );
+update_post_meta( $pseed, SFAF_Recurrence::GROUP_META, 'gp1' );
+update_post_meta( $pseed, SFAF_Recurrence::PATTERN_META, 'monthly:1' );
+update_post_meta( $pseed, SFAF_Privacy::META, '1' );
+
+$d1 = SFAF_Recurrence::add_occurrence( $pseed, '2026-10-01', '', '', true, '' );
+$d2 = SFAF_Recurrence::add_occurrence( $pseed, '2026-11-01', '', '', true, '' );
+
+t( 'the first new date is private', SFAF_Privacy::is_private( $d1 ), true );
+t( 'the second new date is private', SFAF_Privacy::is_private( $d2 ), true );
+t( 'the first date did not keep the readable slug',
+    ( false === strpos( get_post( $d1 )->post_name, 'donor-reception' ) ), true );
+t( 'the two dates do not share an address',
+    ( get_post( $d1 )->post_name !== get_post( $d2 )->post_name ), true );
+t( 'and each carries the noindex meta',
+    get_post_meta( $d2, SFAF_Privacy::YOAST_NOINDEX_META, true ), '1' );
+
+// The control: a public seed is untouched by any of this.
+t( 'a public date still gets its readable slug',
+    get_post( $new2 )->post_name, 'tuesday-support-group-2026-08-14' );
+
 echo "\n";
 if ( $fails ) { printf( "%d failure(s).\n", $fails ); exit( 1 ); }
-echo "every group operation behaves as described.\n";
+echo "every group operation behaves as described, and a private group's dates are private.\n";

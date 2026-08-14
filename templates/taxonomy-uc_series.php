@@ -28,13 +28,15 @@ if ( ! $term || empty( $term->term_id ) ) {
 }
 
 $image    = SFAF_Series::image_url( $term->term_id, 'large' );
-$upcoming = SFAF_Series::events( $term->term_id, array( 'upcoming' => true, 'limit' => 100 ) );
+// public_only: this is the series page a visitor sees, so a private event in
+// this series must not be on it. See SFAF_Privacy.
+$upcoming = SFAF_Series::events( $term->term_id, array( 'upcoming' => true, 'limit' => 100, 'public_only' => true ) );
 
 // Past dates are the record of what this series has actually been, which is
 // often the most useful thing on the page for a programme somebody is deciding
 // whether to join. Newest first, and capped, because it is context and not the
 // point of the page.
-$all  = SFAF_Series::events( $term->term_id, array( 'limit' => 200 ) );
+$all  = SFAF_Series::events( $term->term_id, array( 'limit' => 200, 'public_only' => true ) );
 $past = array_slice( array_reverse( array_values( array_diff( $all, $upcoming ) ) ), 0, 10 );
 
 $settings   = get_option( 'uc_settings', array() );

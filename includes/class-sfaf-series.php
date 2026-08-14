@@ -375,11 +375,27 @@ class SFAF_Series {
         if ( ! $term_id ) {
             return array();
         }
+        /*
+         * public_only DEFAULTS TO FALSE, AND THAT IS THE SAFE DIRECTION HERE.
+         *
+         * Most callers of this are /caladmin screens and the recurrence tools,
+         * which must see every event in a series including the private ones:
+         * hiding a private event from the people running it is the failure this
+         * feature must not have. So the default is "everything", and the public
+         * surfaces opt in.
+         *
+         * There are exactly two of those and both pass it: sfaf_get_series_events(),
+         * which the event page's "Upcoming in this series" list and the series
+         * term archive both go through. Anything else public that starts
+         * listing a series has to say so, which is a visible line in a diff
+         * rather than a silent inheritance.
+         */
         $args = wp_parse_args( $args, array(
-            'upcoming' => false,
-            'past'     => false,
-            'status'   => array( 'publish' ),
-            'limit'    => 200,
+            'upcoming'    => false,
+            'past'        => false,
+            'status'      => array( 'publish' ),
+            'limit'       => 200,
+            'public_only' => false,
         ) );
 
         $query = array(
@@ -425,6 +441,13 @@ class SFAF_Series {
                 'compare' => '<',
                 'type'    => 'DATE',
             );
+        }
+
+        // A private event stays in its series for authoring, and comes out of
+        // every public listing of that series. One rule on the event, applied
+        // wherever the series is shown to a visitor.
+        if ( ! empty( $args['public_only'] ) ) {
+            SFAF_Privacy::exclude( $query );
         }
 
         $q = new WP_Query( $query );
