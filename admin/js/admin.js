@@ -815,6 +815,7 @@
             return {
                 view: view,
                 toggle: $('#uc-embed-toggle').is(':checked'),
+                sourceLinks: $('#uc-embed-source-links').is(':checked'),
                 filterType: value ? type : '',
                 filterValue: value,
                 filterName: name,
@@ -871,6 +872,10 @@
                 how = 'the next ' + choices.count + ' dates, as a narrow sidebar';
             } else if (choices.view === 'calendar') {
                 how = 'as a month calendar' + (choices.toggle ? ', with a list toggle' : '');
+            } else if (choices.view === 'combined') {
+                // No toggle mentioned: the combined mode has none, because both
+                // views are on screen.
+                how = 'as a month calendar beside a list of ' + choices.perPage + ' upcoming events';
             } else {
                 how = 'as a list, ' + choices.perPage + ' at a time' + (choices.toggle ? ', with a calendar toggle' : '');
             }
@@ -878,6 +883,12 @@
             var summary = 'SFAF Calendar: ' + what + ', ' + how;
             if (choices.view !== 'sidebar') {
                 summary += (choices.showFilters ? ', with search and category filters' : ', without visitor filters');
+            }
+            // Said in the comment above the snippet, because somebody reading a
+            // page's source months from now needs to know why these links leave
+            // the site. Only when it is on: the default needs no explaining.
+            if (choices.sourceLinks) {
+                summary += ', opening imported events at their source';
             }
 
             // Nothing here may close the comment early.
@@ -908,6 +919,19 @@
                 attrs['data-show-filters'] = choices.showFilters ? 'yes' : 'no';
                 attrs['data-toggle'] = choices.toggle ? 'yes' : 'no';
             }
+
+            /*
+             * OUTSIDE THE IF, because it applies to every mode including
+             * sidebar: a sidebar row is a link to an event like any other.
+             *
+             * ALWAYS WRITTEN, for the same reason data-heading always is. A
+             * block the generator made states its choice, so it is never
+             * ambiguous; a block with no attribute at all is an older paste and
+             * follows the shipped default, which is what lets that default be
+             * flipped later without re-pasting anything.
+             */
+            attrs['data-source-links'] = choices.sourceLinks ? 'yes' : 'no';
+
             return attrs;
         }
 

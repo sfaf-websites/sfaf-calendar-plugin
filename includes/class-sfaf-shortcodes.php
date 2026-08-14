@@ -440,13 +440,67 @@ class SFAF_Shortcodes {
      *
      *   list      the vertical card list (default)
      *   calendar  month grid
+     *   combined  the month grid and the list, side by side
      *   sidebar   compact, count-limited, for narrow placements
+     *
+     * COMBINED COMPOSES THE OTHER TWO AND IS NOT A THIRD RENDERER.
+     *
+     * It is the existing month grid and the existing list, in a two-column
+     * wrapper. Both panels were already being rendered by render_calendar_block()
+     * whenever the toggle was on, because flipping a toggle should not cost a
+     * round trip, so this mode is very nearly free: it shows both instead of
+     * hiding one. A fix to either renderer reaches this mode without anybody
+     * remembering it exists, which is the point.
+     *
+     * THEY ARE TWO VIEWS OF ONE FILTERED SET, NOT ONE DRIVING THE OTHER. The
+     * category bar, the group pills, the search and the block's scope all apply
+     * to both, because both are built from the same $filters. Clicking a date
+     * in the grid does what it has always done and does not touch the list: the
+     * list is "what is coming up", not "what is on the day you pressed", and
+     * making it follow the grid would take that view away with nothing to
+     * replace it.
      * ------------------------------------------------------------------- */
 
-    /** The three display modes, and the fallback for anything unrecognised. */
+    /** The four display modes, and the fallback for anything unrecognised. */
     public function normalize_view( $raw ) {
         $view = strtolower( trim( (string) $raw ) );
-        return in_array( $view, array( 'list', 'calendar', 'sidebar' ), true ) ? $view : 'list';
+        return in_array( $view, array( 'list', 'calendar', 'combined', 'sidebar' ), true ) ? $view : 'list';
+    }
+
+    /** Whether this view shows the grid and the list at once. */
+    public function is_combined_view( $view ) {
+        return 'combined' === $view;
+    }
+
+    /**
+     * Read a source_links attribute into a flag.
+     *
+     * THREE ANSWERS, NOT TWO. 'yes' and 'no' are what a snippet or a shortcode
+     * said; null is what "the attribute was not there" means, and it resolves
+     * to sfaf_source_links_default() at read time rather than here. That is
+     * what keeps the shipped default in exactly one function: a block written
+     * before this feature existed follows the default forever, including after
+     * somebody flips it, rather than being frozen at whatever it was when the
+     * snippet was pasted.
+     *
+     * @param mixed $raw
+     * @return bool|null
+     */
+    public function normalize_source_links( $raw ) {
+        if ( null === $raw || '' === $raw ) {
+            return null;
+        }
+        if ( is_bool( $raw ) ) {
+            return $raw;
+        }
+        $v = strtolower( trim( (string) $raw ) );
+        if ( in_array( $v, array( 'yes', '1', 'true', 'on' ), true ) ) {
+            return true;
+        }
+        if ( in_array( $v, array( 'no', '0', 'false', 'off' ), true ) ) {
+            return false;
+        }
+        return null;
     }
 
     /**
@@ -845,7 +899,7 @@ class SFAF_Shortcodes {
                                             $color = sfaf_event_category_color( $id );
                                             ?>
                                             <li class="uc-day-event">
-                                                <a href="<?php echo esc_url( get_permalink( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
+                                                <a href="<?php echo esc_url( sfaf_event_link( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
                                                     <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
                                                     <?php if ( '' !== $start ) : ?>
                                                         <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
@@ -1019,7 +1073,7 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <a class="uc-sidebar-row" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>"
+        <a class="uc-sidebar-row" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"
            data-category="<?php echo esc_attr( $slugs ); ?>">
             <span class="uc-sidebar-thumb"><?php echo sfaf_thumb_media( $post_id ); ?></span>
             <span class="uc-sidebar-body">
@@ -1374,11 +1428,19 @@ class SFAF_Shortcodes {
             'per_page'     => '',
             'show_filters' => 'yes',
             'layout'       => 'cards',
-            // The same three display modes the embed offers, from the same
-            // renderer. view="calendar" opens on the month grid, view="sidebar"
-            // renders the narrow column, count="10" sizes it.
+            // The same four display modes the embed offers, from the same
+            // renderer. view="calendar" opens on the month grid,
+            // view="combined" shows the grid and the list side by side,
+            // view="sidebar" renders the narrow column and count="10" sizes it.
             'view'         => 'list',
             'toggle'       => 'yes',
+            /*
+             * OPEN EVENTS TO THEIR SOURCE LISTING. Absent means the shipped
+             * default, which is sfaf_source_links_default() and nothing else:
+             * this attribute must not hold a second copy of it, or flipping the
+             * default would be two edits and one of them would be forgotten.
+             */
+            'source_links' => '',
             'month'        => '',
             'count'        => '',
             /*
@@ -1422,6 +1484,7 @@ class SFAF_Shortcodes {
             'toggle'       => 'yes',
             'month'        => '',
             'count'        => 0,
+            'source_links' => '',
             // What the visitor picked, as distinct from what the block is
             // scoped to. See effective_category().
             'active_category' => null,
@@ -1430,6 +1493,23 @@ class SFAF_Shortcodes {
 
         $filters = $this->normalize_filters( $args );
         $view    = $this->normalize_view( $args['view'] );
+
+        /*
+         * WHERE THIS BLOCK'S EVENTS LINK, SET ONCE FOR THE WHOLE RENDER.
+         *
+         * Every renderer inside this block asks sfaf_event_link(), which reads
+         * this flag, so setting it here reaches the card, the compact card, the
+         * sidebar row and the month grid at once, in every display mode
+         * including the combined one, without any of them being told about the
+         * setting.
+         *
+         * SAVED AND RESTORED, not set and cleared. Two blocks on one page are
+         * two renders in one request, and the second must not inherit the
+         * first's choice; restoring what was there also means the embed's own
+         * outer setting survives a nested call.
+         */
+        $prev_source_links = sfaf_source_links_flag();
+        sfaf_set_source_links( $this->normalize_source_links( $args['source_links'] ) );
 
         /*
          * THE FILTER BAR RUNS A QUERY NOW.
@@ -1506,6 +1586,20 @@ class SFAF_Shortcodes {
         $paginate = ( $per_page > 0 );
         $style    = $this->pagination_style();
         $toggle   = $this->show_filters( $args['toggle'] );
+        $combined = $this->is_combined_view( $view );
+
+        /*
+         * NO VIEW TOGGLE IN THE COMBINED MODE, whatever the snippet says.
+         *
+         * The toggle exists to switch between the grid and the list. Here both
+         * are on screen, so it has nothing to switch and pressing it would hide
+         * half of a layout somebody chose specifically to see both halves of.
+         * Forced off here rather than hidden in CSS, so the buttons are not in
+         * the markup for a keyboard or a screen reader to find either.
+         */
+        if ( $combined ) {
+            $toggle = false;
+        }
         $month    = $this->normalize_month( $args['month'] );
 
         if ( (int) $args['page'] > 0 ) {
@@ -1540,6 +1634,20 @@ class SFAF_Shortcodes {
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
              data-view="<?php echo esc_attr( $view ); ?>"
+             <?php
+             /*
+              * CARRIED ON THE BLOCK SO IT TRAVELS WITH THE PASTED SNIPPET, and
+              * echoed back only when the snippet actually said something. An
+              * absent attribute is "follow the shipped default", which is what
+              * lets flipping sfaf_source_links_default() change every block
+              * already pasted on sfaf.org instead of only the ones regenerated
+              * afterwards.
+              */
+             $sl = $this->normalize_source_links( $args['source_links'] );
+             if ( null !== $sl ) :
+                 ?>data-source-links="<?php echo $sl ? 'yes' : 'no'; ?>"<?php
+             endif;
+             ?>
              data-month="<?php echo esc_attr( $month ); ?>"
              data-max-pages="<?php echo (int) $max; ?>">
 
@@ -1668,11 +1776,45 @@ class SFAF_Shortcodes {
              * chosen view is built, so a calendar-only embed does not pay for a
              * list it will never show.
              */
-            $want_list = ( $toggle || 'list' === $view );
-            $want_grid = ( $toggle || 'calendar' === $view );
+            $want_list = ( $toggle || $combined || 'list' === $view );
+            $want_grid = ( $toggle || $combined || 'calendar' === $view );
+
+            /*
+             * WHICH PANELS ARE VISIBLE, as opposed to which are built.
+             *
+             * In the combined mode both, and neither carries `hidden`. In every
+             * other mode exactly one, exactly as before. Written as a closure so
+             * the two panels below cannot drift into asking the question two
+             * different ways, which is how one of them ends up hidden in a mode
+             * nobody tested.
+             */
+            $panel_hidden = function ( $panel ) use ( $view, $combined ) {
+                if ( $combined ) {
+                    return '';
+                }
+                return ( $panel === $view ) ? '' : ' hidden';
+            };
             ?>
 
-            <div class="uc-view-panel uc-panel-list"<?php echo ( 'list' === $view ) ? '' : ' hidden'; ?>>
+            <?php
+            /*
+             * BOTH PANELS BUFFERED, THEN EMITTED IN THE RIGHT ORDER.
+             *
+             * The combined mode wants the grid first: on the left when the two
+             * sit side by side, and on top when they stack. That could have
+             * been `order: -1` in CSS and deliberately is not. `order` changes
+             * what the eye sees and leaves the DOM alone, so tab order and a
+             * screen reader would still meet the list first while everybody
+             * else reads the grid first. Emitting them in the order they are
+             * read keeps those the same thing.
+             *
+             * Every other mode keeps the original list-then-grid order, because
+             * exactly one of them is visible and reordering would be a change
+             * with no reader.
+             */
+            ob_start();
+            ?>
+            <div class="uc-view-panel uc-panel-list"<?php echo $panel_hidden( 'list' ); ?>>
                 <?php if ( $want_list ) : ?>
                     <div class="uc-event-list">
                         <?php if ( $events['html'] !== '' ) : ?>
@@ -1690,9 +1832,24 @@ class SFAF_Shortcodes {
                     ?>
                 <?php endif; ?>
             </div>
+            <?php
+            $panel_list = ob_get_clean();
 
-            <div class="uc-view-panel uc-panel-calendar"<?php echo ( 'calendar' === $view ) ? '' : ' hidden'; ?>>
+            ob_start();
+            ?>
+            <div class="uc-view-panel uc-panel-calendar"<?php echo $panel_hidden( 'calendar' ); ?>>
                 <?php if ( $want_grid ) { echo $this->render_month_grid( $month, $filters ); } ?>
+            </div>
+            <?php
+            $panel_grid = ob_get_clean();
+            ?>
+
+            <div class="uc-view-panels<?php echo $combined ? ' uc-view-panels-combined' : ''; ?>">
+                <?php
+                echo $combined
+                    ? $panel_grid . $panel_list
+                    : $panel_list . $panel_grid;
+                ?>
             </div>
 
             <?php
@@ -1714,8 +1871,14 @@ class SFAF_Shortcodes {
             ?>
         </div>
         <?php
+        $html = ob_get_clean();
+
+        // Put the link destination back to whatever it was before this block.
+        // See the note where it was set.
+        sfaf_set_source_links( $prev_source_links );
+
         return array(
-            'html'      => ob_get_clean(),
+            'html'      => $html,
             'total'     => $events['total'],
             'page'      => $paged,
             'per_page'  => $per_page,
@@ -2013,7 +2176,11 @@ class SFAF_Shortcodes {
         // guide's four time rules at once. See sfaf_ap_time_range().
         $time = sfaf_ap_time_range( $start_time, $end_time );
 
-        $permalink = get_permalink( $post_id );
+        // EVERY LINK ON THIS CARD COMES OFF ONE VARIABLE, and that variable
+        // asks sfaf_event_link() rather than get_permalink(). See the note on
+        // that function: a renderer that resolves its own URL is a display mode
+        // where "open events to source listing" silently does nothing.
+        $permalink = sfaf_event_link( $post_id );
 
         /*
          * "VIEW EVENT", ALWAYS, AND THE PREVIOUS LABEL WAS A LIE.
@@ -2065,7 +2232,26 @@ class SFAF_Shortcodes {
                 <div class="uc-lc-ident">
                     <?php echo $chips; ?>
                     <?php if ( '' !== $byline ) : ?>
-                        <span class="uc-lc-byline"><?php echo esc_html( $byline ); ?></span>
+                        <?php
+                        /*
+                         * THE EXTERNAL MARKER GOES HERE AND NOWHERE ELSE ON THE
+                         * CARD.
+                         *
+                         * The byline already names the platform the event came
+                         * from, so an arrow beside it says "and that is where
+                         * this link goes" in the one place a visitor is already
+                         * reading the answer. Putting it on the title as well
+                         * and on the button as well would be three marks for
+                         * one fact, which is the noise the brief asked this not
+                         * to become.
+                         *
+                         * Empty on a native event and empty when the setting is
+                         * off, because sfaf_external_marker() asks whether this
+                         * link actually leaves rather than whether the setting
+                         * exists.
+                         */
+                        ?>
+                        <span class="uc-lc-byline"><?php echo esc_html( $byline ); echo sfaf_external_marker( $post_id ); ?></span>
                     <?php endif; ?>
                 </div>
                 <?php if ( $date_ts ) : ?>
@@ -2180,7 +2366,7 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <a href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" class="uc-compact-card"
+        <a href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>" class="uc-compact-card"
            data-category="<?php echo esc_attr( $cat_slugs ); ?>">
             <div class="uc-compact-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'thumbnail' ); ?></div>
             <div class="uc-compact-date">

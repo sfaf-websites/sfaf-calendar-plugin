@@ -54,6 +54,136 @@ function sfaf_is_embed_context() {
 }
 
 /* -------------------------------------------------------------------------
+ * WHERE AN EVENT'S LINKS GO: here, or straight to the source.
+ *
+ * THE DEFAULT IS UNCHANGED AND DELIBERATE. A third-party event opens the
+ * resources event page, which carries the map, the series context and add to
+ * calendar, and hands off to the source when somebody registers. That page
+ * earns its place for most blocks.
+ *
+ * It earns nothing for some. A Cycle to Zero block exists to send people to
+ * donate.sfaf.org, and an intermediate page there is a step that costs
+ * conversions and adds nothing. So a block may opt in, per block, and the
+ * setting travels on the pasted snippet as a data attribute rather than through
+ * a new REST route: SFAF_Embed::is_embed_request() matches the route string
+ * exactly, so a new route would fail CORS from sfaf.org.
+ *
+ * FLIPPING THE DEFAULT IS ONE LINE, in sfaf_source_links_default() below. Mark
+ * may make this the default after talking to Eric, and when that happens the
+ * generator checkbox, the shortcode attribute and every renderer follow from
+ * that one function because none of them carries its own idea of the default.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The shipped default for "open events to their source listing".
+ *
+ * ONE LINE, ON PURPOSE. Return true and every surface changes together.
+ *
+ * @return bool
+ */
+function sfaf_source_links_default() {
+    return false;
+}
+
+/** Shared flag store for the current render's link destination. */
+function &sfaf_source_links_flag() {
+    static $on = null;
+    return $on;
+}
+
+/**
+ * Turn source linking on or off for the current render.
+ *
+ * Pass null to go back to the shipped default, which is what a render that
+ * says nothing gets.
+ */
+function sfaf_set_source_links( $on ) {
+    $flag =& sfaf_source_links_flag();
+    $flag = ( null === $on ) ? null : (bool) $on;
+}
+
+/** Whether this render sends events to their source listing. */
+function sfaf_use_source_links() {
+    $flag =& sfaf_source_links_flag();
+    return ( null === $flag ) ? sfaf_source_links_default() : $flag;
+}
+
+/**
+ * The URL of this event's listing on the platform it came from, or ''.
+ *
+ * A native event has none, which is the whole reason the setting can only ever
+ * apply to some of a block's events.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_source_url( $post_id ) {
+    return (string) get_post_meta( (int) $post_id, '_uc_source_url', true );
+}
+
+/**
+ * WHERE THIS EVENT'S LINKS POINT. One function, every renderer.
+ *
+ * Every card title, card image, View event button, compact card, sidebar row
+ * and month-grid day link goes through this, which is what makes the setting
+ * reach every display mode rather than the ones somebody remembered. A renderer
+ * that called get_permalink() directly would be a mode where the setting
+ * silently did nothing.
+ *
+ * A NATIVE EVENT ALWAYS GETS ITS EVENT PAGE, whatever the setting says. It has
+ * nowhere else to go, so there is no decision to make and no explaining to do
+ * on a block that mixes native and imported events.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_link( $post_id ) {
+    if ( sfaf_use_source_links() ) {
+        $source = sfaf_event_source_url( $post_id );
+        if ( '' !== $source ) {
+            return $source;
+        }
+    }
+    return (string) get_permalink( (int) $post_id );
+}
+
+/**
+ * Whether sfaf_event_link() is about to send somebody off this site.
+ *
+ * Drives the small external marker on the source byline. Asked as its own
+ * question rather than by comparing URLs, because a renderer comparing strings
+ * is a renderer that can get it wrong.
+ *
+ * @param int $post_id
+ * @return bool
+ */
+function sfaf_event_link_is_external( $post_id ) {
+    return sfaf_use_source_links() && '' !== sfaf_event_source_url( $post_id );
+}
+
+/**
+ * The "opens on the platform" marker, or ''.
+ *
+ * SMALL, AND ONLY WHERE IT IS TRUE. A visitor should not be surprised to land
+ * on donate.sfaf.org, and that is the whole of the requirement: one arrow
+ * beside the name of the platform they are going to, on the cards that actually
+ * leave. Repeating it on the button as well would be the noise this is trying
+ * not to be.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_external_marker( $post_id ) {
+    if ( ! sfaf_event_link_is_external( $post_id ) ) {
+        return '';
+    }
+    // aria-hidden with a real sentence beside it: the arrow is decoration and
+    // the words are what a screen reader announces.
+    return ' <span class="uc-external-mark" aria-hidden="true">&#8599;</span>'
+        . '<span class="uc-sr-only"> (opens on the event\'s own site)</span>';
+}
+
+/* -------------------------------------------------------------------------
  * SFAF icon set (brand guide v3.0, p.14)
  *
  * DESIGN SPEC — match these when adding an icon so the set stays one family:

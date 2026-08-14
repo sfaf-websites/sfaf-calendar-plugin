@@ -201,6 +201,9 @@ class SFAF_Embed {
                  */
                 'view'         => array( 'type' => 'string',  'default' => 'list',  'sanitize_callback' => 'sanitize_text_field' ),
                 'toggle'       => array( 'type' => 'string',  'default' => 'yes',   'sanitize_callback' => 'sanitize_text_field' ),
+                // Empty default, NOT a yes or a no: absent means "the shipped
+                // default", which is resolved by sfaf_source_links_default().
+                'source_links' => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'month'        => array( 'type' => 'string',  'default' => '',      'sanitize_callback' => 'sanitize_text_field' ),
                 'count'        => array( 'type' => 'integer', 'default' => 0,       'sanitize_callback' => 'absint' ),
 
@@ -359,6 +362,7 @@ class SFAF_Embed {
             'mode'         => $mode,
             'view'         => $this->shortcodes->normalize_view( $request->get_param( 'view' ) ),
             'toggle'       => (string) $request->get_param( 'toggle' ),
+            'source_links' => (string) $request->get_param( 'source_links' ),
             // Normalized here, not in the renderer, so an unparseable month
             // cannot make two visitors share a cache key for different months.
             'month'        => $this->shortcodes->normalize_month( $request->get_param( 'month' ) ),
@@ -381,6 +385,18 @@ class SFAF_Embed {
      */
     private function build_payload( $params ) {
         sfaf_set_embed_context( true );
+
+        /*
+         * WHERE THIS BLOCK'S EVENTS LINK, FOR THE ITEMS AND MONTH MODES TOO.
+         *
+         * The block mode gets it from render_calendar_block(), which reads
+         * $params['source_links'] itself. The other two call render_events()
+         * and render_month_grid() directly, so without this a snippet set to
+         * open events at their source would do so on first paint and then hand
+         * back resources links on page two and on every month navigation. Set
+         * for the whole payload, cleared in the finally beside the embed flag.
+         */
+        sfaf_set_source_links( $this->shortcodes->normalize_source_links( $params['source_links'] ) );
 
         /*
          * items and month are given the EFFECTIVE category, because both render
@@ -442,6 +458,7 @@ class SFAF_Embed {
             }
         } finally {
             sfaf_set_embed_context( false );
+            sfaf_set_source_links( null );
         }
 
         // Undo any lazy-loading rewrite first, so the real image URL is in src
@@ -975,6 +992,9 @@ class SFAF_Embed {
 
         $identity['view']         = $params['view'];
         $identity['toggle']       = $params['toggle'];
+        // Part of the cache identity: two blocks differing only in where their
+        // events link are two different payloads.
+        $identity['source_links'] = $params['source_links'];
         $identity['month']        = $params['month'];
         $identity['per_page']     = $params['per_page'];
         $identity['page']         = $params['page'];

@@ -1371,6 +1371,66 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-view-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .uc-view-bar .uc-event-count { margin: 0; }
 
+/* ===========================================================================
+ * COMBINED MODE: the month grid and the list, side by side.
+ *
+ * INTRINSIC, NOT A CONTAINER QUERY, and that is the 3.24.1 lesson applied
+ * rather than repeated. .uc-calendar IS a query container and does carry a
+ * definite min-width, so a query here would in fact be safe. The intrinsic
+ * remedy is still the better of the two DESIGN.md offers, for the reason given
+ * there: flex-wrap with declared bases asks nothing about width, so no parent
+ * can defeat it, whereas a query is only as good as the width the container
+ * reports. Nothing here reports anything.
+ *
+ * WHERE IT STACKS, AND HOW THAT NUMBER IS ARRIVED AT. Flex line breaking uses
+ * each item's HYPOTHETICAL main size, which is its flex-basis: items are
+ * collected onto a line until the next one would not fit, and only then do the
+ * ones on that line grow or shrink. So the wrap point is the two bases plus the
+ * gap and nothing else:
+ *
+ *     400px (grid) + 320px (list) + 24px (gap) = 744px
+ *
+ * At 744px and wider the two sit side by side and share the surplus equally,
+ * because both are flex: 1 1. Below 744px the list wraps under the grid and
+ * each takes the full width, which is why the mode needs no minimum of its own:
+ * stacked, it IS the list mode and the grid mode, and their published 260px
+ * applies unchanged. .uc-calendar's min-width: 260px is that floor.
+ *
+ * min-width: 0 ON BOTH ITEMS IS LOAD-BEARING. A flex item's min-width defaults
+ * to auto, which is its min-content size, and the month grid is a table: its
+ * min-content width is the widest a cell's contents can be. Without this the
+ * grid panel would refuse to shrink below that, push past its share of the row
+ * and overflow the host's page, which is the failure this file has fixed twice
+ * before under a different name.
+ * ======================================================================== */
+.uc-calendar .uc-view-panels-combined { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 400px; min-width: 0; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-list { flex: 1 1 320px; min-width: 0; }
+
+/* The list scrolls inside its own column rather than making the row as tall as
+   the longest of the two. Capped at a height that shows several cards; the
+   grid is a fixed six rows and the list is not, so without this a month with
+   forty upcoming events beside it would leave the grid stranded at the top of
+   a very long page. */
+.uc-calendar .uc-view-panels-combined > .uc-panel-list .uc-event-list { max-height: 640px; overflow-y: auto; }
+
+/* ---------------------------------------------------------------------------
+   THE EXTERNAL MARKER, on the byline of a card whose link leaves this site.
+
+   One arrow, beside the name of the platform it is going to. Not a colour and
+   not a box: it sits inside a byline that is already muted supporting text, and
+   the job is to remove a surprise rather than to draw attention.
+
+   .uc-sr-only is the sentence a screen reader gets instead of the arrow, which
+   is aria-hidden. Defined here because this file had no such helper: the clip
+   pattern rather than display:none, which is announced by nothing.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-external-mark, .uc-sidebar .uc-external-mark { font-size: 0.9em; line-height: 1; }
+.uc-sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
 /* Icons only, right-aligned. The label lives on aria-label/title. */
 .uc-calendar .uc-view-toggle { display: inline-flex; margin-left: auto; border: 1px solid var(--uc-border); border-radius: 8px; overflow: hidden; background: #fff; }
 .uc-calendar .uc-view-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 32px;

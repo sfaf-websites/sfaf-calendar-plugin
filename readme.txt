@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.29.0
+Stable tag: 3.30.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -40,6 +40,8 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * `[sfaf_calendar]` - Full calendar with filters
 * `[sfaf_calendar category="support-groups"]` - Filtered by category
 * `[sfaf_calendar layout="compact" show_filters="no"]` - Compact list, no filter bar
+* `[sfaf_calendar view="combined"]` - Month grid and list side by side, stacking below 744px
+* `[sfaf_calendar source_links="yes"]` - Imported events open at their source listing
 * `[upcoming_events count="5" category="fundraising"]` - Compact upcoming events widget
 
 Build any of these visually with the Shortcode Generator. It has no menu entry
@@ -186,6 +188,20 @@ blocks are most often in.
 * Sidebar mode: **200px**
 * List mode: **260px**
 * Month grid: **260px**
+* Combined mode: **260px**, and it goes side by side at **744px**
+
+The combined mode has no minimum of its own because below 744px it stops being
+a two-column layout: the list wraps under the grid and each takes the full
+width, at which point it is the list mode and the month grid, whose 260px
+applies unchanged. 744px is where the changeover happens, not a minimum, and
+above it the two share the surplus equally.
+
+That number is the two flex bases plus the gap, 400 + 320 + 24, because flex
+line breaking uses each item's flex-basis rather than its shrunk width. It is
+pinned in two places rather than trusted: `.claude/embed-modes-test.php` reads
+the three values back out of the stylesheet and fails if they no longer add up
+to the number published here, and the width probe renders the mode either side
+of it and reports which state it is actually in.
 
 These come from `.claude/embed-width-probe.html`, which renders each mode at
 eleven widths in three kinds of parent and prints what it measures. The 3.24.0
@@ -425,6 +441,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.30.0 =
+
+**A combined display mode: the month grid and the list, side by side.** A fourth mode alongside list, calendar and sidebar, in the embed generator and as `[sfaf_calendar view="combined"]`.
+
+**It composes the two renderers rather than adding a third**, which is the point of it: a fix to either the month grid or the card list reaches this mode without anybody remembering it exists. `render_calendar_block()` was already building both panels whenever the view toggle was on, so that flipping the toggle would not cost a round trip to another domain; the combined mode shows both instead of hiding one.
+
+**Two views of one filtered set, not one driving the other.** The category bar, the group pills, the search and the block's own scope apply to both, because both are built from the same filters. Clicking a date in the grid does exactly what it has always done and does not touch the list: the list is "what is coming up", and making it follow the grid would take that view away with nothing to replace it.
+
+**No view toggle in this mode**, forced off in the renderer rather than hidden in CSS, so a hand-written shortcode asking for both gets the same answer as the generator and the buttons are not in the markup for a keyboard to find.
+
+**It stacks at 744px, grid above list, and the layout is intrinsic rather than a container query.** `.uc-calendar` is a query container and does carry a definite `min-width`, so a query would in fact have been safe here; `flex-wrap` with declared bases is still the better of the two remedies DESIGN.md offers, because it asks nothing about width and no host layout can defeat it. Both panels carry `min-width: 0`, without which the month table's min-content width would stop the grid panel shrinking and push it through the host's page.
+
+**The grid comes before the list in the DOM, not in CSS.** `order: -1` would have moved what the eye sees and left tab order and screen readers meeting the list first. The two panels are buffered and emitted in the order they are read.
+
+**"Open events to source listing": a checkbox in the embed generator, unchecked by default.** Ticked, an event that has a source URL links straight to it, so a Cycle to Zero block sends visitors to donate.sfaf.org rather than through an event page here. A native event has nowhere else to go and always opens on this site, in the same block, with no setting to explain that.
+
+**It reaches every link that would otherwise point at an event page, in every mode**, because every renderer resolves its destination through one function. The card title, the card image, the View event button, the compact card, the sidebar row and the month grid's day links all ask `sfaf_event_link()`; there is no `get_permalink()` left in the card renderers, and `.claude/embed-modes-test.php` fails if one comes back.
+
+**Carried as a data attribute on the block, with no new REST route.** `is_embed_request()` matches the route string exactly, so a new route would fail CORS from sfaf.org. It is part of the payload cache identity, so two blocks differing only in this are two payloads, and `build_payload()` sets it for the items and month modes as well, without which a snippet would honour the setting on first paint and hand back resources links on page two.
+
+**The link reads as external without becoming noisy:** one small arrow on the source byline, which already names the platform, and nowhere else on the card. The arrow is `aria-hidden` with a spoken sentence beside it.
+
+**The default is one line.** `sfaf_source_links_default()` is the only place it lives: the generator checkbox, the shortcode attribute and every renderer follow from it, and a block that carries no attribute at all follows it forever rather than being frozen at whatever it was when the snippet was pasted. Flipping it later changes every block already on sfaf.org without anybody re-pasting anything.
+
+**The current behaviour is unchanged and is still the default.** A third-party event opens the resources event page, which carries the map, the series dates and add to calendar, and registration hands off to the source. This setting is for the blocks where that page earns nothing.
 
 = 3.29.0 =
 

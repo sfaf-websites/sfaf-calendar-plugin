@@ -1103,6 +1103,7 @@ class SFAF_Admin {
                             $modes = array(
                                 'list'     => 'List: one card per event, with images and details',
                                 'calendar' => 'Calendar: a month grid',
+                                'combined' => 'Combined: the month grid and the list side by side, stacking below 744px',
                                 'sidebar'  => 'Sidebar: a narrow column of upcoming dates',
                             );
                             foreach ( $modes as $val => $label ) :
@@ -1116,6 +1117,16 @@ class SFAF_Admin {
                         </div>
                     </div>
 
+                    <?php
+                    /*
+                     * NO TOGGLE FIELD FOR THE COMBINED MODE, which is why
+                     * data-when-view does not name it. The toggle switches
+                     * between the grid and the list; combined shows both, so
+                     * there is nothing for it to switch. The renderer forces it
+                     * off as well, so a hand-written shortcode asking for both
+                     * gets the same answer as the generator.
+                     */
+                    ?>
                     <div class="uc-embed-field" data-when-view="list calendar">
                         <span class="uc-embed-label">Visitor view toggle</span>
                         <label class="uc-check">
@@ -1123,6 +1134,39 @@ class SFAF_Admin {
                             Let visitors switch between list and calendar
                         </label>
                         <p class="description">The mode chosen above is what the block opens on. A visitor who switches keeps their choice for this block only.</p>
+                    </div>
+
+                    <?php
+                    /*
+                     * OPEN EVENTS TO SOURCE LISTING.
+                     *
+                     * Every mode, so no data-when-view: it changes where a card
+                     * points and every mode renders cards.
+                     *
+                     * THE HELPER TEXT SAYS WHAT HAPPENS AND WHAT IS LEFT ALONE,
+                     * in that order. The second half is the part somebody
+                     * actually needs: a block mixing native and imported events
+                     * behaves two ways, and a manager who does not know that
+                     * will read it as the setting half working.
+                     */
+                    ?>
+                    <div class="uc-embed-field">
+                        <span class="uc-embed-label">Where events open</span>
+                        <label class="uc-check">
+                            <input type="checkbox" id="uc-embed-source-links"
+                                   <?php checked( sfaf_source_links_default() ); ?> />
+                            Open events at their source listing
+                        </label>
+                        <p class="description">
+                            Ticked, an imported event links straight to its page on the platform it came from, so a
+                            GoFundMe Pro ride sends visitors to donate.sfaf.org rather than through an event page here.
+                            Events created on this calendar have no other page and always open here, in the same block.
+                        </p>
+                        <p class="description">
+                            Leave it unticked and every event opens on this site, where the map, the series dates and
+                            add to calendar are, and registration hands off to the source. That is the right choice
+                            for most blocks and is what this calendar has always done.
+                        </p>
                     </div>
 
                     <div class="uc-embed-field" data-when-view="sidebar">

@@ -136,6 +136,11 @@
             layout: container.getAttribute('data-layout') || '',
             view: viewFor(container),
             toggle: container.getAttribute('data-toggle') || '',
+            // Absent means "the shipped default", and an empty string is how
+            // that is said to the endpoint. A block pasted before this existed
+            // therefore follows the default forever, including after somebody
+            // flips it, rather than being frozen at what it was when pasted.
+            source_links: container.getAttribute('data-source-links') || '',
             count: container.getAttribute('data-count') || '',
             // The active search, so every request a block makes after one has
             // been typed keeps it: load more, page two, month navigation.
@@ -234,6 +239,18 @@
         var configured = container.getAttribute('data-view') || 'list';
         if (configured === 'sidebar') {
             return 'sidebar';
+        }
+        /*
+         * COMBINED IS A CONFIGURATION, LIKE SIDEBAR, AND IS NEVER OVERRIDDEN.
+         *
+         * A remembered choice comes from pressing the view toggle, and the
+         * combined mode has no toggle: both views are on screen. So there is
+         * nothing a visitor could have chosen here, and letting a "calendar"
+         * left in localStorage by another block on the same site collapse this
+         * one to a single panel would take away the layout somebody picked.
+         */
+        if (configured === 'combined') {
+            return 'combined';
         }
         return storedView(container) || (configured === 'calendar' ? 'calendar' : 'list');
     }

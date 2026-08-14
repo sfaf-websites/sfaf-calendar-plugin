@@ -59,6 +59,14 @@ One mode per cell, or the number belongs to the other one.</p>
 
 <div id="grids"></div>
 
+<h2 style="font:700 15px/1.3 system-ui,sans-serif;margin:32px 0 6px;">Combined mode: where it stacks</h2>
+<p class="note">The month grid and the list side by side. Flex line breaking uses each item's
+flex-basis, so the arithmetic says 400 + 320 + 24 = 744px and this pins it: the row above 744
+should report <strong>side by side</strong> and the row below it <strong>stacked</strong>. Measured rather
+than calculated, for the reason the sidebar minimum was: 3.24.0 published a number it had worked out
+and the number was 30px wrong.</p>
+<div id="combined"></div>
+
 <pre id="out">measuring…</pre>
 
 <script>
@@ -373,11 +381,63 @@ window.addEventListener('load', function () {
       fails.push('a sidebar card overflows its parent at ' + p.dataset.w + 'px');
     }
   });
+  /* -------------------------------------------------------------------------
+   * COMBINED MODE: the width at which the two panels stop sitting side by side.
+   *
+   * Two boxes per width, in a plain block parent, with the real classes and the
+   * real stylesheet. "Side by side" is decided by comparing the two panels'
+   * offsetTop: same top means one row, different means the list has wrapped
+   * under the grid. That is the state itself rather than a proxy for it, so it
+   * cannot be fooled by a basis being changed without this page being updated.
+   * ---------------------------------------------------------------------- */
+  var CWIDTHS = [320, 500, 700, 740, 743, 744, 745, 800, 900];
+  var chost = document.getElementById('combined');
+  var crows = [];
+
+  CWIDTHS.forEach(function (w) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'width:' + w + 'px;outline:1px dashed #bbb;margin:0 0 10px;';
+    wrap.innerHTML =
+      '<div class="uc-calendar uc-view-combined">' +
+        '<div class="uc-view-panels uc-view-panels-combined">' +
+          '<div class="uc-view-panel uc-panel-calendar"><table class="uc-month-grid"><tr>' +
+            '<td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td>' +
+          '</tr></table></div>' +
+          '<div class="uc-view-panel uc-panel-list"><div class="uc-event-list">' +
+            '<div style="height:60px;background:#eee;"></div>' +
+          '</div></div>' +
+        '</div>' +
+      '</div>';
+    chost.appendChild(wrap);
+    crows.push({ w: w, wrap: wrap });
+  });
+
+  var stackedAt = null, sideAt = null;
+  L.push('');
+  L.push('COMBINED MODE');
+  crows.forEach(function (r) {
+    var g = r.wrap.querySelector('.uc-panel-calendar');
+    var l = r.wrap.querySelector('.uc-panel-list');
+    var side = Math.abs(g.offsetTop - l.offsetTop) < 1;
+    if (side && sideAt === null) { sideAt = r.w; }
+    if (!side) { stackedAt = r.w; }
+    L.push('  ' + String(r.w).padStart(4) + 'px  ' + (side ? 'side by side' : 'stacked') +
+           '   grid ' + Math.round(g.getBoundingClientRect().width) +
+           '  list ' + Math.round(l.getBoundingClientRect().width));
+  });
+
+  /* The published number, checked here rather than taken on trust. */
+  if (sideAt !== 744) {
+    fails.push('the combined mode goes side by side at ' + sideAt + 'px, and 744px is what the readme publishes');
+  }
+  if (stackedAt !== 743) {
+    fails.push('the combined mode is still stacked at ' + stackedAt + 'px, so the changeover is not where it is published');
+  }
+
   L.push(fails.length ? 'FAIL: ' + Array.from(new Set(fails)).join(' | ')
-                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width');
+                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width; the combined mode changes over at 744px');
   document.getElementById('out').textContent = L.join('\n');
-});
-</script>
+});</script>
 
 </body>
 </html>
