@@ -739,10 +739,11 @@
  * THE BUTTON FAMILY, AND IT IS ONE FAMILY EVERYWHERE.
  *
  * .uc-actionbtn is every primary action this plugin renders: the card's View
- * event and Donate, the event page's RSVP, Donate and Sign Up to Volunteer,
- * and the map's Show map. Before 3.2.0 those were five different buttons with
- * five different shapes, and a visitor moving from the list to an event page
- * met a new button language on arrival.
+ * event and Donate, and the event page's RSVP, Donate and Sign Up to Volunteer.
+ * Before 3.2.0 those were five different buttons with five different shapes,
+ * and a visitor moving from the list to an event page met a new button language
+ * on arrival. (The fifth was the map's Show map, removed in 3.26.1 when the map
+ * started loading with the page.)
  *
  * SCOPED TO THREE ROOTS, NOT ONE. The card lives in .uc-calendar and the
  * event page in .uc-single, so both are named here. .uc-sidebar is included
@@ -2035,17 +2036,24 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
  *
  * SCOPED, THOUGH IT IS NOT AN EMBED SURFACE. The single event template is
  * never rendered into an embed payload: SFAF_Embed::build_payload() calls
- * render_calendar_block(), render_events() or render_sidebar() and nothing
- * else, so no part of this section can reach sfaf.org through the embed. It
- * is scoped to .uc-single anyway, because the event page runs inside the host
- * theme on this site and the same rule applies there: an unstyled property is
- * whatever the theme says it is.
+ * render_calendar_block(), render_events() or render_month_grid() and nothing
+ * else, and sfaf_event_map_html() is called from exactly one place, which is
+ * templates/single-uc_event.php. So no part of this section can reach sfaf.org
+ * through the embed. It is scoped to .uc-single anyway, because the event page
+ * runs inside the host theme on this site and the same rule applies there: an
+ * unstyled property is whatever the theme says it is.
  *
- * THE PLACEHOLDER IS NOT A LOADING STATE. There is no iframe in the document
- * until the button is pressed, so nothing here is waiting for anything. The
- * note says what pressing it does, because a visitor deciding whether to load
- * a Google map on a page about HIV services deserves to know that is what
- * they are deciding.
+ * THE PLACEHOLDER IS GONE, WITH THE BUTTON, in 3.26.1. The map is now a
+ * server-rendered iframe that loads with the page. .uc-map-placeholder,
+ * .uc-map-note and .uc-map-btn were the deferred-load affordance and have no
+ * markup left to style. The reasoning behind the old behaviour, and the
+ * decision that reversed it, are recorded at sfaf_event_map_html().
+ *
+ * .uc-map-frame KEEPS ITS OWN RULE and it is not decoration. The rounded corner
+ * is on the wrapper with overflow: hidden rather than on the iframe, because a
+ * border-radius on a replaced element is not reliably clipped by every engine,
+ * and line-height: 0 removes the inline descender gap under the frame that
+ * would otherwise show as a few pixels of background inside the rounding.
  * ======================================================================== */
 .uc-single .uc-map { margin-top: 28px; padding: 20px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 14px; }
 .uc-single .uc-map-heading { font-family: var(--uc-font-heading); font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--uc-text); margin: 0 0 10px; }
@@ -2060,10 +2068,13 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-single .uc-fact-maplink:hover { color: var(--uc-teal-text); border-bottom-color: var(--uc-teal-text); }
 
 .uc-single .uc-map-embed { margin-top: 14px; }
-.uc-single .uc-map-placeholder { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; background: #fff; border: 1px dashed var(--uc-border); border-radius: 12px; }
-.uc-single .uc-map-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--uc-secondary); }
 .uc-single .uc-map-frame { border-radius: 12px; overflow: hidden; line-height: 0; }
-.uc-single .uc-map-frame iframe { display: block; width: 100%; max-width: 100%; border: 0; }
+/* HEIGHT IS STATED HERE AS WELL AS ON THE ELEMENT. The height attribute is what
+   reserves the space before the frame loads, so it stays; this backs it up,
+   because a host theme carrying `iframe { height: auto }` would otherwise
+   collapse the map to nothing and there would be no error to see. Same class of
+   fault as the <img> the theme sized in 3.24.2. */
+.uc-single .uc-map-frame iframe { display: block; width: 100%; max-width: 100%; height: 320px; border: 0; }
 
 /* ===========================================================================
  * ENTRANCE: LIST CARDS AS THEY ARRIVE, AND THE EVENT PAGE AS IT IS READ.

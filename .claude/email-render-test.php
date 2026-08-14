@@ -169,7 +169,20 @@ $cases = array(
     'alert'        => array( 'person' => $person, 'cancel' => false ),
     'alert-viewer' => array( 'type' => 'alert', 'person' => $person, 'cancel' => false, 'context' => array( 'can_view_all' => true ) ),
     'summary'      => array( 'person' => null, 'cancel' => false ),
+    'summary-editor' => array( 'type' => 'summary', 'person' => null, 'cancel' => false, 'context' => array( 'can_edit_event' => true ) ),
 );
+
+/*
+ * WHICH MESSAGES MAY CARRY A CALADMIN LINK AT ALL.
+ *
+ * Two have now been found linking staff into a gated screen without asking
+ * whether the reader could open it, both by somebody going and looking. This is
+ * the list that stops a third being found the same way: any message not named
+ * here must contain no caladmin URL in either part, whatever context it is
+ * handed. A new email that wants one has to be added deliberately, and the
+ * per-recipient routing is then checked by alert-recipients-test.php.
+ */
+$MAY_LINK_TO_CALADMIN = array( 'alert-viewer', 'summary-editor' );
 
 $fails = array();
 $built = array();
@@ -275,6 +288,28 @@ foreach ( $built as $name => $out ) {
 }
 
 /* ---------------------------------------------------------------------------
+ * THE INVENTORY: NO MESSAGE LINKS INTO CALADMIN UNLESS IT IS ONE OF THE TWO
+ * THAT ROUTE PER RECIPIENT.
+ *
+ * This is the check that answers "is there a third" once rather than every time
+ * somebody wonders. It runs over every message built above, in both parts, and
+ * it is deliberately a whitelist: a message added later is caught by default
+ * instead of being missed by default.
+ * ------------------------------------------------------------------------ */
+foreach ( $built as $name => $out ) {
+    $both = $out['html'] . "\n" . $out['text'];
+    $has  = ( false !== strpos( $both, '/caladmin' ) );
+    $may  = in_array( $name, $MAY_LINK_TO_CALADMIN, true );
+
+    if ( $has && ! $may ) {
+        $fails[] = "$name: links into caladmin, and it is not one of the messages that route per recipient";
+    }
+    if ( ! $has && $may ) {
+        $fails[] = "$name: is supposed to carry a caladmin link for this recipient and does not";
+    }
+}
+
+/* ---------------------------------------------------------------------------
  * THE ALERT'S LINK IS THE RIGHT ONE FOR THE RECIPIENT.
  *
  * /caladmin/rsvps is gated on can_view_all. The notification list is not: it
@@ -350,12 +385,13 @@ if ( false !== $write && isset( $argv[ $write + 1 ] ) ) {
 }
 
 echo "Email render test\n";
-echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, alert to a\n";
-echo "       recipient without access, alert to one with it, summary)\n";
+echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, the alert and\n";
+echo "       the summary in both of their recipient versions)\n";
 echo "checked per message: subject, text alternative, table layout, 600px, banner and its alt text,\n";
 echo "                     postal address in both parts, no modern CSS, closed palette, no em dash,\n";
 echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links\n";
-echo "checked across them: the alert's link matches the recipient's access, the confirmation greets by\n";
+echo "checked across them: no message links into caladmin except the two that route per recipient,\n";
+echo "                     the alert's link matches the recipient's access, the confirmation greets by\n";
 echo "                     first name only, and a registration with no surname still renders a name\n\n";
 
 if ( $fails ) {

@@ -39,17 +39,17 @@
         run('faq', initFAQ);
         run('pagination', initPagination);
         run('views', initViews);
-        run('maps', initMaps);
+        // No initMaps. The event map is server-rendered as an ordinary iframe
+        // since 3.26.1, so there is nothing here to initialise and the map does
+        // not depend on this file running at all.
     });
 
     /* -----------------------------------------------------------------------
      * ENTRANCE: list cards on approach, the event page in two halves.
      *
-     * SEPARATE FROM initMaps() ABOVE ON PURPOSE, and the note there is not
-     * contradicted: that comment forbids an observer that WARMS a Google
-     * iframe, because scrolling past something is not consent to contact a
-     * third party. This observer contacts nothing. It adds a class to an
-     * element that is already in the document and already rendered.
+     * THIS OBSERVER CONTACTS NOTHING. It adds a class to an element that is
+     * already in the document and already rendered. It has never had anything
+     * to do with the map, which the server now renders directly.
      *
      * NOTHING IS EVER HIDDEN WITHOUT A WAY BACK. .uc-reveal is what makes an
      * element start invisible, and it is only ever added here, immediately
@@ -155,55 +155,16 @@
     };
 
     /* -----------------------------------------------------------------------
-     * Click to load the event map.
+     * THE EVENT MAP USED TO BE BUILT HERE, AND IS NOT ANY MORE.
      *
-     * NOTHING HERE RUNS UNTIL A BUTTON IS PRESSED, WHICH IS THE WHOLE POINT.
-     * The server sends an empty div and the address as an ordinary link. No
-     * iframe, no src, no preconnect, no prefetch: until somebody chooses to
-     * see a map, this page makes no request to Google and Google learns
-     * nothing about who opened it. These pages carry HIV services, substance
-     * use programmes and trans health groups, so that is not a detail.
+     * initMaps() bound a click handler that assembled a Google Maps iframe from
+     * data attributes when somebody pressed "Show map". The button is gone as of
+     * 3.26.1 and the map is server-rendered, so the whole function went with it.
      *
-     * Do not add an IntersectionObserver here, and do not "warm" the frame on
-     * hover. Scrolling past something is not consent.
+     * The reasoning behind the deferred load, which was real and has been
+     * weighed rather than forgotten, is recorded at sfaf_event_map_html() in
+     * sfaf-template-functions.php. Read it there before adding anything back.
      * -------------------------------------------------------------------- */
-    function initMaps() {
-        $(document).on('click', '[data-uc-map-show]', function(e) {
-            e.preventDefault();
-
-            var wrap = $(this).closest('[data-uc-map]');
-            if (!wrap.length || wrap.attr('data-uc-map-loaded') === '1') {
-                return;
-            }
-            wrap.attr('data-uc-map-loaded', '1');
-
-            var key = wrap.attr('data-map-key') || '';
-            var query = wrap.attr('data-map-query') || '';
-            if (!key || !query) {
-                return;
-            }
-
-            var src = 'https://www.google.com/maps/embed/v1/place'
-                + '?key=' + encodeURIComponent(key)
-                + '&q=' + encodeURIComponent(query);
-
-            var frame = document.createElement('iframe');
-            frame.src = src;
-            frame.title = wrap.attr('data-map-title') || 'Map';
-            frame.setAttribute('loading', 'lazy');
-            // The frame needs nothing from this page and this page needs
-            // nothing from it, so it is given nothing.
-            frame.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
-            frame.setAttribute('allowfullscreen', '');
-            frame.width = '100%';
-            frame.height = '320';
-            frame.style.border = '0';
-
-            var holder = wrap.find('[data-uc-map-frame]');
-            holder.empty().append(frame).removeAttr('hidden');
-            wrap.find('[data-uc-map-placeholder]').remove();
-        });
-    }
 
     /* -----------------------------------------------------------------------
      * View toggle and month grid, on this site.

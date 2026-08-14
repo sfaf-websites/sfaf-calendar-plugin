@@ -2075,7 +2075,7 @@ class SFAF_Admin {
                         <span class="uc-panel-icon"><?php echo sfaf_icon( 'pin', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Google Maps</h2>
-                            <p>An optional map on the event page, loaded only when a visitor asks for it.</p>
+                            <p>An optional map on the event page.</p>
                         </div>
                         <span class="uc-panel-status <?php echo SFAF_Credentials::has( 'google_maps_embed_key' ) ? 'uc-status-connected' : 'uc-status-pending'; ?>"><?php echo SFAF_Credentials::has( 'google_maps_embed_key' ) ? 'Connected' : 'Not configured'; ?></span>
                         <span class="uc-panel-toggle">&#9660;</span>
@@ -2086,7 +2086,7 @@ class SFAF_Admin {
                             <input type="text" name="uc_settings[google_maps_embed_key]" value="<?php echo esc_attr( $c( 'google_maps_embed_key' ) ); ?>" class="uc-input uc-monospace" placeholder="Leave blank for no map" />
                         </div>
                         <p class="description">
-                            <strong>Nothing is sent to Google until a visitor presses "Show map".</strong> The event page renders the address as an ordinary Google Maps link and an empty placeholder; the iframe is created on click and not before. Event pages cover HIV services, substance use, and trans health programming, so a map that loaded itself would report every page view to Google. Leave this blank and the page shows the address link alone, with no map affordance and no error.
+                            <strong>Paste a key and every event page with an address shows a map, loaded from Google when the visitor reaches it.</strong> Google is told the page was viewed, and event pages cover HIV services, substance use, and trans health programming. Leave this blank and the page shows the address as an ordinary Google Maps link alone, with no map and no error.
                         </p>
                         <p class="description">
                             <strong>Restrict the key before you paste it in.</strong> In the Google Cloud console set <em>Application restrictions</em> to HTTP referrers and list both <code>resources.sfaf.org/*</code> and <code>sfaf.org/*</code>, then set <em>API restrictions</em> to the <strong>Maps Embed API</strong> and nothing else. The Embed API has no usage cap, so an unrestricted key is a billing exposure rather than a map risk: anyone who copies it can run it up on their own site against this account.

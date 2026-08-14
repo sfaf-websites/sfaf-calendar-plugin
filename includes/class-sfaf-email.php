@@ -371,10 +371,12 @@ class SFAF_Email {
         );
 
         /*
-         * THE TEST ALERT LINKS TO THE RSVP LIST, because whoever pressed the
+         * THE TEST MESSAGES LINK INTO CALADMIN, because whoever pressed the
          * button is on the Settings screen, which needs manage_options, and
-         * that is can_view_all by definition. It is also the half of the
-         * message worth looking at.
+         * that is can_view_all by definition, which is also can_edit_event for
+         * every event. Both keys are set because the two messages ask different
+         * ones: the alert opens the RSVP list, the summary opens the event.
+         * They are also the half of each message worth looking at.
          *
          * WHAT THE TEST CANNOT SHOW is the count. "0 of 12 places taken" on a
          * test is correct: no row was written, so nothing was added to the
@@ -383,7 +385,10 @@ class SFAF_Email {
          * counts afterwards. The note at the foot of the message says a place
          * was not held.
          */
-        $built = SFAF_Notifications::build( $type, $event_id, $person, array( 'can_view_all' => true ) );
+        $built = SFAF_Notifications::build( $type, $event_id, $person, array(
+            'can_view_all'   => true,
+            'can_edit_event' => true,
+        ) );
         if ( ! $built ) {
             return array( 'sent' => false, 'message' => 'There is no message of that kind.' );
         }

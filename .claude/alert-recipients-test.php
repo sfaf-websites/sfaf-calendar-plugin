@@ -1,17 +1,25 @@
 <?php
 /**
- * WHO GETS WHICH REGISTRATION ALERT.
+ * WHO GETS A CALADMIN LINK, IN THE TWO EMAILS THAT CARRY ONE.
  *
- * The alert links an organizer to the RSVP list for the event, because somebody
- * who has just been told a person registered wants the registration list rather
- * than the public page. That screen is gated on can_view_all. The notification
- * list is NOT gated on anything: it holds contributors, people reached through
- * a team, and free-text addresses that are not accounts at all.
+ * Both go to the event's notification list, which is gated on NOTHING: it holds
+ * contributors, people reached through a team, and free-text addresses that are
+ * not accounts at all. Both link to a caladmin screen that is gated. So both are
+ * built per recipient, and this proves the routing for each.
  *
- * So the message is built per recipient, and this proves the routing. The rule
- * it enforces is one-directional, because only one direction can hurt:
+ *   registration alert   /caladmin/rsvps?event_id=N   gated on can_view_all
+ *   pre-event summary    /caladmin/events/edit/N      gated on can_edit_event
  *
- *     NOBODY WITHOUT can_view_all MAY RECEIVE A caladmin LINK.
+ * THE TWO GATES ARE NOT THE SAME QUESTION, which is why each message names the
+ * capability its own link needs rather than sharing one flag. can_edit_event is
+ * can_view_all OR being the event's author, so a contributor who created the
+ * event keeps the summary's link and a contributor merely added to its list does
+ * not. Testing the summary against can_view_all would have passed and been
+ * wrong.
+ *
+ * The rule enforced is one-directional, because only one direction can hurt:
+ *
+ *     NOBODY WITHOUT THE GATE'S CAPABILITY MAY RECEIVE A caladmin LINK.
  *
  * Sending one is sending somebody a link to a page that will refuse them, which
  * also tells them a screen exists that they are not allowed to see.
@@ -20,9 +28,9 @@
  *
  * WHAT IT STUBS. WordPress, and the classes around the two under test. The real
  * files here are class-sfaf-email.php and class-sfaf-notifications.php: the
- * recipient loop, the capability question and the two builders are the real
- * ones, and wp_mail() is the seam, so what is inspected is the message that
- * would actually have been handed to the mailer.
+ * recipient loops, the capability questions and the builders are the real ones,
+ * and wp_mail() is the seam, so what is inspected is the message that would
+ * actually have been handed to the mailer.
  */
 
 $root = dirname( __DIR__ );
@@ -56,12 +64,53 @@ function get_permalink( $id = 0, $leavename = false ) { return 'https://resource
 function get_the_excerpt( $post = null ) { return 'A weekly drop-in.'; }
 function wp_get_post_terms( $id, $tax, $args = array() ) { return array(); }
 function is_wp_error( $thing ) { return false; }
-function add_action( $hook, $cb, $priority = 10, $args = 1 ) { return true; }
-function remove_action( $hook, $cb, $priority = 10 ) { return true; }
+/*
+ * THE TEXT PART ARRIVES THROUGH phpmailer_init, NOT THROUGH wp_mail().
+ *
+ * SFAF_Email::send() hands wp_mail() the HTML and attaches the plain-text
+ * alternative as PHPMailer's AltBody from a hook. A stub that swallowed the
+ * hook would leave every message here with no text part, and the check that a
+ * text/plain reader is no less protected than an HTML one would have been
+ * checking nothing. So these stubs do what WordPress does: hold the callback,
+ * and fire it against a mailer object at send time.
+ */
+$GLOBALS['sfaf_mailer_hooks'] = array();
+function add_action( $hook, $cb, $priority = 10, $args = 1 ) {
+    if ( 'phpmailer_init' === $hook ) { $GLOBALS['sfaf_mailer_hooks'][] = $cb; }
+    return true;
+}
+function remove_action( $hook, $cb, $priority = 10 ) {
+    if ( 'phpmailer_init' === $hook ) { $GLOBALS['sfaf_mailer_hooks'] = array(); }
+    return true;
+}
 
-/* wp_mail() IS THE SEAM. Every message the sender hands off lands here. */
+/* The summary's send-once claim. add_post_meta() with $unique = true returns
+   false when the row already exists, which is the whole guarantee. */
+function add_post_meta( $post_id, $key, $value, $unique = false ) {
+    if ( $unique && isset( $GLOBALS['sfaf_claims'][ $key ] ) ) { return false; }
+    $GLOBALS['sfaf_claims'][ $key ] = $value;
+    return 1;
+}
+/* THE EVENT'S AUTHOR. user 21 is a contributor who created it, which is the
+   case that separates can_edit_event from can_view_all. */
+function get_post( $id = null ) {
+    return (object) array( 'ID' => 42, 'post_type' => 'uc_event', 'post_author' => 21 );
+}
+
+/* wp_mail() IS THE SEAM. Every message the sender hands off lands here, with
+   its text alternative pulled through the real AltBody path above. */
 function wp_mail( $to, $subject, $message, $headers = '', $attachments = array() ) {
-    $GLOBALS['sfaf_sent'][] = array( 'to' => $to, 'subject' => $subject, 'html' => $message );
+    $mailer = new stdClass();
+    $mailer->AltBody = '';
+    foreach ( (array) $GLOBALS['sfaf_mailer_hooks'] as $cb ) {
+        call_user_func( $cb, $mailer );
+    }
+    $GLOBALS['sfaf_sent'][] = array(
+        'to'      => $to,
+        'subject' => $subject,
+        'html'    => $message,
+        'text'    => (string) $mailer->AltBody,
+    );
     return true;
 }
 
@@ -103,11 +152,18 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) { return $text
  * SIX RECIPIENTS, COVERING EVERY WAY ONTO THE NOTIFICATION LIST AND BOTH
  * ANSWERS TO THE CAPABILITY QUESTION.
  *
- * The last one is the case that a lookup on the address would get wrong: a
- * free-text address that HAPPENS to be an editor's. It is still a string
- * somebody typed in a box rather than a person on this list, so it carries
- * user_id 0 and must not be offered the RSVP link. That is why the capability
- * is asked of the resolution's user id and never of the address.
+ * partner@example.org and editor@sfaf.org.uk are the case a lookup on the
+ * address would get wrong: the second HAPPENS to resemble an editor's. Both are
+ * strings somebody typed in a box rather than people on this list, so both carry
+ * user_id 0 and neither may be offered a caladmin link. That is why the
+ * capability is asked of the resolution's user id and never of the address.
+ *
+ * author@sfaf.org IS THE CASE THAT SEPARATES THE TWO GATES. User 21 is a
+ * contributor and created this event, so can_view_all says no and
+ * can_edit_event says yes: no RSVP link in the alert, and the summary's link to
+ * the event kept. A test that only knew about can_view_all would call the
+ * summary correct while it took the link away from the one person most likely
+ * to want it.
  */
 $EDITORS = array( 7, 9 ); // the ids user_can_view_all() says yes to
 
@@ -120,6 +176,7 @@ class SFAF_Reminders {
             'contributor@sfaf.org' => array( 'label' => 'Sam Okafor', 'user_id' => 12 ),
             'teameditor@sfaf.org'  => array( 'label' => 'Rae Lin (Programs team)', 'user_id' => 9 ),
             'teamcontrib@sfaf.org' => array( 'label' => 'Kit Moss (Programs team)', 'user_id' => 14 ),
+            'author@sfaf.org'      => array( 'label' => 'Wren Diaz', 'user_id' => 21 ),
             'partner@example.org'  => array( 'label' => 'partner@example.org', 'user_id' => 0 ),
             // Typed by hand, and it matches an editor's address. Still 0.
             'editor@sfaf.org.uk'   => array( 'label' => 'editor@sfaf.org.uk', 'user_id' => 0 ),
@@ -132,16 +189,32 @@ class SFAF_Reminders {
     }
 }
 class SFAF_RSVP {
-    public static function get_rsvps( $event_id, $status = 'confirmed' ) { return array(); }
-    public static function display_name( $row ) { return ''; }
+    public static function get_rsvps( $event_id, $status = 'confirmed' ) {
+        // The summary refuses to exist with an empty list, so it needs one.
+        return array(
+            (object) array( 'name' => 'Ana Ruiz', 'first_name' => 'Ana', 'last_name' => 'Ruiz', 'email' => 'ana@example.org', 'created_at' => '2026-08-11 09:00:00' ),
+        );
+    }
+    public static function display_name( $row ) {
+        $row = (object) $row;
+        $both = trim( ( isset( $row->first_name ) ? $row->first_name : '' ) . ' ' . ( isset( $row->last_name ) ? $row->last_name : '' ) );
+        return '' !== $both ? $both : ( isset( $row->name ) ? (string) $row->name : '' );
+    }
 }
 class SFAF_Portal {
     public static function link( $path = '' ) { return 'https://resources.example.org/caladmin/' . ltrim( $path, '/' ); }
     public static function user_can_view_all( $user_id ) {
         return in_array( (int) $user_id, $GLOBALS['sfaf_editors'], true );
     }
+    /* The real rule, copied: can_view_all OR the event's author. */
+    public static function user_can_edit_event( $user_id, $post ) {
+        if ( self::user_can_view_all( $user_id ) ) { return true; }
+        $post = is_object( $post ) ? $post : get_post( (int) $post );
+        return $post && (int) $post->post_author === (int) $user_id;
+    }
 }
 $GLOBALS['sfaf_editors'] = $EDITORS;
+$GLOBALS['sfaf_claims']  = array();
 
 require $root . '/includes/class-sfaf-email.php';
 require $root . '/includes/class-sfaf-notifications.php';
@@ -162,86 +235,166 @@ $person = (object) array(
     'token'      => str_repeat( 'b2', 16 ),
 );
 
-$sent_count = SFAF_Notifications::send_alert( 42, $person );
-
-/* Who was supposed to get the RSVP link, by construction. */
-$may_view = array( 'editor@sfaf.org', 'teameditor@sfaf.org' );
-
 $fails = array();
 
-if ( 6 !== count( $GLOBALS['sfaf_sent'] ) ) {
-    $fails[] = 'sent ' . count( $GLOBALS['sfaf_sent'] ) . ' messages, and the list has 6 people on it';
-}
-if ( 6 !== $sent_count ) {
-    $fails[] = "send_alert() reported $sent_count sends and 6 went out";
+/**
+ * ONE ROUTINE, BOTH MESSAGES. The rule being enforced is the same rule, so it
+ * is written once: a second copy per message is a second thing to remember to
+ * update, which is how the summary came to have this fault in the first place
+ * while the alert did not.
+ *
+ * @param string   $what     For the failure text.
+ * @param array    $sent     What wp_mail() was handed.
+ * @param string[] $may_open Addresses that CAN open the caladmin screen.
+ * @param string   $expect   The caladmin path they should be sent to.
+ */
+function check_routing( $what, $sent, $may_open, $expect, &$fails ) {
+    $everyone = SFAF_Reminders::notify_entries( 42 );
+    if ( count( $everyone ) !== count( $sent ) ) {
+        $fails[] = sprintf( '%s: %d messages for a list of %d people', $what, count( $sent ), count( $everyone ) );
+    }
+
+    foreach ( $sent as $msg ) {
+        $to = $msg['to'];
+        // Both parts. A text/plain reader is not less protected than an HTML
+        // one, and the two parts are built separately.
+        $both      = $msg['html'] . "\n" . $msg['text'];
+        $has_admin = ( false !== strpos( $both, '/caladmin' ) );
+        $should    = in_array( $to, $may_open, true );
+
+        // THE RULE. A caladmin link in front of somebody who cannot open it.
+        if ( $has_admin && ! $should ) {
+            $fails[] = "$what: $to cannot open that screen and was sent a link to it";
+        }
+        // The other direction: somebody who CAN was sent the public page
+        // instead, which is the feature failing rather than leaking.
+        if ( ! $has_admin && $should ) {
+            $fails[] = "$what: $to can open that screen and was not offered it";
+        }
+        if ( $should && false === strpos( $msg['html'], $expect ) ) {
+            $fails[] = "$what: $to was linked somewhere in caladmin other than $expect";
+        }
+        if ( $should && false === strpos( $msg['text'], $expect ) ) {
+            $fails[] = "$what: $to has the link in the HTML part and not in the text part";
+        }
+        if ( ! $should && false === strpos( $msg['html'], 'https://resources.example.org/events/' ) ) {
+            $fails[] = "$what: $to was sent no link at all; the public event page is what they get";
+        }
+    }
+
+    // Nobody was mailed twice: the list is keyed on the address and stays that
+    // way through a per-recipient build.
+    $addresses = array();
+    foreach ( $sent as $msg ) { $addresses[] = $msg['to']; }
+    if ( count( $addresses ) !== count( array_unique( $addresses ) ) ) {
+        $fails[] = "$what: an address was mailed more than once";
+    }
 }
 
+/* =========================================================================
+ * (1) THE REGISTRATION ALERT. /caladmin/rsvps, gated on can_view_all.
+ *
+ * The two editors, and nobody else. The contributor who AUTHORED the event is
+ * not on this list: authorship does not open the RSVP screen.
+ * ====================================================================== */
+$GLOBALS['sfaf_sent'] = array();
+$sent_count = SFAF_Notifications::send_alert( 42, $person );
+
+check_routing(
+    'alert',
+    $GLOBALS['sfaf_sent'],
+    array( 'editor@sfaf.org', 'teameditor@sfaf.org' ),
+    '/caladmin/rsvps?event_id=42',
+    $fails
+);
+
+if ( 7 !== $sent_count ) {
+    $fails[] = "alert: send_alert() reported $sent_count sends and the list has 7 people on it";
+}
 foreach ( $GLOBALS['sfaf_sent'] as $msg ) {
-    $to        = $msg['to'];
-    $has_admin = ( false !== strpos( $msg['html'], '/caladmin' ) );
-    $should    = in_array( $to, $may_view, true );
-
-    // THE RULE. A caladmin link in front of somebody who cannot open it.
-    if ( $has_admin && ! $should ) {
-        $fails[] = "$to cannot open the RSVP list and was sent a link to it";
-    }
-    // The other direction: an organizer who can see it was sent the public page
-    // instead, which is the feature failing rather than leaking.
-    if ( ! $has_admin && $should ) {
-        $fails[] = "$to can open the RSVP list and was not offered it";
-    }
-    if ( $should && false === strpos( $msg['html'], '/caladmin/rsvps?event_id=42' ) ) {
-        $fails[] = "$to was linked somewhere in caladmin other than this event's RSVP list";
-    }
-    if ( ! $should && false === strpos( $msg['html'], 'https://resources.example.org/events/' ) ) {
-        $fails[] = "$to was sent no link at all; the public event page is what they get";
-    }
-
     // Every recipient is still told the same facts about the registration.
     if ( false === strpos( $msg['html'], 'Ana Ruiz' ) ) {
-        $fails[] = "$to was not told who registered";
+        $fails[] = 'alert: ' . $msg['to'] . ' was not told who registered';
     }
     if ( false === strpos( $msg['subject'], 'New registration' ) ) {
-        $fails[] = "$to got the wrong subject";
+        $fails[] = 'alert: ' . $msg['to'] . ' got the wrong subject';
     }
-}
-
-/* Nobody was mailed twice: the list is keyed on the address and stays that way
-   through a per-recipient build. */
-$addresses = array();
-foreach ( $GLOBALS['sfaf_sent'] as $msg ) { $addresses[] = $msg['to']; }
-if ( count( $addresses ) !== count( array_unique( $addresses ) ) ) {
-    $fails[] = 'an address was mailed more than once';
-}
-
-/* THE COUNT IN THE MESSAGE. A real registration is one that has been written,
-   so the alert built after the insert reads one higher than the empty room.
-   The stub returns 1 for one registration, and this is what the "0 of 12" test
-   message was failing to be. */
-foreach ( $GLOBALS['sfaf_sent'] as $msg ) {
+    /* THE COUNT IN THE MESSAGE. A real registration is one that has been
+       written, so the alert built after the insert reads one higher than the
+       empty room. The stub returns 1, and this is what the "0 of 12" test
+       message was failing to be. */
     if ( false === strpos( $msg['html'], '1 of 12 places taken' ) ) {
-        $fails[] = $msg['to'] . ': the alert does not count the registration it is announcing';
-        break;
+        $fails[] = 'alert: ' . $msg['to'] . ' was not told the registration being announced counts';
     }
 }
 
-/* THE SWITCH STILL SWITCHES IT OFF, for everybody, before any of the above. */
+/* =========================================================================
+ * (2) THE PRE-EVENT SUMMARY. /caladmin/events/edit/N, gated on can_edit_event.
+ *
+ * The two editors AND the contributor who created the event. That third
+ * address is the whole reason this is a separate capability: checking
+ * can_view_all here would pass every assertion above and still have taken the
+ * link away from them.
+ * ====================================================================== */
+$GLOBALS['sfaf_sent']   = array();
+$GLOBALS['sfaf_claims'] = array();
+$summary = SFAF_Notifications::send_summary_for_event( 42 );
+
+check_routing(
+    'summary',
+    $GLOBALS['sfaf_sent'],
+    array( 'editor@sfaf.org', 'teameditor@sfaf.org', 'author@sfaf.org' ),
+    '/caladmin/events/edit/42',
+    $fails
+);
+
+if ( 7 !== $summary['sent'] || 7 !== $summary['recipients'] ) {
+    $fails[] = sprintf( 'summary: reported %d sent to %d recipients, and the list has 7 people on it',
+        $summary['sent'], $summary['recipients'] );
+}
+foreach ( $GLOBALS['sfaf_sent'] as $msg ) {
+    // Everybody gets the same list of who is coming. The link is the only
+    // thing that differs; the content is not rationed by capability.
+    if ( false === strpos( $msg['html'], 'Ana Ruiz' ) ) {
+        $fails[] = 'summary: ' . $msg['to'] . ' was not told who is coming';
+    }
+    if ( false === strpos( $msg['subject'], 'Starting soon' ) ) {
+        $fails[] = 'summary: ' . $msg['to'] . ' got the wrong subject';
+    }
+}
+
+/* THE SEND-ONCE CLAIM SURVIVED THE PER-RECIPIENT REWRITE. The claim is taken
+   once for the event, not once per variant, so a second run sends nothing. */
+$GLOBALS['sfaf_sent'] = array();
+$again = SFAF_Notifications::send_summary_for_event( 42 );
+if ( 'already sent' !== $again['skipped'] || $GLOBALS['sfaf_sent'] ) {
+    $fails[] = 'summary: a second run sent it again; the claim no longer holds';
+}
+
+/* THE ALERT'S PER-EVENT SWITCH STILL SWITCHES IT OFF, for everybody, before any
+   recipient is resolved. (The summary's switch is applied a level up, by
+   summary_due_events(), which decides whether the event is due at all.) */
 $GLOBALS['sfaf_meta']['_uc_notify_off'] = array( 'alert' );
 $GLOBALS['sfaf_sent'] = array();
 if ( 0 !== SFAF_Notifications::send_alert( 42, $person ) || $GLOBALS['sfaf_sent'] ) {
-    $fails[] = 'the alert was sent for an event that has alerts switched off';
+    $fails[] = 'alert: sent for an event that has alerts switched off';
 }
 
-echo "Registration alert: who gets which link\n";
-echo "recipients: 6 (two editors, two contributors, two typed addresses, one of which matches an account)\n";
-echo "checked: no caladmin link reaches anybody without can_view_all, everybody with it gets this\n";
-echo "         event's RSVP list, everybody else gets the public page, nobody is mailed twice,\n";
-echo "         the count includes the registration being announced, and the off switch still works\n\n";
+echo "Caladmin links in email: who gets one\n";
+echo "recipients: 7 (two editors, two contributors, the contributor who created the event,\n";
+echo "            and two typed addresses, one of which resembles an account)\n";
+echo "messages:   the registration alert (/caladmin/rsvps, can_view_all) and the pre-event\n";
+echo "            summary (/caladmin/events/edit/N, can_edit_event)\n";
+echo "checked:    no caladmin link in either part reaches anybody without that screen's\n";
+echo "            capability, everybody with it gets the right screen in both parts, everybody\n";
+echo "            else gets the public page, nobody is mailed twice, the alert counts the\n";
+echo "            registration it announces, the summary's send-once claim still holds, and\n";
+echo "            the per-event off switch still works\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "every recipient got the link they can actually open.\n";
+echo "every recipient got the link they can actually open, in both messages.\n";
 exit( 0 );

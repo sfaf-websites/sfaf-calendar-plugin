@@ -2450,20 +2450,54 @@ function sfaf_map_search_url( $location ) {
 
 /**
  * The location section for the single event page: an address link always, and
- * a map behind a button when a key is configured.
+ * the map itself when a key is configured.
+ *
+ * THE MAP LOADS ITSELF. THIS REVERSES THE 3.2.0 DECISION, ON INSTRUCTION.
+ * ---------------------------------------------------------------------------
+ * From 3.2.0 to 3.26.1 there was no iframe in this markup at all: an empty
+ * placeholder carried a "Show map" button, and calendar.js built the frame when
+ * somebody pressed it. The reasoning was recorded here and it was sound, so it
+ * is recorded here still rather than deleted, because a note that vanishes is
+ * one somebody restores the old behaviour from six months later without knowing
+ * it was ever weighed:
+ *
+ *   A Google iframe loading on page view tells Google that this browser viewed
+ *   this page. These pages cover HIV services, substance use programmes and
+ *   trans health groups, so the page a visit is attributed to is itself
+ *   sensitive. Deferring the frame behind a press made loading the map a choice
+ *   the visitor made, and scrolling past something is not that choice.
+ *
+ * THAT COST HAS BEEN WEIGHED AND ACCEPTED. Mark has decided the map being
+ * immediately visible is worth it. It is his call, it has been made with the
+ * above in front of him, and this note exists so that anybody minded to "fix"
+ * the automatic load knows it is the current answer to a question already
+ * asked, and not an oversight.
+ *
+ * WHAT REMAINS TRUE. loading="lazy" is kept: the request fires when the section
+ * comes near the viewport rather than at the top of the document. That is the
+ * ordinary performance default and it changes nothing about what a visitor
+ * sees, since this block sits well down the page. It is not a consent
+ * mechanism and must not be described as one.
  *
  * WHAT RENDERS, IN EACH OF THE THREE STATES.
  *   no location        nothing at all.
- *   location, no key   the address as a Google Maps link. No button, no
- *                      placeholder, no admin notice. A missing key is a
+ *   location, no key   the address as a Google Maps link. No map, no error, no
+ *                      broken frame, no admin notice. A missing key is a
  *                      configuration fact and not a visitor's problem.
- *   location and key   the same link, plus a placeholder with a "Show map"
- *                      button. calendar.js builds the iframe on click.
+ *   location and key   the same link, plus the map.
  *
- * The iframe URL is assembled in the browser from the data attributes below,
- * so the key is not embedded in an element the page loads. It is a referrer
- * restricted browser key either way: see the readme for the restrictions it
- * must carry.
+ * THE ADDRESS LINK IS NOT PART OF THE MAP and never has been. It is an ordinary
+ * link that requests nothing until it is clicked, it is what somebody uses to
+ * get directions on their phone, and it renders in both of the last two states.
+ *
+ * The key is in the iframe src now rather than in a data attribute, which is
+ * the same exposure by a different route: both are in the served HTML and
+ * readable by anybody who opens the source. It is a referrer restricted browser
+ * key, and the readme sets out the restrictions it must carry.
+ *
+ * NO JAVASCRIPT. The map is server-rendered, so it works with scripts off and
+ * there is no initialiser to fail. initMaps() and the data-uc-map attributes it
+ * read are gone.
  *
  * @param int $post_id
  * @return string
@@ -2477,6 +2511,12 @@ function sfaf_event_map_html( $post_id ) {
     $link = sfaf_map_search_url( $location );
     $key  = sfaf_google_maps_key();
 
+    // Assembled here rather than in the template so the escaping is in one
+    // expression next to the values it escapes.
+    $src = '' !== $key
+        ? 'https://www.google.com/maps/embed/v1/place?key=' . rawurlencode( $key ) . '&q=' . rawurlencode( $location )
+        : '';
+
     ob_start();
     ?>
     <section class="uc-map" aria-labelledby="uc-map-heading-<?php echo (int) $post_id; ?>">
@@ -2487,31 +2527,31 @@ function sfaf_event_map_html( $post_id ) {
             <a href="<?php echo esc_url( $link ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a>
         </p>
 
-        <?php if ( '' !== $key ) : ?>
-            <?php
-            /*
-             * An empty frame and a button. There is no src anywhere in this
-             * markup and no request to Google in it: the placeholder is our
-             * own, and calendar.js inserts an iframe into .uc-map-frame when
-             * the button is pressed. Pressing it twice does nothing.
-             */
-            ?>
-            <div class="uc-map-embed" data-uc-map
-                 data-map-key="<?php echo esc_attr( $key ); ?>"
-                 data-map-query="<?php echo esc_attr( $location ); ?>"
-                 data-map-title="<?php echo esc_attr( 'Map of ' . $location ); ?>">
-                <div class="uc-map-frame" data-uc-map-frame hidden></div>
-                <div class="uc-map-placeholder" data-uc-map-placeholder>
-                    <p class="uc-map-note">The map is not loaded. Pressing Show map loads it from Google, which tells Google you visited this page.</p>
-                    <?php // Same button family as everything else, through the
-                          // same helper. No href, so it renders as a button for
-                          // calendar.js to pick up. ?>
-                    <?php echo sfaf_action_button( array(
-                        'label'   => 'Show map',
-                        'variant' => 'secondary',
-                        'class'   => 'uc-map-btn',
-                        'attrs'   => array( 'data-uc-map-show' => '1' ),
-                    ) ); ?>
+        <?php if ( '' !== $src ) : ?>
+            <div class="uc-map-embed">
+                <?php
+                /*
+                 * THE TITLE IS THE ACCESSIBLE NAME OF THE FRAME. An iframe with
+                 * no title is announced as "frame" and nothing else, which on a
+                 * page with one frame is a dead end. It names the place rather
+                 * than saying "map", because the heading above already says
+                 * that and a screen reader user tabbing into it wants to know
+                 * which map.
+                 *
+                 * referrerpolicy is unchanged from the version calendar.js
+                 * built: the frame needs nothing from this page.
+                 */
+                ?>
+                <div class="uc-map-frame">
+                    <iframe
+                        src="<?php echo esc_url( $src ); ?>"
+                        title="<?php echo esc_attr( 'Map of ' . $location ); ?>"
+                        width="100%"
+                        height="320"
+                        style="border:0"
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        allowfullscreen></iframe>
                 </div>
             </div>
         <?php endif; ?>

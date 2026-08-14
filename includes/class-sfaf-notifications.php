@@ -124,10 +124,15 @@ class SFAF_Notifications {
     /**
      * The same list, with the account behind each address.
      *
-     * Used by send_alert(), which builds a different message for a recipient
-     * who can open the RSVP list and one who cannot. See
-     * SFAF_Reminders::notify_entries() for why the user id has to come out of
-     * the resolution rather than from a lookup on the address.
+     * THE ONE RESOLUTION FOR BOTH MESSAGES THAT LINK INTO CALADMIN.
+     * send_alert() and send_summary_for_event() each build a different version
+     * for a recipient who can open their screen and one who cannot, and both
+     * ask this. See SFAF_Reminders::notify_entries() for why the user id has to
+     * come out of the resolution rather than from a lookup on the address.
+     *
+     * They ask DIFFERENT capabilities of that id, because they link to
+     * different screens with different gates. What is shared is who is on the
+     * list and which account each address belongs to, which is this.
      *
      * @return array<string,array{label:string,user_id:int}>
      */
@@ -148,9 +153,15 @@ class SFAF_Notifications {
      *                       ->name, ->first_name, ->email and ->token. For
      *                       alert: whoever just registered. Unused by summary.
      * @param array  $context Facts about the RECIPIENT rather than the event.
-     *                       Only the alert reads it, and only 'can_view_all',
-     *                       which decides whether this copy of the message may
-     *                       link to the RSVP list. See build_alert().
+     *                       Read by the two messages that link into caladmin,
+     *                       and EACH NAMES THE CAPABILITY ITS OWN LINK NEEDS
+     *                       rather than sharing one flag:
+     *                         alert    'can_view_all'   /caladmin/rsvps
+     *                         summary  'can_edit_event' /caladmin/events/edit/N
+     *                       Those are different gates on the portal, so one key
+     *                       for both would be a claim that they are the same.
+     *                       Absent means false, so a caller that says nothing
+     *                       gets the public event page.
      * @return array{subject:string,html:string,text:string}|null
      */
     public static function build( $type, $event_id, $person = null, $context = array() ) {
@@ -162,7 +173,7 @@ class SFAF_Notifications {
             case 'alert':
                 return self::build_alert( $event_id, $person, $context );
             case 'summary':
-                return self::build_summary( $event_id );
+                return self::build_summary( $event_id, $context );
         }
         return null;
     }
@@ -411,8 +422,22 @@ class SFAF_Notifications {
         );
     }
 
-    /** (d) THE PRE-EVENT SUMMARY, to staff, two hours before. */
-    private static function build_summary( $event_id ) {
+    /**
+     * (d) THE PRE-EVENT SUMMARY, to staff, two hours before.
+     *
+     * THE BUTTON IS PER RECIPIENT, FOR THE SAME REASON THE ALERT'S IS. This
+     * message goes to the same notification list, which is gated on nothing,
+     * and it linked every one of them into /caladmin. It was found by the
+     * inventory the alert work prompted rather than by anybody meeting it.
+     *
+     * The capability asked is can_edit_event, not can_view_all, because that is
+     * what render_event_form() gates this URL on. A contributor who created the
+     * event can open it and keeps the link; a contributor merely added to the
+     * list cannot and gets the public page.
+     *
+     * @param array $context can_edit_event: bool.
+     */
+    private static function build_summary( $event_id, $context = array() ) {
         $f    = self::facts( $event_id );
         $rows = SFAF_RSVP::get_rsvps( $event_id, 'confirmed' );
         $n    = count( $rows );
@@ -425,11 +450,21 @@ class SFAF_Notifications {
         $cap    = (int) get_post_meta( $event_id, '_uc_capacity', true );
         $places = $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
 
+        if ( ! empty( $context['can_edit_event'] ) ) {
+            $link  = SFAF_Portal::link( 'events/edit/' . (int) $event_id );
+            $label = 'Open this event';
+        } else {
+            $link  = $f['url'];
+            $label = 'See the event page';
+        }
+
         $html  = SFAF_Email::heading( sprintf( '%s starts soon', $f['title'] ) );
         $html .= SFAF_Email::para( sprintf( '%s. Here is who to expect.', $places ) );
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
         $html .= SFAF_Email::people_table( $rows );
-        $html .= SFAF_Email::button( SFAF_Portal::link( 'events/edit/' . (int) $event_id ), 'Open this event', 'primary' );
+        if ( $link ) {
+            $html .= SFAF_Email::button( $link, $label, 'primary' );
+        }
 
         $text  = sprintf( "%s starts soon\n\n%s. Here is who to expect.\n\n", $f['title'], $places );
         $text .= self::detail_text( $f ) . "\n\n";
@@ -441,7 +476,9 @@ class SFAF_Notifications {
             $name = SFAF_RSVP::display_name( $row );
             $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
         }
-        $text .= "\n" . 'Open this event: ' . SFAF_Portal::link( 'events/edit/' . (int) $event_id ) . "\n";
+        if ( $link ) {
+            $text .= "\n" . $label . ': ' . $link . "\n";
+        }
         $text .= "\n" . SFAF_Email::POSTAL;
 
         return array(
@@ -663,13 +700,25 @@ class SFAF_Notifications {
      * cannot both send. The claim is taken BEFORE the mail goes out, so an
      * interruption mid-send costs one summary rather than sending it twice.
      *
+     * BUILT PER RECIPIENT, exactly as send_alert() is, and for the same reason:
+     * the button opens a caladmin screen that not everybody on the notification
+     * list may open. Two versions at most, cached on the capability, so a list
+     * of thirty people costs two builds.
+     *
+     * THE PUBLIC VERSION DOUBLES AS THE PROBE. "Is there anything to send at
+     * all" does not depend on who is reading, so it is asked once, before the
+     * claim is taken, and the answer is the version most recipients get anyway.
+     * A null there still means nobody registered, and still means the claim is
+     * not taken, so somebody registering in the next hour can still be summed
+     * up.
+     *
      * @return array{recipients:int,sent:int,skipped:string}
      */
     public static function send_summary_for_event( $event_id ) {
         $out = array( 'recipients' => 0, 'sent' => 0, 'skipped' => '' );
 
-        $built = self::build( 'summary', $event_id );
-        if ( ! $built ) {
+        $variants = array( 'public' => self::build( 'summary', $event_id ) );
+        if ( ! $variants['public'] ) {
             // Nobody registered. Not sent, and not claimed either: if somebody
             // registers in the next hour the summary can still go out.
             $out['skipped'] = 'nobody registered';
@@ -682,7 +731,31 @@ class SFAF_Notifications {
         }
 
         $reply = SFAF_Reminders::reply_to_for( $event_id );
-        foreach ( self::staff( $event_id ) as $email => $label ) {
+
+        /*
+         * THE CAPABILITY IS ASKED OF THE ACCOUNT THE RESOLUTION FOUND, never of
+         * the address. staff_entries() is the same one resolution the alert
+         * uses: it carries a user id per address, and that id is 0 for a
+         * free-text address even when the string matches somebody's account,
+         * because a typed address is not that person on this list. Looking the
+         * address up here with get_user_by( 'email' ) would answer a different
+         * question and hand a caladmin link to a string in a box.
+         *
+         * A team is resolved to people and each person is asked separately: a
+         * team is a set of names, not a permission.
+         */
+        foreach ( self::staff_entries( $event_id ) as $email => $entry ) {
+            $can = ( ! empty( $entry['user_id'] ) && SFAF_Portal::user_can_edit_event( (int) $entry['user_id'], $event_id ) );
+            $key = $can ? 'edit' : 'public';
+
+            if ( ! isset( $variants[ $key ] ) ) {
+                $variants[ $key ] = self::build( 'summary', $event_id, null, array( 'can_edit_event' => $can ) );
+            }
+            $built = $variants[ $key ];
+            if ( ! $built ) {
+                continue;
+            }
+
             $out['recipients']++;
             if ( SFAF_Email::send( $email, $built['subject'], $built['html'], $built['text'], $reply ) ) {
                 $out['sent']++;

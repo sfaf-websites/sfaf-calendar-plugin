@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.26.0
+Stable tag: 3.26.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -283,18 +283,29 @@ links.
 == Google Maps on the event page ==
 
 Optional. Paste a Maps Embed API key under **Events > Settings > Integrations >
-Google Maps** and each event page gains a "Show map" button beneath its
-address. Leave the field blank and the page shows the address as a Google Maps
-link and nothing else: no button, no error, no admin notice on the public page.
+Google Maps** and each event page shows a map beneath its address. Leave the
+field blank and the page shows the address as a Google Maps link and nothing
+else: no map, no error, no admin notice on the public page.
 
-**Nothing is sent to Google until a visitor presses the button.** The server
-renders an empty placeholder; the iframe is created by script on click. This is
-deliberate and it is not a performance optimisation to be reversed. These event
-pages cover HIV services, substance use programs and trans health groups, and
-a Google iframe placed in the markup is fetched on page view, which hands
-Google the page URL, the visitor's IP and their referrer for everyone who lands
-on one whether they wanted a map or not. The address link meets the practical
-need at no third-party cost, and the click is the consent for the rest.
+**The map loads with the page, and that is a reversal made deliberately in
+3.26.1.** From 3.2.0 the map sat behind a "Show map" button and there was no
+iframe in the markup until it was pressed, so nothing was requested from Google
+on page view. The reasoning was that these event pages cover HIV services,
+substance use programs and trans health groups, and a Google iframe in the
+markup is fetched on page view, which hands Google the page URL, the visitor's
+IP and their referrer whether they wanted a map or not.
+
+That cost has been weighed and accepted: the map being immediately visible is
+worth it. The reasoning above is recorded rather than deleted, at
+`sfaf_event_map_html()` in `includes/sfaf-template-functions.php`, so that the
+automatic load reads as the current answer to a question already asked rather
+than as something nobody thought about.
+
+The frame carries `loading="lazy"`, so the request fires as the section comes
+near the viewport rather than at the top of the document. That is the ordinary
+performance default, not a consent mechanism, and it does not change what a
+visitor sees. The address stays an ordinary link that requests nothing until it
+is clicked, with or without a key.
 
 **Restrict the key before you paste it in.** In the Google Cloud console:
 
@@ -310,6 +321,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.26.1 =
+
+**The pre-event summary had the same leak shape as the registration alert, and now has the same fix.** It links to the event in `/caladmin` and goes to the same notification list, which is gated on nothing: contributors, people reached through a team, and typed addresses that are not accounts at all. Every one of them was being sent that link. It is now built per recipient, from the same resolution the alert uses, and anybody who cannot open the screen gets the public event page instead.
+
+**The capability asked is not the same one the alert asks, and that matters.** The alert links to `/caladmin/rsvps`, gated on `can_view_all`. The summary links to `/caladmin/events/edit/N`, gated on `can_edit_event`, which is `can_view_all` OR being the event's author. Testing the summary against `can_view_all` would have leaked nothing and still taken the link away from the contributor whose own event starts in two hours, which is the person most likely to want it. So each message names the capability its own link needs, `SFAF_Portal::user_can_edit_event()` joins `user_can_view_all()` as a public static, and the private instance methods both delegate to them so there is one rule per gate rather than two copies.
+
+What is shared is the resolution: `SFAF_Notifications::staff_entries()`, which carries the account behind each address. A free-text address is `user_id` 0 and can never reach a caladmin link, including the one that resembles somebody's account, because the question is asked of the resolution's user record and never of the address. A team is resolved to people and each person is asked separately.
+
+**`.claude/alert-recipients-test.php` now covers both messages through one routine**, because a second copy of the rule per message is how the summary came to have this fault while the alert did not. Seven recipients, both parts of every message, run through the real sender with `wp_mail()` as the seam and the plain-text alternative pulled through the real `phpmailer_init` path rather than being dropped by a stub. It was made to fail on purpose three times first: once with the summary always linking to caladmin, once with the summary checking the wrong capability, and once with a caladmin link planted in the confirmation.
+
+**There is no third.** The five other messages this plugin sends were inventoried rather than assumed: the confirmation and the morning-of reminder link only to the public event page and a cancel URL, and the two cron health emails link to the WordPress admin Automation screen, not to `/caladmin`. `.claude/email-render-test.php` now enforces that as a whitelist over every message it builds, in both parts, so an email added later is caught by default instead of being missed by default.
+
+**The map on the event page loads with the page. The "Show map" button is gone.** This reverses the decision taken in 3.2.0, and the reasoning behind that decision is recorded at `sfaf_event_map_html()` rather than deleted, because a note that vanishes is one somebody restores the old behaviour from without knowing it was ever weighed. A Google iframe loading on page view tells Google that this browser viewed this page, and these pages cover HIV services, substance use programs and trans health groups. That cost has been weighed and accepted: the map being immediately visible is worth it.
+
+The map is server-rendered now, so it works with scripts off; `initMaps()` and the data attributes it read are gone from `calendar.js`. Everything else about the block is unchanged: the address is still an ordinary Google Maps link that requests nothing until it is clicked, an event with no location still renders nothing at all, and with no key configured the page still shows the address link alone, with no map, no error, no broken frame and no admin notice on a public page. The frame keeps `loading="lazy"`, which is the ordinary performance default and not a consent mechanism.
 
 = 3.26.0 =
 

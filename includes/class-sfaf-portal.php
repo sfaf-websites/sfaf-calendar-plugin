@@ -216,11 +216,38 @@ class SFAF_Portal {
     }
 
     private function can_edit_event( $user, $post ) {
-        if ( $this->can_view_all( $user ) ) {
+        return self::user_can_edit_event( $user->ID, $post );
+    }
+
+    /**
+     * The same test, by user id, reachable without an instance.
+     *
+     * THE PRE-EVENT SUMMARY HAS TO ASK THIS, and it is a DIFFERENT question
+     * from user_can_view_all(). The summary's button opens
+     * /caladmin/events/edit/N, and render_event_form() gates that screen on
+     * can_edit_event, which is can_view_all OR being the event's author. A
+     * contributor who created the event can open it; a contributor who was
+     * merely added to its notification list cannot.
+     *
+     * So the email asks the gate that the page it links to actually applies,
+     * rather than a stricter one that would take the link away from the person
+     * most likely to want it: the contributor whose own event is starting in
+     * two hours. Using can_view_all here would have been safe and wrong.
+     *
+     * @param int          $user_id
+     * @param int|\WP_Post $post Event id or post object.
+     * @return bool
+     */
+    public static function user_can_edit_event( $user_id, $post ) {
+        if ( self::user_can_view_all( $user_id ) ) {
             return true;
         }
         // Contributor: only their own events.
-        return (int) $post->post_author === (int) $user->ID;
+        $post = is_object( $post ) ? $post : get_post( (int) $post );
+        if ( ! $post ) {
+            return false;
+        }
+        return (int) $post->post_author === (int) $user_id;
     }
 
     /** Status a contributor's published event lands in (auto vs review). */
