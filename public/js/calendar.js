@@ -997,16 +997,34 @@
                     '<h3>Register for this Event</h3>' +
                     '<p class="uc-modal-subtitle" id="uc-rsvp-event-title"></p>' +
                     '<div class="uc-rsvp-form">' +
-                        '<div><label for="uc-rsvp-name">Full Name *</label>' +
-                            '<input type="text" id="uc-rsvp-name" placeholder="Your name" /></div>' +
+                        // TWO FIELDS, AND THE SECOND IS GENUINELY OPTIONAL.
+                        //
+                        // Somebody registering for an HIV testing session or a
+                        // trans health group has good reason to give a first
+                        // name and no more, and some people have one name. The
+                        // label says optional, the validator does not ask for
+                        // it, and the server does not require it either, so
+                        // there is no level at which it quietly becomes
+                        // mandatory.
+                        '<div><label for="uc-rsvp-first-name">First Name *</label>' +
+                            '<input type="text" id="uc-rsvp-first-name" autocomplete="given-name" placeholder="Your first name" /></div>' +
+                        '<div><label for="uc-rsvp-last-name">Last Name (optional)</label>' +
+                            '<input type="text" id="uc-rsvp-last-name" autocomplete="family-name" placeholder="Your last name" /></div>' +
                         '<div><label for="uc-rsvp-email">Email *</label>' +
                             '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" />' +
                             // Said next to the field it applies to, in plain
                             // words, because this is the address the morning-of
                             // reminder will go to.
                             '<p class="uc-rsvp-note">Event reminders and updates will be sent to this email address.</p></div>' +
+                        // NOT FORMATTED AS THEY TYPE. The number is punctuated
+                        // once, on the server, when it is complete and only if
+                        // it is a plain US ten-digit number. See
+                        // SFAF_RSVP::format_phone(). Nothing rewrites the value
+                        // under the caret while somebody is still typing it,
+                        // and an international number, a country code or an
+                        // extension is kept exactly as entered.
                         '<div><label for="uc-rsvp-phone">Phone (optional)</label>' +
-                            '<input type="tel" id="uc-rsvp-phone" placeholder="(555) 000-0000" /></div>' +
+                            '<input type="tel" id="uc-rsvp-phone" autocomplete="tel" placeholder="(555) 000-0000" /></div>' +
                         // SEPARATE FROM THE RSVP, AND NEVER PRE-TICKED.
                         // Registering for an event is not consent to a mailing
                         // list, so this is its own decision and it starts off.
@@ -1021,8 +1039,30 @@
                 '</div>' +
                 '<div class="uc-rsvp-success" id="uc-rsvp-success" style="display:none;">' +
                     '<div class="uc-check">&#10003;</div>' +
-                    '<p>You are registered!</p>' +
+                    '<p id="uc-rsvp-success-msg">You are registered!</p>' +
                     '<p class="uc-modal-subtitle">We look forward to seeing you.</p>' +
+                    // THE EMAIL, STATED NEUTRALLY.
+                    //
+                    // "It may be in your spam folder" undercuts a message that
+                    // has just been sent: it invites the reader to doubt
+                    // whether it went at all. This says the confirmation is
+                    // coming and names the two places to look, in one
+                    // sentence, as an instruction rather than an apology.
+                    '<p class="uc-rsvp-inbox-note">Check your inbox for a confirmation, including your spam folder.</p>' +
+                    // ADD TO CALENDAR, HERE, BECAUSE THIS IS THE MOMENT.
+                    //
+                    // Somebody who has just registered is thinking about the
+                    // date. The confirmation email carries these same two
+                    // links, and it may take a minute to arrive or land
+                    // somewhere they have to go looking; this is the second
+                    // where the answer to "will I remember this" is one tap.
+                    // The two destinations are built server side by the same
+                    // helpers the email uses, so the modal cannot offer a
+                    // different link from the message.
+                    '<div class="uc-rsvp-addcal-row" id="uc-rsvp-addcal" style="display:none;">' +
+                        '<a class="uc-rsvp-addcal uc-rsvp-addcal-primary" id="uc-rsvp-gcal" href="#" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>' +
+                        '<a class="uc-rsvp-addcal uc-rsvp-addcal-secondary" id="uc-rsvp-ics" href="#">Add to Apple or Outlook</a>' +
+                    '</div>' +
                     '<button class="uc-rsvp-cancel" id="uc-rsvp-close-btn" style="margin-top: 16px;">Close</button>' +
                 '</div>' +
             '</div>' +
@@ -1050,9 +1090,13 @@
 
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
-            $('#uc-rsvp-name, #uc-rsvp-email, #uc-rsvp-phone').val('');
+            $('#uc-rsvp-first-name, #uc-rsvp-last-name, #uc-rsvp-email, #uc-rsvp-phone').val('');
             $('#uc-rsvp-optin').prop('checked', false);
             $('#uc-rsvp-error').hide();
+            // The previous registrant's greeting and their add-to-calendar
+            // links belong to their event, not to this one.
+            $('#uc-rsvp-success-msg').text('You are registered!');
+            $('#uc-rsvp-addcal').hide();
             // A cleared field is not an invalid field. Reopening the modal must
             // not show last time's complaint about an empty box.
             if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-rsvp-email')); }
@@ -1091,7 +1135,8 @@
     }
 
     function submitRSVP() {
-        var name  = $('#uc-rsvp-name').val().trim();
+        var first = $('#uc-rsvp-first-name').val().trim();
+        var last  = $('#uc-rsvp-last-name').val().trim();
         var email = $('#uc-rsvp-email').val().trim();
         var phone = $('#uc-rsvp-phone').val().trim();
         var optin = $('#uc-rsvp-optin').is(':checked') ? '1' : '';
@@ -1101,11 +1146,16 @@
          * marks the field itself and leaves a specific message under it that
          * stays put — rather than the old "Please enter a valid email address"
          * in a box above the button, which named neither the field nor the
-         * problem. Name is still checked here because it is not an email.
+         * problem. The first name is still checked here because it is not an
+         * email.
+         *
+         * THERE IS NO CHECK ON THE LAST NAME, deliberately. It is optional on
+         * the label, in this function and in SFAF_RSVP::submit(), and a check
+         * added here would be the one that quietly made it required.
          */
-        if (!name) {
-            $('#uc-rsvp-error').text('Please fill in your name.').show();
-            $('#uc-rsvp-name').focus();
+        if (!first) {
+            $('#uc-rsvp-error').text('Please fill in your first name.').show();
+            $('#uc-rsvp-first-name').focus();
             return;
         }
         if (window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-rsvp-email'))) {
@@ -1126,16 +1176,46 @@
             url: ucData.ajaxUrl,
             method: 'POST',
             data: {
-                action:   'uc_submit_rsvp',
-                nonce:    ucData.nonce,
-                event_id: currentEventId,
-                name:     name,
-                email:    email,
-                phone:    phone,
-                optin:    optin
+                action:     'uc_submit_rsvp',
+                nonce:      ucData.nonce,
+                event_id:   currentEventId,
+                first_name: first,
+                last_name:  last,
+                email:      email,
+                phone:      phone,
+                optin:      optin
             },
             success: function(response) {
                 if (response.success) {
+                    /*
+                     * THE GREETING IS THE FIRST NAME, and it comes back from
+                     * the server rather than being read off the field here.
+                     * The server is what stored it and what the confirmation
+                     * email greets from, so the screen and the email say the
+                     * same word.
+                     */
+                    if (response.first_name) {
+                        $('#uc-rsvp-success-msg').text('You are registered, ' + response.first_name + '!');
+                    }
+
+                    // Add to calendar, drawn only where there is somewhere to
+                    // go. An event with no usable start time returns empty
+                    // strings and gets no buttons rather than dead ones.
+                    var anyCal = false;
+                    if (response.gcal) {
+                        $('#uc-rsvp-gcal').attr('href', response.gcal).show();
+                        anyCal = true;
+                    } else {
+                        $('#uc-rsvp-gcal').hide();
+                    }
+                    if (response.ics) {
+                        $('#uc-rsvp-ics').attr('href', response.ics).show();
+                        anyCal = true;
+                    } else {
+                        $('#uc-rsvp-ics').hide();
+                    }
+                    $('#uc-rsvp-addcal').toggle(anyCal);
+
                     // Show success
                     $('.uc-rsvp-form-view').hide();
                     $('#uc-rsvp-success').show();

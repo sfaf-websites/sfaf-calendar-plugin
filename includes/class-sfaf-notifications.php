@@ -121,6 +121,20 @@ class SFAF_Notifications {
         return SFAF_Reminders::notify_list( $event_id );
     }
 
+    /**
+     * The same list, with the account behind each address.
+     *
+     * Used by send_alert(), which builds a different message for a recipient
+     * who can open the RSVP list and one who cannot. See
+     * SFAF_Reminders::notify_entries() for why the user id has to come out of
+     * the resolution rather than from a lookup on the address.
+     *
+     * @return array<string,array{label:string,user_id:int}>
+     */
+    public static function staff_entries( $event_id ) {
+        return SFAF_Reminders::notify_entries( $event_id );
+    }
+
     /* =====================================================================
      * Building
      * ================================================================== */
@@ -131,18 +145,22 @@ class SFAF_Notifications {
      * @param string $type   confirmation|reminder|alert|summary
      * @param int    $event_id
      * @param object $person For confirmation and reminder: the registrant, with
-     *                       ->name, ->email and ->token. For alert: whoever just
-     *                       registered. Unused by summary.
+     *                       ->name, ->first_name, ->email and ->token. For
+     *                       alert: whoever just registered. Unused by summary.
+     * @param array  $context Facts about the RECIPIENT rather than the event.
+     *                       Only the alert reads it, and only 'can_view_all',
+     *                       which decides whether this copy of the message may
+     *                       link to the RSVP list. See build_alert().
      * @return array{subject:string,html:string,text:string}|null
      */
-    public static function build( $type, $event_id, $person = null ) {
+    public static function build( $type, $event_id, $person = null, $context = array() ) {
         switch ( $type ) {
             case 'confirmation':
                 return self::build_confirmation( $event_id, $person );
             case 'reminder':
                 return self::build_reminder( $event_id, $person );
             case 'alert':
-                return self::build_alert( $event_id, $person );
+                return self::build_alert( $event_id, $person, $context );
             case 'summary':
                 return self::build_summary( $event_id );
         }
@@ -195,10 +213,37 @@ class SFAF_Notifications {
      * photograph at all and would render a flat colour block in its place.
      */
     private static function build_confirmation( $event_id, $person ) {
-        $f      = self::facts( $event_id );
-        $name   = ( $person && ! empty( $person->name ) ) ? (string) $person->name : '';
-        $hello  = ( '' !== $name ) ? sprintf( 'You are registered, %s.', $name ) : 'You are registered.';
+        $f = self::facts( $event_id );
+
+        /*
+         * THE GREETING IS THE FIRST NAME. "You are registered, Mark." is how a
+         * person is addressed; "You are registered, Mark Sapoznikov." is how a
+         * database addresses a record, and it lands in front of somebody who
+         * has just handed over their details for a health service. The full
+         * name is still what the staff-facing messages and the list show, where
+         * identifying somebody exactly is the point.
+         *
+         * $person->name is the fallback and it matters: a caller that predates
+         * the split, or the test send, hands over one string. Falling back to
+         * the whole of it is better than greeting nobody.
+         */
+        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
+        if ( '' === $first && $person && ! empty( $person->name ) ) {
+            $first = trim( (string) $person->name );
+        }
+        $hello  = ( '' !== $first ) ? sprintf( 'You are registered, %s.', $first ) : 'You are registered.';
         $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+
+        // {attendee_name} in custom copy still means the whole name, because
+        // that is what it has always meant and somebody's template says so.
+        // {first_name} and {last_name} are the new pair, for a writer who wants
+        // the greeting's reading.
+        $tokens = array(
+            'name'       => ( $person && ! empty( $person->name ) ) ? (string) $person->name : $first,
+            'first_name' => $first,
+            'last_name'  => ( $person && ! empty( $person->last_name ) ) ? (string) $person->last_name : '',
+            'cancel_url' => $cancel,
+        );
 
         $gcal = sfaf_google_calendar_url( $event_id );
         $ics  = sfaf_ics_url( $event_id );
@@ -207,7 +252,7 @@ class SFAF_Notifications {
 
         $html  = SFAF_Email::heading( $hello );
         if ( '' !== $custom ) {
-            $html .= self::paragraphs( sfaf_replace_tokens( $custom, $event_id, array( 'name' => $name, 'cancel_url' => $cancel ) ) );
+            $html .= self::paragraphs( sfaf_replace_tokens( $custom, $event_id, $tokens ) );
         } else {
             $html .= SFAF_Email::para( 'We have your place. Here are the details.' );
         }
@@ -232,7 +277,7 @@ class SFAF_Notifications {
 
         $text = $hello . "\n\n";
         if ( '' !== $custom ) {
-            $text .= sfaf_replace_tokens( $custom, $event_id, array( 'name' => $name, 'cancel_url' => $cancel ) ) . "\n\n";
+            $text .= sfaf_replace_tokens( $custom, $event_id, $tokens ) . "\n\n";
         } else {
             $text .= "We have your place. Here are the details.\n\n";
         }
@@ -299,8 +344,28 @@ class SFAF_Notifications {
         );
     }
 
-    /** (c) THE REGISTRATION ALERT, to staff. */
-    private static function build_alert( $event_id, $person ) {
+    /**
+     * (c) THE REGISTRATION ALERT, to staff.
+     *
+     * THE BUTTON GOES WHERE THE READER CAN ACTUALLY GO, AND THAT DIFFERS PER
+     * RECIPIENT.
+     *
+     * Somebody who has just been told a person registered wants the
+     * REGISTRATION LIST, not the public page: who else is coming, how full it
+     * is, the address to write to. So the button is the RSVP screen for this
+     * event. That screen is gated on can_view_all, and the notification list is
+     * not: it holds contributors, people reached through a team, and typed
+     * addresses that are not accounts at all. A link that answers "Denied" is
+     * worse than the public page, because it also tells somebody there is a
+     * screen they are not allowed to see.
+     *
+     * Hence $context['can_view_all'], decided by send_alert() one recipient at
+     * a time. Absent means false, so any caller that does not say gets the
+     * public page, which is what everybody got before this existed.
+     *
+     * @param array $context can_view_all: bool.
+     */
+    private static function build_alert( $event_id, $person, $context = array() ) {
         $f     = self::facts( $event_id );
         $who   = ( $person && ! empty( $person->name ) ) ? (string) $person->name : 'Somebody';
         $email = ( $person && ! empty( $person->email ) ) ? (string) $person->email : '';
@@ -311,19 +376,32 @@ class SFAF_Notifications {
             ? sprintf( '%d of %d places taken', $count, $cap )
             : sprintf( '%d registered so far', $count );
 
+        $can_view = ! empty( $context['can_view_all'] );
+        if ( $can_view ) {
+            $link  = add_query_arg( 'event_id', (int) $event_id, SFAF_Portal::link( 'rsvps' ) );
+            $label = 'See who has registered';
+        } else {
+            $link  = $f['url'];
+            $label = 'Open this event';
+        }
+
         $rows = array( 'Name' => $who, 'Email' => $email ) + self::detail_rows( $f );
 
         $html  = SFAF_Email::heading( sprintf( 'New registration for %s', $f['title'] ) );
         $html .= SFAF_Email::para( $places . '.' );
         $html .= SFAF_Email::details( $rows );
-        $html .= SFAF_Email::button( SFAF_Portal::link( 'events/edit/' . (int) $event_id ), 'Open this event', 'primary' );
+        if ( $link ) {
+            $html .= SFAF_Email::button( $link, $label, 'primary' );
+        }
 
         $text  = sprintf( "New registration for %s\n\n", $f['title'] );
         $text .= $places . ".\n\n";
         $text .= 'Name: ' . $who . "\n";
         if ( $email ) { $text .= 'Email: ' . $email . "\n"; }
         $text .= self::detail_text( $f ) . "\n\n";
-        $text .= 'Open this event: ' . SFAF_Portal::link( 'events/edit/' . (int) $event_id ) . "\n";
+        if ( $link ) {
+            $text .= $label . ': ' . $link . "\n";
+        }
         $text .= "\n" . SFAF_Email::POSTAL;
 
         return array(
@@ -356,8 +434,12 @@ class SFAF_Notifications {
         $text  = sprintf( "%s starts soon\n\n%s. Here is who to expect.\n\n", $f['title'], $places );
         $text .= self::detail_text( $f ) . "\n\n";
         foreach ( $rows as $row ) {
-            $name  = ( '' !== trim( (string) $row->name ) ) ? $row->name : 'No name given';
-            $text .= '- ' . $name . ' <' . $row->email . '>' . "\n";
+            // The full name here, and in the HTML table beside it: this is the
+            // list an organizer reads at the door, where telling two people
+            // apart is the point. display_name() is the one place that joins
+            // the pair.
+            $name = SFAF_RSVP::display_name( $row );
+            $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
         }
         $text .= "\n" . 'Open this event: ' . SFAF_Portal::link( 'events/edit/' . (int) $event_id ) . "\n";
         $text .= "\n" . SFAF_Email::POSTAL;
@@ -460,17 +542,42 @@ class SFAF_Notifications {
         if ( ! self::on( $event_id, 'alert' ) ) {
             return 0;
         }
-        $built = self::build( 'alert', $event_id, $person );
-        if ( ! $built ) {
-            return 0;
-        }
 
         $reply = ( ! empty( $person->email ) && is_email( $person->email ) )
             ? $person->email
             : SFAF_Reminders::reply_to_for( $event_id );
 
-        $sent = 0;
-        foreach ( self::staff( $event_id ) as $email => $label ) {
+        /*
+         * BUILT PER RECIPIENT, BECAUSE THE LINK IN IT IS PER RECIPIENT.
+         *
+         * There are exactly two versions of this message and the only
+         * difference is where the button points, so they are built at most once
+         * each and reused: a list of thirty people costs two builds, not
+         * thirty. $variants is keyed on the capability, which is the whole of
+         * what varies.
+         *
+         * THE CAPABILITY IS ASKED OF THE ACCOUNT, ONE PERSON AT A TIME. A team
+         * is not a permission, so a team that resolves to an editor and a
+         * contributor produces one of each message. A typed address carries
+         * user_id 0 and can never reach the RSVP link, which is right: it is a
+         * string in a box, not somebody with an account, and there is nothing
+         * to check it against.
+         */
+        $variants = array();
+        $sent     = 0;
+
+        foreach ( self::staff_entries( $event_id ) as $email => $entry ) {
+            $can = ( ! empty( $entry['user_id'] ) && SFAF_Portal::user_can_view_all( (int) $entry['user_id'] ) );
+            $key = $can ? 'view' : 'public';
+
+            if ( ! isset( $variants[ $key ] ) ) {
+                $variants[ $key ] = self::build( 'alert', $event_id, $person, array( 'can_view_all' => $can ) );
+            }
+            $built = $variants[ $key ];
+            if ( ! $built ) {
+                continue;
+            }
+
             if ( SFAF_Email::send( $email, $built['subject'], $built['html'], $built['text'], $reply ) ) {
                 $sent++;
             }

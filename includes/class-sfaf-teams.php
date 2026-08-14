@@ -381,6 +381,30 @@ class SFAF_Teams {
      * @return array<string,string> lowercased email => display name
      */
     public static function emails( $id ) {
+        // Explicit, for the reason SFAF_Reminders::notify_list() is explicit:
+        // the key is the address and it is what deduplicates a person who is in
+        // two selected teams.
+        $out = array();
+        foreach ( self::people( $id ) as $email => $person ) {
+            $out[ $email ] = $person['label'];
+        }
+        return $out;
+    }
+
+    /**
+     * The same members, with the account each address belongs to.
+     *
+     * A TEAM RESOLVES TO PEOPLE, AND SOMETIMES WHO THEY ARE IS THE QUESTION.
+     * The registration alert offers a link to a screen gated on can_view_all,
+     * so it has to check each resolved member individually rather than the team
+     * as a whole: a team is a set of names, not a permission, and two people in
+     * one team can have different access. This is the resolution; emails() is a
+     * projection of it, so the two cannot return different members.
+     *
+     * @param string $id
+     * @return array<string,array{label:string,user_id:int}> lowercased email => person
+     */
+    public static function people( $id ) {
         $team = self::get( $id );
         if ( ! $team ) {
             return array();
@@ -392,7 +416,10 @@ class SFAF_Teams {
             if ( ! $user || ! is_email( $user->user_email ) ) {
                 continue;
             }
-            $out[ strtolower( trim( $user->user_email ) ) ] = $user->display_name;
+            $out[ strtolower( trim( $user->user_email ) ) ] = array(
+                'label'   => $user->display_name,
+                'user_id' => (int) $user->ID,
+            );
         }
         return $out;
     }

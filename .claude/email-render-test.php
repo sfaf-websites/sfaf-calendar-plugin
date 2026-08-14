@@ -112,13 +112,26 @@ class SFAF_Reminders {
 class SFAF_RSVP {
     public static function get_rsvps( $event_id, $status = 'confirmed' ) {
         return array(
-            (object) array( 'name' => 'Alex Rivera', 'email' => 'alex@example.org', 'created_at' => '2026-08-01 10:00:00' ),
-            (object) array( 'name' => '', 'email' => 'jo@example.org', 'created_at' => '2026-08-03 18:20:00' ),
+            // Somebody with both names, and somebody who gave a first name
+            // only. The second is the case the form is built for and it must
+            // render as "Alex", not as a blank cell.
+            (object) array( 'name' => 'Alex Rivera', 'first_name' => 'Alex', 'last_name' => 'Rivera', 'email' => 'alex@example.org', 'created_at' => '2026-08-01 10:00:00' ),
+            (object) array( 'name' => 'Jo', 'first_name' => 'Jo', 'last_name' => '', 'email' => 'jo@example.org', 'created_at' => '2026-08-03 18:20:00' ),
         );
+    }
+    /** The real one, copied. */
+    public static function display_name( $row ) {
+        $row   = (object) $row;
+        $first = isset( $row->first_name ) ? trim( (string) $row->first_name ) : '';
+        $last  = isset( $row->last_name ) ? trim( (string) $row->last_name ) : '';
+        $both  = trim( $first . ' ' . $last );
+        if ( '' !== $both ) { return $both; }
+        return isset( $row->name ) ? trim( (string) $row->name ) : '';
     }
 }
 class SFAF_Portal {
     public static function link( $path = '' ) { return 'https://resources.example.org/caladmin/' . ltrim( $path, '/' ); }
+    public static function user_can_view_all( $user_id ) { return 1 === (int) $user_id; }
 }
 
 require $root . '/includes/class-sfaf-email.php';
@@ -134,17 +147,27 @@ $GLOBALS['sfaf_meta'] = array(
 $GLOBALS['sfaf_options'] = array();
 
 $person = (object) array(
-    'name'  => 'Alex Rivera',
-    'email' => 'alex@example.org',
-    'token' => str_repeat( 'a1', 16 ),
+    'name'       => 'Alex Rivera',
+    'first_name' => 'Alex',
+    'last_name'  => 'Rivera',
+    'email'      => 'alex@example.org',
+    'token'      => str_repeat( 'a1', 16 ),
 );
 $staff = (object) array( 'email' => 'programs@sfaf.org', 'token' => '', 'is_staff' => true );
 
+/*
+ * THE ALERT IS TWO MESSAGES NOW, and both are built here. The only difference
+ * between them is where the button goes, and that is the whole point of the
+ * case: a recipient who can open the RSVP list gets it, and one who cannot gets
+ * the public event page. Sending the first to the second is sending somebody a
+ * link to a page that will refuse them, so it is checked rather than assumed.
+ */
 $cases = array(
     'confirmation' => array( 'person' => $person, 'cancel' => true ),
     'reminder'     => array( 'person' => $person, 'cancel' => true ),
     'reminder-staff' => array( 'type' => 'reminder', 'person' => $staff, 'cancel' => false ),
     'alert'        => array( 'person' => $person, 'cancel' => false ),
+    'alert-viewer' => array( 'type' => 'alert', 'person' => $person, 'cancel' => false, 'context' => array( 'can_view_all' => true ) ),
     'summary'      => array( 'person' => null, 'cancel' => false ),
 );
 
@@ -153,7 +176,8 @@ $built = array();
 
 foreach ( $cases as $name => $case ) {
     $type = isset( $case['type'] ) ? $case['type'] : $name;
-    $out  = SFAF_Notifications::build( $type, 42, $case['person'] );
+    $ctx  = isset( $case['context'] ) ? $case['context'] : array();
+    $out  = SFAF_Notifications::build( $type, 42, $case['person'], $ctx );
 
     if ( ! is_array( $out ) ) {
         $fails[] = "$name: built nothing";
@@ -250,6 +274,55 @@ foreach ( $built as $name => $out ) {
     }
 }
 
+/* ---------------------------------------------------------------------------
+ * THE ALERT'S LINK IS THE RIGHT ONE FOR THE RECIPIENT.
+ *
+ * /caladmin/rsvps is gated on can_view_all. The notification list is not: it
+ * holds contributors, people reached through a team, and typed addresses that
+ * are not accounts. So the rule checked here is one-directional and absolute,
+ * because only one direction can hurt: a recipient WITHOUT the capability must
+ * never see a caladmin link at all.
+ * ------------------------------------------------------------------------ */
+$viewer = isset( $built['alert-viewer'] ) ? $built['alert-viewer'] : null;
+$plain  = isset( $built['alert'] ) ? $built['alert'] : null;
+
+if ( $viewer ) {
+    if ( false === strpos( $viewer['html'], '/caladmin/rsvps' ) ) {
+        $fails[] = 'alert-viewer: does not link to the RSVP list, which is the whole reason it is built separately';
+    }
+    if ( false === strpos( $viewer['text'], '/caladmin/rsvps' ) ) {
+        $fails[] = 'alert-viewer: the RSVP link is missing from the plain text part';
+    }
+}
+if ( $plain ) {
+    if ( false !== strpos( $plain['html'] . $plain['text'], '/caladmin' ) ) {
+        $fails[] = 'alert: links into caladmin for a recipient who cannot open it';
+    }
+    if ( false === strpos( $plain['html'], 'https://resources.example.org/events/' ) ) {
+        $fails[] = 'alert: no link at all for a recipient without access; the public event page is what they get';
+    }
+}
+
+/* The confirmation greets by first name, and by first name only. */
+if ( isset( $built['confirmation'] ) ) {
+    if ( false === strpos( $built['confirmation']['text'], 'You are registered, Alex.' ) ) {
+        $fails[] = 'confirmation: does not greet by first name';
+    }
+    if ( false !== strpos( $built['confirmation']['text'], 'registered, Alex Rivera' ) ) {
+        $fails[] = 'confirmation: greets with the full name, and the greeting is the first name only';
+    }
+}
+
+/* A registration with no surname renders as a name, not as a blank. */
+if ( isset( $built['summary'] ) ) {
+    if ( false === strpos( $built['summary']['html'], '>Jo<' ) ) {
+        $fails[] = 'summary: a person who gave a first name only is missing from the table';
+    }
+    if ( false === strpos( $built['summary']['text'], '- Jo <jo@example.org>' ) ) {
+        $fails[] = 'summary: a person who gave a first name only is missing from the text list';
+    }
+}
+
 /* ONE PRIMARY BUTTON PER EMAIL. Yellow means "act on this"; two of them means
    neither does. */
 foreach ( $built as $name => $out ) {
@@ -277,10 +350,13 @@ if ( false !== $write && isset( $argv[ $write + 1 ] ) ) {
 }
 
 echo "Email render test\n";
-echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, alert, summary)\n";
+echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, alert to a\n";
+echo "       recipient without access, alert to one with it, summary)\n";
 echo "checked per message: subject, text alternative, table layout, 600px, banner and its alt text,\n";
 echo "                     postal address in both parts, no modern CSS, closed palette, no em dash,\n";
-echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links\n\n";
+echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links\n";
+echo "checked across them: the alert's link matches the recipient's access, the confirmation greets by\n";
+echo "                     first name only, and a registration with no surname still renders a name\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

@@ -461,7 +461,7 @@ class SFAF_Post_Types {
             <div class="uc-meta-field">
                 <label for="uc_email_body">Body</label>
                 <textarea id="uc_email_body" name="uc_email_body" rows="5" placeholder="Hi {attendee_name}, you're registered for {event_name} on {event_date}."><?php echo esc_textarea( $body ); ?></textarea>
-                <p class="description">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_location}</code> <code>{organizer_name}</code></p>
+                <p class="description">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{first_name}</code> <code>{last_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_location}</code> <code>{organizer_name}</code></p>
             </div>
         </div>
         <?php

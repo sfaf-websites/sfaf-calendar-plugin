@@ -1030,6 +1030,56 @@
 .uc-rsvp-success .uc-check { font-size: 48px; line-height: 1; margin-bottom: 12px; color: var(--uc-teal-text); }
 .uc-rsvp-modal .uc-rsvp-success p { font-size: 16px; color: var(--uc-text); font-weight: 600; margin: 0; }
 .uc-rsvp-modal .uc-rsvp-success .uc-modal-subtitle { margin: 6px 0 0; font-weight: 400; }
+
+/* ---------------------------------------------------------------------------
+   THE CONFIRMED VIEW: WHAT TO EXPECT, AND WHAT TO DO NEXT.
+
+   p.uc-rsvp-inbox-note CARRIES A TYPE SELECTOR ON PURPOSE. The line above it,
+   `.uc-rsvp-modal .uc-rsvp-success p`, is (0,2,1) and sets 16px/600/margin 0 on
+   every paragraph in this view. A rule named `.uc-rsvp-modal
+   .uc-rsvp-inbox-note` is (0,2,0) and loses to it on all three, which is the
+   recorded one-class-versus-class-plus-type fault this file has been bitten by
+   four times. Matching the type puts this at (0,3,1) and it wins on the
+   properties it names and inherits the rest.
+
+   It is quieter than the two lines above it because it is an instruction about
+   the next few minutes, not the news. --uc-secondary is the muted ink already
+   used for .uc-modal-subtitle in this same modal.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-modal .uc-rsvp-success p.uc-rsvp-inbox-note {
+    margin: 14px 0 0;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--uc-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   ADD TO CALENDAR, THE SAME TWO DESTINATIONS AS THE CONFIRMATION EMAIL.
+
+   Column, not row: the modal is 420px and drops to 90vw, and two side-by-side
+   buttons carrying labels this long wrap their text at any phone width. Full
+   width also matches the submit and cancel buttons the same person pressed
+   thirty seconds ago, so the confirmed view does not look like a different
+   component.
+
+   TEAL, NOT YELLOW. This is the public side, where teal is the action colour
+   for exactly the reason the submit button beside it is teal; yellow is the
+   caladmin action colour and does not cross over. Google is the filled one and
+   Apple/Outlook the outlined one, matching the confirmation email's primary and
+   outline pair, so the same two choices are ranked the same way in both places.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-modal .uc-rsvp-addcal-row { display: flex; flex-direction: column; gap: 8px; margin: 18px 0 0; }
+.uc-rsvp-modal .uc-rsvp-addcal {
+    display: block; padding: 11px 12px; border-radius: 10px;
+    font-family: var(--uc-font-heading); font-size: 14px; font-weight: 700; line-height: 1.2;
+    text-align: center;
+}
+.uc-rsvp-modal .uc-rsvp-addcal-primary { border: 1px solid var(--uc-teal); background: var(--uc-teal); color: var(--uc-dark); }
+.uc-rsvp-modal .uc-rsvp-addcal-primary:hover { background: #13a8b8; border-color: #13a8b8; }
+.uc-rsvp-modal .uc-rsvp-addcal-secondary { border: 1px solid var(--uc-border-strong); background: #fff; color: var(--uc-teal-text); font-weight: 600; }
+.uc-rsvp-modal .uc-rsvp-addcal-secondary:hover { border-color: var(--uc-teal-text); }
+.uc-rsvp-modal-overlay a.uc-rsvp-addcal:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 /* THE RED FAMILY'S DARKEST STOP, NOT ITS BASE. --uc-warm #F04937 is 3.68:1 on
    white, and DESIGN.md allows Red as text only at large sizes; this is 13px,
    and it is the line telling somebody their registration failed, which is the

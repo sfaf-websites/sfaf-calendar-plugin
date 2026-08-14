@@ -703,7 +703,13 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
 
     $replacements = array(
         '{event_name}'       => get_the_title( $event_id ),
+        // {attendee_name} IS STILL THE WHOLE NAME. The form asks for first and
+        // last separately now, and a template that already says
+        // "Hello {attendee_name}" must keep meaning what it meant. {first_name}
+        // is the new one, and it is what the shipped greeting uses.
         '{attendee_name}'    => isset( $data['name'] ) ? $data['name'] : '',
+        '{first_name}'       => isset( $data['first_name'] ) ? $data['first_name'] : '',
+        '{last_name}'        => isset( $data['last_name'] ) ? $data['last_name'] : '',
         '{event_date}'       => $date_fmt,
         '{event_time}'       => $start_fmt ? $start_fmt : $start_raw,
         '{event_end_time}'   => $end_fmt,

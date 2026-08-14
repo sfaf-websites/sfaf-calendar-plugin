@@ -190,7 +190,25 @@ class SFAF_Portal {
     }
 
     private function can_view_all( $user ) {
-        return in_array( self::get_role( $user->ID ), array( 'admin', 'editor' ), true );
+        return self::user_can_view_all( $user->ID );
+    }
+
+    /**
+     * The same test, by user id, reachable without an instance.
+     *
+     * THE EMAILS HAVE TO ASK THIS. The registration alert links an organizer to
+     * the RSVP list for the event, and that screen is gated on can_view_all, so
+     * the message has to know per recipient whether the link would open or
+     * refuse. A second copy of the rule in class-sfaf-notifications.php is a
+     * second thing to change when the rule changes, which is how a link to a
+     * "Denied" page gets sent. One definition; the private method above is now
+     * a wrapper on it.
+     *
+     * @param int $user_id
+     * @return bool
+     */
+    public static function user_can_view_all( $user_id ) {
+        return in_array( self::get_role( (int) $user_id ), array( 'admin', 'editor' ), true );
     }
 
     private function can_create( $user ) {
@@ -1588,12 +1606,16 @@ class SFAF_Portal {
         header( 'Content-Type: text/csv' );
         header( 'Content-Disposition: attachment; filename="rsvps-' . sanitize_file_name( $slug ) . '-' . current_time( 'Y-m-d' ) . '.csv"' );
 
+        // Two name columns, matching SFAF_RSVP::export_csv() exactly. Two
+        // exports of the same table with different headings is how the wrong
+        // one gets pasted into Salesforce.
         $out = fopen( 'php://output', 'w' );
-        fputcsv( $out, array( 'Event', 'Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
+        fputcsv( $out, array( 'Event', 'First Name', 'Last Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
         foreach ( $rsvps as $r ) {
             $title = SFAF_RSVP::event_label( $r );
             fputcsv( $out, array(
-                $this->csv( $title ), $this->csv( $r->name ), $this->csv( $r->email ),
+                $this->csv( $title ), $this->csv( $r->first_name ), $this->csv( $r->last_name ),
+                $this->csv( $r->email ),
                 $this->csv( $r->phone ), $this->csv( $r->status ), $this->csv( $r->created_at ),
             ) );
         }
@@ -2421,11 +2443,11 @@ class SFAF_Portal {
         $table = $wpdb->prefix . 'uc_rsvps';
         if ( $this->can_view_all( $user ) ) {
             $rsvps = $wpdb->get_results(
-                "SELECT event_id, name, status, created_at FROM $table ORDER BY id DESC LIMIT 5"
+                "SELECT event_id, name, first_name, last_name, status, created_at FROM $table ORDER BY id DESC LIMIT 5"
             );
         } else {
             $rsvps = $wpdb->get_results( $wpdb->prepare(
-                "SELECT r.event_id, r.name, r.status, r.created_at FROM $table r
+                "SELECT r.event_id, r.name, r.first_name, r.last_name, r.status, r.created_at FROM $table r
                  INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id
                  WHERE p.post_author = %d
                  ORDER BY r.id DESC LIMIT 5",
@@ -2434,11 +2456,12 @@ class SFAF_Portal {
         }
         foreach ( (array) $rsvps as $r ) {
             $title = get_the_title( $r->event_id );
+            $who   = SFAF_RSVP::display_name( $r );
             $rows[] = array(
                 'when' => strtotime( $r->created_at ),
                 'text' => sprintf(
                     '%s %s for %s',
-                    $r->name ? $r->name : 'Someone',
+                    '' !== $who ? $who : 'Someone',
                     'subscribed' === $r->status ? 'asked for reminders' : ( 'cancelled' === $r->status ? 'canceled their place' : 'registered' ),
                     $title ? $title : 'a deleted event'
                 ),
@@ -8725,7 +8748,7 @@ class SFAF_Portal {
                 <?php endif; ?>
             <?php else : ?>
                 <table class="uc-table">
-                    <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>Name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th></tr></thead>
+                    <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th></tr></thead>
                     <tbody>
                     <?php foreach ( $rsvps as $r ) : ?>
                         <tr>
@@ -8743,7 +8766,23 @@ class SFAF_Portal {
                                     }
                                 ?></td>
                             <?php endif; ?>
-                            <td><strong><?php echo esc_html( $r->name ); ?></strong></td>
+                            <td><strong><?php echo esc_html( $r->first_name ); ?></strong></td>
+                            <?php
+                            /*
+                             * AN EMPTY LAST NAME IS A NORMAL ROW, NOT A GAP.
+                             *
+                             * The field is optional on the form for people
+                             * registering for testing and for trans health
+                             * groups, so a blank cell here is somebody
+                             * exercising that. A dash says "nothing was given",
+                             * which is the fact; leaving the cell empty reads
+                             * as a column that failed to render.
+                             */
+                            ?>
+                            <td><?php
+                                $last = trim( (string) $r->last_name );
+                                echo '' !== $last ? esc_html( $last ) : '<span class="uc-muted">&ndash;</span>';
+                            ?></td>
                             <td><?php echo esc_html( $r->email ); ?></td>
                             <td><?php echo esc_html( $r->phone ); ?></td>
                             <td><?php

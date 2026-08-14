@@ -316,7 +316,11 @@ class SFAF_Email {
             . '<th align="left" style="padding:0 0 6px 0; border-bottom:1px solid ' . self::C_RULE . '; font-family:' . self::FONT . '; font-size:12px; font-weight:700; color:' . self::C_MUTED . ';">Registered</th>'
             . '</tr>';
         foreach ( $rows as $row ) {
-            $name = ( '' !== trim( (string) $row->name ) ) ? $row->name : 'No name given';
+            // First and last, joined by the one function that joins them. A row
+            // with no name at all is a reminder subscriber, and saying so is
+            // better than an empty cell.
+            $name = SFAF_RSVP::display_name( $row );
+            $name = ( '' !== $name ) ? $name : 'No name given';
             $out .= '<tr>'
                 . '<td valign="top" style="padding:8px 12px 0 0; font-family:' . self::FONT . '; font-size:14px; line-height:1.4; color:' . self::C_INK . ';">' . esc_html( $name ) . '</td>'
                 . '<td valign="top" style="padding:8px 12px 0 0; font-family:' . self::FONT . '; font-size:14px; line-height:1.4; color:' . self::C_INK . ';">' . esc_html( $row->email ) . '</td>'
@@ -359,12 +363,27 @@ class SFAF_Email {
 
         $person = (object) array(
             'name'       => 'Test Person',
+            'first_name' => 'Test',
+            'last_name'  => 'Person',
             'email'      => $to,
             'created_at' => current_time( 'mysql' ),
             'token'      => 'test-token-not-a-real-registration',
         );
 
-        $built = SFAF_Notifications::build( $type, $event_id, $person );
+        /*
+         * THE TEST ALERT LINKS TO THE RSVP LIST, because whoever pressed the
+         * button is on the Settings screen, which needs manage_options, and
+         * that is can_view_all by definition. It is also the half of the
+         * message worth looking at.
+         *
+         * WHAT THE TEST CANNOT SHOW is the count. "0 of 12 places taken" on a
+         * test is correct: no row was written, so nothing was added to the
+         * number. A real registration reads one higher, because submit() clears
+         * the request's cached count the moment the row lands and this builder
+         * counts afterwards. The note at the foot of the message says a place
+         * was not held.
+         */
+        $built = SFAF_Notifications::build( $type, $event_id, $person, array( 'can_view_all' => true ) );
         if ( ! $built ) {
             return array( 'sent' => false, 'message' => 'There is no message of that kind.' );
         }

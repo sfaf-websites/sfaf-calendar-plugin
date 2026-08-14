@@ -371,6 +371,38 @@ class SFAF_Reminders {
      * @return array<string,string> lowercased email => display label.
      */
     public static function notify_list( $event_id ) {
+        // Written out rather than wp_list_pluck()ed. THE KEY IS THE DEDUPLICATION
+        // and the whole contract of this function; a helper that is documented
+        // to preserve keys is one more thing that has to keep being true for
+        // the same address not to be mailed twice.
+        $out = array();
+        foreach ( self::notify_entries( $event_id ) as $email => $entry ) {
+            $out[ $email ] = $entry['label'];
+        }
+        return $out;
+    }
+
+    /**
+     * The same list, with WHO each address belongs to.
+     *
+     * THE ONE RESOLUTION IS HERE NOW, and notify_list() is a projection of it.
+     * There is still exactly one place that turns user ids, team ids and typed
+     * addresses into recipients; this one also says, per address, whether it
+     * came from a WordPress account and which one.
+     *
+     * THE REGISTRATION ALERT NEEDS THAT, and nothing else can supply it. The
+     * alert links an organizer to the RSVP list, which is gated on
+     * can_view_all, so the message is built per recipient and each recipient's
+     * capability has to be knowable. Looking the address up with
+     * get_user_by( 'email' ) at send time would answer a DIFFERENT question:
+     * a typed address that happens to match an account would come back as that
+     * account, and a free-text address is not that person on this list, it is a
+     * string somebody wrote in a box. user_id is 0 for those, always, and 0 is
+     * what stops the RSVP link being offered to them.
+     *
+     * @return array<string,array{label:string,user_id:int}> lowercased email => entry
+     */
+    public static function notify_entries( $event_id ) {
         $out = array();
 
         // The creator. WordPress already stores this as post_author, so there
@@ -379,7 +411,10 @@ class SFAF_Reminders {
         if ( $post && ! self::author_opted_out( $event_id ) ) {
             $author = get_userdata( $post->post_author );
             if ( $author && is_email( $author->user_email ) ) {
-                $out[ self::normalize( $author->user_email ) ] = $author->display_name . ' (creator)';
+                $out[ self::normalize( $author->user_email ) ] = array(
+                    'label'   => $author->display_name . ' (creator)',
+                    'user_id' => (int) $author->ID,
+                );
             }
         }
 
@@ -388,7 +423,7 @@ class SFAF_Reminders {
             if ( $user && is_email( $user->user_email ) ) {
                 $key = self::normalize( $user->user_email );
                 if ( ! isset( $out[ $key ] ) ) {
-                    $out[ $key ] = $user->display_name;
+                    $out[ $key ] = array( 'label' => $user->display_name, 'user_id' => (int) $user->ID );
                 }
             }
         }
@@ -405,18 +440,27 @@ class SFAF_Reminders {
         foreach ( SFAF_Teams::for_event( $event_id ) as $team_id ) {
             $team_name = SFAF_Teams::get( $team_id );
             $team_name = $team_name ? $team_name['name'] : $team_id;
-            foreach ( SFAF_Teams::emails( $team_id ) as $email => $display ) {
+            foreach ( SFAF_Teams::people( $team_id ) as $email => $person ) {
                 if ( ! isset( $out[ $email ] ) ) {
-                    $out[ $email ] = $display . ' (' . $team_name . ' team)';
+                    $out[ $email ] = array(
+                        'label'   => $person['label'] . ' (' . $team_name . ' team)',
+                        // The member's OWN account. A team confers no access, so
+                        // what a team member may see is decided one person at a
+                        // time and this is what lets the caller ask.
+                        'user_id' => (int) $person['user_id'],
+                    );
                 }
             }
         }
 
+        // Typed addresses. user_id 0, and it is not a lookup failure: these are
+        // strings somebody wrote in a box, they are not accounts, and nothing
+        // downstream may treat them as one.
         foreach ( (array) get_post_meta( $event_id, self::NOTIFY_EMAILS_META, true ) as $email ) {
             if ( is_email( $email ) ) {
                 $key = self::normalize( $email );
                 if ( ! isset( $out[ $key ] ) ) {
-                    $out[ $key ] = $email;
+                    $out[ $key ] = array( 'label' => $email, 'user_id' => 0 );
                 }
             }
         }

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.25.0
+Stable tag: 3.26.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -310,6 +310,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.26.0 =
+
+**The registration form asks for a first name and a last name, and the last name is optional.** Not optional in the label and required underneath: the field is optional in the form, in the browser check, in `SFAF_RSVP::submit()` and in the column, so there is no level at which it quietly becomes mandatory. Somebody registering for an HIV testing session or a trans health group has good reason to give a first name and no more, and some people have one name. Requiring a surname costs registrations rather than gaining data.
+
+**The split reaches everywhere the name appears**: the form, the registration list in `/caladmin`, the registration list in the WordPress admin, and both CSV exports, which now carry First Name and Last Name as two columns rather than one combined field. A single column is one somebody has to split by hand on a space before it can be pasted into Salesforce, which gets "Ana Maria Ruiz" and "van Dijk" wrong every time. The data handed to any Pardot integration carries the two fields as they were typed, which is what the Salesforce admin asked for.
+
+**The confirmation greets by first name.** "You are registered, Mark." A database addresses a record by its full name; a person is addressed by their first, and this one lands in front of somebody who has just handed over their details for a health service. Staff-facing messages and the lists still show the whole name, where telling two people apart is the point. Search on the registration list matches either half or the two together.
+
+**A phone number entered as 1234567890 is stored as (123) 456-7890, and nothing else is touched.** The formatting happens once, on the server, when the value is complete, rather than as somebody types: a number cannot be recognised until it is finished, so an as-you-type formatter has to guess at every keystroke and then take its guess back, and it has to decide where to put the caret after rewriting the field, which is where that pattern goes wrong on phones and with a screen reader. An international number, a country code (a leading 1 included), an extension or anything with a letter in it is kept exactly as entered. **Nothing is ever rejected.** A phone field somebody cannot complete is worse than an unformatted number.
+
+**The confirmation modal now sets expectations and offers the date.** It says "Check your inbox for a confirmation, including your spam folder", which is an instruction rather than "it may be in your spam folder", a sentence that invites somebody to doubt a message that has just been sent. Below it are the same two add-to-calendar buttons the confirmation email carries, Google and Apple or Outlook, built by the same two helpers so the modal and the email cannot offer different links. This is the moment somebody is thinking about the date.
+
+**The registration alert links to the registration list, per recipient.** An organizer who has just been told somebody registered wants to see who is coming, not the public event page, so the button is now this event's RSVP screen in `/caladmin`. That screen is gated on `can_view_all` and the notification list is gated on nothing: it holds contributors, people reached through a team, and typed addresses that are not accounts at all. So the message is built per recipient. Anybody without the capability gets the public event page, exactly as before. A team is resolved to people and each person is checked individually, because a team is a set of names and not a permission. A free-text address is never offered the link even when it happens to match somebody's account, because it is a string typed in a box rather than that person: the capability is asked of the resolution's user record, never of the address. There are only ever two versions of the message, so a list of thirty people costs two builds.
+
+`.claude/alert-recipients-test.php` is the proof, and it is committed. Six recipients covering every route onto the list and both answers to the capability question, run through the real sender with `wp_mail()` as the seam, checking that no `/caladmin` link reaches anybody who cannot open it, that everybody who can gets this event's list, that nobody is mailed twice, and that the per-event off switch still switches it off.
+
+**The alert counts the registration it is announcing.** It read "0 of 12 places taken" on an email whose subject was a new registration. The per-request count store is the cause: the capacity check earlier in `submit()` reads the count and memoizes it, so the alert built afterwards, and the number handed back to the capacity bar on the card, were both reading the copy taken before the row was written. The cache is now cleared the moment the row lands, which is the same remedy the cancellation path already used. A test send still reads the true current count, because a test writes no row, and it says so at the foot of the message.
 
 = 3.25.0 =
 

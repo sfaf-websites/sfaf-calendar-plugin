@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.25.0
+ * Version: 3.26.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.25.0' );
+define( 'SFAF_VERSION', '3.26.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.25.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '4' );
+define( 'SFAF_DB_VERSION', '5' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -547,11 +547,30 @@ function sfaf_install_tables() {
     // cancelled_at records WHEN somebody released their place. The status column
     // already says that they did; this says when, which is the question an
     // organizer looking at a half-empty room actually asks.
+    //
+    // FIRST AND LAST ARE TWO COLUMNS, AND LAST IS OPTIONAL.
+    //
+    // The form used to ask for one full name. Somebody registering for an HIV
+    // testing session or a trans health group has good reason to give a first
+    // name and no more, and some people have one name; requiring a surname
+    // costs registrations rather than gaining data. So first_name is what the
+    // form requires and last_name is genuinely allowed to be empty, at every
+    // level: the field, the validator, this column, and the CSV.
+    //
+    // `name` STAYS, AND IT IS DERIVED. It is written once, at insert, as the
+    // two joined with a space, and nothing else ever writes it. It cannot drift
+    // from the pair because it has exactly one writer and is computed from
+    // them. It is kept because it is NOT NULL with no default on every install
+    // that already has this table, dbDelta does not drop columns, and an insert
+    // that omitted it would fail under strict mode. Reads go through
+    // SFAF_RSVP::display_name(), which builds from the pair.
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         event_id bigint(20) unsigned NOT NULL,
         event_title varchar(255) NOT NULL DEFAULT '',
         name varchar(200) NOT NULL,
+        first_name varchar(100) NOT NULL DEFAULT '',
+        last_name varchar(100) NOT NULL DEFAULT '',
         email varchar(200) NOT NULL,
         phone varchar(50) DEFAULT '',
         status varchar(20) DEFAULT 'confirmed',

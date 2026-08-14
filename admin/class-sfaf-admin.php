@@ -959,7 +959,8 @@ class SFAF_Admin {
                     <thead>
                         <tr>
                             <th>Event</th>
-                            <th>Name</th>
+                            <th>First name</th>
+                            <th>Last name</th>
                             <th>Email</th>
                             <th>Phone</th>
                             <th>Status</th>
@@ -968,7 +969,7 @@ class SFAF_Admin {
                     </thead>
                     <tbody>
                         <?php if ( empty( $rsvps ) ) : ?>
-                            <tr><td colspan="6" class="uc-no-data">No RSVPs found.</td></tr>
+                            <tr><td colspan="7" class="uc-no-data">No RSVPs found.</td></tr>
                         <?php else : ?>
                             <?php foreach ( $rsvps as $rsvp ) : ?>
                                 <tr>
@@ -977,7 +978,12 @@ class SFAF_Admin {
                                             <?php echo esc_html( SFAF_RSVP::event_label( $rsvp ) ); ?>
                                         </a>
                                     </td>
-                                    <td><strong><?php echo esc_html( $rsvp->name ); ?></strong></td>
+                                    <td><strong><?php echo esc_html( $rsvp->first_name ); ?></strong></td>
+                                    <?php // Optional on the form, so a blank cell is a choice somebody made. Say so. ?>
+                                    <td><?php
+                                        $last = trim( (string) $rsvp->last_name );
+                                        echo '' !== $last ? esc_html( $last ) : '&ndash;';
+                                    ?></td>
                                     <td><?php echo esc_html( $rsvp->email ); ?></td>
                                     <td><?php echo esc_html( $rsvp->phone ); ?></td>
                                     <td><span class="uc-status uc-status-<?php echo esc_attr( $rsvp->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $rsvp->status ) ); ?></span></td>
@@ -1973,7 +1979,7 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="uc-token-ref">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_end_time}</code> <code>{event_time_range}</code> <code>{event_location}</code> <code>{event_url}</code> <code>{organizer_name}</code> <code>{cancel_link}</code> <code>{cancel_url}</code></p>
+                        <p class="uc-token-ref">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{first_name}</code> <code>{last_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_end_time}</code> <code>{event_time_range}</code> <code>{event_location}</code> <code>{event_url}</code> <code>{organizer_name}</code> <code>{cancel_link}</code> <code>{cancel_url}</code></p>
 
                         <h3>Sender</h3>
                         <p class="description">

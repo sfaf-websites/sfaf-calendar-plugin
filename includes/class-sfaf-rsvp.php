@@ -96,17 +96,97 @@ class SFAF_RSVP {
         check_ajax_referer( 'uc_nonce', 'nonce' );
 
         $result = $this->submit( array(
-            'event_id' => isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0,
-            'name'     => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
-            'email'    => isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '',
-            'phone'    => isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '',
+            'event_id'   => isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0,
+            'first_name' => isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '',
+            'last_name'  => isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '',
+            'email'      => isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '',
+            'phone'      => isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '',
             // Present and truthy only when the box was actually ticked. An
             // absent field is a "no", which is the safe reading and the one an
             // unchecked checkbox actually produces.
-            'optin'    => ! empty( $_POST['optin'] ),
+            'optin'      => ! empty( $_POST['optin'] ),
         ) );
 
         wp_send_json( $result );
+    }
+
+    /**
+     * The one display name, built from the pair.
+     *
+     * Everything that wants a person as a single string asks this: the staff
+     * summary's table, the alert's Name row, the dashboard activity line, the
+     * opt-in record. Nothing rebuilds "first space last" for itself, so the
+     * greeting, the list and the export cannot disagree about what somebody is
+     * called.
+     *
+     * A LAST NAME IS ALLOWED TO BE MISSING and produces the first name alone,
+     * with no trailing space. The `name` column is the fallback, which is what
+     * a reminder subscriber row (no name at all) and anything written outside
+     * submit() will have.
+     *
+     * @param object|array $row A uc_rsvps row.
+     * @return string
+     */
+    public static function display_name( $row ) {
+        $row   = (object) $row;
+        $first = isset( $row->first_name ) ? trim( (string) $row->first_name ) : '';
+        $last  = isset( $row->last_name ) ? trim( (string) $row->last_name ) : '';
+        $both  = trim( $first . ' ' . $last );
+        if ( '' !== $both ) {
+            return $both;
+        }
+        return isset( $row->name ) ? trim( (string) $row->name ) : '';
+    }
+
+    /**
+     * A plain US ten-digit number, punctuated. Anything else, untouched.
+     *
+     * FORMATTED ON SAVE, NOT AS THEY TYPE, and that is the decision rather than
+     * an implementation detail. A number cannot be recognised until it is
+     * finished: "+44 20" and "(202) " begin identically as far as the third
+     * keystroke, so an as-you-type formatter has to guess at every character
+     * and then take its guess back. It also has to put the caret somewhere
+     * after rewriting the value, which is where that pattern goes wrong on
+     * phones and with a screen reader. Formatting once, server side, when the
+     * value is complete, means the visitor types whatever they type and nothing
+     * moves under them. It also covers every path into the table rather than
+     * only the one that runs this script.
+     *
+     * NOTHING IS EVER REJECTED. This returns the original string unchanged
+     * whenever it is not certain, which is every international number, every
+     * country code (a leading 1 included), every extension, and anything with a
+     * letter in it. A phone field somebody cannot complete is worse than an
+     * unformatted number, and this function has no failure mode that empties or
+     * refuses the value.
+     *
+     * @param string $raw What they typed.
+     * @return string
+     */
+    public static function format_phone( $raw ) {
+        $raw = trim( (string) $raw );
+        if ( '' === $raw ) {
+            return '';
+        }
+
+        // Anything that is not a digit or one of the four separators Americans
+        // write a local number with means this is not a plain ten-digit number:
+        // a +, an x, "ext", a letter, a slash. Left exactly as entered.
+        if ( preg_match( '/[^0-9 ().\-]/', $raw ) ) {
+            return $raw;
+        }
+
+        $digits = preg_replace( '/\D/', '', $raw );
+        if ( 10 !== strlen( $digits ) ) {
+            // Nine digits is a typo we do not correct, eleven is a country code
+            // in front of one, and both are kept as typed.
+            return $raw;
+        }
+
+        return sprintf( '(%s) %s-%s',
+            substr( $digits, 0, 3 ),
+            substr( $digits, 3, 3 ),
+            substr( $digits, 6 )
+        );
     }
 
     /**
@@ -116,8 +196,18 @@ class SFAF_RSVP {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
 
-        if ( empty( $data['event_id'] ) || empty( $data['name'] ) || empty( $data['email'] ) ) {
-            return array( 'success' => false, 'message' => 'Name and email are required.' );
+        /*
+         * FIRST NAME AND EMAIL. A LAST NAME IS NOT ASKED FOR HERE EITHER.
+         *
+         * The field is optional on the form, so it has to be optional in the
+         * validator: a check that quietly required it would turn "optional"
+         * into an error message somebody cannot get past.
+         */
+        $data['first_name'] = isset( $data['first_name'] ) ? trim( (string) $data['first_name'] ) : '';
+        $data['last_name']  = isset( $data['last_name'] ) ? trim( (string) $data['last_name'] ) : '';
+
+        if ( empty( $data['event_id'] ) || '' === $data['first_name'] || empty( $data['email'] ) ) {
+            return array( 'success' => false, 'message' => 'First name and email are required.' );
         }
 
         if ( ! is_email( $data['email'] ) ) {
@@ -163,18 +253,44 @@ class SFAF_RSVP {
         // generator the reminder ledger uses, and it is the only credential the
         // cancel page accepts: no account, no session, nothing derived from the
         // address.
+        // The phone is punctuated here, once, on the way in. See format_phone()
+        // for why this is on save rather than on the keyboard.
+        $data['phone'] = self::format_phone( $data['phone'] ?? '' );
+
+        // The single string, derived from the pair and written with them. One
+        // writer, so it cannot disagree with the columns it comes from.
+        $data['name'] = trim( $data['first_name'] . ' ' . $data['last_name'] );
+
         $token    = SFAF_Reminders::new_token();
         $inserted = $wpdb->insert( $table, array(
             'event_id'   => $data['event_id'],
             'name'       => $data['name'],
+            'first_name' => $data['first_name'],
+            'last_name'  => $data['last_name'],
             'email'      => $data['email'],
-            'phone'      => $data['phone'] ?? '',
+            'phone'      => $data['phone'],
             'status'     => 'confirmed',
             'token'      => $token,
             'created_at' => current_time( 'mysql' ),
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         if ( $inserted ) {
+            /*
+             * THE COUNT CACHE IS NOW WRONG, AND SOMETHING IS ABOUT TO READ IT.
+             *
+             * sfaf_get_rsvp_count() memoizes for the request, and the capacity
+             * check thirty lines above is a read: on any event WITH a capacity
+             * it stored the pre-insert number. The registration alert then
+             * built its "0 of 12 places taken" from that copy, and so did the
+             * count handed back to the capacity bar on the card. The row that
+             * was just written was the one missing from both.
+             *
+             * Same fault, same remedy, as the cancellation path: forget the
+             * cached number the moment the number moves. Everything after this
+             * line counts the row that was just inserted.
+             */
+            sfaf_clear_rsvp_count_cache( $data['event_id'] );
+
             // The marketing opt-in, if it was ticked. Recorded separately from
             // the RSVP on purpose: they are two different consents, and the
             // RSVP row must never be the evidence for a mailing list.
@@ -188,12 +304,29 @@ class SFAF_RSVP {
             $data['rsvp_id'] = (int) $wpdb->insert_id;
 
             // Fire action for integrations (email, Google Sheets, Pardot, etc.)
+            //
+            // $data CARRIES first_name AND last_name SEPARATELY, which is what
+            // the Salesforce admin was asked for and what a Pardot prospect
+            // record wants. A payload built from this hook takes the two fields
+            // as they were typed rather than splitting a combined string on a
+            // space, which is the operation that turns "Ana Maria Ruiz" into a
+            // wrong surname.
             do_action( 'uc_rsvp_submitted', $wpdb->insert_id, $data );
 
             return array(
-                'success' => true,
-                'message' => 'You are registered! We look forward to seeing you.',
-                'count'   => sfaf_get_rsvp_count( $data['event_id'] ),
+                'success'    => true,
+                'message'    => 'You are registered! We look forward to seeing you.',
+                // FIRST NAME ONLY for the greeting on screen, matching the
+                // confirmation email's "You are registered, Mark."
+                'first_name' => $data['first_name'],
+                'count'      => sfaf_get_rsvp_count( $data['event_id'] ),
+                // The same two add-to-calendar destinations the confirmation
+                // email carries, built by the same two helpers, so the modal
+                // and the email cannot offer different links. Either can be an
+                // empty string for an event with no usable start time, and the
+                // modal draws only what it is given.
+                'gcal'       => sfaf_google_calendar_url( $data['event_id'] ),
+                'ics'        => sfaf_ics_url( $data['event_id'] ),
             );
         }
 
@@ -278,9 +411,14 @@ class SFAF_RSVP {
          * emails cannot disagree about who just registered.
          */
         $person = (object) array(
-            'name'  => isset( $data['name'] ) ? (string) $data['name'] : '',
-            'email' => isset( $data['email'] ) ? (string) $data['email'] : '',
-            'token' => isset( $data['token'] ) ? (string) $data['token'] : '',
+            'name'       => isset( $data['name'] ) ? (string) $data['name'] : '',
+            // Carried separately because the confirmation greets somebody by
+            // their first name and the alert names them in full. Both readings
+            // come off one object, so neither builder has to split a string.
+            'first_name' => isset( $data['first_name'] ) ? (string) $data['first_name'] : '',
+            'last_name'  => isset( $data['last_name'] ) ? (string) $data['last_name'] : '',
+            'email'      => isset( $data['email'] ) ? (string) $data['email'] : '',
+            'token'      => isset( $data['token'] ) ? (string) $data['token'] : '',
         );
 
         /*
@@ -364,9 +502,18 @@ class SFAF_RSVP {
             $params[] = $args['status'];
         }
 
+        /*
+         * SEARCH REACHES BOTH HALVES OF THE NAME, AND THE JOINED FORM TOO.
+         *
+         * Typing "Ruiz" has to find somebody whose surname it is, and typing
+         * "Ana Ruiz" has to find them as well, which only the derived `name`
+         * column can answer. Three columns, one term.
+         */
         if ( ! empty( $args['search'] ) ) {
-            $where .= " AND (r.name LIKE %s OR r.email LIKE %s)";
+            $where .= " AND (r.first_name LIKE %s OR r.last_name LIKE %s OR r.name LIKE %s OR r.email LIKE %s)";
             $search = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+            $params[] = $search;
+            $params[] = $search;
             $params[] = $search;
             $params[] = $search;
         }
@@ -441,14 +588,24 @@ class SFAF_RSVP {
         header( 'Content-Type: text/csv' );
         header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 
+        /*
+         * TWO NAME COLUMNS, NEVER ONE COMBINED.
+         *
+         * The file is opened in a spreadsheet and pasted into Salesforce, where
+         * first and last are two fields. A single column makes somebody split
+         * it by hand, on a space, which gets "Ana Maria Ruiz" and "van Dijk"
+         * wrong every time. The columns are what was stored, so nothing here
+         * has to guess.
+         */
         $output = fopen( 'php://output', 'w' );
-        fputcsv( $output, array( 'Event', 'Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
+        fputcsv( $output, array( 'Event', 'First Name', 'Last Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
 
         foreach ( $rsvps as $rsvp ) {
             $event_title = self::event_label( $rsvp );
             fputcsv( $output, array(
                 $this->csv_escape( $event_title ),
-                $this->csv_escape( $rsvp->name ),
+                $this->csv_escape( $rsvp->first_name ),
+                $this->csv_escape( $rsvp->last_name ),
                 $this->csv_escape( $rsvp->email ),
                 $this->csv_escape( $rsvp->phone ),
                 $this->csv_escape( $rsvp->status ),
