@@ -136,9 +136,13 @@ class SFAF_Teams {
      * (an account that lost its calendar role, or one added before it had one)
      * has no checkbox and would be dropped by the next save of an unrelated
      * field. $offered is how a caller says which ids its form actually
-     * offered: anything stored outside that set is kept. Pass null when the
-     * caller genuinely knows the whole membership, which add_member() and
-     * remove_member() do.
+     * offered: anything stored outside that set is kept. Pass null only when
+     * the caller genuinely knows the whole membership.
+     *
+     * NOTHING PASSES NULL ANY MORE. The two callers that did, add_member() and
+     * remove_member(), were removed in 3.28.0 as uncalled. The parameter stays
+     * because the distinction is real and a future caller may hold the whole
+     * list, but null is now the exception rather than a documented normal case.
      *
      * @param string     $id      Existing id, or '' to create.
      * @param string     $name
@@ -205,49 +209,22 @@ class SFAF_Teams {
         return $id;
     }
 
-    /**
-     * Add a user to a team.
+    /*
+     * add_member() AND remove_member() REMOVED IN 3.28.0. Neither was ever
+     * called, and removing them is not just tidying.
      *
-     * @param string $id
-     * @param int    $user_id
-     * @return bool Whether anything changed.
+     * They were a single-user API over a whole-membership store, and save()
+     * exists precisely because that shape is unsafe here: a form may only speak
+     * for the ids it actually showed, which is the $offered guarantee described
+     * on save() below. Both of these read the current membership, changed one
+     * entry and wrote the whole array back, so either would have been the exact
+     * lost-update the guarantee was written to prevent if it had ever been
+     * called from a screen that did not show every member.
+     *
+     * "Remove them from every event" is still true and still costs nothing: no
+     * event stores a person, only a team id, so membership is resolved at send
+     * time. That fact moved to the note on notify_entries().
      */
-    public static function add_member( $id, $user_id ) {
-        $team = self::get( $id );
-        if ( ! $team || (int) $user_id <= 0 ) {
-            return false;
-        }
-        if ( in_array( (int) $user_id, $team['users'], true ) ) {
-            return false;
-        }
-        $team['users'][] = (int) $user_id;
-        self::save( $team['id'], $team['name'], $team['users'] );
-        return true;
-    }
-
-    /**
-     * Take a user out of a team.
-     *
-     * THIS IS THE WHOLE OF "REMOVE THEM FROM EVERY EVENT". Nothing else has to
-     * happen and no event is touched, because no event ever stored them.
-     *
-     * @param string $id
-     * @param int    $user_id
-     * @return bool Whether anything changed.
-     */
-    public static function remove_member( $id, $user_id ) {
-        $team = self::get( $id );
-        if ( ! $team ) {
-            return false;
-        }
-        $before = $team['users'];
-        $after  = array_values( array_diff( $before, array( (int) $user_id ) ) );
-        if ( $after === $before ) {
-            return false;
-        }
-        self::save( $team['id'], $team['name'], $after );
-        return true;
-    }
 
     /**
      * Delete a team, refusing while any event names it.

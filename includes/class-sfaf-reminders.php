@@ -807,13 +807,8 @@ class SFAF_Reminders {
         ) );
     }
 
-    /** The most recent ledger rows across all events. */
-    public static function recent( $limit = 100 ) {
-        global $wpdb;
-        $table = self::table();
-        return $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM $table ORDER BY id DESC LIMIT %d",
-            (int) $limit
-        ) );
-    }
+    /* recent() removed in 3.28.0: never called. It read the ledger across every
+       event, and the screen that would have shown that (the flat all-events
+       RSVP list) was retired in 3.5.0. for_event() above is the one that is
+       used, and it is the question anybody actually asks. */
 }

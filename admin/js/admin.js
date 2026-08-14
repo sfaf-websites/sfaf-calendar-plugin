@@ -7,7 +7,6 @@
     $(document).ready(function() {
         initColorPickers();
         initLogoUploader();
-        initSeriesImage();
         initRepeaters();
         initFaqSetPicker();
         initGofundmeAutofill();
@@ -93,31 +92,19 @@
         });
     }
 
-    /**
-     * Series image media picker (Series Manager edit screen)
+    /*
+     * initSeriesImage() REMOVED IN 3.28.0.
+     *
+     * It was the media picker for the series image on the WordPress Series
+     * Manager, and that screen went in 3.27.0. Both handlers were delegated off
+     * document, so they could never fire and never threw; they simply waited
+     * for markup that no longer exists.
+     *
+     * A series image is set on Series & Categories in /caladmin, which has its
+     * own picker in portal.js. The WordPress term screen restored in 3.27.1 is
+     * a name, slug and description fallback and deliberately does not offer
+     * one.
      */
-    function initSeriesImage() {
-        var frame;
-        $(document).on('click', '.uc-series-upload-image', function(e) {
-            e.preventDefault();
-            if (typeof wp === 'undefined' || !wp.media) { return; }
-            if (frame) { frame.open(); return; }
-            frame = wp.media({ title: 'Series Image', button: { text: 'Use this image' }, multiple: false });
-            frame.on('select', function() {
-                var a = frame.state().get('selection').first().toJSON();
-                $('#uc_series_image_id').val(a.id);
-                var src = (a.sizes && a.sizes.medium) ? a.sizes.medium.url : a.url;
-                $('#uc_series_image_preview').html('<img src="' + src + '" alt="" />');
-            });
-            frame.open();
-        });
-        $(document).on('click', '.uc-series-remove-image', function(e) {
-            e.preventDefault();
-            $('#uc_series_image_id').val('');
-            $('#uc_series_image_url').val('');
-            $('#uc_series_image_preview').empty();
-        });
-    }
 
     /**
      * Repeater rows (GoFundMe + Pardot campaign managers)

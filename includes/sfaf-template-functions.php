@@ -586,8 +586,24 @@ function sfaf_reminders_button( $post_id ) {
         return '';
     }
 
-    // In an embed the modal can't submit cross-origin, so this becomes a link to
-    // the event page where the form works — see the embed context notes above.
+    /*
+     * In an embed the modal cannot submit cross-origin, so this becomes a link
+     * to the event page where the form works. See the embed context notes above.
+     *
+     * UNREACHABLE TODAY, AND KEPT ON PURPOSE. DO NOT DELETE IN A CLEANUP.
+     *
+     * This function is called only from templates/single-uc_event.php, and
+     * SFAF_Embed::build_payload() renders the month grid, the card list or the
+     * calendar block and never that template. So sfaf_is_embed_context() is
+     * always false here and this branch never runs.
+     *
+     * It is a guard against a change that has not happened yet rather than a
+     * leftover from one that has. The day anything renders a single event into
+     * an embed payload, this is what stops the modal being offered on a page
+     * that cannot post to admin-ajax. The same is true of the identical branch
+     * in sfaf_rsvp_block() and of sfaf_add_to_calendar(): all three are dead for
+     * exactly this one reason, and all three become live together.
+     */
     if ( sfaf_is_embed_context() ) {
         return '<a class="uc-reminder-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">'
             . sfaf_icon( 'bell' ) . ' Get Reminders</a>';
@@ -621,6 +637,9 @@ function sfaf_rsvp_block( $post_id ) {
     // In an embed the modal cannot post cross-origin, so the control becomes a
     // link to the event page where the form works. Same button family either
     // way: the difference is the element, never the appearance.
+    //
+    // UNREACHABLE TODAY AND KEPT ON PURPOSE, for the reason set out in full on
+    // sfaf_reminders_button() above. Do not delete in a cleanup.
     $button = sfaf_is_embed_context()
         ? sfaf_action_button( array(
             'label'   => 'RSVP',

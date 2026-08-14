@@ -252,6 +252,21 @@ class SFAF_Series {
      * with somebody's old parent post ID is a far cheaper thing to be wrong
      * about than a live embed silently changing what it shows.
      *
+     * THE LEGACY BRANCH BELOW FINDS NOTHING TODAY, AND IS KEPT ON PURPOSE. DO
+     * NOT DELETE IT, OR META_LEGACY_ID, IN A CLEANUP.
+     *
+     * Only the 3.0.0 migration ever wrote that term meta, and it was never run
+     * before being removed in 3.27.0, so no term on this install carries one and
+     * the get_terms() call below always comes back empty. That is the correct
+     * behaviour rather than a fault: resolve() then falls through to the term ID
+     * and answers correctly.
+     *
+     * It stays because it is a CONTRACT with markup this plugin does not
+     * control. Every [sfaf_calendar] shortcode and embed snippet published
+     * before 3.0.0 addresses a series by its old parent post ID, that code is on
+     * pages nobody is going to regenerate, and this branch is the only thing
+     * that would make those snippets resolve if such a database ever arrives.
+     *
      * @param int $id
      * @return int Series term ID, or 0 when nothing matches.
      */
@@ -449,18 +464,8 @@ class SFAF_Series {
         return (string) get_post_meta( $ids[0], '_uc_event_date', true );
     }
 
-    /**
-     * Total events in a series, any status, upcoming or past.
-     *
-     * @param int $term_id
-     * @return int
-     */
-    public static function total_count( $term_id ) {
-        return count( self::events( $term_id, array(
-            'status' => self::editable_statuses(),
-            'limit'  => -1,
-        ) ) );
-    }
+    /* total_count() removed in 3.28.0: never called. Every screen that counts a
+       series counts what it is already listing, or asks upcoming_count(). */
 
     /* =====================================================================
      * Writing

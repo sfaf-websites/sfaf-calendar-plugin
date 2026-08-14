@@ -355,15 +355,17 @@ class SFAF_FAQ_Sets {
         return SFAF_Series::default_faq_set( $term_id );
     }
 
-    /**
-     * Choose (or clear) the set a series applies to new events.
-     *
-     * @param int    $term_id
-     * @param string $set_id '' to clear.
-     */
-    public static function set_series_default( $term_id, $set_id ) {
-        SFAF_Series::update_faq_set( $term_id, $set_id );
-    }
+    /* set_series_default() removed in 3.28.0: never called. series_default()
+       above is the read side and IS used, so the pair was only ever half a
+       pair.
+
+       IT LEAVES SFAF_Series::update_faq_set() ORPHANED, which is worth knowing
+       rather than assuming. This was a pass-through to it, and it was that
+       method's only caller; the series editor saves the FAQ set through
+       SFAF_Series::update(), which writes every field at once. So update_faq_set()
+       is now uncalled too. It is NOT removed here, because it was not on the
+       approved list for this build and a deletion nobody reviewed is how a
+       one-line cleanup turns into a surprise. Flagged for the next pass. */
 
     /**
      * Apply a series' default set to an event just created into it.

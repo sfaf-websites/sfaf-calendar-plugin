@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.27.1
+ * Version: 3.28.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.27.1' );
+define( 'SFAF_VERSION', '3.28.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -35,6 +35,13 @@ define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
  * otherwise white-screen the entire site on every request (which is exactly
  * what forced a folder rename in the field). Instead we catch it, switch the
  * plugin off, and tell the admin what happened.
+ *
+ * NEVER RUNS IN NORMAL OPERATION, AND KEPT ON PURPOSE. DO NOT DELETE THIS OR
+ * sfaf_render_fatal_notice() IN A CLEANUP. A sweep for uncalled code will not
+ * flag them, because both are hooked, but a sweep for "has this ever executed"
+ * would: the only thing that calls sfaf_fail_safe() is the catch block around
+ * the includes, and that has never caught anything. The release it exists for
+ * is the one where it does.
  *
  * @param string $context Where the failure happened, for the notice.
  * @param string $message The error message.
@@ -132,6 +139,10 @@ function sfaf_init() {
     // Split any venue address still held as one line into street, city, state
     // and ZIP. Adds only, never overwrites, and a no-op once done.
     SFAF_Venues::migrate_addresses();
+
+    // Retire any satellite API key left from setup. Runs once, then costs one
+    // autoloaded option read. Same pattern as the two above.
+    sfaf_retire_satellite_key();
 
     // Tables, for the install that was updated by overwriting the folder.
     sfaf_maybe_install_tables();
@@ -683,6 +694,20 @@ function sfaf_install_tables() {
  * address already present and the switch already recorded.
  */
 function sfaf_migrate_notification_lists() {
+    /*
+     * A PERMANENT NO-OP ON THIS INSTALL, AND KEPT ON PURPOSE. DO NOT DELETE.
+     *
+     * Nothing has written _uc_organizer_email or _uc_notify_organizer since
+     * 3.25.0 removed the controls, so on a site already past that release this
+     * query matches nothing and always will. That makes it look like dead code
+     * in a sweep, and it is not: it is the upgrade path for any site still
+     * BELOW 3.25.0, where those two fields are the only record of who was being
+     * told about a registration. Deleting it would mean such a site upgrading
+     * straight past the migration and silently losing its notification list.
+     *
+     * These are also the only two reads of that meta left in the plugin, which
+     * is why a "read but never written" scan surfaces them.
+     */
     $ids = get_posts( array(
         'post_type'      => 'uc_event',
         'post_status'    => 'any',
@@ -728,7 +753,45 @@ function sfaf_migrate_notification_lists() {
         }
     }
 
-    update_option( 'sfaf_notify_merge_moved', (int) $moved, false );
+    /*
+     * NO sfaf_notify_merge_moved BREADCRUMB. It recorded how many events this
+     * moved, in an option nothing ever read, and it was write-only from the day
+     * it was added. Removed in 3.28.0. The evidence for what this did is the
+     * legacy meta, which is still on every event it touched and is the thing
+     * somebody would actually look at.
+     */
+    unset( $moved );
+}
+
+/**
+ * Retire any stored satellite API key, once.
+ *
+ * WHY THIS IS A WRITE AND NOT A NOTE. The satellite feed is dormant (see
+ * SFAF_Sync). Dormant has to mean an old credential is worthless, not merely
+ * unused, because a key generated during setup and pasted into a satellite that
+ * no longer exists is a live credential nobody is tracking. Clearing it is the
+ * only way to be sure of that from here.
+ *
+ * IT IS SAFE ONLY BECAUSE THE GATE WAS INVERTED IN THE SAME RELEASE. Until
+ * 3.28.0 an empty key meant the feed was OPEN, so this exact write would have
+ * published the events feed to the world. sfaf_rest_events_permission() now
+ * refuses an empty key, so clearing it closes the feed rather than opening it.
+ * The two changes are one change and must not be separated.
+ *
+ * ONCE, AND ONLY ONCE. Keyed on its own option, so an administrator who
+ * deliberately generates a new key later keeps it: this runs on the upgrade to
+ * 3.28.0 and never again.
+ */
+function sfaf_retire_satellite_key() {
+    if ( get_option( 'sfaf_satellite_key_retired' ) ) {
+        return;
+    }
+    // Recorded before the clear, so an interrupted run cannot repeat it.
+    update_option( 'sfaf_satellite_key_retired', '1', false );
+
+    if ( '' !== (string) SFAF_Credentials::get( 'multisite_api_key' ) ) {
+        SFAF_Credentials::set( 'multisite_api_key', '' );
+    }
 }
 
 /**
@@ -757,7 +820,27 @@ function sfaf_deactivate() {
 register_deactivation_hook( __FILE__, 'sfaf_deactivate' );
 
 /**
- * Register REST API routes
+ * Register REST API routes.
+ *
+ * ONE ROUTE HERE. /events is the DORMANT satellite feed, see the note on
+ * SFAF_Sync. The embed has its own route and registers it itself, in
+ * SFAF_Embed::REST_ROUTE, so nothing on this line serves a public page.
+ *
+ * THE /rsvp ROUTE WAS REMOVED IN 3.28.0, and it is worth saying why rather than
+ * simply not being here. It was a POST with permission_callback =>
+ * '__return_true', which is an unauthenticated public write, and nothing had
+ * ever called it: it was built so a satellite site could post registrations
+ * back. It had also been BROKEN since 3.26.0, because it passed 'name' where
+ * submit() requires 'first_name', so every call it ever received would have
+ * returned "First name and email are required". That is the proof nobody called
+ * it, and it is not the reason it went.
+ *
+ * It went because it is the fourth thing found behind the wrong gate on this
+ * project, after the ungated RSVP screen, the dashboard leaking registrant
+ * names, and the uc_export_rsvps endpoint. A public write path that nothing
+ * uses is not made safe by being broken; it is made safe by not existing. The
+ * registration path that remains is admin-ajax uc_submit_rsvp, which checks a
+ * nonce.
  */
 function sfaf_register_rest_routes() {
     register_rest_route( 'sfaf-calendar/v1', '/events', array(
@@ -765,23 +848,40 @@ function sfaf_register_rest_routes() {
         'callback'            => 'sfaf_rest_get_events',
         'permission_callback' => 'sfaf_rest_events_permission',
     ) );
-    register_rest_route( 'sfaf-calendar/v1', '/rsvp', array(
-        'methods'             => 'POST',
-        'callback'            => 'sfaf_rest_submit_rsvp',
-        'permission_callback' => '__return_true',
-    ) );
 }
 add_action( 'rest_api_init', 'sfaf_register_rest_routes' );
 
 /**
- * Permission for the public events feed. If an API key has been generated it
- * must be supplied via the X-SFAF-API-Key header (satellites send it); if no
- * key is configured the feed is open so it works out of the box.
+ * Permission for the satellite events feed.
+ *
+ * NO KEY NOW MEANS CLOSED. THIS REVERSES THE ORIGINAL DEFAULT, DELIBERATELY.
+ *
+ * It used to read: no key configured, feed open, "so it works out of the box".
+ * That was a reasonable default for a feature somebody was setting up. It is
+ * the wrong default for a feature nobody is using, and it is exactly backwards
+ * from the reason the key was cleared in 3.28.0: an empty key was the state
+ * that made the feed answer EVERYONE rather than nobody, so clearing the key to
+ * retire an old credential would have thrown the door open instead of shutting
+ * it.
+ *
+ * Dormant has to mean nothing answers. So the two states are now:
+ *
+ *   no key stored     403. The feature is off. This is the shipped state.
+ *   a key stored      the X-SFAF-API-Key header must match it.
+ *
+ * TURNING IT BACK ON IS STILL ONE ACTION: generate a key on Events > Settings >
+ * Multisite and paste it into each satellite, which is what the setup was
+ * always going to be. Nothing else about the feed changed, and SFAF_Sync is
+ * untouched. See the header note there.
  */
 function sfaf_rest_events_permission( $request ) {
     $key = SFAF_Credentials::get( 'multisite_api_key' );
-    if ( $key === '' ) {
-        return true;
+    if ( '' === $key ) {
+        return new WP_Error(
+            'sfaf_feed_off',
+            'The events feed is switched off. An administrator can turn it on by generating a key under Events, Settings, Multisite.',
+            array( 'status' => 403 )
+        );
     }
     $provided = (string) $request->get_header( 'x_sfaf_api_key' );
     if ( $provided && hash_equals( $key, $provided ) ) {
@@ -837,22 +937,6 @@ function sfaf_rest_get_events( $request ) {
         'events' => $events,
         'total'  => $query->found_posts,
     ), 200 );
-}
-
-/**
- * REST: Submit RSVP
- */
-function sfaf_rest_submit_rsvp( $request ) {
-    $rsvp = new SFAF_RSVP();
-    $result = $rsvp->submit( array(
-        'event_id' => intval( $request->get_param( 'event_id' ) ),
-        'name'     => sanitize_text_field( $request->get_param( 'name' ) ),
-        'email'    => sanitize_email( $request->get_param( 'email' ) ),
-        'phone'    => sanitize_text_field( $request->get_param( 'phone' ) ),
-        // Absent means no. Consent has to arrive explicitly.
-        'optin'    => (bool) $request->get_param( 'optin' ),
-    ) );
-    return new WP_REST_Response( $result, $result['success'] ? 200 : 400 );
 }
 
 /**

@@ -128,10 +128,9 @@ class SFAF_Embed {
         return SFAF_PLUGIN_URL . 'public/css/calendar.css?ver=' . SFAF_VERSION;
     }
 
-    /** URL of the embed endpoint itself. */
-    public static function endpoint_url() {
-        return rest_url( self::REST_NAMESPACE . self::REST_ROUTE );
-    }
+    /* endpoint_url() removed in 3.28.0: never called. embed.js builds the two
+       URLs it tries for itself, because it has to work from a remote page that
+       cannot ask this plugin anything. */
 
     /** Where to send a visitor when an embed can't load: the calendar here. */
     public static function calendar_url() {

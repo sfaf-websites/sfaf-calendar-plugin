@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.27.1
+Stable tag: 3.28.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -30,7 +30,7 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * Per-event display toggles, per-event email switches, and confirmation copy overrides
 * Category filter buttons and search on the public calendar
 * Shortcode generator and branding controls (logo, colors, card style)
-* REST API for multi-site event sync
+* REST API for multi-site event sync (dormant, see below)
 * Integration panels for GoFundMe Pro, Eventbrite, Pardot/Salesforce, Google Calendar, Galaxy Digital, and Webhooks
 * CSV export of RSVPs (compatible with Google Sheets import)
 * Responsive, modern UI
@@ -48,6 +48,31 @@ and this one gets used about twice a year, but the page is still registered and
 still works. It is at:
 
 `/wp-admin/edit.php?post_type=uc_event&page=uc-shortcode-generator`
+
+== The multi-site events feed is dormant ==
+
+**Unused as of August 14, 2026, and kept deliberately.** No satellite site is
+pulling from this feed and none is planned: SFAF's other sites are on Teal
+Media's managed platform. The code is retained on purpose for the case where
+that stops being true, because rebuilding it later costs far more than keeping
+it, and it is self-contained enough to cost nothing while it sits there.
+
+**Do not remove it in a cleanup.** It is marked dormant rather than dead in
+`includes/class-sfaf-sync.php` for exactly that reason.
+
+What it is: a read-only `GET /wp-json/sfaf-calendar/v1/events` feed, plus the
+API key that gates it, consumed by the separate SFAF Calendar Satellite plugin.
+It is **not** the route the embed uses, which is `/sfaf-calendar/v1/embed`, so
+the two cannot affect each other.
+
+**It is switched off, not merely idle, and that changed in 3.28.0.** The feed
+used to treat "no key configured" as open, so that it worked out of the box
+during setup. It now treats it as closed and answers 403. Any key stored during
+earlier setup was cleared once on upgrade, so an old credential pasted into a
+satellite that no longer exists is worthless.
+
+**To turn it back on:** generate a key under Events > Settings > Multisite and
+paste it into each satellite. That is all of it.
 
 == If the calendar portal is down ==
 
@@ -348,6 +373,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.28.0 =
+
+**The public RSVP REST endpoint is gone.** `POST /sfaf-calendar/v1/rsvp` had `permission_callback => '__return_true'`, which is an unauthenticated public write, and nothing had ever called it: it was built so a satellite site could post registrations back. It had also been broken since 3.26.0, passing `name` where `submit()` requires `first_name`, so every call it ever received would have been refused. That is the proof nobody called it, not the reason it went. It went because it is the fourth thing found behind the wrong gate on this project, after the ungated RSVP screen, the dashboard leaking registrant names and the `uc_export_rsvps` export, and a public write path that nothing uses is not made safe by being broken. Registrations still go through admin-ajax `uc_submit_rsvp`, which checks a nonce.
+
+**Removed, all confirmed uncalled first:** `SFAF_Teams::add_member()` and `remove_member()`; `SFAF_Embed::endpoint_url()`; `SFAF_Series::total_count()`; `SFAF_FAQ_Sets::set_series_default()`; `SFAF_Reminders::recent()`; the `satellite_sites` branch in the settings sanitizer, which had been sanitizing a value no field could produce since before 2.0; the write-only `sfaf_notify_merge_moved` option; the `initSeriesImage()` handlers in `admin.js`, which waited for markup the 3.27.0 screen removals took away; and the `admin.css` rules for `.uc-status`, `.uc-status-confirmed`, `.uc-status-cancelled`, `.uc-status-waitlist`, `.uc-status-subscribed`, `.uc-rsvp-count-bar`, `.uc-rsvp-search`, `.uc-search-input` and `.uc-series-flag`.
+
+The two Teams methods are worth a note. They were a single-user API over a whole-membership store, and `save()` exists precisely because that shape is unsafe here: a form may only speak for the ids it actually showed. Both read the membership, changed one entry and wrote the array back, which is the lost update the `$offered` guarantee was written to prevent.
+
+**The multi-site events feed is marked dormant, not dead, and is kept on purpose.** See the new section above. It is unused as of August 14, 2026, retained for a possible future without a managed host, and it now answers nobody rather than everybody.
+
+**That last part is a reversal.** The feed used to treat "no key configured" as open, so it worked out of the box during setup. That is the wrong default for a feature nobody uses, and it was actively dangerous in combination with retiring the stored key: clearing a credential would have thrown the feed open to the world rather than shutting it. So the gate is inverted, no key means 403, and a one-time upgrade step clears any key left from setup. The two changes are one change and must not be separated.
+
+**Four things that look dead and are not, now say so in the code** so the next sweep does not surface them: the `sfaf_is_embed_context()` branches in `sfaf_reminders_button()`, `sfaf_rsvp_block()` and `sfaf_add_to_calendar()`, all three unreachable only because the embed never renders the single event template and all three live again the moment it does; the legacy meta reads in `sfaf_migrate_notification_lists()`, a permanent no-op here but the upgrade path for any site still below 3.25.0; the legacy branch of `SFAF_Series::resolve()` and `META_LEGACY_ID`, which are a contract with embed snippets published before 3.0.0; and `sfaf_fail_safe()`, which has never caught anything and exists for the release where it does.
 
 = 3.27.1 =
 

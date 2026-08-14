@@ -919,10 +919,16 @@ class SFAF_Admin {
             }
         }
 
-        // Satellite sites (stored as JSON).
-        if ( isset( $input['satellite_sites'] ) ) {
-            $out['satellite_sites'] = sanitize_text_field( $input['satellite_sites'] );
-        }
+        /*
+         * NO satellite_sites KEY. It was sanitized here and nowhere else: no
+         * field ever rendered it and nothing ever read it, so the branch had
+         * been sanitizing a value that could not arrive since before 2.0.
+         * Removed in 3.28.0.
+         *
+         * This is NOT part of retiring the satellite feed, which is dormant and
+         * deliberately kept. See the header note on SFAF_Sync. multisite_api_key
+         * is the key that feature actually uses, and it is still saved above.
+         */
 
         return $out;
     }
