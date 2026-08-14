@@ -79,6 +79,34 @@ class SFAF_Series {
      *
      * PUBLIC AND REWRITTEN, because the "Part of series" badge on a public
      * event page now links to the term archive. See sfaf_series_link().
+     *
+     * THE TERM SCREEN IS A FALLBACK, AND ONLY THAT. 3.27.0 left it with
+     * show_ui => false, which meant there was no route to a series outside
+     * /caladmin at all: not a screen, not a URL, nothing. Every other thing an
+     * administrator might need to reach with the portal down has a way in,
+     * which is the whole argument for keeping Calendar Users in the WordPress
+     * admin, and series was the one gap. 3.27.1 opens it.
+     *
+     * THREE FLAGS, AND EACH IS DOING SOMETHING DIFFERENT:
+     *
+     *   show_ui => true          the term screen exists again.
+     *   show_in_menu => false    it is not in the menu. Same treatment as
+     *                            Categories and Organizers: reachable at a URL
+     *                            by somebody who needs it, not an invitation to
+     *                            work there. The URL is in the readme.
+     *   meta_box_cb => false     NO SECOND PICKER ON THE EVENT EDITOR. show_ui
+     *                            would otherwise add WordPress's own series box
+     *                            beside the one SFAF_Post_Types already draws,
+     *                            and two controls over one relationship on one
+     *                            screen is exactly the duplication 3.27.0 spent
+     *                            a release removing. The existing select stays;
+     *                            this suppresses the automatic one.
+     *
+     * WHAT THIS SCREEN CANNOT DO, and it is most of what a series is: the
+     * image, the default FAQ set, the schedule and its pattern, and the events
+     * in the series. A term screen edits a name, a slug and a description.
+     * render_fallback_notice() says so at the top of it rather than leaving
+     * somebody to conclude that a series is those three fields.
      */
     public static function register_taxonomy() {
         register_taxonomy( self::TAXONOMY, 'uc_event', array(
@@ -92,12 +120,43 @@ class SFAF_Series {
             ),
             'hierarchical'      => false,
             'public'            => true,
-            'show_ui'           => false, // managed on the plugin's own Series screen
+            'show_ui'           => true,
             'show_in_menu'      => false,
+            'meta_box_cb'       => false,
             'show_admin_column' => false,
             'rewrite'           => array( 'slug' => 'event-series' ),
             'show_in_rest'      => true,
         ) );
+
+        add_action( 'uc_series_pre_add_form', array( __CLASS__, 'render_fallback_notice' ) );
+        add_action( 'uc_series_pre_edit_form', array( __CLASS__, 'render_fallback_notice' ) );
+    }
+
+    /**
+     * Say what this screen is, at the top of it.
+     *
+     * A BARE TERM SCREEN IS MISLEADING BY OMISSION HERE, which is the reason
+     * this exists. It shows a name, a slug and a description and nothing else,
+     * so it reads as though that is what a series is. A series also carries an
+     * image, a default FAQ set applied to events created into it, a schedule
+     * with a repeat pattern, and the events themselves. None of those appear
+     * here, and none of them are lost by editing here either: the fields this
+     * screen does not draw are simply not touched by it.
+     *
+     * The one thing it can do that matters in an emergency is rename a series,
+     * fix a slug, and delete one. That is what it is for.
+     *
+     * NOT A WARNING, AND NOT AN APOLOGY. It says what the screen does and where
+     * the rest is, which is what a person arriving here needs.
+     */
+    public static function render_fallback_notice() {
+        printf(
+            '<div class="notice notice-info inline"><p><strong>This is the fallback screen.</strong> '
+            . 'It edits a series name, slug and description. The image, the default FAQ set, the schedule and '
+            . 'the events in the series are on <a href="%s">Series &amp; Categories</a> in the calendar portal, '
+            . 'which is where series are normally managed.</p></div>',
+            esc_url( SFAF_Portal::link( 'series' ) )
+        );
     }
 
     /* =====================================================================

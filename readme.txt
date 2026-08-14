@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.27.0
+Stable tag: 3.27.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -48,6 +48,28 @@ and this one gets used about twice a year, but the page is still registered and
 still works. It is at:
 
 `/wp-admin/edit.php?post_type=uc_event&page=uc-shortcode-generator`
+
+== If the calendar portal is down ==
+
+Event management lives at `/caladmin`. These are the routes that do not need it
+to be working, for the case where it is not:
+
+* **Access, roles and teams**: Events > Calendar Users. This is why that screen
+  is in the WordPress admin and it is the first place to go when somebody cannot
+  get into the portal.
+* **Settings and credentials**: Events > Settings.
+* **The scheduled runner and the test send**: Events > Automation.
+* **Events themselves**: the ordinary WordPress Events list and editor.
+* **Series**: unlisted, at
+  `/wp-admin/edit.php?taxonomy=uc_series&post_type=uc_event`. It renames a
+  series, fixes a slug and deletes one. It cannot show the image, the default
+  FAQ set, the schedule or the events in the series, and it says so at the top
+  of itself.
+* **Categories and Organizers**: unlisted, at the same URL shape with
+  `taxonomy=uc_event_category` or `taxonomy=uc_organizer`.
+
+Venues, FAQ sets, email opt-ins, the registration list and the import review
+queue have no WordPress route and are reachable only through the portal.
 
 == Event Images ==
 
@@ -326,6 +348,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.27.1 =
+
+**Series has a WordPress fallback screen again.** 3.27.0 left `uc_series` with `show_ui => false`, which meant there was no route to a series outside the portal at all: not a screen, not a URL, nothing. Every other thing an administrator might need to reach with the portal down has a way in, which is the whole argument for keeping Calendar Users in the WordPress admin, and series was the one gap. The term screen is back at `/wp-admin/edit.php?taxonomy=uc_series&post_type=uc_event`.
+
+**It is unlisted, and it adds no second picker.** `show_in_menu => false` keeps it out of the menu, the same treatment Categories and Organizers get, so it is reachable by somebody who needs it rather than an invitation to work there. `meta_box_cb => false` suppresses the taxonomy box WordPress would otherwise add to the event editor beside the series select that is already there, because two controls over one relationship on one screen is the duplication 3.27.0 spent a release removing.
+
+**The screen says what it is.** A bare term screen edits a name, a slug and a description, and a series also carries an image, a default FAQ set applied to events created into it, a schedule with a repeat pattern, and the events themselves. Left unexplained it reads as though a series is those three fields, so a notice at the top of the add and edit forms says what the screen does and links to Series & Categories in the portal. Editing here does not lose the fields it cannot draw; it simply does not touch them.
+
+`.claude/admin-menu-test.php` now loads the real `SFAF_Series::register_taxonomy()` rather than a stub and asserts all three flags, because each undoes a different half of this: `show_ui` takes the screen away again, `show_in_menu` puts Series back in a menu a whole release removed it from, and dropping `meta_box_cb` gives the event editor two series controls.
 
 = 3.27.0 =
 

@@ -62,14 +62,14 @@ function register_post_type( $type, $args = array() ) {}
 function add_action( $hook, $cb, $priority = 10, $args = 1 ) {}
 function add_meta_box( $id, $title, $cb, $screen = null, $context = 'advanced', $priority = 'default', $args = null ) {}
 
-/* SFAF_Series registers the series taxonomy from inside register_taxonomies(). */
-class SFAF_Series {
-    const TAXONOMY = 'uc_series';
-    public static function register_taxonomy() {
-        register_taxonomy( self::TAXONOMY, 'uc_event', array( 'show_ui' => false, 'show_in_menu' => false ) );
-    }
-}
-
+/*
+ * THE REAL SFAF_Series, not a stub. register_taxonomies() calls its
+ * register_taxonomy(), and since 3.27.1 that method sets three flags that have
+ * to be asserted rather than imagined. A stub here would have asserted the
+ * stub. Nothing else in that file runs: render_fallback_notice() is registered
+ * on a hook, never called, so SFAF_Portal is not needed.
+ */
+require $root . '/includes/class-sfaf-series.php';
 require $root . '/admin/class-sfaf-admin.php';
 require $root . '/includes/class-sfaf-post-types.php';
 
@@ -177,11 +177,39 @@ if ( ! isset( $GLOBALS['taxonomies']['uc_venue']['show_ui'] ) || false !== $GLOB
     $fails[] = 'uc_venue no longer sets show_ui => false, and it is meant to be the stronger case';
 }
 
+/*
+ * SERIES IS THE THIRD SHAPE: a screen that exists, is not in the menu, and does
+ * NOT put a second picker on the event editor.
+ *
+ * 3.27.0 had show_ui => false here, which left no route to a series outside
+ * /caladmin at all. 3.27.1 opened the term screen as a fallback. All three
+ * flags are asserted because each undoes a different half of that:
+ * show_ui => false takes the screen away again, show_in_menu => true puts
+ * Series back in a menu a whole release removed it from, and dropping
+ * meta_box_cb gives the event editor two series controls, which is the
+ * duplication this project keeps having to remove.
+ */
+$series = isset( $GLOBALS['taxonomies']['uc_series'] ) ? $GLOBALS['taxonomies']['uc_series'] : null;
+if ( null === $series ) {
+    $fails[] = 'uc_series is no longer registered at all';
+} else {
+    if ( ! array_key_exists( 'show_ui', $series ) || true !== $series['show_ui'] ) {
+        $fails[] = 'uc_series does not set show_ui => true, so the WordPress fallback screen is gone again';
+    }
+    if ( ! array_key_exists( 'show_in_menu', $series ) || false !== $series['show_in_menu'] ) {
+        $fails[] = 'uc_series does not set show_in_menu => false, so Series is back in the menu';
+    }
+    if ( ! array_key_exists( 'meta_box_cb', $series ) || false !== $series['meta_box_cb'] ) {
+        $fails[] = 'uc_series does not set meta_box_cb => false, so the event editor now has two series pickers';
+    }
+}
+
 echo "WordPress Events menu\n";
 echo 'kept:      ' . implode( ', ', $expected ) . "\n";
 echo 'gone:      ' . implode( ', ', array_values( $forbidden ) ) . "\n";
-echo "checked:   nothing unexpected is in the menu, nothing removed has come back, and the two\n";
-echo "           taxonomies lost show_in_menu without losing show_ui, public, or their metaboxes\n\n";
+echo "checked:   nothing unexpected is in the menu, nothing removed has come back, the two\n";
+echo "           taxonomies lost show_in_menu without losing show_ui, public or their metaboxes,\n";
+echo "           and uc_series has a fallback screen that is unlisted and adds no second picker\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
