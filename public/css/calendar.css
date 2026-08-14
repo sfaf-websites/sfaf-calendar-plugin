@@ -459,6 +459,27 @@
     container-type: inline-size; container-name: uc-calendar; }
 
 /* ---------------------------------------------------------------------------
+   THE MONTH GRID GETS A WIDER CAP THAN THE LIST, AND ONLY THE MONTH GRID.
+
+   900px is the right cap for a column of cards: a card is a line of prose and
+   a longer line is a worse one. A month grid is seven columns of small blocks
+   and the constraint is the opposite, since every pixel of column width is
+   room for the title inside it. At the 900 cap each column was 128px outer and
+   118px of content, which left about 80px for a title once a 32px thumbnail
+   and its gap were taken.
+
+   1200px raises that to 171px outer, 159px of content and about 109px of
+   title. STILL A CAP, NOT A SIZE: max-width never makes a block wider than its
+   parent, so a grid pasted into a 600px column is unaffected and the container
+   queries below still do the narrow work. This only spends room that was
+   already there and was going unused.
+
+   Both views that show a grid, because the combined mode's left half is this
+   same renderer and wants the same room.
+   ------------------------------------------------------------------------ */
+.uc-calendar.uc-view-calendar, .uc-calendar.uc-view-combined { max-width: 1200px; }
+
+/* ---------------------------------------------------------------------------
    Brand typography (p.10). Set explicitly rather than by inheritance: an
    inherited font-family loses to any direct theme rule on h1/h3/p, and form
    controls don't inherit font-family at all.
@@ -1407,6 +1428,36 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 400px; min-width: 0; }
 .uc-calendar .uc-view-panels-combined > .uc-panel-list { flex: 1 1 320px; min-width: 0; }
 
+/* ---------------------------------------------------------------------------
+   EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.
+
+   Every container query in this file names uc-calendar, and until this mode
+   existed that was the same thing as "the width the content has". Side by side
+   it stops being: a 1200px block gives the grid about 628px, so the root would
+   answer "wide" while seven columns were being squeezed into 89px each and
+   every narrow rule stayed switched off.
+
+   Naming the panels uc-calendar as well shadows the root for their own
+   descendants, so the grid's rules measure the grid's column and the list
+   card's rules measure the list's. One name, nearest ancestor wins, and no
+   query anywhere had to be rewritten.
+
+   THE CONTAINMENT TRAP DOES NOT APPLY HERE, and that was checked rather than
+   assumed, because it is the fault this file has been bitten by before.
+   container-type zeroes an element's min-content contribution, which destroys
+   any parent that sizes FROM its contents. These two size from the flex
+   algorithm: line breaking uses flex-basis, which is definite at 400 and 320,
+   and both already carry min-width: 0, so the shrink floor was zero anyway.
+   The 744px changeover is unmoved. Layout containment also makes these
+   containing blocks for absolutely positioned descendants, so that was walked
+   too: .uc-month-loading::after resolves against .uc-month, .uc-month-count::before
+   against .uc-month-count and .uc-addcal-menu against .uc-addcal, all of them
+   position: relative and closer than these panels.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-view-panels-combined > .uc-view-panel {
+    container-type: inline-size; container-name: uc-calendar;
+}
+
 /* The list scrolls inside its own column rather than making the row as tall as
    the longest of the two. Capped at a height that shows several cards; the
    grid is a fixed six rows and the list is not, so without this a month with
@@ -1475,8 +1526,10 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-day-name-min { display: none; }
 
 /* VARIABLE ROW HEIGHT. A minimum, never a maximum: a cell with three events
-   makes its row taller and its whole week grows with it. Nothing truncates. */
-.uc-calendar .uc-month-grid td { vertical-align: top; padding: 4px; border: 1px solid var(--uc-border);
+   makes its row taller and its whole week grows with it. Nothing truncates,
+   there is no cap and there is no "+2 more": every event on a day is in the
+   cell. A busy day makes the grid taller, which is what a busy day is. */
+.uc-calendar .uc-month-grid td { vertical-align: top; padding: 5px; border: 1px solid var(--uc-border);
     height: 92px; width: 14.285%; background: #fff; }
 .uc-calendar .uc-month-grid td:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; }
 
@@ -1490,14 +1543,55 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-day-out .uc-day-num { color: var(--uc-secondary); font-weight: 600; }
 .uc-day-selected { box-shadow: inset 0 0 0 2px var(--uc-teal-text); }
 
-/* Events: small bordered blocks, tight leading, title first then time. */
-.uc-calendar .uc-day-events { display: flex; flex-direction: column; gap: 3px; }
-.uc-calendar .uc-day-event a { display: block; padding: 3px 5px; border: 1px solid var(--uc-border);
-    border-left: 3px solid var(--cat-color, var(--uc-teal)); border-radius: 4px; background: #fff;
-    font-size: 11px; line-height: 1.25; color: var(--uc-text); text-decoration: none; overflow: hidden; }
-.uc-calendar .uc-day-event a:hover { background: var(--uc-bg); border-color: var(--cat-color, var(--uc-teal)); }
-.uc-day-event-title { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.uc-day-event-time { display: block; font-weight: 600; font-size: 10px; color: var(--uc-secondary); }
+/* ---------------------------------------------------------------------------
+   DAY EVENTS: a 32px thumbnail, the title beside it, the time beneath.
+
+   THE ACCENT BAR IS GONE. It was `border-left: 3px solid var(--cat-color)` in
+   the RAW category colour, and six of the ten measure under the 3:1 WCAG asks
+   of a non-text graphic on white: Yellow 1.38, Light Gray 1.50, Green 2.02,
+   Teal 2.26, Orange 2.31, Pink 2.99. The densest category surface in the
+   product was the one where the hues could not be told apart, so the bar was
+   decoration standing in for information it could not carry.
+
+   THE RING IS --cat-ink, the darkened half of sfaf_category_shades() and the
+   same ink the chips use. Lowest of the ten on white is 5.84. Measured by
+   .claude/category-ring-contrast.php, which fails if that changes.
+
+   TWO LINES THEN TRUNCATE, never one. -webkit-line-clamp is the only thing
+   that does this and it is supported everywhere that matters; the fallback
+   without it is a title that simply wraps and makes the row taller, which is
+   the same direction this design already goes in and not a broken layout.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-day-events { display: flex; flex-direction: column; gap: 4px; }
+.uc-calendar .uc-day-event a { display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px; border: 1px solid var(--uc-border); border-radius: 6px; background: #fff;
+    font-size: 11px; line-height: 1.25; color: var(--uc-text); text-decoration: none; }
+.uc-calendar .uc-day-event a:hover { background: var(--uc-bg); border-color: var(--cat-ink, var(--uc-teal-text)); }
+.uc-calendar .uc-day-event a:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 1px; }
+
+/* The thumbnail. flex: 0 0 auto so it never gives up its width to a long
+   title, which is what would turn a 32px mark into a 4px sliver. */
+.uc-calendar .uc-de-thumb { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 7px;
+    overflow: hidden; box-shadow: 0 0 0 2px var(--cat-ink, var(--uc-teal-text)); background: var(--uc-bg);
+    display: block; margin: 1px 1px 0 1px; }
+.uc-calendar .uc-de-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* box-shadow rather than border for the ring: a border would eat into the 32
+   and leave the picture at 28, and an inset ring on top of a photograph reads
+   as a frame rather than a category mark. The 1px margin is the room the ring
+   needs, since a box-shadow is drawn outside the box and is not part of the
+   layout. */
+
+/* The placeholder: the category icon on the category's own tint, no words. A
+   scaled-down version of the list card's tile would put unreadable text in a
+   32px square, which is what a broken image looks like. */
+.uc-calendar .uc-de-thumb-ph { display: flex; align-items: center; justify-content: center;
+    background: var(--cat-media, var(--uc-bg)); color: var(--cat-ink, var(--uc-teal-text)); }
+
+.uc-calendar .uc-day-event-text { min-width: 0; flex: 1 1 auto; }
+.uc-day-event-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; font-weight: 700; overflow-wrap: anywhere; }
+.uc-day-event-time { display: block; margin-top: 1px; font-weight: 600; font-size: 10px; color: var(--uc-secondary); }
 
 /* Dots are the MOBILE treatment. Hidden here on purpose: this rule not
    reaching the embed is what put a stray dot after every date on sfaf.org. */
@@ -1554,6 +1648,29 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
  * out at the viewport copy: a container query changes when a rule applies,
  * never how strongly, and .uc-month-grid td alone at (0,1,1) would lose to the
  * scoped (0,2,1) it is trying to replace. */
+/* ---------------------------------------------------------------------------
+   BELOW 930px THE THUMBNAIL DOES NOT FIT, SO IT GOES RATHER THAN SHRINKS.
+
+   The arithmetic, per column: the thumbnail and its gap take 40px, the entry's
+   own border and padding 10, and the cell's 12. A column narrower than about
+   132px outer therefore leaves under 70px of title, which is four or five
+   characters a line, and seven of those columns is a 930px grid.
+
+   A SMALLER THUMBNAIL WAS THE OTHER OPTION AND IS WORSE. At 20px the category
+   icon inside the placeholder stops being legible and the ring stops being a
+   ring, so the mark would still be there and would no longer say anything,
+   which is the accent bar's fault again in a different shape. Dropping it
+   leaves a title and a time, which is what this cell showed for its whole life
+   before this release and is honest at that width.
+
+   The category is not lost: the day panel below the grid on a phone shows the
+   full entry, thumbnail included, and the entry still links to the event.
+   ------------------------------------------------------------------------ */
+@container uc-calendar (max-width: 930px) {
+    .uc-calendar .uc-day-events .uc-de-thumb { display: none; }
+    .uc-calendar .uc-day-event a { gap: 0; }
+}
+
 @container uc-calendar (max-width: 560px) {
     .uc-calendar .uc-month-grid td { height: auto; min-height: 44px; padding: 4px 2px; text-align: center; }
     .uc-calendar .uc-month-grid th { padding: 6px 2px; letter-spacing: 0; }
@@ -1570,7 +1687,13 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
     .uc-calendar .uc-day-panel-empty { margin: 0; font-size: 13px; color: var(--uc-secondary); }
     .uc-calendar .uc-month-day-panel .uc-day-events { display: flex; gap: 6px; }
     .uc-calendar .uc-month-day-panel .uc-day-event a { padding: 10px 12px; font-size: 14px; text-align: left; }
-    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; }
+    /* THE THUMBNAIL COMES BACK HERE. The panel is full width and is the whole
+       reason the grid is allowed to collapse to dots at this size, so it shows
+       the entry in full: the rule above hides the thumbnail in a 40px cell, and
+       this is not one. -webkit-line-clamp comes off too, because there is room
+       for the whole title. */
+    .uc-calendar .uc-month-day-panel .uc-de-thumb { display: block; }
+    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; -webkit-line-clamp: none; display: block; }
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
     .uc-month-head { align-items: flex-start; }
@@ -2060,7 +2183,13 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
     .uc-calendar .uc-day-panel-empty { margin: 0; font-size: 13px; color: var(--uc-secondary); }
     .uc-calendar .uc-month-day-panel .uc-day-events { display: flex; gap: 6px; }
     .uc-calendar .uc-month-day-panel .uc-day-event a { padding: 10px 12px; font-size: 14px; text-align: left; }
-    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; }
+    /* THE THUMBNAIL COMES BACK HERE. The panel is full width and is the whole
+       reason the grid is allowed to collapse to dots at this size, so it shows
+       the entry in full: the rule above hides the thumbnail in a 40px cell, and
+       this is not one. -webkit-line-clamp comes off too, because there is room
+       for the whole title. */
+    .uc-calendar .uc-month-day-panel .uc-de-thumb { display: block; }
+    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; -webkit-line-clamp: none; display: block; }
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
     .uc-month-head { align-items: flex-start; }

@@ -206,6 +206,97 @@ check(
     'the list panel has no min-width: 0'
 );
 
+/* =========================================================================
+ * THE MONTH GRID CARD
+ *
+ * The accent bar is gone and a 32px thumbnail with a category ring replaced
+ * it. The numbers the readme publishes for cell and title width are computed
+ * here from the stylesheet rather than written down twice.
+ * ====================================================================== */
+
+check(
+    ! preg_match( '/uc-day-event a \{[^}]*border-left:\s*3px solid var\(--cat-color/', $css ),
+    'the day event still has the accent bar, which is the thing this replaced'
+);
+check(
+    false !== strpos( $css, '.uc-calendar .uc-de-thumb' ),
+    'no thumbnail on the day event'
+);
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*width:\s*32px[^}]*height:\s*32px/', $css ),
+    'the day event thumbnail is not 32 by 32'
+);
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*box-shadow:\s*0 0 0 2px var\(--cat-ink/', $css ),
+    'the ring is not a 2px --cat-ink; it must be the contrast-checked ink, never the raw category colour'
+);
+check(
+    ! preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*var\(--cat-color/', $css ),
+    'the ring uses the raw category colour, six of which fall under 3:1 on white'
+);
+check(
+    (bool) preg_match( '/\.uc-day-event-title \{[^}]*-webkit-line-clamp:\s*2/', $css ),
+    'the day event title does not clamp to two lines'
+);
+check(
+    ! preg_match( '/\.uc-day-event-title \{[^}]*white-space:\s*nowrap/', $css ),
+    'the day event title is still nowrap, so it truncates at one line rather than wrapping to two'
+);
+check(
+    false !== strpos( $css, '@container uc-calendar (max-width: 930px)' ),
+    'no breakpoint where the thumbnail stops fitting; at 89px columns it would crush the title'
+);
+check(
+    (bool) preg_match( '/uc-view-panels-combined > \.uc-view-panel \{[^}]*container-name:\s*uc-calendar/', $css ),
+    'the combined mode panels are not their own containers, so the grid asks the block how wide IT is and gets the wrong answer'
+);
+
+// The PHP side: shades, not the raw colour, and no cap on how many show.
+check(
+    false !== strpos( $code, 'sfaf_category_shades( sfaf_event_category_color( $id ) )' ),
+    'the day event does not resolve its colours through sfaf_category_shades()'
+);
+check(
+    false !== strpos( $code, 'sfaf_day_event_thumb( $id )' ),
+    'the day event does not render a thumbnail'
+);
+check(
+    ! preg_match( '/uc-day-events.*?array_slice|uc-day-events.*?more<|\+\s*\$more/s', $code ),
+    'something caps how many events a day cell shows; every event on a day must be in it'
+);
+
+/* --- The geometry, computed from the two caps in the stylesheet. -------- */
+preg_match( '/\.uc-calendar \{[^}]*max-width:\s*(\d+)px/', $css, $m_old );
+preg_match( '/\.uc-calendar\.uc-view-calendar[^{]*\{\s*max-width:\s*(\d+)px/', $css, $m_new );
+preg_match( '/\.uc-calendar \.uc-month-grid td \{[^}]*padding:\s*(\d+)px/', $css, $m_pad );
+preg_match( '/\.uc-calendar \.uc-day-event a \{[^}]*gap:\s*(\d+)px/', $css, $m_gap );
+
+$cap_old = isset( $m_old[1] ) ? (int) $m_old[1] : 0;
+$cap_new = isset( $m_new[1] ) ? (int) $m_new[1] : 0;
+$cellpad = isset( $m_pad[1] ) ? (int) $m_pad[1] : 0;
+$thumbgap = isset( $m_gap[1] ) ? (int) $m_gap[1] : 0;
+
+check( 900 === $cap_old, "the block cap is now {$cap_old}px and the readme publishes 900px for the list" );
+check( 1200 === $cap_new, "the month grid cap is now {$cap_new}px and the readme publishes 1200px" );
+check( $cap_new > $cap_old, 'the month grid cap is not wider than the block cap, so nothing was widened' );
+
+/*
+ * Column outer = (cap - 2 for the wrapper border) / 7.
+ * Cell content = column - 2 collapsed borders - both cell paddings.
+ * Title        = cell content - the entry's own border and padding - thumb - gap.
+ */
+function geom( $cap, $cellpad, $thumbgap ) {
+    $col   = ( $cap - 2 ) / 7;
+    $cell  = $col - 2 - ( 2 * $cellpad );
+    $entry = $cell - 2 - 8;              // 1px border each side, 4px padding each side
+    return array( $col, $cell, $entry - 32 - $thumbgap );
+}
+list( $col_o, $cell_o, $title_o ) = geom( $cap_old, 4, $thumbgap ); // the old cell padding was 4
+list( $col_n, $cell_n, $title_n ) = geom( $cap_new, $cellpad, $thumbgap );
+
+check( $title_n > $title_o, 'the wider grid did not leave more room for a title than the old one did' );
+check( $title_n > 100, sprintf( 'the title gets %.0fpx, which is under the 100px this was widened to reach', $title_n ) );
+
 /* --- The generator offers it, and the embed carries it. ----------------- */
 $admin = file_get_contents( $root . '/admin/class-sfaf-admin.php' );
 check( false !== strpos( $admin, "'combined' =>" ), 'the embed generator does not offer the combined mode' );
@@ -236,7 +327,13 @@ echo "Embed modes\n";
 echo "links:    the resolver in all four states (unset, on, off, native event), the marker's\n";
 echo "          spoken alternative, and no get_permalink() left in any card renderer\n";
 printf( "combined: both panels built and shown, no view toggle, grid before list in the DOM,\n" );
-printf( "          intrinsic flex rather than a container query, stacks at %dpx, min-width: 0 on both\n", $stack );
+printf( "          intrinsic flex rather than a container query, stacks at %dpx, min-width: 0 on both,\n", $stack );
+echo "          and each half is its own query container so it measures its own column\n";
+echo "grid card: no accent bar, a 32px thumbnail ringed in --cat-ink, the title clamped to two\n";
+echo "          lines, the thumbnail dropped below 930px, and nothing capping how many show\n";
+printf( "geometry: cap %dpx to %dpx. Column %.1fpx to %.1fpx outer, cell content %.1fpx to %.1fpx,\n",
+    $cap_old, $cap_new, $col_o, $col_n, $cell_o, $cell_n );
+printf( "          title %.1fpx to %.1fpx once the 32px thumbnail and its %dpx gap are taken\n", $title_o, $title_n, $thumbgap );
 echo "carried:  the generator control, the block attribute, embed.js, the endpoint parameter\n";
 echo "          and the cache identity\n\n";
 
@@ -245,5 +342,6 @@ if ( $fails ) {
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "the combined mode composes both renderers, and source linking reaches every one of them.\n";
+echo "the combined mode composes both renderers, source linking reaches every one of them,\n";
+echo "and the grid card carries a ring that can be seen rather than a bar that could not.\n";
 exit( 0 );

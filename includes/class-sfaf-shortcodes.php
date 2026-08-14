@@ -893,17 +893,44 @@ class SFAF_Shortcodes {
                                             echo '<span class="uc-day-dot" style="background:' . esc_attr( $color ) . '"></span>';
                                         }
                                     ?></span>
+                                    <?php
+                                    /*
+                                     * EVERY EVENT ON THE DAY, WITH NO CAP AND NO
+                                     * "+2 MORE".
+                                     *
+                                     * This loop has never truncated and still
+                                     * does not. The cell grows to fit and the
+                                     * week's row grows with it, which is a
+                                     * decision recorded on the td rule: a
+                                     * minimum height, never a maximum. A busy
+                                     * day makes the grid taller, and that is
+                                     * the honest rendering of a busy day.
+                                     */
+                                    ?>
                                     <ul class="uc-day-events">
                                         <?php foreach ( $ids as $id ) :
-                                            $start = (string) get_post_meta( $id, '_uc_start_time', true );
-                                            $color = sfaf_event_category_color( $id );
+                                            $start  = (string) get_post_meta( $id, '_uc_start_time', true );
+                                            $shades = sfaf_category_shades( sfaf_event_category_color( $id ) );
                                             ?>
                                             <li class="uc-day-event">
-                                                <a href="<?php echo esc_url( sfaf_event_link( $id ) ); ?>" style="--cat-color: <?php echo esc_attr( $color ); ?>">
-                                                    <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
-                                                    <?php if ( '' !== $start ) : ?>
-                                                        <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
-                                                    <?php endif; ?>
+                                                <?php
+                                                /*
+                                                 * INK AND TINT, NOT THE RAW HUE.
+                                                 * --cat-ink draws the ring and
+                                                 * --cat-media fills the
+                                                 * placeholder behind the icon.
+                                                 * See sfaf_day_event_thumb().
+                                                 */
+                                                ?>
+                                                <a href="<?php echo esc_url( sfaf_event_link( $id ) ); ?>"
+                                                   style="--cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>; --cat-media: <?php echo esc_attr( $shades['media'] ); ?>">
+                                                    <?php echo sfaf_day_event_thumb( $id ); ?>
+                                                    <span class="uc-day-event-text">
+                                                        <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
+                                                        <?php if ( '' !== $start ) : ?>
+                                                            <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
+                                                        <?php endif; ?>
+                                                    </span>
                                                 </a>
                                             </li>
                                         <?php endforeach; ?>

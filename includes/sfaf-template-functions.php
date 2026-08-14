@@ -2446,6 +2446,56 @@ function sfaf_list_card_media( $post_id, $cat_name = '' ) {
 }
 
 /**
+ * The 32px thumbnail on a month grid day event.
+ *
+ * WHAT THIS REPLACED, AND WHY IT HAD TO GO. Until 3.31.0 each entry carried a
+ * 3px accent bar down its left edge in the raw category colour. That is
+ * decoration that cannot carry what it implies: six of the ten category hues
+ * measure under the 3:1 WCAG asks of a non-text graphic on white (Yellow 1.38,
+ * Light Gray 1.50, Green 2.02, Teal 2.26, Orange 2.31, Pink 2.99), so on the
+ * densest category surface in the product the hues could not reliably be told
+ * apart. A stripe of colour that a reader cannot resolve is a decoration
+ * pretending to be information.
+ *
+ * THE RING IS INK, NOT THE BRAND HUE. sfaf_category_shades() returns a
+ * contrast-checked pair and the ink half is what the chips already use for
+ * their text. Every one of the ten clears 3:1 on both surfaces a ring is drawn
+ * on, white and the out-of-month grey, with the lowest at 5.84. Measured by
+ * .claude/category-ring-contrast.php, which fails the build if that stops
+ * being true.
+ *
+ * THE PLACEHOLDER AT 32px IS THE CATEGORY ICON ON ITS TINT, WITH NO TEXT, and
+ * that is a different composition from the list card's placeholder rather than
+ * the same one shrunk. The list card's tile carries the category NAME beside
+ * the icon; at 32 square there is no room for a word, and a scaled-down tile
+ * with unreadable text in it is precisely what a broken image looks like. An
+ * icon centred on its own category tint reads as a deliberate mark: it is the
+ * same icon the category carries everywhere else, in the same colours as the
+ * chip, at a size the icon was drawn for.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_day_event_thumb( $post_id ) {
+    $url = sfaf_event_image_url( $post_id );
+    if ( '' !== $url ) {
+        // aria-hidden: the title is right beside it and says the same thing.
+        return '<span class="uc-de-thumb">'
+            . '<img src="' . esc_url( $url ) . '" alt="" aria-hidden="true" loading="lazy" decoding="async" />'
+            . '</span>';
+    }
+
+    $primary  = sfaf_event_primary_category( $post_id );
+    $cat_name = $primary ? $primary->name : '';
+    $icon_key = $primary ? SFAF_Categories::icon( (int) $primary->term_id, $primary->name )
+                         : sfaf_category_icon_key( $cat_name );
+
+    return '<span class="uc-de-thumb uc-de-thumb-ph" aria-hidden="true">'
+        . sfaf_icon( $icon_key, array( 'size' => '17px' ) )
+        . '</span>';
+}
+
+/**
  * Fundraising progress for the list card: the bar and the sentence, without
  * the Donate button (which is now the card's footer action).
  *

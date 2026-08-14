@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.30.0
+Stable tag: 3.31.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -189,6 +189,13 @@ blocks are most often in.
 * List mode: **260px**
 * Month grid: **260px**
 * Combined mode: **260px**, and it goes side by side at **744px**
+
+The month grid and combined views cap at **1200px** rather than 900px, because
+a grid is seven columns and every pixel of column width is room for the title
+inside it. At 1200 a column is 171.1px outer and 159.1px of content, which
+leaves 109.1px of title once the 32px thumbnail and its 8px gap are taken.
+Below 930px of container width the thumbnail is dropped and the entry is a
+title and a time, which is what it was before 3.31.0.
 
 The combined mode has no minimum of its own because below 744px it stops being
 a two-column layout: the list wraps under the grid and each takes the full
@@ -441,6 +448,28 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.31.0 =
+
+**The month grid's event card is rebuilt. The coloured accent bar is gone.** It was a 3px stripe down the left edge in the raw category colour, and this project's own audit measured six of the ten hues under the 3:1 that WCAG asks of a non-text graphic on white: Yellow 1.38, Light Gray 1.50, Green 2.02, Teal 2.26, Orange 2.31, Pink 2.99. The densest category surface in the product was the one where the categories could not reliably be told apart, which makes the bar decoration standing in for information it could not carry.
+
+**In its place: a 32px thumbnail of the event image, rounded, with a 2px ring in the category colour.** The ring is the INK from `sfaf_category_shades()`, the darkened half of the contrast-checked pair the chips already use, never the raw hue. Every one of the ten clears 3:1 on both surfaces a ring is drawn on, and the lowest is 5.84 on white. `.claude/category-ring-contrast.php` is committed, prints the table, and fails the build if that stops being true or if the raw colours stop being the wrong choice.
+
+Measured ink on white: Yellow 6.31, Orange 6.74, Red 7.12, Burgundy 7.90, Pink 6.87, Purple 7.09, Teal 6.68, Green 6.60, Light Gray 12.34, Dark Gray 12.34. On the out-of-month cell, 5.84 to 11.41.
+
+**An event with no image shows the category icon on the category's tint, and that is a different composition from the list card's placeholder rather than the same one shrunk.** The list card's tile carries the category NAME beside its icon; at 32 square there is no room for a word, and a scaled-down tile with unreadable text in it is exactly what a broken image looks like. An icon centred on its own tint reads as a deliberate mark: the same icon the category carries everywhere else, in the same colours as its chip, at a size the icon was drawn for.
+
+**The title wraps to two lines and then truncates**, rather than truncating at one. The time sits beneath it, quieter.
+
+**The grid is wider: the cap goes from 900px to 1200px, for the month grid and combined views only.** 900px is right for a column of cards, where a longer line is a worse one; a month grid is seven columns of small blocks and every pixel of column width is room for a title. Still a cap and not a size, so a grid pasted into a 600px column is unaffected.
+
+Measured: column **128.3px to 171.1px** outer, cell content **118.3px to 159.1px**, and once the 32px thumbnail and its 8px gap are taken the title goes from **68.3px to 109.1px**.
+
+**Below 930px of container width the thumbnail is dropped rather than shrunk.** Per column the thumbnail and gap take 40px, the entry's border and padding 10, and the cell's 12, so a narrower column leaves under 70px of title. A smaller thumbnail was the other option and is worse: at 20px the icon stops being legible and the ring stops being a ring, which is the accent bar's fault again in a different shape. The full-width day panel on a phone shows the entry complete, thumbnail included.
+
+**Every event on a day still shows. No cap, no "+2 more".** The cell grows to fit and the week's row grows with it, which has always been true here and is now asserted rather than assumed.
+
+**Each half of the combined mode is now its own query container.** Every container query in the stylesheet names `uc-calendar`, and until the combined mode existed that was the same thing as "the width the content has". Side by side it is not: a 1200px block gives the grid about 628px, so the root answered "wide" while seven columns were being squeezed into 89px each and every narrow rule stayed off. Naming the panels `uc-calendar` as well shadows the root for their own descendants, so each half measures its own column and no query had to be rewritten. The containment trap was checked rather than assumed: both panels size from the flex algorithm using a definite `flex-basis`, and both already carried `min-width: 0`, so the 744px changeover is unmoved.
 
 = 3.30.0 =
 
