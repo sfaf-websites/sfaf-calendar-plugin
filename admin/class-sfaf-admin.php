@@ -5,82 +5,103 @@ class SFAF_Admin {
 
     public function register() {
         add_action( 'admin_menu', array( $this, 'add_menu_pages' ) );
+        /*
+         * PRIORITY 11: remove_submenu_page() can only remove what is already
+         * there, and the post type's own "Add New" submenu is added by
+         * WordPress at the default 10. See hide_duplicate_submenus().
+         */
+        add_action( 'admin_menu', array( $this, 'hide_duplicate_submenus' ), 11 );
         add_action( 'admin_init', array( $this, 'register_settings' ) );
-        add_action( 'admin_init', array( $this, 'handle_series_save' ) );
-        add_action( 'admin_init', array( $this, 'handle_series_action' ) );
+        /*
+         * NO SERIES HANDLERS. handle_series_save() and handle_series_action()
+         * were the POST targets of the WordPress Series screen, which went in
+         * 3.27.0 along with the two other screens /caladmin owns. They are
+         * removed with it rather than left listening: a handler with no form
+         * pointing at it is an endpoint nobody remembers is there, and the
+         * series editor in /caladmin has its own.
+         */
         add_action( 'admin_init', array( $this, 'handle_cron_action' ) );
         add_action( 'admin_init', array( $this, 'handle_users_action' ) );
     }
 
     /**
-     * Deleting a series.
+     * Take the manager-facing entries out of the Events menu.
      *
-     * ONE ACTION, WHERE THERE USED TO BE FIVE. remove_whole, remove_promote,
-     * restore_date, orphans_rebuild and orphans_release all existed to manage
-     * consequences of a series being an event. Deleting a container has none of
-     * them: the events stay exactly where they are and stop being grouped. See
-     * SFAF_Series::delete().
+     * TWO OF THESE ARE NOT OURS TO NOT-REGISTER. "Add New" is added by
+     * WordPress for any post type with show_ui, and the taxonomy entries are
+     * added from register_taxonomy(). The taxonomies are handled at the
+     * registration end with show_in_menu (see SFAF_Post_Types), because that is
+     * the flag that means "no menu entry" without also meaning "no metabox".
+     * "Add New" has no such flag, so it is removed here.
+     *
+     * WHAT THIS DOES NOT DO is remove any capability. post-new.php still
+     * answers, the Add New button at the top of the Events list still works,
+     * and an editor who has bookmarked either still gets there. The menu is a
+     * statement about where the work is meant to happen, not a lock.
      */
-    public function handle_series_action() {
-        if ( empty( $_POST['uc_series_action'] ) ) {
-            return;
-        }
-        $term_id = isset( $_POST['series_term_id'] ) ? intval( $_POST['series_term_id'] ) : 0;
-        $action  = sanitize_key( $_POST['uc_series_action'] );
-        $nonce   = isset( $_POST['uc_series_action_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_series_action_nonce'] ) ) : '';
+    public function hide_duplicate_submenus() {
+        remove_submenu_page( 'edit.php?post_type=uc_event', 'post-new.php?post_type=uc_event' );
 
-        if ( ! $term_id || ! wp_verify_nonce( $nonce, 'uc_series_action_' . $term_id ) ) {
-            return;
-        }
-        // A series groups other people's events, so changing one is an
-        // edit_others_posts decision rather than a per-post one.
-        if ( ! current_user_can( 'edit_others_posts' ) ) {
-            return;
-        }
-
-        $base = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
-
-        if ( 'delete_series' === $action ) {
-            $freed = SFAF_Series::delete( $term_id );
-            wp_safe_redirect( add_query_arg( array( 'deleted' => '1', 'freed' => $freed ), $base ) );
-            exit;
-        }
+        /*
+         * The Shortcode Generator, unlisted rather than unregistered. It is
+         * still routed, still capability-checked and still enqueues its assets;
+         * it just is not in the menu, because the audience for it is the two
+         * people who build pages on this site and they do not need a permanent
+         * entry for a screen they use twice a year. The URL is
+         * /wp-admin/edit.php?post_type=uc_event&page=uc-shortcode-generator and
+         * the readme carries it.
+         */
+        remove_submenu_page( 'edit.php?post_type=uc_event', 'uc-shortcode-generator' );
     }
 
+    /**
+     * THE WORDPRESS MENU IS ADMINISTRATOR CONCERNS ONLY.
+     *
+     * Everything an event manager does is in /caladmin. What was here as well
+     * was a second set of forms over the same data, and two forms over one
+     * record drift: they had already diverged on which fields they offered.
+     * Removed in 3.27.0, in three different ways depending on what would break:
+     *
+     *   RSVPs, Series          GONE. /caladmin owns both, the screens there are
+     *                          better (a series screen that holds the schedule;
+     *                          an RSVP list gated on can_view_all rather than
+     *                          on edit_posts), and every link that pointed here
+     *                          now points there.
+     *   Series migration       GONE. Never run, and after the test data is
+     *                          cleared there is nothing left for it to convert.
+     *                          A one-way destructive button does not sit in a
+     *                          menu with no remaining purpose.
+     *   Shortcode Generator    STILL REGISTERED, JUST UNLISTED. It is the only
+     *                          thing here /caladmin has no equivalent for, so
+     *                          unregistering it would remove a capability
+     *                          rather than a duplicate. Registered normally and
+     *                          then unlisted in hide_duplicate_submenus(), NOT
+     *                          registered with a null parent: add_submenu_page()
+     *                          runs plugin_basename() on the parent slug, and
+     *                          passing null to a string parameter is deprecated
+     *                          on PHP 8.1 and up. Same outcome, no notice.
+     *   Add New Event          Menu entry only, via remove_submenu_page()
+     *                          below. post-new.php still works, and so does the
+     *                          Add New button on the Events list.
+     *   Categories, Organizers Menu entry only, via show_in_menu on the
+     *                          taxonomies. Their edit-tags screens still answer
+     *                          and the metaboxes on the event editor are
+     *                          untouched, which matters because show_ui would
+     *                          have taken those with it.
+     *
+     * WHAT STAYS, AND WHY EACH ONE IS AN ADMINISTRATOR'S JOB:
+     *
+     *   Embed Code       Site admins set these up on other sites.
+     *   Calendar Users   The FALLBACK, and the reason it exists. If /caladmin
+     *                    will not let somebody in, this is where that gets
+     *                    fixed, and it must not need /caladmin to work. That is
+     *                    the trap 3.7.0 walked into.
+     *   Settings         Credentials and the Maps key. Configuration.
+     *   Automation       manage_options already, and it holds the test send.
+     */
     public function add_menu_pages() {
-        // RSVPs submenu under Events
-        add_submenu_page(
-            'edit.php?post_type=uc_event',
-            'RSVPs',
-            'RSVPs',
-            'edit_posts',
-            'uc-rsvps',
-            array( $this, 'render_rsvps_page' )
-        );
-
-        // Series Manager
-        add_submenu_page(
-            'edit.php?post_type=uc_event',
-            'Series',
-            'Series',
-            'edit_posts',
-            'uc-series',
-            array( $this, 'render_series_page' )
-        );
-
-        // The 3.0.0 migration. Registered whether or not it is still needed, so
-        // the report of what it did stays readable afterwards, but only linked
-        // from the notice and from here.
-        add_submenu_page(
-            'edit.php?post_type=uc_event',
-            'Series migration',
-            'Series migration',
-            'manage_options',
-            'uc-migrate',
-            array( $this, 'render_migrate_page' )
-        );
-
-        // Shortcode Generator (produces [sfaf_calendar] blocks for pages on THIS site)
+        // Shortcode Generator (produces [sfaf_calendar] blocks for pages on
+        // THIS site). Registered here, unlisted in hide_duplicate_submenus().
         add_submenu_page(
             'edit.php?post_type=uc_event',
             'Shortcode Generator',
@@ -906,454 +927,18 @@ class SFAF_Admin {
         return $out;
     }
 
-    /**
-     * Render RSVPs admin page
+    /*
+     * RSVPs, SERIES AND THE 3.0.0 MIGRATION USED TO BE THREE SCREENS HERE.
+     *
+     * All three were removed in 3.27.0. The first two are managed in /caladmin
+     * and having them in both places meant two forms that could drift; the
+     * third had never been run and no longer had anything to convert. See the
+     * note above add_menu_pages() for what was checked before each went, and
+     * the 3.27.0 changelog for the reasoning.
+     *
+     * Recoverable from git if any of it is ever wanted back: they were last
+     * present at 3.26.1.
      */
-    public function render_rsvps_page() {
-        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
-        $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-        $rsvps    = SFAF_RSVP::get_all_rsvps( array( 'event_id' => $event_id, 'search' => $search ) );
-
-        $export_url = admin_url( 'admin-ajax.php?action=uc_export_rsvps' );
-        if ( $event_id ) {
-            $export_url .= '&event_id=' . $event_id;
-        }
-        $export_url = wp_nonce_url( $export_url, 'uc_export_rsvps' );
-        ?>
-        <div class="wrap uc-admin-wrap">
-            <div class="uc-admin-header">
-                <div>
-                    <h1>RSVPs</h1>
-                    <p class="uc-subtitle">
-                        <?php if ( $event_id ) : ?>
-                            Registrations for: <strong><?php echo esc_html( get_the_title( $event_id ) ); ?></strong>
-                            &nbsp;<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=uc_event&page=uc-rsvps' ) ); ?>">View all</a>
-                        <?php else : ?>
-                            All event registrations
-                        <?php endif; ?>
-                    </p>
-                </div>
-                <div class="uc-admin-actions">
-                    <a href="<?php echo esc_url( $export_url ); ?>" class="button">Export CSV</a>
-                    <a href="<?php echo esc_url( $export_url ); ?>" class="button" title="CSV can be imported into Google Sheets">Export to Google Sheets</a>
-                </div>
-            </div>
-
-            <div class="uc-admin-card">
-                <!-- Search -->
-                <form method="get" class="uc-rsvp-search">
-                    <input type="hidden" name="post_type" value="uc_event" />
-                    <input type="hidden" name="page" value="uc-rsvps" />
-                    <?php if ( $event_id ) : ?>
-                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
-                    <?php endif; ?>
-                    <input type="text" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search by name or email..." class="uc-search-input" />
-                    <button type="submit" class="button">Search</button>
-                </form>
-
-                <div class="uc-rsvp-count-bar">
-                    <strong><?php echo count( $rsvps ); ?></strong> registrations found
-                </div>
-
-                <table class="uc-admin-table">
-                    <thead>
-                        <tr>
-                            <th>Event</th>
-                            <th>First name</th>
-                            <th>Last name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Status</th>
-                            <th>Registered</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ( empty( $rsvps ) ) : ?>
-                            <tr><td colspan="7" class="uc-no-data">No RSVPs found.</td></tr>
-                        <?php else : ?>
-                            <?php foreach ( $rsvps as $rsvp ) : ?>
-                                <tr>
-                                    <td>
-                                        <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=uc_event&page=uc-rsvps&event_id=' . $rsvp->event_id ) ); ?>">
-                                            <?php echo esc_html( SFAF_RSVP::event_label( $rsvp ) ); ?>
-                                        </a>
-                                    </td>
-                                    <td><strong><?php echo esc_html( $rsvp->first_name ); ?></strong></td>
-                                    <?php // Optional on the form, so a blank cell is a choice somebody made. Say so. ?>
-                                    <td><?php
-                                        $last = trim( (string) $rsvp->last_name );
-                                        echo '' !== $last ? esc_html( $last ) : '&ndash;';
-                                    ?></td>
-                                    <td><?php echo esc_html( $rsvp->email ); ?></td>
-                                    <td><?php echo esc_html( $rsvp->phone ); ?></td>
-                                    <td><span class="uc-status uc-status-<?php echo esc_attr( $rsvp->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $rsvp->status ) ); ?></span></td>
-                                    <?php /* THIS WAS date(), NOT date_i18n(), AND THAT IS A BUG RATHER
-                                             THAN A FORMATTING PREFERENCE. PHP's date() reads the SERVER
-                                             clock, which WordPress runs in UTC, so a registration taken
-                                             at nine in the evening in San Francisco was recorded here as
-                                             tomorrow. Same class as the compact card date tile fixed in
-                                             3.21.1, and it is now the one formatter, on the site's clock. */ ?>
-                                    <td><?php echo esc_html( sfaf_ap_datetime( $rsvp->created_at ) ); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <?php
-    }
-
-    /* ---------------------------------------------------------------------
-     * Series
-     *
-     * A SERIES IS MANAGED HERE AND NOWHERE ELSE. It is a term, so there is no
-     * post editor for it, no Trash, and no way for it to turn up in the Events
-     * list. What is gone from this screen, and gone on purpose, is everything
-     * that existed to manage a series being an event: the removal screen that
-     * asked whether to delete the whole thing or promote the next occurrence,
-     * the orphan repair screen, and the cancelled-dates panel.
-     * ------------------------------------------------------------------- */
-
-    public function render_series_page() {
-        $term_id = isset( $_GET['series'] ) ? intval( $_GET['series'] ) : 0;
-
-        if ( isset( $_GET['new'] ) ) {
-            $this->render_series_edit( 0 );
-            return;
-        }
-        if ( $term_id && SFAF_Series::exists( $term_id ) ) {
-            $this->render_series_edit( $term_id );
-            return;
-        }
-        $this->render_series_list();
-    }
-
-    /** Process the Series save on admin_init (before any output). */
-    public function handle_series_save() {
-        if ( empty( $_POST['uc_series_save'] ) ) {
-            return;
-        }
-        $term_id = isset( $_POST['series_term_id'] ) ? intval( $_POST['series_term_id'] ) : 0;
-        $nonce   = isset( $_POST['uc_series_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_series_nonce'] ) ) : '';
-        if ( ! wp_verify_nonce( $nonce, 'uc_save_series_' . $term_id ) ) {
-            return;
-        }
-        if ( ! current_user_can( 'edit_others_posts' ) ) {
-            return;
-        }
-
-        $args = array(
-            'description' => wp_unslash( $_POST['series_desc'] ?? '' ),
-            'image_id'    => intval( $_POST['series_image_id'] ?? 0 ),
-            'image_url'   => wp_unslash( $_POST['series_image_url'] ?? '' ),
-            'faq_set'     => sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ?? '' ) ),
-        );
-        $name = wp_unslash( $_POST['series_name'] ?? '' );
-
-        if ( $term_id ) {
-            SFAF_Series::update( $term_id, $name, $args );
-        } else {
-            $created = SFAF_Series::create( $name, $args );
-            if ( is_wp_error( $created ) ) {
-                return;
-            }
-            $term_id = (int) $created;
-        }
-
-        wp_safe_redirect( add_query_arg(
-            array( 'post_type' => 'uc_event', 'page' => 'uc-series', 'series' => $term_id, 'updated' => '1' ),
-            admin_url( 'edit.php' )
-        ) );
-        exit;
-    }
-
-    private function render_series_list() {
-        $series = SFAF_Series::all();
-        $base   = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
-        ?>
-        <div class="wrap uc-admin-wrap">
-            <div class="uc-admin-header">
-                <div>
-                    <h1>Series</h1>
-                    <p class="uc-subtitle">An umbrella for grouping and filtering events. A series is not an event and never appears on the calendar.</p>
-                </div>
-                <div class="uc-admin-actions">
-                    <a href="<?php echo esc_url( add_query_arg( 'new', '1', $base ) ); ?>" class="button button-primary">Add New Series</a>
-                </div>
-            </div>
-
-            <?php if ( ! empty( $_GET['deleted'] ) ) : ?>
-                <div class="notice notice-success"><p>
-                    Series removed. <strong><?php echo (int) ( $_GET['freed'] ?? 0 ); ?></strong>
-                    <?php echo esc_html( _n( 'event is', 'events are', (int) ( $_GET['freed'] ?? 0 ) ) ); ?>
-                    still on the calendar, unchanged, and no longer grouped.
-                </p></div>
-            <?php endif; ?>
-
-            <div class="uc-admin-card">
-                <?php if ( empty( $series ) ) : ?>
-                    <p class="uc-no-data">No series yet. A series groups events that belong to the same program, and it may hold different kinds of event, so it is not the same thing as a repeating event.</p>
-                <?php else : ?>
-                    <table class="uc-admin-table">
-                        <thead><tr><th>Image</th><th>Series</th><th>Upcoming events</th><th>Next date</th><th>Actions</th></tr></thead>
-                        <tbody>
-                        <?php foreach ( $series as $term ) :
-                            $edit  = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series', 'series' => $term->term_id ), admin_url( 'edit.php' ) );
-                            $count = SFAF_Series::upcoming_count( $term->term_id );
-                            $next  = SFAF_Series::next_date( $term->term_id );
-                            $img   = SFAF_Series::image_url( $term->term_id, 'medium' );
-                            ?>
-                            <tr>
-                                <td class="uc-series-thumb"><a href="<?php echo esc_url( $edit ); ?>"><?php
-                                    if ( $img ) {
-                                        echo '<img src="' . esc_url( $img ) . '" alt="" />';
-                                    } else {
-                                        echo '<span class="uc-series-thumb-none" aria-hidden="true">' . sfaf_icon( 'calendar', array( 'size' => '18px' ) ) . '</span>';
-                                    }
-                                ?></a></td>
-                                <td><a href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( $term->name ); ?></strong></a></td>
-                                <td><?php echo (int) $count; ?></td>
-                                <td><?php
-                                    // A series with no dates is a normal state, not
-                                    // a fault, so it says so rather than showing a
-                                    // dash somebody has to interpret.
-                                    echo $next
-                                        ? esc_html( sfaf_ap_date( $next, 'short_year' ) )
-                                        : '<span class="uc-col-muted">No dates yet</span>';
-                                ?></td>
-                                <td>
-                                    <a href="<?php echo esc_url( $edit ); ?>">Edit</a> |
-                                    <a href="<?php echo esc_url( SFAF_Series::url( $term->term_id ) ); ?>" target="_blank" rel="noopener">View</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php
-    }
-
-    /**
-     * Create or edit one series.
-     *
-     * WHAT A SERIES CARRIES, and nothing more: a name, a description, an image
-     * and a default FAQ set. It deliberately no longer holds a default time,
-     * location, category or organizer — those were "the template every
-     * occurrence is generated from", and there is no generation from a series
-     * any more. A series may hold different kinds of event, so a default
-     * category would have been actively wrong.
-     *
-     * @param int $term_id 0 to create.
-     */
-    private function render_series_edit( $term_id ) {
-        $term    = $term_id ? SFAF_Series::get( $term_id ) : null;
-        $img_id  = $term_id ? (int) get_term_meta( $term_id, SFAF_Series::META_IMAGE_ID, true ) : 0;
-        $img_url = $term_id ? (string) get_term_meta( $term_id, SFAF_Series::META_IMAGE_URL, true ) : '';
-        $preview = $img_id ? wp_get_attachment_image_url( $img_id, 'medium' ) : $img_url;
-        $set     = $term_id ? SFAF_Series::default_faq_set( $term_id ) : '';
-        $sets    = SFAF_FAQ_Sets::all();
-        $back    = add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) );
-        ?>
-        <div class="wrap uc-admin-wrap">
-            <div class="uc-admin-header">
-                <div>
-                    <h1><?php echo $term ? 'Edit Series' : 'Add New Series'; ?></h1>
-                    <p class="uc-subtitle">A container for grouping and filtering. It has no date and never appears on the calendar.</p>
-                </div>
-                <div class="uc-admin-actions"><a href="<?php echo esc_url( $back ); ?>" class="button">&larr; All series</a></div>
-            </div>
-
-            <?php if ( ! empty( $_GET['updated'] ) ) : ?><div class="notice notice-success is-dismissible"><p>Series saved.</p></div><?php endif; ?>
-
-            <form method="post" class="uc-admin-card" style="padding:20px;">
-                <input type="hidden" name="uc_series_save" value="1" />
-                <input type="hidden" name="series_term_id" value="<?php echo (int) $term_id; ?>" />
-                <?php wp_nonce_field( 'uc_save_series_' . $term_id, 'uc_series_nonce' ); ?>
-
-                <div class="uc-meta-field"><label>Series name</label>
-                    <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" class="uc-input" required /></div>
-
-                <div class="uc-meta-field"><label>Image</label>
-                    <div class="uc-image-control">
-                        <input type="hidden" name="series_image_id" id="uc_series_image_id" value="<?php echo (int) $img_id; ?>" />
-                        <div class="uc-logo-preview" id="uc_series_image_preview"><?php if ( $preview ) : ?><img src="<?php echo esc_url( $preview ); ?>" alt="" /><?php endif; ?></div>
-                        <button type="button" class="button uc-series-upload-image">Choose Image</button>
-                        <button type="button" class="button uc-series-remove-image">Remove</button>
-                        <input type="url" name="series_image_url" id="uc_series_image_url" value="<?php echo esc_attr( $img_url ); ?>" class="uc-input" placeholder="…or paste an image URL" />
-                    </div>
-                    <p class="description">Shown on the series page, and used by any event in the series that has no image of its own.</p>
-                </div>
-
-                <div class="uc-meta-field"><label>Description</label>
-                    <textarea name="series_desc" rows="5" class="uc-input"><?php echo esc_textarea( $term ? $term->description : '' ); ?></textarea>
-                    <p class="description">What this series is. Shown on the series page, including when the series has no dates scheduled yet.</p></div>
-
-                <div class="uc-meta-field"><label>Default FAQ set</label>
-                    <select name="series_faq_set" class="uc-input">
-                        <option value="">None</option>
-                        <?php foreach ( $sets as $s ) : ?>
-                            <option value="<?php echo esc_attr( $s['id'] ); ?>" <?php selected( $set, $s['id'] ); ?>>
-                                <?php echo esc_html( $s['name'] ); ?> (<?php echo (int) count( $s['rows'] ); ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">
-                        Copied onto each event created into this series, so nobody has to remember to pick it. The rows
-                        become that event's own and can be edited or cleared; existing events are not touched.
-                    </p></div>
-
-                <div class="uc-save-bar"><?php submit_button( $term ? 'Save Series' : 'Create Series', 'primary', 'submit', false ); ?></div>
-            </form>
-
-            <?php if ( $term ) : ?>
-                <?php
-                // Outside the form: HTML forms cannot nest, and this posts on
-                // its own.
-                $total = SFAF_Series::total_count( $term_id );
-                ?>
-                <div class="uc-admin-card">
-                    <h2>Events in this series</h2>
-                    <?php if ( ! $total ) : ?>
-                        <p class="description">None yet. Assign a series on any event, or create one into it.</p>
-                    <?php else : ?>
-                        <p class="description">
-                            <strong><?php echo (int) $total; ?></strong>
-                            <?php echo esc_html( _n( 'event', 'events', $total ) ); ?>,
-                            <strong><?php echo (int) SFAF_Series::upcoming_count( $term_id ); ?></strong> upcoming.
-                            <a href="<?php echo esc_url( add_query_arg( array( 'post_type' => 'uc_event', SFAF_Series::TAXONOMY => $term->slug ), admin_url( 'edit.php' ) ) ); ?>">List them &rarr;</a>
-                        </p>
-                    <?php endif; ?>
-                </div>
-
-                <div class="uc-admin-card">
-                    <h2>Remove this series</h2>
-                    <p class="description">
-                        This removes the grouping and nothing else. Every event in it stays on the calendar, on the same
-                        date, at the same address, and simply stops saying it is part of a series.
-                    </p>
-                    <form method="post" action="<?php echo esc_url( $back ); ?>">
-                        <?php wp_nonce_field( 'uc_series_action_' . $term_id, 'uc_series_action_nonce' ); ?>
-                        <input type="hidden" name="uc_series_action" value="delete_series" />
-                        <input type="hidden" name="series_term_id" value="<?php echo (int) $term_id; ?>" />
-                        <?php submit_button( 'Remove series', 'delete', 'submit', false ); ?>
-                    </form>
-                </div>
-            <?php endif; ?>
-        </div>
-        <?php
-    }
-
-    /* ---------------------------------------------------------------------
-     * The 3.0.0 migration screen
-     * ------------------------------------------------------------------- */
-
-    /**
-     * Dry run first, write only when asked.
-     *
-     * The dry run is not decoration. This release changes the data model
-     * against real data, and the alternative — migrating silently on upgrade —
-     * means the first time anybody reads the report, the writing has already
-     * happened. See the header of class-sfaf-migrate.php.
-     */
-    public function render_migrate_page() {
-        $done   = SFAF_Migrate::is_done();
-        $report = $done ? get_option( SFAF_Migrate::REPORT_OPTION, array() ) : SFAF_Migrate::run( true );
-        ?>
-        <div class="wrap uc-admin-wrap">
-            <div class="uc-admin-header"><div>
-                <h1>Series migration</h1>
-                <p class="uc-subtitle">Converting series from events into a grouping. Runs once.</p>
-            </div></div>
-
-            <?php if ( ! empty( $_GET['migrated'] ) ) : ?>
-                <div class="notice notice-success"><p>Migration complete. What it did is below.</p></div>
-            <?php endif; ?>
-
-            <div class="uc-admin-card">
-                <h2><?php echo $done ? 'What the migration did' : 'What the migration would do'; ?></h2>
-                <?php if ( ! $done ) : ?>
-                    <p class="description">
-                        <strong>Nothing has been changed.</strong> This is a dry run: it reads your data and reports
-                        what a real run would do.
-                    </p>
-                <?php endif; ?>
-
-                <table class="uc-admin-table">
-                    <tbody>
-                    <?php
-                    $rows = array(
-                        'series_converted'  => 'Series converted from events into groupings',
-                        'parents_demoted'   => 'Old series events that keep their ID, slug, and URL and become ordinary events',
-                        'events_migrated'   => 'Events assigned to a series',
-                        'faqs_moved'        => 'Events whose FAQs move into the single storage key',
-                        'faqs_inherited'    => 'Events that get a copy of the FAQs they used to inherit at display time',
-                        'groups_stamped'    => 'Events stamped with a recurrence group, so bulk edits keep working',
-                        'orphans_resolved'  => 'Occurrences whose series had gone, absorbed as ordinary events',
-                        'cancelled_dropped' => 'Canceled-date lists dropped (those dates are already absent)',
-                    );
-                    foreach ( $rows as $key => $label ) : ?>
-                        <tr>
-                            <td><strong><?php echo (int) ( isset( $report[ $key ] ) ? $report[ $key ] : 0 ); ?></strong></td>
-                            <td><?php echo esc_html( $label ); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-
-                <?php if ( ! empty( $report['series'] ) ) : ?>
-                    <h3>Series</h3>
-                    <table class="uc-admin-table">
-                        <thead><tr><th>Name</th><th>Events</th><th>Was event #</th><th>Notes</th></tr></thead>
-                        <tbody>
-                        <?php foreach ( $report['series'] as $s ) : ?>
-                            <tr>
-                                <td><?php echo esc_html( $s['name'] ); ?></td>
-                                <td><?php echo (int) $s['events']; ?></td>
-                                <td><?php echo (int) $s['legacy_id']; ?></td>
-                                <td><?php echo ! empty( $s['orphaned'] ) ? 'Rebuilt from occurrences whose series post had been deleted' : ''; ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-
-                <?php if ( ! empty( $report['notes'] ) ) : ?>
-                    <ul class="uc-admin-notes">
-                        <?php foreach ( $report['notes'] as $note ) : ?>
-                            <li><?php echo esc_html( $note ); ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-            </div>
-
-            <div class="uc-admin-card">
-                <h2>What is preserved</h2>
-                <ul class="uc-admin-notes">
-                    <li><strong>Every post ID.</strong> No event is recreated, so RSVP rows and reminder-log rows keep pointing at the right events.</li>
-                    <li><strong>Every URL.</strong> No slug is rewritten. The old series event keeps its own address as an ordinary event.</li>
-                    <li><strong>Every embed.</strong> Existing embed and shortcode snippets filter by the old series ID, which keeps resolving to the same series.</li>
-                    <li><strong>Every FAQ a visitor could see.</strong> Inherited rows are copied onto the events that showed them.</li>
-                </ul>
-            </div>
-
-            <?php if ( ! $done ) : ?>
-                <div class="uc-admin-card">
-                    <h2>Run it</h2>
-                    <p class="description">Take a database backup first if you have not. This is not reversible from inside WordPress.</p>
-                    <form method="post">
-                        <?php wp_nonce_field( 'sfaf_migrate_3_0', 'sfaf_migrate_nonce' ); ?>
-                        <input type="hidden" name="sfaf_migrate_run" value="1" />
-                        <?php submit_button( 'Run the migration', 'primary', 'submit', false ); ?>
-                    </form>
-                </div>
-            <?php endif; ?>
-        </div>
-        <?php
-    }
-
     /**
      * Render Shortcode Generator page
      */

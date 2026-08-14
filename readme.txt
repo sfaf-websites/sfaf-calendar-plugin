@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.26.1
+Stable tag: 3.27.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -42,7 +42,12 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * `[sfaf_calendar layout="compact" show_filters="no"]` - Compact list, no filter bar
 * `[upcoming_events count="5" category="fundraising"]` - Compact upcoming events widget
 
-Build any of these visually under Events &rsaquo; Shortcode Generator.
+Build any of these visually with the Shortcode Generator. It has no menu entry
+as of 3.27.0, because the WordPress menu now carries administrator screens only
+and this one gets used about twice a year, but the page is still registered and
+still works. It is at:
+
+`/wp-admin/edit.php?post_type=uc_event&page=uc-shortcode-generator`
 
 == Event Images ==
 
@@ -321,6 +326,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.27.0 =
+
+**The WordPress menu is administrator concerns only.** Everything an event manager does is in `/caladmin`, and what was in the WordPress admin as well was a second set of forms over the same records. Two forms over one record drift, and these already had: the portal's series screen holds a schedule the WordPress one never learned about, and its registration list is gated on `can_view_all` where the WordPress one was gated on `edit_posts`.
+
+Gone from the menu: **Add New Event, Categories, Organizers, RSVPs, Series, Shortcode Generator** and **Series migration**. Kept, because each is a site administrator's job rather than an event manager's: **Embed Code**, **Calendar Users**, **Settings** and **Automation**.
+
+**Three different mechanisms, chosen by what each would otherwise break.** RSVPs, Series and Series migration are unregistered outright, because `/caladmin` owns the first two and the third has nothing left to do. Add New Event and the Shortcode Generator lose their menu entry only, through `remove_submenu_page()`, so `post-new.php` still answers, the Add New button on the Events list still works, and the generator is still at `/wp-admin/edit.php?post_type=uc_event&page=uc-shortcode-generator`. Categories and Organizers lose theirs through `show_in_menu => false` on the taxonomy, **not** `show_ui => false`, which would have removed their metaboxes from the WordPress event editor and their term screens along with the menu entry.
+
+**The Shortcode Generator is the one screen with no portal equivalent**, which is why it is unlisted rather than removed. Organizers is the other: the portal offers a picker of existing organizers on its event editor and has no screen for creating or renaming one, so that term screen stays reachable too. Nothing else on the removed list does anything `/caladmin` cannot.
+
+**`[sfaf_calendar]` and `[upcoming_events]` are untouched.** The generator writes shortcodes, it does not run them. Every page already using one keeps working, and so do the post type, its archive, its permalinks, the REST routes, the embed, and every taxonomy and term relationship.
+
+**An `admin-ajax` endpoint that dumped every registration went with the screen it belonged to.** `uc_export_rsvps` was the download link on the WordPress RSVP page and was gated on `edit_posts`, so any Author on the site could fetch the full registration list as a CSV by calling it directly. Once its screen was gone nothing would ever have made anybody look at it again, so it is removed rather than orphaned. The export in `/caladmin` is the one that remains, gated on `can_view_all` and on a nonce.
+
+**The 3.0.0 series migration is removed.** It has never been run, and it no longer has anything to convert: an old-model series was a `uc_event` post carrying `_uc_series_parent`, so clearing the calendar of test data removes every one of them, and the calendar had not launched, so no other copy of that data exists. Nothing writes that meta, nothing reads it, and no import produces it. What it was is a one-way destructive button sitting permanently in a menu, which is not a thing to leave behind once its job is gone. The class, the screen and the admin notice all go; it is recoverable from git at 3.26.1 if an old database ever turns up.
+
+`SFAF_Series::resolve()` is not part of that and stays. It maps a pre-3.0.0 parent post ID onto a series term for embed snippets published back then, reading term meta the migration would have written. With no migrated terms it finds nothing and falls through to the term ID, which is the right answer.
+
+**`.claude/admin-menu-test.php` is committed and locks the result down.** It models the entries WordPress adds itself, runs the real `add_menu_pages()`, `hide_duplicate_submenus()` and `register_taxonomies()`, and asserts both directions: nothing unexpected is in the menu, nothing removed has come back, and the two taxonomies lost `show_in_menu` without losing `show_ui`, `public` or their metaboxes. That last assertion is the point of the file: switching those two flags would leave the menu looking correct while the metabox quietly vanished from the event editor with no error anywhere.
 
 = 3.26.1 =
 

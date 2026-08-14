@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.26.1
+ * Version: 3.27.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.26.1' );
+define( 'SFAF_VERSION', '3.27.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -106,7 +106,6 @@ $sfaf_includes = array(
     'includes/class-sfaf-source-eventbrite.php',
     'includes/class-sfaf-source-gfmp.php',
     'includes/class-sfaf-seo.php',
-    'includes/class-sfaf-migrate.php',
     'includes/class-sfaf-portal.php',
     'includes/sfaf-sample-data.php',
     'admin/class-sfaf-admin.php',
@@ -197,10 +196,27 @@ function sfaf_init() {
     $seo = new SFAF_SEO();
     $seo->register();
 
-    // The 3.0.0 data migration. Registers its admin notice and screen only —
-    // it never writes on its own. See class-sfaf-migrate.php for why the write
-    // is a button somebody presses and not something that happens on upgrade.
-    SFAF_Migrate::register();
+    /*
+     * THE 3.0.0 SERIES MIGRATION IS GONE, AND IT WAS NEVER RUN.
+     *
+     * It converted old series PARENT POSTS into series terms. Those were
+     * uc_event posts carrying _uc_series_parent, so clearing the calendar of
+     * test data removed every one of them, and the calendar had not launched,
+     * so there was no other copy of that data anywhere. What remains cannot
+     * contain an old-model series: nothing writes _uc_series_parent, nothing
+     * reads it, and no import produces it.
+     *
+     * It was a ONE-WAY DESTRUCTIVE BUTTON sitting permanently in a menu, which
+     * is not a thing to leave behind once it has nothing to convert. Removed in
+     * 3.27.0: the class, the screen, the admin notice and this call.
+     *
+     * SFAF_Series::resolve() is NOT part of this and stays. It maps a legacy
+     * parent post ID onto a term for old embed snippets, reading term meta the
+     * migration would have written. With no migrated terms it simply finds
+     * nothing and falls through to the term ID, which is the correct answer.
+     *
+     * Recoverable from git at 3.26.1 if an old database ever turns up.
+     */
 
     if ( is_admin() ) {
         $admin = new SFAF_Admin();
@@ -252,7 +268,13 @@ add_action( 'wp_enqueue_scripts', 'sfaf_enqueue_frontend_assets' );
  */
 function sfaf_enqueue_admin_assets( $hook ) {
     $screen         = get_current_screen();
-    $plugin_pages   = array( 'uc-rsvps', 'uc-settings', 'uc-shortcode-generator', 'uc-embed', 'uc-series', 'uc-automation', 'uc-users' );
+    // uc-rsvps and uc-series are gone from this list because the screens are
+    // gone: 3.27.0 left the WordPress admin holding administrator concerns only
+    // and moved both to /caladmin, which loads its own stylesheet.
+    // uc-shortcode-generator stays: the page is still registered and still
+    // reachable, it just has no menu entry, and it needs these assets when it
+    // is opened.
+    $plugin_pages   = array( 'uc-settings', 'uc-shortcode-generator', 'uc-embed', 'uc-automation', 'uc-users' );
     $is_plugin_page = isset( $_GET['page'] ) && in_array( $_GET['page'], $plugin_pages, true );
     $is_event_edit  = $screen && $screen->post_type === 'uc_event';
 

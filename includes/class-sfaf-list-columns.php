@@ -51,8 +51,22 @@ class SFAF_List_Columns {
                 break;
 
             case 'uc_rsvp_count':
+                /*
+                 * POINTS AT /caladmin NOW. The WordPress RSVP screen went in
+                 * 3.27.0 and this was one of two links into it. The registration
+                 * list is one screen again, and the one it goes to is gated on
+                 * can_view_all rather than on edit_posts.
+                 *
+                 * A COUNT IS STILL A COUNT FOR EVERYBODY. The number renders for
+                 * any user who can see this column; only the link goes somewhere
+                 * that may refuse them, and /caladmin answers that by showing
+                 * them their dashboard rather than an error. Same reasoning as
+                 * the registration alert's per-recipient link: nothing here can
+                 * check the capability cheaply, and unlike an email this one
+                 * lands on a page that handles it.
+                 */
                 $count = sfaf_get_rsvp_count( $post_id );
-                $url   = admin_url( 'edit.php?post_type=uc_event&page=uc-rsvps&event_id=' . $post_id );
+                $url   = add_query_arg( 'event_id', $post_id, SFAF_Portal::link( 'rsvps' ) );
                 if ( $count > 0 ) {
                     echo '<a href="' . esc_url( $url ) . '"><strong>' . (int) $count . '</strong></a>';
                 } else {
@@ -69,10 +83,10 @@ class SFAF_List_Columns {
                 // two different things. See SFAF_Recurrence's header note.
                 $series = SFAF_Series::for_event( $post_id );
                 if ( $series ) {
-                    $url = add_query_arg(
-                        array( 'post_type' => 'uc_event', 'page' => 'uc-series', 'series' => $series->term_id ),
-                        admin_url( 'edit.php' )
-                    );
+                    // /caladmin, for the reason above: the WordPress Series
+                    // screen went in 3.27.0 and the portal's is the one that
+                    // holds the schedule.
+                    $url = SFAF_Portal::link( 'series/edit/' . (int) $series->term_id );
                     echo '<a href="' . esc_url( $url ) . '">' . esc_html( $series->name ) . '</a>';
                 } else {
                     echo '<span class="uc-col-muted">None</span>';

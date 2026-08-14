@@ -8,7 +8,19 @@ class SFAF_RSVP {
         add_action( 'wp_ajax_nopriv_uc_submit_rsvp', array( $this, 'ajax_submit_rsvp' ) );
         add_action( 'wp_ajax_uc_subscribe_reminder', array( $this, 'ajax_subscribe_reminder' ) );
         add_action( 'wp_ajax_nopriv_uc_subscribe_reminder', array( $this, 'ajax_subscribe_reminder' ) );
-        add_action( 'wp_ajax_uc_export_rsvps', array( $this, 'export_csv' ) );
+
+        /*
+         * NO uc_export_rsvps ENDPOINT. It was the download link on the
+         * WordPress RSVP screen, which went in 3.27.0, and it is removed with
+         * it rather than left registered.
+         *
+         * That is not tidiness. It was gated on edit_posts, so any Author on
+         * the site could fetch every registration ever taken as a CSV by
+         * calling admin-ajax directly, and once the screen it belonged to was
+         * gone nothing would ever have made anybody look at it again. The
+         * export in /caladmin is the one that remains: SFAF_Portal::
+         * export_rsvps_csv(), gated on can_view_all and on a nonce.
+         */
 
         // Route a confirmed RSVP to email / (mocked) integrations.
         add_action( 'uc_rsvp_submitted', array( $this, 'route_submission' ), 10, 2 );
@@ -568,65 +580,12 @@ class SFAF_RSVP {
         );
     }
 
-    /**
-     * Export RSVPs as CSV
+    /*
+     * csv_escape() WENT WITH export_csv(), its only caller.
+     *
+     * The formula-injection guard itself did not go anywhere: SFAF_Portal::csv()
+     * is the same rule, on the export that remains. Two copies of it existed
+     * because two screens exported the same table, which is the duplication
+     * 3.27.0 was about.
      */
-    public function export_csv() {
-        if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_die( 'Unauthorized' );
-        }
-
-        check_admin_referer( 'uc_export_rsvps' );
-
-        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
-        $rsvps = $event_id ? self::get_rsvps( $event_id ) : self::get_all_rsvps();
-
-        $filename = $event_id
-            ? 'rsvps-event-' . $event_id . '-' . current_time( 'Y-m-d' ) . '.csv'
-            : 'rsvps-all-' . current_time( 'Y-m-d' ) . '.csv';
-
-        header( 'Content-Type: text/csv' );
-        header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-
-        /*
-         * TWO NAME COLUMNS, NEVER ONE COMBINED.
-         *
-         * The file is opened in a spreadsheet and pasted into Salesforce, where
-         * first and last are two fields. A single column makes somebody split
-         * it by hand, on a space, which gets "Ana Maria Ruiz" and "van Dijk"
-         * wrong every time. The columns are what was stored, so nothing here
-         * has to guess.
-         */
-        $output = fopen( 'php://output', 'w' );
-        fputcsv( $output, array( 'Event', 'First Name', 'Last Name', 'Email', 'Phone', 'Status', 'Date Registered' ) );
-
-        foreach ( $rsvps as $rsvp ) {
-            $event_title = self::event_label( $rsvp );
-            fputcsv( $output, array(
-                $this->csv_escape( $event_title ),
-                $this->csv_escape( $rsvp->first_name ),
-                $this->csv_escape( $rsvp->last_name ),
-                $this->csv_escape( $rsvp->email ),
-                $this->csv_escape( $rsvp->phone ),
-                $this->csv_escape( $rsvp->status ),
-                $this->csv_escape( $rsvp->created_at ),
-            ) );
-        }
-
-        fclose( $output );
-        exit;
-    }
-
-    /**
-     * Neutralize CSV/spreadsheet formula injection.
-     * A leading =, +, -, @, tab or carriage return can be interpreted as a
-     * formula by Excel/Sheets, so prefix those values with a single quote.
-     */
-    private function csv_escape( $value ) {
-        $value = (string) $value;
-        if ( $value !== '' && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
-            $value = "'" . $value;
-        }
-        return $value;
-    }
 }

@@ -37,6 +37,26 @@ class SFAF_Post_Types {
         ) );
     }
 
+    /**
+     * show_in_menu IS NOT show_ui, AND THE DIFFERENCE IS THE WHOLE POINT HERE.
+     *
+     * Categories and Organizers came out of the Events menu in 3.27.0 because
+     * /caladmin owns them: categories are edited on its Series & Categories
+     * screen, with the colour and the icon the WordPress screen cannot hold,
+     * and both are chosen on its event editor.
+     *
+     * show_ui => false would have done it, and it would also have removed the
+     * metabox from the WordPress event editor, which is still there and still
+     * how an administrator sets a category on an event from wp-admin. It would
+     * also have taken the term screens away entirely. show_in_menu => false is
+     * the narrower flag: no entry in the menu, everything else exactly as it
+     * was, and edit-tags.php still answers for anybody who needs it.
+     *
+     * uc_venue below is the earlier and STRONGER case, unchanged: it is
+     * show_ui => false because the WordPress screen could not hold an address,
+     * which is what a venue is for, so there the second screen was not a
+     * duplicate but a wrong one.
+     */
     public function register_taxonomies() {
         register_taxonomy( 'uc_event_category', 'uc_event', array(
             'labels' => array(
@@ -47,10 +67,19 @@ class SFAF_Post_Types {
             ),
             'hierarchical' => true,
             'public'       => true,
+            'show_in_menu' => false,
             'rewrite'      => array( 'slug' => 'event-category' ),
             'show_in_rest' => true,
         ) );
 
+        /*
+         * ORGANIZERS ARE THE ONE ENTRY WITH NO /caladmin EQUIVALENT TO MANAGE
+         * THEM. The portal offers a picker of existing organizers on the event
+         * editor; it has no screen for creating, renaming or deleting one. So
+         * this screen is not a duplicate, it is just unlisted, and that is
+         * exactly why show_in_menu was the right flag and show_ui was not:
+         * edit-tags.php?taxonomy=uc_organizer&post_type=uc_event still works.
+         */
         register_taxonomy( 'uc_organizer', 'uc_event', array(
             'labels' => array(
                 'name'          => 'Organizers',
@@ -60,6 +89,7 @@ class SFAF_Post_Types {
             ),
             'hierarchical' => false,
             'public'       => true,
+            'show_in_menu' => false,
             'rewrite'      => array( 'slug' => 'event-organizer' ),
             'show_in_rest' => true,
         ) );
@@ -210,8 +240,9 @@ class SFAF_Post_Types {
                     </select>
                     <p class="description">
                         A series is an umbrella for grouping and filtering. It holds events, it is not one, and
-                        it may hold different kinds of event. Create and edit series under
-                        <a href="<?php echo esc_url( add_query_arg( array( 'post_type' => 'uc_event', 'page' => 'uc-series' ), admin_url( 'edit.php' ) ) ); ?>">Series</a>.
+                        it may hold different kinds of event. Create and edit series on
+                        <a href="<?php echo esc_url( SFAF_Portal::link( 'series' ) ); ?>">Series &amp; Categories</a>
+                        in the calendar portal.
                     </p>
                 </div>
             </div>
@@ -280,7 +311,7 @@ class SFAF_Post_Types {
             <?php if ( $post->ID && $rsvp_count > 0 ) : ?>
                 <div class="uc-rsvp-count">
                     <strong><?php echo (int) $rsvp_count; ?></strong> confirmed RSVPs
-                    <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=uc_event&page=uc-rsvps&event_id=' . $post->ID ) ); ?>">View list</a>
+                    <a href="<?php echo esc_url( add_query_arg( 'event_id', $post->ID, SFAF_Portal::link( 'rsvps' ) ) ); ?>">View list</a>
                 </div>
             <?php endif; ?>
         </div>
