@@ -132,3 +132,28 @@ casually.
 - **Shared field lists: one list, one render, one save, catch-all last.**
 - One series per repeating event; the schedule editor lives on the series
   screen; writes are upcoming-only.
+
+---
+
+## 8. Keeping `PROJECT.md` current
+
+`PROJECT.md` is the durable description of the software: what it is and how it
+fits together. It is not a changelog (`readme.txt` is), it does not carry
+visual or CSS decisions (`DESIGN.md` does), and it does not carry working rules
+(this file does).
+
+- **When a build changes something `PROJECT.md` describes, update `PROJECT.md`
+  in the SAME commit.** Not afterwards, not in a batch at the end of a run of
+  releases. A description that lags the code is worse than none, because it is
+  read as current.
+- **If nothing architectural changed, leave it alone.** Most builds do not
+  touch it. A document that accumulates noise stops being read, and then the
+  one thing in it that mattered is not read either.
+- **Decisions settled in conversation but not yet built go in `PROJECT.md`
+  under "Agreed, not built".** A chat ends and the reasoning goes with it,
+  including the reasons an alternative was rejected, which is the part nobody
+  can reconstruct. Move an entry into the body when it ships and delete it from
+  that section.
+- The EveryAction arrangement (a JSON file written hourly by Val, fetched over
+  HTTPS, because an EveryAction API key cannot be scoped to events only) is the
+  first entry there.
