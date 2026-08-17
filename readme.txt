@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.31.1
+Stable tag: 3.31.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -460,6 +460,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.31.2 =
+
+**Every card in the combined mode's list panel was a 40px strip.** A category chip, a day abbreviation clipped against the right edge, and no title, no image, no meta and no button. The same cards in list mode on the same page at the same width were correct, which is the whole signature of the fault: the markup was identical and the layout was not.
+
+**The cause was a height cap, and it needed three properties to line up.** 3.30.0 gave the panel's list `max-height: 640px; overflow-y: auto`, so that a long list would scroll inside its own column rather than make the row as tall as the longest of the two panels. But `.uc-event-list` is a column flex container; a flex item's `flex-shrink` defaults to 1, so a container with a definite max-height takes its negative free space out of the items instead of overflowing; and a flex item's automatic minimum size, which would have floored each card at its content height, is not applied when the item's own `overflow` is anything but `visible`. `.uc-event-card` is `overflow: hidden`, for the border radius over the image. So the floor was zero and twelve cards were squashed to (640 - 11 x 14) / 12 = 40.5px each, with every part still in the DOM, still the right size, and clipped out of the box.
+
+**The cap is gone rather than fixed.** `flex-shrink: 0` on the cards would have kept it and rendered the cards correctly, and it is still wrong: the cap's purpose only exists when the two panels are side by side, and no rule here can tell that apart from stacked, where the panel is the full block width. sfaf.org's template is locked at about 770px, so that page always stacks, and the cap there put twelve cards into a 640px scroller showing two of them. In a mode whose entire premise is composing the two existing renderers, a divergence from list mode is a bug by definition. Removed, the row is as tall as the list and the grid sits at the top of its own column, which is what a two-column layout does.
+
+`flex-shrink: 0` on the list's children stays, as a guard rather than the fix. The `overflow: hidden` that disabled the cards' automatic minimum size was added for a rounded corner, and any height constraint above the list, ours or a host theme's, would squash them again identically and just as quietly. Declared, a constrained list overflows where it can be seen.
+
+**A rendered comparison, because the two source tests could not see this.** `.claude/combined-card-parity.php` stubs enough WordPress to call the card renderer for real, writes a page holding the same twelve cards in a list-mode block and a combined-mode block at 770px, and compares all 396 elements: identity, computed display, rendered box, and whether anything is clipped out of its own card. Confirmed at 770px: 396 elements, no difference of any kind, first card 688px in both. The earlier tests both pass while this shipped, and both now say in their own output which question they do not answer.
+
+**Does the mode earn its place at 770px?** Honestly: only partly, and Mark should know it. sfaf.org's template cannot be widened, so the combined mode there will always stack, and stacked it is the month grid above the card list with no toggle between them. That is not nothing: both views are on the page at once, so nobody has to switch to see what is coming up after looking at a date, and there is no state to lose. But the thing the mode was designed for, scanning a month beside a column of detail, needs 920px and is not available on that page. On sfaf.org, choosing combined over calendar-with-the-toggle buys "both, always open, one above the other" and nothing else. On a wider host it is the two-column layout.
 
 = 3.31.1 =
 

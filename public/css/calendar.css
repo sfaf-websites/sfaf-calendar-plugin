@@ -1483,12 +1483,64 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
     container-type: inline-size; container-name: uc-calendar;
 }
 
-/* The list scrolls inside its own column rather than making the row as tall as
-   the longest of the two. Capped at a height that shows several cards; the
-   grid is a fixed six rows and the list is not, so without this a month with
-   forty upcoming events beside it would leave the grid stranded at the top of
-   a very long page. */
-.uc-calendar .uc-view-panels-combined > .uc-panel-list .uc-event-list { max-height: 640px; overflow-y: auto; }
+/* ---------------------------------------------------------------------------
+   THE LIST PANEL HAS NO HEIGHT CAP, AND 3.30.0 PUT ONE ON. THIS IS THE FAULT
+   THAT REPLACED IT, WRITTEN DOWN SO IT DOES NOT COME BACK.
+
+   The rule was:
+
+       .uc-view-panels-combined > .uc-panel-list .uc-event-list {
+           max-height: 640px; overflow-y: auto; }
+
+   with the reasoning that the list should scroll inside its own column rather
+   than make the row as tall as the longest of the two panels. What it actually
+   did was squash every card in the panel to a 40px strip: a category chip, a
+   day abbreviation clipped against the right edge, and no title, no image, no
+   meta and no button. Measured, not deduced: 12 cards at (640 - 11 x 14) / 12 =
+   40.5px each, which is exactly what the live page showed.
+
+   THREE PROPERTIES HAD TO LINE UP AND THEY ALL DID.
+
+     1. `.uc-event-list` is `display: flex; flex-direction: column`.
+     2. A flex item's flex-shrink defaults to 1, so a container with a DEFINITE
+        max-height takes its negative free space out of the items rather than
+        overflowing. `overflow-y: auto` is what makes the height definite.
+     3. `min-height: auto` on a flex item normally floors that at the item's
+        content height, and it is NOT APPLIED when the item's own overflow is
+        anything but visible. `.uc-calendar .uc-event-card` is `overflow: hidden`,
+        which is there for the border radius over the image. So the floor was
+        zero and the cards had nothing to stop them.
+
+   The card was already clipping its own content, so every part was still in the
+   DOM, still `display: block`, still the right size, and simply outside the box.
+   That is why counting the events a visitor can see reported twelve of twelve.
+
+   WHY THE CAP IS GONE RATHER THAN FIXED. `flex-shrink: 0` on the cards would
+   have kept the cap and rendered the cards correctly, and it is still the wrong
+   answer. The cap's purpose only exists when the two panels are SIDE BY SIDE,
+   and nothing in CSS here can tell that apart: stacked, the list panel is the
+   full block width, and a 320px panel beside a grid and a 320px block on a phone
+   report the same width. sfaf.org's template is locked at about 770px, so that
+   page always stacks, and the cap there put twelve cards into a 640px scroller
+   showing two of them. That is a divergence from list mode, and in this mode a
+   divergence from list mode is a bug by definition.
+
+   Removed, the row is as tall as the list and the grid sits at the top of its
+   own column, which is what every two-column layout does and what a list-mode
+   page already does with the same events. A nested scroll region inside a block
+   pasted onto somebody else's page is worse than a long page: it swallows the
+   wheel, it hides content behind a scrollbar a visitor may not see, and on a
+   touch device it competes with the page's own scrolling.
+
+   flex-shrink: 0 STAYS, AS A GUARD RATHER THAN A FIX. Point 3 above is the part
+   that made this silent: `overflow: hidden` was added to the card for a rounded
+   corner and it disabled the card's automatic minimum size as a side effect. Any
+   future height constraint anywhere above this list, ours or a host theme's,
+   would squash the cards again in exactly the same way and with the same
+   symptom. Declared here, a constrained list overflows instead, which is the
+   failure that can be seen.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-event-list > * { flex-shrink: 0; }
 
 /* ---------------------------------------------------------------------------
    THE EXTERNAL MARKER, on the byline of a card whose link leaves this site.

@@ -265,6 +265,53 @@ check(
     'the list panel has no min-width: 0'
 );
 
+/*
+ * THE LIST PANEL DOES NOT CONSTRAIN THE HEIGHT OF THE LIST, AND THE CARDS SAY SO
+ * FOR THEMSELVES.
+ *
+ * 3.30.0 capped the panel's list at 640px with overflow-y: auto. `.uc-event-list`
+ * is a column flex container, so a definite max-height takes its negative free
+ * space out of the items, and `.uc-event-card` is overflow: hidden, which removes
+ * the automatic minimum size that would otherwise floor them at their content.
+ * Every card in the panel became a 40px strip with its title, image, meta and
+ * button clipped out of it. Three properties, each defensible, and the failure
+ * needs all three.
+ *
+ * Both halves are asserted because either alone can be undone: no height
+ * constraint from this mode, and flex-shrink: 0 on the list's children so that a
+ * constraint from anywhere else, including a host theme, overflows visibly
+ * instead of squashing the cards silently.
+ *
+ * WHAT THIS CANNOT SEE is whether the cards then RENDER the same, and this is the
+ * pass that has been fooled twice. .claude/combined-card-parity.php renders the
+ * renderer's own card in both modes in a browser at 770px and compares every
+ * element in it. Run that too.
+ */
+/*
+ * SWEPT WITH THE COMMENTS OFF, for the reason the embed.js sweep is: the note
+ * above this rule QUOTES the rule it removed, so a sweep of the raw stylesheet
+ * reports the fault it just fixed. Second time in two builds that a checker has
+ * read its own explanation as evidence.
+ */
+$css_code = preg_replace( '#/\*.*?\*/#s', '', $css );
+
+check(
+    ! preg_match( '/uc-panel-list[^{]*\.uc-event-list\s*\{[^}]*max-height/', $css_code ),
+    'the combined mode caps the height of its list again; .uc-event-list is a column flex container and its cards are overflow: hidden, so a height cap squashes every one of them to a strip rather than scrolling'
+);
+check(
+    ! preg_match( '/uc-panel-list[^{]*\.uc-event-list\s*\{[^}]*overflow/', $css_code ),
+    'the combined mode makes its list a scroll region again; stacked, which is every width on sfaf.org, that shows two cards of twelve where list mode shows all of them'
+);
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-event-list > \*\s*\{[^}]*flex-shrink:\s*0/', $css_code ),
+    'the list items no longer declare flex-shrink: 0, so any height constraint above them squashes the cards to strips instead of overflowing where it can be seen'
+);
+check(
+    file_exists( __DIR__ . '/combined-card-parity.php' ),
+    'the card parity generator is gone; nothing then compares a rendered card between the two modes'
+);
+
 /* =========================================================================
  * THE MONTH GRID CARD
  *
@@ -432,6 +479,9 @@ echo "          and each half is its own query container so it measures its own 
 printf( "width:    side by side never gives the grid under %dpx, checked at every width from 300\n", $dots );
 printf( "          to 1400; at %dpx it stacks, so the grid gets all %dpx and keeps its entries\n", $sfaf, $sfaf );
 echo "          (the panels being VISIBLE is asserted in embed-combined-panels-test.js; run it too)\n";
+echo "list:     no height cap and no scroll region on the panel's list, and flex-shrink: 0 on its\n";
+echo "          items, so a constraint from anywhere overflows rather than squashing the cards\n";
+echo "          (whether they RENDER the same is combined-card-parity.php; run that too)\n";
 echo "grid card: no accent bar, a 32px thumbnail ringed in --cat-ink, the title clamped to two\n";
 echo "          lines, the thumbnail dropped below 930px, and nothing capping how many show\n";
 printf( "geometry: cap %dpx to %dpx. Column %.1fpx to %.1fpx outer, cell content %.1fpx to %.1fpx,\n",
