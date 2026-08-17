@@ -31,41 +31,175 @@
 $root = dirname( __DIR__ );
 define( 'ABSPATH', __DIR__ );
 
-/* --- WordPress, in miniature. ------------------------------------------- */
-$GLOBALS['meta']    = array();
-$GLOBALS['posts']   = array();
-$GLOBALS['updated'] = array();
+/* --- WordPress, in miniature. -------------------------------------------
+ *
+ * THE SLUG HALF OF THIS IS MODELLED, NOT STUBBED, and that is the difference
+ * between this file before and after 3.33.0. The earlier version stubbed
+ * wp_update_post() as "write the fields and return", which cannot fire
+ * post_updated, so the entire mechanism that actually decides what a private
+ * event's old address does was invisible to it. Every assertion passed while a
+ * private event kept answering on its public URL.
+ *
+ * So three pieces of core are reproduced here from its documented behaviour:
+ *
+ *   wp_check_for_changed_slugs()  post_updated, records the previous slug as
+ *                                 _wp_old_slug for a published, non-hierarchical
+ *                                 post whose slug changed, and drops the new
+ *                                 slug from the list if it was used before.
+ *   wp_old_slug_redirect()        on a 404, resolves a requested slug through
+ *                                 _wp_old_slug and the old_slug_redirect_post_id
+ *                                 filter, and 301s to the post.
+ *   the hook registry             so the filter SFAF_Privacy registers is really
+ *                                 called rather than assumed.
+ *
+ * _wp_old_slug is MULTI-VALUE in WordPress and single-value meta is enough for
+ * everything else here, so it is the one key routed to its own store. That is a
+ * modelled limitation and is stated rather than hidden.
+ *
+ * What this still cannot prove: that a real WordPress routes a token slug, that
+ * Yoast honours either sitemap mechanism, or that a crawler obeys robots. Those
+ * need the live site, and Mark confirmed the redirect behaviour there before
+ * this was written.
+ */
+$GLOBALS['meta']      = array();
+$GLOBALS['posts']     = array();
+$GLOBALS['updated']   = array();
+$GLOBALS['oldslugs']  = array();  // post_id => array of slugs, core's _wp_old_slug
+$GLOBALS['filters']   = array();
+$GLOBALS['redirects'] = array();
+
+const OLD_SLUG_KEY = '_wp_old_slug';
 
 function get_post_meta( $id, $key, $single = false ) {
+    if ( OLD_SLUG_KEY === $key ) {
+        $rows = isset( $GLOBALS['oldslugs'][ $id ] ) ? $GLOBALS['oldslugs'][ $id ] : array();
+        return $single ? ( isset( $rows[0] ) ? $rows[0] : '' ) : $rows;
+    }
     return isset( $GLOBALS['meta'][ $id ][ $key ] ) ? $GLOBALS['meta'][ $id ][ $key ] : '';
+}
+function add_post_meta( $id, $key, $value, $unique = false ) {
+    if ( OLD_SLUG_KEY === $key ) {
+        $GLOBALS['oldslugs'][ $id ][] = $value;
+        return true;
+    }
+    $GLOBALS['meta'][ $id ][ $key ] = $value;
+    return true;
 }
 function update_post_meta( $id, $key, $value, $prev = '' ) {
     $GLOBALS['meta'][ $id ][ $key ] = $value;
     return true;
 }
 function delete_post_meta( $id, $key, $value = '' ) {
+    if ( OLD_SLUG_KEY === $key ) {
+        // Core with no $value deletes every row for the key.
+        if ( '' === $value ) {
+            unset( $GLOBALS['oldslugs'][ $id ] );
+        } elseif ( isset( $GLOBALS['oldslugs'][ $id ] ) ) {
+            $GLOBALS['oldslugs'][ $id ] = array_values(
+                array_diff( $GLOBALS['oldslugs'][ $id ], array( $value ) )
+            );
+        }
+        return true;
+    }
     unset( $GLOBALS['meta'][ $id ][ $key ] );
     return true;
 }
 function get_post( $id = null ) {
     return isset( $GLOBALS['posts'][ $id ] ) ? (object) $GLOBALS['posts'][ $id ] : null;
 }
+function get_post_type( $id = null ) {
+    return isset( $GLOBALS['posts'][ $id ]['post_type'] ) ? $GLOBALS['posts'][ $id ]['post_type'] : '';
+}
+
+/**
+ * Core's wp_check_for_changed_slugs(), on post_updated.
+ *
+ * Published and non-hierarchical only, which uc_event is. A post with no
+ * post_status in a fixture is treated as published, because that is the state
+ * every one of these assertions is about.
+ */
+function model_check_for_changed_slugs( $id, $before, $after ) {
+    if ( $before === $after || '' === (string) $before ) {
+        return;
+    }
+    $status = isset( $GLOBALS['posts'][ $id ]['post_status'] )
+        ? $GLOBALS['posts'][ $id ]['post_status']
+        : 'publish';
+    if ( 'publish' !== $status ) {
+        return;
+    }
+    $rows = isset( $GLOBALS['oldslugs'][ $id ] ) ? $GLOBALS['oldslugs'][ $id ] : array();
+    if ( ! in_array( $before, $rows, true ) ) {
+        add_post_meta( $id, OLD_SLUG_KEY, $before );
+    }
+    // If the new slug was used previously, core drops it from the list.
+    if ( in_array( $after, $rows, true ) ) {
+        delete_post_meta( $id, OLD_SLUG_KEY, $after );
+    }
+}
+
 function wp_update_post( $args, $wp_error = false ) {
-    $id = (int) $args['ID'];
+    $id     = (int) $args['ID'];
+    $before = isset( $GLOBALS['posts'][ $id ]['post_name'] ) ? $GLOBALS['posts'][ $id ]['post_name'] : '';
     foreach ( $args as $k => $v ) {
         if ( 'ID' !== $k ) { $GLOBALS['posts'][ $id ][ $k ] = $v; }
     }
     $GLOBALS['updated'][] = $args;
+    if ( isset( $args['post_name'] ) ) {
+        model_check_for_changed_slugs( $id, $before, (string) $args['post_name'] );
+    }
     return $id;
 }
+function wp_insert_post( $args, $wp_error = false ) {
+    $id                     = isset( $args['import_id'] ) ? (int) $args['import_id'] : ( count( $GLOBALS['posts'] ) + 100 );
+    $GLOBALS['posts'][ $id ] = $args;
+    return $id;
+}
+
+/**
+ * Core's wp_old_slug_redirect(), reduced to the question it answers: given a
+ * slug nothing currently resolves to, which post does the visitor land on?
+ *
+ * Returns 0 for a real 404. Runs the old_slug_redirect_post_id filter, which is
+ * where SFAF_Privacy refuses.
+ */
+function model_old_slug_redirect( $slug ) {
+    foreach ( $GLOBALS['posts'] as $id => $post ) {
+        if ( isset( $post['post_name'] ) && $post['post_name'] === $slug ) {
+            return 0; // Not a 404 at all: a live post answers here.
+        }
+    }
+    $found = 0;
+    foreach ( $GLOBALS['oldslugs'] as $id => $rows ) {
+        if ( in_array( $slug, $rows, true ) ) { $found = (int) $id; break; }
+    }
+    return (int) apply_filters( 'old_slug_redirect_post_id', $found );
+}
+
 function wp_generate_password( $len = 12, $special = true, $extra = false ) {
     return str_repeat( 'A1b2', (int) ceil( $len / 4 ) );
+}
+function sanitize_title( $s ) {
+    $s = strtolower( trim( (string) $s ) );
+    $s = preg_replace( '/[^a-z0-9]+/', '-', $s );
+    return trim( (string) $s, '-' );
 }
 function is_admin() { return false; }
 function is_singular( $t = '' ) { return ! empty( $GLOBALS['is_singular'] ); }
 function get_queried_object_id() { return isset( $GLOBALS['queried'] ) ? $GLOBALS['queried'] : 0; }
 function add_action( $h, $c, $p = 10, $a = 1 ) {}
-function add_filter( $h, $c, $p = 10, $a = 1 ) {}
+function add_filter( $h, $c, $p = 10, $a = 1 ) {
+    $GLOBALS['filters'][ $h ][] = $c;
+}
+function apply_filters( $h, $value ) {
+    if ( empty( $GLOBALS['filters'][ $h ] ) ) {
+        return $value;
+    }
+    foreach ( $GLOBALS['filters'][ $h ] as $cb ) {
+        $value = call_user_func( $cb, $value );
+    }
+    return $value;
+}
 
 class WP_Query {
     public $posts = array();
@@ -76,7 +210,23 @@ class WP_Query {
 }
 class SFAF_Series { const TAXONOMY = 'uc_series'; }
 
+/**
+ * Only what derived_public_slug() asks: is this event part of a group? The date
+ * is appended for a member and not for a standalone event, so both branches are
+ * reachable from a fixture.
+ */
+class SFAF_Recurrence {
+    const GROUP_META = '_uc_recurrence_group';
+    public static function group_of( $post_id ) {
+        return (string) get_post_meta( (int) $post_id, self::GROUP_META, true );
+    }
+}
+
 require $root . '/includes/class-sfaf-privacy.php';
+
+// Register for real, so the old-slug guard is under test rather than assumed.
+// A build that drops the add_filter line fails here rather than in production.
+SFAF_Privacy::register();
 
 $fails = array();
 function check( $ok, $msg ) {
@@ -174,10 +324,139 @@ check(
     'a second set(true) recorded the token as though it were the original slug'
 );
 
+/* --- THE OLD ADDRESS, IN BOTH DIRECTIONS. -------------------------------
+ *
+ * This is the section the earlier version of this file could not have: it needs
+ * post_updated modelled. Mark confirmed both behaviours on the live site before
+ * 3.33.0, and both are asserted here.
+ */
+
+// GOING IN. The readable address must be dead, not redirected to the token.
+check(
+    0 === model_old_slug_redirect( 'donor-reception' ),
+    'the old readable address still resolves for a private event, which hands the secret URL to anybody who tries it'
+);
+check(
+    empty( $GLOBALS['oldslugs'][42] ),
+    'a retained old slug survived randomize_slug(), so the readable address is still recorded against a private event'
+);
+
+$token_in = $GLOBALS['posts'][42]['post_name'];
+
 SFAF_Privacy::set( 42, false );
 check( ! SFAF_Privacy::is_private( 42 ), 'set(false) did not make the event public' );
 check( 'donor-reception' === $GLOBALS['posts'][42]['post_name'], 'set(false) did not restore the original address' );
 check( '' === get_post_meta( 42, SFAF_Privacy::YOAST_NOINDEX_META, true ), "set(false) left Yoast's noindex meta behind" );
+
+// COMING BACK. The token must keep working, because donors were sent it.
+check(
+    42 === model_old_slug_redirect( $token_in ),
+    'the token stopped working once the event went public again, so every link already sent to a donor is broken'
+);
+
+/* --- The guard refuses even when a row exists by some other route. -------
+ *
+ * A slug the event no longer answers on, so it really is a 404 and the redirect
+ * really is what decides. 'donor-reception' would not do: post 42 currently
+ * carries it, so nothing would 404 and the assertion would prove nothing.
+ */
+$GLOBALS['oldslugs'][42] = array( 'reception-2025' );
+check(
+    42 === model_old_slug_redirect( 'reception-2025' ),
+    'a PUBLIC event stopped honouring its own old address, which breaks every link on the calendar'
+);
+update_post_meta( 42, SFAF_Privacy::META, '1' );
+check(
+    0 === model_old_slug_redirect( 'reception-2025' ),
+    'the redirect guard let an old slug through to a private event, so deleting the row is the only defence'
+);
+delete_post_meta( 42, SFAF_Privacy::META );
+$GLOBALS['oldslugs'][42] = array();
+
+/* --- The guard is scoped, and must not break the rest of the site. ------ */
+$GLOBALS['posts'][900] = array( 'ID' => 900, 'post_type' => 'page', 'post_name' => 'about' );
+$GLOBALS['meta'][900]  = array( SFAF_Privacy::META => '1' );
+check(
+    900 === SFAF_Privacy::block_old_slug_redirect( 900 ),
+    'the guard refused a redirect for a page, so it is not scoped to uc_event and would break the whole site'
+);
+check(
+    0 === SFAF_Privacy::block_old_slug_redirect( 0 ),
+    'the guard invented a post id out of a miss'
+);
+
+/* --- An event that never recorded an address still comes back readable. -- */
+$GLOBALS['posts'][51] = array( 'ID' => 51, 'post_type' => 'uc_event', 'post_title' => 'Donor Reception', 'post_name' => 'abc123' );
+$GLOBALS['meta'][51]  = array( SFAF_Privacy::META => '1' );
+SFAF_Privacy::set( 51, false );
+check(
+    'donor-reception' === $GLOBALS['posts'][51]['post_name'],
+    'a private event with no remembered slug stayed at its token after being made public'
+);
+
+// The same, for a member of a recurrence group: the date keeps twelve
+// occurrences from collapsing onto one title.
+$GLOBALS['posts'][52] = array( 'ID' => 52, 'post_type' => 'uc_event', 'post_title' => 'Donor Reception', 'post_name' => 'def456' );
+$GLOBALS['meta'][52]  = array(
+    SFAF_Privacy::META            => '1',
+    SFAF_Recurrence::GROUP_META   => 'grp1',
+    '_uc_event_date'              => '2026-09-12',
+);
+SFAF_Privacy::set( 52, false );
+check(
+    'donor-reception-2026-09-12' === $GLOBALS['posts'][52]['post_name'],
+    'an occurrence with no remembered slug did not fall back to a dated readable address'
+);
+
+/* --- OCCURRENCES CANNOT BE WALKED TO FROM THE SEED. ---------------------
+ *
+ * The seed is private, so its post_name IS its token. readable_base() must
+ * never hand that token out as the base for a date's address, and
+ * occurrence_slug() must decide the address BEFORE the insert so no predictable
+ * one is ever the post's name for core to retain.
+ */
+$GLOBALS['posts'][60] = array( 'ID' => 60, 'post_type' => 'uc_event', 'post_title' => 'Donor Reception', 'post_name' => 'ffffffffffffffffffffffffffffffff' );
+$GLOBALS['meta'][60]  = array(
+    SFAF_Privacy::META           => '1',
+    SFAF_Privacy::PREV_SLUG_META => 'donor-reception',
+);
+
+$base = SFAF_Privacy::readable_base( $GLOBALS['posts'][60]['ID'] );
+check(
+    'donor-reception' === $base,
+    "readable_base() returned '$base' for a private seed; if that is the token, every date is guessable from the seed's own link"
+);
+check(
+    false === strpos( $base, 'ffffffff' ),
+    'readable_base() leaked the private token as the base for occurrence addresses'
+);
+
+$plan = SFAF_Privacy::occurrence_slug( 60, $base, '2026-09-19' );
+check( ! empty( $plan['private'] ), 'occurrence_slug() did not carry the seed privacy to the date' );
+check(
+    (bool) preg_match( '/^[0-9a-f]{32}$/', $plan['post_name'] ),
+    'an occurrence of a private seed is created at a slug that is not a token'
+);
+check(
+    'donor-reception-2026-09-19' !== $plan['post_name'],
+    'an occurrence of a private seed is created at the predictable dated address, which core retains and redirects'
+);
+check(
+    'donor-reception-2026-09-19' === $plan['prev_slug'],
+    'occurrence_slug() did not remember a readable address, so this date can never come back from its token'
+);
+
+// The public case is unchanged: dated, readable, nothing remembered.
+$GLOBALS['posts'][61] = array( 'ID' => 61, 'post_type' => 'uc_event', 'post_title' => 'Coffee Social', 'post_name' => 'coffee-social' );
+$plan_pub = SFAF_Privacy::occurrence_slug( 61, SFAF_Privacy::readable_base( 61 ), '2026-09-19' );
+check(
+    'coffee-social-2026-09-19' === $plan_pub['post_name'],
+    'a public occurrence stopped being created at its readable dated address'
+);
+check(
+    '' === $plan_pub['prev_slug'] && empty( $plan_pub['private'] ),
+    'a public occurrence was handed a remembered slug or marked private'
+);
 
 /* --- Two events never share a token. ------------------------------------ */
 $tokens = array();

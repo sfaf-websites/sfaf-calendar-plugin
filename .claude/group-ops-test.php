@@ -79,15 +79,45 @@ class SFAF_Series {
  * so a shared token would mean being sent one date hands somebody every other
  * date by editing the URL.
  */
+/**
+ * Enough of SFAF_Privacy for create_occurrence() to run.
+ *
+ * The slug rules themselves are proved in .claude/private-events-test.php
+ * against the real class; this stub exists so the group operations can be
+ * exercised at all. It must keep pace with the methods create_occurrence()
+ * calls, which is how 3.33.0's occurrence_slug() showed up here as a fatal.
+ */
 class SFAF_Privacy {
     const META = '_uc_private';
     const YOAST_NOINDEX_META = '_yoast_wpseo_meta-robots-noindex';
+    const PREV_SLUG_META = '_uc_private_prev_slug';
     public static function is_private( $id ) {
         return '1' === (string) get_post_meta( (int) $id, self::META, true );
     }
+    public static function new_slug() {
+        return 'tok' . str_pad( (string) $GLOBALS['token_seq']++, 4, '0', STR_PAD_LEFT );
+    }
     public static function randomize_slug( $id ) {
         // Posts are objects in this harness, as they are in WordPress.
-        $GLOBALS['posts'][ (int) $id ]->post_name = 'tok' . str_pad( (string) $GLOBALS['token_seq']++, 4, '0', STR_PAD_LEFT );
+        $GLOBALS['posts'][ (int) $id ]->post_name = self::new_slug();
+    }
+    /** The address this post would carry if it were public, never the token. */
+    public static function readable_base( $post ) {
+        $post = is_object( $post ) ? $post : $GLOBALS['posts'][ (int) $post ];
+        if ( self::is_private( $post->ID ) ) {
+            $prev = (string) get_post_meta( $post->ID, self::PREV_SLUG_META, true );
+            return ( '' !== $prev ) ? $prev : sanitize_title( $post->post_title );
+        }
+        return ( '' !== (string) $post->post_name ) ? (string) $post->post_name : sanitize_title( $post->post_title );
+    }
+    /** Decided before the insert, so no guessable slug is ever the post's name. */
+    public static function occurrence_slug( $seed_id, $readable_base, $date ) {
+        $base  = ( '' !== trim( (string) $readable_base ) ) ? trim( (string) $readable_base ) : 'event';
+        $dated = $base . '-' . $date;
+        if ( ! self::is_private( (int) $seed_id ) ) {
+            return array( 'post_name' => $dated, 'prev_slug' => '', 'private' => false );
+        }
+        return array( 'post_name' => self::new_slug(), 'prev_slug' => $dated, 'private' => true );
     }
 }
 $GLOBALS['token_seq'] = 1;

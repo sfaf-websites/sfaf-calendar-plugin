@@ -36,11 +36,55 @@
  * /events/donor-reception is a thing somebody types. The previous slug is kept
  * so making the event public again restores the address it used to have.
  *
+ * WORDPRESS KEEPS OLD SLUGS ALIVE, AND THAT CUTS BOTH WAYS.
+ * ---------------------------------------------------------------------------
+ * Core hooks wp_check_for_changed_slugs() to post_updated: when a published,
+ * non-hierarchical post's slug changes, the previous slug is stored as
+ * _wp_old_slug meta, and wp_old_slug_redirect() then 301s any 404 matching one
+ * of those to the post's current address. uc_event qualifies on every count.
+ *
+ * The SAME mechanism gives the right answer in one direction and a disclosure
+ * in the other, which is why neither can be left to it:
+ *
+ *   PRIVATE TO PUBLIC. The token is retained and redirects to the restored
+ *   readable address, so every link already sent to a donor keeps working.
+ *   That is exactly what is wanted and it is left alone.
+ *
+ *   PUBLIC TO PRIVATE. The readable address is retained and redirects to the
+ *   TOKEN. /events/donor-reception did not die: it kept resolving and it handed
+ *   the secret address to anybody who tried it, in a Location header, as a 301
+ *   that browsers and proxies cache. Confirmed on the live site before this was
+ *   written, in both directions.
+ *
+ * So the retained slugs are deleted in randomize_slug(), not in set(). Every
+ * caller of randomize_slug() is by definition making an address unguessable, so
+ * keeping the previous one contradicts that everywhere, and putting the delete
+ * there also covers the occurrence path, which set() never touches. Clearing it
+ * in set() would run on the way back to public too and destroy the working
+ * links, which is the half that behaves correctly.
+ *
+ * block_old_slug_redirect() is the second, independent mechanism, for a row
+ * added by a path the delete does not reach. Same belt-to-the-braces reasoning
+ * as the two Yoast sitemap mechanisms below.
+ *
  * EACH OCCURRENCE OF A PRIVATE SERIES GETS ITS OWN TOKEN, and that is not
  * decoration. Occurrence slugs are normally {seed-slug}-{date}, so one token
  * shared across a series would mean that being sent one date hands you every
  * other date by editing the URL. Independent tokens make one forwarded link
  * exactly one forwarded link.
+ *
+ * THAT GUARANTEE WAS BEING DEFEATED BY THE SAME CORE MECHANISM. An occurrence
+ * used to be INSERTED at {seed-slug}-{date} and randomized immediately after,
+ * so for a private seed the predictable address was retained as an old slug and
+ * anybody holding one date's link could walk to every other date. The slug is
+ * now decided BEFORE the insert, by occurrence_slug(), so no predictable
+ * address is ever the post's name and there is nothing for core to retain.
+ *
+ * PRIVACY IS A SCOPED FIELD, LIKE EVERY OTHER FIELD ON THE EDITOR. The scope
+ * modal already asks "this event" or "all upcoming occurrences" and every other
+ * field respects the answer; privacy used to touch only the row it was ticked
+ * on while its own label promised it hid the event everywhere. It travels with
+ * the group now. See SFAF_Portal::apply_to_group().
  *
  * WHAT DOES NOT CHANGE. Everything, for anybody holding the link: the page
  * renders, registration works, all four emails send, add to calendar, the map,
@@ -100,7 +144,18 @@ class SFAF_Privacy {
 
         // noindex, nofollow on the page itself.
         add_filter( 'wp_robots', array( __CLASS__, 'robots' ) );
+
+        /*
+         * Core's old-slug redirect, refused for a private event. This is the
+         * mechanism that made a private event reachable at its old public
+         * address; see the file header. randomize_slug() deletes the rows, and
+         * this refuses the redirect whatever rows exist.
+         */
+        add_filter( 'old_slug_redirect_post_id', array( __CLASS__, 'block_old_slug_redirect' ) );
     }
+
+    /** WordPress's own record of a slug a post used to answer on. */
+    const OLD_SLUG_META = '_wp_old_slug';
 
     /* =====================================================================
      * Reading
@@ -245,12 +300,116 @@ class SFAF_Privacy {
         delete_post_meta( $post_id, self::META );
         delete_post_meta( $post_id, self::YOAST_NOINDEX_META );
 
+        /*
+         * THE TOKEN IS DELIBERATELY LEFT FOR CORE TO RETAIN. Restoring the
+         * readable slug here changes the slug on a published post, so
+         * wp_check_for_changed_slugs() records the token as an old slug and
+         * every link already sent to a donor keeps working, redirecting to the
+         * readable address. Nothing is cleared on this branch.
+         */
         $prev = (string) get_post_meta( $post_id, self::PREV_SLUG_META, true );
+        if ( '' === $prev ) {
+            // No remembered address: an occurrence generated before this
+            // release, or an event made private by something other than set().
+            // A public event should not be left at a token, so one is derived.
+            $prev = self::derived_public_slug( $post );
+        }
         if ( '' !== $prev ) {
             wp_update_post( array( 'ID' => $post_id, 'post_name' => $prev ) );
             delete_post_meta( $post_id, self::PREV_SLUG_META );
         }
         return true;
+    }
+
+    /**
+     * The slug this event would carry if it were public.
+     *
+     * For a public event that is simply its slug. For a private one it is the
+     * address remembered when it went private, because the current slug is a
+     * token and carries no words. Falls back to the title.
+     *
+     * USED WHEN GENERATING OCCURRENCES, which is why it must never return the
+     * token: an occurrence named from a seed's token is an occurrence somebody
+     * holding the seed's link can guess.
+     *
+     * @param int|WP_Post $post
+     * @return string
+     */
+    public static function readable_base( $post ) {
+        $post = is_object( $post ) ? $post : get_post( (int) $post );
+        if ( ! $post ) {
+            return '';
+        }
+
+        if ( self::is_private( $post->ID ) ) {
+            $prev = (string) get_post_meta( $post->ID, self::PREV_SLUG_META, true );
+            return ( '' !== $prev ) ? $prev : sanitize_title( $post->post_title );
+        }
+
+        return ( '' !== (string) $post->post_name )
+            ? (string) $post->post_name
+            : sanitize_title( $post->post_title );
+    }
+
+    /**
+     * An address for an event going public that never recorded one.
+     *
+     * The date is appended only for a member of a recurrence group, because
+     * that is the one case where the title alone collides: twelve occurrences
+     * share a title and would otherwise become donor-reception-2, -3, -4, which
+     * is a worse address than the date it actually is. A standalone event keeps
+     * its title and lets wp_unique_post_slug() settle any clash.
+     *
+     * @param WP_Post $post
+     * @return string
+     */
+    private static function derived_public_slug( $post ) {
+        $base = sanitize_title( $post->post_title );
+        if ( '' === $base ) {
+            return '';
+        }
+
+        $in_group = class_exists( 'SFAF_Recurrence' )
+            && '' !== (string) SFAF_Recurrence::group_of( $post->ID );
+        if ( ! $in_group ) {
+            return $base;
+        }
+
+        $date = (string) get_post_meta( $post->ID, '_uc_event_date', true );
+        return ( '' !== $date ) ? $base . '-' . $date : $base;
+    }
+
+    /**
+     * What slug a new occurrence should be CREATED with, and what to remember.
+     *
+     * THE DECISION HAPPENS BEFORE THE INSERT, AND THAT IS THE WHOLE POINT. An
+     * occurrence of a private seed used to be inserted at {seed-slug}-{date}
+     * and randomized a moment later, which left the predictable address behind
+     * as an old slug that core would redirect. Deciding here means the post is
+     * never named anything a person could guess, so there is no old slug for
+     * core to retain and nothing to clean up afterwards.
+     *
+     * prev_slug is the readable address this date WOULD have had, so making one
+     * occurrence public again lands on words rather than staying a token
+     * forever.
+     *
+     * @param int    $seed_id
+     * @param string $readable_base The public-facing base, from readable_base().
+     * @param string $date          Y-m-d.
+     * @return array{post_name:string,prev_slug:string,private:bool}
+     */
+    public static function occurrence_slug( $seed_id, $readable_base, $date ) {
+        $base = trim( (string) $readable_base );
+        if ( '' === $base ) {
+            $base = 'event';
+        }
+        $dated = $base . '-' . $date;
+
+        if ( ! self::is_private( (int) $seed_id ) ) {
+            return array( 'post_name' => $dated, 'prev_slug' => '', 'private' => false );
+        }
+
+        return array( 'post_name' => self::new_slug(), 'prev_slug' => $dated, 'private' => true );
     }
 
     /**
@@ -263,10 +422,50 @@ class SFAF_Privacy {
      * @param int $post_id
      */
     public static function randomize_slug( $post_id ) {
+        $post_id = (int) $post_id;
+
         wp_update_post( array(
-            'ID'        => (int) $post_id,
+            'ID'        => $post_id,
             'post_name' => self::new_slug(),
         ) );
+
+        /*
+         * THE OLD ADDRESS DIES HERE, AND THIS IS THE LINE THE FEATURE TURNED
+         * OUT TO DEPEND ON.
+         *
+         * The wp_update_post() above just changed the slug on a published post,
+         * so core has this moment recorded the PREVIOUS one as _wp_old_slug and
+         * would 301 anybody requesting it straight to the token. Every earlier
+         * one is deleted with it: a token from a previous private spell would
+         * redirect to the new token just as readily.
+         *
+         * AFTER the update, not before, because the update is what creates the
+         * row. Deleting first would leave the readable address alive.
+         */
+        delete_post_meta( $post_id, self::OLD_SLUG_META );
+    }
+
+    /**
+     * Refuse core's old-slug redirect when it would reveal a private event.
+     *
+     * THE SECOND MECHANISM, AND IT DOES NOT DEPEND ON A WRITE. randomize_slug()
+     * deletes the rows, and this holds even if one exists anyway: an event made
+     * private by something other than set(), a slug edited by hand in the
+     * WordPress editor, a row restored from a backup. Returning 0 leaves the
+     * request as the 404 it already is.
+     *
+     * SCOPED TO uc_event ON PURPOSE. This filter is global, and every page and
+     * post on the site relies on that redirect working.
+     *
+     * @param int $post_id The post core resolved the old slug to.
+     * @return int The same id, or 0 to refuse.
+     */
+    public static function block_old_slug_redirect( $post_id ) {
+        $post_id = (int) $post_id;
+        if ( ! $post_id || 'uc_event' !== get_post_type( $post_id ) ) {
+            return $post_id;
+        }
+        return self::is_private( $post_id ) ? 0 : $post_id;
     }
 
     /** A slug nobody is going to type. */

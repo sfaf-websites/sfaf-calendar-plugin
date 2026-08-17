@@ -943,20 +943,35 @@ class SFAF_Recurrence {
         $title = ( '' !== $title ) ? sanitize_text_field( $title ) : '';
         $use   = ( '' !== $title ) ? $title : $seed->post_title;
 
-        // The slug follows whichever title is being used, so a renamed date
-        // does not sit at the group's URL with somebody else's words in it.
+        /*
+         * The slug follows whichever title is being used, so a renamed date
+         * does not sit at the group's URL with somebody else's words in it.
+         *
+         * SFAF_Privacy::readable_base() rather than $seed->post_name, because a
+         * private seed's post_name IS ITS TOKEN, and naming occurrences after
+         * it hands every date to anybody holding the seed's link. It returns
+         * the address the seed would have if it were public.
+         */
         $base = ( '' !== $title )
             ? sanitize_title( $title )
-            : ( $seed->post_name ? $seed->post_name : sanitize_title( $seed->post_title ) );
+            : SFAF_Privacy::readable_base( $seed );
         if ( '' === $base ) {
             $base = 'event';
         }
+
+        /*
+         * DECIDED BEFORE THE INSERT. A private occurrence used to be created at
+         * the predictable {base}-{date} and randomized a moment later, which
+         * left that address behind as a _wp_old_slug for core to redirect. The
+         * post is now never named anything guessable in the first place.
+         */
+        $slug_plan = SFAF_Privacy::occurrence_slug( $seed->ID, $base, $date );
 
         $id = wp_insert_post( array(
             'post_type'    => 'uc_event',
             'post_status'  => $seed->post_status,
             'post_title'   => $use,
-            'post_name'    => $base . '-' . $date,
+            'post_name'    => $slug_plan['post_name'],
             'post_content' => $seed->post_content,
             'post_excerpt' => $seed->post_excerpt,
             'post_author'  => $seed->post_author,
@@ -995,16 +1010,24 @@ class SFAF_Recurrence {
          * slugs are {seed-slug}-{date}, so if the seed's token were simply
          * inherited, being sent one date would hand somebody every other date
          * by editing the date on the end of the URL. One forwarded link has to
-         * be one forwarded link, so each occurrence is randomized separately.
+         * be one forwarded link, so each occurrence gets its own token.
+         *
+         * THE TOKEN IS ALREADY ON THE POST by the time this runs: it came from
+         * occurrence_slug() above and went in with the insert. Randomizing here
+         * instead is what used to leave the predictable address behind as an
+         * old slug, which core then redirected, which defeated exactly the
+         * guarantee the paragraph above describes.
          *
          * Not in $copied_meta, because copying the flag without replacing the
          * slug would produce an event that claims to be private at a guessable
          * address, which is the one state this feature cannot have.
          */
-        if ( SFAF_Privacy::is_private( $seed->ID ) ) {
+        if ( $slug_plan['private'] ) {
             update_post_meta( $id, SFAF_Privacy::META, '1' );
             update_post_meta( $id, SFAF_Privacy::YOAST_NOINDEX_META, '1' );
-            SFAF_Privacy::randomize_slug( $id );
+            // The address this date would have if it were public, so making one
+            // occurrence public again lands on words rather than a token.
+            update_post_meta( $id, SFAF_Privacy::PREV_SLUG_META, $slug_plan['prev_slug'] );
         }
 
         update_post_meta( $id, '_uc_event_date', $date );

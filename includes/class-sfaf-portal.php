@@ -1305,6 +1305,20 @@ class SFAF_Portal {
      *   overwrite anyway.
      *
      *   THE SLUG. Permalinks are live URLs and are not a detail of an edit.
+     *   PRIVACY IS THE ONE EXCEPTION, AND IT IS NOT REALLY ONE: there the slug
+     *   is not a detail of the edit, it IS the edit. See below.
+     *
+     * PRIVACY TRAVELS, AND IT IS NOT A META COPY. It used to touch only the row
+     * it was ticked on, while its own label promised it hid the event
+     * everywhere, so a weekly reception made private left every other date
+     * public. Every other field on this form respects the scope answer and
+     * privacy was ignoring it. It cannot go in $meta_keys either, because
+     * copying _uc_private without replacing the target's slug produces an event
+     * that claims to be private at a guessable address, which is the one state
+     * the feature cannot have. So it goes through SFAF_Privacy::set(), which
+     * moves the meta and the address together, per target, each keeping its own
+     * remembered readable slug. Past occurrences are never in $targets, so they
+     * are never reached, exactly as with every other bulk edit.
      *
      * @param int   $source_id
      * @param int[] $targets   Including $source_id.
@@ -1318,6 +1332,10 @@ class SFAF_Portal {
         }
 
         $locked = SFAF_Recurrence::bulk_locked_fields( $targets );
+
+        // Read back from the saved source, like everything else here: the
+        // per-event save has already run SFAF_Privacy::set() on it.
+        $source_private = SFAF_Privacy::is_private( $source_id );
 
         $meta_keys = array(
             '_uc_start_time', '_uc_end_time', '_uc_location',
@@ -1389,6 +1407,15 @@ class SFAF_Portal {
             } else {
                 delete_post_thumbnail( $target_id );
             }
+
+            /*
+             * LAST, AND AFTER wp_update_post(). set() changes the slug, and the
+             * postarr above sets post_status; running privacy first would have
+             * the status write land on a post whose address had just moved, for
+             * no reason. It is a no-op when the target already agrees, so a
+             * bulk edit that did not touch privacy churns no addresses.
+             */
+            SFAF_Privacy::set( $target_id, $source_private );
 
             $written++;
         }
@@ -4234,7 +4261,8 @@ class SFAF_Portal {
                     <p class="uc-hint">
                         <strong>The link is the only thing protecting it, and a link can be forwarded.</strong>
                         Turning this on changes the event's web address to an unguessable one, so the old
-                        address stops working. Turning it off again restores it.
+                        address stops working. Turning it off again restores the old address, and the
+                        private link you already sent keeps working.
                     </p>
                     <?php if ( $is_private ) : ?>
                         <p class="uc-hint uc-private-link">

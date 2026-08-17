@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.32.0
+Stable tag: 3.33.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -466,6 +466,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.33.0 =
+
+**A private event's old public address was still working, and it redirected to the secret one.** Confirmed on the live site in both directions. WordPress hooks `wp_check_for_changed_slugs()` to `post_updated`: when a published, non-hierarchical post's slug changes, the previous slug is kept as `_wp_old_slug`, and `wp_old_slug_redirect()` then 301s any 404 matching one of those to the post's current address. `uc_event` qualifies on every count, and nothing here had ever accounted for it. So ticking Private moved the event to its token and left `/events/donor-reception` answering, redirecting to the token, handing the secret address to anybody who tried the old one, in a Location header, as a permanent redirect that browsers and proxies cache. A crawler holding the old URL followed it to the new one.
+
+**The same mechanism is correct in the other direction and is kept.** Making an event public again restores the readable address and core retains the token, so every link already sent to a donor keeps working and lands on the right page. That half was never broken and is now asserted rather than accidental.
+
+**So the retained addresses are deleted in `randomize_slug()`, not in `set()`.** Every caller of `randomize_slug()` is by definition making an address unguessable, so keeping the previous one contradicts that everywhere, and putting the delete there also covers the occurrence path, which `set()` never touches. Clearing it in `set()` would run on the way back to public too and destroy the working links. The delete runs after the update rather than before, because the update is what creates the row.
+
+**A second mechanism that does not depend on that write.** `old_slug_redirect_post_id` is filtered and returns 0 when the resolved post is private, so an old slug that exists by some other route, a slug edited by hand in the WordPress editor or a row restored from a backup, still cannot reach a private event. Same belt-to-the-braces reasoning as the two Yoast sitemap mechanisms. It is scoped to `uc_event`: that filter is global and every page on the site relies on the redirect working.
+
+**An occurrence could be walked to from the seed's own link, which is the exact attack the independent tokens exist to prevent.** Occurrences were inserted at `{seed-slug}-{date}` and randomized a moment later. For a private seed the seed's slug is its token, so each date was briefly at `{seed-token}-2026-09-19`, and core kept that as an old slug: being sent one link handed you every other date by editing the date on the end of the URL. The slug is now decided before the insert by `SFAF_Privacy::occurrence_slug()`, from the address the seed would have if it were public, so no guessable address is ever the post's name and there is nothing to retain.
+
+**A date made public again lands on words rather than staying a token forever.** Occurrences never recorded a readable address, because they were randomized directly rather than through `set()`. Each now stores the address it would have had. For an occurrence generated before this release there is a fallback: the title, plus the date when the event is in a recurrence group, because twelve occurrences share a title and would otherwise become `donor-reception-2`, `-3`, `-4`, which is a worse address than the date it actually is.
+
+**Privacy follows the edit scope, like every other field on the form.** It used to touch only the row it was ticked on while its own label promised it hid the event everywhere, so a weekly reception made private left every other date public. The scope modal already asks "this event" or "all upcoming occurrences" and every other field respects the answer. It cannot be a plain meta copy, because copying `_uc_private` without replacing the target's slug produces an event claiming to be private at a guessable address, so it goes through `SFAF_Privacy::set()` per target, each keeping its own remembered address. Past occurrences are never touched, exactly as with every other bulk edit. No new label and no new question.
+
+**The test that passed while all of this was broken is the lesson.** `.claude/private-events-test.php` asserted the round trip correctly and stubbed `wp_update_post()`, so it could never fire `post_updated` and the entire mechanism that decides what an old address does was invisible to it. It now models `wp_check_for_changed_slugs()`, `wp_old_slug_redirect()` and a real hook registry, so the filter is called rather than assumed, and it asserts both directions and the enumeration case. `.claude/private-slug-fault-check.sh` plants four faults in the real source and confirms each one fails: the first attempt planted the second fault before `wp_update_post()` instead of after and reported a fault it could not see, which is precisely the failure the file exists to catch.
 
 = 3.32.0 =
 

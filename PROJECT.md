@@ -224,9 +224,51 @@ private series is every event in it marked private.
 private replaces its slug with 32 hex characters from `random_bytes()`. The
 previous slug is kept so making it public again restores the old address.
 
+**WordPress keeps old slugs alive, and that cuts both ways.** Core hooks
+`wp_check_for_changed_slugs()` to `post_updated`: when a published,
+non-hierarchical post's slug changes, the previous slug is stored as
+`_wp_old_slug`, and `wp_old_slug_redirect()` then 301s any 404 matching one to
+the post's current address. `uc_event` qualifies on every count. The *same*
+mechanism gives the right answer in one direction and a disclosure in the other,
+so neither can be left to it:
+
+- **Private to public: kept deliberately.** The token is retained and redirects
+  to the restored readable address, so every link already sent to a donor keeps
+  working. Nothing is cleared on that branch, and a delete placed there would
+  destroy exactly the links the feature exists to serve.
+- **Public to private: had to be killed.** The readable address was retained and
+  redirected to the *token*. `/events/donor-reception` kept resolving and handed
+  the secret address to anyone who tried it, in a `Location` header, as a cached
+  301. Confirmed on the live site.
+
+So retained slugs are deleted in `randomize_slug()`, after the update that
+creates the row, never in `set()`. Every caller of `randomize_slug()` is by
+definition making an address unguessable, and putting it there also covers the
+occurrence path that `set()` never touches.
+`SFAF_Privacy::block_old_slug_redirect()` on `old_slug_redirect_post_id` is the
+second, independent mechanism, scoped to `uc_event` because that filter is
+global and the rest of the site needs the redirect.
+
 **Each occurrence of a private series gets its own token.** Occurrence slugs are
 normally `{seed-slug}-{date}`, so one shared token would mean that being sent
 one date hands you every other date by editing the URL.
+
+That guarantee was being defeated by the same core mechanism. An occurrence used
+to be *inserted* at `{seed-slug}-{date}` and randomized a moment later, and for
+a private seed the seed's slug is its token, so the predictable address was
+retained and redirected. **The slug is now decided before the insert**, by
+`occurrence_slug()`, from `readable_base()` (the address the seed would have if
+it were public, never its token), so nothing guessable is ever the post's name.
+Each occurrence also stores the readable address it would have had, so a date
+made public again lands on words instead of staying a token.
+
+**Privacy is a scoped field like any other.** The editor's scope modal already
+asks "this event" or "all upcoming occurrences"; privacy used to ignore the
+answer and touch only the row it was ticked on, while its label promised it hid
+the event everywhere. It travels through `apply_to_group()` now, per target, via
+`set()` rather than as a meta copy, because copying `_uc_private` without
+replacing the target's slug produces an event claiming to be private at a
+guessable address. Past occurrences are never reached.
 
 Everything else works normally for anybody holding the link: registration, all
 four emails, add-to-calendar, the map, capacity, cancellation. The `.ics` export
@@ -763,6 +805,26 @@ twelve cards to 40px strips left nothing wrong to see.
 > **Make a new checker fail on purpose before trusting it.** Plant the fault it
 > is supposed to catch. Every committed test in `.claude/` has been proved this
 > way.
+
+**A stub that removed the mechanism under test.** The private-events test
+asserted the slug round trip correctly and stubbed `wp_update_post()` as "write
+the fields and return". A stub cannot fire `post_updated`, so
+`wp_check_for_changed_slugs()` never ran and the entire core mechanism that
+decides what a private event's *old* address does was invisible. Every assertion
+passed for three releases while a private event kept answering on its public URL
+and redirecting to the secret one. The fix was to model that slice of core
+rather than stub it, including a real hook registry so the filter is called
+rather than assumed.
+
+> **Ask what your stub replaced, not just what it returns.** A stub standing in
+> for a function that fires hooks has removed the hooks. Where behaviour depends
+> on what core does *around* a call, model it.
+
+**A planted fault in a harmless position proves nothing.** The first draft of
+`private-slug-fault-check.sh` planted "clear the old slugs on the way back to
+public" *before* the `wp_update_post()` that restores the address. Core re-adds
+the row a moment later, so the end state was correct and the check reported a
+fault it could not see. Only the placement *after* the update is destructive.
 
 **An instruction reported complete without touching the file. Twice.** The RSVP
 sensitivity banner and the series removal paragraph were each reported removed
