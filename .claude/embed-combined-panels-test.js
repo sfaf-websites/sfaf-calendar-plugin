@@ -163,7 +163,7 @@ function makeBlock(view) {
 
     if (view === 'sidebar') {
         block.append(new El('uc-sidebar-list'));
-        return { container, block, list: null, grid: null };
+        return { container, block, list: null, grid: null, side: null };
     }
 
     const panels = block.append(new El('uc-view-panels' + (view === 'combined' ? ' uc-view-panels-combined' : '')));
@@ -182,13 +182,27 @@ function makeBlock(view) {
     const cards = list.append(new El('uc-event-list'));
     for (let i = 0; i < 3; i++) { cards.append(new El('uc-event-card')); }
 
+    /*
+     * THE COMBINED MODE'S SECOND PANEL IS THE SIDEBAR AS OF 3.32.0, and it has no
+     * card list at all. So the fixture builds a sidebar panel for that mode and
+     * does not append the list one: a fixture that still held a list panel would
+     * keep asserting that a thing which no longer ships is visible, which is a
+     * test passing about nothing.
+     */
+    const side = new El('uc-view-panel uc-panel-sidebar');
+    const card = side.append(new El('uc-sidebar'));
+    card.append(new El('uc-sidebar-heading'));
+    const rows = card.append(new El('uc-sidebar-list'));
+    for (let i = 0; i < 10; i++) { rows.append(new El('uc-sidebar-row')); }
+    card.append(new El('uc-sidebar-all'));
+
     // A mode other than combined ships one panel hidden from the server.
     if (view !== 'combined') {
         list.hidden = (view !== 'list');
         grid.hidden = (view !== 'calendar');
     }
 
-    if (view === 'combined') { panels.append(grid); panels.append(list); }
+    if (view === 'combined') { panels.append(grid); panels.append(side); }
     else { panels.append(list); panels.append(grid); }
 
     if (view === 'list' || view === 'calendar') {
@@ -198,7 +212,7 @@ function makeBlock(view) {
         toggle.append(new El('uc-view-btn', { 'data-view': 'calendar' }));
     }
 
-    return { container, block, list, grid };
+    return { container, block, list, grid, side };
 }
 
 /* =========================================================================
@@ -228,20 +242,23 @@ store = {};
 let b = makeBlock('combined');
 api.bindViewToggle(b.container, b.block);
 
-const cardsSeen = visible(b.container, '.uc-event-card');
+const rowsSeen = visible(b.container, '.uc-sidebar-row');
 const daysSeen = visible(b.container, '.uc-day-event');
 const chromeSeen = visible(b.container, '.uc-search') + visible(b.container, '.uc-event-count');
 
 check(chromeSeen === 2, 'the fixture is wrong: the chrome is not visible, so a chrome-but-no-events assertion proves nothing');
 check(
-    cardsSeen + daysSeen > 0,
+    rowsSeen + daysSeen > 0,
     'A COMBINED BLOCK RENDERED ITS CHROME AND NO EVENTS. Both panels are in the document and both are hidden; ' +
     'that is what the live page showed, at every width, and it is a JavaScript fault rather than a CSS one'
 );
-check(cardsSeen === 3, `the combined mode shows ${cardsSeen} of 3 list cards`);
+check(rowsSeen === 10, `the combined mode shows ${rowsSeen} of 10 sidebar rows`);
 check(daysSeen === 2, `the combined mode shows ${daysSeen} of 2 grid entries`);
-check(b.list.hidden === false, 'the list panel is hidden in the combined mode');
+check(b.side.hidden === false, 'the sidebar panel is hidden in the combined mode');
 check(b.grid.hidden === false, 'the grid panel is hidden in the combined mode');
+// And the list panel is not there to be hidden or shown, which is the 3.32.0
+// change: panelOf() returns null for it and showView() has nothing to do.
+check(b.container.querySelector('.uc-panel-list') === null, 'the combined mode still has a list panel');
 
 /*
  * ONE uc-view-* CLASS, AND IT IS THE RIGHT ONE. showView() rewrites the block's
@@ -266,7 +283,7 @@ b = makeBlock('combined');
 store['sfafView:||||combined'] = 'calendar';
 api.bindViewToggle(b.container, b.block);
 check(
-    visible(b.container, '.uc-event-card') === 3 && visible(b.container, '.uc-day-event') === 2,
+    visible(b.container, '.uc-sidebar-row') === 10 && visible(b.container, '.uc-day-event') === 2,
     'a view left in localStorage collapsed the combined mode to one panel'
 );
 
@@ -305,7 +322,7 @@ store = {};
 b = makeBlock('combined');
 api.showView(b.container, 'nonsense', false);
 check(
-    visible(b.container, '.uc-event-card') + visible(b.container, '.uc-day-event') > 0,
+    visible(b.container, '.uc-sidebar-row') + visible(b.container, '.uc-day-event') > 0,
     'an unrecognised view hides every panel, which is the fault this file was written for wearing a different name'
 );
 
@@ -322,7 +339,7 @@ check(threw === '', 'the sidebar mode throws in bindViewToggle: ' + threw);
 
 console.log('Combined mode, as a visitor sees it');
 console.log('sliced:   ' + NEEDED.join(', ') + ' out of public/js/embed.js');
-console.log('combined: 3 list cards and 2 grid entries visible, chrome visible, one uc-view class,');
+console.log('combined: 10 sidebar rows and 2 grid entries visible, chrome visible, one uc-view class,');
 console.log('          and a stale remembered view cannot collapse it');
 console.log('list:     cards only. calendar: grid only. the toggle still switches and remembers.');
 console.log('edges:    an unrecognised view cannot empty the block; sidebar has no panels and does not throw.');

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.31.2
+Stable tag: 3.32.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -40,7 +40,7 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * `[sfaf_calendar]` - Full calendar with filters
 * `[sfaf_calendar category="support-groups"]` - Filtered by category
 * `[sfaf_calendar layout="compact" show_filters="no"]` - Compact list, no filter bar
-* `[sfaf_calendar view="combined"]` - Month grid and list side by side, stacking below 920px
+* `[sfaf_calendar view="combined"]` - Month grid and the upcoming dates sidebar side by side, stacking below 888px
 * `[sfaf_calendar source_links="yes"]` - Imported events open at their source listing
 * `[upcoming_events count="5" category="fundraising"]` - Compact upcoming events widget
 
@@ -188,7 +188,7 @@ blocks are most often in.
 * Sidebar mode: **200px**
 * List mode: **260px**
 * Month grid: **260px**
-* Combined mode: **260px**, and it goes side by side at **920px**
+* Combined mode: **260px**, and it goes side by side at **888px**
 
 The month grid and combined views cap at **1200px** rather than 900px, because
 a grid is seven columns and every pixel of column width is room for the title
@@ -197,30 +197,36 @@ leaves 109.1px of title once the 32px thumbnail and its 8px gap are taken.
 Below 930px of container width the thumbnail is dropped and the entry is a
 title and a time, which is what it was before 3.31.0.
 
-The combined mode has no minimum of its own because below 920px it stops being
-a two-column layout: the list wraps under the grid and each takes the full
-width, at which point it is the list mode and the month grid, whose 260px
-applies unchanged. 920px is where the changeover happens, not a minimum, and
-above it the two share the surplus equally.
+The combined mode has no minimum of its own because below 888px it stops being
+a two-column layout: the sidebar wraps under the grid and each takes the full
+width, at which point it is the month grid and the sidebar, whose 260px and
+200px apply unchanged. 888px is where the changeover happens, not a minimum.
 
-That number is the two flex bases plus the gap, 576 + 320 + 24, because flex
+That number is the two flex bases plus the gap, 576 + 288 + 24, because flex
 line breaking uses each item's flex-basis rather than its shrunk width. It is
 pinned in two places rather than trusted: `.claude/embed-modes-test.php` reads
 the three values back out of the stylesheet and fails if they no longer add up
 to the number published here, and the width probe renders the mode either side
 of it and reports which state it is actually in.
 
-**The grid's basis is 576px because that is the width it needs to show anything.**
-It was 400px until 3.31.1, a basis that put the changeover at 744px, and from
-there up to 1064px the grid was handed a column under the 560px at which it drops
-its cell entries and becomes seven columns of dots with a day panel underneath.
-That treatment is right for a phone and wrong for half of a wide block, and it
-was what a 770px page on sfaf.org got: side by side, a 413px grid, dots. The
-rule now is that side by side must never be worse than stacking, since stacked
-the grid gets the whole width and its entries back. Both panels still grow
-equally: giving the grid two thirds of the surplus would leave the list 413px at
-the 1200px cap, under the 420px where its card header starts giving up the date
-size, and would buy the grid about 6px per column.
+**Both bases are breakpoints plus headroom rather than numbers anybody liked.**
+Each panel's basis is the narrowest column its half can still be itself in, so
+that going side by side is never worse than stacking:
+
+* The grid's **576px** clears the **560px** at which the month grid drops its
+  cell entries and becomes seven columns of dots with a day panel underneath.
+* The sidebar's **288px** clears the **272px** at which the sidebar row stops
+  putting its 44px thumbnail beside the text and stacks a 150px picture above it.
+
+The grid's basis was 400px until 3.31.1, which put the changeover at 744px and
+handed the grid a column under 560px at every width up to 1064px: a 770px page on
+sfaf.org got a 413px grid of dots. The right panel's basis was the list card's
+320px until 3.32.0, when the panel became the sidebar.
+
+**The sidebar panel is capped at 380px, where the sidebar itself caps.** A panel
+allowed to grow past that would reserve room its contents cannot fill and leave a
+gap down the right of the block; capped, the surplus goes to the grid, which has
+seven columns to spend it on. At the 1200px block cap: sidebar 380px, grid 796px.
 
 These come from `.claude/embed-width-probe.html`, which renders each mode at
 eleven widths in three kinds of parent and prints what it measures. The 3.24.0
@@ -460,6 +466,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.32.0 =
+
+**The combined mode's right-hand column is the sidebar display mode, not the card list.** Same compact rows: a 44px thumbnail, the title, and one quiet line carrying the date and time. Same heading, same fixed number of upcoming dates, same "See all events" link at the foot. It is `render_sidebar()`, the method the sidebar mode returns, so there is no third rendering of anything.
+
+**Why.** A list card is the main content of a page at full width: a 16/9 photograph, a title, an excerpt, three lines of meta and a footer with a button, measured at 688px of height each. Beside a month grid that is one and a half events in view, and it read as heavy and unfinished. The sidebar row was designed for exactly this column and is already correct at this width because it is already shipped at this width.
+
+**This removed code rather than adding it.** The combined mode no longer builds a card list at all, so it does not pay for twelve cards it then throws away; it asks the query for the total and no markup. No pagination, no "load more", no height cap and no scroll region anywhere in the mode. The right panel exists in one mode and is visible in it, so it carries no `hidden` attribute and there is no question for the view code to get wrong. The count of upcoming dates is resolved in one helper that both the sidebar mode and this one call.
+
+**The changeover moves from 920px to 888px**, and only because the column did. It is still the two flex bases plus the gap: 576 for the grid, now 288 for the sidebar rather than 320 for the list, plus 24. Both bases are breakpoints plus headroom on the same principle, that going side by side must never be worse than stacking: 576 clears the 560px where the grid collapses to dots, and 288 clears the 272px where the sidebar row stops putting its thumbnail beside the text. The panel is capped at 380px, where the sidebar caps itself, so surplus width goes to the grid instead of into a gap. At the 1200px cap: sidebar 380px, grid 796px.
+
+**On sfaf.org nothing about the stacking changes.** That template is locked at about 770px, which is below 888 as it was below 920, so the mode stacks there and always will: the month grid above, the sidebar card beneath it at its own 380px width. The two-column layout needs 888px and is for wider hosts.
+
+**The parity test now compares the right panel against the sidebar mode.** `.claude/combined-panel-parity.php` renders one sidebar through `render_sidebar()` and puts that same string in a combined block and standalone, resizing the standalone host to the width the panel actually measured, at 770px stacked and 1000px side by side. It compares all 105 elements per panel for identity, computed display, rendered box **and typography**: nesting `.uc-sidebar` inside `.uc-calendar` exposes it to every `.uc-calendar`-scoped rule in the stylesheet, and a rule that repaints a heading changes nothing about its size. Result: no difference of any kind at either width. Planting a colour that only differs because of the nesting fails it, which is how that check was verified.
+
+**The placeholder tile names its category again.** An event with no image showed a tile reading "Event" rather than its category name, on every list card in every mode, and raised an undefined-variable notice for each one. `sfaf_list_card_media()` took the name as an argument and its only caller passed a variable that was never assigned. The name is resolved inside the helper now, from `sfaf_event_primary_category()`, the same way `sfaf_thumb_media()` and `sfaf_day_event_thumb()` already did it; the argument stays for a caller that knows better and no longer has to be supplied. About half of imported events never get an image, so this is the tile most visitors see most often, and 3.31.0's readme has been claiming it carried the category name since it shipped. "Event" is now only for an event in no category at all, which is what it was always meant to cover.
 
 = 3.31.2 =
 

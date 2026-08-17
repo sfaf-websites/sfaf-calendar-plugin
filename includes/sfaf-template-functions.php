@@ -2420,6 +2420,22 @@ function sfaf_thumb_media( $post_id ) {
         . '</span>';
 }
 
+/**
+ * THE TILE NAMES THE EVENT'S OWN CATEGORY, AND FOR THREE RELEASES IT SAID
+ * "Event".
+ *
+ * $cat_name was optional and the only caller, the list card, passed a variable
+ * that had never been assigned. So every image-less card fell through to the
+ * 'Event' fallback and raised an undefined-variable notice while doing it. About
+ * half of imported events never get an image, so this is the tile most visitors
+ * saw most often, and 3.31.0's readme claimed it carried the category name.
+ *
+ * THE NAME IS RESOLVED HERE RATHER THAN ASKED FOR. sfaf_thumb_media() and
+ * sfaf_day_event_thumb() both derive it from sfaf_event_primary_category()
+ * immediately above; this one took it as an argument and trusted the caller,
+ * which is the one of the three that could be got wrong. The parameter stays for
+ * a caller that genuinely knows better, and no longer has to be supplied.
+ */
 function sfaf_list_card_media( $post_id, $cat_name = '' ) {
     $url = sfaf_event_image_url( $post_id );
     if ( '' !== $url ) {
@@ -2427,15 +2443,18 @@ function sfaf_list_card_media( $post_id, $cat_name = '' ) {
             . ' alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy" decoding="async" />';
     }
 
-    $label = ( '' !== $cat_name ) ? $cat_name : 'Event';
-
-    // The tile carries the category name as visible text, so the image itself
-    // has nothing left to announce.
     // The icon comes from the category itself where there is one, so setting it
     // on the Categories screen changes the tile as well as the placeholder. The
     // tint and ink behind it are sfaf_category_shades(), unchanged: they are a
     // contrast-checked pair and small text must not sit on a raw brand colour.
-    $primary  = sfaf_event_primary_category( $post_id );
+    $primary = sfaf_event_primary_category( $post_id );
+    if ( '' === $cat_name ) {
+        $cat_name = $primary ? $primary->name : '';
+    }
+
+    // 'Event' is now only for an event in no category at all, which is what it
+    // was always meant to cover.
+    $label    = ( '' !== $cat_name ) ? $cat_name : 'Event';
     $icon_key = $primary ? SFAF_Categories::icon( (int) $primary->term_id, $primary->name )
                          : sfaf_category_icon_key( $cat_name );
 

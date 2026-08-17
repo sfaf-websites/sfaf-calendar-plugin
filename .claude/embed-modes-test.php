@@ -137,10 +137,34 @@ check(
     'normalize_view() does not know about the combined mode'
 );
 
-// Both panels are built for it.
+/*
+ * THE GRID IS BUILT FOR IT AND THE CARD LIST IS NOT, which is the 3.32.0 change.
+ * The right column is the sidebar renderer, so a combined block that still built
+ * a card list would be paying for twelve cards it does not emit.
+ */
 check(
-    false !== strpos( $block, '$want_list = ( $toggle || $combined' ) && false !== strpos( $block, '$want_grid = ( $toggle || $combined' ),
-    'the combined mode does not force both panels to be built, so one of them would be empty'
+    false !== strpos( $block, '$want_grid = ( $toggle || $combined' ),
+    'the combined mode does not force the month grid to be built, so its left half would be empty'
+);
+check(
+    false !== strpos( $block, '$want_list = ( $toggle ||' ) && false === strpos( $block, '$want_list = ( $toggle || $combined' ),
+    'the combined mode still builds the card list; its right column is the sidebar, so the list is work whose output is thrown away'
+);
+check(
+    false !== strpos( $block, 'uc-view-panel uc-panel-sidebar' ),
+    'the combined mode does not emit a sidebar panel'
+);
+check(
+    false !== strpos( $block, '$this->render_sidebar(' ) && substr_count( $block, '$this->render_sidebar(' ) >= 2,
+    'the combined mode does not go through render_sidebar(), so its right column is a second rendering of something that already exists'
+);
+check(
+    false !== strpos( $block, 'self::sidebar_count(' ) && substr_count( $block, 'self::sidebar_count(' ) >= 2,
+    'the count of upcoming dates is resolved in two places rather than one, so the sidebar mode and the combined mode can drift'
+);
+check(
+    false !== strpos( $block, '$paginate = false;' ),
+    'the combined mode does not switch pagination off, so it can still advertise a Load more it has no list for'
 );
 
 // Neither panel is hidden in it.
@@ -157,8 +181,8 @@ check(
 
 // The grid is emitted before the list, in the DOM, for the combined mode only.
 check(
-    false !== strpos( $block, '? $panel_grid . $panel_list' ),
-    'the combined mode does not put the grid before the list in the DOM'
+    false !== strpos( $block, '? $panel_grid . $panel_side' ),
+    'the combined mode does not put the grid before the sidebar in the DOM'
 );
 check(
     false !== strpos( $block, ': $panel_list . $panel_grid' ),
@@ -191,11 +215,11 @@ check(
  */
 preg_match( '/\.uc-view-panels-combined\s*\{[^}]*gap:\s*(\d+)px/', $css, $g );
 preg_match( '/uc-panel-calendar\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c1 );
-preg_match( '/uc-panel-list\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c2 );
+preg_match( '/uc-panel-sidebar\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c2 );
 
 $stack = ( isset( $g[1], $c1[1], $c2[1] ) ) ? ( (int) $c1[1] + (int) $c2[1] + (int) $g[1] ) : 0;
 check( $stack > 0, 'could not read the combined mode bases and gap out of the CSS' );
-check( 920 === $stack, "the combined mode now stacks at {$stack}px and the readme publishes 920px" );
+check( 888 === $stack, "the combined mode now stacks at {$stack}px and the readme publishes 888px" );
 
 /*
  * SIDE BY SIDE MUST NEVER BE WORSE THAN STACKING, which is the fault the 400px
@@ -212,22 +236,34 @@ check( 920 === $stack, "the combined mode now stacks at {$stack}px and the readm
  * is its basis plus half the surplus, so the narrowest it is ever given is the
  * basis itself, and the sweep below says so at every width rather than trusting
  * that one line of algebra.
+ *
+ * THE RIGHT PANEL HAS THE SAME KIND OF FLOOR, and since 3.32.0 it is the
+ * sidebar's: at 272px and under, its row stops putting the thumbnail beside the
+ * text and stacks a 150px picture above it. Right for a phone, wrong in a column
+ * beside a month grid, and the same argument as the grid's dots. 272 is measured
+ * in .claude/embed-width-probe.html rather than declared in the stylesheet, so it
+ * is named here as a constant with that pointer instead of being read out of a
+ * rule that does not exist.
  */
 preg_match( '/@container uc-calendar \(max-width: (\d+)px\) \{\s*\.uc-calendar \.uc-month-grid td/', $css, $d );
 $dots = isset( $d[1] ) ? (int) $d[1] : 0;
 check( $dots > 0, 'could not find the breakpoint where the month grid collapses to dots' );
 
+$rowstack   = 272; // Measured, not declared. See embed-width-probe.html.
 $basis_grid = isset( $c1[1] ) ? (int) $c1[1] : 0;
-$basis_list = isset( $c2[1] ) ? (int) $c2[1] : 0;
+$basis_side = isset( $c2[1] ) ? (int) $c2[1] : 0;
 
 $bad = array();
+$bad_side = array();
 for ( $w = 300; $w <= 1400; $w++ ) {
     if ( $w < $stack ) {
-        continue; // Stacked. Each panel gets the whole width, which is the grid mode.
+        continue; // Stacked. The grid gets the whole width, which is the grid mode.
     }
-    $share = $basis_grid + ( ( $w - $stack ) / 2 );
-    if ( $share <= $dots ) {
+    if ( $basis_grid + ( ( $w - $stack ) / 2 ) <= $dots ) {
         $bad[] = $w;
+    }
+    if ( $basis_side + ( ( $w - $stack ) / 2 ) <= $rowstack ) {
+        $bad_side[] = $w;
     }
 }
 check(
@@ -240,11 +276,37 @@ check(
         $dots
     )
 );
+check(
+    empty( $bad_side ),
+    sprintf(
+        'side by side, the sidebar panel gets %dpx or less at %d width(s) from %dpx up, at or under the %dpx where its row breaks onto two lines',
+        $rowstack,
+        count( $bad_side ),
+        empty( $bad_side ) ? 0 : $bad_side[0],
+        $rowstack
+    )
+);
+
+/*
+ * AND THE PANEL IS CAPPED WHERE THE SIDEBAR ITSELF IS. .uc-sidebar stops at
+ * 380px, so a panel allowed past that reserves room its contents cannot fill and
+ * leaves a gap down the right of the block; capped, the surplus goes to the grid.
+ */
+preg_match( '/uc-panel-sidebar\s*\{[^}]*max-width:\s*(\d+)px/', $css, $pcap );
+preg_match( '/^\.uc-sidebar \{[^}]*max-width:\s*(\d+)px/m', $css, $scap );
+check(
+    isset( $pcap[1], $scap[1] ) && (int) $pcap[1] === (int) $scap[1],
+    sprintf(
+        'the sidebar panel caps at %s and the sidebar itself caps at %s; they have to be the same number or the panel reserves width the card cannot use',
+        isset( $pcap[1] ) ? $pcap[1] . 'px' : 'nothing',
+        isset( $scap[1] ) ? $scap[1] . 'px' : 'nothing'
+    )
+);
 
 /*
  * 770px BY NAME. It is the width the theme gives this block on sfaf.org, Mark
- * cannot widen it, and it is 26px above where the old bases put the changeover,
- * which is how the mode came to be side by side with nowhere to put the grid.
+ * cannot widen it, and the mode has to work there. It stacks there, and has done
+ * since 3.31.1; the changeover has moved twice since without ever getting near it.
  */
 $sfaf = 770;
 check(
@@ -261,13 +323,12 @@ check(
     'the grid panel has no min-width: 0, so the month table cannot shrink and will overflow the host page'
 );
 check(
-    (bool) preg_match( '/uc-panel-list\s*\{[^}]*min-width:\s*0/', $css ),
-    'the list panel has no min-width: 0'
+    (bool) preg_match( '/uc-panel-sidebar\s*\{[^}]*min-width:\s*0/', $css ),
+    'the sidebar panel has no min-width: 0'
 );
 
 /*
- * THE LIST PANEL DOES NOT CONSTRAIN THE HEIGHT OF THE LIST, AND THE CARDS SAY SO
- * FOR THEMSELVES.
+ * NOTHING IN THIS MODE CONSTRAINS A HEIGHT OR SCROLLS.
  *
  * 3.30.0 capped the panel's list at 640px with overflow-y: auto. `.uc-event-list`
  * is a column flex container, so a definite max-height takes its negative free
@@ -277,39 +338,59 @@ check(
  * button clipped out of it. Three properties, each defensible, and the failure
  * needs all three.
  *
- * Both halves are asserted because either alone can be undone: no height
- * constraint from this mode, and flex-shrink: 0 on the list's children so that a
- * constraint from anywhere else, including a host theme, overflows visibly
- * instead of squashing the cards silently.
+ * ASKED OF THE WHOLE MODE RATHER THAN OF THE RULE THAT WAS REMOVED. The list
+ * panel does not exist here any more, so a check naming .uc-panel-list would pass
+ * for the wrong reason forever. This sweeps every rule whose selector mentions
+ * the combined wrapper.
  *
- * WHAT THIS CANNOT SEE is whether the cards then RENDER the same, and this is the
- * pass that has been fooled twice. .claude/combined-card-parity.php renders the
- * renderer's own card in both modes in a browser at 770px and compares every
- * element in it. Run that too.
+ * flex-shrink: 0 on the list's items stays asserted because the LIST mode still
+ * has the same flex column with the same overflow: hidden cards in it, and would
+ * fail the same way if anything ever put a height on it.
+ *
+ * WHAT THIS CANNOT SEE is whether the panel then RENDERS like the sidebar, and
+ * this is the pass that has been fooled three times.
+ * .claude/combined-panel-parity.php renders the renderer's own sidebar in both
+ * places in a browser, at 770px stacked and 1000px side by side, and compares
+ * every element. Run that too.
  */
 /*
  * SWEPT WITH THE COMMENTS OFF, for the reason the embed.js sweep is: the note
- * above this rule QUOTES the rule it removed, so a sweep of the raw stylesheet
- * reports the fault it just fixed. Second time in two builds that a checker has
- * read its own explanation as evidence.
+ * above these rules QUOTES the rule that was removed, so a sweep of the raw
+ * stylesheet reports the fault it just fixed. Third time a checker here has read
+ * its own explanation as evidence.
  */
 $css_code = preg_replace( '#/\*.*?\*/#s', '', $css );
 
+preg_match_all( '/([^{}]*uc-view-panels-combined[^{}]*)\{([^}]*)\}/', $css_code, $rules, PREG_SET_ORDER );
+$constrained = array();
+foreach ( $rules as $rule ) {
+    if ( preg_match( '/(max-height|overflow)\s*:/', $rule[2] ) ) {
+        $constrained[] = trim( preg_replace( '/\s+/', ' ', $rule[1] ) );
+    }
+}
 check(
-    ! preg_match( '/uc-panel-list[^{]*\.uc-event-list\s*\{[^}]*max-height/', $css_code ),
-    'the combined mode caps the height of its list again; .uc-event-list is a column flex container and its cards are overflow: hidden, so a height cap squashes every one of them to a strip rather than scrolling'
+    empty( $constrained ),
+    sprintf(
+        'the combined mode constrains height or scrolls again, in %d rule(s): %s. A height on a column flex container squashes its overflow:hidden items to nothing rather than scrolling',
+        count( $constrained ),
+        implode( ' / ', $constrained )
+    )
 );
 check(
-    ! preg_match( '/uc-panel-list[^{]*\.uc-event-list\s*\{[^}]*overflow/', $css_code ),
-    'the combined mode makes its list a scroll region again; stacked, which is every width on sfaf.org, that shows two cards of twelve where list mode shows all of them'
+    count( $rules ) >= 3,
+    sprintf( 'only %d rule(s) name the combined wrapper, so the sweep above is passing because it found nothing to look at', count( $rules ) )
+);
+check(
+    ! preg_match( '/uc-panel-list/', $css_code ),
+    'the stylesheet still styles a list panel in some mode; the combined mode is the only place that class ever appeared beside the grid and it is gone'
 );
 check(
     (bool) preg_match( '/\.uc-calendar \.uc-event-list > \*\s*\{[^}]*flex-shrink:\s*0/', $css_code ),
     'the list items no longer declare flex-shrink: 0, so any height constraint above them squashes the cards to strips instead of overflowing where it can be seen'
 );
 check(
-    file_exists( __DIR__ . '/combined-card-parity.php' ),
-    'the card parity generator is gone; nothing then compares a rendered card between the two modes'
+    file_exists( __DIR__ . '/combined-panel-parity.php' ),
+    'the panel parity generator is gone; nothing then compares the rendered right panel against the sidebar mode'
 );
 
 /* =========================================================================
@@ -473,15 +554,18 @@ check(
 echo "Embed modes\n";
 echo "links:    the resolver in all four states (unset, on, off, native event), the marker's\n";
 echo "          spoken alternative, and no get_permalink() left in any card renderer\n";
-printf( "combined: both panels built and shown, no view toggle, grid before list in the DOM,\n" );
+printf( "combined: both panels built and shown, no view toggle, grid before the sidebar in the DOM,\n" );
 printf( "          intrinsic flex rather than a container query, stacks at %dpx, min-width: 0 on both,\n", $stack );
 echo "          and each half is its own query container so it measures its own column\n";
 printf( "width:    side by side never gives the grid under %dpx, checked at every width from 300\n", $dots );
 printf( "          to 1400; at %dpx it stacks, so the grid gets all %dpx and keeps its entries\n", $sfaf, $sfaf );
 echo "          (the panels being VISIBLE is asserted in embed-combined-panels-test.js; run it too)\n";
-echo "list:     no height cap and no scroll region on the panel's list, and flex-shrink: 0 on its\n";
-echo "          items, so a constraint from anywhere overflows rather than squashing the cards\n";
-echo "          (whether they RENDER the same is combined-card-parity.php; run that too)\n";
+printf( "right:    the sidebar renderer, one count helper for both callers, no card list built, no\n" );
+printf( "          pagination, no height cap and no scroll region in any rule naming the wrapper;\n" );
+printf( "          panel capped at %spx where the sidebar itself caps, and its %dpx basis clears the\n",
+    isset( $pcap[1] ) ? $pcap[1] : '?', $basis_side );
+printf( "          %dpx where the row breaks in two\n", $rowstack );
+echo "          (whether it RENDERS like the sidebar is combined-panel-parity.php; run that too)\n";
 echo "grid card: no accent bar, a 32px thumbnail ringed in --cat-ink, the title clamped to two\n";
 echo "          lines, the thumbnail dropped below 930px, and nothing capping how many show\n";
 printf( "geometry: cap %dpx to %dpx. Column %.1fpx to %.1fpx outer, cell content %.1fpx to %.1fpx,\n",

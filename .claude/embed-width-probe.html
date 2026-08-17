@@ -400,7 +400,7 @@ window.addEventListener('load', function () {
      shipped a grid with nothing in its cells: 26px above the old 744px
      changeover, so the two panels went side by side and the grid was handed a
      413px column, under the 560px at which it collapses to dots. */
-  var CWIDTHS = [320, 500, 700, 744, 770, 900, 919, 920, 921, 1000, 1200];
+  var CWIDTHS = [320, 500, 700, 770, 860, 887, 888, 889, 1000, 1072, 1200];
   var chost = document.getElementById('combined');
   var crows = [];
 
@@ -425,9 +425,30 @@ window.addEventListener('load', function () {
             '</tr></table>' +
             '<div class="uc-month-day-panel"></div>' +
           '</div></div>' +
-          '<div class="uc-view-panel uc-panel-list"><div class="uc-event-list">' +
-            '<div style="height:60px;background:#eee;"></div>' +
-          '</div></div>' +
+          /* THE RIGHT PANEL IS THE SIDEBAR AS OF 3.32.0, and it is a real
+             sidebar row rather than a grey box: the question "is this column wide
+             enough" is answered by whether the row keeps its 44px thumbnail
+             beside the text or stacks a 150px picture above it, and only a row
+             can answer that. */
+          '<div class="uc-view-panel uc-panel-sidebar">' +
+            '<div class="uc-sidebar" data-count="10">' +
+              '<h3 class="uc-sidebar-heading">Upcoming event dates</h3>' +
+              '<div class="uc-sidebar-list">' +
+                '<a class="uc-sidebar-row" href="#" data-category="support-groups">' +
+                  '<span class="uc-sidebar-thumb"><span class="uc-thumb-ph"></span></span>' +
+                  '<span class="uc-sidebar-body">' +
+                    '<span class="uc-sidebar-title">Community advisory board</span>' +
+                    '<span class="uc-sidebar-when">' +
+                      '<span class="uc-when-date">Thu, Sept 24</span>' +
+                      '<span class="uc-when-sep" aria-hidden="true">&middot;</span>' +
+                      '<span class="uc-when-time">6-7:30 pm</span>' +
+                    '</span>' +
+                  '</span>' +
+                '</a>' +
+              '</div>' +
+              '<a class="uc-sidebar-all" href="#">See all events</a>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     chost.appendChild(wrap);
@@ -437,41 +458,101 @@ window.addEventListener('load', function () {
   var stackedAt = null, sideAt = null;
   L.push('');
   L.push('COMBINED MODE');
+  /* THE SIDEBAR ROW'S OWN CHANGEOVER, measured the same way its mode is measured
+     in the tables above: the row puts its thumbnail beside the text while there
+     is room and stacks a 150px picture above it when there is not. Under a column
+     that narrow, side by side is the wrong call for the right panel just as a dot
+     grid is for the left one. */
+  function rowIsCompact(wrap) {
+    var thumb = wrap.querySelector('.uc-sidebar-thumb');
+    var body = wrap.querySelector('.uc-sidebar-body');
+    if (!thumb || !body) { return null; }
+    return Math.abs(thumb.getBoundingClientRect().top - body.getBoundingClientRect().top) < 12;
+  }
+
   crows.forEach(function (r) {
     var g = r.wrap.querySelector('.uc-panel-calendar');
-    var l = r.wrap.querySelector('.uc-panel-list');
+    var l = r.wrap.querySelector('.uc-panel-sidebar');
     var side = Math.abs(g.offsetTop - l.offsetTop) < 1;
     var cells = getComputedStyle(r.wrap.querySelector('.uc-month-grid .uc-day-events')).display !== 'none';
+    var compact = rowIsCompact(r.wrap);
     if (side && sideAt === null) { sideAt = r.w; }
     if (!side) { stackedAt = r.w; }
     L.push('  ' + String(r.w).padStart(4) + 'px  ' + (side ? 'side by side' : 'stacked    ') +
            '   grid ' + Math.round(g.getBoundingClientRect().width) +
-           '  list ' + Math.round(l.getBoundingClientRect().width) +
-           '   cells ' + (cells ? 'show events' : 'dots only'));
+           '  sidebar ' + Math.round(l.getBoundingClientRect().width) +
+           '   cells ' + (cells ? 'show events' : 'dots only ') +
+           '   row ' + (compact ? 'compact' : 'stacked'));
 
     /* THE INVARIANT, MEASURED RATHER THAN ARGUED. Side by side must never be
-       worse than stacking. Stacked, the grid gets the whole width and shows its
-       entries; if going side by side takes them away, the changeover is too low
-       and this is the width that proves it. */
+       worse than stacking. Stacked, each panel gets the whole width; if going
+       side by side takes the grid's entries away or breaks the sidebar row onto
+       two lines, the changeover is too low and this is the width that proves it. */
     if (side && !cells && r.w > 560) {
       fails.push('at ' + r.w + 'px the combined mode goes side by side and the grid loses its entries, ' +
                  'which stacking at the same width would not');
     }
+    if (side && !compact) {
+      fails.push('at ' + r.w + 'px the combined mode goes side by side and the sidebar row loses its ' +
+                 'compact layout, which stacking at the same width would not');
+    }
   });
 
   /* The published number, checked here rather than taken on trust. */
-  if (sideAt !== 920) {
-    fails.push('the combined mode goes side by side at ' + sideAt + 'px, and 920px is what the readme publishes');
+  if (sideAt !== 888) {
+    fails.push('the combined mode goes side by side at ' + sideAt + 'px, and 888px is what the readme publishes');
   }
-  if (stackedAt !== 919) {
+  if (stackedAt !== 887) {
     fails.push('the combined mode is still stacked at ' + stackedAt + 'px, so the changeover is not where it is published');
   }
+
+  /* NO HEIGHT CONSTRAINT AND NO SCROLLER ANYWHERE IN THE MODE. Asked of every
+     element in the panel rather than of the one rule that was removed, because
+     "gone" and "moved" look the same from the selector that used to carry it. */
+  crows.forEach(function (r) {
+    var panel = r.wrap.querySelector('.uc-panel-sidebar');
+
+    /* THE HEIGHT CHECK IS ON THE THREE BOXES THAT COULD SQUASH A ROW: the panel,
+       the sidebar card and the list inside it. Not on every descendant, which is
+       what the first version of this did and it reported .uc-sidebar-thumb's own
+       max-height: 120px eleven times. A thumbnail capping itself is the sidebar's
+       design; an ANCESTOR of the rows capping them is the 3.30.0 fault. */
+    ['.uc-panel-sidebar', '.uc-sidebar', '.uc-sidebar-list'].forEach(function (sel) {
+      var el = sel === '.uc-panel-sidebar' ? panel : panel.querySelector(sel);
+      if (!el) { return; }
+      var cs = getComputedStyle(el);
+      if (cs.maxHeight !== 'none') {
+        fails.push('at ' + r.w + 'px, ' + sel + ' has max-height: ' + cs.maxHeight +
+                   ', which is the mechanism that squashed the cards in 3.30.0');
+      }
+      /* AND THE SYMPTOM, NOT ONLY THE MECHANISM. getComputedStyle().height gives
+         the USED height in pixels and never 'auto', so testing it for 'auto' is
+         a test that always fails, which is what the first version of this did.
+         scrollHeight against clientHeight asks the question that matters: is this
+         box shorter than what is inside it. That catches a max-height, a fixed
+         height, a flex constraint or anything else, and needs to know none of
+         them. */
+      if (el.scrollHeight > el.clientHeight + 1) {
+        fails.push('at ' + r.w + 'px, ' + sel + ' is ' + el.clientHeight + 'px around ' +
+                   el.scrollHeight + 'px of content, so something is constraining its height');
+      }
+    });
+
+    /* NO SCROLL REGION ANYWHERE IN THE PANEL, which is asked of everything,
+       because there is no element in a sidebar that should be scrolling. */
+    Array.prototype.slice.call(panel.querySelectorAll('*')).concat([panel]).forEach(function (el) {
+      var cs = getComputedStyle(el);
+      if (cs.overflowY === 'auto' || cs.overflowY === 'scroll' || cs.overflowX === 'auto' || cs.overflowX === 'scroll') {
+        fails.push('at ' + r.w + 'px, ' + (el.className || el.tagName) + ' in the right panel is a scroll region');
+      }
+    });
+  });
 
   /* 770px, on its own, because it is the one width that has to work. */
   var sfaf = crows.filter(function (r) { return r.w === 770; })[0];
   if (sfaf) {
     var sg = sfaf.wrap.querySelector('.uc-panel-calendar');
-    var sl = sfaf.wrap.querySelector('.uc-panel-list');
+    var sl = sfaf.wrap.querySelector('.uc-panel-sidebar');
     var sideAt770 = Math.abs(sg.offsetTop - sl.offsetTop) < 1;
     var cellsAt770 = getComputedStyle(sfaf.wrap.querySelector('.uc-month-grid .uc-day-events')).display !== 'none';
     if (sideAt770) {
@@ -481,19 +562,28 @@ window.addEventListener('load', function () {
     if (!cellsAt770) {
       fails.push('at 770px the month grid shows dots rather than its events');
     }
-    if (Math.round(sg.getBoundingClientRect().width) !== 770 || Math.round(sl.getBoundingClientRect().width) !== 770) {
-      fails.push('at 770px the stacked panels are ' + Math.round(sg.getBoundingClientRect().width) + 'px and ' +
-                 Math.round(sl.getBoundingClientRect().width) + 'px rather than the full 770px each');
+    /* Stacked, the GRID takes the whole width. The sidebar panel does too, and
+       the sidebar inside it stops at its own 380px cap, which is the mode it
+       ships in and is deliberately not overridden here. */
+    if (Math.round(sg.getBoundingClientRect().width) !== 770) {
+      fails.push('at 770px the stacked grid panel is ' + Math.round(sg.getBoundingClientRect().width) +
+                 'px rather than the full 770px');
+    }
+    var scard = sfaf.wrap.querySelector('.uc-sidebar');
+    if (Math.round(scard.getBoundingClientRect().width) !== 380) {
+      fails.push('at 770px the stacked sidebar card is ' + Math.round(scard.getBoundingClientRect().width) +
+                 'px rather than its own 380px cap');
     }
     L.push('  at 770px, the width sfaf.org gives the block: ' + (sideAt770 ? 'side by side' : 'stacked') +
            ', grid ' + Math.round(sg.getBoundingClientRect().width) + 'px, cells ' +
-           (cellsAt770 ? 'show events' : 'dots only'));
+           (cellsAt770 ? 'show events' : 'dots only') + ', sidebar card ' +
+           Math.round(scard.getBoundingClientRect().width) + 'px at its own cap');
   } else {
     fails.push('770px is not in the measured widths, and it is the one width this mode has to work at');
   }
 
   L.push(fails.length ? 'FAIL: ' + Array.from(new Set(fails)).join(' | ')
-                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width; the combined mode changes over at 920px, and at 770px it stacks with a full-width grid that still shows its events');
+                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width; the combined mode changes over at 888px, never goes side by side into a column either half cannot use, carries no height cap or scroller in its right panel, and at 770px it stacks with a full-width grid that still shows its events');
   document.getElementById('out').textContent = L.join('\n');
 });</script>
 

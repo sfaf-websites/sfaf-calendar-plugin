@@ -1393,7 +1393,21 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-view-bar .uc-event-count { margin: 0; }
 
 /* ===========================================================================
- * COMBINED MODE: the month grid and the list, side by side.
+ * COMBINED MODE: the month grid and the upcoming-dates sidebar, side by side.
+ *
+ * THE RIGHT-HAND COLUMN IS THE SIDEBAR MODE, NOT THE LIST, as of 3.32.0. It was
+ * the list card, which is the main content of a page at full width: a 16/9
+ * photograph, a title, an excerpt, three lines of meta and a footer with a
+ * button, measured at 688px of height each. Beside a month grid that is one and
+ * a half events in view, and the panel was scrolling inside itself to cope with
+ * it. The sidebar row is 44px of thumbnail with a title and one quiet line and
+ * was designed for a narrow column; it is correct here because it is already
+ * correct where it ships.
+ *
+ * Consequences, all of them subtractions: no card list, no pagination, no "load
+ * more", no height cap and no scroll region anywhere in this mode. The sidebar
+ * shows its own count of upcoming dates and links out, which is the same answer
+ * to "how do I see more" that it gives standalone.
  *
  * INTRINSIC, NOT A CONTAINER QUERY, and that is the 3.24.1 lesson applied
  * rather than repeated. .uc-calendar IS a query container and does carry a
@@ -1409,13 +1423,17 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
  * ones on that line grow or shrink. So the wrap point is the two bases plus the
  * gap and nothing else:
  *
- *     576px (grid) + 320px (list) + 24px (gap) = 920px
+ *     576px (grid) + 288px (sidebar) + 24px (gap) = 888px
  *
- * At 920px and wider the two sit side by side and share the surplus equally,
- * because both are flex: 1 1. Below 920px the list wraps under the grid and
- * each takes the full width, which is why the mode needs no minimum of its own:
- * stacked, it IS the list mode and the grid mode, and their published 260px
- * applies unchanged. .uc-calendar's min-width: 260px is that floor.
+ * At 888px and wider the two sit side by side and share the surplus, until the
+ * sidebar reaches its own 380px cap and the grid takes the rest. Below 888px the
+ * sidebar wraps under the grid and each takes the full width, which is why the
+ * mode needs no minimum of its own: stacked, it IS the grid mode and the sidebar
+ * mode, and their published minimums, 260px and 200px, apply unchanged.
+ *
+ * IT WAS 920px UNTIL 3.32.0, when the right column was the list at a 320px
+ * basis. The number moved because the column did, not because anybody wanted a
+ * different number.
  *
  * THE GRID'S BASIS IS 576 AND NOT 400, AND IT IS THE 560px BREAKPOINT PLUS
  * HEADROOM RATHER THAN A NUMBER SOMEBODY LIKED.
@@ -1436,22 +1454,30 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
  * every width and fails if side by side is ever narrower than 560. Move the
  * breakpoint and that test names this line.
  *
- * BOTH STILL GROW EQUALLY. Giving the grid the larger share of the surplus was
- * the obvious next step and is wrong: at the 1200px cap an even split leaves the
- * list 460px, and a 2:1 split leaves it 413px, which is under the 420px where
- * the card's header starts giving up its date size. The grid gains about 47px of
- * a 716px column, or 6px per column, and the list pays for it by getting worse.
+ * THE SIDEBAR'S BASIS IS 288 AND IT IS THE SAME KIND OF NUMBER: 272px is where
+ * the sidebar row stops putting its thumbnail beside the text and stacks a
+ * 150px picture above it instead, which is the right answer on a phone and not
+ * in a column beside a month grid. Measured in .claude/embed-width-probe.html,
+ * which reports "side" at 272 and "STACKED" at 271. 288 is that on a 16px step.
  *
- * min-width: 0 ON BOTH ITEMS IS LOAD-BEARING. A flex item's min-width defaults
- * to auto, which is its min-content size, and the month grid is a table: its
- * min-content width is the widest a cell's contents can be. Without this the
- * grid panel would refuse to shrink below that, push past its share of the row
- * and overflow the host's page, which is the failure this file has fixed twice
- * before under a different name.
+ * THE SIDEBAR PANEL IS CAPPED AT ITS OWN max-width. .uc-sidebar stops at 380px,
+ * so a panel allowed to grow past 380 would reserve room its contents cannot
+ * fill and leave a ragged gap down the right of the block. Capping the panel
+ * hands that surplus back to the grid, which has seven columns to spend it on.
+ * At the 1200px block cap: sidebar 380, grid 796.
+ *
+ * min-width: 0 ON BOTH ITEMS IS LOAD-BEARING FOR THE GRID. A flex item's
+ * min-width defaults to auto, which is its min-content size, and the month grid
+ * is a table: its min-content width is the widest a cell's contents can be.
+ * Without this the grid panel would refuse to shrink below that, push past its
+ * share of the row and overflow the host's page, which is the failure this file
+ * has fixed twice before under a different name. On the sidebar panel it never
+ * bites, because side by side the panel is never under its 288px basis; it is
+ * declared for symmetry so neither panel looks like the exception.
  * ======================================================================== */
 .uc-calendar .uc-view-panels-combined { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
 .uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 576px; min-width: 0; }
-.uc-calendar .uc-view-panels-combined > .uc-panel-list { flex: 1 1 320px; min-width: 0; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { flex: 1 1 288px; max-width: 380px; min-width: 0; }
 
 /* ---------------------------------------------------------------------------
    EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.
@@ -1463,17 +1489,24 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    every narrow rule stayed switched off.
 
    Naming the panels uc-calendar as well shadows the root for their own
-   descendants, so the grid's rules measure the grid's column and the list
-   card's rules measure the list's. One name, nearest ancestor wins, and no
-   query anywhere had to be rewritten.
+   descendants, so the grid's rules measure the grid's column. One name, nearest
+   ancestor wins, and no query anywhere had to be rewritten.
+
+   THE SIDEBAR PANEL GAINS NOTHING FROM THIS AND KEEPS THE NAME ANYWAY. The
+   sidebar mode has no container query at all: its row reflows on flex-wrap, for
+   the reason recorded at its own rules, so there is nothing there to measure and
+   naming its panel changes nothing about it today. It is named because the rule
+   is on `.uc-view-panel` and a panel that is a container in one mode and not in
+   another is a difference somebody would have to remember. The containment
+   argument below covers it too, and was checked for it.
 
    THE CONTAINMENT TRAP DOES NOT APPLY HERE, and that was checked rather than
    assumed, because it is the fault this file has been bitten by before.
    container-type zeroes an element's min-content contribution, which destroys
    any parent that sizes FROM its contents. These two size from the flex
-   algorithm: line breaking uses flex-basis, which is definite at 400 and 320,
+   algorithm: line breaking uses flex-basis, which is definite at 576 and 288,
    and both already carry min-width: 0, so the shrink floor was zero anyway.
-   The 920px changeover is unmoved. Layout containment also makes these
+   The 888px changeover is unmoved. Layout containment also makes these
    containing blocks for absolutely positioned descendants, so that was walked
    too: .uc-month-loading::after resolves against .uc-month, .uc-month-count::before
    against .uc-month-count and .uc-addcal-menu against .uc-addcal, all of them
@@ -1484,8 +1517,14 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 }
 
 /* ---------------------------------------------------------------------------
-   THE LIST PANEL HAS NO HEIGHT CAP, AND 3.30.0 PUT ONE ON. THIS IS THE FAULT
-   THAT REPLACED IT, WRITTEN DOWN SO IT DOES NOT COME BACK.
+   NOTHING IN THIS FILE CAPS THE HEIGHT OF A LIST, AND 3.30.0 CAPPED ONE. THIS IS
+   THE FAULT THAT REPLACED IT, WRITTEN DOWN SO IT DOES NOT COME BACK.
+
+   The cap is doubly gone as of 3.32.0: the combined mode has no list panel at
+   all any more, so the selector it was written against no longer matches
+   anything in any mode. The guard at the foot of this note is still worth having,
+   because the list mode's own list is the same flex column with the same cards in
+   it and would fail the same way.
 
    The rule was:
 

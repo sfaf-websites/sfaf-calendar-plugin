@@ -1009,6 +1009,21 @@ class SFAF_Shortcodes {
         return substr( trim( sanitize_text_field( (string) $raw ) ), 0, 80 );
     }
 
+    /**
+     * How many upcoming dates a sidebar shows.
+     *
+     * ONE PLACE, because there are two callers now: the sidebar display mode and
+     * the combined mode's right-hand column, which is the same renderer. A
+     * default of 10 written twice is a default that drifts.
+     *
+     * @param mixed $raw The block's count attribute.
+     * @return int
+     */
+    public static function sidebar_count( $raw ) {
+        $count = (int) $raw;
+        return ( $count > 0 ) ? $count : 10;
+    }
+
     public function render_sidebar( $filters, $count, $heading = null ) {
         $count  = max( 1, min( 50, (int) $count ) );
         $events = $this->render_events( $count, 1, $filters, 'sidebar' );
@@ -1356,17 +1371,21 @@ class SFAF_Shortcodes {
         sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
 
         ob_start();
-        while ( $query->have_posts() ) {
-            $query->the_post();
-            if ( 'compact' === $render ) {
-                echo $this->render_compact_card( get_the_ID() );
-            } elseif ( 'sidebar' === $render ) {
-                echo $this->render_sidebar_row( get_the_ID() );
-            } else {
-                echo $this->render_event_card( get_the_ID() );
+        // 'none' is a caller that wants found_posts and no markup. The combined
+        // mode's count line is the only one, and it has no list to fill.
+        if ( 'none' !== $render ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                if ( 'compact' === $render ) {
+                    echo $this->render_compact_card( get_the_ID() );
+                } elseif ( 'sidebar' === $render ) {
+                    echo $this->render_sidebar_row( get_the_ID() );
+                } else {
+                    echo $this->render_event_card( get_the_ID() );
+                }
             }
+            wp_reset_postdata();
         }
-        wp_reset_postdata();
 
         return array(
             'html'      => ob_get_clean(),
@@ -1593,10 +1612,7 @@ class SFAF_Shortcodes {
         // no toggle, a count rather than a page size. It returns early rather
         // than threading "unless sidebar" through everything below.
         if ( 'sidebar' === $view ) {
-            $count = (int) $args['count'];
-            if ( $count <= 0 ) {
-                $count = 10;
-            }
+            $count = self::sidebar_count( $args['count'] );
             return array(
                 'html'      => $this->render_sidebar( $filters, $count, isset( $args['heading'] ) ? $args['heading'] : null ),
                 'total'     => 0,
@@ -1626,6 +1642,19 @@ class SFAF_Shortcodes {
          */
         if ( $combined ) {
             $toggle = false;
+
+            /*
+             * AND NO PAGINATION, because there is no list to page.
+             *
+             * The right column is the sidebar: a fixed number of upcoming dates
+             * and a link out to all of them. "Load more" and page links belong to
+             * the list mode and used to sit in this mode below a column that was
+             * scrolling inside itself, which is two ways of asking for more
+             * events arguing with each other. Turned off here rather than left
+             * out of the markup by accident, so the block does not advertise
+             * paging on an attribute either.
+             */
+            $paginate = false;
         }
         $month    = $this->normalize_month( $args['month'] );
 
@@ -1635,7 +1664,19 @@ class SFAF_Shortcodes {
             $paged = ( $paginate && $style === 'pages' && isset( $_GET['uc_page'] ) ) ? max( 1, intval( $_GET['uc_page'] ) ) : 1;
         }
 
-        $events = $this->render_events( $per_page, $paged, $filters, $compact ? 'compact' : 'card' );
+        /*
+         * THE COMBINED MODE ASKS FOR THE TOTAL AND NO CARDS.
+         *
+         * It still shows "29 events coming up", which is the whole filtered set
+         * and is what both halves are views of, so the query still has to run.
+         * What it does not need is twelve cards built and thrown away, which is
+         * what happened for the first day of this panel being a sidebar. 'none'
+         * runs the query and renders nothing; one row is asked for because
+         * found_posts does not depend on how many were returned.
+         */
+        $events = $combined
+            ? $this->render_events( 1, 1, $filters, 'none' )
+            : $this->render_events( $per_page, $paged, $filters, $compact ? 'compact' : 'card' );
         $max    = $paginate ? $events['max_pages'] : 1;
 
         // Controls that cannot work from another origin are dropped in an
@@ -1802,8 +1843,13 @@ class SFAF_Shortcodes {
              * genuinely new data. When the toggle is switched off, only the
              * chosen view is built, so a calendar-only embed does not pay for a
              * list it will never show.
+             *
+             * THE COMBINED MODE NO LONGER WANTS THE LIST AT ALL. Its right-hand
+             * column is the sidebar renderer, so the card list is not built, not
+             * emitted and not hidden; see the panel below. That is why $combined
+             * has come out of $want_list and stayed in $want_grid.
              */
-            $want_list = ( $toggle || $combined || 'list' === $view );
+            $want_list = ( $toggle || 'list' === $view );
             $want_grid = ( $toggle || $combined || 'calendar' === $view );
 
             /*
@@ -1838,6 +1884,20 @@ class SFAF_Shortcodes {
              * Every other mode keeps the original list-then-grid order, because
              * exactly one of them is visible and reordering would be a change
              * with no reader.
+             *
+             * THE COMBINED MODE'S SECOND PANEL IS THE SIDEBAR, NOT THE LIST, and
+             * that is a narrower claim than it sounds: it is render_sidebar(),
+             * the same method the sidebar display mode returns, with the same
+             * heading, the same count of upcoming dates and the same "See all
+             * events" link. Nothing here is a third rendering of anything.
+             *
+             * WHY. A list card is the main content of a page at full width: a
+             * photograph in 16/9, a title, an excerpt, three lines of meta and a
+             * footer with a button, about 690px of height each. Beside a month
+             * grid that is one and a half events in view and it reads as heavy.
+             * The sidebar row was designed for exactly this column, 44px of
+             * thumbnail with a title and one quiet line, and is already correct
+             * at this width because it is already shipped at this width.
              */
             ob_start();
             ?>
@@ -1869,12 +1929,31 @@ class SFAF_Shortcodes {
             </div>
             <?php
             $panel_grid = ob_get_clean();
+
+            /*
+             * THE RIGHT-HAND COLUMN, built only for the mode that has one.
+             *
+             * No `hidden` and no $panel_hidden() call: this panel exists in
+             * exactly one mode and is visible in it, so there is no question to
+             * ask. A panel that cannot be hidden cannot be hidden by mistake,
+             * which is the fault 3.31.1 shipped.
+             */
+            $panel_side = '';
+            if ( $combined ) {
+                $panel_side = '<div class="uc-view-panel uc-panel-sidebar">'
+                    . $this->render_sidebar(
+                        $filters,
+                        self::sidebar_count( $args['count'] ),
+                        isset( $args['heading'] ) ? $args['heading'] : null
+                    )
+                    . '</div>';
+            }
             ?>
 
             <div class="uc-view-panels<?php echo $combined ? ' uc-view-panels-combined' : ''; ?>">
                 <?php
                 echo $combined
-                    ? $panel_grid . $panel_list
+                    ? $panel_grid . $panel_side
                     : $panel_list . $panel_grid;
                 ?>
             </div>
@@ -2299,7 +2378,7 @@ class SFAF_Shortcodes {
              */
             ?>
             <div class="uc-lc-media">
-                <a href="<?php echo esc_url( $permalink ); ?>" tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id, $cat_name ); ?></a>
+                <a href="<?php echo esc_url( $permalink ); ?>" tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
             </div>
 
             <h3 class="uc-card-title uc-lc-title">
