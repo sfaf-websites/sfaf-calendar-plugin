@@ -135,7 +135,13 @@ casually.
 
 ---
 
-## 8. Keeping `PROJECT.md` current
+## 8. Keeping `PROJECT.md` and `HANDOVER.md` current
+
+**`PROJECT.md` is what stays true. `HANDOVER.md` is what is true today.** That
+distinction is the whole of the rule, and it decides where anything new goes: if
+what you are writing would still be true in six months, it belongs in
+`PROJECT.md`, not the handover. Durable knowledge written into the handover is
+lost the next time the situation moves.
 
 `PROJECT.md` is the durable description of the software: what it is and how it
 fits together. It is not a changelog (`readme.txt` is), it does not carry
@@ -157,3 +163,17 @@ visual or CSS decisions (`DESIGN.md` does), and it does not carry working rules
 - The EveryAction arrangement (a JSON file written hourly by Val, fetched over
   HTTPS, because an EveryAction API key cannot be scoped to events only) is the
   first entry there.
+
+`HANDOVER.md` is the current situation, and Mark opens a fresh chat with it, so
+it has to read cold. Keep it under 150 lines: if it grows past that, something
+in it is durable and belongs in `PROJECT.md`.
+
+- **When the situation changes, update `HANDOVER.md` in the SAME commit.** A
+  build that ships moves something out of "in flight". An answer from Aaron or
+  Val moves something out of "blocked on other people". A settled decision moves
+  out of "open decisions". A finished item leaves the testing list.
+- It is not a history. "Recent failures worth remembering" holds only what is
+  still live or still likely to recur; anything with a lesson attached belongs
+  in `PROJECT.md` §7 instead, and the handover points at it.
+- A stale handover beside a current `PROJECT.md` is worse than no handover,
+  because somebody reads the wrong one. The old one sat 26 releases behind.

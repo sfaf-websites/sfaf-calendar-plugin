@@ -95,6 +95,21 @@ Embeds measure **their own column** with `@container`, not the window, because
 an embed in a 280px sidebar inside a 1440px window is 280px wide and every
 `@media` query about the window is a lie there.
 
+### Naming, and the branches
+
+**Data names stay `uc_*`** for backwards compatibility: the post type, the
+taxonomies, the meta keys, the options. **Code identifiers are `sfaf_` /
+`SFAF_`.** The two never converge, and neither is renamed to match the other.
+
+Branches:
+
+- **`production-2.0`** is the active line: the real 1.7.5 production baseline
+  plus everything since. This is where work happens.
+- `main` holds the original two plugins as received (unified-calendar 1.0.0 and
+  satellite 1.0.9). Stale, and kept as the record of what arrived.
+- `embed-system`, `brand-guide`, `phase-1-consolidation` are old 1.0.0-line work
+  kept for cherry-picking. **Do not delete them.**
+
 ---
 
 ## 2. Data model
@@ -227,6 +242,66 @@ Both platforms import through one framework (`SFAF_Sources`). Imported events
 land in a **pending queue**; somebody approves them; a fetch may run again
 afterwards.
 
+**A source is an adapter and the framework does not know which platform is
+which.** It walks a registry, calls `fetch()` then `normalize()` on each, and
+imports whatever comes back in the common shape. `SFAF_Source_Adapter` is the
+abstract base: `slug()`, `label()`, `is_active()`, `inactive_reason()`,
+`fetch()`, `normalize( $item )`, `owned_fields()`, `manager_fields()`.
+
+**Adding a platform means writing an adapter and registering it. No file in
+`class-sfaf-sources.php` changes.** GFMP proved that when it was added: the
+framework was untouched. Registration is in `sfaf_init()`, or externally through
+the `sfaf_source_adapters` filter. **EveryAction is expected to arrive this
+way** (see §8).
+
+`normalize()` returns a common shape keyed `external_source`, `external_id`,
+`title`, `description`, `start_date`, `start_time`, `end_date`, `end_time`,
+`timezone`, `location`, `source_url`, `image_url`, and an optional `meta` array
+of `_uc_`-prefixed keys. The date and time split matches the meta the calendar
+already stores, so an imported event is an ordinary `uc_event` from the moment
+it exists and every existing screen reads it without knowing.
+
+**Imported events live in two custom post statuses**, `uc_imported` (awaiting
+review) and `uc_dismissed` (passed on, kept, never re-imported). Both are
+registered `public => false`, `publicly_queryable => false`, `protected`,
+`exclude_from_search`.
+
+**Exclusion from public display is by construction, not by a filter.** Every
+public query names `post_status => 'publish'`: the shortcodes, the embed, the
+REST feed, the `.ics` endpoint, the series listings, the RSVP guards. All
+`uc_event` queries in the plugin were enumerated and verified when the statuses
+were introduced.
+
+Provenance is meta on every imported event: `_uc_external_source`,
+`_uc_external_id`, `_uc_source_url`, `_uc_external_image`,
+`_uc_external_timezone`, `_uc_imported_at`.
+
+**The no-duplicates rule, and a trap in it.** `find_existing()` matches source
+plus external ID against an **explicit status list**: `publish, pending, draft,
+future, private, trash, uc_imported, uc_dismissed`. Do not "simplify" that to
+`post_status => 'any'`. `'any'` silently omits every status registered
+`exclude_from_search`, which both queue statuses are, so it would miss the
+entire queue and re-import everything on every run. Trash is in the list
+deliberately, so a trashed import does not come back either.
+
+**Dateless imports, and the trap in those.** Many GFMP campaigns have no date at
+all; a general fundraiser has no start or end. They are imported anyway with an
+empty date and the manager sets it at approval. So `queue_ids()` **must not
+order by the `_uc_event_date` meta**: setting `meta_key` in `WP_Query` implies
+that meta must exist, which silently hides every dateless import. It sorts in
+PHP instead, dateless last.
+
+**Publish is deliberately not one-click.** The platform owns title, description,
+times, location and image; category, organizer and series are local decisions
+and are never guessed.
+
+**Removal is guarded.** "Not in the response" and "the fetch broke" look
+identical from inside, and getting it wrong silently pulls live events off the
+public calendar. So unpublish-on-removal only runs when the adapter can say the
+run was clean: every request succeeded, pagination reached the last page, and at
+least one item came back. Any doubt and the whole removal step is skipped for
+that source, and the report says why. It is per source.
+
 Each adapter declares two lists, and they are the whole contract:
 
 - **`owned_fields()`**: what the platform writes on every fetch. The editor
@@ -258,6 +333,60 @@ the public API. There is no `theme_id` on the campaign object and
 `/campaigns/{id}/stories` returns zero. This plugin does not scrape pages.
 **If you are here to add an image or description mapping, check with GoFundMe
 Pro first.**
+
+On the image specifically: the Campaign schema exposes exactly two image URLs
+and neither is the banner. `logo_url` is the small logo mark, which is what
+2.6.0 imported and why campaigns showed a logo where a banner belonged.
+`team_cover_photo_url` was tried next and returned artwork that is neither the
+campaign banner nor any image on the campaign page. So the candidate list is now
+**deliberately empty** and campaigns fall through to the calendar's own branded
+placeholder. **A wrong image on a public calendar is worse than no image.** The
+`sfaf_gfmp_image_fields` filter is left in place so a candidate can be restored
+on a live site without a rebuild, the moment the probe shows which field is
+right.
+
+**Auth is OAuth2 client_credentials, and the token host is not the data host.**
+`POST api.classy.org/oauth2/auth` for the token; data calls go elsewhere (see
+below). Support confirmed `api.classy.org/oauth2/auth` is the correct and only
+token endpoint and that `pro.gofundme.com` does not serve tokens. Four releases
+were burned guessing at this. Do not "fix" it back.
+
+**The `x-integration-id` header is why auth works at all.** Their edge security
+answered with a Cloudflare 403 that read like a credential failure but never
+examined the credentials. Support issued the header as the fix. It is set in
+`request_args()` so every request carries it, with the value in
+`SFAF_GFMP::DEFAULT_INTEGRATION_ID` and overridable through the
+`sfaf_gfmp_integration_id` filter.
+
+**There are three registered GFMP apps and only one is ours to use.**
+
+| App | Client ID | Use |
+|---|---|---|
+| Integration - SF | `GE190fglqytdNw1h` | **production, the real account with real campaigns** |
+| Integration - SF - Sandbox | `cCncdH3QS4Oxe7wU` | sandbox, and **it holds no events**, so a fetch against it proves nothing |
+| ClassyPress | `jjPN4eyJepmO4yao` | belongs to Mittun, a third party. Leave it alone. |
+
+The organization ID is `98313` for all of them.
+
+**The failure this arrangement produces, once already:** the Client Secret field
+is write-only, so blank means keep. Changing the Client ID from sandbox to
+production while leaving the secret blank pairs a production ID with the sandbox
+secret and returns `HTTP 400 Invalid client authentication`. That reads like a
+credential or endpoint problem and is neither. Retype the secret whenever the ID
+changes.
+
+Campaigns are listed at `{data_base}/organizations/{org_id}/campaigns`,
+paginated in the spec's `PaginatedResponse` style. Campaigns that are not active
+or published are skipped, which is correct and adjustable through the
+`sfaf_gfmp_import_statuses` filter (default `active,published`). Other filters:
+`sfaf_gfmp_max_pages`, `sfaf_gfmp_per_page`, `sfaf_gfmp_fetch_raised`,
+`sfaf_gfmp_raised_lookup_limit`, `sfaf_gfmp_campaign_overview_path`.
+
+`apiv2-public-gfmp.json` in the project root is their OpenAPI spec and the
+source of truth for field names. It is 2.2 MB and too large to read whole: query
+it with a small Node script against `.paths` and
+`.components.schemas.Campaign.properties`. Treat it as a starting point, not an
+authority, for the reasons below.
 
 Manager-owned: `image`, `description`, `category`, `organizer`,
 `fundraising_progress`, `private`.
@@ -293,6 +422,18 @@ settled.
 
 Supplies: title, dates and times, location, source URL, image, description.
 
+**Auth is a single long-lived private token** sent as `Authorization: Bearer`.
+No OAuth round trip. The endpoints are `/users/me/` (connection test),
+`/users/me/organizations/`, and
+`/organizations/{org_id}/events/?time_filter=current_future&expand=venue,logo,organizer&status=live`.
+The old `/users/me/events/` is **deprecated and deliberately not used**. An
+account can own several organizations, so the events call runs once per
+organization and the results combine; one organization failing records its error
+and leaves the others intact.
+
+The image comes from `logo.original.url`, the full-resolution one, not
+`logo.url`, which is Eventbrite's crop.
+
 Manager-owned: `category`, `organizer`, `private`, and only those.
 
 Category and Organizer are **this calendar's own taxonomies**. No platform
@@ -309,6 +450,49 @@ is storage only, with a hook (`SFAF_Optins`) for a future integration to attach
 to.
 
 This is **blocked on Salesforce credentials**, not on code.
+
+### Where credentials live
+
+Every platform credential is in the **`sfaf_credentials`** option, never in
+`uc_settings`. `uc_settings` is rebuilt from an empty array on every settings
+save: `sanitize_settings()` copies across only the keys it explicitly names, so
+anything it forgets is silently dropped. That is what kept losing the Eventbrite
+token, once across a plugin update, which is unworkable when three platforms are
+in play.
+
+`sfaf_credentials` is autoloaded and never rewritten wholesale: `set()` is a
+read-modify-write of a single key. Adding a credential means adding it to
+`SFAF_Credentials::keys()` with a type (`secret`, write-only and blank-means-
+keep; `url`; or `text`) and reading it with `SFAF_Credentials::get()`.
+`absorb()` runs at the top of `sanitize_settings()` and pulls credentials out of
+the submission without adding them to the returned array. `migrate()` runs on
+`init` and copies anything still in `uc_settings` across without overwriting, so
+it is idempotent and self-healing.
+
+Connection *state* is separate again: `sfaf_gfmp_token`,
+`sfaf_eventbrite_status`. Those are disposable and are meant to be.
+
+**Nothing in the plugin deletes credentials, and it must stay that way.** There
+is no `uninstall.php` and no `register_uninstall_hook`. Deactivation only
+flushes rewrites. The activation routine, which reruns after every update, only
+creates the RSVP table, registers the post type, seeds sample data once and
+flushes rewrites. It carries a comment saying it must never touch credentials.
+
+Credentials must survive all three of: a settings save, installing a newer
+version, and deactivate/reactivate. If they ever vanish again after that, the
+cause is outside this plugin (a host-level option reset, a staging-to-production
+database sync). Say so rather than patching here a second time.
+
+### Inert panels that are not dead code
+
+The **Galaxy Digital** and **Webhooks** settings panels save their settings and
+store their credentials properly, and **nothing calls those APIs**. There is no
+Galaxy request anywhere in the plugin; the "Sync Now" button raises a JavaScript
+alert. Similarly `gofundme_auto_import` is a stored setting that is wired to
+nothing (the unattended fetch is `auto_fetch_enabled`, which is a different
+setting and is wired). These are kept on purpose rather than removed, in the
+same spirit as the satellite feed. Do not report them as working, and do not
+delete them assuming they are.
 
 ---
 
@@ -634,6 +818,23 @@ and hunt the effect by any mechanism.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Self-clearing import queues, agreed 2026-07-29
+
+The last unbuilt piece of the original import design. Everything else from that
+conversation shipped: the pending and dismissed sub-sections, publish, dismiss,
+restore, dismissed-stays-dismissed even when the source updates it,
+update-on-refetch, and unpublish-on-removal.
+
+**What was agreed and is still missing:** an event that has expired (its date has
+passed) or has been unpublished at the source should **disappear from the Pending
+and Dismissed queues by itself**. Those are decision queues, so once there is no
+decision left to make, the row is clutter. No manual cleanup.
+
+**The distinction that must survive into the build:** this applies to the queues
+only. A *published* event that expires simply becomes a past event and stays;
+a published event removed at the source is unpublished and kept as a record,
+which is already built. Do not let the queue rule reach published events.
 
 ### EveryAction event import, agreed 2026-08-17
 
