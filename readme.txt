@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.31.0
+Stable tag: 3.31.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -40,7 +40,7 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * `[sfaf_calendar]` - Full calendar with filters
 * `[sfaf_calendar category="support-groups"]` - Filtered by category
 * `[sfaf_calendar layout="compact" show_filters="no"]` - Compact list, no filter bar
-* `[sfaf_calendar view="combined"]` - Month grid and list side by side, stacking below 744px
+* `[sfaf_calendar view="combined"]` - Month grid and list side by side, stacking below 920px
 * `[sfaf_calendar source_links="yes"]` - Imported events open at their source listing
 * `[upcoming_events count="5" category="fundraising"]` - Compact upcoming events widget
 
@@ -188,7 +188,7 @@ blocks are most often in.
 * Sidebar mode: **200px**
 * List mode: **260px**
 * Month grid: **260px**
-* Combined mode: **260px**, and it goes side by side at **744px**
+* Combined mode: **260px**, and it goes side by side at **920px**
 
 The month grid and combined views cap at **1200px** rather than 900px, because
 a grid is seven columns and every pixel of column width is room for the title
@@ -197,18 +197,30 @@ leaves 109.1px of title once the 32px thumbnail and its 8px gap are taken.
 Below 930px of container width the thumbnail is dropped and the entry is a
 title and a time, which is what it was before 3.31.0.
 
-The combined mode has no minimum of its own because below 744px it stops being
+The combined mode has no minimum of its own because below 920px it stops being
 a two-column layout: the list wraps under the grid and each takes the full
 width, at which point it is the list mode and the month grid, whose 260px
-applies unchanged. 744px is where the changeover happens, not a minimum, and
+applies unchanged. 920px is where the changeover happens, not a minimum, and
 above it the two share the surplus equally.
 
-That number is the two flex bases plus the gap, 400 + 320 + 24, because flex
+That number is the two flex bases plus the gap, 576 + 320 + 24, because flex
 line breaking uses each item's flex-basis rather than its shrunk width. It is
 pinned in two places rather than trusted: `.claude/embed-modes-test.php` reads
 the three values back out of the stylesheet and fails if they no longer add up
 to the number published here, and the width probe renders the mode either side
 of it and reports which state it is actually in.
+
+**The grid's basis is 576px because that is the width it needs to show anything.**
+It was 400px until 3.31.1, a basis that put the changeover at 744px, and from
+there up to 1064px the grid was handed a column under the 560px at which it drops
+its cell entries and becomes seven columns of dots with a day panel underneath.
+That treatment is right for a phone and wrong for half of a wide block, and it
+was what a 770px page on sfaf.org got: side by side, a 413px grid, dots. The
+rule now is that side by side must never be worse than stacking, since stacked
+the grid gets the whole width and its entries back. Both panels still grow
+equally: giving the grid two thirds of the surplus would leave the list 413px at
+the 1200px cap, under the 420px where its card header starts giving up the date
+size, and would buy the grid about 6px per column.
 
 These come from `.claude/embed-width-probe.html`, which renders each mode at
 eleven widths in three kinds of parent and prints what it measures. The 3.24.0
@@ -448,6 +460,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.31.1 =
+
+**The combined mode rendered its search box, its filter bar, its count and no events at all.** Two separate faults, one of which made the mode empty at every width and one of which made it useless at the widths sfaf.org uses.
+
+**Both panels were in the document, and the browser hid both of them.** `showView()` in embed.js decided visibility with two comparisons, `list.hidden = (view !== 'list')` beside `cal.hidden = (view !== 'calendar')`. Each is correct for the two views that existed when they were written, and together they hide EVERY panel for any third view. `bindViewToggle()` calls `showView()` on every render to reconcile a remembered choice with what the server sent, `viewFor()` had been taught that 'combined' is a configuration rather than a choice, and so every combined block on a live page hid the grid and the list a frame after they arrived. The server markup was correct throughout, which is why the panels were there to be found in the inspector.
+
+The decision is now one function, `panelHiddenFor( view, panel )`, and its default is to keep a panel rather than hide it: a mode added later renders too much, which somebody reports, instead of rendering nothing, which reads as the calendar being broken. `calendar.js` has the same treatment, where the same trap existed and nothing had reached it. The class rewrite names every mode too, so a combined block no longer ends up wearing `uc-view-combined` twice.
+
+**The grid's flex basis goes from 400px to 576px, which moves the changeover from 744px to 920px.** The month grid drops its cell entries and becomes seven columns of dots with a day panel underneath at 560px of its own column, which is the right treatment for a phone. At the old basis the two panels went side by side from 744px, and from there up to 1064px the grid was handed a column narrower than 560px, so the mode's whole left half was dots. sfaf.org constrains this block to about 770px and the theme is locked: side by side, that is a 413px grid; stacked, it is a 770px grid with its entries. So side by side must never be worse than stacking, and the basis is now the breakpoint plus a 16px step rather than a number chosen for looks.
+
+Both panels still grow equally. Giving the grid two thirds of the surplus gains it about 6px per column and costs the list 47px, which at the 1200px cap puts it under the 420px where its card header starts giving up the date size.
+
+**Two assertions, because the ones already here passed the entire time.** `.claude/embed-modes-test.php` proved the server builds both panels, marks neither hidden, and that embed.js knows 'combined' is not a remembered view. All true, all passing, and none of them the thing that broke. `.claude/embed-combined-panels-test.js` now slices the real view functions out of embed.js, runs them over a block and counts the events a visitor can actually see, so chrome-with-no-events fails by name. The width probe measures the changeover from rendered output at eleven widths including 770px, and fails if going side by side ever costs the grid its entries.
 
 = 3.31.0 =
 

@@ -650,7 +650,37 @@
         return container.querySelector('.uc-panel-' + name);
     }
 
-    /** Show one panel, hide the other, and keep the buttons in step. */
+    /**
+     * WHICH PANELS A VIEW SHOWS, asked as one question instead of two.
+     *
+     * THIS IS THE FAULT THAT SHIPPED IN 3.30.0. showView() used to say
+     * `list.hidden = (view !== 'list')` and `cal.hidden = (view !== 'calendar')`,
+     * which is correct for the only two views that existed when it was written
+     * and hides BOTH panels for any third. bindViewToggle() calls showView()
+     * unconditionally on every render, viewFor() had learned to answer
+     * 'combined', and so a combined block rendered its search box, its filter
+     * bar, its count and nothing else, at every width, on a live page.
+     *
+     * Written as a function that takes the panel's name because two independent
+     * comparisons is the shape that lets one mode be forgotten. The default is
+     * "keep it", so a view added later renders too much rather than nothing:
+     * an extra panel is a layout somebody will report, and an empty block is
+     * the calendar looking broken.
+     *
+     * The twin of this is showView() in calendar.js, which reaches the same
+     * answer a different way and is cross-referenced there.
+     */
+    function panelHiddenFor(view, panel) {
+        if (view === 'combined') {
+            return false;
+        }
+        if (view !== 'list' && view !== 'calendar') {
+            return false;
+        }
+        return (view !== panel);
+    }
+
+    /** Show the panels this view calls for, and keep the buttons in step. */
     function showView(container, view, remember) {
         var block = inner(container);
         if (!block) {
@@ -659,11 +689,14 @@
 
         var list = panelOf(container, 'list');
         var cal = panelOf(container, 'calendar');
-        if (list) { list.hidden = (view !== 'list'); }
-        if (cal) { cal.hidden = (view !== 'calendar'); }
+        if (list) { list.hidden = panelHiddenFor(view, 'list'); }
+        if (cal) { cal.hidden = panelHiddenFor(view, 'calendar'); }
 
         block.setAttribute('data-view', view);
-        block.className = block.className.replace(/\buc-view-(list|calendar)\b/g, '').trim() + ' uc-view-' + view;
+        // Every mode is named here. A mode left out of this list is not removed
+        // when another is applied, and the block keeps two uc-view classes: the
+        // 1200px cap and every container query read them.
+        block.className = block.className.replace(/\buc-view-(list|calendar|combined|sidebar)\b/g, '').trim() + ' uc-view-' + view;
 
         // aria-pressed is the state a screen reader announces, so it has to
         // move with the visual active class rather than being set once.

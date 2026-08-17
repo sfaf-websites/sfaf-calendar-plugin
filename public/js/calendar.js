@@ -265,10 +265,30 @@
         }
     }
 
+    /**
+     * WHICH PANELS A VIEW SHOWS. The twin of panelHiddenFor() in embed.js, and
+     * the reasoning is written out there.
+     *
+     * Nothing reaches this with 'combined' TODAY: restoreView() above only
+     * forwards a remembered 'list' or 'calendar', and the combined mode renders
+     * no toggle for anything to have been remembered from. It is written this
+     * way regardless, because the version of this in embed.js was reached and
+     * hid both panels of a live block, and "this call site happens not to do
+     * that" is not a property either file should depend on.
+     */
+    function panelHiddenFor(view, panel) {
+        if (view !== 'list' && view !== 'calendar') {
+            return false;
+        }
+        return (view !== panel);
+    }
+
     function showView($block, view, remember) {
-        $block.find('.uc-panel-list').prop('hidden', view !== 'list');
-        $block.find('.uc-panel-calendar').prop('hidden', view !== 'calendar');
-        $block.removeClass('uc-view-list uc-view-calendar').addClass('uc-view-' + view);
+        $block.find('.uc-panel-list').prop('hidden', panelHiddenFor(view, 'list'));
+        $block.find('.uc-panel-calendar').prop('hidden', panelHiddenFor(view, 'calendar'));
+        // Every mode named, so applying one removes the last rather than
+        // leaving the block wearing two.
+        $block.removeClass('uc-view-list uc-view-calendar uc-view-combined uc-view-sidebar').addClass('uc-view-' + view);
         $block.attr('data-view', view);
 
         $block.find('.uc-view-btn').each(function () {

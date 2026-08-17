@@ -61,10 +61,15 @@ One mode per cell, or the number belongs to the other one.</p>
 
 <h2 style="font:700 15px/1.3 system-ui,sans-serif;margin:32px 0 6px;">Combined mode: where it stacks</h2>
 <p class="note">The month grid and the list side by side. Flex line breaking uses each item's
-flex-basis, so the arithmetic says 400 + 320 + 24 = 744px and this pins it: the row above 744
+flex-basis, so the arithmetic says 576 + 320 + 24 = 920px and this pins it: the row above 920
 should report <strong>side by side</strong> and the row below it <strong>stacked</strong>. Measured rather
 than calculated, for the reason the sidebar minimum was: 3.24.0 published a number it had worked out
 and the number was 30px wrong.</p>
+<p class="note">AND WHETHER THE GRID STILL SHOWS ITS EVENTS, which is the column added in 3.31.1.
+Side by side is only worth having if the grid gets a column it can use: under 560px of its own
+width it collapses to seven columns of dots, and stacking at the same page width would have given
+it everything. The 400px basis shipped in 3.30.0 put the changeover at 744px and left the grid in
+dot mode all the way to 1064px, which is what a 770px page on sfaf.org was showing.</p>
 <div id="combined"></div>
 
 <pre id="out">measuring…</pre>
@@ -390,19 +395,36 @@ window.addEventListener('load', function () {
    * under the grid. That is the state itself rather than a proxy for it, so it
    * cannot be fooled by a basis being changed without this page being updated.
    * ---------------------------------------------------------------------- */
-  var CWIDTHS = [320, 500, 700, 740, 743, 744, 745, 800, 900];
+  /* 770 IS ON THIS LIST BY NAME. It is the width sfaf.org's page gives the
+     block, the theme is locked and cannot be widened, and it is where the mode
+     shipped a grid with nothing in its cells: 26px above the old 744px
+     changeover, so the two panels went side by side and the grid was handed a
+     413px column, under the 560px at which it collapses to dots. */
+  var CWIDTHS = [320, 500, 700, 744, 770, 900, 919, 920, 921, 1000, 1200];
   var chost = document.getElementById('combined');
   var crows = [];
 
   CWIDTHS.forEach(function (w) {
     var wrap = document.createElement('div');
     wrap.style.cssText = 'width:' + w + 'px;outline:1px dashed #bbb;margin:0 0 10px;';
+    /* A REAL DAY CELL, not seven bare <td>s. The question this page has to
+       answer is not only "side by side or stacked" but "does the grid still show
+       its events", and that is a container query on the panel keyed to the cell
+       contents. A td with nothing in it cannot answer it. */
     wrap.innerHTML =
       '<div class="uc-calendar uc-view-combined">' +
         '<div class="uc-view-panels uc-view-panels-combined">' +
-          '<div class="uc-view-panel uc-panel-calendar"><table class="uc-month-grid"><tr>' +
-            '<td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td>' +
-          '</tr></table></div>' +
+          '<div class="uc-view-panel uc-panel-calendar"><div class="uc-month">' +
+            '<table class="uc-month-grid"><tr>' +
+              '<td class="uc-day"><span class="uc-day-num">1</span>' +
+                '<div class="uc-day-events"><div class="uc-day-event">' +
+                  '<a href="#"><span class="uc-day-event-title">Community advisory board</span></a>' +
+                '</div></div>' +
+              '</td>' +
+              '<td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td>' +
+            '</tr></table>' +
+            '<div class="uc-month-day-panel"></div>' +
+          '</div></div>' +
           '<div class="uc-view-panel uc-panel-list"><div class="uc-event-list">' +
             '<div style="height:60px;background:#eee;"></div>' +
           '</div></div>' +
@@ -419,23 +441,59 @@ window.addEventListener('load', function () {
     var g = r.wrap.querySelector('.uc-panel-calendar');
     var l = r.wrap.querySelector('.uc-panel-list');
     var side = Math.abs(g.offsetTop - l.offsetTop) < 1;
+    var cells = getComputedStyle(r.wrap.querySelector('.uc-month-grid .uc-day-events')).display !== 'none';
     if (side && sideAt === null) { sideAt = r.w; }
     if (!side) { stackedAt = r.w; }
-    L.push('  ' + String(r.w).padStart(4) + 'px  ' + (side ? 'side by side' : 'stacked') +
+    L.push('  ' + String(r.w).padStart(4) + 'px  ' + (side ? 'side by side' : 'stacked    ') +
            '   grid ' + Math.round(g.getBoundingClientRect().width) +
-           '  list ' + Math.round(l.getBoundingClientRect().width));
+           '  list ' + Math.round(l.getBoundingClientRect().width) +
+           '   cells ' + (cells ? 'show events' : 'dots only'));
+
+    /* THE INVARIANT, MEASURED RATHER THAN ARGUED. Side by side must never be
+       worse than stacking. Stacked, the grid gets the whole width and shows its
+       entries; if going side by side takes them away, the changeover is too low
+       and this is the width that proves it. */
+    if (side && !cells && r.w > 560) {
+      fails.push('at ' + r.w + 'px the combined mode goes side by side and the grid loses its entries, ' +
+                 'which stacking at the same width would not');
+    }
   });
 
   /* The published number, checked here rather than taken on trust. */
-  if (sideAt !== 744) {
-    fails.push('the combined mode goes side by side at ' + sideAt + 'px, and 744px is what the readme publishes');
+  if (sideAt !== 920) {
+    fails.push('the combined mode goes side by side at ' + sideAt + 'px, and 920px is what the readme publishes');
   }
-  if (stackedAt !== 743) {
+  if (stackedAt !== 919) {
     fails.push('the combined mode is still stacked at ' + stackedAt + 'px, so the changeover is not where it is published');
   }
 
+  /* 770px, on its own, because it is the one width that has to work. */
+  var sfaf = crows.filter(function (r) { return r.w === 770; })[0];
+  if (sfaf) {
+    var sg = sfaf.wrap.querySelector('.uc-panel-calendar');
+    var sl = sfaf.wrap.querySelector('.uc-panel-list');
+    var sideAt770 = Math.abs(sg.offsetTop - sl.offsetTop) < 1;
+    var cellsAt770 = getComputedStyle(sfaf.wrap.querySelector('.uc-month-grid .uc-day-events')).display !== 'none';
+    if (sideAt770) {
+      fails.push('at 770px the combined mode is side by side, which gives the grid ' +
+                 Math.round(sg.getBoundingClientRect().width) + 'px');
+    }
+    if (!cellsAt770) {
+      fails.push('at 770px the month grid shows dots rather than its events');
+    }
+    if (Math.round(sg.getBoundingClientRect().width) !== 770 || Math.round(sl.getBoundingClientRect().width) !== 770) {
+      fails.push('at 770px the stacked panels are ' + Math.round(sg.getBoundingClientRect().width) + 'px and ' +
+                 Math.round(sl.getBoundingClientRect().width) + 'px rather than the full 770px each');
+    }
+    L.push('  at 770px, the width sfaf.org gives the block: ' + (sideAt770 ? 'side by side' : 'stacked') +
+           ', grid ' + Math.round(sg.getBoundingClientRect().width) + 'px, cells ' +
+           (cellsAt770 ? 'show events' : 'dots only'));
+  } else {
+    fails.push('770px is not in the measured widths, and it is the one width this mode has to work at');
+  }
+
   L.push(fails.length ? 'FAIL: ' + Array.from(new Set(fails)).join(' | ')
-                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width; the combined mode changes over at 744px');
+                      : 'ok: every thumbnail slot renders and every picture fills it, at every width, in all three parents; no sidebar card is wider than its parent or its own min-width; the combined mode changes over at 920px, and at 770px it stacks with a full-width grid that still shows its events');
   document.getElementById('out').textContent = L.join('\n');
 });</script>
 

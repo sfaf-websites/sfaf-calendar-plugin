@@ -195,7 +195,66 @@ preg_match( '/uc-panel-list\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c2 );
 
 $stack = ( isset( $g[1], $c1[1], $c2[1] ) ) ? ( (int) $c1[1] + (int) $c2[1] + (int) $g[1] ) : 0;
 check( $stack > 0, 'could not read the combined mode bases and gap out of the CSS' );
-check( 744 === $stack, "the combined mode now stacks at {$stack}px and the readme publishes 744px" );
+check( 920 === $stack, "the combined mode now stacks at {$stack}px and the readme publishes 920px" );
+
+/*
+ * SIDE BY SIDE MUST NEVER BE WORSE THAN STACKING, which is the fault the 400px
+ * grid basis shipped in 3.30.0 and 770px is where sfaf.org met it.
+ *
+ * The month grid stops showing events in its cells at or below 560px of its own
+ * column and becomes seven columns of dots with a day panel under it. That is
+ * the right treatment for a phone and the wrong one for half of a 770px block,
+ * because the same 770px STACKED gives the grid all of it and its entries back.
+ *
+ * So the two numbers are tied together here rather than each written down on its
+ * own: the changeover has to sit high enough that the grid's share, at every
+ * width where the two sit side by side, clears the breakpoint. The grid's share
+ * is its basis plus half the surplus, so the narrowest it is ever given is the
+ * basis itself, and the sweep below says so at every width rather than trusting
+ * that one line of algebra.
+ */
+preg_match( '/@container uc-calendar \(max-width: (\d+)px\) \{\s*\.uc-calendar \.uc-month-grid td/', $css, $d );
+$dots = isset( $d[1] ) ? (int) $d[1] : 0;
+check( $dots > 0, 'could not find the breakpoint where the month grid collapses to dots' );
+
+$basis_grid = isset( $c1[1] ) ? (int) $c1[1] : 0;
+$basis_list = isset( $c2[1] ) ? (int) $c2[1] : 0;
+
+$bad = array();
+for ( $w = 300; $w <= 1400; $w++ ) {
+    if ( $w < $stack ) {
+        continue; // Stacked. Each panel gets the whole width, which is the grid mode.
+    }
+    $share = $basis_grid + ( ( $w - $stack ) / 2 );
+    if ( $share <= $dots ) {
+        $bad[] = $w;
+    }
+}
+check(
+    empty( $bad ),
+    sprintf(
+        'side by side, the grid gets %dpx or less at %d width(s) from %dpx up, at or under the %dpx where it collapses to dots; stacking would give it the whole width, so the changeover is too low',
+        $dots,
+        count( $bad ),
+        empty( $bad ) ? 0 : $bad[0],
+        $dots
+    )
+);
+
+/*
+ * 770px BY NAME. It is the width the theme gives this block on sfaf.org, Mark
+ * cannot widen it, and it is 26px above where the old bases put the changeover,
+ * which is how the mode came to be side by side with nowhere to put the grid.
+ */
+$sfaf = 770;
+check(
+    $sfaf < $stack,
+    sprintf( 'at %dpx the combined mode goes side by side and gives the grid %.0fpx, which is under the %dpx it needs; sfaf.org constrains this block to %dpx and the theme is locked', $sfaf, $basis_grid + ( ( $sfaf - $stack ) / 2 ), $dots, $sfaf )
+);
+check(
+    $sfaf > $dots,
+    sprintf( 'stacked at %dpx the grid still falls under %dpx and collapses to dots', $sfaf, $dots )
+);
 
 check(
     (bool) preg_match( '/uc-panel-calendar\s*\{[^}]*min-width:\s*0/', $css ),
@@ -312,6 +371,47 @@ check(
     'embed.js lets a remembered view override the combined mode, which has no toggle to have chosen with'
 );
 
+/*
+ * WHICH PANELS ARE SHOWN IS ONE DECISION, IN ONE FUNCTION.
+ *
+ * showView() used to make it twice, as `list.hidden = (view !== 'list')` beside
+ * `cal.hidden = (view !== 'calendar')`. Both are right for the two views that
+ * existed when they were written and both are wrong for any third, so the
+ * combined mode hid every panel it had and rendered its chrome over an empty
+ * space. This file asserted the sources and passed throughout.
+ *
+ * THE ASSERTION THAT ACTUALLY CATCHES IT IS IN
+ * .claude/embed-combined-panels-test.js, which runs these functions and counts
+ * the events a visitor can see. Run both; this one only proves the decision has
+ * not been split back into two comparisons that can disagree.
+ */
+/*
+ * SWEPT WITH THE COMMENTS OFF. The comment above panelHiddenFor() quotes the
+ * line it replaced, so a sweep of the raw file reports the fault it just fixed.
+ * That is not a hypothetical: it is what this check did on its first run.
+ */
+$ejs_code = preg_replace( '#/\*.*?\*/#s', '', $ejs );
+$ejs_code = preg_replace( '#^\s*//.*$#m', '', $ejs_code );
+
+check(
+    false !== strpos( $ejs_code, 'function panelHiddenFor(' ),
+    'embed.js decides panel visibility inline again rather than in one function; that is the shape the combined mode shipped broken in'
+);
+check(
+    ! preg_match( '/\.hidden\s*=\s*\(\s*view\s*!==/', $ejs_code ),
+    'a panel in embed.js is hidden by comparing the view directly, which hides every panel for any view the comparison does not name'
+);
+check(
+    ! preg_match( '/uc-view-\(list\|calendar\)\\\\b/', $ejs_code ),
+    'the uc-view class rewrite in embed.js names only list and calendar again, so a combined block keeps two uc-view classes'
+);
+
+$cjs = preg_replace( '#/\*.*?\*/#s', '', file_get_contents( $root . '/public/js/calendar.js' ) );
+check(
+    false !== strpos( $cjs, 'function panelHiddenFor(' ),
+    'calendar.js has not had the same treatment as its twin in embed.js'
+);
+
 $embed = file_get_contents( $root . '/includes/class-sfaf-embed.php' );
 check( false !== strpos( $embed, "'source_links'" ), 'the embed endpoint does not accept source_links' );
 check(
@@ -329,6 +429,9 @@ echo "          spoken alternative, and no get_permalink() left in any card rend
 printf( "combined: both panels built and shown, no view toggle, grid before list in the DOM,\n" );
 printf( "          intrinsic flex rather than a container query, stacks at %dpx, min-width: 0 on both,\n", $stack );
 echo "          and each half is its own query container so it measures its own column\n";
+printf( "width:    side by side never gives the grid under %dpx, checked at every width from 300\n", $dots );
+printf( "          to 1400; at %dpx it stacks, so the grid gets all %dpx and keeps its entries\n", $sfaf, $sfaf );
+echo "          (the panels being VISIBLE is asserted in embed-combined-panels-test.js; run it too)\n";
 echo "grid card: no accent bar, a 32px thumbnail ringed in --cat-ink, the title clamped to two\n";
 echo "          lines, the thumbnail dropped below 930px, and nothing capping how many show\n";
 printf( "geometry: cap %dpx to %dpx. Column %.1fpx to %.1fpx outer, cell content %.1fpx to %.1fpx,\n",

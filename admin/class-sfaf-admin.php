@@ -1103,7 +1103,7 @@ class SFAF_Admin {
                             $modes = array(
                                 'list'     => 'List: one card per event, with images and details',
                                 'calendar' => 'Calendar: a month grid',
-                                'combined' => 'Combined: the month grid and the list side by side, stacking below 744px',
+                                'combined' => 'Combined: the month grid and the list side by side, stacking below 920px',
                                 'sidebar'  => 'Sidebar: a narrow column of upcoming dates',
                             );
                             foreach ( $modes as $val => $label ) :

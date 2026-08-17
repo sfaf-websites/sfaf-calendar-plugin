@@ -1409,13 +1409,38 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
  * ones on that line grow or shrink. So the wrap point is the two bases plus the
  * gap and nothing else:
  *
- *     400px (grid) + 320px (list) + 24px (gap) = 744px
+ *     576px (grid) + 320px (list) + 24px (gap) = 920px
  *
- * At 744px and wider the two sit side by side and share the surplus equally,
- * because both are flex: 1 1. Below 744px the list wraps under the grid and
+ * At 920px and wider the two sit side by side and share the surplus equally,
+ * because both are flex: 1 1. Below 920px the list wraps under the grid and
  * each takes the full width, which is why the mode needs no minimum of its own:
  * stacked, it IS the list mode and the grid mode, and their published 260px
  * applies unchanged. .uc-calendar's min-width: 260px is that floor.
+ *
+ * THE GRID'S BASIS IS 576 AND NOT 400, AND IT IS THE 560px BREAKPOINT PLUS
+ * HEADROOM RATHER THAN A NUMBER SOMEBODY LIKED.
+ *
+ * 400 put the changeover at 744, and at every width from there to 1064 the
+ * grid was given a column narrower than the 560px at which it stops showing
+ * events in its cells at all and collapses to seven columns of dots with a day
+ * panel underneath. sfaf.org's page constrains this block to about 770px, so
+ * that is exactly what shipped there: a dot grid beside a list, at the one width
+ * the mode had to work at. Side by side was WORSE THAN STACKING at every width
+ * in that band, because stacked the grid gets the whole 770 and shows its
+ * entries.
+ *
+ * So the basis is what the grid needs in order to earn a column of its own: one
+ * pixel more than 560 would do it, and 576 is that rounded up to a 16px step so
+ * the changeover is not sitting on a breakpoint. THE TWO NUMBERS ARE TIED
+ * TOGETHER IN .claude/embed-modes-test.php, which recomputes the grid's share at
+ * every width and fails if side by side is ever narrower than 560. Move the
+ * breakpoint and that test names this line.
+ *
+ * BOTH STILL GROW EQUALLY. Giving the grid the larger share of the surplus was
+ * the obvious next step and is wrong: at the 1200px cap an even split leaves the
+ * list 460px, and a 2:1 split leaves it 413px, which is under the 420px where
+ * the card's header starts giving up its date size. The grid gains about 47px of
+ * a 716px column, or 6px per column, and the list pays for it by getting worse.
  *
  * min-width: 0 ON BOTH ITEMS IS LOAD-BEARING. A flex item's min-width defaults
  * to auto, which is its min-content size, and the month grid is a table: its
@@ -1425,7 +1450,7 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
  * before under a different name.
  * ======================================================================== */
 .uc-calendar .uc-view-panels-combined { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
-.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 400px; min-width: 0; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 576px; min-width: 0; }
 .uc-calendar .uc-view-panels-combined > .uc-panel-list { flex: 1 1 320px; min-width: 0; }
 
 /* ---------------------------------------------------------------------------
@@ -1448,7 +1473,7 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    any parent that sizes FROM its contents. These two size from the flex
    algorithm: line breaking uses flex-basis, which is definite at 400 and 320,
    and both already carry min-width: 0, so the shrink floor was zero anyway.
-   The 744px changeover is unmoved. Layout containment also makes these
+   The 920px changeover is unmoved. Layout containment also makes these
    containing blocks for absolutely positioned descendants, so that was walked
    too: .uc-month-loading::after resolves against .uc-month, .uc-month-count::before
    against .uc-month-count and .uc-addcal-menu against .uc-addcal, all of them
