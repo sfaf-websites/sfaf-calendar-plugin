@@ -356,11 +356,14 @@ $ALLOWED = array(
     'POST:delete_category'        => array( 'viewall' ),
     'POST:save_venue'             => array( 'viewall' ),
     'POST:delete_venue'           => array( 'viewall' ),
+    'POST:save_organizer'         => array( 'viewall' ),
+    'POST:delete_organizer'       => array( 'viewall' ),
     'POST:faq_set_save'           => array( 'viewall' ),
     'POST:faq_set_delete'         => array( 'viewall' ),
     'GET:faq-sets'                => array( 'viewall' ),
     'GET:optins'                  => array( 'viewall' ),
     'GET:venues'                  => array( 'viewall' ),
+    'GET:organizers'              => array( 'viewall' ),
     'GET:series'                  => array( 'viewall' ),
 
     // --- Administrator only. ------------------------------------------------

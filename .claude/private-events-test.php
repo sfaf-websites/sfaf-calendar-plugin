@@ -521,6 +521,7 @@ $WHITELIST = array(
     'class-sfaf-source-gfmp.php'     => 'matching an incoming campaign to an event already here',
     'class-sfaf-teams.php'           => 'which events name a team, for the deletion refusal',
     'class-sfaf-venues.php'          => 'which events use a venue, for the deletion refusal',
+    'class-sfaf-organizers.php'      => 'which events name an organizer, for the count and the deletion confirmation',
     'class-sfaf-categories.php'      => 'which events use a category, for the deletion refusal',
     'class-sfaf-privacy.php'         => 'the list of private events, which is the point of it',
     'sfaf-sample-data.php'           => 'first-run seeding, before any event exists',

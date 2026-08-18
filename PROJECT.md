@@ -179,6 +179,64 @@ took its icon away.
 is not a feature, it is a list of the categories that existed when it was
 written.** Color is a closed palette and every icon key is validated.
 
+### Organizers, and which deletion rule a taxonomy gets
+
+An organizer carries **name, slug and description, and nothing else**. There is
+no term meta on `uc_organizer` at all, which makes it the simplest of the four
+taxonomies: categories carry a colour and an icon, venues four address parts,
+series an image and a default FAQ set.
+
+It appears publicly in five places: **"Hosted by" on the event page**, the
+byline on a card (only when the event is not imported, since an imported event
+names its platform instead), the **organizer filter** on the public calendar and
+in both generators, `schema.org/Event` `organizer` in the JSON-LD, and the
+`/event-organizer/<slug>/` archive. It is also searchable, through
+`SFAF_Search::TAXONOMIES`, and travels in the satellite feed payload.
+
+`SFAF_Organizers` (3.37.0) is a **wrapper, not a registration**: the taxonomy
+stays exactly as it was, public, with its `event-organizer` rewrite and
+`show_in_rest`. The WordPress term screen stays reachable by URL as the
+fallback, the same reasoning that kept Calendar Users in wp-admin.
+
+**A rename never moves the slug.** An embed block on another site can be scoped
+`organizer="the-stonewall-project"`, those blocks are HTML on pages this plugin
+cannot enumerate, and a slug that stops resolving empties somebody else's
+calendar with nothing to say why. Changing the slug is offered as its own field
+with its own warning rather than derived from the name on every save.
+
+**Which deletion rule a taxonomy gets depends on what the event keeps.** The two
+precedents genuinely differ and the difference is not stylistic:
+
+| | Rule | Because |
+|---|---|---|
+| **Venue** | **Refused** while in use | An event keeps no address of its own. The term is the only record of where it happens, so deleting it leaves the event with nowhere to be. |
+| **Category** | **Allowed** | The event keeps its date, time and location and is merely uncategorised. |
+| **Organizer** | **Allowed** | The same. Every fact survives; what is lost is a byline. |
+
+The confirmation names the count either way, which is what makes an allowed
+deletion honest rather than merely permitted. It also names the one thing the
+category case does not have: an embed block filtered by that organizer stops
+showing events, and this plugin cannot enumerate those blocks to warn about them
+individually.
+
+The count comes from a query, **not from the term's own `count`**, because
+WordPress counts only published posts and a manager with three drafts against an
+organizer would be told "0 events" and then surprised by the confirmation.
+
+**Adding one from the event editor is a field, not a button.** The friction was
+never only the missing screen: it was that a new programme meant abandoning a
+half-typed event to go elsewhere. So `organizer_new` is an input on the event
+form, created inside `save_manager_fields_from_post()` in the same request as
+the ordinary Save. No second submit, no redirect, nothing typed is lost, and no
+new route to gate. That is deliberately not the shape of the FAQ set control
+before 3.3.0, which applied by posting and redirecting, discarded every unsaved
+edit, and taught people not to press it. The select wins when both are filled.
+
+**Imported events are unaffected.** `organizer` is on `manager_fields()` for
+both adapters, so no fetch has ever written it and none can: a platform's
+organizer is its own record, not a term in this taxonomy, and guessing a mapping
+would create duplicate terms nobody asked for.
+
 ### Venues are stored by reference and resolved at display
 
 `uc_venue` is a taxonomy. The address is **term meta on the venue**, read at

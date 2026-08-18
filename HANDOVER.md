@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-18, at 3.36.0.
+**Last updated:** 2026-08-18, at 3.37.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.36.0**, built as `sfaf-calendar-3.36.0.zip` in the project
+The plugin is at **3.37.0**, built as `sfaf-calendar-3.37.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.36.0, the deployment is stale or partial, and that
+screen: if it does not say 3.37.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **Two releases changed rules that other code has to respect.** 3.35.0 made teams
@@ -35,16 +35,12 @@ here, not a "does it work" question.
 anything in this plugin.** That is the trade 3.34.0 made deliberately, in
 exchange for the plugin needing no server configuration and staying portable.
 
-The order matters and getting it wrong means nothing runs at all:
-
-1. Create the external ping: **cron-jobs.org**, every 15 minutes, requesting
-   `https://<site>/wp-cron.php?doing_wp_cron`. No parameter, no header, no key.
-2. Confirm on **Events > Automation** that the banner says tasks are running and
-   the log has grown. Wait for two pings.
-3. **Only then** add `define( 'DISABLE_WP_CRON', true );` to `wp-config.php`.
-
-Doing (3) before (2) with a mistyped URL leaves a site where nothing runs and
-nothing says so. The readme has the full version under "Scheduled Tasks".
+The order matters and getting it wrong means nothing runs at all: create the
+ping first (**cron-jobs.org**, every 15 minutes, `wp-cron.php?doing_wp_cron`,
+no parameter or key), confirm on **Events > Automation** that tasks are
+running, and ONLY THEN set `DISABLE_WP_CRON`. Doing that last step first
+with a mistyped URL leaves a site where nothing runs and nothing says so.
+The readme has the full version under "Scheduled Tasks".
 
 **Not `admin-ajax.php?action=sfaf_cron_ping`.** It runs this plugin's jobs only,
 so under `DISABLE_WP_CRON` it would stop every other scheduled job on the site.
@@ -63,6 +59,10 @@ the health check that sends the alert email. The nudge is what closes that.
   Register button is gone; confirm deleting it is refused before cancelling and
   allowed after. Then move a date on an event with a registration and check the
   email names the OLD date as well as the new one.
+- **3.37.0 is unverified on a live site.** Two things worth doing: add an
+  organizer from the Organizers tab and confirm it appears in the event editor's
+  picker; then, on a half-typed event, use the picker's "Not listed? Add one"
+  box and confirm saving keeps everything else you typed.
 - **3.35.0 is unverified on a live site**, and it is a permission change. Put
   somebody in a team, assign that team to an event they did not create, confirm
   they can open it and see its registrations and nothing else, then take the team

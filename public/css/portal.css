@@ -2316,3 +2316,55 @@ body.uc-modal-open { overflow: hidden; }
 .uc-pill-cancelled { background: #fef2f2; color: #b91c1c; border-color: #b91c1c; }
 
 .uc-cancel-instead { border-color: #b91c1c; }
+
+/* ---------------------------------------------------------------------------
+   ORGANIZERS (3.37.0).
+
+   The list is plain text with actions, which is the shape Teams took in 3.20.0
+   and for the same reason: a screen made of live inputs invites an accidental
+   edit on every visit and gives no reading of what is there. Editing is a
+   disclosure per row, opened deliberately.
+
+   THE SPACING BASELINE APPLIES HERE, and is not left to the container to
+   supply. .uc-organizer-row carries its own padding rather than relying on the
+   card, because 3.34.0 found five screens that looked correct only because
+   every child happened to carry some and one that did not.
+   ------------------------------------------------------------------------- */
+.uc-organizer-add { margin-bottom: 16px; }
+.uc-organizer-add-body { padding: 0 16px 16px; }
+.uc-organizer-add-body .uc-field { margin-bottom: 12px; }
+
+.uc-organizer-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "id actions" "edit edit";
+    gap: 4px 12px;
+    align-items: start;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--p-border);
+}
+.uc-organizer-row:last-child { border-bottom: 0; }
+.uc-organizer-id { grid-area: id; min-width: 0; }
+.uc-organizer-id strong { display: block; font-size: 14.5px; line-height: 1.4; }
+.uc-organizer-id .uc-muted { display: block; margin-top: 2px; font-size: 12px; line-height: 1.5; }
+.uc-organizer-id code { font-size: 11.5px; }
+.uc-organizer-actions { grid-area: actions; display: flex; gap: 8px; align-items: center; }
+.uc-organizer-edit { grid-area: edit; margin-top: 8px; }
+.uc-organizer-edit-body { margin-top: 10px; padding: 14px 16px;
+    border: 1px solid var(--p-border); border-radius: 10px; background: var(--p-bg); }
+.uc-organizer-edit-body .uc-field { margin-bottom: 12px; }
+.uc-organizer-delete { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--p-border); }
+.uc-organizer-delete .uc-hint { display: block; margin-top: 6px; }
+
+/* Add one without leaving the event form. A disclosure under the picker, so it
+   is out of the way until it is wanted and costs nothing when it is not. */
+.uc-organizer-inline { margin: 6px 0 14px; }
+.uc-organizer-inline-body { margin-top: 10px; }
+
+/* The pointer to the WordPress fallback screen. Present, and quiet: it is a
+   fallback, not a route anybody should be taking by default. */
+.uc-help-quiet { margin-top: 16px; font-size: 12.5px; color: var(--p-muted); }
+
+@media (max-width: 640px) {
+    .uc-organizer-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id" "actions" "edit"; }
+}

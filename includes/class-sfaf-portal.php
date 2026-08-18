@@ -523,6 +523,7 @@ class SFAF_Portal {
                 exit;
             case 'users':      $this->render_users( $user ); break;
             case 'venues':     $this->render_venues( $user ); break;
+            case 'organizers': $this->render_organizers( $user ); break;
             case 'faq-sets':   $this->render_faq_sets( $user ); break;
             default:           $this->render_dashboard( $user );
         }
@@ -846,6 +847,41 @@ class SFAF_Portal {
                     $this->redirect( 'venues', array( 'msg' => 'venue_in_use' ) );
                 }
                 $this->redirect( 'venues', array( 'msg' => 'venue_deleted' ) );
+                break;
+
+            case 'save_organizer':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $saved = SFAF_Organizers::save(
+                    isset( $_POST['organizer_id'] ) ? intval( $_POST['organizer_id'] ) : 0,
+                    isset( $_POST['organizer_name'] ) ? wp_unslash( $_POST['organizer_name'] ) : '',
+                    isset( $_POST['organizer_description'] ) ? wp_unslash( $_POST['organizer_description'] ) : '',
+                    isset( $_POST['organizer_slug'] ) ? wp_unslash( $_POST['organizer_slug'] ) : ''
+                );
+                if ( is_wp_error( $saved ) ) {
+                    set_transient( 'sfaf_organizer_error_' . $user->ID, $saved->get_error_message(), 60 );
+                    $this->redirect( 'organizers', array( 'msg' => 'organizer_failed' ) );
+                }
+                $this->redirect( 'organizers', array( 'msg' => 'organizer_saved' ) );
+                break;
+
+            case 'delete_organizer':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                /*
+                 * ALLOWED, WHICH IS THE CATEGORY RULE AND NOT THE VENUE RULE
+                 * ABOVE. An event keeps every fact about itself and merely
+                 * loses a byline, where an event whose venue is deleted has
+                 * nowhere to be. See SFAF_Organizers for the full comparison.
+                 *
+                 * The count comes back so the confirmation can name it, which
+                 * is the part that makes an allowed deletion honest rather than
+                 * merely permitted.
+                 */
+                $done = SFAF_Organizers::delete( isset( $_POST['organizer_id'] ) ? intval( $_POST['organizer_id'] ) : 0 );
+                if ( is_wp_error( $done ) ) {
+                    set_transient( 'sfaf_organizer_error_' . $user->ID, $done->get_error_message(), 60 );
+                    $this->redirect( 'organizers', array( 'msg' => 'organizer_failed' ) );
+                }
+                $this->redirect( 'organizers', array( 'msg' => 'organizer_deleted', 'n' => (int) $done ) );
                 break;
 
             case 'approve_event':
@@ -2346,6 +2382,19 @@ class SFAF_Portal {
             // where events are held is event management, and the address they
             // carry is what the Location field on every event now points at.
             $nav['venues'] = array( 'Venues', 'venues', 'venue' );
+
+            /*
+             * ORGANIZERS, STANDALONE (3.37.0).
+             *
+             * Its own entry rather than folded into "Series & Categories", for
+             * the reason that pairing exists at all: those two are grouped
+             * because a category is a property OF a series' events and the two
+             * are edited together. An organizer is not a property of either. It
+             * is who is putting the event on, it is the one taxonomy with no
+             * caladmin screen until now, and burying it inside a heading naming
+             * two other things is how it stays unfindable.
+             */
+            $nav['organizers'] = array( 'Organizers', 'organizers', 'users' );
 
             /*
              * NO RSVPs ENTRY. Retired in 3.5.0.
@@ -4740,6 +4789,52 @@ class SFAF_Portal {
                         <?php endforeach; endif; ?>
                     </select>
                 </label>
+
+                <?php
+                /*
+                 * ADD ONE WITHOUT LEAVING THE FORM, AND WITHOUT POSTING ONE.
+                 *
+                 * The friction this closes is not only that there was no
+                 * Organizers screen. It is that setting up an event for a new
+                 * programme meant abandoning a half-typed event, going
+                 * somewhere else, and coming back to start again.
+                 *
+                 * SO IT IS A FIELD ON THIS FORM, NOT A BUTTON THAT POSTS.
+                 * The FAQ set control was a button that applied by posting and
+                 * redirecting, which discarded every unsaved edit on the
+                 * screen, and people learned not to press it. That was the
+                 * 3.3.0 fault and it is not being rebuilt here. This input
+                 * travels with the ordinary Save: the term is created inside
+                 * save_event_from_post() and assigned in the same request, so
+                 * there is no second submit, no redirect, no lost typing, and
+                 * nothing at all happens if the box is left empty.
+                 *
+                 * It also needs no script and no ajax route. A route would have
+                 * been a new surface to gate, and the access whitelist would
+                 * rightly have failed the build until it was; a field that
+                 * rides an existing gated save is simply covered by it.
+                 *
+                 * The select wins when both are filled: an explicit choice from
+                 * the list beats a leftover in the text box.
+                 */
+                ?>
+                <details class="uc-organizer-inline" data-uc-disclosure>
+                    <summary class="uc-team-add-toggle" aria-expanded="false">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                        <span>Not listed? Add one</span>
+                    </summary>
+                    <div class="uc-organizer-inline-body">
+                        <label class="uc-field">
+                            <span class="uc-field-label">New organizer</span>
+                            <input type="text" name="organizer_new" value=""
+                                   placeholder="The Stonewall Project" autocomplete="off" />
+                            <span class="uc-hint uc-hint-spec">
+                                Created when you save this event, and used for it. Nothing else on this form is
+                                lost. If the name already exists, that one is used rather than a second copy.
+                            </span>
+                        </label>
+                    </div>
+                </details>
                 <?php
                 break;
 
@@ -4909,6 +5004,32 @@ class SFAF_Portal {
         }
         if ( isset( $_POST['organizer'] ) ) {
             $org = intval( $_POST['organizer'] );
+
+            /*
+             * A NEW ORGANIZER TYPED ON THIS FORM, created here, in this same
+             * request. See the note on the control in the field renderer for
+             * why it is a field and not a button that posts: the 3.3.0 FAQ set
+             * control applied by posting and redirecting, discarding every
+             * unsaved edit on the screen.
+             *
+             * THE SELECT WINS. Somebody who picked from the list and also left
+             * something in the text box meant the list: an explicit choice
+             * beats a leftover. Only when the select says None does the typed
+             * name decide anything.
+             *
+             * A failure is swallowed rather than failing the save. The rest of
+             * what they typed is legitimate and losing an event over a
+             * duplicate slug would teach them that saving is unreliable; the
+             * organizer field simply stays as it was, which is visible on the
+             * screen they land on.
+             */
+            if ( ! $org && ! empty( $_POST['organizer_new'] ) ) {
+                $made = SFAF_Organizers::save( 0, wp_unslash( $_POST['organizer_new'] ) );
+                if ( ! is_wp_error( $made ) ) {
+                    $org = (int) $made;
+                }
+            }
+
             wp_set_object_terms( $event_id, $org ? array( $org ) : array(), 'uc_organizer' );
         }
 
@@ -5720,6 +5841,219 @@ class SFAF_Portal {
      * not copy the address. Correcting a suite number on this screen corrects
      * every event held there at once. See class-sfaf-venues.php.
      * ================================================================== */
+
+    /* =====================================================================
+     * ORGANIZERS (3.37.0)
+     *
+     * The last of the four taxonomies to get a caladmin screen, and the reason
+     * it was last is that it looked like the least: an organizer is a name,
+     * with no colour, no address, no image and no term meta of any kind. What
+     * it actually was is the one entry a manager could not create without
+     * leaving the portal for a WordPress screen that 3.27.0 had unlisted, so a
+     * new programme meant abandoning a half-typed event to go and find it.
+     *
+     * THE LIST IS PLAIN TEXT WITH ACTIONS, not a page of permanent inputs.
+     * That is the shape Teams was rebuilt into in 3.20.0 and for the same
+     * reason: a screen made of live form fields invites an accidental edit on
+     * every visit and gives no reading of what is there. Editing is a
+     * disclosure per row, opened deliberately, and creating is a separate
+     * collapsed control rather than a form permanently occupying the top of the
+     * screen.
+     * ================================================================== */
+
+    private function render_organizers( $user ) {
+        if ( ! $this->can_view_all( $user ) ) {
+            $this->render_dashboard( $user );
+            return;
+        }
+        $this->chrome_open( $user, 'organizers' );
+
+        $organizers = SFAF_Organizers::all();
+        $err        = get_transient( 'sfaf_organizer_error_' . $user->ID );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_organizer_error_' . $user->ID );
+        }
+        ?>
+        <div class="uc-page-head"><h1>Organizers</h1></div>
+
+        <p class="uc-help">
+            Who is putting an event on. An event names one, and it appears on the event page as
+            &ldquo;Hosted by&rdquo;, on the public calendar&rsquo;s organizer filter, and in the
+            search engine listing. Renaming one here renames it everywhere at once.
+        </p>
+
+        <?php if ( $err ) : ?>
+            <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
+        <?php endif; ?>
+
+        <?php
+        /*
+         * CREATE: A COLLAPSED CONTROL, NOT A FORM ALREADY OPEN.
+         *
+         * Adding an organizer is the rarer of the two jobs done here; reading
+         * the list is the common one. A form standing open at the top pushes
+         * the list down for something most visits do not need. Same disclosure
+         * as the team-add control, so click, tap, Enter and Space all work with
+         * no script and it still opens if portal.js never runs.
+         */
+        ?>
+        <details class="uc-card uc-organizer-add" data-uc-disclosure>
+            <summary class="uc-team-add-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                <span>Add an organizer</span>
+            </summary>
+            <div class="uc-organizer-add-body">
+                <form method="post" action="<?php echo esc_url( $this->url( 'organizers' ) ); ?>" class="uc-organizer-form">
+                    <input type="hidden" name="uc_action" value="save_organizer" />
+                    <input type="hidden" name="organizer_id" value="0" />
+                    <?php wp_nonce_field( 'uc_portal_save_organizer', 'uc_nonce' ); ?>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Name</span>
+                        <input type="text" name="organizer_name" required placeholder="The Stonewall Project" />
+                    </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Description (optional)</span>
+                        <textarea name="organizer_description" rows="2"></textarea>
+                        <span class="uc-hint uc-hint-spec">Not shown on the event page. It is here for whoever reads this list next.</span>
+                    </label>
+                    <div class="uc-form-actions">
+                        <button type="submit" class="uc-btn uc-btn-primary">Add organizer</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+
+        <div class="uc-card">
+            <div class="uc-card-head">
+                <h2><?php echo count( $organizers ); ?> <?php echo esc_html( 1 === count( $organizers ) ? 'organizer' : 'organizers' ); ?></h2>
+            </div>
+
+            <?php if ( empty( $organizers ) ) : ?>
+                <p class="uc-empty">No organizers yet. Add one above, or from the Organizer field on any event.</p>
+            <?php else : ?>
+                <?php foreach ( $organizers as $org ) :
+                    $n       = SFAF_Organizers::event_count( $org->term_id );
+                    $panel   = 'uc-org-' . (int) $org->term_id;
+                    ?>
+                    <div class="uc-organizer-row">
+                        <div class="uc-organizer-id">
+                            <strong><?php echo esc_html( $org->name ); ?></strong>
+                            <span class="uc-muted">
+                                <?php echo (int) $n; ?> <?php echo esc_html( 1 === $n ? 'event' : 'events' ); ?>
+                                &middot; <code><?php echo esc_html( $org->slug ); ?></code>
+                            </span>
+                            <?php if ( '' !== trim( (string) $org->description ) ) : ?>
+                                <span class="uc-muted"><?php echo esc_html( $org->description ); ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="uc-organizer-actions">
+                            <?php if ( $n ) : ?>
+                                <?php
+                                /*
+                                 * THE SEARCH, NOT AN organizer= FILTER. The
+                                 * events list has no organizer filter, so a
+                                 * link carrying one would have quietly listed
+                                 * everything and looked like it worked.
+                                 * SFAF_Search covers the uc_organizer taxonomy
+                                 * by term name, so this reaches exactly these
+                                 * events through a route that already exists
+                                 * and is already tested.
+                                 */
+                                ?>
+                                <a class="uc-btn uc-btn-sm"
+                                   href="<?php echo esc_url( add_query_arg( array( 's' => $org->name, 'scope' => 'all', 'view' => 'all' ), $this->url( 'events' ) ) ); ?>">See events</a>
+                            <?php endif; ?>
+                        </div>
+
+                        <details class="uc-organizer-edit" data-uc-disclosure>
+                            <summary class="uc-team-add-toggle" aria-expanded="false" aria-controls="<?php echo esc_attr( $panel ); ?>">
+                                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                                <span>Edit</span>
+                            </summary>
+                            <div class="uc-organizer-edit-body" id="<?php echo esc_attr( $panel ); ?>">
+                                <form method="post" action="<?php echo esc_url( $this->url( 'organizers' ) ); ?>" class="uc-organizer-form">
+                                    <input type="hidden" name="uc_action" value="save_organizer" />
+                                    <input type="hidden" name="organizer_id" value="<?php echo (int) $org->term_id; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_save_organizer', 'uc_nonce' ); ?>
+                                    <label class="uc-field">
+                                        <span class="uc-field-label">Name</span>
+                                        <input type="text" name="organizer_name" value="<?php echo esc_attr( $org->name ); ?>" required />
+                                    </label>
+                                    <label class="uc-field">
+                                        <span class="uc-field-label">Description (optional)</span>
+                                        <textarea name="organizer_description" rows="2"><?php echo esc_textarea( $org->description ); ?></textarea>
+                                    </label>
+                                    <label class="uc-field">
+                                        <span class="uc-field-label">Web address</span>
+                                        <input type="text" name="organizer_slug" value="<?php echo esc_attr( $org->slug ); ?>" />
+                                        <?php
+                                        /*
+                                         * ITS OWN FIELD, WITH ITS OWN WARNING, rather than
+                                         * being re-derived from the name on every save. An
+                                         * embed block on another site can be scoped to this
+                                         * exact string, those blocks are HTML on pages this
+                                         * plugin cannot see, and a changed slug empties them
+                                         * with nothing to say why. Renaming is safe; this is
+                                         * a different act and is offered as one.
+                                         */
+                                        ?>
+                                        <span class="uc-hint uc-hint-spec">
+                                            Leave this alone unless you know it is unused. Embed blocks on other
+                                            sites can filter by it, and changing it empties those blocks.
+                                        </span>
+                                    </label>
+                                    <div class="uc-form-actions">
+                                        <button type="submit" class="uc-btn uc-btn-primary">Save</button>
+                                    </div>
+                                </form>
+
+                                <form method="post" action="<?php echo esc_url( $this->url( 'organizers' ) ); ?>" class="uc-organizer-delete">
+                                    <input type="hidden" name="uc_action" value="delete_organizer" />
+                                    <input type="hidden" name="organizer_id" value="<?php echo (int) $org->term_id; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_delete_organizer', 'uc_nonce' ); ?>
+                                    <?php
+                                    /*
+                                     * THE COUNT IS IN THE CONFIRMATION, which is what makes
+                                     * an allowed deletion honest rather than merely
+                                     * permitted. Deleting is allowed here and refused for a
+                                     * venue, because an event that loses its organizer keeps
+                                     * every fact about itself and an event that loses its
+                                     * venue has nowhere to be.
+                                     */
+                                    $confirm = $n
+                                        ? sprintf(
+                                            'Delete %s? %d %s will keep their date, time and location and simply have no organizer. Any embed block filtered by this organizer will stop showing events.',
+                                            $org->name, $n, ( 1 === $n ? 'event' : 'events' )
+                                        )
+                                        : sprintf( 'Delete %s? No events name it.', $org->name );
+                                    ?>
+                                    <button type="submit" class="uc-link-danger uc-btn-sm"
+                                            onclick="return confirm(<?php echo esc_attr( wp_json_encode( $confirm ) ); ?>);">
+                                        Delete this organizer
+                                    </button>
+                                    <?php if ( $n ) : ?>
+                                        <span class="uc-hint">
+                                            <?php echo (int) $n; ?> <?php echo esc_html( 1 === $n ? 'event names' : 'events name' ); ?>
+                                            it. They stay exactly as they are, without an organizer.
+                                        </span>
+                                    <?php endif; ?>
+                                </form>
+                            </div>
+                        </details>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <p class="uc-help uc-help-quiet">
+            The WordPress screen for organizers is still there at
+            <code>edit-tags.php?taxonomy=uc_organizer&amp;post_type=uc_event</code> if this one ever
+            will not do what you need. Nothing about the taxonomy changed.
+        </p>
+        <?php
+        $this->chrome_close();
+    }
 
     private function render_venues( $user ) {
         if ( ! $this->can_view_all( $user ) ) {

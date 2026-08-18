@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.36.0
+Stable tag: 3.37.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -513,6 +513,35 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.37.0 =
+
+**Organizers get their own tab in caladmin, and can be created without leaving the event you are writing.** There was no way to add one from the portal at all. The event editor offered a picker of existing organizers and nothing else, and creating a new one meant the WordPress term screen, which 3.27.0 unlisted from the menu and left reachable only by URL. So a manager setting up an event for a new programme was stuck. Same reasoning that moved venues in 3.13.0: this is event management, not site configuration, and it belongs where the work happens.
+
+**What an organizer actually carries is name, slug and description, and nothing else.** There is no term meta on `uc_organizer` at all, which makes it the simplest of the four taxonomies: categories carry a colour and an icon, venues four address parts, series an image and a default FAQ set. It appears publicly in five places, and the screen was designed against that list rather than against a guess: **Hosted by** on the event page; the byline on a card, but only when the event is not imported, since an imported event names its platform instead; the organizer filter on the public calendar and in both generators; `schema.org/Event` `organizer` in the JSON-LD a search engine reads; and the `/event-organizer/<slug>/` archive. It is also searchable and travels in the satellite feed payload.
+
+**The taxonomy itself is untouched, and the test asserts that rather than trusting it.** `SFAF_Organizers` is a wrapper and registers nothing. Public, the `event-organizer` rewrite, `show_in_rest` and the WordPress fallback screen all stay exactly as they were, because embed blocks scoped by organizer carry the SLUG and those blocks are HTML on sites this plugin does not control. Planting a change to `public` and a change to the rewrite slug both failed the build.
+
+**A rename never moves the slug**, and that is the rule on this screen that is not obvious. WordPress is happy to leave a slug alone when a name changes, and that is what is wanted: an embed block can be scoped `organizer="the-stonewall-project"` and that string is the whole of the link between the two sites. Renaming the display name is safe and is what somebody usually means. Changing the slug is a different act with a consequence this plugin cannot see, so it is offered as its own field with its own warning rather than derived from the name on every save.
+
+**Deletion is ALLOWED, which is the category rule and not the venue rule, and the difference is real rather than stylistic.** A venue REFUSES deletion while events are held there because an event keeps no address of its own: the term is the only record of where it happens, and deleting it leaves the event with nowhere to be. A category ALLOWS it because the event keeps its date, time and location and is merely uncategorised. An organizer is the second kind. Every fact about the event survives and what is lost is a byline, so deletion is allowed.
+
+The confirmation names the count either way, which is what makes an allowed deletion honest rather than merely permitted. It also names the one thing the category case does not have: an embed block on another site filtered by that organizer stops showing events, and this plugin cannot enumerate those blocks because they are HTML on somebody else's pages. That is not a reason to refuse, since refusing would make the screen useless for its main purpose, but it is a reason to say so. **The count comes from a query rather than from the term's own `count`**, because WordPress counts only published posts and a manager with three drafts against an organizer would be told "0 events" and then surprised by what the confirmation said.
+
+**The list is plain text with actions, not a page of permanent inputs**, which is the shape Teams took in 3.20.0 and for the same reason: a screen made of live form fields invites an accidental edit on every visit and gives no reading of what is actually there. Editing is a disclosure per row, opened deliberately, and creating is a separate collapsed control rather than a form standing open at the top pushing the list down for something most visits do not need. Its own sidebar entry rather than folded into "Series & Categories": those two are grouped because a category is a property of a series' events, an organizer is not a property of either, and burying it inside a heading naming two other things is how it stays unfindable.
+
+**Adding one from the event editor is a FIELD, not a button that posts.** The friction was never only the missing screen. It was that setting up an event for a new programme meant abandoning a half-typed event, going somewhere else, and coming back to start again. So `organizer_new` is an input on the event form, and the term is created inside the ordinary save in the same request: no second submit, no redirect, nothing typed is lost, and nothing happens at all if the box is left empty. That is deliberately not the shape of the FAQ set control before 3.3.0, which applied by posting and redirecting, discarded every unsaved edit on the screen, and taught people not to press it. It also needs no script and no ajax route, and a route would have been a new surface to gate.
+
+A name that already exists returns the existing term rather than an error, which is what makes that path safe: somebody typing a name that is already there means "use that one", and failing their whole event save over it would be a poor trade while creating a second term with a `-2` slug would be worse. The select wins when both are filled, because an explicit choice from the list beats a leftover in a text box.
+
+**Imported events are unaffected, and structurally so.** `organizer` is on `manager_fields()` for both the Eventbrite and GoFundMe Pro adapters, so no fetch has ever written it and none can. A platform's organizer is its own record rather than a term in this taxonomy, and guessing a mapping between the two would create duplicate terms nobody asked for. The test asserts it stays a manager field on both.
+
+**Ten faults planted and all ten caught by name**: a rename re-deriving the slug, deletion refused instead of allowed, deletion no longer reporting its count, a duplicate name creating a second term, the count falling back to the term's published-only figure, the taxonomy losing `public`, the rewrite slug changed, the add-one control becoming a form with its own submit, the typed name overriding an explicit choice, and organizer dropping off `manager_fields()`.
+
+Two guards from earlier releases fired unprompted, which is what they are for. The 3.35.0 access whitelist failed the build until `save_organizer` and `delete_organizer` were added deliberately, as calendar-wide `can_view_all` actions rather than the per-event gate, since an organizer is not owned by any one event. The private-events whitelist failed until `SFAF_Organizers::events_using()` was listed with its reason: it must count private events, because the deletion confirmation would otherwise understate what it affects and hiding a private event from the person running it is the failure that feature must not have.
+
+One thing found and fixed rather than shipped: the "See events" link first pointed at `events?organizer=N`, and the events list has no organizer filter, so it would have quietly listed everything while looking like it worked. It goes through the search instead, which already covers the `uc_organizer` taxonomy by term name.
+
+VERIFIED: 54 PHP files parse under PHP 8.3; the callable audit resolves 112 plugin functions across 37 files and 33 classes with nothing unresolved, self-test passing; the whole `.claude` suite runs green, 16 PHP harnesses plus the JS panel test, the guard test and two self-tests; ten planted faults each caught by name; three stylesheets balance. Zip built with bsdtar, extracted, diffed file by file against the tree, and both the linter and the callable audit re-run from the extract.
 = 3.36.0 =
 
 **Somebody could register for a session, have it moved to a different day, and never be told. Deleting an event with registrations stranded those people silently. Both are closed.**
