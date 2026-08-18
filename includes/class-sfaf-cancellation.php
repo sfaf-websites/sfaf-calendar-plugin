@@ -42,24 +42,24 @@
  *                    is public and cheap.
  *   Imported events  See the note on refetch below.
  *
- * IMPORTED EVENTS, AND WHY A REFETCH CANNOT UN-CANCEL ONE
+ * NATIVE EVENTS ONLY (3.38.0)
  * ---------------------------------------------------------------------------
- * Cancelling here is a LOCAL decision about a local event. The source still
- * holds its own copy and a refetch will keep seeing it, so the question is what
- * happens on the next fetch.
+ * An imported event cannot be cancelled here, and the control is not offered on
+ * one. It is cancelled where it lives: if a GFMP campaign or an Eventbrite
+ * listing is called off at the source it leaves this calendar through the
+ * unpublish-on-removal path, and telling the people who signed up is that
+ * platform's job, because they registered there and this plugin holds none of
+ * their addresses.
  *
- * Two things stop it coming back. SFAF_Sources::update_event() never writes
- * post_status and refuses anything on the adapter's manager_fields() list, and
- * the cancellation meta is on that list, so a payload cannot clear it however it
- * is shaped. And skip_refresh() below takes a cancelled event out of the refresh
- * path entirely, so the source cannot move the date or the location of an event
- * that is not happening and produce a "changed" notification for it.
+ * 3.36.0 did offer it, with a warning saying it would not reach the source.
+ * That warning was a sentence explaining why a control is misleading, which is
+ * a reason to remove the control rather than to caption it: what it produced
+ * was a half-cancellation that looks whole, off this calendar and still selling
+ * places at the source, with nobody told by anybody.
  *
- * What it does NOT claim: cancelling here does not cancel anything at
- * Eventbrite or GoFundMe Pro. If the event is still running there, people can
- * still register there, and this plugin has no way to know or to stop it. The
- * editor says so where somebody cancels an imported event, because a silent
- * half-cancellation is worse than a refusal.
+ * Nothing about the removal path changed. An event that vanishes at source is
+ * unpublished to a draft by SFAF_Sources, which is not a cancellation, sends
+ * nothing, and never touches this class.
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
@@ -112,19 +112,6 @@ class SFAF_Cancellation {
      * this method exists to close.
      */
     public static function skip_scheduled( $post_id ) {
-        return self::is_cancelled( $post_id );
-    }
-
-    /**
-     * Should a source refresh leave this event alone?
-     *
-     * Separate from skip_scheduled() although they answer the same today,
-     * because they are different questions and one of them may change. A
-     * refresh is skipped so the source cannot move the date or the location of
-     * an event that is not happening, which would otherwise produce a "this
-     * event has moved" email about an event that is cancelled.
-     */
-    public static function skip_refresh( $post_id ) {
         return self::is_cancelled( $post_id );
     }
 

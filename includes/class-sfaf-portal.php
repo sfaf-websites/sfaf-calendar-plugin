@@ -612,6 +612,16 @@ class SFAF_Portal {
                     wp_die( 'Denied' );
                 }
 
+                /*
+                 * NATIVE EVENTS ONLY, CHECKED AT THE WRITE AS WELL AS THE
+                 * RENDER. A control that is not drawn is not a refusal: a POST
+                 * is a request anybody can construct, and defect one in
+                 * PROJECT.md 5 was a screen that relied on not being linked to.
+                 */
+                if ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) ) {
+                    wp_die( 'Imported events are cancelled at their source.' );
+                }
+
                 $undo = isset( $_POST['uncancel'] );
 
                 if ( $undo ) {
@@ -1035,11 +1045,24 @@ class SFAF_Portal {
 
             case 'faq_set_save':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
-                SFAF_FAQ_Sets::save(
+                $saved = SFAF_FAQ_Sets::save(
                     isset( $_POST['faq_set_id'] ) ? sanitize_text_field( wp_unslash( $_POST['faq_set_id'] ) ) : '',
                     isset( $_POST['faq_set_name'] ) ? wp_unslash( $_POST['faq_set_name'] ) : '',
                     isset( $_POST['faq_set_rows'] ) ? wp_unslash( $_POST['faq_set_rows'] ) : array()
                 );
+                /*
+                 * THE ANSWER IS REPORTED. save() refuses a set with no name and
+                 * a set with no usable rows, and this discarded both, which was
+                 * nearly unreachable while the only caller was an edit form that
+                 * already had rows in it. The create control added in 3.38.0
+                 * makes "submitted with every row blank" an ordinary mistake,
+                 * and a success message for a set that was not made is worse
+                 * than a refusal.
+                 */
+                if ( is_wp_error( $saved ) ) {
+                    set_transient( 'sfaf_faq_set_error_' . $user->ID, $saved->get_error_message(), 60 );
+                    $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_failed' ) );
+                }
                 $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_saved' ) );
                 break;
 
@@ -2419,7 +2442,7 @@ class SFAF_Portal {
             // a calendar role. They live under Events > Automation in the
             // WordPress admin now.
             $nav['pending'] = array( 'Pending', 'pending', 'clock' );
-            $nav['users']   = array( 'Users', 'users', 'users' );
+            $nav['users']   = array( 'Users & Teams', 'users', 'users' );
         }
 
         /*
@@ -2548,6 +2571,7 @@ class SFAF_Portal {
             'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
+            'faq_set_failed' => 'That set could not be saved.',
             // 'series_removed' is built from real counts further down, because
             // what it did depends on which option was chosen.
             'fetched'        => 'Fetch complete. See the results below.',
@@ -4105,6 +4129,151 @@ class SFAF_Portal {
      * The server-side apply is left in place and hidden by script, so a
      * manager without JavaScript keeps the post-and-redirect they had.
      */
+    /**
+     * The description, as rich text (3.38.0).
+     *
+     * A MINIMAL TOOLBAR, AND THE OMISSIONS ARE THE POINT. Bold, italic, a link,
+     * two kinds of list and one heading. No font colours, no sizes, no
+     * alignment: the brand guide governs colour and type, and a full toolbar is
+     * how a calendar ends up with events in purple Comic Sans that nobody can
+     * unpick afterwards because the styling is inline on every paragraph.
+     *
+     * ONE HEADING, AND IT IS h3. The event page's own title is the h1 and the
+     * page's sections sit at h2, so a heading somebody types into a description
+     * has to start below both or it breaks the reading order for anybody
+     * navigating by headings. block_formats offers exactly Paragraph and that
+     * one level, so there is no way to choose a level that would compete.
+     *
+     * IT DEGRADES TO A TEXTAREA. caladmin builds its own document rather than
+     * running through wp_head, so TinyMCE is being asked to start somewhere it
+     * usually does not. If its scripts do not run, wp_editor() leaves a plain
+     * textarea holding the same content: somebody sees tags instead of
+     * formatting, which is worse than the editor working and much better than
+     * losing anything. wp_kses_post() on save means the stored value survives
+     * either way. quicktags is off so the fallback is one control rather than
+     * two disagreeing about the same field.
+     *
+     * EXISTING PLAIN TEXT CARRIES OVER AS PARAGRAPHS. wp_editor() runs the
+     * stored value through wpautop() for display, and the event page's
+     * the_content() does the same, so a description written before this release
+     * reads as the paragraphs it always looked like rather than collapsing into
+     * one block. Nothing is migrated and nothing needs to be.
+     *
+     * @param array  $ctx
+     * @param string $state
+     */
+    /**
+     * The series picker, at the top of a new event, with its prefill offer.
+     *
+     * NOTHING POSTS. The whole control is a select, a panel of checkboxes and a
+     * button that writes values into the fields already on this page. It is the
+     * FAQ set picker's shape, and for the FAQ set picker's reason: 3.3.0 found
+     * that a control which applies by posting and redirecting discards every
+     * unsaved edit on the form, so people learn not to press it. A creation
+     * form is usually empty, which is exactly when that failure is invisible in
+     * testing and expensive in use.
+     *
+     * IT ASKS BEFORE OVERWRITING. Putting the picker first mostly means there
+     * is nothing to overwrite, but "mostly" is not a guarantee: somebody may
+     * type a title and a location and then think of the series. The script
+     * checks every field a ticked box would write and names the ones that
+     * already have something in them before touching any of them.
+     *
+     * VALUES ARE COPIED, NOT LINKED. Editing the series afterwards does not
+     * reach the event, which is how the default FAQ set has always behaved.
+     *
+     * THE DATE IS NOT OFFERED, and is not in the payload at all, so there is no
+     * checkbox to tick and nothing for a later change to expose. Setting the
+     * date is the reason somebody is here.
+     *
+     * @param WP_Term[] $all_series
+     * @param int       $cur_series
+     */
+    private function render_series_prefill( $all_series, $cur_series ) {
+        if ( empty( $all_series ) ) {
+            // No series, no choice to make, and no card saying so.
+            return;
+        }
+
+        $payload = array();
+        foreach ( $all_series as $term ) {
+            $payload[ (string) $term->term_id ] = SFAF_Series::prefill_data( $term->term_id );
+        }
+        ?>
+        <section class="uc-bento-card uc-series-first" data-uc-series-prefill>
+            <h2 class="uc-bento-title">Is this part of a series?</h2>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Series</span>
+                <select name="series" data-uc-series-select>
+                    <option value="0">Not part of a series</option>
+                    <?php foreach ( $all_series as $term ) : ?>
+                        <option value="<?php echo (int) $term->term_id; ?>" <?php selected( $cur_series, $term->term_id ); ?>>
+                            <?php echo esc_html( $term->name ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <?php
+            /*
+             * Rendered hidden and revealed by the script that can actually
+             * apply it. Without the script the select still works and still
+             * saves the series, which is the behaviour this screen had before.
+             */
+            ?>
+            <div class="uc-prefill" data-uc-prefill-panel hidden>
+                <p class="uc-prefill-head">
+                    Fill this event in from <strong data-uc-prefill-name></strong>?
+                </p>
+                <div class="uc-prefill-opts" data-uc-prefill-opts></div>
+                <div class="uc-prefill-actions">
+                    <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
+                </div>
+                <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
+                <p class="uc-hint">
+                    The values are copied. Editing the series later does not change this event.
+                    The date is never filled in.
+                </p>
+            </div>
+
+            <script type="application/json" data-uc-prefill-data><?php
+                echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+            ?></script>
+        </section>
+        <?php
+    }
+
+    private function description_editor( $ctx, $state ) {
+        $content = $ctx['post'] ? $ctx['post']->post_content : '';
+
+        // A source-owned description is not editable here, and a disabled
+        // TinyMCE is not a thing: the fallback textarea carries the lock.
+        if ( 'locked' === $state ) {
+            ?>
+            <textarea name="description" rows="8" disabled><?php echo esc_textarea( $content ); ?></textarea>
+            <?php
+            return;
+        }
+
+        wp_editor( $content, 'uc-description', array(
+            'textarea_name' => 'description',
+            'textarea_rows' => 10,
+            'media_buttons' => false,
+            'teeny'         => true,
+            'quicktags'     => false,
+            'tinymce'       => array(
+                'toolbar1'      => 'formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo',
+                'toolbar2'      => '',
+                'toolbar3'      => '',
+                'block_formats' => 'Paragraph=p;Heading=h3',
+                'menubar'       => false,
+                'statusbar'     => false,
+            ),
+        ) );
+    }
+
     private function faq_set_picker() {
         $sets = SFAF_FAQ_Sets::all();
         if ( empty( $sets ) ) {
@@ -4695,12 +4864,10 @@ class SFAF_Portal {
 
             case 'description':
                 ?>
-                <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'description', $state ); ?>>
+                <div class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'description', $state ); ?>>
                     <span class="uc-field-label">Description <?php echo $this->field_badge( $state, $label ); ?></span>
-                    <?php // The note is said once per event, not once per field. See
-                          // the image case above for why. ?>
-                    <textarea name="description" rows="8"<?php echo $this->field_disabled( $state ); ?>><?php echo esc_textarea( $ctx['post'] ? $ctx['post']->post_content : '' ); ?></textarea>
-                </label>
+                    <?php $this->description_editor( $ctx, $state ); ?>
+                </div>
                 <?php
                 break;
 
@@ -5247,7 +5414,7 @@ class SFAF_Portal {
             ?>
             <?php if ( $this->can_view_all( $user ) ) : ?>
                 <div class="uc-cat-new">
-                    <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-sm">+ New series</a>
+                    <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-sm uc-btn-primary">+ New series</a>
                 </div>
             <?php endif; ?>
         </div>
@@ -5898,7 +6065,7 @@ class SFAF_Portal {
          */
         ?>
         <details class="uc-card uc-organizer-add" data-uc-disclosure>
-            <summary class="uc-team-add-toggle" aria-expanded="false">
+            <summary class="uc-add-toggle" aria-expanded="false">
                 <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
                 <span>Add an organizer</span>
             </summary>
@@ -5984,25 +6151,23 @@ class SFAF_Portal {
                                         <span class="uc-field-label">Description (optional)</span>
                                         <textarea name="organizer_description" rows="2"><?php echo esc_textarea( $org->description ); ?></textarea>
                                     </label>
-                                    <label class="uc-field">
-                                        <span class="uc-field-label">Web address</span>
-                                        <input type="text" name="organizer_slug" value="<?php echo esc_attr( $org->slug ); ?>" />
-                                        <?php
-                                        /*
-                                         * ITS OWN FIELD, WITH ITS OWN WARNING, rather than
-                                         * being re-derived from the name on every save. An
-                                         * embed block on another site can be scoped to this
-                                         * exact string, those blocks are HTML on pages this
-                                         * plugin cannot see, and a changed slug empties them
-                                         * with nothing to say why. Renaming is safe; this is
-                                         * a different act and is offered as one.
-                                         */
-                                        ?>
-                                        <span class="uc-hint uc-hint-spec">
-                                            Leave this alone unless you know it is unused. Embed blocks on other
-                                            sites can filter by it, and changing it empties those blocks.
-                                        </span>
-                                    </label>
+                                    <?php
+                                    /*
+                                     * NO SLUG FIELD, AND NO WARNING ABOUT ONE.
+                                     *
+                                     * The slug is what embed blocks on other sites resolve
+                                     * through and what the public archive URL is made of, and
+                                     * it is not something anybody managing events needs to
+                                     * read. An editable field invites a change that empties
+                                     * somebody else's calendar, and a warning beside it is a
+                                     * sentence explaining why a control exists rather than
+                                     * telling anybody what to do.
+                                     *
+                                     * SFAF_Organizers::save() pins the existing slug on every
+                                     * rename, so there is nothing here to warn about: the
+                                     * value cannot move from this screen.
+                                     */
+                                    ?>
                                     <div class="uc-form-actions">
                                         <button type="submit" class="uc-btn uc-btn-primary">Save</button>
                                     </div>
@@ -6028,7 +6193,7 @@ class SFAF_Portal {
                                         )
                                         : sprintf( 'Delete %s? No events name it.', $org->name );
                                     ?>
-                                    <button type="submit" class="uc-link-danger uc-btn-sm"
+                                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-danger"
                                             onclick="return confirm(<?php echo esc_attr( wp_json_encode( $confirm ) ); ?>);">
                                         Delete this organizer
                                     </button>
@@ -6046,11 +6211,6 @@ class SFAF_Portal {
             <?php endif; ?>
         </div>
 
-        <p class="uc-help uc-help-quiet">
-            The WordPress screen for organizers is still there at
-            <code>edit-tags.php?taxonomy=uc_organizer&amp;post_type=uc_event</code> if this one ever
-            will not do what you need. Nothing about the taxonomy changed.
-        </p>
         <?php
         $this->chrome_close();
     }
@@ -6103,8 +6263,11 @@ class SFAF_Portal {
                 <?php foreach ( $venues as $venue ) : $this->render_venue_form( $venue ); ?><?php endforeach; ?>
             <?php endif; ?>
 
-            <details class="uc-venue-new">
-                <summary>Add a venue</summary>
+            <details class="uc-venue-new" data-uc-disclosure>
+                <summary class="uc-add-toggle" aria-expanded="false">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                    <span>Add a venue</span>
+                </summary>
                 <?php $this->render_venue_form( null ); ?>
             </details>
         </div>
@@ -7355,6 +7518,17 @@ class SFAF_Portal {
         $this->load_media = true;
         wp_enqueue_media();
 
+        /*
+         * THE RICH TEXT EDITOR, ENQUEUED BEFORE THE HEAD PRINTS.
+         *
+         * caladmin emits its own document, so the styles and scripts wp_editor()
+         * needs are only there because load_media already makes head() call
+         * wp_print_styles() and wp_print_head_scripts() and foot() call
+         * wp_print_footer_scripts(). This adds the editor to what those print.
+         * See description_editor() for what happens if it does not start.
+         */
+        wp_enqueue_editor();
+
         $this->chrome_open( $user, 'events' );
         ?>
         <div class="uc-page-head">
@@ -7611,6 +7785,26 @@ class SFAF_Portal {
 
                 <?php
                 /*
+                 * ---- WHICH SERIES, FIRST, ON A NEW EVENT ONLY ----------------
+                 *
+                 * The first decision somebody makes creating an event is what it
+                 * is one of, because the answer fills in most of the rest. It
+                 * was two thirds of the way down the form, so the useful order
+                 * was the reverse of the order the form asked in.
+                 *
+                 * CREATION ONLY. On an existing event, changing the series
+                 * changes the series and nothing else: that event has real
+                 * content, and prefill is a convenience for a blank form rather
+                 * than a thing that should ever arrive and overwrite work. The
+                 * picker stays where it was on an edit.
+                 */
+                if ( ! $event_id ) :
+                    $this->render_series_prefill( $all_series, $cur_series );
+                endif;
+                ?>
+
+                <?php
+                /*
                  * ---- EVENT DETAILS: what this event IS. Full width, first. ----
                  *
                  * Title, description and picture are the three things a person
@@ -7735,6 +7929,16 @@ class SFAF_Portal {
                         }
                     }
                     ?>
+                    <?php
+                    /*
+                     * ON AN EDIT ONLY. A new event asks this at the top of the
+                     * form, with the prefill offer beside it. Rendering the
+                     * select in both places would post two values for the same
+                     * field and the second would win, which is the one that is
+                     * not the one somebody chose.
+                     */
+                    if ( $event_id ) :
+                    ?>
                     <label class="uc-field">
                         <span class="uc-field-label">Series</span>
                         <select name="series">
@@ -7746,6 +7950,7 @@ class SFAF_Portal {
                             <?php endforeach; ?>
                         </select>
                     </label>
+                    <?php endif; ?>
 
                     <?php if ( $cur_series && $event_id ) : ?>
                         <?php // ONE SHORT LINK, not a sentence with a link inside
@@ -8990,11 +9195,28 @@ class SFAF_Portal {
             return;
         }
 
+        /*
+         * CANCELLING IS FOR NATIVE EVENTS ONLY (3.38.0).
+         *
+         * An imported event is cancelled where it lives. If a GFMP campaign or
+         * an Eventbrite listing is called off there it leaves this calendar
+         * through the unpublish-on-removal path, and telling the people who
+         * signed up is that platform's job: they registered there, and this
+         * plugin holds none of their addresses to write to.
+         *
+         * Offering the control here would have produced a half-cancellation
+         * that looks whole: off this calendar, still selling places at the
+         * source, and nobody told by anybody. 3.36.0 shipped it with a warning
+         * saying exactly that, which is a sentence explaining why a control is
+         * misleading rather than a reason to have it.
+         */
+        if ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) ) {
+            return;
+        }
+
         $cancelled = SFAF_Cancellation::is_cancelled( $event_id );
         $counts    = SFAF_Announce::count_affected( array( $event_id ) );
         $has_regs  = $counts['people'] > 0;
-        $imported  = ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) );
-        $prov      = $imported ? SFAF_Sources::provenance( $event_id ) : array( 'label' => '' );
         ?>
         <section class="uc-bento-card uc-cancel-card<?php echo $cancelled ? ' is-cancelled' : ''; ?>">
             <h2 class="uc-bento-title"><?php echo $cancelled ? 'This event is cancelled' : 'Cancel this event'; ?></h2>
@@ -9028,18 +9250,6 @@ class SFAF_Portal {
                     A cancelled event keeps its registrations and takes no new ones. This is what to use
                     instead of deleting: deleting an event that people have signed up for is refused.
                 </p>
-
-                <?php if ( $imported ) : ?>
-                    <p class="uc-field-note uc-field-note-attention">
-                        <?php echo $this->icon_needs(); ?>
-                        <span>
-                            This event came from <?php echo esc_html( $prov['label'] ); ?>. Cancelling it here takes it
-                            off this calendar and stops its reminders. It does <strong>not</strong> cancel it at
-                            <?php echo esc_html( $prov['label'] ); ?>, where people may still be able to register.
-                            Cancel it there too.
-                        </span>
-                    </p>
-                <?php endif; ?>
 
                 <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form" data-uc-confirm-cancel>
                     <input type="hidden" name="uc_action" value="cancel_event" />
@@ -10653,17 +10863,90 @@ class SFAF_Portal {
         }
         $this->chrome_open( $user, 'faq-sets' );
         $sets = SFAF_FAQ_Sets::all();
+
+        $faq_err = get_transient( 'sfaf_faq_set_error_' . $user->ID );
+        if ( false !== $faq_err ) {
+            delete_transient( 'sfaf_faq_set_error_' . $user->ID );
+        }
         ?>
         <div class="uc-page-head"><h1>FAQ Sets</h1></div>
 
-        <div class="uc-card">
-            <div class="uc-card-head"><h2>What a set is</h2></div>
-            <p class="uc-help">
-                A set is a reusable group of questions and answers. Applying one <strong>copies</strong> its rows onto an event,
-                so editing a set here never changes an event that already used it, and deleting a set never removes questions from anything.
-                Create a set from the FAQ panel on any event.
-            </p>
-        </div>
+        <?php if ( $faq_err ) : ?>
+            <div class="uc-flash uc-flash-error"><?php echo esc_html( $faq_err ); ?></div>
+        <?php endif; ?>
+
+        <p class="uc-help">
+            A set is a reusable group of questions and answers. Applying one <strong>copies</strong> its rows onto an
+            event, so editing a set here never changes an event that already used it, and deleting a set never removes
+            questions from anything.
+        </p>
+
+        <?php
+        /*
+         * CREATE A SET HERE (3.38.0).
+         *
+         * There was no way to make one from this screen. The only route was
+         * "save these as a set" on an event that already had questions written
+         * on it, so the first set could not exist until somebody had typed the
+         * questions somewhere else first, and the event editor's set picker
+         * renders nothing when there are no sets. Both halves of the reported
+         * gap were this one omission.
+         *
+         * A PLAIN FORM IS CORRECT HERE, and that is not a contradiction of the
+         * 3.3.0 rule. That rule is about a control that posts from a screen
+         * carrying unsaved work: the event editor. This screen has no unsaved
+         * work to discard, so posting and redirecting costs nothing and needs
+         * no script.
+         */
+        ?>
+        <details class="uc-card uc-organizer-add" data-uc-disclosure>
+            <summary class="uc-add-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                <span>Create a set</span>
+            </summary>
+            <div class="uc-organizer-add-body">
+                <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">
+                    <input type="hidden" name="uc_action" value="faq_set_save" />
+                    <input type="hidden" name="faq_set_id" value="" />
+                    <?php wp_nonce_field( 'uc_portal_faq_set_save', 'uc_nonce' ); ?>
+
+                    <label class="uc-field">
+                        <span class="uc-field-label">Set name</span>
+                        <input type="text" name="faq_set_name" required placeholder="e.g. Drop-in group basics" />
+                    </label>
+
+                    <?php
+                    /*
+                     * THREE EMPTY ROWS, NOT ONE. A set with one question is
+                     * rarely what anybody wants, and a repeater that starts at
+                     * one makes adding the second look like the unusual case.
+                     * Empty rows are dropped on save by clean_rows(), so
+                     * leaving them blank costs nothing.
+                     */
+                    for ( $i = 0; $i < 3; $i++ ) :
+                        ?>
+                        <div class="uc-faq-newrow">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Question <?php echo (int) ( $i + 1 ); ?></span>
+                                <input type="text" name="faq_set_rows[<?php echo (int) $i; ?>][question]" />
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Answer</span>
+                                <textarea name="faq_set_rows[<?php echo (int) $i; ?>][answer]" rows="2"></textarea>
+                            </label>
+                        </div>
+                    <?php endfor; ?>
+
+                    <div class="uc-form-actions">
+                        <button type="submit" class="uc-btn uc-btn-primary">Create set</button>
+                    </div>
+                    <p class="uc-hint">
+                        Blank rows are ignored. You can add more questions by editing the set once it exists,
+                        and applying it to an event copies the rows rather than linking to them.
+                    </p>
+                </form>
+            </div>
+        </details>
 
         <?php if ( empty( $sets ) ) : ?>
             <div class="uc-card">
@@ -10973,12 +11256,24 @@ class SFAF_Portal {
                 <p class="uc-section-sub">Who can sign in to the calendar, what they may do, and whether their events need approving.</p>
             </div>
 
+        <div class="uc-card">
+            <div class="uc-card-head"><h2>Add a user to the calendar</h2></div>
+            <p class="uc-hint">
+                Adding somebody here gives them a calendar record, which is what puts them in the team picker and
+                the notification picker. It is not how anybody gets their WordPress role, and it cannot take access
+                away: a WordPress administrator has full calendar access whether or not they are listed here, and
+                adding one lists them at Admin.
+            </p>
+
             <?php
             /*
              * WHAT EACH LEVEL ACTUALLY MEANS, ONE CLICK AWAY.
              *
-             * The three levels were three words in a dropdown, and the person
-             * choosing between them had nowhere to find out what they grant.
+             * The three levels are three words in a dropdown, and the person
+             * choosing between them had nowhere to find out what they grant. So it
+             * sits BESIDE that dropdown rather than in a section of its own further
+             * up the page: help that is anywhere other than next to the control it
+             * explains is help nobody finds at the moment they need it.
              * Closed by default because it is reference rather than something to
              * read every visit, and a <details> because that is the 3.10.0
              * pattern: a real interactive element, so click, tap, Enter and
@@ -10987,7 +11282,7 @@ class SFAF_Portal {
              * equivalent and no way to read the contents at leisure.
              */
             ?>
-            <details class="uc-card uc-role-help" data-uc-disclosure>
+            <details class="uc-role-help" data-uc-disclosure>
                 <summary class="uc-role-help-toggle" aria-expanded="false">
                     <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
                     <span><strong>What each access level can do</strong></span>
@@ -11019,14 +11314,6 @@ class SFAF_Portal {
                 </div>
             </details>
 
-        <div class="uc-card">
-            <div class="uc-card-head"><h2>Add a user to the calendar</h2></div>
-            <p class="uc-hint">
-                Adding somebody here gives them a calendar record, which is what puts them in the team picker and
-                the notification picker. It is not how anybody gets their WordPress role, and it cannot take access
-                away: a WordPress administrator has full calendar access whether or not they are listed here, and
-                adding one lists them at Admin.
-            </p>
             <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-inline-form">
                 <input type="hidden" name="uc_action" value="add_user" />
                 <?php wp_nonce_field( 'uc_portal_add_user', 'uc_nonce' ); ?>
@@ -11334,7 +11621,7 @@ class SFAF_Portal {
                 ?>
                 <div class="uc-team-new">
                     <?php if ( ! $creating ) : ?>
-                        <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'team_new', 1, $this->url( 'users' ) ) . '#uc-teams' ); ?>">Create a team</a>
+                        <a class="uc-btn uc-btn-sm uc-btn-primary" href="<?php echo esc_url( add_query_arg( 'team_new', 1, $this->url( 'users' ) ) . '#uc-teams' ); ?>">Create a team</a>
                     <?php else : ?>
                         <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-team-create">
                             <input type="hidden" name="uc_action" value="save_team" />

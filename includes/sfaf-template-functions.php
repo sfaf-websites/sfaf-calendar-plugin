@@ -499,6 +499,39 @@ function sfaf_event_datetimes( $post_id ) {
 }
 
 /**
+ * HTML to one line of readable text, with the block boundaries kept as spaces.
+ *
+ * WHY THIS EXISTS. wp_trim_words() strips tags by calling strip_tags(), which
+ * joins whatever was either side of a tag with nothing in between:
+ * "<p>One</p><p>Two</p>" comes out as "OneTwo". Event descriptions were plain
+ * text until 3.38.0, so no card ever showed it. The day rich text shipped, every
+ * card summary spanning two paragraphs would have run the last word of one into
+ * the first word of the next, on the public calendar and in every embed.
+ *
+ * A block tag becomes a space BEFORE the tags are stripped, which is the only
+ * order that works: afterwards there is nothing left to tell where the boundary
+ * was. Inline tags are left alone, because a space inside <strong>one</strong>
+ * word would be just as wrong in the other direction.
+ *
+ * @param string $html
+ * @return string
+ */
+function sfaf_flatten_html( $html ) {
+    $html = (string) $html;
+    if ( '' === $html ) {
+        return '';
+    }
+
+    $blocks = 'p|div|br|li|ul|ol|h[1-6]|blockquote|tr|td|th|section|article|header|footer|hr|pre';
+    $html   = preg_replace( '#<\s*/?\s*(' . $blocks . ')\b[^>]*>#i', ' ', $html );
+
+    $text = wp_strip_all_tags( $html );
+
+    // Whatever the collapsing produced, one space between words.
+    return trim( preg_replace( '/\s+/u', ' ', $text ) );
+}
+
+/**
  * URL that triggers the .ics download for a single event.
  */
 function sfaf_ics_url( $post_id ) {

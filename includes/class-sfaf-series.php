@@ -615,6 +615,121 @@ class SFAF_Series {
      * @param int $post_id
      * @param int $term_id
      */
+    /**
+     * What this series can lend a new event, for the creation prefill.
+     *
+     * WHERE EACH VALUE COMES FROM, because it is two different places and the
+     * difference matters. The series term itself carries a description, an
+     * image and a default FAQ set. It does NOT carry a location, times, a
+     * category or an organizer: those are properties of the EVENTS in it, so
+     * they are read from the most recent one.
+     *
+     * "Most recent" rather than "next upcoming": somebody adding a date to a
+     * running series wants another one like the last one, and the last one is
+     * the one whose details were most recently thought about. An upcoming
+     * occurrence may itself be a half-finished draft.
+     *
+     * THE DATE IS NEVER HERE. Setting the date is the reason somebody is
+     * creating an event, and a prefilled one is a past date pretending to be a
+     * new event. Same rule as duplicate-as-template.
+     *
+     * @param int $term_id
+     * @return array<string,mixed>
+     */
+    public static function prefill_data( $term_id ) {
+        $term_id = (int) $term_id;
+        $out = array(
+            'location_mode' => '',
+            'venue'         => 0,
+            'venue_name'    => '',
+            'location'      => '',
+            'start_time'    => '',
+            'end_time'      => '',
+            'description'   => '',
+            'image_url'     => '',
+            'image_id'      => 0,
+            'categories'    => array(),
+            'category_names'=> array(),
+            'organizer'     => 0,
+            'organizer_name'=> '',
+            'faq_set'       => '',
+            'faq_set_name'  => '',
+            'from_event'    => 0,
+        );
+
+        $term = self::get( $term_id );
+        if ( ! $term ) {
+            return $out;
+        }
+
+        /* ---- From the series term itself. --------------------------- */
+        $out['description'] = (string) $term->description;
+        $out['image_url']   = (string) self::image_url( $term_id );
+        $out['faq_set']     = (string) self::default_faq_set( $term_id );
+        if ( '' !== $out['faq_set'] ) {
+            $set = SFAF_FAQ_Sets::get( $out['faq_set'] );
+            $out['faq_set_name'] = $set ? $set['name'] : '';
+        }
+
+        /* ---- From its most recent event. ----------------------------
+         *
+         * NOT limit => 1. events() takes no order argument and always returns
+         * ascending by event date, so asking for one row hands back the series'
+         * OLDEST event while looking like it asked for the newest. The whole
+         * list comes back cheaply as ids and the last of it is the one wanted.
+         */
+        $events = self::events( $term_id, array( 'status' => array( 'publish', 'draft', 'pending', 'future' ) ) );
+        if ( empty( $events ) ) {
+            return $out;
+        }
+        $id = (int) end( $events );
+        $out['from_event'] = $id;
+
+        $out['start_time'] = (string) get_post_meta( $id, '_uc_start_time', true );
+        $out['end_time']   = (string) get_post_meta( $id, '_uc_end_time', true );
+
+        $venue = SFAF_Venues::id_for_event( $id );
+        if ( $venue ) {
+            $out['location_mode'] = 'venue';
+            $out['venue']         = (int) $venue;
+            $v = get_term( $venue, 'uc_venue' );
+            $out['venue_name'] = ( $v && ! is_wp_error( $v ) ) ? $v->name : '';
+        } else {
+            $text = (string) get_post_meta( $id, '_uc_location', true );
+            if ( '' !== $text ) {
+                $out['location_mode'] = 'custom';
+                $out['location']      = $text;
+            }
+        }
+
+        // The series' own description wins when it has one: it describes the
+        // series, which is what a new date in it is. An event's description is
+        // the fallback and is usually the same text anyway.
+        if ( '' === trim( $out['description'] ) ) {
+            $post = get_post( $id );
+            $out['description'] = $post ? (string) $post->post_content : '';
+        }
+        if ( '' === $out['image_url'] ) {
+            $out['image_url'] = (string) get_post_meta( $id, '_uc_image_url', true );
+            $out['image_id']  = (int) get_post_thumbnail_id( $id );
+        }
+
+        foreach ( (array) wp_get_post_terms( $id, 'uc_event_category' ) as $c ) {
+            if ( is_object( $c ) ) {
+                $out['categories'][]     = (int) $c->term_id;
+                $out['category_names'][] = $c->name;
+            }
+        }
+
+        $orgs = wp_get_post_terms( $id, 'uc_organizer' );
+        if ( ! is_wp_error( $orgs ) && ! empty( $orgs ) ) {
+            $out['organizer']      = (int) $orgs[0]->term_id;
+            $out['organizer_name'] = $orgs[0]->name;
+        }
+
+        return $out;
+    }
+
     public static function set_for_event( $post_id, $term_id ) {
         $term_id = (int) $term_id;
         wp_set_object_terms(

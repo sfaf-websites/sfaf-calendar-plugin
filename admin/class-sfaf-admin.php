@@ -22,6 +22,7 @@ class SFAF_Admin {
          */
         add_action( 'admin_init', array( $this, 'handle_cron_action' ) );
         add_action( 'admin_init', array( $this, 'handle_users_action' ) );
+        add_action( 'admin_init', array( $this, 'handle_closure_actions' ) );
     }
 
     /**
@@ -159,6 +160,25 @@ class SFAF_Admin {
             'manage_options',
             'uc-users',
             array( $this, 'render_users_page' )
+        );
+
+        /*
+         * CLOSURES.
+         *
+         * In the WordPress admin rather than caladmin, and that placement is
+         * the same judgement §7 of PROJECT.md records for the four screens
+         * already here: this is a fact about the ORGANISATION, not about any
+         * event. Nobody scheduling a group session decides whether the office
+         * shuts for Thanksgiving, and the people who do decide it are the ones
+         * who already have manage_options.
+         */
+        add_submenu_page(
+            'edit.php?post_type=uc_event',
+            'Closures',
+            'Closures',
+            'manage_options',
+            'uc-closures',
+            array( $this, 'render_closures_page' )
         );
 
         add_submenu_page(
@@ -878,6 +898,168 @@ class SFAF_Admin {
                         <input type="hidden" name="uc_cron_action" value="clear_log" />
                         <button type="submit" class="button">Clear the log</button>
                     </form>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /* =====================================================================
+     * CLOSURES
+     *
+     * Days SFAF is shut. Not events: no page, nothing clickable, nothing to
+     * register for, and nothing scheduled about them. See SFAF_Closures for
+     * why they are an option rather than a post type, which is the decision
+     * that makes every "must not leak into event machinery" requirement
+     * structural instead of a list of exclusions to maintain.
+     * ================================================================== */
+
+    /** Where this screen lives. */
+    public static function closures_url( $args = array() ) {
+        return add_query_arg(
+            array_merge( array( 'post_type' => 'uc_event', 'page' => 'uc-closures' ), $args ),
+            admin_url( 'edit.php' )
+        );
+    }
+
+    /** Save or delete, from the screen below. */
+    public function handle_closure_actions() {
+        if ( ! isset( $_POST['uc_closure_action'] ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to do that.' );
+        }
+        $nonce = isset( $_POST['uc_closure_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_closure_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_closure_action' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        $action = sanitize_key( wp_unslash( $_POST['uc_closure_action'] ) );
+        $base   = self::closures_url();
+
+        if ( 'save' === $action ) {
+            $done = SFAF_Closures::save(
+                isset( $_POST['closure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_id'] ) ) : '',
+                isset( $_POST['closure_label'] ) ? wp_unslash( $_POST['closure_label'] ) : '',
+                isset( $_POST['closure_start'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_start'] ) ) : '',
+                isset( $_POST['closure_end'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_end'] ) ) : ''
+            );
+            if ( is_wp_error( $done ) ) {
+                set_transient( 'sfaf_closure_error_' . get_current_user_id(), $done->get_error_message(), 60 );
+                wp_safe_redirect( add_query_arg( 'msg', 'failed', $base ) );
+                exit;
+            }
+            wp_safe_redirect( add_query_arg( 'msg', 'saved', $base ) );
+            exit;
+        }
+
+        if ( 'delete' === $action ) {
+            SFAF_Closures::delete( isset( $_POST['closure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_id'] ) ) : '' );
+            wp_safe_redirect( add_query_arg( 'msg', 'deleted', $base ) );
+            exit;
+        }
+    }
+
+    public function render_closures_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to view this page.' );
+        }
+
+        $closures = SFAF_Closures::all();
+        $today    = current_time( 'Y-m-d' );
+
+        $err = get_transient( 'sfaf_closure_error_' . get_current_user_id() );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_closure_error_' . get_current_user_id() );
+        }
+        ?>
+        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Closures</h1>
+                    <p class="uc-subtitle">Days SFAF is shut. They are marked on the calendar and are not events.</p>
+                </div>
+            </div>
+
+            <?php if ( $err ) : ?>
+                <div class="notice notice-error"><p><?php echo esc_html( $err ); ?></p></div>
+            <?php endif; ?>
+            <?php if ( isset( $_GET['msg'] ) && 'saved' === $_GET['msg'] ) : ?>
+                <div class="notice notice-success"><p>Closure saved.</p></div>
+            <?php endif; ?>
+            <?php if ( isset( $_GET['msg'] ) && 'deleted' === $_GET['msg'] ) : ?>
+                <div class="notice notice-success"><p>Closure removed. Nothing else changed: no event refers to one.</p></div>
+            <?php endif; ?>
+
+            <div class="uc-admin-card">
+                <h2>Add a closure</h2>
+                <p class="description">
+                    A closure is marked on the month grid and appears in a calendar list as a flat card.
+                    It has no page, cannot be clicked, takes no registrations and sends nothing.
+                    For several days in a row, enter one closure with a last day rather than one per day.
+                </p>
+                <form method="post">
+                    <?php wp_nonce_field( 'uc_closure_action', 'uc_closure_nonce' ); ?>
+                    <input type="hidden" name="uc_closure_action" value="save" />
+                    <input type="hidden" name="closure_id" value="" />
+                    <p>
+                        <label for="uc_closure_label">What to call it</label><br />
+                        <input type="text" name="closure_label" id="uc_closure_label" class="regular-text"
+                               placeholder="Thanksgiving" required />
+                        <br /><span class="description">Shown as &ldquo;Closed for Thanksgiving&rdquo;.</span>
+                    </p>
+                    <p>
+                        <label for="uc_closure_start">First day</label><br />
+                        <input type="date" name="closure_start" id="uc_closure_start" required />
+                    </p>
+                    <p>
+                        <label for="uc_closure_end">Last day</label><br />
+                        <input type="date" name="closure_end" id="uc_closure_end" />
+                        <br /><span class="description">Leave empty for a single day.</span>
+                    </p>
+                    <p><button type="submit" class="button button-primary">Add closure</button></p>
+                </form>
+            </div>
+
+            <div class="uc-admin-card">
+                <h2><?php echo count( $closures ); ?> <?php echo esc_html( 1 === count( $closures ) ? 'closure' : 'closures' ); ?></h2>
+
+                <?php if ( empty( $closures ) ) : ?>
+                    <p class="uc-no-data">Nothing recorded. The calendar shows no closed days.</p>
+                <?php else : ?>
+                    <table class="uc-admin-table">
+                        <thead><tr><th>When</th><th>Reads as</th><th>Days</th><th></th></tr></thead>
+                        <tbody>
+                            <?php foreach ( $closures as $row ) :
+                                $days = 1 + (int) round( ( strtotime( $row['end'] ) - strtotime( $row['start'] ) ) / DAY_IN_SECONDS );
+                                $past = ( $row['end'] < $today );
+                                ?>
+                                <tr>
+                                    <td>
+                                        <?php echo esc_html( SFAF_Closures::when( $row ) ); ?>
+                                        <?php if ( $past ) : ?>
+                                            <br /><span class="uc-muted">Past</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo esc_html( SFAF_Closures::text( $row ) ); ?></td>
+                                    <td><?php echo (int) $days; ?></td>
+                                    <td>
+                                        <form method="post" onsubmit="return confirm('Remove this closure? Events on those days are not affected.');">
+                                            <?php wp_nonce_field( 'uc_closure_action', 'uc_closure_nonce' ); ?>
+                                            <input type="hidden" name="uc_closure_action" value="delete" />
+                                            <input type="hidden" name="closure_id" value="<?php echo esc_attr( $row['id'] ); ?>" />
+                                            <button type="submit" class="button button-small">Remove</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p class="description">
+                        Past closures are kept rather than tidied away: the calendar is a record, and somebody
+                        looking back at last November should see why nothing was scheduled.
+                    </p>
                 <?php endif; ?>
             </div>
         </div>

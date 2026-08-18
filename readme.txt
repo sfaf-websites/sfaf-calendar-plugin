@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.37.0
+Stable tag: 3.38.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -284,6 +284,21 @@ because that has always been driven by the window as well.
 4. Add `[sfaf_calendar]` to any page to display the calendar
 5. Configure integrations under Events > Settings
 
+== The WordPress screens behind caladmin ==
+
+Organizers, categories and the series taxonomy are managed in /caladmin. Their
+WordPress term screens still exist and are still reachable by URL, unlisted from
+the menu since 3.27.0, as a fallback if a caladmin screen ever will not do what
+is needed:
+
+    /wp-admin/edit-tags.php?taxonomy=uc_organizer&post_type=uc_event
+    /wp-admin/edit-tags.php?taxonomy=uc_event_category&post_type=uc_event
+    /wp-admin/edit-tags.php?taxonomy=uc_series&post_type=uc_event
+
+Nothing about those taxonomies changed when their caladmin screens were built.
+This is recorded here rather than on the screens themselves, which a manager
+reads while doing their work and where a URL they will never type is noise.
+
 == Scheduled Tasks ==
 
 Reminder emails go out at 6:00am on the day of the event, and the "who is
@@ -513,6 +528,51 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.38.0 =
+
+**The curved coloured accent border is gone, and it was not only on the Automation screen.** That pattern is the most recognisable tell of generated UI, and sweeping for it found the portal was built on it: `.uc-card` and `.uc-bento-card` each carried `border-left: 3px solid teal` with an asymmetric `4px 12px 12px 4px` radius, so EVERY card in caladmin wore one. An accent that every card has distinguishes nothing at all, which is the whole test.
+
+**Removed:** both card classes, the repeat-summary band, the login card's yellow top rule, the four Automation health-banner edges, the three GFMP probe-result edges, the three fetch-report row edges, and the accent edges on 3.35.0's reassignment panel, 3.36.0's notify prompt and 3.36.0's cancelled-event banner. The fetch rows are the clearest case: `summarize()` already writes "failed." and "not connected." into the sentence, so the colour was repeating the words beside it.
+
+**Kept, and each is on a whitelist with the fact it carries:** `.uc-single-header`, the category colour on an event page, because the category system is the one place in this plugin where colour IS the signal (the same colour is the card ring, the chip and the placeholder tile) and the page names the category nowhere in words; and `.uc-field-attention`, which of roughly thirty fields is still empty, because the publish banner names WHAT is missing and only this says WHERE. `.claude/decoration-audit.php` fails on anything else, so a new accent is caught by default rather than by somebody noticing the screens look generated again. Its own first cut over-reported by four of five, flagging a spinner whose 2px circle border IS the spinner, two hover underlines and a 1px hairline; it now matches thick edges only, because an audit that over-reports buries its real findings.
+
+**Organizers, follow-up.** The add control on every list screen was a white outline disclosure on a white card, so nothing led; the primary submit was hidden INSIDE it, which is the wrong half. `.uc-add-toggle` gives the opening control the yellow the portal reserves for actions, on **Organizers and Venues**, with Teams and Series taking `.uc-btn-primary` on the links they use instead. Per-row Edit toggles stay quiet: twelve yellow controls on a screen of twelve organizers would mean none of them led either. Rows gained rhythm with an alternating surface and a heavier name. Delete is a proper danger button rather than red text.
+
+**Does renaming an organizer change its slug? It does not, and since this release that is pinned rather than inferred.** `wp_update_term()` derives a slug from the name when its args carry no `slug` key, so the honest answer to the question as asked was "it depends on a WordPress internal". For a value that other people's embed blocks resolve through, and whose users this plugin cannot enumerate, that is the wrong thing to leave to inference, so `save()` now passes the existing slug back on every rename. With the value unable to move, the field comes off the screen entirely and the warning about emptying embed blocks goes with it: there is no longer an action to warn about. The slug still shows on the row as reference, which is reading rather than editing.
+
+The note about the WordPress term screen still existing is gone from the screen and recorded in the readme instead. It told a manager about a URL they will never type, and justified a design decision rather than saying what to do.
+
+**Access levels moved from a section to a help affordance.** The explanation shipped as its own full section on Users and Permissions, and it was asked for beside the add-user control. Help anywhere other than next to the control it explains is help nobody finds at the moment they need it. Same 3.10.0 disclosure, same content, closed by default, now inside the card it explains. The sidebar item is **Users & Teams**.
+
+**Cancelling is for native events only.** An imported event is cancelled where it lives: if a GFMP campaign or an Eventbrite listing is called off at the source it leaves this calendar through the unpublish-on-removal path, and telling the people who signed up is that platform's job, because they registered there and this plugin holds none of their addresses. 3.36.0 offered the control with a warning that it would not reach the source, and that warning was a reason to remove the control rather than to caption it: what it produced was a half-cancellation that looks whole, off this calendar and still selling places at the source, with nobody told by anybody. Refused at the render AND at the write, since a form that is not drawn is not a refusal.
+
+**The 3.36.0 refetch lock is removed rather than kept as a belt.** It refused `update_event()` on a cancelled imported event, and an imported event can no longer be cancelled, so it guarded a state that cannot be reached. A check that can never fire is a check nobody can reason about later: it reads as evidence the case is possible. An event disappearing at source is still an unpublish, still not a cancellation, and still emails nobody, which the test now asserts by name.
+
+**Series prefill, at creation only.** The picker is the first card on a new event, because what it is one of decides most of the rest and it used to be two thirds of the way down. Choosing a series offers its location, times, description, image, category, organizer and FAQ set as checkboxes, all ticked, with a clear-them-all button. **The date is never offered and is not in the payload**, so there is no box to tick and nothing a later change could expose.
+
+**Nothing posts.** The whole control writes into the fields already on the page, which is the FAQ set picker's shape and the 3.3.0 reason: a control that applies by posting and redirecting discards every unsaved edit, and people then stop using it. **It asks before overwriting** and names the fields: putting the picker first means there is usually nothing to overwrite, and "usually" is not a guarantee. Values are copied, not linked. Changing an existing event's series just changes its series: an existing event has real content, and prefill is a convenience for a blank form.
+
+Two things the prefill needed and did not have: series terms carry a description, an image and a default FAQ set but no location, times, category or organizer, so those come from the series' most recent event. The first cut asked `events()` for `limit => 1` with `order => DESC`; that method takes no order argument and always returns ascending, so it would have handed back the series' OLDEST event while looking like it asked for the newest.
+
+**Rich text descriptions.** `wp_editor()` in teeny mode with bold, italic, links, both list kinds and one heading, and nothing else. No colours, sizes or alignment: the brand guide governs those, and a full toolbar is how a calendar ends up with events in purple Comic Sans. The one heading is **h3**, below the page's h1 title and its h2 sections, so it cannot break the reading order for anybody navigating by headings.
+
+**What it does to the emails: nothing, because the description is not in any of them.** Every message is built from the title, date, time and location plus an optional per-event body; `SFAF_Notifications` never reads `post_content`. **What it did break** is the card summary: `wp_trim_words()` strips tags with `strip_tags()`, which joins the text either side of a tag with nothing between, so `<p>One</p><p>Two</p>` becomes `OneTwo`. Descriptions have always been plain text so this never bit, and it would have bitten every card on the public calendar and in every embed the day this shipped. `sfaf_flatten_html()` turns block tags into spaces BEFORE stripping, which is the only order that works, and leaves inline tags alone so a bold word is not split. The regression was reproduced before the fix was written.
+
+Existing plain text carries over as paragraphs with nothing migrated: `wp_editor()` and the event page's `the_content()` both run stored content through `wpautop()`. The prose island from 3.22.0 was verified rather than assumed: `.uc-single-body` already styles p, ul, ol, li and h2 through h4, so the output is covered. The editor degrades to a plain textarea if TinyMCE does not start in caladmin's standalone document, which is worse-looking and not destructive.
+
+**Holidays and closures.** A date or a date range and a label, entered under Events > Closures. Marked on the month grid reading "Closed for Thanksgiving", shown in a list as a flat card, in the embed as well as on resources, and clickable nowhere.
+
+**A multi-day closure is ONE entry spanning dates**, not one per day: somebody closing for the winter break enters it once and edits it once, and four rows would be four chances to type it differently. The two renderers ask different questions of that one entry. The month grid asks per day and marks four squares, because there a square IS a day. A list asks per span and shows one card reading the range, because four identical cards is four times the noise for one fact.
+
+**They cannot leak into event machinery, and that is a property of the storage rather than a list of exclusions.** A closure is a row in an option, not a post. Every subsystem that touches events reaches them through a `WP_Query` over `uc_event` or through a post id that must resolve to one, so none of them CAN see it and none needed changing. Nineteen were enumerated and are checked for not having grown a reference: the import queue, RSVP, the morning-of reminder, the pre-event summary, search, privacy, SEO, recurrence, series, teams, organizers, venues, FAQ sets, cancellation, the cancelled and changed emails, the scheduled runner, the embed endpoint, the satellite feed and post-type registration, plus the .ics and REST feeds in the main plugin file. The load-bearing assertion is the one that fails if a closure ever becomes a post type, because everything else follows from it.
+
+**The two FAQ set gaps were one omission.** The event editor's set picker already exists, is already the 3.3.0-compliant version that writes rows client-side with no post and no redirect, and is revealed by `portal.js`. What it does is render nothing when there are no sets, and there was no way to make the first one except from an event that already had questions typed on it. The FAQ Sets screen now has a create control. A plain form is correct there and is not a contradiction of the 3.3.0 rule, which is about a control posting from a screen that carries unsaved work. `faq_set_save` also stopped discarding what `save()` returned: with a create form on the screen, "submitted with every row blank" is an ordinary mistake and a success message for a set that was not made is worse than a refusal.
+
+**Nine faults planted across the two new tests and all nine caught by name**: a closure becoming a post type, a closure card gaining a link, the reminder job consulting closures, February 31st being accepted, a multi-day closure losing its middle days, a list showing one card per day, the cancel card returning to imported events, the cancel write stopping its refusal, and removal at source starting to email registrants. The closures test's own post-type check first matched the class's OWN docblock, which explains why a closure is not a post type using those words; comments are stripped first, always, which is a false positive this project has now recorded three times.
+
+Three earlier guards fired unprompted. The admin-menu whitelist failed until `uc-closures` was added deliberately. The route whitelist and the padding audit both passed unchanged, which is what they are for.
+
+VERIFIED: 57 PHP files parse under PHP 8.3; the callable audit resolves everything with nothing unresolved, self-test passing; the whole `.claude` suite runs green, 18 PHP harnesses plus the JS panel test, the guard test and two self-tests; nine planted faults each caught by name; the `strip_tags` regression reproduced before its fix; three stylesheets balance and five scripts pass `node --check`. Zip built with bsdtar, extracted, diffed file by file against the tree, and both the linter and the callable audit re-run from the extract.
 = 3.37.0 =
 
 **Organizers get their own tab in caladmin, and can be created without leaving the event you are writing.** There was no way to add one from the portal at all. The event editor offered a picker of existing organizers and nothing else, and creating a new one meant the WordPress term screen, which 3.27.0 unlisted from the menu and left reachable only by URL. So a manager setting up an event for a new programme was stuck. Same reasoning that moved venues in 3.13.0: this is event management, not site configuration, and it belongs where the work happens.

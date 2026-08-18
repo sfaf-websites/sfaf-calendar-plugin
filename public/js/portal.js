@@ -31,6 +31,7 @@
         run('sidebar', initSidebar);
         run('repeaters', initRepeaters);
         run('faqSetPicker', initFaqSetPicker);
+        run('seriesPrefill', initSeriesPrefill);
         run('notifyPicker', initNotifyPicker);
         run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
@@ -2337,5 +2338,316 @@
 
             syncEmpty();
         });
+    }
+
+    /* ---------------------------------------------------------------------
+     * SERIES PREFILL, AT EVENT CREATION (3.38.0).
+     *
+     * Choosing a series offers to fill the rest of the form in from it. Every
+     * value is written straight into the fields on this page: nothing posts,
+     * nothing redirects, and nothing already typed is lost by pressing it. That
+     * is the FAQ set picker's shape and it is deliberate, because 3.3.0 found
+     * that a control which applies by posting discards unsaved edits and people
+     * then stop using it.
+     *
+     * IT ASKS BEFORE OVERWRITING. Every ticked box names a field; any of those
+     * fields that already has something in it is listed by name in a confirm
+     * before a single one is written. The picker being first on the form means
+     * this is usually nothing, and "usually" is not a guarantee.
+     *
+     * THE DATE IS NOT HERE. It is not in the payload, so there is no box to
+     * tick and nothing a later change could expose.
+     * ------------------------------------------------------------------- */
+    function initSeriesPrefill() {
+        var root = document.querySelector('[data-uc-series-prefill]');
+        if (!root) { return; }
+
+        var select = root.querySelector('[data-uc-series-select]');
+        var panel = root.querySelector('[data-uc-prefill-panel]');
+        var optsBox = root.querySelector('[data-uc-prefill-opts]');
+        var nameOut = root.querySelector('[data-uc-prefill-name]');
+        var applyBtn = root.querySelector('[data-uc-prefill-apply]');
+        var noneBtn = root.querySelector('[data-uc-prefill-none]');
+        var said = root.querySelector('[data-uc-prefill-said]');
+        var dataNode = root.querySelector('[data-uc-prefill-data]');
+        if (!select || !panel || !optsBox || !dataNode) { return; }
+
+        var data;
+        try {
+            data = JSON.parse(dataNode.textContent || '{}');
+        } catch (e) {
+            return; // Without the payload there is nothing to offer.
+        }
+
+        var form = select.form || document.querySelector('form.uc-form');
+        if (!form) { return; }
+
+        /*
+         * WHAT EACH OPTION IS: a label, the payload keys it reads, and the
+         * functions that read and write the form. Keeping read and write beside
+         * each other is what makes the overwrite check honest: the thing that
+         * decides "is this field already filled" is the same thing that will
+         * write to it.
+         */
+        var OPTIONS = [
+            {
+                key: 'location', label: 'Location',
+                has: function (d) { return d.location_mode !== ''; },
+                preview: function (d) { return d.venue_name || d.location; },
+                filled: function () {
+                    var text = form.querySelector('[name="location"]');
+                    var venue = form.querySelector('[name="venue"]');
+                    return (text && text.value.trim() !== '') || (venue && venue.value && venue.value !== '0');
+                },
+                write: function (d) {
+                    var mode = form.querySelector('[data-uc-location-mode="' + d.location_mode + '"]');
+                    if (mode) { mode.checked = true; mode.dispatchEvent(new Event('change', { bubbles: true })); }
+                    if (d.location_mode === 'venue') {
+                        var venue = form.querySelector('[name="venue"]');
+                        if (venue) { venue.value = String(d.venue); }
+                    } else {
+                        var text = form.querySelector('[name="location"]');
+                        if (text) { text.value = d.location; }
+                    }
+                }
+            },
+            {
+                key: 'times', label: 'Start and end time',
+                has: function (d) { return d.start_time !== '' || d.end_time !== ''; },
+                preview: function (d) { return d.start_time + (d.end_time ? ' to ' + d.end_time : ''); },
+                filled: function () {
+                    var s = form.querySelector('[name="start_time"]');
+                    var e = form.querySelector('[name="end_time"]');
+                    return (s && s.value !== '') || (e && e.value !== '');
+                },
+                write: function (d) {
+                    var s = form.querySelector('[name="start_time"]');
+                    var e = form.querySelector('[name="end_time"]');
+                    if (s) { s.value = d.start_time; }
+                    if (e) { e.value = d.end_time; }
+                }
+            },
+            {
+                key: 'description', label: 'Description',
+                has: function (d) { return String(d.description).trim() !== ''; },
+                preview: function (d) { return trimWords(stripTags(d.description), 8); },
+                filled: function () { return descriptionValue().trim() !== ''; },
+                write: function (d) { setDescription(d.description); }
+            },
+            {
+                key: 'image', label: 'Image',
+                has: function (d) { return d.image_url !== '' || d.image_id > 0; },
+                preview: function (d) { return d.image_url ? d.image_url.split('/').pop() : 'the series image'; },
+                filled: function () {
+                    var url = form.querySelector('[data-uc-image-url]');
+                    var id = form.querySelector('[data-uc-image-id]');
+                    return (url && url.value.trim() !== '') || (id && id.value && id.value !== '0');
+                },
+                write: function (d) {
+                    var url = form.querySelector('[data-uc-image-url]');
+                    if (url && d.image_url) { url.value = d.image_url; }
+                    var id = form.querySelector('[data-uc-image-id]');
+                    if (id && d.image_id) { id.value = String(d.image_id); }
+                }
+            },
+            {
+                key: 'category', label: 'Category',
+                has: function (d) { return d.categories.length > 0; },
+                preview: function (d) { return d.category_names.join(', '); },
+                filled: function () {
+                    return !!form.querySelector('[name="category[]"]:checked');
+                },
+                write: function (d) {
+                    // Additive within the option: the boxes it names are ticked
+                    // and nothing else is untouched, because the overwrite
+                    // question was already asked above.
+                    d.categories.forEach(function (id) {
+                        var box = form.querySelector('[name="category[]"][value="' + id + '"]');
+                        if (box && !box.checked) {
+                            box.checked = true;
+                            box.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }
+            },
+            {
+                key: 'organizer', label: 'Organizer',
+                has: function (d) { return d.organizer > 0; },
+                preview: function (d) { return d.organizer_name; },
+                filled: function () {
+                    var sel = form.querySelector('[name="organizer"]');
+                    return !!(sel && sel.value && sel.value !== '0');
+                },
+                write: function (d) {
+                    var sel = form.querySelector('[name="organizer"]');
+                    if (sel) { sel.value = String(d.organizer); }
+                }
+            },
+            {
+                key: 'faq', label: 'FAQ set',
+                has: function (d) { return d.faq_set !== ''; },
+                preview: function (d) { return d.faq_set_name; },
+                filled: function () {
+                    var q = form.querySelector('[name^="uc_faqs"][name$="[question]"]');
+                    return !!(q && q.value.trim() !== '');
+                },
+                write: function (d) {
+                    /*
+                     * Handed to the FAQ set picker rather than reimplemented.
+                     * It already knows how to add rows without duplicating a
+                     * question that is there, and two pieces of code writing
+                     * FAQ rows is two that can disagree.
+                     */
+                    var sel = document.querySelector('[data-uc-faq-set]');
+                    var btn = document.querySelector('[data-uc-faq-apply]');
+                    if (sel && btn) {
+                        sel.value = d.faq_set;
+                        btn.click();
+                    }
+                }
+            }
+        ];
+
+        function stripTags(s) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = String(s);
+            return (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+        function trimWords(s, n) {
+            var w = String(s).split(' ');
+            return w.length <= n ? s : w.slice(0, n).join(' ') + '...';
+        }
+
+        /*
+         * THE DESCRIPTION MAY BE TinyMCE OR A TEXTAREA, and which one depends on
+         * whether the editor started. Both are asked, in that order, so the
+         * prefill works either way rather than silently writing into a textarea
+         * nobody can see.
+         */
+        function editor() {
+            return (window.tinymce && window.tinymce.get) ? window.tinymce.get('uc-description') : null;
+        }
+        function descriptionValue() {
+            var ed = editor();
+            if (ed && !ed.isHidden()) { return ed.getContent({ format: 'text' }); }
+            var ta = form.querySelector('[name="description"]');
+            return ta ? ta.value : '';
+        }
+        function setDescription(html) {
+            var ed = editor();
+            if (ed && !ed.isHidden()) { ed.setContent(html); return; }
+            var ta = form.querySelector('[name="description"]');
+            if (ta) { ta.value = html; }
+        }
+
+        function say(msg, bad) {
+            if (!said) { return; }
+            said.textContent = msg || '';
+            said.className = 'uc-flash uc-prefill-said' + (bad ? ' uc-flash-error' : '');
+            if (msg) { said.removeAttribute('hidden'); } else { said.setAttribute('hidden', 'hidden'); }
+        }
+
+        var current = [];
+
+        function build() {
+            var id = select.value;
+            var d = data[id];
+            say('');
+
+            if (!id || id === '0' || !d) {
+                panel.setAttribute('hidden', 'hidden');
+                return;
+            }
+
+            current = OPTIONS.filter(function (o) { return o.has(d); });
+
+            if (!current.length) {
+                // A series with nothing to lend offers nothing, rather than an
+                // empty panel asking a question with no answers.
+                panel.setAttribute('hidden', 'hidden');
+                return;
+            }
+
+            if (nameOut) {
+                nameOut.textContent = select.options[select.selectedIndex].text;
+            }
+
+            optsBox.innerHTML = '';
+            current.forEach(function (o) {
+                var label = document.createElement('label');
+                label.className = 'uc-check';
+
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = true;                 // all ticked by default
+                box.setAttribute('data-uc-prefill-opt', o.key);
+
+                var text = document.createElement('span');
+                text.className = 'uc-prefill-opt-text';
+                var strong = document.createElement('strong');
+                strong.textContent = o.label;
+                var quiet = document.createElement('span');
+                quiet.className = 'uc-muted';
+                quiet.textContent = o.preview(d) || '';
+
+                text.appendChild(strong);
+                text.appendChild(quiet);
+                label.appendChild(box);
+                label.appendChild(text);
+                optsBox.appendChild(label);
+            });
+
+            panel.removeAttribute('hidden');
+        }
+
+        function apply() {
+            var d = data[select.value];
+            if (!d) { return; }
+
+            var chosen = current.filter(function (o) {
+                var box = optsBox.querySelector('[data-uc-prefill-opt="' + o.key + '"]');
+                return box && box.checked;
+            });
+
+            if (!chosen.length) {
+                say('Nothing was ticked, so nothing was filled in.');
+                return;
+            }
+
+            /*
+             * THE OVERWRITE QUESTION, ASKED ONCE AND NAMING THE FIELDS.
+             * Not "this will overwrite things": the point of asking is that
+             * somebody can tell whether the things are ones they care about.
+             */
+            var clashes = chosen.filter(function (o) { return o.filled(); });
+            if (clashes.length) {
+                var names = clashes.map(function (o) { return o.label; }).join(', ');
+                var msg = 'You have already filled in: ' + names + '.\n\n'
+                    + 'Filling in from the series will replace ' + (clashes.length === 1 ? 'it' : 'them') + '. Continue?';
+                if (!window.confirm(msg)) {
+                    say('Nothing was changed.');
+                    return;
+                }
+            }
+
+            chosen.forEach(function (o) { o.write(d); });
+
+            say('Filled in ' + chosen.length + ' ' + (chosen.length === 1 ? 'thing' : 'things')
+                + ' from the series. Everything is still yours to edit.');
+        }
+
+        function clearAll() {
+            var boxes = optsBox.querySelectorAll('[data-uc-prefill-opt]');
+            Array.prototype.forEach.call(boxes, function (b) { b.checked = false; });
+            say('Cleared. Nothing will be filled in.');
+        }
+
+        select.addEventListener('change', build);
+        if (applyBtn) { applyBtn.addEventListener('click', apply); }
+        if (noneBtn) { noneBtn.addEventListener('click', clearAll); }
+
+        // A series may already be chosen, from the "add a date" link on a
+        // series screen, in which case the offer should be there on arrival.
+        build();
     }
 })();

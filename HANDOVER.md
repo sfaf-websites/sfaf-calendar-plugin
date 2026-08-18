@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-18, at 3.37.0.
+**Last updated:** 2026-08-18, at 3.38.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.37.0**, built as `sfaf-calendar-3.37.0.zip` in the project
+The plugin is at **3.38.0**, built as `sfaf-calendar-3.38.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.37.0, the deployment is stale or partial, and that
+screen: if it does not say 3.38.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **Two releases changed rules that other code has to respect.** 3.35.0 made teams
@@ -53,20 +53,24 @@ the health check that sends the alert email. The nudge is what closes that.
 
 ## In flight
 
-- **3.36.0 is unverified on a live site.** Worth doing by hand, in order: cancel
-  an event that has a registration and confirm the email arrives and reads right;
-  confirm the event still appears on the public calendar marked cancelled and its
-  Register button is gone; confirm deleting it is refused before cancelling and
-  allowed after. Then move a date on an event with a registration and check the
-  email names the OLD date as well as the new one.
-- **3.37.0 is unverified on a live site.** Two things worth doing: add an
-  organizer from the Organizers tab and confirm it appears in the event editor's
-  picker; then, on a half-typed event, use the picker's "Not listed? Add one"
-  box and confirm saving keeps everything else you typed.
-- **3.35.0 is unverified on a live site**, and it is a permission change. Put
-  somebody in a team, assign that team to an event they did not create, confirm
-  they can open it and see its registrations and nothing else, then take the team
-  off and confirm access goes.
+- **3.38.0 is unverified on a live site, and one part of it needs checking
+  before anything else: THE RICH TEXT EDITOR.** caladmin builds its own document
+  rather than running through `wp_head`, so TinyMCE is being started somewhere it
+  usually is not. Open any event and look at the Description field. If it is a
+  toolbar, it works. If it is a plain textarea showing tags, the scripts did not
+  start; nothing is lost and nothing is broken, but it needs the enqueue chased.
+  This could not be verified from the repo.
+- **Then, in order:** create a closure under Events > Closures spanning three
+  days and confirm the month grid marks all three and a list shows ONE card;
+  create an event, pick a series first, and confirm the prefill offer appears and
+  that typing a location first makes it ask before overwriting; confirm the
+  Automation screen and the caladmin cards no longer wear a coloured left edge.
+- **Older releases still unverified live**, and each has one thing worth doing
+  while on those screens: 3.37.0, add an organizer and confirm it reaches the
+  event picker; 3.35.0, put somebody in a team, assign it to an event they did
+  not create, and confirm they see that event's registrations and nothing else;
+  3.36.0, cancel an event with a registration, read the email, and confirm
+  deleting is refused before cancelling and allowed after.
 - **The external ping has not been created yet.** Until it is, the only thing
   driving cron is visitor traffic and the page-view nudge from sfaf.org.
 - **The GFMP campaign image is deliberately unmapped.** Both fields their schema
@@ -79,8 +83,8 @@ the health check that sends the alert email. The nudge is what closes that.
 
 | Who | What is needed | Status |
 |---|---|---|
-| **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. Until then the From address stays `websites@sfaf.org`. It is a setting, so when the mailbox exists somebody types it into Settings and nothing is deployed. |
-| **Val** | The EveryAction JSON file: a **sample with real events** before the adapter is written, and confirmation that his hourly job **writes atomically** (temp name, then rename) so a fetch cannot catch a half-written file | Asked. The field list is in `PROJECT.md` §8. Do not build the adapter against a guessed shape. |
+| **Aaron** | DNS for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing is deployed when the mailbox exists. |
+| **Val** | The EveryAction JSON file: a **sample with real events**, and confirmation his hourly job **writes atomically** | Asked. Field list in `PROJECT.md` §8. Do not build against a guessed shape. |
 | **Salesforce admin** | The Pardot connected app: client ID and secret, Business Unit ID, a service user, OAuth flow | Asked. Campaign IDs store against events; nothing talks to Pardot. |
 
 ## Mark's own testing list
@@ -92,9 +96,8 @@ Not yet done, and each matters for a different reason.
    but nobody has loaded the sitemap and looked. Privacy is a claim about every
    route, and this is the one route that is a third party's code.
 2. **Grep the sfaf.org theme for `sfaf_is_in_series` and `sfaf_get_series_name`.**
-   Both are defined in `includes/sfaf-template-functions.php` and called nowhere
-   inside the plugin. They are theme-facing on purpose, so they cannot be deleted
-   until the theme is known not to call them. One grep settles it.
+   Theme-facing on purpose, called nowhere in the plugin, so they cannot be
+   deleted until the theme is known not to call them. One grep settles it.
 3. **The two-hour pre-event summary, unattended.** The morning-of reminder is
    proved (2026-08-18, 6:58am, unassisted). The summary is the other half and has
    not been seen: it is due two hours before an event starts, which is what the
@@ -121,9 +124,8 @@ Not yet done, and each matters for a different reason.
 
 1. **The `/caladmin` design audit**, **106 findings against `portal.css`** never
    written down in the repo. Enumerate them first, split by mechanism.
-2. **Simplify the event editor.** A parade of checkboxes, most of which a normal
-   event never needs, and two more cards since 3.35.0. A rendering-order and
-   disclosure problem, not a data-model one.
+2. **Simplify the event editor.** A parade of checkboxes, and four more cards
+   since 3.35.0. A rendering-order and disclosure problem, not a data-model one.
 
 ## Recent failures worth remembering
 

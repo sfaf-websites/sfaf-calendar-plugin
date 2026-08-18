@@ -830,33 +830,16 @@ class SFAF_Sources {
         }
 
         /*
-         * A CANCELLED EVENT IS LEFT ALONE BY A REFRESH.
+         * NO CANCELLED-EVENT LOCK HERE, AND IT WAS REMOVED RATHER THAN KEPT AS
+         * A BELT (3.38.0).
          *
-         * Two things would have to go wrong for a fetch to un-cancel one, and
-         * this closes the second. The first is already closed and not by
-         * anything added here: update_event() writes an explicit list of fields
-         * and post_status is deliberately not among them, so there is no code
-         * path from a payload to the cancellation meta at all. A source cannot
-         * clear a flag it has no way to address.
-         *
-         * What that does NOT stop is the source moving the event. It still
-         * lists it and still sends a date, a time and a location, so without
-         * this line a refetch would happily move an event that is not
-         * happening, and the change detection would then have a real diff to
-         * report about it.
-         *
-         * Cancelling here is a LOCAL decision. It does not cancel anything at
-         * Eventbrite or GoFundMe Pro, and if the event is still live there then
-         * people can still register there. The editor says so rather than
-         * implying this switched the source off.
+         * 3.36.0 refused a refresh on a cancelled event, to stop a source
+         * moving the date of something that was not happening. Cancelling is
+         * for native events only since 3.38.0, and a native event is never
+         * refreshed by anything, so the guard now protects a state that cannot
+         * be reached. A check that can never fire is a check nobody can reason
+         * about later: it reads as evidence the case is possible.
          */
-        if ( SFAF_Cancellation::skip_refresh( $post_id ) ) {
-            return new WP_Error(
-                'sfaf_sources_cancelled',
-                'This event is cancelled, so a refresh leaves it alone. Cancelling here does not cancel it at the source.'
-            );
-        }
-
         $source  = isset( $event['external_source'] ) ? (string) $event['external_source'] : '';
         $owned   = self::owned_fields_for( $source );
         $manager = self::manager_fields_for( $source );

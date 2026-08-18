@@ -113,6 +113,9 @@ $expected = array(
     'edit.php?post_type=uc_event', // All Events. The list stays.
     'uc-embed',                    // Embed Code
     'uc-automation',               // Automation
+    'uc-closures',                 // Closures: days SFAF is shut. An organisation
+                                   // fact, not an event, so it is an administrator
+                                   // screen and not a caladmin one.
     'uc-users',                    // Calendar Users, the access fallback
     'uc-settings',                 // Settings
 );

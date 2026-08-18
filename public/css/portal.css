@@ -204,7 +204,6 @@ body.uc-portal {
 
 /* ---------- Login ---------- */
 .uc-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(135deg, #000000, #373433); }
-.uc-login-card { border-top: 5px solid var(--sfaf-yellow); }
 .uc-login-card { background: #fff; border-radius: 16px; padding: 40px; width: 400px; max-width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.25); text-align: center; }
 .uc-login-brand { margin-bottom: 16px; }
 .uc-login-logo { max-height: 56px; width: auto; }
@@ -626,9 +625,15 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    removing the stripe entirely would lose nothing but the brand. Anything
    that DOES carry information uses --uc-accent-text, which is measured.
    ------------------------------------------------------------------------- */
+/* NO ACCENT EDGE. Until 3.38.0 every card carried a 3px teal left border and
+   an asymmetric 4/12/12/4 radius. An accent every card has distinguishes
+   nothing, and the curved coloured edge is the most recognisable tell of
+   generated UI. The card is a white panel with a hairline. Where a coloured
+   edge survives in this plugin it is because the colour IS the fact: the
+   category band on an event page, and the amber locator on a field that
+   still needs filling in. */
 .uc-card { background: var(--p-panel); border: 1px solid var(--p-border);
-    border-left: 3px solid var(--sfaf-teal);
-    border-radius: 4px 12px 12px 4px; padding: 20px; margin-bottom: 20px; overflow: hidden; }
+    border-radius: 12px; padding: 20px; margin-bottom: 20px; overflow: hidden; }
 /* The band is full bleed, pulled out to the padding edge rather than achieved
    by unpadding the card and re-padding every child. */
 .uc-card-head { display: flex; align-items: center; justify-content: space-between;
@@ -951,8 +956,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-bento-main, .uc-bento-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .uc-bento-card { min-width: 0;
     background: var(--surface-2); border: 1px solid var(--p-border);
-    border-left: 3px solid var(--sfaf-teal);
-    border-radius: 4px 12px 12px 4px; padding: 18px; overflow: hidden; }
+    border-radius: 12px; padding: 18px; overflow: hidden; }
 /* The same band as .uc-card-head, on a card whose heading is a bare <h2>
    rather than a wrapper. Full bleed by the same negative-margin trick. */
 .uc-bento-title { font-size: 14px; margin: -18px -18px 16px; padding: 10px 18px;
@@ -1109,7 +1113,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 /* The sentence that says what all of it comes to, and how many events that is.
    Yellow is not used here: this is information, not an action. */
 .uc-repeat-summary { margin: 0; padding: 10px 12px; border-radius: 8px;
-    background: var(--uc-band); border-left: 3px solid var(--sfaf-teal);
+    background: var(--uc-band);
     font-size: 13px; font-weight: 600; color: var(--p-text); }
 
 /* ---------------------------------------------------------------------------
@@ -1530,12 +1534,13 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-help { margin: 0 0 12px; font-size: 13px; color: #6B7280; }
 
 .uc-fetch-report { margin: 0; padding: 0; list-style: none; }
-.uc-fetch-report > li { padding: 8px 0 8px 14px; border-left: 3px solid transparent; font-size: 14px; }
+.uc-fetch-report > li { padding: 8px 0; font-size: 14px; }
 .uc-fetch-report > li + li { border-top: 1px solid var(--uc-border, #e5e7eb); }
-.uc-fetch-ok { border-left-color: #10b981; }
-.uc-fetch-fail { border-left-color: #ef4444; }
 .uc-fetch-notes { margin: 6px 0 0 18px; padding: 0; list-style: disc; font-size: 12px; color: #6B7280; }
-.uc-fetch-skip { border-left-color: #9ca3af; color: #6B7280; }
+/* The status is in the sentence: summarize() writes "failed." and "not
+   connected." A muted row for a source that did not run is dimming, not
+   colour-coding, and stays. */
+.uc-fetch-skip { color: #6B7280; }
 
 /* Part B: refresh panel, change diff, removal-guard reporting */
 .uc-flash-warn { background: #fef3c7; color: #92400e; }
@@ -2275,7 +2280,7 @@ body.uc-modal-open { overflow: hidden; }
 /* Reassign before removing. Attention-coloured because it is a refusal, and
    the refusal is the point: nothing was removed and something is needed. */
 .uc-reassign { margin-top: 12px; padding: 14px 16px; border: 1px solid var(--p-border-strong);
-    border-left: 4px solid var(--uc-attention, #92400e); border-radius: 10px; background: #fffbeb; }
+    border-radius: 10px; background: #fffbeb; }
 .uc-reassign-head { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
 .uc-reassign-events { margin: 0 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.7; }
 .uc-reassign-events .uc-muted { margin-left: 6px; font-size: 12px; }
@@ -2305,7 +2310,7 @@ body.uc-modal-open { overflow: hidden; }
 /* The count and the tick, wherever the prompt appears. One block, three
    callers: cancelling one event, cancelling a series, and saving a move. */
 .uc-notice-block { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--p-border-strong);
-    border-left: 4px solid var(--uc-accent-text); border-radius: 10px; background: var(--p-bg); }
+    border-radius: 10px; background: var(--p-bg); }
 .uc-notice-count { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
 .uc-notice-block .uc-hint { margin-top: 6px; }
 .uc-change-notice { max-width: 78ch; }
@@ -2368,3 +2373,92 @@ body.uc-modal-open { overflow: hidden; }
 @media (max-width: 640px) {
     .uc-organizer-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id" "actions" "edit"; }
 }
+
+/* ---------------------------------------------------------------------------
+   THE LEADING ACTION ON A LIST SCREEN LEADS (3.38.0).
+
+   Every list screen's add control was a white outline disclosure on a white
+   card, so nothing on the screen led. The submit INSIDE it was already primary,
+   which is the wrong half: the control somebody has to find first is the one
+   that opens the form, not the one that closes it.
+
+   .uc-add-toggle is the one class for that control, worn by Organizers and
+   Venues. Teams and Series reach the same place through a link, so they take
+   .uc-btn-primary directly. Per-row Edit toggles keep .uc-team-add-toggle and
+   stay quiet: on a screen of twelve organizers, twelve yellow controls would
+   mean none of them led either.
+
+   YELLOW WITH INK, which is the only permitted text-on-yellow pair in the brand
+   guide, and yellow is reserved for actions. See DESIGN.md.
+   ------------------------------------------------------------------------- */
+.uc-add-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer; list-style: none;
+    padding: 9px 16px; margin: 0;
+    border: 1px solid var(--sfaf-yellow, #FFD900);
+    border-radius: 8px;
+    background: var(--sfaf-yellow, #FFD900);
+    color: var(--p-text);
+    font-size: 13.5px; font-weight: 700;
+}
+.uc-add-toggle::-webkit-details-marker { display: none; }
+.uc-add-toggle::marker { content: ""; }
+.uc-add-toggle:hover { filter: brightness(0.95); }
+.uc-add-toggle:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; }
+
+/* The card wrapping an add disclosure has no business looking like a panel
+   until it is open: closed, it is one control. */
+.uc-organizer-add { padding: 0; border: 0; background: none; margin-bottom: 20px; }
+.uc-organizer-add[open] { padding: 20px; border: 1px solid var(--p-border);
+    background: var(--p-panel); border-radius: 12px; }
+.uc-organizer-add-body { padding: 16px 0 0; }
+
+/* ---------------------------------------------------------------------------
+   ROW RHYTHM (3.38.0, item 2b).
+
+   The organizer rows ran into each other: a hairline between them and nothing
+   else, so twelve organizers read as one block of text. Alternating surface
+   gives the eye somewhere to rest without adding a rule per row, and the name
+   gets the weight it should have had.
+   ------------------------------------------------------------------------- */
+.uc-organizer-row { padding: 16px; align-items: center; }
+.uc-organizer-row:nth-child(even) { background: var(--p-bg); }
+.uc-organizer-row:hover { background: var(--uc-band, #f1f5f9); }
+.uc-organizer-id strong { font-size: 15px; font-weight: 700; }
+.uc-organizer-id .uc-muted + .uc-muted { margin-top: 4px; }
+
+/* The role help is a disclosure INSIDE the add-user card now, not a card of its
+   own further up the page (3.38.0). Help anywhere other than beside the control
+   it explains is help nobody finds at the moment they need it. */
+.uc-role-help { margin: 0 0 16px; border: 1px solid var(--p-border); border-radius: 10px; background: var(--p-bg); }
+.uc-role-help-toggle { padding: 10px 14px; font-size: 13.5px; }
+.uc-role-help-body { padding: 0 14px 14px; }
+
+/* ---------------------------------------------------------------------------
+   SERIES PREFILL, AT CREATION (3.38.0).
+
+   The first card on a new event, because what it is one of decides most of the
+   rest. Hidden until a series is chosen, and hidden again when the choice goes
+   back to none: a panel of checkboxes about nothing is worse than no panel.
+   ------------------------------------------------------------------------- */
+.uc-series-first { margin-bottom: 18px; }
+.uc-prefill { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--p-border);
+    border-radius: 10px; background: var(--p-bg); }
+.uc-prefill-head { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; }
+.uc-prefill-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.uc-prefill-opts .uc-check { align-items: flex-start; }
+.uc-prefill-opt-text { display: block; font-size: 13px; line-height: 1.45; }
+.uc-prefill-opt-text strong { display: block; font-weight: 700; }
+.uc-prefill-opt-text .uc-muted { display: block; font-size: 12px; margin-top: 1px; }
+.uc-prefill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.uc-prefill-said { margin: 10px 0 0; font-size: 12.5px; }
+
+/* The rich text editor, inside a bento card (3.38.0). TinyMCE brings its own
+   chrome; this only stops it overflowing a card that has a radius. */
+.uc-field .wp-editor-wrap { margin-top: 4px; }
+.uc-field .wp-editor-container { border-radius: 8px; overflow: hidden; border: 1px solid var(--p-border-strong); }
+.uc-field .mce-toolbar-grp { border-bottom: 1px solid var(--p-border) !important; }
+
+/* The FAQ set create rows on the FAQ Sets screen. */
+.uc-faq-newrow { padding: 12px 0; border-bottom: 1px solid var(--p-border); }
+.uc-faq-newrow:last-of-type { border-bottom: 0; }

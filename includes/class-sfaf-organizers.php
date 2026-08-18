@@ -179,10 +179,30 @@ class SFAF_Organizers {
         }
 
         if ( $term_id ) {
-            if ( ! self::exists( $term_id ) ) {
+            $existing_term = self::get( $term_id );
+            if ( ! $existing_term ) {
                 return new WP_Error( 'sfaf_organizer_missing', 'That organizer no longer exists.' );
             }
             $args['name'] = $name;
+
+            /*
+             * THE SLUG IS PINNED, NOT LEFT TO CORE.
+             *
+             * wp_update_term() derives a slug from the name when its args carry
+             * no 'slug' key, so "does renaming move the slug?" would be a
+             * question about a WordPress internal rather than about anything
+             * this plugin states. For a value that other people's embed blocks
+             * resolve through, and that this plugin cannot enumerate the users
+             * of, that is the wrong thing to leave to inference.
+             *
+             * Passing the existing slug back makes a rename a rename. Nothing
+             * in caladmin offers to change it, so in practice this is the only
+             * path and the slug is now fixed for the life of the term.
+             */
+            if ( ! isset( $args['slug'] ) ) {
+                $args['slug'] = $existing_term->slug;
+            }
+
             $done = wp_update_term( $term_id, self::TAXONOMY, $args );
         } else {
             /*

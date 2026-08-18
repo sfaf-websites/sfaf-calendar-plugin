@@ -733,9 +733,31 @@ class SFAF_Shortcodes {
             }
         }
 
+        /*
+         * CLOSURES, PER DAY, FOR THE WHOLE GRID SPAN.
+         *
+         * Resolved here rather than in the cell loop so the option is read once
+         * for a month rather than forty-two times, and so the renderer's job
+         * stays 'draw what you were given'. A multi-day closure is ONE entry
+         * and answers for each of its days: see SFAF_Closures::covering().
+         *
+         * Deliberately NOT merged into $by_day. A closure is not an event and
+         * must not end up in a structure that counts events, is passed to
+         * anything expecting post ids, or is sorted by start time. Keeping it in
+         * its own key is what makes that a type error rather than a judgement.
+         */
+        $closed = array();
+        foreach ( $grid['days'] as $day ) {
+            $row = SFAF_Closures::covering( $day );
+            if ( $row ) {
+                $closed[ $day ] = $row;
+            }
+        }
+
         return array(
             'grid'     => $grid,
             'events'   => $by_day,
+            'closed'   => $closed,
             'total'    => count( $query->posts ),
             'in_month' => $in_month,
         );
@@ -848,10 +870,13 @@ class SFAF_Shortcodes {
                             // so it is read aloud on every arrow-key move.
                             $readable  = sfaf_ap_date( $day, 'full' );
 
+                            $closed_row = isset( $data['closed'][ $day ] ) ? $data['closed'][ $day ] : null;
+
                             $classes = array( 'uc-day' );
                             if ( ! $in_month ) { $classes[] = 'uc-day-out'; }
                             if ( $is_today )   { $classes[] = 'uc-day-today'; }
                             if ( empty( $ids ) ) { $classes[] = 'uc-day-empty'; }
+                            if ( $closed_row )  { $classes[] = 'uc-day-closed'; }
 
                             // Roving tabindex: one cell in the grid is in the tab
                             // order, the arrow keys move focus between the rest.
@@ -870,6 +895,10 @@ class SFAF_Shortcodes {
                                 : count( $ids ) . ( 1 === count( $ids ) ? ' event' : ' events' ) );
                             if ( $is_today )  { $label = 'Today, ' . $label; }
                             if ( ! $in_month ) { $label .= '. Outside ' . $grid['label']; }
+                            // Before the count, because it is the more important
+                            // fact about the day and colour must never be the
+                            // only thing carrying it.
+                            if ( $closed_row ) { $label = SFAF_Closures::text( $closed_row ) . '. ' . $label; }
                             ?>
                             <td class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
                                 data-day="<?php echo esc_attr( $day ); ?>"
@@ -878,6 +907,22 @@ class SFAF_Shortcodes {
                                 role="gridcell"
                                 aria-label="<?php echo esc_attr( $label ); ?>">
                                 <span class="uc-day-num" aria-hidden="true"><?php echo (int) $day_num; ?></span>
+                                <?php if ( $closed_row ) : ?>
+                                    <?php
+                                    /*
+                                     * NOT A LINK, AND NOT AN EVENT. A span with
+                                     * no href and no data-day handling of its
+                                     * own: there is nothing to open, and a
+                                     * closure that could be clicked would be a
+                                     * closure somebody expects a page for.
+                                     * aria-hidden because the cell's own label
+                                     * already reads it.
+                                     */
+                                    ?>
+                                    <span class="uc-day-closed-mark" aria-hidden="true"><?php
+                                        echo esc_html( SFAF_Closures::text( $closed_row ) );
+                                    ?></span>
+                                <?php endif; ?>
                                 <?php if ( ! empty( $ids ) ) : ?>
                                     <?php
                                     /*
@@ -1382,8 +1427,31 @@ class SFAF_Shortcodes {
         // 'none' is a caller that wants found_posts and no markup. The combined
         // mode's count line is the only one, and it has no list to fill.
         if ( 'none' !== $render ) {
+            /*
+             * CLOSURES ARE WOVEN IN BY DATE, and only into the full card list.
+             *
+             * The sidebar and the compact list are narrow, dense and read as
+             * "what is coming up"; a closure card in them would be a third of
+             * the column spent saying nothing is happening. The card list is
+             * the one that reads as a calendar, so it is the one that says the
+             * office is shut.
+             *
+             * Each closure is emitted before the first event that falls on or
+             * after its start date, so a reader meets it where it belongs in
+             * the sequence rather than in a block at the top.
+             */
+            $pending = ( 'card' === $render ) ? $this->closures_for( wp_list_pluck( $query->posts, 'ID' ) ) : array();
+
             while ( $query->have_posts() ) {
                 $query->the_post();
+
+                if ( $pending ) {
+                    $this_day = (string) get_post_meta( get_the_ID(), '_uc_event_date', true );
+                    while ( $pending && '' !== $this_day && $pending[0]['start'] <= $this_day ) {
+                        echo $this->render_closure_card( array_shift( $pending ) );
+                    }
+                }
+
                 if ( 'compact' === $render ) {
                     echo $this->render_compact_card( get_the_ID() );
                 } elseif ( 'sidebar' === $render ) {
@@ -1392,6 +1460,12 @@ class SFAF_Shortcodes {
                     echo $this->render_event_card( get_the_ID() );
                 }
             }
+
+            // Anything left starts after the last event on this page.
+            foreach ( $pending as $row ) {
+                echo $this->render_closure_card( $row );
+            }
+
             wp_reset_postdata();
         }
 
@@ -1401,6 +1475,69 @@ class SFAF_Shortcodes {
             'max_pages' => (int) $query->max_num_pages,
             'page'      => max( 1, (int) $paged ),
         );
+    }
+
+    /**
+     * A closure, as a card in a list.
+     *
+     * FLAT, AND NOT AN EVENT CARD WITH DIFFERENT WORDS. A separate renderer for
+     * the reason PROJECT.md gives for every other one: a method with no code
+     * path to a link, a registration count or a category ring cannot grow one
+     * by being changed carelessly. There is no image, no time, no ring, no
+     * chip, no RSVP, nothing clickable and no <a> at all.
+     *
+     * ONE CARD PER CLOSURE, NOT PER DAY. A four-day closure is one entry and
+     * reads as one card saying the range. Four identical cards in a row would
+     * be four times the noise for one fact. The month grid does the opposite
+     * and marks four squares, because there a square IS a day.
+     *
+     * @param array $row From SFAF_Closures.
+     * @return string
+     */
+    public function render_closure_card( $row ) {
+        ob_start();
+        ?>
+        <div class="uc-closure-card" role="note">
+            <span class="uc-closure-when"><?php echo esc_html( SFAF_Closures::when( $row ) ); ?></span>
+            <span class="uc-closure-what"><?php echo esc_html( SFAF_Closures::text( $row ) ); ?></span>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * The closures that belong in a list showing these events.
+     *
+     * SCOPED TO WHAT THE LIST ACTUALLY SHOWS, from the first event's date to
+     * the last. A list of the next twelve events covering six weeks shows the
+     * closures in those six weeks; it does not show every closure ever entered,
+     * which on a page of five events would be mostly closures.
+     *
+     * An empty list shows none. There is no window to be inside, and a page
+     * that found no events answering with three closures would be answering a
+     * question nobody asked.
+     *
+     * @param int[] $ids Event ids, in the order the list shows them.
+     * @return array[]
+     */
+    private function closures_for( $ids ) {
+        if ( empty( $ids ) ) {
+            return array();
+        }
+
+        $dates = array();
+        foreach ( $ids as $id ) {
+            $d = (string) get_post_meta( $id, '_uc_event_date', true );
+            if ( '' !== $d ) {
+                $dates[] = $d;
+            }
+        }
+        if ( empty( $dates ) ) {
+            return array();
+        }
+
+        sort( $dates );
+        return SFAF_Closures::spans( $dates[0], end( $dates ) );
     }
 
     /** Pagination control markup for the chosen style. */
@@ -2335,7 +2472,7 @@ class SFAF_Shortcodes {
             $note = sfaf_volunteer_spots_text( $post_id );
         }
 
-        $summary = wp_trim_words( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ), 25 );
+        $summary = wp_trim_words( sfaf_flatten_html( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ) ), 25 );
 
         ob_start();
         ?>

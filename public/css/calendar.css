@@ -2473,10 +2473,59 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
     margin: 0 0 24px;
     padding: 16px 20px;
     border: 1px solid #b91c1c;
-    border-left-width: 4px;
     border-radius: 12px;
     background: #fef2f2;
 }
 .uc-cancelled-head { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.3; color: #b91c1c; }
 .uc-cancelled-why { margin: 8px 0 0; font-size: 15px; line-height: 1.6; color: #1A1D21; max-width: 70ch; }
 .uc-cancelled-note { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: #4B5563; max-width: 70ch; }
+
+/* ---------------------------------------------------------------------------
+   CLOSURES (3.38.0). Days SFAF is shut.
+
+   NOT AN EVENT, AND IT MUST NOT LOOK LIKE ONE. A closure card is flat: no
+   image, no ring, no chip, no shadow, no hover state and nothing clickable. An
+   event card is a raised white panel with a category ring; this is a quiet
+   inset band. Somebody scanning a list must never mistake one for something
+   they can open.
+
+   THE WORD IS ALWAYS THERE. "Closed for Thanksgiving" is text in both places,
+   so the colour agrees with the sentence rather than carrying it. That is the
+   same rule the run log and the status pills follow, and it is why this passes
+   the decoration audit while looking distinct.
+   ------------------------------------------------------------------------- */
+.uc-closure-card {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
+    margin: 0 0 12px; padding: 12px 16px;
+    border: 1px dashed #B9BCC0;
+    border-radius: 10px;
+    background: repeating-linear-gradient(
+        135deg, #F3F4F6 0 10px, #EDEFF2 10px 20px );
+    color: #4B5563;
+    font-family: var(--uc-font-body, inherit);
+    cursor: default;
+}
+.uc-closure-when { font-size: 14px; font-weight: 700; color: #374151; }
+.uc-closure-what { font-size: 14px; }
+
+/* The month grid mark. The cell keeps its number and gains a line under it. */
+.uc-day-closed { background: #F3F4F6; }
+.uc-day-closed .uc-day-num { color: #6B7280; }
+.uc-day-closed-mark {
+    display: block; margin-top: 2px;
+    font-size: 10.5px; line-height: 1.25; font-weight: 700;
+    color: #4B5563; text-transform: none; letter-spacing: 0;
+    overflow-wrap: anywhere;
+}
+/* A closed day is not clickable and must not offer to be. The grid gives
+   every cell a pointer and a hover; a closed one with no events takes
+   neither back, because a closed day WITH an event is still openable. */
+.uc-day-closed.uc-day-empty { cursor: default; }
+.uc-day-closed.uc-day-empty:hover { background: #F3F4F6; }
+
+@media (max-width: 640px) {
+    /* At phone width the cell is too small for the phrase; the dot row and the
+       cell's own aria-label still carry it, and the day panel below names it. */
+    .uc-day-closed-mark { font-size: 0; }
+    .uc-day-closed-mark::after { content: "Closed"; font-size: 9px; }
+}

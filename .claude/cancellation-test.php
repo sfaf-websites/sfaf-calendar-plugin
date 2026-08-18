@@ -308,30 +308,83 @@ foreach ( array(
 // The same question, one method, so the two jobs cannot disagree.
 SFAF_Cancellation::set( 10, true );
 expect( 'skip_scheduled says yes when cancelled', SFAF_Cancellation::skip_scheduled( 10 ), true );
-expect( 'skip_refresh says yes when cancelled',   SFAF_Cancellation::skip_refresh( 10 ),   true );
 SFAF_Cancellation::set( 10, false );
 expect( 'skip_scheduled says no otherwise',       SFAF_Cancellation::skip_scheduled( 10 ), false );
 
 /* ===========================================================================
- * 3. A REFETCH LEAVES A CANCELLED IMPORTED EVENT ALONE.
+ * 3. CANCELLING IS FOR NATIVE EVENTS ONLY (3.38.0).
+ *
+ * 3.36.0 offered it on imported events with a warning that it would not reach
+ * the source. That produced a half-cancellation that looks whole: off this
+ * calendar, still selling places at Eventbrite, and nobody told by anybody.
+ * The control is gone, so what has to be asserted is that it is gone from BOTH
+ * halves, and that the removal path is untouched.
+ *
+ * The 3.36.0 refetch lock went with it and is deliberately not replaced: it
+ * guarded a state that can no longer be reached, and a check that can never
+ * fire reads later as evidence the case is possible.
  * ======================================================================== */
-echo "The refetch\n";
+echo "Native events only\n";
 
-$src_src = file_get_contents( $root . '/includes/class-sfaf-sources.php' );
+$portal_src = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
+$src_src    = file_get_contents( $root . '/includes/class-sfaf-sources.php' );
+
+// The card refuses to render for an imported event.
+if ( ! preg_match( '#function render_cancel_card\s*\(.*?\)\s*\{#s', $portal_src, $m, PREG_OFFSET_CAPTURE ) ) {
+    $fails[] = 'render_cancel_card() not found';
+} else {
+    $body = substr( $portal_src, $m[0][1], 2500 );
+    if ( ! preg_match( "#META_SOURCE.*?\)\s*\{\s*return;#s", $body ) ) {
+        $fails[] = 'render_cancel_card() does not return early for an imported event, so the control is still offered on one';
+    }
+}
+
+/*
+ * AND THE WRITE REFUSES TOO. A control that is not drawn is not a refusal: a
+ * POST is a request anybody can construct by hand, which is defect one in
+ * PROJECT.md section 5.
+ */
+if ( ! preg_match( "#case 'cancel_event':(.*?)break;#s", $portal_src, $m ) ) {
+    $fails[] = "the cancel_event action was not found";
+} else {
+    if ( false === strpos( $m[1], 'META_SOURCE' ) ) {
+        $fails[] = 'the cancel_event action does not refuse an imported event, so the form not being drawn is the only thing stopping it';
+    }
+}
+
+// The lock is gone, and nothing calls what it used method.
+if ( false !== strpos( $src_src, 'SFAF_Cancellation::skip_refresh' ) ) {
+    $fails[] = 'update_event() still calls skip_refresh(), which guards a state that can no longer occur';
+}
+if ( method_exists( 'SFAF_Cancellation', 'skip_refresh' ) ) {
+    $fails[] = 'SFAF_Cancellation::skip_refresh() still exists with no caller';
+}
+
+/*
+ * THE REMOVAL PATH IS UNTOUCHED, AND SENDS NOTHING.
+ *
+ * An imported event that vanishes at source is unpublished to a draft by
+ * SFAF_Sources. That is not a cancellation, it must not become one, and it must
+ * not reach SFAF_Announce: those people registered at the platform and this
+ * plugin holds none of their addresses.
+ */
+if ( false !== strpos( $src_src, 'SFAF_Announce' ) ) {
+    $fails[] = 'class-sfaf-sources.php references SFAF_Announce. An event disappearing at source must not email anybody from here.';
+}
+if ( false !== strpos( $src_src, 'SFAF_Cancellation::set' ) ) {
+    $fails[] = 'class-sfaf-sources.php sets cancellation. Removal at source is an unpublish, not a cancellation.';
+}
+
+// update_event() must still never write post_status, which is what kept a
+// fetch from changing whether an event is live. Unchanged by 3.38.0.
 if ( ! preg_match( '#function update_event\s*\(.*?\)\s*\{#s', $src_src, $m, PREG_OFFSET_CAPTURE ) ) {
     $fails[] = 'update_event() not found';
 } else {
     $body = substr( $src_src, $m[0][1], 2500 );
-    if ( false === strpos( $body, 'SFAF_Cancellation::skip_refresh' ) ) {
-        $fails[] = 'update_event() does not refuse a cancelled event, so a refetch could move one';
-    }
-    // post_status must still never be written by a refresh: that is the other
-    // half of "a fetch cannot un-cancel", and it predates this release.
     if ( preg_match( "#\\\$postarr\['post_status'\]#", $body ) ) {
         $fails[] = 'update_event() writes post_status, which it must never do';
     }
 }
-
 /* ===========================================================================
  * 4. THE TWO MESSAGES.
  * ======================================================================== */
@@ -479,7 +532,8 @@ expect( 'and one with somebody',      SFAF_Announce::has_registrations( 100 ), t
 echo "\nCancellation test\n";
 echo "checked: the state and its two keys, that the exclusion clause tests visibility so a cancelled\n";
 echo "         event left listed still appears, that BOTH scheduled jobs ask about cancellation and\n";
-echo "         ask first, that a refetch refuses a cancelled event and still never writes post_status,\n";
+echo "         ask first, that cancelling is refused on an imported event at BOTH the render and the\n";
+echo "         write and that removal at source neither cancels nor emails from here,\n";
 echo "         that the cancelled message carries no cancel link and the changed message carries both\n";
 echo "         old and new values plus the link, and that one person on four of six dates gets one\n";
 echo "         email naming four dates and not six\n\n";

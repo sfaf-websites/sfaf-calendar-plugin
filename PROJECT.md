@@ -112,6 +112,62 @@ Branches:
 
 ---
 
+### Descriptions are rich text, with a deliberately short toolbar
+
+Event descriptions are `post_content` and have been plain text until 3.38.0.
+They are now `wp_editor()` in teeny mode with **bold, italic, links, both list
+kinds and one heading level**, and nothing else. No font colours, no sizes, no
+alignment: the brand guide governs colour and type, and a full toolbar is how a
+calendar ends up with events in purple Comic Sans that cannot be unpicked
+because the styling is inline on every paragraph.
+
+**The one heading is h3.** The event page's title is the h1 and its sections sit
+at h2, so a heading typed into a description has to start below both or it
+breaks the reading order for anybody navigating by headings. `block_formats`
+offers exactly Paragraph and that level, so a competing level cannot be chosen.
+
+**It degrades to a textarea.** caladmin builds its own document rather than
+running through `wp_head`, so TinyMCE is being started somewhere it usually is
+not. If its scripts do not run, `wp_editor()` leaves a plain textarea holding the
+same content, and `wp_kses_post()` on save means the stored value survives
+either way.
+
+**Nothing carries over badly and nothing was migrated.** `wp_editor()` and the
+event page's `the_content()` both run stored content through `wpautop()`, so a
+plain-text description written before this reads as the paragraphs it always
+looked like.
+
+**Emails are unaffected, because the description is not in any of them.** The
+confirmation, reminder, alert, summary, cancelled and changed messages are built
+from the event's title, date, time and location plus an optional per-event
+`custom_body`. `SFAF_Notifications` never reads `post_content`.
+
+**What rich text did break, and what fixed it.** `wp_trim_words()` strips tags
+with `strip_tags()`, which joins the text either side of a tag with nothing
+between: `<p>One</p><p>Two</p>` becomes `OneTwo`. Card summaries have always been
+plain text so this never bit, and it would have bitten every card on the public
+calendar and in every embed the day this shipped. `sfaf_flatten_html()` turns
+block tags into spaces **before** stripping, which is the only order that works.
+
+### Decoration that carries no information
+
+Until 3.38.0 every card in caladmin carried a 3px teal left border with an
+asymmetric `4px 12px 12px 4px` radius. An accent that every card has
+distinguishes nothing, and a curved coloured edge on a box is the most
+recognisable tell of generated UI.
+
+The test for keeping one is not whether it looks nice. It is: **is the colour or
+the shape the only carrier of a fact?** If the same information is in the words
+beside it, the edge is decoration and goes. Two survive, and
+`.claude/decoration-audit.php` is a whitelist of exactly those two:
+
+- **`.uc-single-header`**, the category colour on the event page. The category
+  system is the one place in this plugin where colour is the signal: the same
+  colour is the card ring, the chip and the placeholder tile, and the event page
+  names the category nowhere in words.
+- **`.uc-field-attention`**, which of roughly thirty fields is still empty. The
+  publish banner names *what* is missing; only this says *where*.
+
 ## 2. Data model
 
 The reasoning matters more than the shape here. Each of these was arrived at by
@@ -198,11 +254,19 @@ stays exactly as it was, public, with its `event-organizer` rewrite and
 `show_in_rest`. The WordPress term screen stays reachable by URL as the
 fallback, the same reasoning that kept Calendar Users in wp-admin.
 
-**A rename never moves the slug.** An embed block on another site can be scoped
-`organizer="the-stonewall-project"`, those blocks are HTML on pages this plugin
-cannot enumerate, and a slug that stops resolving empties somebody else's
-calendar with nothing to say why. Changing the slug is offered as its own field
-with its own warning rather than derived from the name on every save.
+**A rename never moves the slug, and since 3.38.0 that is pinned rather than
+inferred.** `wp_update_term()` derives a slug from the name when its args carry
+no `slug` key, so "does renaming move it?" was a question about a WordPress
+internal rather than about anything this plugin stated. For a value other
+people's embed blocks resolve through, and whose users this plugin cannot
+enumerate, that is the wrong thing to leave to inference: `SFAF_Organizers::save()`
+now passes the existing slug back on every rename.
+
+The slug is therefore **not editable and not shown as a field**. It is reference,
+not something anybody managing events needs to read, an editable field invites a
+change that empties somebody else's calendar, and a warning beside it would be a
+sentence explaining why a control is risky rather than telling anybody what to
+do. With the value unable to move, there is nothing left to warn about.
 
 **Which deletion rule a taxonomy gets depends on what the event keeps.** The two
 precedents genuinely differ and the difference is not stylistic:
@@ -236,6 +300,38 @@ edit, and taught people not to press it. The select wins when both are filled.
 both adapters, so no fetch has ever written it and none can: a platform's
 organizer is its own record, not a term in this taxonomy, and guessing a mapping
 would create duplicate terms nobody asked for.
+
+### Closures are not events, and that is a storage decision
+
+A closure is a day SFAF is shut: a date or a date range and a label. It has no
+page, nothing to click, nothing to register for, and nothing scheduled about it.
+
+`SFAF_Closures` stores them in **one option**, not a post type, and the reason
+is the whole of the "must not leak" requirement. Every subsystem that touches
+events reaches them through a `WP_Query` over `uc_event` or through a post id
+that must resolve to a `uc_event` post: the pending queue, the .ics feed,
+search, RSVP, reminders, the pre-event summary, the REST feed, sitemaps, SEO,
+recurrence, series, teams, organizers, venues, FAQ sets and cancellation. **None
+of them can see a row in an option**, so none of them needed a new exclusion.
+
+A post type would have inverted that: nineteen places to find and exclude, and
+the failure mode of missing one is a "Closed for Thanksgiving" event with a
+permalink, an RSVP button and a row in the import queue.
+`.claude/closures-test.php` asserts the storage choice and then asserts that
+none of those nineteen files has grown a reference, so the property is checked
+rather than remembered.
+
+**A multi-day closure is one entry spanning dates**, not one row per day.
+Somebody closing for the winter break enters it once and edits it once; four
+rows would be four chances to type it differently. The two renderers then ask
+different questions of that one entry: the month grid asks **per day** and marks
+four squares, because there a square is a day; a list asks **per span** and shows
+one card reading the range, because four identical cards is four times the noise
+for one fact.
+
+It reaches the embed by not being special: the embed payload is built by calling
+the same shortcode renderers, so a closure the shortcode draws is a closure the
+embed serves.
 
 ### Venues are stored by reference and resolved at display
 
@@ -684,10 +780,15 @@ What cancelling does:
 | Reminders | Neither the morning-of nor the two-hour summary. **Both queries ask for `publish` and today's date, and a cancelled event satisfies both**, so the exclusion is an explicit first line in each loop rather than something the query can express. |
 | Refetch | `update_event()` refuses a cancelled event outright, so the source cannot move an event that is not happening. It could never clear the flag: `update_event()` writes an explicit field list and `post_status` is not on it. |
 
-**Cancelling an imported event is a local decision.** It takes the event off
-this calendar and stops its reminders. It does **not** cancel it at Eventbrite
-or GoFundMe Pro, where people may still be able to register, and the editor says
-so rather than implying otherwise.
+**Cancelling is for native events only** (3.38.0). An imported event is cancelled
+where it lives: if a campaign or listing is called off at the source it leaves
+this calendar through the unpublish-on-removal path, and telling the people who
+signed up is that platform's job, because they registered there and this plugin
+holds none of their addresses. 3.36.0 did offer it, with a warning that it would
+not reach the source, and that warning was a reason to remove the control rather
+than to caption it: what it produced was a half-cancellation that looks whole.
+The control is refused at the render **and** at the write, since a form that is
+not drawn is not a refusal.
 
 Deleting a **series** with registered events offers to cancel them all instead,
 and asks whether to email. Once cancelled, deleting is allowed: cancel, notify,

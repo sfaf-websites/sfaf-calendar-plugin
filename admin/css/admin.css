@@ -530,10 +530,7 @@
 .uc-probe-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: #fde68a; color: #92400e; font-size: 11px; font-weight: 700; }
 .uc-probe-id { max-width: 220px; }
 .uc-probe-out { margin-top: 14px; }
-.uc-probe-result { padding: 12px; margin-bottom: 12px; border: 1px solid var(--uc-border); border-left-width: 4px; border-radius: 8px; background: #fff; }
-.uc-probe-result.is-ok { border-left-color: #10b981; }
-.uc-probe-result.is-bad { border-left-color: #f59e0b; }
-.uc-probe-result.is-err { border-left-color: #ef4444; }
+.uc-probe-result { padding: 12px; margin-bottom: 12px; border: 1px solid var(--uc-border); border-radius: 8px; background: #fff; }
 .uc-probe-result h4 { margin: 0 0 6px; font-size: 13px; font-family: Consolas, Monaco, monospace; }
 .uc-probe-meta { font-size: 12px; color: #4b5563; font-family: Consolas, Monaco, monospace; word-break: break-all; }
 .uc-probe-err { color: #b91c1c; font-weight: 600; }
@@ -583,7 +580,6 @@
     margin: 0 0 16px;
     padding: 16px 20px;
     border: 1px solid var(--uc-border);
-    border-left-width: 4px;
     border-radius: 12px;
     background: #fff;
 }
@@ -592,13 +588,13 @@
 .uc-cron-banner p:last-child { margin-bottom: 0; }
 .uc-cron-banner-do { color: var(--uc-muted) !important; }
 
-.uc-cron-banner-working { border-left-color: #15803d; background: #f0fdf4; }
+.uc-cron-banner-working { background: #f0fdf4; }
 .uc-cron-banner-working h2 { color: #15803d; }
-.uc-cron-banner-behind  { border-left-color: #92400e; background: #fffbeb; }
+.uc-cron-banner-behind  { background: #fffbeb; }
 .uc-cron-banner-behind h2 { color: #92400e; }
-.uc-cron-banner-stopped { border-left-color: #b91c1c; background: #fef2f2; }
+.uc-cron-banner-stopped { background: #fef2f2; }
 .uc-cron-banner-stopped h2 { color: #b91c1c; }
-.uc-cron-banner-never   { border-left-color: #6B7280; background: var(--uc-bg); }
+.uc-cron-banner-never   { background: var(--uc-bg); }
 .uc-cron-banner-never h2 { color: #4B5563; }
 
 /* The per-task table. Each cell is a value with a quiet second line under it,
