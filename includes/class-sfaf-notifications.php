@@ -269,10 +269,23 @@ class SFAF_Notifications {
         }
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
 
+        /*
+         * ADD TO CALENDAR: A HEADING AND TWO SHORT LABELS.
+         *
+         * The pair read "Add to Google Calendar" and "Add to Apple or Outlook"
+         * until 3.34.0, which wrapped to three lines and two inside their
+         * buttons and made a matched pair of different heights. The words that
+         * wrapped are the words both buttons shared, so they are said once,
+         * above, and each button now carries only the thing that tells them
+         * apart. The glyph is the plugin's own calendar mark and not a platform
+         * logo; see SFAF_Email::icon() for why, and for what a reader sees when
+         * their client blocks pictures.
+         */
         $buttons = array();
-        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Add to Google Calendar', 'primary' ); }
-        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Add to Apple or Outlook', 'outline' ); }
+        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Google', 'primary', true, true ); }
+        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Apple or Outlook', 'outline', true, true ); }
         if ( $buttons ) {
+            $html .= SFAF_Email::label( 'Add to calendar' );
             $html .= SFAF_Email::button_row( $buttons );
         }
 
@@ -293,8 +306,9 @@ class SFAF_Notifications {
             $text .= "We have your place. Here are the details.\n\n";
         }
         $text .= self::detail_text( $f ) . "\n\n";
-        if ( $gcal ) { $text .= 'Add to Google Calendar: ' . $gcal . "\n"; }
-        if ( $ics )  { $text .= 'Add to Apple or Outlook: ' . $ics . "\n"; }
+        if ( $gcal || $ics ) { $text .= "Add to calendar\n"; }
+        if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
+        if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
             $text .= "\nCannot make it? Release your place so somebody else can take it. We will ask you to confirm: " . $cancel . "\n";

@@ -513,10 +513,19 @@ class SFAF_Admin {
     }
 
     /**
-     * The scheduled runner: health, configuration and the run log.
+     * The scheduled runner: whether it is running, what it runs, and the log.
      *
-     * Moved wholesale from SFAF_Portal in 2.13.0. The content is the same; the
-     * chrome is WordPress's and the gate is manage_options.
+     * Moved wholesale from SFAF_Portal in 2.13.0. The chrome is WordPress's and
+     * the gate is manage_options.
+     *
+     * IT OPENS BY ANSWERING "IS THIS WORKING?" IN A SENTENCE. Until 3.34.0 the
+     * first thing on the screen was a Status table whose top row was a health
+     * message, and everything under it was configuration. Somebody who has just
+     * pointed an external scheduler at this site, and somebody coming back in
+     * six months because reminders stopped, are asking the same one question,
+     * and neither of them knows or should need to know what cron is. So the
+     * question is answered first, in words, in a banner that is coloured by the
+     * answer, and the configuration keeps its table below.
      */
     public function render_automation_page() {
         if ( ! current_user_can( 'manage_options' ) ) {
@@ -524,18 +533,21 @@ class SFAF_Admin {
         }
 
         $health   = SFAF_Cron::health();
+        $status   = SFAF_Cron::status();
+        $tasks    = SFAF_Cron::task_report();
         $log      = SFAF_Cron::log();
-        $next     = wp_next_scheduled( SFAF_Cron::HOOK );
+        $next     = SFAF_Cron::next_due();
+        $last_run = SFAF_Cron::last_run();
+        $last_ok  = SFAF_Cron::last_success();
         $locked   = SFAF_Cron::lock_held_since();
         $wp_off   = SFAF_Cron::wp_cron_disabled();
-        $fetch_on = SFAF_Cron::auto_fetch_enabled();
         $alert_to = SFAF_Cron::alert_recipient();
         ?>
         <div class="wrap uc-admin-wrap">
             <div class="uc-admin-header">
                 <div>
                     <h1>Automation</h1>
-                    <p class="uc-subtitle">The hourly scheduled runner: reminder emails and, when switched on, source fetching</p>
+                    <p class="uc-subtitle">Work this site does on its own: reminder emails, the who-is-coming list, and source fetching</p>
                 </div>
                 <form method="post" class="uc-cron-run-form">
                     <?php wp_nonce_field( 'uc_cron_action', 'uc_cron_nonce' ); ?>
@@ -554,31 +566,128 @@ class SFAF_Admin {
                 <div class="notice notice-success"><p>Run log cleared.</p></div>
             <?php endif; ?>
 
+            <?php
+            /*
+             * THE ANSWER, BEFORE ANY OF THE MACHINERY.
+             *
+             * Four states, four colours, and the state word is in the text as
+             * well as in the colour: a banner that says "working" only by being
+             * green is a banner that says nothing to somebody who cannot tell
+             * the greens apart. See DESIGN.md on colour never carrying meaning
+             * on its own.
+             */
+            ?>
+            <div class="uc-cron-banner uc-cron-banner-<?php echo esc_attr( $status['state'] ); ?>">
+                <h2><?php echo esc_html( $status['headline'] ); ?></h2>
+                <p><?php echo esc_html( $status['detail'] ); ?></p>
+                <?php if ( 'stopped' === $status['state'] || 'behind' === $status['state'] ) : ?>
+                    <p class="uc-cron-banner-do">
+                        Press <strong>Run now</strong> above. If that works, the jobs themselves are fine and what
+                        has stopped is whatever is meant to be starting them.
+                    </p>
+                <?php endif; ?>
+            </div>
+
+            <div class="uc-admin-card">
+                <h2>Scheduled tasks</h2>
+                <p class="description">
+                    Each of these runs on its own, without anybody pressing anything. A run happens every
+                    15 minutes and does whichever of them are due.
+                </p>
+                <table class="uc-admin-table uc-cron-tasks">
+                    <thead>
+                        <tr><th>Task</th><th>Last ran</th><th>Next due</th><th>What happened</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( $tasks as $t ) : ?>
+                            <tr>
+                                <td>
+                                    <strong><?php echo esc_html( $t['label'] ); ?></strong>
+                                    <span class="uc-muted"><?php echo esc_html( $t['plain'] ); ?></span>
+                                </td>
+                                <td>
+                                    <?php if ( $t['last'] ) : ?>
+                                        <?php echo esc_html( SFAF_Cron::ago( $t['last'] ) ); ?>
+                                        <span class="uc-muted"><?php echo esc_html( SFAF_Cron::local_time( $t['last'] ) ); ?></span>
+                                    <?php else : ?>
+                                        <span class="uc-muted">Never</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ( ! $t['on'] ) : ?>
+                                        <span class="uc-muted">Switched off</span>
+                                    <?php elseif ( $t['next'] ) : ?>
+                                        <?php echo esc_html( SFAF_Cron::ago( $t['next'] ) ); ?>
+                                        <span class="uc-muted"><?php echo esc_html( SFAF_Cron::local_time( $t['next'] ) ); ?></span>
+                                    <?php else : ?>
+                                        <span class="uc-cron-failed">Not scheduled</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ( ! $t['on'] ) : ?>
+                                        <?php echo esc_html( $t['off'] ); ?>
+                                    <?php elseif ( $t['summary'] ) : ?>
+                                        <span class="uc-cron-<?php echo esc_attr( $t['status'] ); ?>"><?php echo esc_html( $t['summary'] ); ?></span>
+                                    <?php else : ?>
+                                        <span class="uc-muted">It has not run yet.</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p class="description">
+                    &ldquo;Last ran&rdquo; is the last time the task actually did something, not the last time it was
+                    passed over. A task that is switched off has no next due date because it has none.
+                </p>
+            </div>
+
             <div class="uc-admin-card">
                 <h2>Status</h2>
                 <table class="uc-admin-table uc-cron-status">
                     <tbody>
+                        <tr>
+                            <th>Last run</th>
+                            <td>
+                                <?php if ( $last_run ) : ?>
+                                    Started <?php echo esc_html( SFAF_Cron::ago( $last_run ) ); ?>,
+                                    <?php echo esc_html( SFAF_Cron::local_time( $last_run ) ); ?>.
+                                    <?php if ( $last_ok && $last_ok !== $last_run ) : ?>
+                                        The last one that finished cleanly was <?php echo esc_html( SFAF_Cron::ago( $last_ok ) ); ?>.
+                                    <?php endif; ?>
+                                <?php else : ?>
+                                    No run has ever started.
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                         <tr>
                             <th>Health</th>
                             <td class="uc-cron-<?php echo esc_attr( $health['state'] ); ?>"><?php echo esc_html( $health['message'] ); ?></td>
                         </tr>
                         <tr>
                             <th>Schedule</th>
-                            <td>Hourly. <?php echo $next ? 'Next due ' . esc_html( SFAF_Cron::local_time( $next ) ) . '.' : 'Not currently scheduled.'; ?></td>
+                            <td>Every <?php echo (int) ( SFAF_Cron::SCHEDULE_EVERY / 60 ); ?> minutes. <?php echo $next ? 'Next due ' . esc_html( SFAF_Cron::ago( $next ) ) . ', ' . esc_html( SFAF_Cron::local_time( $next ) ) . '.' : 'Not currently scheduled.'; ?></td>
                         </tr>
                         <tr>
                             <th>Trigger</th>
                             <td>
                                 <?php if ( $wp_off ) : ?>
-                                    <code>DISABLE_WP_CRON</code> is set, so runs come only from a real system cron hitting the URL below. This is the intended setup.
+                                    <code>DISABLE_WP_CRON</code> is set, so runs come only from something outside this site requesting the URL below. This is the intended setup, and it means the whole schedule now depends on that external service still being there.
                                 <?php else : ?>
-                                    <code>DISABLE_WP_CRON</code> is <strong>not</strong> set, so WordPress is still firing scheduled tasks off visitor traffic. That means a 6am reminder does not go out until somebody visits the site. Set up a system cron and add the constant. The readme has the steps.
+                                    <code>DISABLE_WP_CRON</code> is <strong>not</strong> set, so WordPress is still firing scheduled tasks off visitor traffic. That means a 6am reminder does not go out until somebody visits the site. <strong>Set up the external ping first and confirm above that tasks are running, then add the constant.</strong> Doing it the other way round can leave nothing running at all. The readme has the steps in order.
                                 <?php endif; ?>
                             </td>
                         </tr>
                         <tr>
                             <th>Cron URL</th>
-                            <td><code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code></td>
+                            <td>
+                                <code><?php echo esc_html( SFAF_Cron::cron_url() ); ?></code>
+                                <br />This is the address an external scheduler should request, every
+                                <?php echo (int) ( SFAF_Cron::SCHEDULE_EVERY / 60 ); ?> minutes. It needs no parameter,
+                                no header and no key, and it keeps working once <code>DISABLE_WP_CRON</code> is set.
+                                Do not point the scheduler at the page-view nudge below instead: that one runs this
+                                plugin's jobs only, and would leave the rest of WordPress's schedule stopped.
+                            </td>
                         </tr>
                         <tr>
                             <th>Page-view nudge</th>
@@ -590,8 +699,10 @@ class SFAF_Admin {
                                     No page has started a run yet.
                                 <?php endif; ?>
                                 Every sfaf.org page with a calendar on it asks this site to run its jobs, at most
-                                once every <?php echo (int) ( SFAF_Cron::PING_EVERY / 60 ); ?> minutes. This needs nothing set up
-                                on a server and covers the case a real system cron is there for.
+                                once every <?php echo (int) ( SFAF_Cron::PING_EVERY / 60 ); ?> minutes. Nothing is set up
+                                for this and nothing needs to be. Leave it on after the external scheduler is
+                                working: it is a request from a site that has visitors, which is what lets this
+                                site notice the scheduler has stopped and send the alert email below.
                                 <br /><code><?php echo esc_html( SFAF_Cron::ping_url() ); ?></code>
                             </td>
                         </tr>
@@ -613,20 +724,23 @@ class SFAF_Admin {
                             </td>
                         </tr>
                         <tr>
-                            <th>Reminder emails</th>
-                            <td><?php echo SFAF_Reminders::enabled() ? 'On.' : 'Off.'; ?> Sent at 6:00am site time on the day of the event, to registrations and the event&rsquo;s notification list. Native events only: imported events are never sent for.</td>
+                            <?php /* Whether each task is on, when it last ran and when it
+                                     is next due is the Scheduled tasks card above, and is
+                                     deliberately not repeated here. What is left in these
+                                     two rows is what that card does not say. */ ?>
+                            <th>Who a reminder goes to</th>
+                            <td>Registrations and the event&rsquo;s notification list. Native events only: imported events are never sent for.</td>
                         </tr>
                         <tr>
-                            <th>Automated fetching</th>
-                            <td><?php echo $fetch_on
-                                ? 'On. Third-party sources are fetched on every run.'
-                                : 'Off. Sources are only fetched when somebody presses "Fetch updates" on the calendar portal\'s Pending screen. Leave it off until the unpublish-on-removal behavior has been watched through one real removal at source.'; ?></td>
+                            <th>Fetching by hand</th>
+                            <td>&ldquo;Fetch updates&rdquo; on the calendar portal&rsquo;s Pending screen runs a fetch whether or not the automated one is switched on.</td>
                         </tr>
                     </tbody>
                 </table>
                 <p class="description">
-                    An external pinger may report a timeout even when the run finished: <code>wp-cron.php</code> keeps
-                    working after the connection drops. The log below is the source of truth, not the pinger's status code.
+                    An external scheduler may report a timeout even when the run finished: <code>wp-cron.php</code> keeps
+                    working after the connection drops. The run log below is the source of truth, not the status code
+                    the scheduler recorded.
                 </p>
             </div>
 

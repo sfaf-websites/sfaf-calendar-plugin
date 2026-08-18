@@ -572,6 +572,31 @@ Postmark is the second kind. The hook is attached anyway because it is correct
 wherever PHPMailer is involved, and whether a `text/plain` part actually arrives
 is visible in a delivered message and nowhere else.
 
+### Icons in email are rasters, and never a platform mark
+
+Every icon on the website is an inline SVG from `sfaf_icon()`, and an inline SVG
+does not render in Gmail, Outlook or Yahoo. Where a message needs one, it is a
+PNG rasterised from **the same path data** by `.claude/build-email-icons.js`, at
+2x for a retina screen, in a baked foreground colour because an email has no
+`currentColor` to inherit. A second hand-drawn glyph for mail would drift from
+the one on the site, which is the two-renderers fault this project has paid for
+before.
+
+**Platform logos are never used.** The confirmation's two Add to calendar
+buttons say Google and Apple or Outlook, and the obvious icons are each vendor's
+mark. Those are registered trademarks with published brand terms, SFAF is a
+nonprofit with a brand guide of its own, and nothing here has been cleared to
+reproduce them. One generic calendar glyph on both says the same thing. The
+email render test enforces it as a **whitelist** of the image files this plugin
+ships, so a vendor mark added later is caught by default.
+
+**Nothing in a message may depend on an image loading.** Many clients block
+pictures by default. The banner carries real alt text; button glyphs carry
+`alt=""` and are decorative, with `width` and `height` as attributes so a
+blocked one reserves its exact box and a pair of buttons stays the same height
+either way. The test checks this by **stripping the images and reading again**,
+not by reasoning about alt text.
+
 ### The four message types
 
 All four are **on** by default. `_uc_notify_off` records only what somebody has
@@ -624,10 +649,29 @@ that asks; the POST from that page acts.
 
 ### The cron trigger, and why WordPress cron is not enough
 
-There is **one** hourly runner, `SFAF_Cron`, for every unattended job. Currently
-that is the reminder pass and the third-party fetch. Anything added later
-registers there rather than scheduling its own event, so there is one lock, one
-log, and one place to look when something happened overnight.
+There is **one** runner, `SFAF_Cron`, on a **15-minute** recurrence, for every
+unattended job. `SFAF_Cron::tasks()` is the single list of them: the reminder
+pass, the pre-event summary and the third-party fetch. `run()` iterates it and
+the Automation screen iterates it, so a job cannot be run without appearing on
+the screen and cannot appear without being run. Anything added later joins that
+list rather than scheduling its own event, so there is one lock, one log, and
+one place to look when something happened overnight.
+
+**The 15-minute interval exists for the pre-event summary**, which is due two
+hours before an event starts; an hourly run can be up to an hour late for it.
+Every job is idempotent and most passes find nothing due, so a run with no work
+costs one `WP_Query`. The hook name is still `sfaf_cron_hourly`, which is
+historical; `ensure_scheduled()` migrates any install still on `hourly` by
+asking `wp_get_schedule()` what the hook is actually on, because "is it
+scheduled?" would find the old event present and leave it forever.
+
+The recurrence is registered by an `add_filter( 'cron_schedules', ... )` at
+**file scope in `sfaf-calendar.php`**, not from `SFAF_Cron::register()`, and the
+placement is load-bearing. Core hangs `wp_cron()` on `init` at priority 10 and
+registers it before this plugin's own `init` callback at the same priority, so
+`wp_cron()` runs first, and its response to a recurrence it cannot resolve is to
+**unschedule the event**. Registering the filter any later would have the runner
+delete itself on the first request after an update.
 
 **WordPress cron is not a scheduler. It is a check that runs when somebody
 visits the site.** On a calendar nobody visits at 6am, a 6am job simply does not
@@ -636,18 +680,46 @@ fails.
 
 Three things drive the runner, and it does not care which:
 
-1. **Real system cron** (cPanel, or an external pinger) hitting `wp-cron.php`,
-   with `DISABLE_WP_CRON` set. This is the intended setup.
+1. **An external scheduler** requesting `wp-cron.php?doing_wp_cron` every 15
+   minutes, with `DISABLE_WP_CRON` set. This is the intended setup, and it is
+   deliberately an external service rather than a server cron job so the plugin
+   needs no server configuration and stays portable.
 2. **The embed script.** Any page carrying a calendar, including sfaf.org, which
    has far more traffic than resources, pings `admin-ajax` (`sfaf_cron_ping`),
    throttled to once every 15 minutes. It is on `admin-ajax` and not a REST route
    because of the exact-route-string CORS gate in §1.
 3. **"Run now"** in the admin.
 
-The 15-minute ping interval exists for the **pre-event summary**, which is due
-two hours before an event starts; an hourly run can be up to an hour late for
-it. Every job is idempotent and most passes find nothing due, so a run with no
-work costs one `WP_Query`.
+**Why an external scheduler must be pointed at `wp-cron.php` and never at (2).**
+The ping endpoint calls `run()` directly, so it runs this plugin's jobs and
+nothing else. `wp-cron.php` dispatches WordPress's whole schedule: core's own
+maintenance, every other plugin's jobs, and this plugin's among them. Under
+`DISABLE_WP_CRON` nothing else dispatches that queue, so a scheduler aimed at
+the ping endpoint would keep the calendar working and quietly stop everything
+else on the site. The endpoint also throttles to one run per 15 minutes and
+answers 204 inside that window, so an external 15-minute ping would land on the
+boundary and be refused about half the time. `wp-cron.php` needs no parameter,
+header or key, and never consults `DISABLE_WP_CRON`: that constant only
+suppresses the spawn from ordinary page loads.
+
+**(2) stays switched on after (1) exists, and is not a second scheduler.** The
+health check that sends the "tasks have stopped" alert hangs off `wp_loaded`,
+deliberately not off the runner, since a monitor inside the thing being
+monitored fails exactly when it is needed. `wp_loaded` fires on a `wp-cron.php`
+request too, so an external scheduler drives the monitor as well as the work.
+The hole it cannot close is the trigger dying while nobody visits: no request
+means no `wp_loaded`, no check and no email, and no monitor inside a site can
+report that the site is never visited. The nudge is a request from a site that
+does have traffic, arriving whether or not the scheduler is alive, and that is
+what closes it in practice.
+
+**The Automation screen answers "is this working?" in a sentence** before any of
+the machinery, in four states: working, running late (45 minutes with nothing
+completed), stopped (three hours, or three failed runs), never run. The 45
+minutes and the three hours are separate judgements on purpose: the longer one
+decides when to wake somebody by email and must not fire on one hiccup, the
+shorter one decides what to tell somebody already looking at the screen, where
+being told early costs nothing.
 
 **Two independent layers stop a double send.** The run lock is an
 `add_option()` claim (`option_name` is UNIQUE, so the second run stands down),
@@ -794,6 +866,21 @@ conventions are each correct and collide silently.
 > raise the component to two classes, drop the base to zero with `:where()` when
 > it is meant as a floor, or *split* the base rule when its properties want
 > different things (a defense stays high, a floor goes low).
+
+**A rule that was never written at all, which looks identical from the screen.**
+The twin of the above and a different repair. `.uc-admin-card` declared no
+padding, so a card looked correct only when every child happened to carry its
+own: table cells do, and headings, paragraphs and forms do not. Automation's
+cards are made of exactly the ones that do not, so its headings and controls
+rendered against the border. The same shape produced the unstyled controls found
+in 3.16.0, and the `-actions` baseline written in 3.20.0 could not help, because
+that convention lives in `portal.css` and reaches no WordPress admin screen.
+
+> **Ask which of the two it is before rewriting.** A losing rule and an absent
+> rule look the same on screen and want opposite fixes: one is a specificity
+> problem, the other is a missing baseline. A container owns its own padding;
+> anything relying on a child that happens to carry some is unstyled the moment a
+> child without any is added. `.claude/admin-padding-audit.php` is the check.
 
 **A test fixture that removed the property under test.** The first draft of
 `embed-combined-panels-test.js` put `data-view` on the block instead of the

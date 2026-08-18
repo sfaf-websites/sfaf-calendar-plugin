@@ -12,14 +12,24 @@
  * ---------------------------------------------------------------------------
  * WordPress's own "cron" is not a scheduler: it is a check that runs when
  * somebody visits the site. On a calendar nobody visits at 6am, a 6am job
- * simply does not happen. So the intended setup is a real system cron (cPanel
- * on Bluehost, or an external pinger) hitting wp-cron.php on the hour, with
+ * simply does not happen. So the intended setup is an external scheduler
+ * (cron-jobs.org or similar) requesting wp-cron.php every fifteen minutes, with
  * DISABLE_WP_CRON in wp-config.php to stop the visitor-triggered path from
- * duplicating the work. The readme has the exact steps and URL.
+ * duplicating the work. The readme has the exact steps and URL, and the order
+ * they must be done in.
+ *
+ * WHY wp-cron.php AND NOT THE PING ENDPOINT BELOW. The ping endpoint calls
+ * run() directly, so it runs THIS PLUGIN'S jobs and nothing else. wp-cron.php
+ * dispatches WordPress's whole schedule: core's own maintenance, every other
+ * plugin's jobs, and ours among them. Under DISABLE_WP_CRON nothing else is
+ * dispatching that queue, so pointing the scheduler at the ping endpoint would
+ * keep this plugin working and quietly stop everything else on the site. The
+ * ping endpoint stays what it was built to be: a heartbeat that needs nothing
+ * set up, not the scheduler.
  *
  * The runner does not care which of those triggered it. Real cron, WP
- * pseudo-cron and the portal's "Run now" button all land in run(), and the run
- * lock is what makes that safe.
+ * pseudo-cron, the page-view nudge and the portal's "Run now" button all land
+ * in run(), and the run lock is what makes that safe.
  *
  * WHY A LOCK
  * ---------------------------------------------------------------------------
@@ -46,8 +56,27 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SFAF_Cron {
 
-    /** The scheduled action. */
+    /** The scheduled action. The name is historical; the interval is not. */
     const HOOK = 'sfaf_cron_hourly';
+
+    /**
+     * The recurrence the runner is scheduled on, and how long it is.
+     *
+     * FIFTEEN MINUTES, NOT AN HOUR, AND THE PRE-EVENT SUMMARY IS WHY. It is due
+     * two hours before an event starts, so an hourly runner is up to an hour
+     * late for it. The page-view nudge already bought that accuracy for one of
+     * the two ways a run can start (see PING_EVERY, which is the same number for
+     * the same reason); this makes a real scheduler buy it for the other. An
+     * external pinger hitting wp-cron.php every fifteen minutes only produces a
+     * run every fifteen minutes if the event is DUE that often, and until
+     * 3.34.0 it was not: it was hourly, and three of every four pings would have
+     * found nothing to dispatch.
+     *
+     * Every job in a run is idempotent and most passes find nothing due, so the
+     * cost of a run with no work is one WP_Query.
+     */
+    const SCHEDULE       = 'sfaf_quarter_hour';
+    const SCHEDULE_EVERY = 900;
 
     /** Options. */
     const LOCK_OPTION    = 'sfaf_cron_lock';
@@ -72,7 +101,20 @@ class SFAF_Cron {
     const FAIL_NOTICE_AT = 3;
 
     /** How long without a completed run before the "it stopped" notice shows. */
-    const STALE_AFTER = 10800; // 3 hours — two missed hourly runs.
+    const STALE_AFTER = 10800; // 3 hours, and an email goes out with it.
+
+    /**
+     * How long without a completed run before the SCREEN says so.
+     *
+     * Deliberately shorter than STALE_AFTER, and the two are not the same
+     * judgement. STALE_AFTER decides when to wake somebody up by email, so it
+     * has to be long enough that a single hiccup at the pinger does not send
+     * one. This decides what the screen says to somebody who is already looking
+     * at it, where being told early costs nothing. Forty-five minutes is three
+     * missed runs at the fifteen-minute cadence: past coincidence, short of an
+     * emergency.
+     */
+    const BEHIND_AFTER = 2700;
 
     /** Where the health alert stands: the last state we told anybody about. */
     const ALERT_STATE_OPTION = 'sfaf_cron_alert_state';
@@ -147,6 +189,22 @@ class SFAF_Cron {
          *
          * It costs one option read per request, throttled to doing real work
          * at most every fifteen minutes. See maybe_check_health().
+         *
+         * WHAT THIS STILL CANNOT CATCH, once cron is externally driven.
+         *
+         * wp_loaded fires on a wp-cron.php request too, so an external pinger
+         * drives the monitor as well as the work, and a run that fails or a
+         * task that breaks is reported exactly as before. The hole is the case
+         * where the trigger itself dies AND nobody visits: no request means no
+         * wp_loaded, which means no check, which means no email. A monitor
+         * inside the site cannot report that the site is not being visited.
+         *
+         * The page-view nudge below is what keeps that hole closed in practice.
+         * It is a request from sfaf.org, which has traffic this site does not,
+         * and it is a request whether or not the external scheduler is alive.
+         * That is a second reason to keep it after the scheduler is set up, on
+         * top of the one it was built for: it is the heartbeat that lets the
+         * monitor notice the scheduler has stopped.
          */
         add_action( 'wp_loaded', array( $this, 'maybe_check_health' ), 99 );
 
@@ -166,22 +224,72 @@ class SFAF_Cron {
      * ------------------------------------------------------------------- */
 
     /**
-     * Make sure the hourly event exists. Idempotent, and safe to call on
-     * every request: wp_next_scheduled() is served from the cached cron array.
+     * Our own recurrence, on WordPress's list of them.
+     *
+     * Registered from file scope in sfaf-calendar.php rather than from
+     * register(), because wp_cron() runs before this plugin's init callback
+     * and an unrecognised recurrence makes it unschedule the event. See the
+     * note at that add_filter().
+     */
+    public static function add_schedule( $schedules ) {
+        if ( ! is_array( $schedules ) ) {
+            $schedules = array();
+        }
+        $schedules[ self::SCHEDULE ] = array(
+            'interval' => self::SCHEDULE_EVERY,
+            'display'  => 'Every 15 minutes (SFAF Calendar)',
+        );
+        return $schedules;
+    }
+
+    /**
+     * Make sure the event exists, on the right recurrence. Idempotent, and safe
+     * to call on every request: wp_next_scheduled() is served from the cached
+     * cron array.
+     *
+     * IT ALSO MIGRATES. A site that installed any version before 3.34.0 has this
+     * hook stored against 'hourly', and simply checking "is it scheduled?" would
+     * leave it there forever: the event exists, so nothing would ever move it.
+     * wp_get_schedule() answers what it is actually on, and anything that is not
+     * ours is cleared and re-laid. Nothing else in the plugin owns this hook, so
+     * there is no other schedule this could be trampling.
      */
     public static function ensure_scheduled() {
-        if ( ! wp_next_scheduled( self::HOOK ) ) {
-            wp_schedule_event( time() + 60, 'hourly', self::HOOK );
+        // Activation calls this too, and it can run before the file-scope
+        // add_filter() in a freshly installed copy. Adding it here as well is
+        // idempotent and removes the dependency on which happens first.
+        if ( ! has_filter( 'cron_schedules', array( __CLASS__, 'add_schedule' ) ) ) {
+            add_filter( 'cron_schedules', array( __CLASS__, 'add_schedule' ) );
+        }
+
+        $next = wp_next_scheduled( self::HOOK );
+
+        if ( $next && wp_get_schedule( self::HOOK ) !== self::SCHEDULE ) {
+            // Clear the schedule and nothing else. unschedule() also drops the
+            // run lock, which is correct when the plugin is being switched off
+            // and wrong here: this can happen while a run is in progress, and
+            // breaking that run's lock is how a person gets two reminders.
+            self::clear_schedule();
+            $next = false;
+        }
+
+        if ( ! $next ) {
+            wp_schedule_event( time() + 60, self::SCHEDULE, self::HOOK );
         }
     }
 
-    /** Remove the schedule (deactivation). */
-    public static function unschedule() {
+    /** Drop every future occurrence of the hook, and touch nothing else. */
+    private static function clear_schedule() {
         $timestamp = wp_next_scheduled( self::HOOK );
         while ( $timestamp ) {
             wp_unschedule_event( $timestamp, self::HOOK );
             $timestamp = wp_next_scheduled( self::HOOK );
         }
+    }
+
+    /** Remove the schedule (deactivation). */
+    public static function unschedule() {
+        self::clear_schedule();
         // Never leave a lock behind for a plugin that is switched off.
         delete_option( self::LOCK_OPTION );
     }
@@ -276,6 +384,47 @@ class SFAF_Cron {
      * ------------------------------------------------------------------- */
 
     /**
+     * EVERY UNATTENDED JOB, IN ONE LIST.
+     *
+     * One list, one run, one render, in the shape §7 of CLAUDE.md asks for.
+     * run() iterates it and the Automation screen iterates it, so a job cannot
+     * be run without appearing on the screen and cannot appear on the screen
+     * without being run. Before 3.34.0 the three jobs were three hand-written
+     * lines inside run() and the screen described two of them in prose, which
+     * is two places to keep in step and one of them was already out of date.
+     *
+     * 'plain' is the sentence a person who does not know what cron is reads on
+     * the screen. It says what the job does, never why it exists.
+     *
+     * @return array<string,array{label:string,plain:string,callback:callable,on:callable,off:string}>
+     */
+    public static function tasks() {
+        return array(
+            'reminders' => array(
+                'label'    => 'Reminder emails',
+                'plain'    => 'Emails everybody registered for an event on the morning it happens, at 6:00am.',
+                'callback' => array( 'SFAF_Reminders', 'run' ),
+                'on'       => array( 'SFAF_Reminders', 'enabled' ),
+                'off'      => 'Reminder emails are switched off in Settings.',
+            ),
+            'summaries' => array(
+                'label'    => 'Who is coming',
+                'plain'    => 'Emails the people running an event a list of who has registered, two hours before it starts.',
+                'callback' => array( 'SFAF_Notifications', 'run_summaries' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
+            'fetch'     => array(
+                'label'    => 'Fetch from sources',
+                'plain'    => 'Brings in new and changed events from Eventbrite and GoFundMe Pro.',
+                'callback' => array( __CLASS__, 'run_fetch' ),
+                'on'       => array( __CLASS__, 'auto_fetch_enabled' ),
+                'off'      => 'Automated fetching is switched off. Use "Fetch updates" on the calendar portal\'s Pending screen to run it by hand.',
+            ),
+        );
+    }
+
+    /**
      * Run every registered task once.
      *
      * @param string $trigger 'cron' | 'manual'.
@@ -303,19 +452,18 @@ class SFAF_Cron {
 
         $tasks = array();
         try {
-            $tasks[] = self::run_task( 'reminders', 'Reminder emails', array( 'SFAF_Reminders', 'run' ) );
-            $tasks[] = self::run_task( 'summaries', 'Who is coming (two hours before)', array( 'SFAF_Notifications', 'run_summaries' ) );
-
-            if ( self::auto_fetch_enabled() ) {
-                $tasks[] = self::run_task( 'fetch', 'Fetch from sources', array( __CLASS__, 'run_fetch' ) );
-            } else {
-                $tasks[] = array(
-                    'task'    => 'fetch',
-                    'label'   => 'Fetch from sources',
-                    'status'  => 'skipped',
-                    'summary' => 'Automated fetching is switched off. Use "Fetch updates" on the dashboard to run it by hand.',
-                    'counts'  => array(),
-                );
+            foreach ( self::tasks() as $key => $spec ) {
+                if ( ! call_user_func( $spec['on'] ) ) {
+                    $tasks[] = array(
+                        'task'    => $key,
+                        'label'   => $spec['label'],
+                        'status'  => 'skipped',
+                        'summary' => $spec['off'],
+                        'counts'  => array(),
+                    );
+                    continue;
+                }
+                $tasks[] = self::run_task( $key, $spec['label'], $spec['callback'] );
             }
         } catch ( \Throwable $e ) {
             // Belt and braces: run_task() already contains each task's own
@@ -499,6 +647,188 @@ class SFAF_Cron {
     }
 
     /* ---------------------------------------------------------------------
+     * What a person needs to see
+     *
+     * BEFORE 3.34.0 THERE WAS NO WAY TO ANSWER "IS THIS RUNNING?". The screen
+     * carried the health sentence, which says only whether the runner has
+     * failed or gone quiet for three hours, and a "next due" for the runner as
+     * a whole. It could not say when a job last actually ran, which is the
+     * question somebody has who has just pointed an external scheduler at this
+     * site and wants to know whether it worked, and the question somebody has
+     * six months later when reminders have stopped.
+     * ------------------------------------------------------------------- */
+
+    /** When the runner is next due to fire, or 0 when it is not scheduled. */
+    public static function next_due() {
+        return (int) wp_next_scheduled( self::HOOK );
+    }
+
+    /** When a run last STARTED, whatever came of it. 0 when none ever has. */
+    public static function last_run() {
+        foreach ( self::log() as $entry ) {
+            if ( ! empty( $entry['started_ts'] ) ) {
+                return (int) $entry['started_ts'];
+            }
+        }
+        return 0;
+    }
+
+    /** When a run last COMPLETED without failing outright. */
+    public static function last_success() {
+        return (int) get_option( self::LAST_OK_OPTION, 0 );
+    }
+
+    /**
+     * A timestamp said the way a person says it: "12 minutes ago", "in 3
+     * minutes", "never".
+     *
+     * human_time_diff() is WordPress's own and is already translated. Under a
+     * minute it answers "1 min", which reads as a stale value rather than a
+     * fresh one, so that case gets its own words.
+     */
+    public static function ago( $timestamp ) {
+        $timestamp = (int) $timestamp;
+        if ( ! $timestamp ) {
+            return 'never';
+        }
+        $now = time();
+        if ( $timestamp > $now + 30 ) {
+            return 'in ' . human_time_diff( $now, $timestamp );
+        }
+        if ( abs( $now - $timestamp ) < 60 ) {
+            return 'just now';
+        }
+        return human_time_diff( $timestamp, $now ) . ' ago';
+    }
+
+    /**
+     * How the runner is doing, in three states a person can act on.
+     *
+     * 'working'  A run completed recently enough that nothing is wrong.
+     * 'behind'   Nothing has completed for BEHIND_AFTER. Might be a hiccup.
+     * 'stopped'  Nothing has completed for STALE_AFTER, or runs are failing.
+     *            This is the state that also sends an email.
+     * 'never'    Nothing has ever completed. A fresh install, not a fault.
+     *
+     * It reads the same two options health() reads, so the screen and the
+     * alert can never disagree about whether something is wrong; it only
+     * divides the healthy side of that line into two.
+     *
+     * @return array{state:string,headline:string,detail:string}
+     */
+    public static function status() {
+        $fails   = (int) get_option( self::FAIL_OPTION, 0 );
+        $last_ok = self::last_success();
+        $silent  = $last_ok ? ( time() - $last_ok ) : 0;
+
+        if ( $fails >= self::FAIL_NOTICE_AT ) {
+            return array(
+                'state'    => 'stopped',
+                'headline' => 'Scheduled tasks are failing',
+                'detail'   => sprintf(
+                    'The last %d runs all failed. Reminder emails are not going out. The run log below says what went wrong.',
+                    $fails
+                ),
+            );
+        }
+
+        if ( ! $last_ok ) {
+            return array(
+                'state'    => 'never',
+                'headline' => 'Scheduled tasks have never run',
+                'detail'   => 'Press "Run now" to try one. If that works, the next thing to set up is something that presses it automatically. The readme has the steps.',
+            );
+        }
+
+        if ( $silent > self::STALE_AFTER ) {
+            return array(
+                'state'    => 'stopped',
+                'headline' => 'Scheduled tasks have stopped',
+                'detail'   => sprintf(
+                    'Nothing has run since %s, which is %s. Reminder emails are not going out. Whatever is meant to be visiting this site every 15 minutes is not doing it.',
+                    self::local_time( $last_ok ),
+                    self::ago( $last_ok )
+                ),
+            );
+        }
+
+        if ( $silent > self::BEHIND_AFTER ) {
+            return array(
+                'state'    => 'behind',
+                'headline' => 'Scheduled tasks are running late',
+                'detail'   => sprintf(
+                    'The last run was %s, and one is expected every 15 minutes. Nothing has been missed yet. If this is still true in an hour, something has stopped visiting this site.',
+                    self::ago( $last_ok )
+                ),
+            );
+        }
+
+        return array(
+            'state'    => 'working',
+            'headline' => 'Scheduled tasks are running',
+            'detail'   => sprintf(
+                'The last run finished %s, and one is expected every 15 minutes.',
+                self::ago( $last_ok )
+            ),
+        );
+    }
+
+    /**
+     * Every job, when it last actually ran, and when it is next due.
+     *
+     * "Last ran" means the newest log entry in which this job DID something, so
+     * a job that has been standing down because it is switched off reports the
+     * last time it really ran rather than the last time it was passed over. A
+     * job that is switched off has no next due date, because it has none.
+     *
+     * @return array<int,array>
+     */
+    public static function task_report() {
+        $log  = self::log();
+        $next = self::next_due();
+        $out  = array();
+
+        foreach ( self::tasks() as $key => $spec ) {
+            $on  = (bool) call_user_func( $spec['on'] );
+            $row = array(
+                'key'     => $key,
+                'label'   => $spec['label'],
+                'plain'   => $spec['plain'],
+                'on'      => $on,
+                'off'     => $spec['off'],
+                'last'    => 0,
+                'status'  => '',
+                'summary' => '',
+                'next'    => $on ? $next : 0,
+            );
+
+            foreach ( $log as $entry ) {
+                $found = false;
+                foreach ( (array) ( isset( $entry['tasks'] ) ? $entry['tasks'] : array() ) as $t ) {
+                    if ( ! isset( $t['task'] ) || $key !== $t['task'] ) {
+                        continue;
+                    }
+                    if ( isset( $t['status'] ) && 'skipped' === $t['status'] ) {
+                        continue;
+                    }
+                    $row['last']    = isset( $entry['started_ts'] ) ? (int) $entry['started_ts'] : 0;
+                    $row['status']  = isset( $t['status'] ) ? (string) $t['status'] : '';
+                    $row['summary'] = isset( $t['summary'] ) ? (string) $t['summary'] : '';
+                    $found          = true;
+                    break;
+                }
+                if ( $found ) {
+                    break;
+                }
+            }
+
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    /* ---------------------------------------------------------------------
      * Health & notices
      * ------------------------------------------------------------------- */
 
@@ -533,7 +863,7 @@ class SFAF_Cron {
             return array(
                 'state'   => 'stale',
                 'message' => sprintf(
-                    'The scheduled run has not completed since %s. Reminders are not going out. Check that the system cron job is still hitting %s.',
+                    'The scheduled run has not completed since %s. Reminders are not going out. Check that the external scheduler is still requesting %s.',
                     self::local_time( $last_ok ),
                     self::cron_url()
                 ),
@@ -700,8 +1030,10 @@ class SFAF_Cron {
             $body .= "\nThis is a reminder: the problem is still going, and this message repeats at most once a day.\n";
         }
         $body .= "\nWhile this is broken, reminder emails are not going out.\n\n";
-        $body .= "Check the run log and the cron configuration here:\n" . self::admin_url() . "\n\n";
-        $body .= 'The cron job should be requesting: ' . self::cron_url() . "\n";
+        $body .= "Check the run log and the trigger here:\n" . self::admin_url() . "\n\n";
+        $body .= 'Something external should be requesting this URL every 15 minutes: ' . self::cron_url() . "\n";
+        $body .= "If that is set up at cron-jobs.org or a similar service, start by checking that the job is\n";
+        $body .= "still enabled there and what it last reported.\n";
 
         return (bool) wp_mail( $to, $subject, $body, array( 'Content-Type: text/plain; charset=UTF-8' ) );
     }

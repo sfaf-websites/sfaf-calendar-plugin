@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.33.0
+Stable tag: 3.34.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -289,6 +289,13 @@ because that has always been driven by the window as well.
 Reminder emails go out at 6:00am on the day of the event, and the "who is
 coming" summary two hours before it starts. WordPress cannot do that on its own.
 
+**One runner, every 15 minutes, doing whichever jobs are due.** Fifteen rather
+than sixty because the "who is coming" summary is due two hours before an event
+starts, and an hourly runner is up to an hour late for it. A run with nothing
+due costs one database query, so four an hour is not four times the work.
+**Events > Automation** lists every job, when it last ran and when it is next
+due, and says in a sentence at the top whether any of it is working.
+
 **Why WordPress cannot do it on its own.** WP-Cron is not a scheduler. It is a
 check that runs when somebody visits the site. On a calendar with no traffic at
 6am, a 6am job simply does not happen; it waits until the first visitor, which
@@ -308,44 +315,83 @@ installed, and it travels with the plugin.
 Its status is on **Events > Automation > Page-view nudge**, which says when a
 page last started a run.
 
-**A real system cron is still better where it is available**, because it does
-not depend on anybody visiting anything. The steps below set one up. With both
-in place they cannot collide: a run lock stands the second one down, and the
-reminder ledger refuses a second send per person per event even if it did not.
+**An external pinger is the intended setup, and there is an order to it.**
+Nothing has to be configured on the server, which is the point: the plugin stays
+portable and moving it to another host needs no server work. Do these three
+things in this order. Doing them in a different order can leave nothing running
+at all, and the cause is not obvious from anywhere on the site.
 
-**Setting it up on Bluehost (cPanel).**
+**a) Create the external ping.** At cron-jobs.org (or UptimeRobot, or any
+service that will request a URL on a schedule), make a job that requests this
+URL every 15 minutes:
 
-1. In cPanel, open **Advanced > Cron Jobs**.
-2. Under "Add New Cron Job", set Common Settings to **Once Per Hour** (`0 * * * *`).
-3. In the Command box, put:
+    https://YOURSITE.org/wp-cron.php?doing_wp_cron
 
-       wget -q -O /dev/null "https://YOURSITE.org/wp-cron.php?doing_wp_cron" >/dev/null 2>&1
+Replace YOURSITE.org with the real domain. The exact URL for this install is on
+**Events > Automation > Cron URL**. Copy it from there rather than typing it.
 
-   Replace YOURSITE.org with the real domain. The exact URL for this install is
-   shown in the WordPress admin under **Events > Automation > Cron URL**. Copy it from
-   there rather than typing it.
-4. Click "Add New Cron Job".
-5. Edit `wp-config.php` and add this line **above** the
-   `/* That's all, stop editing! */` comment:
+It needs no parameter, no header, no key and no authentication. `wp-cron.php` is
+a public endpoint by design; it starts no work that WordPress was not already
+going to do, and it holds its own lock so two overlapping requests cannot double
+anything up.
 
-       define( 'DISABLE_WP_CRON', true );
+**Why that URL and not the admin-ajax one on the same screen.** The page-view
+nudge endpoint runs THIS PLUGIN'S jobs and nothing else. `wp-cron.php` dispatches
+WordPress's whole schedule: core's own maintenance, every other plugin's jobs,
+and this plugin's among them. Once `DISABLE_WP_CRON` is set, nothing else is
+dispatching that queue, so pointing the scheduler at the nudge would keep the
+calendar working and quietly stop everything else on the site. The nudge also
+throttles itself to one run every 15 minutes and answers 204 inside that window,
+so an external 15-minute ping would land on the boundary and be turned away
+about half the time.
 
-   This stops WordPress firing scheduled tasks off visitor traffic, so the
-   system cron is the only thing that triggers a run and the same work cannot
-   happen twice.
-6. Go to **Events > Automation** in the WordPress admin and press **Run now**. A new entry should
-   appear at the top of the run log. Come back after the next hour and check a
-   second entry appeared on its own.
+**b) Confirm from the Automation screen that tasks are running.** Go to
+**Events > Automation**. The banner at the top says, in words, whether scheduled
+tasks are running, running late or stopped, and the Scheduled tasks table says
+when each job last ran and when it is next due. Wait for two of the external
+pings and check that the banner says running and that the run log has grown.
 
-**An external pinger works too** (cron-job.org, UptimeRobot and similar). Point
-it at the same URL, hourly. Note that a pinger may report a timeout or a failure
-even when the run completed: `wp-cron.php` calls `ignore_user_abort()` and keeps
-working after the connection is dropped. **The run log under Events > Automation is the
-source of truth, not the pinger's status code.**
+Do not skip this step. It is the only thing standing between a mistyped URL and
+a site where reminders silently stop.
 
-**Do not add more than one trigger.** One cron job or one pinger, not both. The
-run lock will stop two runs overlapping, but a second trigger only ever produces
-log entries saying a run stood down.
+**c) Only then set `DISABLE_WP_CRON`.** Edit `wp-config.php` and add this line
+**above** the `/* That's all, stop editing! */` comment:
+
+    define( 'DISABLE_WP_CRON', true );
+
+This stops WordPress firing scheduled tasks off visitor traffic, so the external
+ping is the only thing that triggers a run and the same work cannot happen
+twice. Setting it before step (b) means that if the ping is not working, nothing
+is running at all and nothing says so.
+
+`wp-cron.php` keeps working with the constant set: it never consults it. The
+constant only suppresses the spawn that ordinary page loads would otherwise do.
+
+**After this, scheduled work depends on an external service.** That is a real
+trade for the portability, and it is worth writing on a sticky note: if reminders
+ever stop, the cron-jobs.org job is the first place to look, before anything in
+this plugin.
+
+**The page-view nudge stays on, and it is not a second scheduler.** It is a
+request from sfaf.org, which has traffic this site does not, and it arrives
+whether or not the external service is alive. That is what lets this site notice
+that the external service has stopped and send the alert email; a site that is
+never visited cannot report that it is never visited. Leave it alone.
+
+**What still cannot be caught.** If the external ping dies AND nothing else ever
+requests this site, no code here runs, including the health check, so no alert is
+sent. The nudge is what closes that in practice. The Automation screen is the
+place to confirm it, and the alert email is the thing that should arrive first.
+
+**Do not add a second scheduler.** One cron job or one pinger, not both, and not
+a cPanel cron job as well. The run lock will stop two runs overlapping, but a
+second trigger only ever produces log entries saying a run stood down.
+
+**A timeout at the pinger does not mean the run failed.** `wp-cron.php` calls
+`ignore_user_abort()` and keeps working after the connection is dropped, so a
+service that gives up after a few seconds may record a failure for a run that
+completed. **The run log under Events > Automation is the source of truth, not
+the status code the pinger recorded.**
 
 **Email deliverability.** Mail is sent through `wp_mail()`, so an SMTP plugin or
 a `wp_mail` filter can take delivery over without any code change, and nothing
@@ -466,6 +512,42 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.34.0 =
+
+**An external scheduler is now the documented setup, the readme says which URL and in what order, and the runner fires every 15 minutes so that ping does something.** Reminders have never depended on anything but somebody visiting a page, and the plan is cron-jobs.org requesting a URL every quarter of an hour. Two candidate URLs behave very differently and only one is right. `wp-cron.php?doing_wp_cron` dispatches WordPress's WHOLE schedule: core's maintenance, every other plugin's jobs, and this plugin's among them. The admin-ajax endpoint built in 3.25.0 calls `SFAF_Cron::run()` directly, so it runs this plugin's jobs and nothing else, and once `DISABLE_WP_CRON` is set nothing else is dispatching that queue: pointing the scheduler at it would keep the calendar working and quietly stop everything else on the site. It also throttles itself to one run per 15 minutes and answers 204 inside that window, so an external 15-minute ping lands on the boundary and is turned away about half the time. `wp-cron.php` needs no parameter, no header and no key, and it never consults `DISABLE_WP_CRON`: that constant only suppresses the spawn from ordinary page loads.
+
+Pinging it every 15 minutes was going to be **most of a no-op anyway**, and that is the part nobody had noticed. wp-cron.php dispatches events that are DUE, and `sfaf_cron_hourly` was scheduled hourly, so three of every four pings would have found nothing to run and the two-hour pre-event summary would still have been up to an hour late. The hook now runs on a registered 15-minute recurrence, which is the number the page-view nudge has used since 3.25.0 for exactly the same reason. Sites installed before this migrate on the next request: `wp_get_schedule()` is asked what the hook is actually on, and anything that is not ours is cleared and re-laid, because "is it scheduled?" would have found the hourly event present and left it there forever.
+
+The interval is registered from **file scope in the main plugin file, not from `SFAF_Cron::register()`**, and that placement is load-bearing. Core hangs `wp_cron()` on `init` at priority 10 and adds it in default-filters.php long before this plugin adds its own `init` callback at the same priority, so wp_cron() runs first. A recurrence it cannot find is one it responds to by **unscheduling the event**, so registering the filter any later would have had the runner delete itself, silently, on the first request after the update.
+
+The readme's advice to set up a cPanel cron job is gone rather than left beside the new advice, because two recommendations mean somebody follows the wrong one. It is replaced by an ordered a/b/c: create the ping, confirm from the Automation screen that tasks are running, and only then set `DISABLE_WP_CRON`. That order is the whole point. Setting the constant first, with a mistyped URL, leaves a site where nothing runs at all and nothing anywhere says so.
+
+**The Automation screen can now answer "is this working?", which it could not.** It opened with a Status table whose first row was a health sentence and whose remaining rows were configuration, and there was no way to see when a job last ran or when it is next due. Two people need that: somebody who has just pointed a scheduler at this site and wants to know whether it worked, and somebody six months later wondering why reminders stopped. Neither knows or should need to know what cron is.
+
+So the screen opens with a banner that answers it in a sentence, in one of four states. Working, running late (nothing completed for 45 minutes), stopped (nothing for three hours, or three failed runs in a row), and never run. The state is in the headline text as well as in the colour and a 4px bar, on the 3.20.0 reasoning: a banner that says "working" only by being green says nothing to a reader who cannot separate the greens, and this is the one thing on the screen somebody came to read. Under it, a **Scheduled tasks** table: each job, a sentence saying what it does, when it last actually ran, when it is next due, and what happened. "Last ran" means the last time the job DID something rather than the last time it was passed over, so a job that has been switched off still reports the last real run.
+
+The forty-five minutes and the three hours are deliberately different numbers. Three hours decides when to wake somebody by email, so it has to be long enough that one hiccup at the pinger does not send one. Forty-five minutes decides what to say to somebody already looking at the screen, where being told early costs nothing.
+
+Three jobs were three hand-written lines inside `run()` while the screen described two of them in prose. They are now **one list**, `SFAF_Cron::tasks()`, that both the runner and the screen iterate, so a job cannot be run without appearing on the screen and cannot appear without being run. The Status table lost the two rows that now duplicated it.
+
+**The cron alert emails still work when cron is externally driven, and the one hole in them is now written down.** The health check hangs off `wp_loaded`, not off the runner, which was already the right call: anything hanging off the thing being monitored is a monitor that works right up until it is needed. `wp_loaded` fires on a wp-cron.php request too, so the external scheduler drives the check as well as the work, and a failing run or a broken task is reported exactly as before. What it cannot catch is the trigger dying while nobody visits: no request means no `wp_loaded`, which means no check and no email, and no monitor inside a site can report that the site is not being visited. **The page-view nudge is what closes that in practice** and is now documented as a reason to keep it rather than something to turn off once a real scheduler exists: it is a request from sfaf.org, which has traffic this site does not, and it arrives whether or not cron-jobs.org is alive.
+
+**The Automation screen's headings and controls were rendering against the card border, and the reason was that no rule existed at all.** `.uc-admin-card` declared a background, a border and a radius and no padding, so a card looked correct only when every child inside it happened to carry padding of its own. A table does, through its cells. The Calendar Users explainer, search bar and pager do, through rules written for each of them. Headings, paragraphs and forms carry none, and Automation's cards are made of exactly those.
+
+That is the 3.16.0 shape, styled by accident of the container, rather than the 3.20.0 one, a correct rule losing a cascade fight, and the `-actions` baseline written in 3.20.0 cannot help: that convention lives in `portal.css` and reaches no WordPress admin screen. **Which screens had no rule: Automation, all four of its cards, 14 elements. Calendar Users, whose one card also has no padding and only looks right because each of its five children carries its own.** The other five cards, on the shortcode generator and the embed screens, each declared padding under a name of their own, which is five copies of one decision at three different values.
+
+The card now owns its padding at a single 20px gutter, the five per-card copies are deleted in favour of it, and the four full-bleed children name themselves and pull back out to the edge. Table cells moved from a 16px gutter to the same 20px, so a heading, a table cell and a search bar all start on one vertical line. `.claude/admin-padding-audit.php` is the committed check: it reads the renderers, finds every card, lists what each renders directly inside it and asks the stylesheet whether the card or that child declares horizontal padding. Its first cut counted only `<div>` for depth and reported forty problems, because every `<span>` in a table cell and every control inside a padded `<form>` came back as a direct child. Half of what it found was not there. It counts every container now and reports 14, and it refuses to run at all if it finds fewer than three cards, because an audit that silently matches nothing reports a clean result.
+
+**"Add to Google Calendar" and "Add to Apple or Outlook" wrapped to three lines and two, so a matched pair of buttons rendered at different heights.** Fixed at the root rather than by forcing equal heights: the words that wrapped are the words both buttons shared, so they are said once as an **Add to calendar** heading above the pair, and each button carries only what tells it apart. **Google** and **Apple or Outlook**, one line each. The geometry stopped depending on the labels as well, so a longer one later cannot bring the fault back: the cells are `width="50%"` as an attribute (Word ignores a CSS percentage) and each button fills its cell.
+
+Each carries a small calendar glyph, and it is **the plugin's own mark, not a platform logo**. Google, Apple and Outlook are registered trademarks with published brand terms, SFAF is a nonprofit with a brand guide of its own, and nothing here has been cleared to reproduce them. One generic glyph on both says the same thing and asks nobody's permission. An inline SVG does not render in Gmail, Outlook or Yahoo, so it is a raster: `.claude/build-email-icons.js` rasterises the same path data `sfaf_icon()` draws from, at 32px for a 16px slot, in the two button foregrounds, because an email has no `currentColor` to inherit.
+
+**How it degrades with images off,** which is the default in many clients: the glyph carries `alt=""` and is therefore decorative, so a client that blocks it shows an empty 16px box and the button reads **Google**. The glyph is never the only thing carrying a meaning, so nothing is lost but the decoration. `width` and `height` are attributes as well as styles, so a blocked image reserves exactly 16px and both buttons stay the same height whether or not pictures loaded. A Unicode calendar character was the other candidate and was rejected: it can never be blocked, which is a real advantage, but it is the reader's emoji font rather than this plugin's icon language, so it arrives as a different mark in every client and as a colour picture beside a brand-coloured label.
+
+The email render test grew a section for all of it, and the images-off claim is checked by **actually stripping the images and looking again** rather than by reasoning about alt text. Four faults were planted to prove the checks can fail: the long label returning, a button that does not fill its cell, a vendor logo in an image source, and a glyph carrying alt text instead of being decorative. Each was caught, by name. The platform-logo check is a whitelist of the three image files this plugin ships, so a vendor mark added later is caught by default rather than missed by default.
+
+VERIFIED: 44 PHP files parse under PHP 8.3; the callable audit resolves 113 plugin functions, 187 `$this->` calls and 379 `Class::` members with nothing unresolved; 5 scripts pass `node --check`; the full `.claude` suite runs green, all 11 harnesses plus the two new ones; the admin padding audit goes from 14 elements against the border to 0; four planted email faults each caught by name; the confirmation email rendered in a browser and looked at. Zip built with bsdtar, extracted, and both the linter and the callable audit re-run from the extract.
 
 = 3.33.0 =
 

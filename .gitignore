@@ -51,3 +51,6 @@ node_modules/
 *.sublime-workspace
 *.swp
 *~
+
+# The staging tree build-zip.sh assembles. Rebuilt on every build.
+.build-stage/

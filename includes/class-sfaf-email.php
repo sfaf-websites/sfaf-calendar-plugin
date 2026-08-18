@@ -103,6 +103,41 @@ class SFAF_Email {
         return SFAF_PLUGIN_URL . 'public/images/sfaf-email-header.png';
     }
 
+    /**
+     * A button glyph, as a raster, because an SVG does not render in email.
+     *
+     * WHY A PICTURE AND NOT A CHARACTER. The two candidates were an inline
+     * image and a Unicode calendar (U+1F4C5). The character always renders and
+     * can never be blocked, which is a real advantage, and it loses on the
+     * requirement that decided this: it is the reader's emoji font, not this
+     * plugin's icon language, so it arrives as a different mark in every client
+     * and as a colour picture next to a brand-coloured label. The image is the
+     * SAME mark sfaf_icon() draws on the website, rasterised from the same path
+     * data by .claude/build-email-icons.js.
+     *
+     * WHY NOT THE PLATFORM LOGOS. The buttons say "Google" and "Apple or
+     * Outlook" and the obvious icons are each vendor's. Those are registered
+     * trademarks with published brand terms and nothing here has been cleared
+     * to reproduce them. One generic calendar glyph on both buttons says the
+     * same thing and asks nobody's permission.
+     *
+     * HOW IT DEGRADES WITH IMAGES OFF, which is the default in many clients: it
+     * carries alt="" and is therefore decorative, so a client that blocks it
+     * shows an empty 16px box and the button reads "Google". The glyph is never
+     * the only thing carrying a meaning, so nothing is lost but the decoration.
+     * width and height are stated as attributes as well as in the style, so the
+     * blocked box is 16px rather than whatever the client guesses, and both
+     * buttons stay the same height whether or not pictures loaded.
+     *
+     * @param string $on 'ink' for the yellow button, 'teal' for the outline.
+     */
+    public static function icon( $on = 'ink' ) {
+        $file = ( 'teal' === $on ) ? 'icon-calendar-teal.png' : 'icon-calendar-ink.png';
+        return '<img src="' . esc_url( SFAF_PLUGIN_URL . 'public/images/' . $file ) . '"'
+            . ' width="16" height="16" alt=""'
+            . ' style="width:16px; height:16px; border:0; outline:none; vertical-align:middle; margin-right:7px;" />';
+    }
+
     /* =====================================================================
      * Sending
      * ================================================================== */
@@ -254,32 +289,87 @@ class SFAF_Email {
     }
 
     /**
+     * A small section label, for a pair of controls that need naming.
+     *
+     * Sentence case and quiet: it is a signpost above something, not a heading
+     * competing with the one at the top of the message.
+     */
+    public static function label( $text ) {
+        return '<p style="margin:0 0 8px 0; font-family:' . self::FONT . '; font-size:13px; line-height:1.4; font-weight:700; color:' . self::C_MUTED . ';">'
+            . esc_html( $text ) . '</p>';
+    }
+
+    /**
      * A button, drawn as a table cell so it is a real rectangle in Outlook.
      *
      * ONE PRIMARY PER EMAIL. Yellow means "this is the thing to act on", and a
      * second yellow button means neither of them does.
      *
+     * @param string $url
+     * @param string $label
      * @param string $style 'primary' (yellow, dark text) | 'outline' (teal).
+     * @param bool   $icon  Put the calendar glyph on it. See icon().
+     * @param bool   $fill  Stretch to the width of whatever contains it, which
+     *                      is what makes a pair of these equal width.
      */
-    public static function button( $url, $label, $style = 'primary' ) {
+    public static function button( $url, $label, $style = 'primary', $icon = false, $fill = false ) {
         $primary = ( 'primary' === $style );
         $bg      = $primary ? self::C_YELLOW : '#ffffff';
         $fg      = $primary ? self::C_INK : self::C_TEAL;
         $border  = $primary ? self::C_YELLOW : self::C_TEAL;
 
-        return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px 0;">'
+        // A filled button's <a> is display:block so the whole rectangle is the
+        // target rather than the text inside it. An unfilled one stays
+        // inline-block and shrinks to its label, which is what every other
+        // button in these messages wants.
+        $width   = $fill ? ' width="100%" style="width:100%;"' : '';
+        $display = $fill ? 'block' : 'inline-block';
+        $pad     = $fill ? '13px 10px' : '12px 22px';
+
+        return '<table role="presentation" cellpadding="0" cellspacing="0" border="0"' . $width . '>'
             . '<tr><td align="center" bgcolor="' . $bg . '" style="background-color:' . $bg . '; border:2px solid ' . $border . ';">'
             . '<a href="' . esc_url( $url ) . '"'
-            . ' style="display:inline-block; padding:12px 22px; font-family:' . self::FONT . '; font-size:15px; font-weight:700; line-height:1; color:' . $fg . '; text-decoration:none;">'
+            . ' style="display:' . $display . '; padding:' . $pad . '; font-family:' . self::FONT . '; font-size:15px; font-weight:700; line-height:1.2; color:' . $fg . '; text-decoration:none; white-space:nowrap;">'
+            . ( $icon ? self::icon( $primary ? 'ink' : 'teal' ) : '' )
             . esc_html( $label ) . '</a>'
             . '</td></tr></table>';
     }
 
-    /** Two buttons side by side, which in a mail client means a two-cell row. */
+    /**
+     * Two buttons side by side and the SAME WIDTH AS EACH OTHER.
+     *
+     * WHY EQUAL WIDTH IS A METHOD AND NOT A STYLE ON A CALLER. The pair used to
+     * be two shrink-to-fit buttons in two shrink-to-fit cells, so their size was
+     * whatever their labels happened to measure. "Add to Google Calendar"
+     * wrapped to three lines and "Add to Apple or Outlook" to two, which is how
+     * two buttons meant to be a matched pair ended up different heights. The
+     * labels were shortened to fix that at the root; this makes the geometry
+     * stop depending on the labels at all, so a longer one later cannot bring
+     * the fault back.
+     *
+     * Each cell is width="50%" as an attribute as well as a style: Word's
+     * engine honours the attribute and ignores a percentage in CSS.
+     *
+     * @param array $buttons Up to two, each already built by button().
+     */
     public static function button_row( $buttons ) {
-        $out = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px 0;"><tr>';
-        foreach ( $buttons as $b ) {
-            $out .= '<td valign="top" style="padding:0 10px 0 0;">' . $b . '</td>';
+        $buttons = array_values( $buttons );
+        $count   = count( $buttons );
+        if ( ! $count ) {
+            return '';
+        }
+        if ( 1 === $count ) {
+            return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px 0;">'
+                . '<tr><td valign="top">' . $buttons[0] . '</td></tr></table>';
+        }
+
+        $pct = (int) floor( 100 / $count );
+        $out = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 8px 0;"><tr>';
+        foreach ( $buttons as $i => $b ) {
+            // A gutter between, and none on the outside, so the pair lines up
+            // with the text above and below it on both edges.
+            $pad  = ( 0 === $i ) ? '0 6px 0 0' : ( ( $count - 1 === $i ) ? '0 0 0 6px' : '0 6px' );
+            $out .= '<td valign="top" width="' . $pct . '%" style="width:' . $pct . '%; padding:' . $pad . ';">' . $b . '</td>';
         }
         return $out . '</tr></table>';
     }

@@ -384,6 +384,100 @@ if ( false !== $write && isset( $argv[ $write + 1 ] ) ) {
     echo 'wrote ' . ( count( $built ) * 2 ) . " files to $dir\n";
 }
 
+/* ---------------------------------------------------------------------------
+ * ADD TO CALENDAR: A MATCHED PAIR, A GENERIC GLYPH, AND IT READS WITH IMAGES OFF.
+ *
+ * The pair rendered at two different heights because each button was sized by
+ * its own label: "Add to Google Calendar" wrapped to three lines and "Add to
+ * Apple or Outlook" to two. The labels were shortened AND the geometry was made
+ * independent of them, so these checks cover both halves. A longer label
+ * arriving later must not be able to bring the fault back.
+ *
+ * THE IMAGES-OFF CHECK IS THE ONE THAT MATTERS, and it is done by actually
+ * removing the images rather than by reasoning about alt text. Many clients
+ * block pictures by default; a button that says nothing without one is a button
+ * a large share of recipients cannot read.
+ * ------------------------------------------------------------------------ */
+$confirmation = isset( $built['confirmation'] ) ? $built['confirmation']['html'] : '';
+
+if ( '' === $confirmation ) {
+    $fails[] = 'add-to-calendar: no confirmation was built, so none of this was checked';
+} else {
+    if ( false === strpos( $confirmation, '>Add to calendar</p>' ) ) {
+        $fails[] = 'add-to-calendar: the pair has no heading above it';
+    }
+
+    // Equal width, stated as an attribute so Word honours it.
+    if ( 2 !== substr_count( $confirmation, 'width="50%"' ) ) {
+        $fails[] = 'add-to-calendar: the two buttons are not in equal-width cells';
+    }
+
+    // Filling the cell is what makes the width real rather than nominal.
+    if ( 2 !== substr_count( $confirmation, 'display:block; padding:13px 10px' ) ) {
+        $fails[] = 'add-to-calendar: a button does not fill its cell, so its size still depends on its label';
+    }
+
+    // The labels themselves, which is the root fix.
+    foreach ( array( '>Google</a>', '>Apple or Outlook</a>' ) as $needle ) {
+        if ( false === strpos( $confirmation, $needle ) ) {
+            $fails[] = "add-to-calendar: expected a button ending $needle";
+        }
+    }
+    if ( false !== strpos( $confirmation, 'Add to Google Calendar' ) ) {
+        $fails[] = 'add-to-calendar: the long label is back, and it wraps to three lines';
+    }
+
+    // The glyph: present, decorative, and sized so a blocked one reserves 16px
+    // rather than whatever the client guesses.
+    if ( 2 !== preg_match_all( '#<img[^>]+icon-calendar-[a-z]+\.png[^>]*>#', $confirmation, $icons ) ) {
+        $fails[] = 'add-to-calendar: expected a calendar glyph on each of the two buttons';
+    } else {
+        foreach ( $icons[0] as $img ) {
+            if ( false === strpos( $img, 'alt=""' ) ) {
+                $fails[] = 'add-to-calendar: a glyph is not marked decorative, so a screen reader will announce it';
+            }
+            if ( false === strpos( $img, 'width="16"' ) || false === strpos( $img, 'height="16"' ) ) {
+                $fails[] = 'add-to-calendar: a glyph has no width/height attributes, so a blocked image resizes the button';
+            }
+        }
+    }
+
+    // IT READS WITH IMAGES OFF. Strip every picture and look again.
+    $imageless = preg_replace( '#<img[^>]*>#', '', $confirmation );
+    foreach ( array( '>Google</a>', '>Apple or Outlook</a>' ) as $needle ) {
+        if ( false === strpos( $imageless, $needle ) ) {
+            $fails[] = "add-to-calendar: with images blocked the button loses $needle";
+        }
+    }
+    if ( false === strpos( $imageless, 'Add to calendar' ) ) {
+        $fails[] = 'add-to-calendar: with images blocked the heading is gone too';
+    }
+}
+
+/*
+ * NO PLATFORM MARK IN ANY MESSAGE.
+ *
+ * Google, Apple and Outlook are registered trademarks with published brand
+ * terms and nothing here has been cleared to reproduce them. A whitelist rather
+ * than a blacklist: every image in every message must be one of the two files
+ * this plugin ships, so a vendor logo added later is caught by default.
+ */
+$ALLOWED_IMAGES = array( 'sfaf-email-header.png', 'icon-calendar-ink.png', 'icon-calendar-teal.png' );
+foreach ( $built as $name => $out ) {
+    if ( ! preg_match_all( '#<img[^>]+src="([^"]+)"#', $out['html'], $srcs ) ) {
+        continue;
+    }
+    foreach ( $srcs[1] as $src ) {
+        $file = basename( parse_url( $src, PHP_URL_PATH ) );
+        if ( ! in_array( $file, $ALLOWED_IMAGES, true ) ) {
+            $fails[] = "$name: unknown image $file. If it is a platform logo, it is not ours to send.";
+        }
+        if ( 0 !== strpos( $src, 'http' ) ) {
+            $fails[] = "$name: image $src is relative, and an email has no base URL";
+        }
+    }
+}
+
 echo "Email render test\n";
 echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, the alert and\n";
 echo "       the summary in both of their recipient versions)\n";
@@ -392,7 +486,10 @@ echo "                     postal address in both parts, no modern CSS, closed p
 echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links\n";
 echo "checked across them: no message links into caladmin except the two that route per recipient,\n";
 echo "                     the alert's link matches the recipient's access, the confirmation greets by\n";
-echo "                     first name only, and a registration with no surname still renders a name\n\n";
+echo "                     first name only, and a registration with no surname still renders a name\n";
+echo "add to calendar:     a heading, two equal-width buttons that fill their cells, a generic glyph on\n";
+echo "                     each, no platform logo in any message, and both buttons still read with the\n";
+echo "                     images actually stripped out\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

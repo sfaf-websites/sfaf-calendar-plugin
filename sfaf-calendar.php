@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.33.0
+ * Version: 3.34.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.33.0' );
+define( 'SFAF_VERSION', '3.34.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -128,6 +128,20 @@ try {
     sfaf_fail_safe( 'loading the plugin files', $sfaf_load_error->getMessage() );
     return;
 }
+
+/*
+ * THE FIFTEEN-MINUTE INTERVAL IS REGISTERED HERE, NOT IN SFAF_Cron::register().
+ *
+ * WordPress hangs wp_cron() on `init` at priority 10, and default-filters.php
+ * adds it long before this plugin adds sfaf_init() at the same priority, so
+ * wp_cron() runs FIRST. If the interval is not already on the filter by then,
+ * wp_cron() cannot find the recurrence its own stored event names, and its
+ * answer to that is to unschedule the event: the runner would delete itself,
+ * quietly, on the first request after an update. File scope is the only place
+ * early enough to be certain, and the callback is a pure array literal, so
+ * running it on every request costs nothing.
+ */
+add_filter( 'cron_schedules', array( 'SFAF_Cron', 'add_schedule' ) );
 
 /**
  * Initialize the plugin

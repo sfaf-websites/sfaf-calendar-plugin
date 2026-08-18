@@ -8,27 +8,58 @@ together; `DESIGN.md` is color, type and layout; `CLAUDE.md` is the standing
 working rules and the build gate. Read `PROJECT.md` first if you need to know how
 something works. This file only answers "what is true right now".
 
-**Last updated:** 2026-08-17, at 3.32.0.
+**Last updated:** 2026-08-18, at 3.34.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.32.0**, built as `sfaf-calendar-3.32.0.zip` in the project
-root and pushed to `origin/production-2.0`. The last three releases were all the
-combined display mode: 3.30.0 introduced it, 3.31.x fixed it rendering nothing
-and then rendering 40px strips, and 3.32.0 made its right-hand column the sidebar
-renderer rather than a second card list. Whether 3.32.0 is installed on
+The plugin is at **3.34.0**, built as `sfaf-calendar-3.34.0.zip` in the project
+root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.32.0, the deployment is stale or partial, and that
+screen: if it does not say 3.34.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
+
+**The scheduled path works end to end.** A morning-of reminder went out
+unassisted at 6:58am on 2026-08-18. That was the single most valuable unverified
+thing in the system and it is now verified. Cron is a reliability question from
+here, not a "does it work" question.
+
+## Cron now depends on an external service
+
+**If reminders stop silently in six months, look at cron-jobs.org first, before
+anything in this plugin.** That is the trade 3.34.0 made deliberately, in
+exchange for the plugin needing no server configuration and staying portable.
+
+The order matters and getting it wrong means nothing runs at all:
+
+1. Create the external ping: **cron-jobs.org**, every 15 minutes, requesting
+   `https://<site>/wp-cron.php?doing_wp_cron`. No parameter, no header, no key.
+2. Confirm on **Events > Automation** that the banner says tasks are running and
+   the log has grown. Wait for two pings.
+3. **Only then** add `define( 'DISABLE_WP_CRON', true );` to `wp-config.php`.
+
+Doing (3) before (2) with a mistyped URL leaves a site where nothing runs and
+nothing says so. The readme has the full version under "Scheduled Tasks".
+
+**Not `admin-ajax.php?action=sfaf_cron_ping`.** That endpoint runs this plugin's
+jobs only; under `DISABLE_WP_CRON` it would keep the calendar working and quietly
+stop every other scheduled job on the site. It also throttles to one run per 15
+minutes, so an external 15-minute ping would be turned away about half the time.
+
+**Leave the page-view nudge switched on.** It is not a second scheduler. It is
+the request from sfaf.org that lets this site notice the external scheduler has
+died: if the pinger stops and nobody visits, no code here runs at all, including
+the health check that sends the alert email. The nudge is what closes that.
 
 ## In flight
 
-- **3.32.0 is unverified on a live site.** The combined mode has been proved by
-  rendered-output parity tests at 770px and 1000px, not by a person looking at
-  resources.sfaf.org. Three releases in a row shipped a combined-mode defect that
-  its own passing tests could not see.
+- **3.34.0 is unverified on a live site**, including the new Automation screen
+  and the reworked confirmation-email buttons. The email was rendered in a
+  browser and looked at; it has not been delivered to a mailbox. The test send on
+  the Automation screen is how that gets checked.
+- **The external ping has not been created yet.** Until it is, the only thing
+  driving cron is visitor traffic and the page-view nudge from sfaf.org.
 - **The GFMP campaign image is deliberately unmapped.** Both fields their schema
   offers were tried and both were wrong, so campaigns currently fall through to
   the branded placeholder. The `sfaf_gfmp_image_fields` filter can restore a
@@ -57,11 +88,16 @@ Not yet done, and each matters for a different reason.
    Both are defined in `includes/sfaf-template-functions.php` and called nowhere
    inside the plugin. They are theme-facing on purpose, so they cannot be deleted
    until the theme is known not to call them. One grep settles it.
-3. **The overnight test: does a morning-of reminder and a two-hour pre-event
-   summary actually send?** This is the single most valuable unverified thing in
-   the whole system. Nothing in the scheduled path has ever run unattended in
-   production, and the failure mode is silent. It needs a real event, a real
-   registration, and somebody checking a mailbox the next morning.
+3. **The two-hour pre-event summary, unattended.** The morning-of reminder is
+   proved (2026-08-18, 6:58am, unassisted). The summary is the other half and has
+   not been seen: it is due two hours before an event starts, which is what the
+   15-minute runner in 3.34.0 exists to make accurate, and it needs an event with
+   somebody registered and a staff mailbox being watched.
+4. **Send yourself the confirmation email** from Events > Automation and look at
+   the two Add to calendar buttons. They were rebuilt in 3.34.0 and have been
+   seen in a browser, not in a mail client. Outlook on Windows is the one that
+   matters, and the specific question is whether the two buttons are the same
+   height and whether the calendar glyph loads.
 
 ## Open decisions
 
@@ -91,15 +127,12 @@ Only the ones still live or likely to recur. `PROJECT.md` §7 has the full set
 with the mechanisms.
 
 - **Tests that pass while the thing is broken.** Three combined-mode releases in
-  a row. Counting events is not looking at them; asserting a panel exists is not
-  asserting a visitor can see it. Before trusting a new checker, plant the fault
-  it should catch and watch it fail.
-- **A correct rule that never reaches the screen.** A one-class component rule
-  under a class-plus-element base rule loses, silently. Compute the cascade
-  before rewriting anything in CSS.
-- **A comment quoting the line it replaced.** Two builds running, a source sweep
-  matched its own explanatory comment and reported a false positive. Strip
-  comments before sweeping CSS or JS.
+  a row. Before trusting a new checker, plant the fault it should catch and watch
+  it fail. Done four times in 3.34.0 on the email checks, and the padding audit
+  was itself corrected by it: its first cut over-reported by a factor of three.
+- **A correct rule that never reaches the screen**, and its twin, **a rule that
+  was never written at all.** 3.34.0 was the second kind: cards looked padded
+  because their children happened to be. Ask which of the two before rewriting.
 - **Shell strings carrying `$`.** This has damaged the generator twice and
   shipped a parse error once. Write the script to a file and run the file. Never
   begin a Bash command with a variable assignment.
