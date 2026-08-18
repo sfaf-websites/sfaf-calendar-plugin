@@ -895,8 +895,10 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     $date     = get_post_meta( $event_id, '_uc_event_date', true );
     $date_fmt = sfaf_ap_date( $date, 'full' );
 
-    $organizers = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'names' ) );
-    $organizer  = ( ! is_wp_error( $organizers ) && ! empty( $organizers ) ) ? implode( ', ', $organizers ) : '';
+    // THE PHRASE, not a comma-joined list: this is the {organizer} token a
+    // manager writes into an email body and the ORGANIZER line on an .ics, and
+    // both are read by a person. Ordered by name, like every other reader.
+    $organizer = SFAF_Organizers::phrase( $event_id );
 
     // Start and end as one readable phrase. An event with no end time says just
     // the start rather than inventing one, and an event with neither says

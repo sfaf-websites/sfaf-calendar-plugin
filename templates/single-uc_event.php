@@ -23,7 +23,6 @@ while ( have_posts() ) :
     // nothing regenerates it. See SFAF_Recurrence.
     $recurrence = SFAF_Recurrence::pattern_of( $post_id );
 
-    $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
     $venues     = wp_get_post_terms( $post_id, 'uc_venue' );
 
     $cat_color = sfaf_event_category_color( $post_id );
@@ -111,13 +110,24 @@ while ( have_posts() ) :
 
                 <h1 class="uc-single-title"><?php the_title(); ?></h1>
 
-                <?php if ( ! empty( $organizers ) ) : ?>
-                    <p class="uc-single-organizer">Hosted by
-                        <?php
-                        $names = wp_list_pluck( $organizers, 'name' );
-                        echo esc_html( implode( ', ', $names ) );
-                        ?>
-                    </p>
+                <?php
+                /*
+                 * "Hosted by A and B", not "Hosted by A, B".
+                 *
+                 * This page already named every organizer an event had, joined
+                 * with a comma, so the names were right and the English was
+                 * not. SFAF_Organizers::phrase() is the one place the joining
+                 * is decided, so the card, the search-engine listing and this
+                 * cannot word it three ways. AP style, so no serial comma:
+                 * "A, B and C".
+                 *
+                 * An event with ONE organizer renders exactly the string it
+                 * always did.
+                 */
+                $organizer_phrase = SFAF_Organizers::phrase( $post_id );
+                if ( '' !== $organizer_phrase ) :
+                ?>
+                    <p class="uc-single-organizer">Hosted by <?php echo esc_html( $organizer_phrase ); ?></p>
                 <?php endif; ?>
 
                 <?php

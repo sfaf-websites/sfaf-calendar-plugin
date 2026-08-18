@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.39.0
+Stable tag: 3.40.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -528,6 +528,33 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.40.0 =
+
+**Events can be co-hosted, and checking for that first found the caladmin editor was silently deleting a second organizer.**
+
+**SAVING AN EVENT WAS ALREADY DROPPING ONE, AND IT MAY ALREADY HAVE HAPPENED.** The taxonomy has always accepted several organizers: `uc_organizer` is non-hierarchical, and its `show_ui` defaults to `public`, which is true, so the WordPress post editor's own Organizers box has always been able to put two on an event. What limited an event to one was the caladmin picker, a single select that read `[0]` and whose save wrote an array of that one back through `wp_set_object_terms()`, whose default REPLACES. So an event holding two organizers showed one in caladmin and lost the other the moment anybody pressed Save, with nothing said and nothing logged.
+
+That is exactly the fault categories had until 3.8.0, on a different taxonomy, reachable the same way. Anybody who set two organizers through the WordPress editor and later opened that event in caladmin has lost one, and there is no record of it: the term relationship is simply gone. Both halves are now asserted as gone, because either one surviving reintroduces the loss.
+
+**No primary organizer, and nothing needs one.** A category's first alphabetically drives the card colour and the placeholder tile; an organizer carries no colour and no icon, so nothing downstream has a decision to make. **They are ordered by name**, through one method, because term relationships come back in an order nothing guarantees and the same event would otherwise name its hosts one way on its page and the other way on a card, in an email or in a satellite payload. Alphabetical is what a reader can predict and what the Organizers screen already lists.
+
+**The wording, decided in one place so three surfaces cannot differ.** One: `The Stonewall Project`. Two: `Black Brothers Esteem and The Stonewall Project`. Three: `Black Brothers Esteem, Elizabeth Taylor 50 Plus Network and The Stonewall Project`. **No serial comma**, which is AP style for a simple series and therefore the house style. An event with ONE organizer renders exactly the string it always did, which is what makes this invisible unless somebody uses it.
+
+**Everything checked, and what each needed.**
+
+CHANGED: the event editor's picker, now checkboxes with a present marker, so unticking every box means "none" rather than "the form did not ask"; its save, which writes the ticked set; the event page, which already listed every organizer joined with a comma, so the names were right and the English was not; the card byline, which named the first only; the JSON-LD; the series prefill from 3.38.0, which offered the first; the caladmin events-list column, the `{organizer}` token and .ics field, and the satellite payload, all of which handled several already but in an order nothing guaranteed.
+
+**The pending queue needed nothing**, because it renders through `render_manager_control()`, the same shared source as the editor, so it became checkboxes with it.
+
+UNCHANGED, and each for a reason worth stating: the organizer FILTER on the public calendar and in both generators is a `tax_query`, which has always matched an event where the term is one of several, so a co-hosted event now appears under BOTH hosts and both counts include it, which is correct. Embed blocks scoped by organizer resolve through that same query, so a block scoped to one host includes an event if EITHER organizer matches. Search covers the taxonomy by term name and reads every term. Duplicate-as-template already copied all terms. The per-organizer count on the Organizers screen and the count named in the deletion confirmation are the same `tax_query` and have always counted "one of several".
+
+**The JSON-LD is the one place that does NOT use the phrase**, deliberately. `schema.org/Event` declares `organizer` as accepting one value or many, so several hosts emit an ARRAY of Organization objects: a search engine reading "A and B" gets one organisation with a strange name. Prose joining is for people. One organizer still emits a single object rather than an array of one.
+
+**Imported events are unaffected, structurally.** `organizer` is on `manager_fields()` for both adapters, so no fetch has ever written it and none can. If a source ever supplies several, nothing happens: the adapter path does not write this taxonomy at all, and a platform's organizer is its own record rather than a term here. Making one arrive would be deliberate mapping work, not something that starts happening. The slug and the public archive are untouched, which the test asserts, because embed blocks resolve by slug.
+
+**Eight faults planted and the two that were not caught were both worth having.** The single select returning, the save writing one value, the control not posting an array, the present marker dropped, the ordering going away, and a serial comma creeping in were all caught by name. Deleting the two-name branch of the joining rule changed nothing, which is the plant finding dead code rather than a hole in the test: for two names the general case pops the last, imploding one name gives that name, and appending " and B" produces "A and B". The branch is gone. The other plant added `post__in` to a query and the test's `WP_Query` stub reads only `tax_query`, so it was blind to it and proved nothing; it was rewritten as the change somebody might actually make, a post-filter keeping only events where the organizer is the sole one, and that is caught.
+
+VERIFIED: 58 PHP files parse under PHP 8.3; the callable audit resolves everything with nothing unresolved, self-test passing; the whole `.claude` suite runs green, 19 PHP harnesses plus the JS panel test, the guard test and two self-tests; eight faults planted and every real one caught by name; three stylesheets balance and five scripts pass `node --check`. Zip built with bsdtar, extracted, diffed file by file against the tree, and both the linter and the callable audit re-run from the extract.
 = 3.39.0 =
 
 **Three bugs found by hand on a live site, and three corrections.**

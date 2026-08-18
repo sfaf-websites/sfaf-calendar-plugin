@@ -74,9 +74,35 @@ class SFAF_SEO {
         return sfaf_event_image_url( $id );
     }
 
-    private function organizer_name( $id ) {
-        $orgs = wp_get_post_terms( $id, 'uc_organizer', array( 'fields' => 'names' ) );
-        return ( ! is_wp_error( $orgs ) && ! empty( $orgs ) ) ? $orgs[0] : '';
+    /**
+     * The organizers, as schema.org expects them.
+     *
+     * AN ARRAY WHEN THERE ARE SEVERAL, not a string with "and" in it.
+     * schema.org/Event declares `organizer` as accepting one value or many, and
+     * a search engine reading "A and B" gets one organisation with a strange
+     * name. The prose joining is for people; this is for machines, and they
+     * want the list.
+     *
+     * One organizer still emits exactly what it always did: a single
+     * Organization object, not an array of one.
+     *
+     * @param int $id
+     * @return array|null
+     */
+    private function organizer_schema( $id ) {
+        $names = SFAF_Organizers::names_for_event( $id );
+        if ( empty( $names ) ) {
+            return null;
+        }
+
+        $one = function ( $name ) {
+            return array( '@type' => 'Organization', 'name' => $name );
+        };
+
+        if ( 1 === count( $names ) ) {
+            return $one( $names[0] );
+        }
+        return array_map( $one, $names );
     }
 
     private function json_ld( $label, $data ) {
@@ -96,7 +122,7 @@ class SFAF_SEO {
         $street   = isset( $parts[0] ) ? $parts[0] : (string) $loc;
         $locality = ( isset( $parts[1] ) && $parts[1] !== '' ) ? $parts[1] : 'San Francisco';
         $region   = ( isset( $parts[2] ) && $parts[2] !== '' ) ? $parts[2] : 'CA';
-        $org      = $this->organizer_name( $id );
+        $org      = $this->organizer_schema( $id );
 
         $schema = array(
             '@context'            => 'https://schema.org',
@@ -126,7 +152,7 @@ class SFAF_SEO {
         }
 
         if ( $org ) {
-            $schema['organizer'] = array( '@type' => 'Organization', 'name' => $org );
+            $schema['organizer'] = $org;
             $schema['performer'] = array( '@type' => 'Organization', 'name' => $org );
         }
 

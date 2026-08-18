@@ -134,7 +134,10 @@ class SFAF_Sync {
             // Legacy (names + colour map) kept for older satellites.
             'categories'      => $categories,
             'category_colors' => $cat_colors,
-            'organizer'       => wp_get_post_terms( $post_id, 'uc_organizer', array( 'fields' => 'names' ) ),
+            // An ARRAY of names, which it always was, so a satellite reading two
+            // gets two. Ordered, so the same event does not arrive in a
+            // different order on two fetches.
+            'organizer'       => SFAF_Organizers::names_for_event( $post_id ),
             'venue'           => wp_get_post_terms( $post_id, 'uc_venue', array( 'fields' => 'names' ) ),
             // Full term identity (stable id + slug + colour) so satellites can sync
             // renames, slug changes and colour changes onto their local terms.

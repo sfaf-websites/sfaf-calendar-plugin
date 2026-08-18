@@ -2399,7 +2399,6 @@ class SFAF_Shortcodes {
          * two categories appeared under only one of them.
          */
         $categories = sfaf_event_categories( $post_id );
-        $organizers = wp_get_post_terms( $post_id, 'uc_organizer' );
 
         $has_cat   = ! empty( $categories );
         $cat_slugs = $has_cat ? implode( ' ', wp_list_pluck( $categories, 'slug' ) ) : '';
@@ -2413,10 +2412,19 @@ class SFAF_Shortcodes {
          * The organizer taxonomy on an Eventbrite import is ours, not theirs,
          * and is frequently empty. A native event names its organizer.
          */
+        /*
+         * EVERY ORGANIZER, NOT THE FIRST (3.40.0). A co-hosted event named one
+         * of its two hosts on a card and the other nowhere.
+         *
+         * THE IMPORTED PATH IS UNCHANGED and is still checked first: an event
+         * from Eventbrite or GoFundMe Pro names the platform, because that is
+         * the honest answer to "whose event is this", and its organizer
+         * taxonomy is ours rather than theirs and is frequently empty.
+         */
         $source = sfaf_event_source_label( $post_id );
         $byline = ( '' !== $source )
             ? $source
-            : ( ( ! is_wp_error( $organizers ) && ! empty( $organizers ) ) ? $organizers[0]->name : '' );
+            : SFAF_Organizers::phrase( $post_id );
 
         // strtotime( '' ) is false, not 0, and date() on false silently means
         // "now". That is how an undated event would have printed today's

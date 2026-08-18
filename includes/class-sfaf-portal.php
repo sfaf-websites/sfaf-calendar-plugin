@@ -3833,7 +3833,10 @@ class SFAF_Portal {
             <?php foreach ( $ids as $id ) :
                 $date  = (string) get_post_meta( $id, '_uc_event_date', true );
                 $cats  = wp_get_post_terms( $id, 'uc_event_category', array( 'fields' => 'names' ) );
-                $orgs  = wp_get_post_terms( $id, 'uc_organizer', array( 'fields' => 'names' ) );
+                // Ordered, so this column and the event page name a co-hosted
+                // event's organizers in the same order. A comma is right here:
+                // this is a table column, not prose.
+                $orgs  = SFAF_Organizers::names_for_event( $id );
                 $st    = get_post_status( $id );
                 $clock = sfaf_ap_time_range(
                     (string) get_post_meta( $id, '_uc_start_time', true ),
@@ -4945,17 +4948,50 @@ class SFAF_Portal {
                 break;
 
             case 'organizer':
-                $current = $event_id ? ( wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) ) ?: array( 0 ) )[0] : 0;
+                /*
+                 * EVERY ORGANIZER ON THE EVENT, NOT THE FIRST ONE (3.40.0).
+                 *
+                 * This read `[0]`, and the save below wrote an array of that
+                 * one back with wp_set_object_terms(), whose default REPLACES.
+                 * So an event holding two organizers showed one here and lost
+                 * the other the moment anybody pressed Save, with nothing said.
+                 * The taxonomy has always accepted several; the control was
+                 * what limited it.
+                 *
+                 * That is the same fault categories had until 3.8.0, on a
+                 * different taxonomy, and it was reachable the same way: the
+                 * WordPress post editor's own Organizers box has always been
+                 * there, because show_in_menu is off on this taxonomy and
+                 * show_ui is not.
+                 */
+                $current = $event_id
+                    ? wp_list_pluck( SFAF_Organizers::for_event( $event_id ), 'term_id' )
+                    : array();
+                $current = array_map( 'intval', $current );
                 ?>
-                <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>>
+                <div class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>>
                     <span class="uc-field-label">Organizer <?php echo $this->field_badge( $state, $label ); ?></span>
-                    <select name="organizer">
-                        <option value="0">None</option>
+
+                    <?php // The marker, for the reason every other multi-value
+                          // control on this form has one: every box unticked
+                          // submits nothing, and that has to mean "none" rather
+                          // than "this form did not ask". ?>
+                    <input type="hidden" name="uc_organizer_present" value="1" />
+
+                    <div class="uc-check-grid">
                         <?php if ( ! is_wp_error( $ctx['orgs'] ) ) : foreach ( $ctx['orgs'] as $o ) : ?>
-                            <option value="<?php echo (int) $o->term_id; ?>" <?php selected( $current, $o->term_id ); ?>><?php echo esc_html( $o->name ); ?></option>
+                            <label class="uc-check">
+                                <input type="checkbox" name="organizer[]" value="<?php echo (int) $o->term_id; ?>"
+                                       <?php checked( in_array( (int) $o->term_id, $current, true ) ); ?><?php echo $this->field_disabled( $state ); ?> />
+                                <?php echo esc_html( $o->name ); ?>
+                            </label>
                         <?php endforeach; endif; ?>
-                    </select>
-                </label>
+                    </div>
+
+                    <?php if ( count( $current ) > 1 ) : ?>
+                        <span class="uc-hint uc-hint-spec">Co-hosted. The event page names them in this order.</span>
+                    <?php endif; ?>
+                </div>
 
                 <?php
                 /*
@@ -5169,8 +5205,18 @@ class SFAF_Portal {
             $posted = array_values( array_unique( array_filter( $posted ) ) );
             wp_set_object_terms( $event_id, $posted, 'uc_event_category' );
         }
-        if ( isset( $_POST['organizer'] ) ) {
-            $org = intval( $_POST['organizer'] );
+        if ( isset( $_POST['uc_organizer_present'] ) ) {
+            /*
+             * EVERY TICKED BOX, NOT ONE VALUE (3.40.0).
+             *
+             * wp_set_object_terms() REPLACES by default, which is what silently
+             * deleted a second organizer every time an event was saved here.
+             * Replacing is still correct: this control shows every organizer
+             * that exists and the ticked set is the complete answer. What was
+             * wrong was that the complete answer could only ever be one.
+             */
+            $orgs = isset( $_POST['organizer'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['organizer'] ) ) : array();
+            $orgs = array_values( array_unique( array_filter( $orgs ) ) );
 
             /*
              * A NEW ORGANIZER TYPED ON THIS FORM, created here, in this same
@@ -5190,14 +5236,14 @@ class SFAF_Portal {
              * organizer field simply stays as it was, which is visible on the
              * screen they land on.
              */
-            if ( ! $org && ! empty( $_POST['organizer_new'] ) ) {
+            if ( ! empty( $_POST['organizer_new'] ) ) {
                 $made = SFAF_Organizers::save( 0, wp_unslash( $_POST['organizer_new'] ) );
-                if ( ! is_wp_error( $made ) ) {
-                    $org = (int) $made;
+                if ( ! is_wp_error( $made ) && ! in_array( (int) $made, $orgs, true ) ) {
+                    $orgs[] = (int) $made;
                 }
             }
 
-            wp_set_object_terms( $event_id, $org ? array( $org ) : array(), 'uc_organizer' );
+            wp_set_object_terms( $event_id, $orgs, 'uc_organizer' );
         }
 
         /*

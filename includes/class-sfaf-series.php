@@ -650,7 +650,7 @@ class SFAF_Series {
             'image_id'      => 0,
             'categories'    => array(),
             'category_names'=> array(),
-            'organizer'     => 0,
+            'organizers'    => array(),
             'organizer_name'=> '',
             'faq_set'       => '',
             'faq_set_name'  => '',
@@ -721,11 +721,13 @@ class SFAF_Series {
             }
         }
 
-        $orgs = wp_get_post_terms( $id, 'uc_organizer' );
-        if ( ! is_wp_error( $orgs ) && ! empty( $orgs ) ) {
-            $out['organizer']      = (int) $orgs[0]->term_id;
-            $out['organizer_name'] = $orgs[0]->name;
+        // Every organizer, so a co-hosted series lends both. The label is the
+        // same phrase the event page uses, so the checkbox in the prefill panel
+        // reads the way the result will.
+        foreach ( SFAF_Organizers::for_event( $id ) as $term ) {
+            $out['organizers'][] = (int) $term->term_id;
         }
+        $out['organizer_name'] = SFAF_Organizers::phrase( $id );
 
         return $out;
     }

@@ -2485,16 +2485,27 @@
                 }
             },
             {
+                /*
+                 * A SET, NOT A VALUE (3.40.0). The picker became checkboxes when
+                 * events gained co-hosts, so this reads and writes the same way
+                 * the category option directly above does. The label is the
+                 * phrase the event page will show, so the checkbox reads the way
+                 * the result will.
+                 */
                 key: 'organizer', label: 'Organizer',
-                has: function (d) { return d.organizer > 0; },
+                has: function (d) { return d.organizers && d.organizers.length > 0; },
                 preview: function (d) { return d.organizer_name; },
                 filled: function () {
-                    var sel = form.querySelector('[name="organizer"]');
-                    return !!(sel && sel.value && sel.value !== '0');
+                    return !!form.querySelector('[name="organizer[]"]:checked');
                 },
                 write: function (d) {
-                    var sel = form.querySelector('[name="organizer"]');
-                    if (sel) { sel.value = String(d.organizer); }
+                    d.organizers.forEach(function (id) {
+                        var box = form.querySelector('[name="organizer[]"][value="' + id + '"]');
+                        if (box && !box.checked) {
+                            box.checked = true;
+                            box.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
                 }
             },
             {

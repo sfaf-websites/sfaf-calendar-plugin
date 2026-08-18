@@ -105,8 +105,18 @@ function wp_delete_term( $id, $tax ) {
 function wp_get_post_terms( $post_id, $tax, $args = array() ) {
     $ids = isset( $GLOBALS['rel'][ (int) $post_id ] ) ? $GLOBALS['rel'][ (int) $post_id ] : array();
     if ( isset( $args['fields'] ) && 'ids' === $args['fields'] ) { return $ids; }
+    if ( isset( $args['fields'] ) && 'names' === $args['fields'] ) {
+        $n = array();
+        foreach ( $ids as $id ) { if ( isset( $GLOBALS['terms'][ $id ] ) ) { $n[] = $GLOBALS['terms'][ $id ]->name; } }
+        return $n;
+    }
     $out = array();
     foreach ( $ids as $id ) { if ( isset( $GLOBALS['terms'][ $id ] ) ) { $out[] = $GLOBALS['terms'][ $id ]; } }
+    return $out;
+}
+function wp_list_pluck( $list, $field, $index_key = null ) {
+    $out = array();
+    foreach ( $list as $row ) { $out[] = is_object( $row ) ? $row->$field : $row[ $field ]; }
     return $out;
 }
 function get_the_title( $id = 0 ) { return 'Event ' . (int) $id; }
@@ -222,6 +232,124 @@ if ( false === strpos( $venues_src, 'sfaf_venue_in_use' ) ) {
 $org_src = file_get_contents( $root . '/includes/class-sfaf-organizers.php' );
 if ( preg_match( '#return new WP_Error\(\s*.sfaf_organizer_in_use#', $org_src ) ) {
     $fails[] = 'SFAF_Organizers::delete() now refuses. That is the venue rule, and an organizer is the category case.';
+}
+
+/* ===========================================================================
+ * CO-HOSTED EVENTS (3.40.0), AND THE SILENT DATA LOSS THAT PRECEDED THEM.
+ *
+ * The taxonomy has always accepted several organizers: it is non-hierarchical,
+ * `show_ui` defaults to `public` which is true, so the WordPress post editor's
+ * own Organizers box has always been able to put two on an event.
+ *
+ * What limited an event to one was the caladmin picker, a single select that
+ * read `[0]` and whose save wrote an array of that one back through
+ * wp_set_object_terms(), which REPLACES by default. So a two-organizer event
+ * showed one and lost the other the moment anybody pressed Save, with nothing
+ * said. That is the fault categories had until 3.8.0, on a different taxonomy.
+ *
+ * Both halves of the old behaviour are asserted as GONE, because either one
+ * surviving reintroduces the loss.
+ * ======================================================================== */
+echo "Co-hosted events\n";
+
+$GLOBALS['terms'] = array();
+$GLOBALS['rel']   = array();
+$GLOBALS['next']  = 100;
+
+$stonewall = SFAF_Organizers::save( 0, 'The Stonewall Project' );
+$bbe       = SFAF_Organizers::save( 0, 'Black Brothers Esteem' );
+$elizabeth = SFAF_Organizers::save( 0, 'Elizabeth Taylor 50 Plus Network' );
+
+// An event co-hosted by two, stored in the order somebody happened to add them.
+$GLOBALS['rel'][10] = array( $stonewall, $bbe );
+
+$got = SFAF_Organizers::for_event( 10 );
+expect( 'both organizers come back', count( $got ), 2 );
+
+/*
+ * ORDERED BY NAME, ALWAYS. Term relationships come back in an order nothing
+ * guarantees, so without this the same event could name its hosts one way on
+ * its page and the other way on a card. Stored Stonewall-then-BBE above; read
+ * back alphabetically.
+ */
+expect( 'ordered by name, not by insertion', wp_list_pluck( $got, 'name' ),
+    array( 'Black Brothers Esteem', 'The Stonewall Project' ) );
+
+/* --- THE WORDING. One place decides it, so three surfaces cannot differ. --- */
+echo "The wording\n";
+
+$GLOBALS['rel'][11] = array( $stonewall );
+$GLOBALS['rel'][12] = array( $stonewall, $bbe );
+$GLOBALS['rel'][13] = array( $stonewall, $bbe, $elizabeth );
+$GLOBALS['rel'][14] = array();
+
+/*
+ * ONE ORGANIZER READS EXACTLY AS IT ALWAYS DID. This is the requirement that
+ * makes the whole change invisible unless somebody uses it.
+ */
+expect( 'one', SFAF_Organizers::phrase( 11 ), 'The Stonewall Project' );
+
+expect( 'two', SFAF_Organizers::phrase( 12 ),
+    'Black Brothers Esteem and The Stonewall Project' );
+
+// AP style: no serial comma in a simple series. "A, B and C", not "A, B, and C".
+expect( 'three', SFAF_Organizers::phrase( 13 ),
+    'Black Brothers Esteem, Elizabeth Taylor 50 Plus Network and The Stonewall Project' );
+
+if ( false !== strpos( SFAF_Organizers::phrase( 13 ), ', and ' ) ) {
+    $fails[] = 'the phrase uses a serial comma, which is not AP style and not the house style';
+}
+
+expect( 'none', SFAF_Organizers::phrase( 14 ), '' );
+
+// join() is the same rule for callers holding names rather than an event.
+expect( 'join, two', SFAF_Organizers::join( array( 'A', 'B' ) ), 'A and B' );
+expect( 'join, blanks dropped', SFAF_Organizers::join( array( 'A', '  ', 'B' ) ), 'A and B' );
+expect( 'join, nothing', SFAF_Organizers::join( array() ), '' );
+
+/* --- THE COUNT COUNTS "ONE OF SEVERAL". --------------------------------- */
+echo "Counting a co-host\n";
+
+$GLOBALS['rel'] = array(
+    20 => array( $stonewall ),               // sole
+    21 => array( $stonewall, $bbe ),         // one of two
+    22 => array( $bbe ),                     // not Stonewall at all
+);
+
+expect( 'the sole event and the co-hosted one both count', SFAF_Organizers::event_count( $stonewall ), 2 );
+expect( 'and the other organizer counts its two', SFAF_Organizers::event_count( $bbe ), 2 );
+expect( 'and one with none counts nothing', SFAF_Organizers::event_count( $elizabeth ), 0 );
+
+// The deletion confirmation names that same count, so it cannot understate.
+$n = SFAF_Organizers::delete( $stonewall );
+expect( 'deletion reports the co-hosted event too', $n, 2 );
+// The co-hosted event keeps its other host.
+expect( 'and the co-host survives', wp_get_post_terms( 21, 'uc_organizer', array( 'fields' => 'ids' ) ), array( $bbe ) );
+
+/* --- THE PICKER AND THE SAVE, READ OUT OF THE SOURCE. -------------------
+ *
+ * The behaviour above is the API. What silently deleted data was the CONTROL,
+ * so the control is checked too: a single select reading [0] and a save writing
+ * one value would reintroduce the loss whatever the API does.
+ */
+echo "The control cannot drop one\n";
+
+$portal_src = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
+
+if ( preg_match( "#wp_get_post_terms\(\s*\\\$event_id,\s*'uc_organizer'[^)]*\)\s*\?:\s*array\(\s*0\s*\)\s*\)\[0\]#", $portal_src ) ) {
+    $fails[] = 'the organizer picker still reads [0], so an event with two shows one and loses the other on save';
+}
+if ( preg_match( '#<select name="organizer">#', $portal_src ) ) {
+    $fails[] = 'the organizer control is still a single select, which cannot express a co-hosted event';
+}
+if ( false === strpos( $portal_src, 'name="organizer[]"' ) ) {
+    $fails[] = 'the organizer control does not post an array, so only one value can ever arrive';
+}
+if ( false === strpos( $portal_src, "name=\"uc_organizer_present\"" ) ) {
+    $fails[] = 'the organizer control has no present marker, so unticking every box would read as "the form did not ask" and leave the old organizers in place';
+}
+if ( preg_match( "#wp_set_object_terms\(\s*\\\$event_id,\s*\\\$org\s*\?#", $portal_src ) ) {
+    $fails[] = 'the save still writes a single organizer, replacing whatever else the event had';
 }
 
 /* ===========================================================================
@@ -355,9 +483,20 @@ if ( preg_match( '#name="uc_action" value="create_organizer"#', $portal_src ) ) 
     $fails[] = 'the event form posts a create_organizer action, which would discard unsaved edits';
 }
 
-// The select wins over the text box when both are given.
-if ( ! preg_match( '#if \( ! \$org && ! empty\( \$_POST\[.organizer_new.\] \) \)#', $portal_src ) ) {
-    $fails[] = 'the new-organizer box is not gated on the select being None, so a leftover in it could override an explicit choice';
+/*
+ * THE TYPED ORGANIZER IS ADDED, NOT AN ALTERNATIVE.
+ *
+ * "The select wins" was correct while the control was a single select and the
+ * two were alternatives. With checkboxes, ticking two and typing a third means
+ * three hosts. What must still hold is that it is not added twice when it names
+ * one already ticked, which save() makes possible by returning the existing
+ * term for a duplicate name.
+ */
+if ( ! preg_match( '#! in_array\( \(int\) \$made, \$orgs, true \)#', $portal_src ) ) {
+    $fails[] = 'a newly typed organizer is not checked against the ticked ones, so naming one already ticked would add it twice';
+}
+if ( preg_match( '#if \( ! \$org && ! empty\( \$_POST\[.organizer_new.\] \) \)#', $portal_src ) ) {
+    $fails[] = 'the new-organizer box is still gated on nothing being chosen, which was the single-select rule: it would now refuse to add a third host to an event that already names two';
 }
 
 /* ===========================================================================
@@ -384,7 +523,10 @@ echo "         the count covers drafts as well as published; deletion is ALLOWED
 echo "         count while the venue refusal stays a refusal; the taxonomy keeps public, its rewrite\n";
 echo "         slug, show_in_rest and its WordPress fallback screen; the editor's add-one control is\n";
 echo "         a field on the event form and not a second submit; and organizer stays a manager\n";
-echo "         field on both adapters so no fetch writes it\n\n";
+echo "         field on both adapters so no fetch writes it; that an event can hold SEVERAL\n";
+echo "         organizers, ordered by name so two surfaces cannot disagree, phrased 'A and B' and\n";
+echo "         'A, B and C' with no serial comma, counted when one of several, and that neither the\n";
+echo "         single select nor the single-value save that silently dropped one can come back\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

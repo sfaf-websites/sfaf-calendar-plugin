@@ -131,13 +131,111 @@ class SFAF_Organizers {
         return array_map( 'intval', $q->posts );
     }
 
-    /** The organizer on an event, or null. One per event, as the editor allows. */
+    /**
+     * Every organizer on an event, name-ordered.
+     *
+     * MORE THAN ONE, SINCE 3.40.0, because events are sometimes co-hosted. The
+     * taxonomy always allowed it: what limited an event to one was the caladmin
+     * picker, a single select whose save wrote an array of one and therefore
+     * replaced whatever else was there. See the note on the picker.
+     *
+     * ORDERED BY NAME, ALWAYS, AND THAT IS THE WHOLE ORDERING RULE. Term
+     * relationships come back in an order nothing guarantees, so the same event
+     * could otherwise name its two organizers one way on its own page and the
+     * other way on a card. There is no primary to choose: unlike a category, an
+     * organizer carries no colour and no icon, so nothing downstream needs a
+     * first one and alphabetical is simply the order a reader can predict. It
+     * is also the order the Organizers screen lists them in, so the two agree.
+     *
+     * @param int $post_id
+     * @return WP_Term[]
+     */
     public static function for_event( $post_id ) {
-        $ids = wp_get_post_terms( (int) $post_id, self::TAXONOMY, array( 'fields' => 'ids' ) );
-        if ( is_wp_error( $ids ) || empty( $ids ) ) {
-            return null;
+        $terms = wp_get_post_terms( (int) $post_id, self::TAXONOMY );
+        if ( is_wp_error( $terms ) || empty( $terms ) ) {
+            return array();
         }
-        return self::get( $ids[0] );
+
+        usort( $terms, function ( $a, $b ) {
+            // Case-insensitive, so "the Stonewall Project" and "The Stonewall
+            // Project" do not sort into different places on different events.
+            return strcasecmp( $a->name, $b->name );
+        } );
+
+        return $terms;
+    }
+
+    /**
+     * Their names, name-ordered.
+     *
+     * @param int $post_id
+     * @return string[]
+     */
+    public static function names_for_event( $post_id ) {
+        $out = array();
+        foreach ( self::for_event( $post_id ) as $term ) {
+            $out[] = $term->name;
+        }
+        return $out;
+    }
+
+    /**
+     * The organizers as a phrase a person reads.
+     *
+     * ONE PLACE DECIDES THE WORDING, so the event page, the card and the
+     * search-engine listing cannot come to different conclusions about how to
+     * join two names.
+     *
+     *   one    The Stonewall Project
+     *   two    The Stonewall Project and Black Brothers Esteem
+     *   three  The Stonewall Project, Black Brothers Esteem and Elizabeth Taylor
+     *
+     * NO SERIAL COMMA, which is AP style for a simple series and therefore the
+     * house style: the brand guide is AP and sfaf_ap_date() already follows it
+     * everywhere else. "A, B and C", not "A, B, and C".
+     *
+     * ONE ORGANIZER READS EXACTLY AS IT ALWAYS DID. That is the requirement
+     * this method exists to keep: an event with a single organizer must be
+     * untouched by any of this, so the one-item branch returns the bare name
+     * and joins nothing.
+     *
+     * @param int $post_id
+     * @return string '' when the event has none.
+     */
+    public static function phrase( $post_id ) {
+        return self::join( self::names_for_event( $post_id ) );
+    }
+
+    /**
+     * The same joining rule, for a list of names already in hand.
+     *
+     * Separate from phrase() because two callers have the names and not the
+     * event: the card, which reads terms as objects for other reasons, and the
+     * tests. One rule either way.
+     *
+     * @param string[] $names
+     * @return string
+     */
+    public static function join( $names ) {
+        $names = array_values( array_filter( array_map( 'trim', (array) $names ), 'strlen' ) );
+        $n     = count( $names );
+
+        if ( 0 === $n ) {
+            return '';
+        }
+        if ( 1 === $n ) {
+            return $names[0];
+        }
+
+        /*
+         * TWO AND THREE-OR-MORE ARE THE SAME EXPRESSION, and there is no
+         * separate branch for two because it would be dead: popping the last of
+         * two leaves one, imploding one name gives that name, and appending
+         * " and B" produces "A and B". Planting a deletion of the two-name
+         * branch changed no output at all, which is how it was found.
+         */
+        $last = array_pop( $names );
+        return implode( ', ', $names ) . ' and ' . $last;
     }
 
     /* ---------------------------------------------------------------------

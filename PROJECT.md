@@ -242,6 +242,67 @@ no term meta on `uc_organizer` at all, which makes it the simplest of the four
 taxonomies: categories carry a colour and an icon, venues four address parts,
 series an image and a default FAQ set.
 
+**An event may have several**, because events are sometimes co-hosted (3.40.0).
+
+**The taxonomy always allowed it. The caladmin picker did not, and that was
+silently deleting data.** `uc_organizer` is non-hierarchical and its `show_ui`
+defaults to `public`, which is true, so the WordPress post editor's own
+Organizers box has always been able to put two on an event. The caladmin picker
+read `[0]` and its save wrote an array of that one back through
+`wp_set_object_terms()`, whose default **replaces**. So a two-organizer event
+showed one in caladmin and lost the other the moment anybody pressed Save, with
+nothing said. That is the fault categories had until 3.8.0, on a different
+taxonomy, reached the same way.
+
+**There is no primary organizer**, and nothing needs one. A category's first
+alphabetically drives the card colour and the placeholder tile; an organizer
+carries no colour and no icon, so nothing downstream has a decision to make.
+
+**They are ordered by name, always**, through `SFAF_Organizers::for_event()`.
+Term relationships come back in an order nothing guarantees, so without a rule
+the same event could name its hosts one way on its page and the other way on a
+card, in an email or in a satellite payload. Alphabetical is the order a reader
+can predict and the order the Organizers screen already lists them in.
+
+**`SFAF_Organizers::phrase()` is the one place the wording is decided**, so the
+event page, the card byline and the search-engine listing cannot join two names
+three ways:
+
+| | |
+|---|---|
+| one | `The Stonewall Project` |
+| two | `Black Brothers Esteem and The Stonewall Project` |
+| three | `Black Brothers Esteem, Elizabeth Taylor 50 Plus Network and The Stonewall Project` |
+
+**No serial comma**, which is AP style for a simple series and therefore the
+house style. An event with **one** organizer renders exactly the string it
+always did, which is what makes the whole change invisible unless somebody uses
+it.
+
+**The JSON-LD is the exception, and deliberately.** `schema.org/Event` declares
+`organizer` as accepting one value or many, so several hosts emit an **array of
+Organization objects** rather than a phrase: a search engine reading "A and B"
+gets one organisation with a strange name. Prose joining is for people. One
+organizer still emits a single object, not an array of one.
+
+**What needed no change, and why.** The organizer filter on the public calendar
+and in both generators is a `tax_query`, which has always matched an event where
+the term is one of several, so a co-hosted event appears under **both** hosts
+and their counts both include it. Embed blocks scoped by organizer resolve
+through the same query, so a block scoped to one host includes an event if
+**either** of its organizers matches. Search covers the taxonomy by term name
+and reads every term on the event. Duplicate-as-template copies all terms.
+`SFAF_Organizers::events_using()`, which drives the per-organizer count and the
+deletion confirmation, is the same `tax_query` and has always counted "one of
+several".
+
+**Imported events are unaffected, structurally.** `organizer` is on
+`manager_fields()` for both adapters, so no fetch has ever written it and none
+can. If a source ever supplies several organizers, nothing happens: the adapter
+path does not write this taxonomy at all, and a platform's organizer is its own
+record rather than a term here. Making one arrive would be a deliberate piece of
+mapping work, not a thing that starts happening.
+
 It appears publicly in five places: **"Hosted by" on the event page**, the
 byline on a card (only when the event is not imported, since an imported event
 names its platform instead), the **organizer filter** on the public calendar and
