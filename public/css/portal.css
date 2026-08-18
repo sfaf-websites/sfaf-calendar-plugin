@@ -2237,3 +2237,47 @@ body.uc-modal-open { overflow: hidden; }
 .uc-notify-kinds .uc-check { margin-top: 12px; }
 .uc-notify-kinds .uc-check:first-of-type { margin-top: 4px; }
 .uc-notify-kind-note { margin: 2px 0 0 26px; }
+
+/* ---------------------------------------------------------------------------
+   TEAMS AS AN ACCESS MODEL (3.35.0).
+
+   Three small surfaces, all of them reference rather than decoration: who can
+   edit an event, what an access level grants, and the reassignment a removal
+   asks for. Each stays inside a control shape the portal already has, so
+   nothing here introduces a new pattern to keep in step.
+   ------------------------------------------------------------------------- */
+
+/* The editor's "Who can edit this" card. */
+.uc-access-organizer { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; }
+.uc-access-organizer .uc-muted { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.5; }
+.uc-access-teams { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.uc-access-teams .uc-check { align-items: center; }
+.uc-access-teams .uc-muted { margin-left: 6px; font-size: 12px; }
+/* The notify tick is a different question from the boxes above it, so a rule
+   separates them rather than a gap somebody has to interpret. */
+.uc-access-notify { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--p-border); }
+
+/* What each access level can do. The 3.10.0 disclosure, wearing the same
+   toggle as the RSVP settings panel: a summary, so click, tap, Enter and
+   Space all work with no script at all. */
+.uc-role-help { margin-bottom: 16px; }
+.uc-role-help-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 12px 16px; font-size: 14px; list-style: none; }
+.uc-role-help-toggle::-webkit-details-marker { display: none; }
+.uc-role-help-toggle::marker { content: ""; }
+.uc-role-help-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+.uc-role-help-body { padding: 0 16px 16px; }
+.uc-role-help-list { margin: 0; }
+.uc-role-help-list dt { margin: 12px 0 2px; font-size: 13px; font-weight: 700; }
+.uc-role-help-list dt:first-child { margin-top: 0; }
+.uc-role-help-list dd { margin: 0; font-size: 13px; line-height: 1.6; color: var(--p-muted); max-width: 78ch; }
+
+/* Reassign before removing. Attention-coloured because it is a refusal, and
+   the refusal is the point: nothing was removed and something is needed. */
+.uc-reassign { margin-top: 12px; padding: 14px 16px; border: 1px solid var(--p-border-strong);
+    border-left: 4px solid var(--uc-attention, #92400e); border-radius: 10px; background: #fffbeb; }
+.uc-reassign-head { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.uc-reassign-events { margin: 0 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.uc-reassign-events .uc-muted { margin-left: 6px; font-size: 12px; }
+.uc-reassign-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.uc-reassign-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }

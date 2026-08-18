@@ -388,7 +388,7 @@ class SFAF_Admin {
 
                             <td class="uc-users-access">
                                 <?php if ( $is_wpadm ) : ?>
-                                    <strong>Full (fixed)</strong>
+                                    <strong>Full (WP Admin)</strong>
                                     <span class="uc-muted">A WordPress administrator has full calendar access, including RSVPs, whether or not they are listed as a calendar user. Take away their administrator role on the WordPress Users screen to change that.</span>
                                 <?php else : ?>
                                     <form method="post" class="uc-users-form">

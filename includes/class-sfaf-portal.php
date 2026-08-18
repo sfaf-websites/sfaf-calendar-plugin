@@ -189,6 +189,128 @@ class SFAF_Portal {
         return self::get_role( $user->ID ) === 'admin';
     }
 
+    /* ---------------------------------------------------------------------
+     * Organizers, and events that have lost theirs
+     *
+     * An event's organizer is its post_author and nothing else: there is no
+     * second field to keep in step, no snapshot, and no way for the two to
+     * disagree. It never changes implicitly. The only things that move it are
+     * the reassignment on the Users screen and an administrator doing it by
+     * hand in WordPress.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Events this person organizes, as id and title.
+     *
+     * Every status a manager can act on, trash excluded: a trashed event is on
+     * its way out and holding up somebody's removal for one is noise.
+     *
+     * @param int $user_id
+     * @return array[] array{id:int,title:string,status:string}
+     */
+    public static function events_organized_by( $user_id ) {
+        $user_id = (int) $user_id;
+        if ( $user_id <= 0 ) {
+            return array();
+        }
+
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => array( 'publish', 'pending', 'draft', 'future', 'private' ),
+            'author'                 => $user_id,
+            'posts_per_page'         => 500,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+        ) );
+
+        $out = array();
+        foreach ( $q->posts as $id ) {
+            $out[] = array(
+                'id'     => (int) $id,
+                'title'  => get_the_title( $id ) ? get_the_title( $id ) : '(untitled)',
+                'status' => get_post_status( $id ),
+            );
+        }
+        return $out;
+    }
+
+    /**
+     * Has this event lost its organizer?
+     *
+     * TWO WAYS, AND THE SECOND IS THE ONE THAT ACTUALLY HAPPENS. The account
+     * may be gone outright, which is what deleting a user in WordPress does.
+     * Or it may still exist with its calendar record removed, which is what
+     * happens when somebody leaves and their WordPress account is kept. Both
+     * leave an event nobody but an admin can edit, so both count.
+     *
+     * @param int $event_id
+     * @return bool
+     */
+    public static function event_is_orphaned( $event_id ) {
+        $post = get_post( (int) $event_id );
+        if ( ! $post || 'uc_event' !== $post->post_type ) {
+            return false;
+        }
+        $author = (int) $post->post_author;
+        if ( $author <= 0 || ! get_userdata( $author ) ) {
+            return true;
+        }
+        return '' === self::get_role( $author );
+    }
+
+    /**
+     * Every event with no valid organizer, newest first.
+     *
+     * @return array[] array{id:int,title:string,status:string,author:int,who:string}
+     */
+    public static function orphaned_events() {
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => array( 'publish', 'pending', 'draft', 'future', 'private' ),
+            'posts_per_page'         => 500,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+        ) );
+
+        $out = array();
+        foreach ( $q->posts as $id ) {
+            if ( ! self::event_is_orphaned( $id ) ) {
+                continue;
+            }
+            $post   = get_post( $id );
+            $author = $post ? (int) $post->post_author : 0;
+            $ud     = $author ? get_userdata( $author ) : null;
+            $out[]  = array(
+                'id'     => (int) $id,
+                'title'  => get_the_title( $id ) ? get_the_title( $id ) : '(untitled)',
+                'status' => get_post_status( $id ),
+                'author' => $author,
+                // Which of the two, because the fix differs: a deleted account
+                // needs a new organizer, a withdrawn record may just need the
+                // record back.
+                'who'    => $ud ? $ud->display_name . ' (no calendar access)' : 'a deleted account',
+            );
+        }
+        return $out;
+    }
+
+    /** Everybody who should be told about an orphan. Calendar admins. */
+    public static function admin_recipients() {
+        $out = array();
+        foreach ( get_users( array( 'fields' => array( 'ID', 'user_email', 'display_name' ) ) ) as $u ) {
+            if ( 'admin' !== self::get_role( $u->ID ) ) {
+                continue;
+            }
+            if ( ! is_email( $u->user_email ) ) {
+                continue;
+            }
+            $out[ strtolower( $u->user_email ) ] = $u->display_name;
+        }
+        return $out;
+    }
+
     private function can_view_all( $user ) {
         return self::user_can_view_all( $user->ID );
     }
@@ -239,15 +361,45 @@ class SFAF_Portal {
      * @return bool
      */
     public static function user_can_edit_event( $user_id, $post ) {
+        $user_id = (int) $user_id;
+
+        // Calendar admins and editors, from manage_options or the stored
+        // record, in that order. Nothing below can reduce this. See get_role().
         if ( self::user_can_view_all( $user_id ) ) {
             return true;
         }
-        // Contributor: only their own events.
+
         $post = is_object( $post ) ? $post : get_post( (int) $post );
-        if ( ! $post ) {
+        if ( ! $post || 'uc_event' !== $post->post_type ) {
             return false;
         }
-        return (int) $post->post_author === (int) $user_id;
+
+        // The organizer. Never changes implicitly, and never loses access.
+        if ( (int) $post->post_author === $user_id ) {
+            return true;
+        }
+
+        /*
+         * A TEAM THAT OWNS THIS EVENT (3.35.0).
+         *
+         * THE CALENDAR ROLE IS REQUIRED FIRST, AND THAT ORDER IS THE POINT.
+         * A team is a name and a set of user ids, and the $offered guarantee
+         * means it may legitimately hold somebody who has no calendar record at
+         * all: a person added so they could be mailed, or one whose access was
+         * withdrawn while their membership stayed. Answering true for them would
+         * be worse than useless. They cannot pass the portal's entrance gate, so
+         * every link this answer produces would open a "Denied" page, and the
+         * pre-event summary asks exactly this question to decide whether to send
+         * such a link. That is defect five in PROJECT.md §5, rebuilt.
+         *
+         * So team access widens what a calendar user may reach. It never grants
+         * calendar access to somebody who has none.
+         */
+        if ( ! self::get_role( $user_id ) ) {
+            return false;
+        }
+
+        return SFAF_Teams::user_owns_event( $user_id, $post->ID );
     }
 
     /** Status a contributor's published event lands in (auto vs review). */
@@ -754,9 +906,49 @@ class SFAF_Portal {
                 $this->redirect( 'users', array( 'msg' => 'user_added' ) );
                 break;
 
+            /*
+             * REMOVING A CALENDAR USER, WHICH IS NOW TWO STEPS WHEN IT HAS TO BE.
+             *
+             * Somebody's events do not leave with them. Until 3.35.0 this
+             * removed the record and redirected, and any event they organized
+             * was left with an organizer who could no longer open the calendar:
+             * nobody could edit it except an admin, and nothing anywhere said
+             * so. This is the deliberate moment, with an administrator present
+             * and looking at the screen, so it is the right moment to ask.
+             *
+             * IT REFUSES RATHER THAN REASSIGNING BY ITSELF. Picking a new
+             * organizer is a judgement about who is responsible for a piece of
+             * work, and a default would be wrong often enough to matter. The
+             * refusal names the count and the screen then offers the choice.
+             * Same shape as refusing to delete a team that is in use.
+             */
             case 'remove_user':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $uid = intval( $_POST['user_id'] );
+
+                $organized = SFAF_Portal::events_organized_by( $uid );
+                $reassign  = isset( $_POST['reassign_to'] ) ? intval( $_POST['reassign_to'] ) : 0;
+
+                if ( $organized && ! $reassign ) {
+                    set_transient( 'sfaf_remove_user_blocked_' . $user->ID, array(
+                        'user_id' => $uid,
+                        'events'  => $organized,
+                    ), 300 );
+                    $this->redirect( 'users', array( 'msg' => 'reassign_first', 'uid' => $uid ) );
+                }
+
+                if ( $organized && $reassign ) {
+                    // The new organizer must be somebody who can actually take
+                    // it on. A reassignment to an account with no calendar
+                    // access would produce the orphan this exists to prevent.
+                    if ( ! self::get_role( $reassign ) || $reassign === $uid ) {
+                        $this->redirect( 'users', array( 'msg' => 'reassign_invalid', 'uid' => $uid ) );
+                    }
+                    foreach ( $organized as $ev ) {
+                        wp_update_post( array( 'ID' => (int) $ev['id'], 'post_author' => $reassign ) );
+                    }
+                }
+
                 delete_user_meta( $uid, '_uc_calendar_role' );
                 delete_user_meta( $uid, '_uc_calendar_approval' );
                 delete_user_meta( $uid, '_uc_calendar_categories' );
@@ -764,7 +956,10 @@ class SFAF_Portal {
                 // to happen: no event stored them, so no event has to be
                 // corrected. See SFAF_Teams.
                 SFAF_Teams::forget_user( $uid );
-                $this->redirect( 'users', array( 'msg' => 'user_removed' ) );
+                $this->redirect( 'users', array(
+                    'msg'      => $organized ? 'user_removed_reassigned' : 'user_removed',
+                    'moved'    => $organized ? count( $organized ) : 0,
+                ) );
                 break;
 
             /*
@@ -1137,6 +1332,9 @@ class SFAF_Portal {
                 SFAF_FAQ_Sets::apply_series_default( $event_id, $series_now );
             }
         }
+
+        // Team access. Its own gate, checked again here. See the method.
+        $this->save_access_from_post( $user, $event_id );
 
         // FAQ. One block, one key, on the event.
         $clean_faq = function ( $raw ) {
@@ -1624,7 +1822,7 @@ class SFAF_Portal {
      * ================================================================== */
 
     private function export_rsvps_csv() {
-        if ( ! is_user_logged_in() || ! $this->can_view_all( wp_get_current_user() ) ) {
+        if ( ! is_user_logged_in() ) {
             wp_die( 'Denied' );
         }
         $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
@@ -1635,6 +1833,27 @@ class SFAF_Portal {
         $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
         $orphans  = ! empty( $_GET['orphans'] );
+
+        /*
+         * THE EXPORT ASKS THE SAME GATE AS THE SCREEN, PARAMETER FOR PARAMETER.
+         *
+         * This is a download of exactly what render_rsvps() would show for the
+         * same query string, so it has to make the same decision from the same
+         * inputs. A gate that is merely "as strict" is not enough: uc_export_rsvps
+         * (defect three in PROJECT.md §5) was a download link whose gate had
+         * drifted from its screen's, and any Author on the site could fetch the
+         * whole registration list by calling it directly. Scoped to one event,
+         * the event gate. Unscoped, and for the orphan view, can_view_all.
+         */
+        $user = wp_get_current_user();
+        if ( $event_id ) {
+            $event = get_post( $event_id );
+            if ( ! $event || 'uc_event' !== $event->post_type || ! $this->can_edit_event( $user, $event ) ) {
+                wp_die( 'Denied' );
+            }
+        } elseif ( ! $this->can_view_all( $user ) ) {
+            wp_die( 'Denied' );
+        }
         $rsvps    = SFAF_RSVP::get_all_rsvps( array(
             'event_id' => $event_id,
             'search'   => $search,
@@ -1985,7 +2204,10 @@ class SFAF_Portal {
             'rejected'       => 'Event rejected.',
             'user_saved'     => 'User permissions updated.',
             'user_added'     => 'User added to the calendar system.',
-            'user_removed'   => 'User removed from the calendar system, and taken out of any teams they were in. No event needed changing, because no event stored them.',
+            'user_removed'   => 'User removed from the calendar system, and taken out of any teams they were in. They organized no events, so nothing needed reassigning.',
+            'user_removed_reassigned' => 'User removed from the calendar system, and taken out of any teams they were in. Their events were handed to the person you chose.',
+            'reassign_first' => 'That person organizes events. Choose who should take them on before removing them, so nothing is left with nobody responsible for it.',
+            'reassign_invalid' => 'That is not somebody who can take those events on. Pick a person who has calendar access.',
             'team_saved'     => 'Team saved. Events that name it will notify whoever is in it at the moment the reminder goes out.',
             'team_deleted'   => 'Team deleted. No event named it, so no notification changed.',
             'series_saved'   => 'Series saved. Nothing about the events in it changed: a series groups them, it does not overwrite them.',
@@ -6635,6 +6857,8 @@ class SFAF_Portal {
                  * where that question is asked. See render_notify_box().
                  */
                 ?>
+                <?php $this->render_access_card( $user, $event_id ); ?>
+
                 <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Display</h2>
                     <?php
@@ -7922,6 +8146,175 @@ class SFAF_Portal {
      * @param WP_User $user
      * @param int     $event_id
      */
+    /**
+     * Write the team access fields, if this person may set them.
+     *
+     * THE GATE IS HERE AS WELL AS ON THE RENDERER, AND NOT BECAUSE THE RENDERER
+     * MIGHT BE WRONG. A form that is not drawn is not a permission: a POST is a
+     * request anybody can construct by hand, and the whole of defect one in
+     * PROJECT.md §5 was a screen that relied on not being linked to. So the
+     * question "may this person give access away" is asked again at the moment
+     * the write happens, against the same can_view_all() the renderer asked.
+     *
+     * A contributor saving their own event posts no access fields, and if one
+     * arrives anyway it is ignored rather than refused: the rest of their save
+     * is legitimate and failing it would teach them that saving is unreliable.
+     * Nothing is written, which is the outcome that matters.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function save_access_from_post( $user, $event_id ) {
+        if ( ! isset( $_POST['access_teams_present'] ) ) {
+            return;
+        }
+        if ( ! $this->can_view_all( $user ) ) {
+            return;
+        }
+
+        $ids = isset( $_POST['access_teams'] ) ? (array) wp_unslash( $_POST['access_teams'] ) : array();
+        SFAF_Teams::set_access_for_event( $event_id, $ids );
+
+        /*
+         * THE NOTIFICATION LIST IS A SEPARATE WRITE, AND IT ONLY EVER TOUCHES
+         * THE TEAMS THIS FORM OFFERED.
+         *
+         * The $offered guarantee, applied to a second field: a team on the
+         * notification list that is NOT one of the access teams was put there
+         * by the notify picker and is none of this control's business, so it is
+         * kept whatever the checkbox says. Without that, ticking and unticking
+         * this box would quietly delete notification choices made elsewhere on
+         * the same screen.
+         */
+        $kept  = SFAF_Teams::access_for_event( $event_id );
+        $notify_now = SFAF_Teams::for_event( $event_id );
+        $others = array_values( array_diff( $notify_now, $kept ) );
+
+        $wants = isset( $_POST['access_teams_notify'] );
+        SFAF_Teams::set_for_event( $event_id, $wants ? array_merge( $others, $kept ) : $others );
+    }
+
+    /**
+     * WHO CAN EDIT THIS EVENT: the organizer, and up to two teams.
+     *
+     * ONLY SOMEBODY WHO CAN ALREADY GIVE ACCESS AWAY MAY DRAW THIS. Assigning a
+     * team hands edit rights and the registration list to a group of people, so
+     * it is an admin-or-editor control, not something a contributor may do to
+     * their own event. A contributor sees who has access and cannot change it,
+     * which is a separate render rather than a disabled input: a disabled input
+     * is a control that posts nothing today and posts something the day
+     * somebody removes the attribute.
+     *
+     * THE NOTIFY CHECKBOX IS DELIBERATELY OFF BY DEFAULT AND DELIBERATELY
+     * SEPARATE. A team generally wants to log in and look at who has registered,
+     * not receive an email per registration. Assigning a team therefore grants
+     * access and nothing else; the tick is what also puts it on the
+     * notification list, and it writes the OTHER meta key. See
+     * SFAF_Teams::ACCESS_META for why those are two keys and not one.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_access_card( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            // Nothing to own yet. The organizer is settled by the first save.
+            return;
+        }
+
+        $post = get_post( $event_id );
+        if ( ! $post ) {
+            return;
+        }
+
+        $organizer = get_userdata( $post->post_author );
+        $teams     = SFAF_Teams::all();
+        $chosen    = SFAF_Teams::access_for_event( $event_id );
+        $notified  = SFAF_Teams::for_event( $event_id );
+        ?>
+        <section class="uc-bento-card">
+            <h2 class="uc-bento-title">Who can edit this</h2>
+
+            <p class="uc-access-organizer">
+                <strong><?php echo esc_html( $organizer ? $organizer->display_name : 'Nobody' ); ?></strong>
+                <span class="uc-muted">
+                    <?php echo $organizer
+                        ? 'created this event and can always edit it.'
+                        : 'The account that created this event no longer exists. An administrator should reassign it.'; ?>
+                </span>
+            </p>
+            <p class="uc-hint">Calendar admins and editors can edit every event.</p>
+
+            <?php if ( ! $this->can_view_all( $user ) ) : ?>
+                <?php
+                /*
+                 * THE READ-ONLY RENDER. It names the teams and offers no
+                 * control at all: no select, no checkbox, no marker. A form
+                 * that does not ask cannot be answered, so there is nothing
+                 * here for save_access_from_post() to act on even if a
+                 * request arrived carrying the fields.
+                 */
+                ?>
+                <?php if ( empty( $chosen ) ) : ?>
+                    <p class="uc-muted">No team has been given access to this event.</p>
+                <?php else : ?>
+                    <p class="uc-muted">
+                        Also editable by
+                        <?php
+                        $names = array();
+                        foreach ( $chosen as $id ) {
+                            if ( isset( $teams[ $id ] ) ) {
+                                $names[] = $teams[ $id ]['name'];
+                            }
+                        }
+                        echo esc_html( implode( ' and ', $names ) );
+                        ?>.
+                    </p>
+                <?php endif; ?>
+                <p class="uc-hint">Ask a calendar admin to change this.</p>
+            <?php elseif ( empty( $teams ) ) : ?>
+                <p class="uc-muted">No teams exist yet.</p>
+                <p class="uc-hint">Teams are created under Users and Permissions.</p>
+            <?php else : ?>
+                <?php // The marker: every box unticked posts nothing, and that
+                      // has to mean "no teams" rather than "this form did not
+                      // ask". Same guarantee as notify_teams_present. ?>
+                <input type="hidden" name="access_teams_present" value="1" />
+
+                <p class="uc-hint">
+                    Everybody on a team you pick can edit this event and see who has registered.
+                    Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>.
+                </p>
+
+                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
+                    <?php foreach ( $teams as $team ) :
+                        $on = in_array( (string) $team['id'], $chosen, true ); ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="access_teams[]"
+                                   value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( $on ); ?> />
+                            <?php echo esc_html( $team['name'] ); ?>
+                            <span class="uc-muted"><?php
+                                $n = SFAF_Teams::member_count( $team['id'] );
+                                echo esc_html( $n . ' ' . ( 1 === $n ? 'person' : 'people' ) );
+                            ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+
+                <label class="uc-check uc-access-notify">
+                    <input type="checkbox" name="access_teams_notify" value="1"
+                        <?php checked( ! empty( $chosen ) && count( array_intersect( $chosen, $notified ) ) === count( $chosen ) ); ?> />
+                    Also email these teams about registrations and reminders
+                </label>
+                <p class="uc-hint">
+                    Leave this off if the team will log in to see registrations. Everybody on the
+                    notification list gets one email per registration.
+                </p>
+            <?php endif; ?>
+        </section>
+        <?php
+    }
+
     private function render_notify_box( $user, $event_id ) {
         $post = get_post( $event_id );
         if ( ! $post ) {
@@ -8683,14 +9076,39 @@ class SFAF_Portal {
      * @param WP_User $user
      */
     private function render_rsvps( $user ) {
-        if ( ! $this->can_view_all( $user ) ) {
+        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
+        $orphans  = ! empty( $_GET['orphans'] );
+
+        /*
+         * TWO QUESTIONS, AND THIS SCREEN ANSWERS BOTH (3.35.0).
+         *
+         * Scoped to one event, it asks THE event gate, which is the single
+         * function every route asks and which now includes team access. Unscoped
+         * it is the whole calendar's registrations and stays on can_view_all,
+         * because "every registration on this site" is not a question about any
+         * event and no team owns it. The orphan view is the unscoped case by
+         * definition: its rows belong to events that no longer exist.
+         *
+         * This is what carries out §2 of the access model: a team member may see
+         * the RSVPs for events their team owns and nothing else. It also widens
+         * the scoped view to a contributor reading their OWN event's
+         * registrations, which it did not before. That is deliberate rather than
+         * incidental: the alternative is a second rule saying team members may
+         * read an event's registrations but the person responsible for it may
+         * not, and a second rule is exactly what this release exists to remove.
+         */
+        if ( $event_id ) {
+            $event = get_post( $event_id );
+            if ( ! $event || 'uc_event' !== $event->post_type || ! $this->can_edit_event( $user, $event ) ) {
+                $this->render_dashboard( $user );
+                return;
+            }
+        } elseif ( ! $this->can_view_all( $user ) ) {
             $this->render_dashboard( $user );
             return;
         }
 
         $this->chrome_open( $user, 'events' );
-        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
-        $orphans  = ! empty( $_GET['orphans'] );
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
         $rsvps    = SFAF_RSVP::get_all_rsvps( array(
             'event_id' => $event_id,
@@ -9568,6 +9986,18 @@ class SFAF_Portal {
         }
         $this->chrome_open( $user, 'users' );
 
+        // Set by a removal that was refused because the person organizes events.
+        // Read once and cleared, so it belongs to the redirect that set it and
+        // does not reappear on the next visit to this screen.
+        $blocked_key = 'sfaf_remove_user_blocked_' . $user->ID;
+        $blocked     = get_transient( $blocked_key );
+        if ( $blocked ) {
+            delete_transient( $blocked_key );
+        }
+        if ( ! is_array( $blocked ) || ! isset( $blocked['user_id'], $blocked['events'] ) ) {
+            $blocked = null;
+        }
+
         $members = get_users( array( 'meta_key' => '_uc_calendar_role', 'orderby' => 'display_name' ) );
         $member_ids = wp_list_pluck( $members, 'ID' );
         $non_members = get_users( array( 'exclude' => $member_ids, 'number' => 200, 'orderby' => 'display_name' ) );
@@ -9592,6 +10022,52 @@ class SFAF_Portal {
                 <h2>Calendar users</h2>
                 <p class="uc-section-sub">Who can sign in to the calendar, what they may do, and whether their events need approving.</p>
             </div>
+
+            <?php
+            /*
+             * WHAT EACH LEVEL ACTUALLY MEANS, ONE CLICK AWAY.
+             *
+             * The three levels were three words in a dropdown, and the person
+             * choosing between them had nowhere to find out what they grant.
+             * Closed by default because it is reference rather than something to
+             * read every visit, and a <details> because that is the 3.10.0
+             * pattern: a real interactive element, so click, tap, Enter and
+             * Space all work with no script, and it still opens if portal.js
+             * never runs. NOT hover, which has no keyboard equivalent, no touch
+             * equivalent and no way to read the contents at leisure.
+             */
+            ?>
+            <details class="uc-card uc-role-help" data-uc-disclosure>
+                <summary class="uc-role-help-toggle" aria-expanded="false">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                    <span><strong>What each access level can do</strong></span>
+                </summary>
+                <div class="uc-role-help-body">
+                    <dl class="uc-role-help-list">
+                        <dt>Admin</dt>
+                        <dd>
+                            Sees and manages everything: every event, every registration, the teams, the
+                            categories and venues, and who else may use the calendar. Approves events waiting
+                            for review. Told when an event loses its organizer.
+                        </dd>
+                        <dt>Editor</dt>
+                        <dd>
+                            Sees and edits every event and can view every registration list. Cannot add or
+                            remove calendar users and cannot approve events.
+                        </dd>
+                        <dt>Contributor</dt>
+                        <dd>
+                            Creates events and edits their own, plus any event owned by a team they are in,
+                            and sees the registrations for those. Every other event is read-only, showing
+                            what the public calendar already shows.
+                        </dd>
+                    </dl>
+                    <p class="uc-hint">
+                        A WordPress administrator always has Admin here, whatever this screen says, and that
+                        is changed on the WordPress Users screen rather than this one.
+                    </p>
+                </div>
+            </details>
 
         <div class="uc-card">
             <div class="uc-card-head"><h2>Add a user to the calendar</h2></div>
@@ -9644,14 +10120,19 @@ class SFAF_Portal {
                     <div class="uc-user-controls">
                         <?php if ( $is_wpadm ) : ?>
                             <?php /*
-                              * FIXED, AND SAID SO, RATHER THAN A CONTROL THAT DOES NOTHING.
+                              * SAID, RATHER THAN OFFERED AS A CONTROL THAT DOES NOTHING.
                               * A WordPress administrator's access is decided by
                               * manage_options, so a dropdown here would accept a
                               * change and then have no effect. See get_role().
+                              *
+                              * "Admin (WP Admin)" and not "Admin (fixed)". Fixed
+                              * reads as though something had been corrected, and
+                              * says nothing about WHY it cannot be changed here.
+                              * Naming the thing that decides it answers both.
                               */ ?>
                             <div class="uc-user-fixed">
                                 <span class="uc-field-label">Access</span>
-                                <strong>Admin (fixed)</strong>
+                                <strong>Admin (WP Admin)</strong>
                                 <span class="uc-muted">WordPress administrator, so full calendar access. Change it on the WordPress Users screen.</span>
                             </div>
                         <?php else : ?>
@@ -9726,6 +10207,52 @@ class SFAF_Portal {
                         <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
                         <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
                     </form>
+
+                    <?php
+                    /*
+                     * THE REASSIGNMENT, SHOWN ONLY FOR THE PERSON WHO WAS JUST REFUSED.
+                     *
+                     * Not a control on every row: the question "who should take
+                     * these on" is meaningless until somebody has asked to remove
+                     * this person, and a permanent dropdown offering to move
+                     * another person's events is a way to do it by accident. The
+                     * refusal names the count; this is where the answer goes.
+                     */
+                    if ( $blocked && (int) $blocked['user_id'] === (int) $m->ID ) :
+                        $n = count( $blocked['events'] );
+                        ?>
+                        <div class="uc-reassign" role="group" aria-label="Reassign before removing">
+                            <p class="uc-reassign-head">
+                                <strong><?php echo esc_html( $m->display_name ); ?></strong> organizes
+                                <strong><?php echo (int) $n; ?></strong> <?php echo esc_html( 1 === $n ? 'event' : 'events' ); ?>.
+                                Choose who takes <?php echo esc_html( 1 === $n ? 'it' : 'them' ); ?> on.
+                            </p>
+                            <ul class="uc-reassign-events">
+                                <?php foreach ( $blocked['events'] as $ev ) : ?>
+                                    <li>
+                                        <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $ev['id'] ) ); ?>"><?php echo esc_html( $ev['title'] ); ?></a>
+                                        <span class="uc-muted"><?php echo esc_html( sfaf_status_label( $ev['status'] ) ); ?></span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-reassign-form">
+                                <input type="hidden" name="uc_action" value="remove_user" />
+                                <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
+                                <label>
+                                    New organizer
+                                    <select name="reassign_to" required>
+                                        <option value="">Choose somebody</option>
+                                        <?php foreach ( $this->calendar_people() as $cand ) :
+                                            if ( (int) $cand->ID === (int) $m->ID ) { continue; } ?>
+                                            <option value="<?php echo (int) $cand->ID; ?>"><?php echo esc_html( $cand->display_name ); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <button type="submit" class="uc-btn uc-btn-primary">Reassign and remove</button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             <?php endforeach; endif; ?>
         </div>
@@ -10264,13 +10791,57 @@ class SFAF_Portal {
          * that showed everything and relied on each caller to narrow it would
          * be one forgotten argument away from a disclosure.
          */
-        $scope = isset( $args['scope'] ) ? (string) $args['scope'] : '';
+        /*
+         * "MINE" MEANS MINE. "WHAT I CAN ACT ON" IS A WIDER SET (3.35.0).
+         *
+         * Since teams grant access, the events a contributor may work on are
+         * their own PLUS every event owned by a team they are in. Those two
+         * cannot be expressed as one WP_Query argument: `author` and `post__in`
+         * AND together rather than OR. So the widening is a posts_where filter
+         * installed for this query only and removed immediately, which is the
+         * same shape as the ordering filter above it.
+         *
+         * 'mine' still means authored-by-me, unchanged and deliberately: it is
+         * the label on a toggle a person reads, and quietly making "My events"
+         * mean "my events and four other people's" would be a worse answer than
+         * the narrow one.
+         */
+        $scope        = isset( $args['scope'] ) ? (string) $args['scope'] : '';
+        $where_filter = null;
+
         if ( 'all' === $scope ) {
             // Nothing added: the caller has said so in as many words.
-        } elseif ( 'mine' === $scope ) {
+        } elseif ( 'mine' === $scope && $this->can_view_all( $user ) ) {
+            // An admin or an editor asking to see only their own. A filter on a
+            // list they may see either way, not a gate, so it stays literal.
             $q['author'] = $user->ID;
-        } elseif ( ! $this->can_view_all( $user ) ) {
-            $q['author'] = $user->ID;
+        } else {
+            /*
+             * EVERYTHING THIS PERSON MAY ACT ON: their own events plus every
+             * event a team they are in owns. Both the unset default (the
+             * dashboard, and every caller predating 3.19.0) and 'mine' for
+             * somebody who is not view-all land here, because for them the two
+             * questions are the same one and answering them differently is how
+             * a team member's own work goes missing from "My events".
+             *
+             * `author` and `post__in` AND together in WP_Query rather than OR,
+             * so the widening is a posts_where installed for this query only
+             * and removed immediately. Same shape as the ordering filter above.
+             * The ids are absint()ed into the string; nothing here is user
+             * input, and it is cast anyway.
+             */
+            $team_events = SFAF_Teams::events_for_user( $user->ID );
+            if ( empty( $team_events ) ) {
+                $q['author'] = $user->ID;
+            } else {
+                global $wpdb;
+                $ids  = implode( ',', array_map( 'absint', $team_events ) );
+                $mine = (int) $user->ID;
+                $where_filter = function ( $where ) use ( $wpdb, $ids, $mine ) {
+                    return $where . " AND ( {$wpdb->posts}.post_author = {$mine} OR {$wpdb->posts}.ID IN ({$ids}) )";
+                };
+                add_filter( 'posts_where', $where_filter );
+            }
         }
 
         /*
@@ -10337,9 +10908,14 @@ class SFAF_Portal {
         $query = new WP_Query( $q );
 
         // Removed immediately: a posts_clauses filter left attached would
-        // rewrite the ORDER BY of every later query on the page.
+        // rewrite the ORDER BY of every later query on the page, and a
+        // posts_where left attached would narrow every later query to one
+        // person's events, which on this screen would look like data loss.
         if ( $clause_filter ) {
             remove_filter( 'posts_clauses', $clause_filter );
+        }
+        if ( $where_filter ) {
+            remove_filter( 'posts_where', $where_filter );
         }
 
         $this->last_query_total = (int) $query->found_posts;

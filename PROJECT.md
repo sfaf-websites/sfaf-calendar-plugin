@@ -759,6 +759,94 @@ calendar simply stopped believing it.
 Users and Permissions creates. Only people with a record appear in the
 notification picker and the team picker.
 
+### The event gate: one function, asked by every route
+
+Since 3.35.0 **`SFAF_Portal::user_can_edit_event( $user_id, $post )` is the only
+answer to "may this person edit this event"**, and every route that reads or
+writes an event, or reads its registrations, asks it. Not a check per route:
+four of the five defects below were routes that *had* a gate and had the wrong
+one, which is what a second copy of a rule produces.
+
+It answers in this order, and the order is the design:
+
+1. **`user_can_view_all()`**, calendar admin or editor,, which resolves
+   `manage_options` first. Nothing below can reduce this. (3.7.0)
+2. **The organizer**, which is `post_author` and nothing else. There is no
+   second field to keep in step and no snapshot. It never changes implicitly;
+   only the reassignment on the Users screen and WordPress itself move it.
+3. **A team that owns the event**, but only after `get_role()` confirms the
+   person has calendar access at all.
+
+That third order matters and is not defensive tidiness. A team is a name and a
+set of user ids, and the `$offered` guarantee means it may legitimately hold
+somebody with no calendar record: a person added so they could be mailed, or one
+whose access was withdrawn while their membership stayed. Answering *true* for
+them would be worse than useless, because they cannot pass the portal's entrance
+gate, so every link the answer produces opens a "Denied" page. The pre-event
+summary asks exactly this question to decide whether to send such a link. That is
+defect five below, rebuilt out of new parts.
+
+**Team membership is live.** Nothing is copied onto the event, so joining a team
+grants access to every event that team already owns and leaving removes it, both
+without touching any event. Same resolve-at-read-time rule teams already followed
+for notifications, and the reason a team is a set of ids rather than a snapshot.
+
+**An event may name up to two teams**, in `_uc_event_teams`. That is a
+**different key** from `_uc_notify_teams`, deliberately and permanently. Reusing
+the notification key would have made this a retroactive permission change: every
+event that had ever named a team for notification would have granted that team
+edit access the moment 3.35.0 was activated, on data entered when the field meant
+something else, with nobody asked and nothing said. Access starts empty on every
+existing event.
+
+**Notifications do not follow access.** Assigning a team grants access and
+nothing else; a separate checkbox, off by default, also puts it on the
+notification list. A team generally wants to log in and read who has registered,
+not receive an email per registration. The organizer is always notified.
+
+**Only somebody who can already give access away may assign a team**, so the
+control is `can_view_all` on both the renderer and the save. A contributor gets a
+separate read-only render naming who has access, not a disabled input: a disabled
+input is a control that posts nothing today and posts something the day somebody
+removes the attribute.
+
+**Registrations follow the same gate, scoped.** `/caladmin/rsvps?event_id=N` and
+its CSV export ask the event gate; unscoped, both stay on `can_view_all`, because
+"every registration on this site" is not a question about any event and no team
+owns it. This also widened the scoped view to a contributor reading their own
+event's registrations, which is deliberate: the alternative is a second rule
+saying team members may read an event's registrations but the person responsible
+for it may not.
+
+**What did not change.** "My events" for an admin or editor is still a literal
+author filter, because it is a label a person reads. The public read-only table
+for other people's events is untouched. Picker visibility still requires a
+calendar record.
+
+### Events with no organizer
+
+An event whose organizer has lost calendar access is editable by calendar admins
+and nobody else, and nothing used to say so. Two defences, because the two ways
+it happens are different:
+
+- **Removing somebody on Users and Permissions refuses to finish** while they
+  organize anything. It names the count, lists the events, and asks for a new
+  organizer, who must be somebody with calendar access. Same shape as refusing to
+  delete a team that is in use. This is the deliberate path and produces the good
+  answer, because a person is present who knows who should take the work on.
+- **WordPress's own Users > Delete bypasses all of that**, and it is the normal
+  way staff leave. `SFAF_Orphans` runs a check once a day from the ordinary
+  runner and emails every calendar admin, naming the events and linking to each.
+
+It **alerts on change, not on state**: a message goes out when the set of
+orphaned events differs from the set last reported, and never otherwise. The same
+list every morning is noise, noise gets filtered, and then the one that mattered
+is filtered too. Four days of the same three events is one email; a fourth
+appearing is a second naming all four; everything being fixed is a third saying
+so. A daily check rather than a `user_deleted` hook because a hook fires once, at
+a moment nobody is watching, and cannot see the second cause at all: a calendar
+record withdrawn while the WordPress account stays.
+
 So an administrator who has not added themselves has full access and does **not**
 appear in pickers, and that is correct: **a picker is a list of the people who
 work on this calendar, not a list of everybody who could.** 3.14.0 got this
@@ -798,6 +886,20 @@ The standing consequence: **a permission-sensitive view gets a separate
 renderer, never a flag.** A method with no capability to leak cannot leak:
 absent columns rather than hidden ones, nothing clickable, widening stated
 explicitly.
+
+The second standing consequence, from 3.35.0: **one function answers the
+question, and a whitelist proves every route asks it.**
+`.claude/event-access-test.php` names every route that reads or writes an event
+or its registrations together with the gate it is allowed to use, and fails in
+both directions: a route in the source that is not on the list, and a list entry
+whose route has gone. Being right today is not the property being protected. It
+also sweeps for a `post_author` comparison written anywhere outside the gate,
+which is how a second and quietly different answer gets into the codebase.
+
+`.claude/route-gate-inventory.php` is the companion that does not fail: it prints
+what each route requires, for a person deciding whether a gate is the *right*
+one. No script can answer that, and four of the five defects above were routes
+that had a gate.
 
 Two supporting rules that came out of the same family. Attendee data is **not
 searchable and cannot become searchable by accident**: `SFAF_Search` whitelists

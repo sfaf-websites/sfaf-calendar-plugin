@@ -55,6 +55,29 @@ class SFAF_Teams {
     /** Team ids an event notifies. An array of ids, on the event. */
     const EVENT_META = '_uc_notify_teams';
 
+    /**
+     * Team ids that OWN an event. An array of ids, on the event.
+     *
+     * SEPARATE FROM EVENT_META ON PURPOSE, AND NOT A RENAME OF IT.
+     *
+     * Before 3.35.0 a team on an event meant one thing: notify these people. It
+     * now also means these people may edit it. Reusing the same meta key would
+     * have made that a RETROACTIVE permission change: every event that had ever
+     * named a team for notification would have silently granted edit access to
+     * that team the moment this version was activated, on data entered when the
+     * field meant something else. Nobody would have been asked and nothing would
+     * have said so.
+     *
+     * So access starts empty on every existing event and is granted only where
+     * somebody chooses a team in the new field. The old key keeps its old
+     * meaning, which is also what makes "notifications do not follow access"
+     * true rather than merely intended.
+     */
+    const ACCESS_META = '_uc_event_teams';
+
+    /** How many teams one event may name. Two, per the access model. */
+    const MAX_PER_EVENT = 2;
+
     /** A sanity ceiling, so a runaway loop cannot fill the option. */
     const MAX_TEAMS = 100;
 
@@ -282,6 +305,145 @@ class SFAF_Teams {
         return $out;
     }
 
+    /* ---------------------------------------------------------------------
+     * Access
+     *
+     * A team on an event grants its members the right to edit that event, view
+     * its RSVPs and see its details. Membership is LIVE: nothing is copied onto
+     * the event, so joining a team grants access to every event that team
+     * already owns, and leaving removes it, both without touching any event.
+     * That is the same resolve-at-read-time rule teams already follow for
+     * notifications, and it is the reason a team is a set of user ids rather
+     * than a snapshot of anything.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * The teams that own an event, dropping any that no longer exist.
+     *
+     * @param int $event_id
+     * @return string[]
+     */
+    public static function access_for_event( $event_id ) {
+        $ids   = get_post_meta( (int) $event_id, self::ACCESS_META, true );
+        $known = self::all();
+        $out   = array();
+        foreach ( (array) $ids as $id ) {
+            $id = (string) $id;
+            // A deleted team cannot grant access. delete() refuses while any
+            // event names a team, so this should be unreachable; it is here
+            // because "should be unreachable" is not a permission check.
+            if ( '' !== $id && isset( $known[ $id ] ) && ! in_array( $id, $out, true ) ) {
+                $out[] = $id;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Set the teams that own an event. Unknown ids are dropped, and no more
+     * than MAX_PER_EVENT are kept.
+     *
+     * @param int      $event_id
+     * @param string[] $ids
+     */
+    public static function set_access_for_event( $event_id, $ids ) {
+        $known = self::all();
+        $keep  = array();
+        foreach ( (array) $ids as $id ) {
+            $id = sanitize_key( (string) $id );
+            if ( isset( $known[ $id ] ) && ! in_array( $id, $keep, true ) ) {
+                $keep[] = $id;
+            }
+            if ( count( $keep ) >= self::MAX_PER_EVENT ) {
+                break;
+            }
+        }
+
+        if ( empty( $keep ) ) {
+            delete_post_meta( (int) $event_id, self::ACCESS_META );
+            return;
+        }
+        update_post_meta( (int) $event_id, self::ACCESS_META, $keep );
+    }
+
+    /**
+     * Is this person on a team that owns this event?
+     *
+     * READ FRESH EVERY TIME, deliberately not memoized. all() is one
+     * non-autoloaded option and the alternative is a cache that can disagree
+     * with the truth for the length of a request, which on a permission check
+     * is the wrong trade.
+     *
+     * IT ANSWERS ONLY THE TEAM QUESTION. Whether the person has calendar access
+     * at all is the caller's business, and SFAF_Portal::user_can_edit_event()
+     * is where the two are combined. Keeping them apart is what lets the test
+     * assert each independently.
+     *
+     * @param int $user_id
+     * @param int $event_id
+     * @return bool
+     */
+    public static function user_owns_event( $user_id, $event_id ) {
+        $teams = self::access_for_event( $event_id );
+        if ( empty( $teams ) ) {
+            return false;
+        }
+        $user_id = (int) $user_id;
+        if ( $user_id <= 0 ) {
+            return false;
+        }
+        $all = self::all();
+        foreach ( $teams as $id ) {
+            if ( isset( $all[ $id ] ) && in_array( $user_id, $all[ $id ]['users'], true ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Events any of this person's teams own. For the events list and dashboard.
+     *
+     * @param int $user_id
+     * @return int[] Event ids.
+     */
+    public static function events_for_user( $user_id ) {
+        $mine = array();
+        foreach ( self::for_user( $user_id ) as $team ) {
+            $mine[] = (string) $team['id'];
+        }
+        if ( empty( $mine ) ) {
+            return array();
+        }
+
+        // Same reasoning as events_using(): ask for the small set of events that
+        // name any team at all, then check each properly, because a meta_query
+        // LIKE against a serialized array matches on a substring and answers
+        // this question wrongly whenever one team id contains another.
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => array( 'publish', 'pending', 'draft', 'future', 'private' ),
+            'posts_per_page'         => 500,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                array( 'key' => self::ACCESS_META, 'compare' => 'EXISTS' ),
+            ),
+        ) );
+
+        $out = array();
+        foreach ( $q->posts as $event_id ) {
+            foreach ( self::access_for_event( $event_id ) as $tid ) {
+                if ( in_array( $tid, $mine, true ) ) {
+                    $out[] = (int) $event_id;
+                    break;
+                }
+            }
+        }
+        return $out;
+    }
+
     /**
      * Set the teams an event names. Unknown ids are dropped.
      *
@@ -321,6 +483,21 @@ class SFAF_Teams {
     public static function events_using( $id ) {
         $id = (string) $id;
 
+        /*
+         * BOTH KEYS, AND MISSING ONE WOULD BE A PERMISSION DEFECT.
+         *
+         * This is what delete() consults to refuse deleting a team that is in
+         * use. Since 3.35.0 a team can be named by an event for ACCESS as well
+         * as for notification, and those live under different keys. Asking only
+         * about the notification key would have let somebody delete a team that
+         * is the only thing granting a group access to its events: the team
+         * vanishes, access_for_event() drops the now-unknown id, and every
+         * member silently loses access to work they were responsible for, with
+         * the deletion having reported success.
+         *
+         * OR, not two queries: an event may name a team for one, the other or
+         * both, and it must appear exactly once either way.
+         */
         $q = new WP_Query( array(
             'post_type'              => 'uc_event',
             'post_status'            => array( 'publish', 'pending', 'draft', 'future', 'private' ),
@@ -329,19 +506,26 @@ class SFAF_Teams {
             'no_found_rows'          => true,
             'update_post_term_cache' => false,
             'meta_query'             => array(
+                'relation' => 'OR',
                 array( 'key' => self::EVENT_META, 'compare' => 'EXISTS' ),
+                array( 'key' => self::ACCESS_META, 'compare' => 'EXISTS' ),
             ),
         ) );
 
         $out = array();
         foreach ( $q->posts as $post_id ) {
-            if ( in_array( $id, self::for_event( $post_id ), true ) ) {
-                $out[] = array(
-                    'id'     => (int) $post_id,
-                    'title'  => get_the_title( $post_id ) ? get_the_title( $post_id ) : '(untitled)',
-                    'status' => get_post_status( $post_id ),
-                );
+            $notifies = in_array( $id, self::for_event( $post_id ), true );
+            $owns     = in_array( $id, self::access_for_event( $post_id ), true );
+            if ( ! $notifies && ! $owns ) {
+                continue;
             }
+            $out[] = array(
+                'id'     => (int) $post_id,
+                'title'  => get_the_title( $post_id ) ? get_the_title( $post_id ) : '(untitled)',
+                'status' => get_post_status( $post_id ),
+                // Which of the two, so the refusal can say what would break.
+                'how'    => $owns ? ( $notifies ? 'access and notifications' : 'access' ) : 'notifications',
+            );
         }
         return $out;
     }

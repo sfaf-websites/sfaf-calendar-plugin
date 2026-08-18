@@ -421,6 +421,13 @@ class SFAF_Cron {
                 'on'       => array( __CLASS__, 'auto_fetch_enabled' ),
                 'off'      => 'Automated fetching is switched off. Use "Fetch updates" on the calendar portal\'s Pending screen to run it by hand.',
             ),
+            'orphans'   => array(
+                'label'    => 'Events with no organizer',
+                'plain'    => 'Checks once a day for events whose organizer no longer has calendar access, and emails the calendar admins when the list changes.',
+                'callback' => array( 'SFAF_Orphans', 'run' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
         );
     }
 
