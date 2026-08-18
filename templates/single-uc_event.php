@@ -48,6 +48,35 @@ while ( have_posts() ) :
 
             <?php
             /*
+             * CANCELLED, SAID FIRST AND SAID PLAINLY.
+             *
+             * Above everything, before the title, because it is the only thing
+             * on this page that matters to somebody who came here to check when
+             * it starts. A cancelled event that is set to STAY is reachable by
+             * design: somebody who registered comes looking, and finding the
+             * page unchanged with a working Register button would be worse than
+             * the event having vanished.
+             *
+             * role="status" so a screen reader announces it rather than leaving
+             * it to be discovered in reading order, and the word is in the text
+             * rather than carried by the red alone.
+             */
+            if ( SFAF_Cancellation::is_cancelled( $post_id ) ) :
+                $why = trim( (string) get_post_meta( $post_id, '_uc_cancelled_reason', true ) );
+                ?>
+                <div class="uc-single-cancelled" role="status">
+                    <p class="uc-cancelled-head">This event has been cancelled.</p>
+                    <?php if ( '' !== $why ) : ?>
+                        <p class="uc-cancelled-why"><?php echo esc_html( $why ); ?></p>
+                    <?php endif; ?>
+                    <p class="uc-cancelled-note">
+                        It is not going ahead. If you had registered, you do not need to do anything.
+                    </p>
+                </div>
+            <?php endif; ?>
+
+            <?php
+            /*
              * BACK TO THE CALENDAR THEY CAME FROM, NOT TO THIS SITE'S ARCHIVE.
              *
              * This page is served from the resources site. The calendar people

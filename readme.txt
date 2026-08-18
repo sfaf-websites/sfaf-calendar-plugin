@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.35.0
+Stable tag: 3.36.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -513,6 +513,39 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.36.0 =
+
+**Somebody could register for a session, have it moved to a different day, and never be told. Deleting an event with registrations stranded those people silently. Both are closed.**
+
+**Cancelled is a state an event is in, not a deletion.** An event that is not happening still has to exist, because somebody registered for it and that registration is the record that they did. The organizer chooses what a cancelled event does on the public calendar: stay, clearly marked, or come off it. **Staying is the default**, and it is the better answer: somebody who registered may come looking, and an event that has simply vanished tells them nothing at all. Either way it stays in caladmin, keeps every registration, and takes no new ones.
+
+**It is post meta, not a post status, and that is a decision rather than a shortcut.** The obvious shape is a `cancelled` status beside `publish`. It is the wrong one here for the reason `SFAF_Sources` already documents in another context: this plugin names `post_status => 'publish'` BY HAND in the shortcodes, the embed payload, the REST feed, the .ics, the reminder query, the summary query and the series listings. A new status is invisible to every one of those until each is found and changed, and the failure mode of missing one is an event that is cancelled everywhere except the place nobody checked. A meta flag inverts that: nothing changes about which queries return the event, so nothing silently drops it, and the two places that must behave differently ask. The organizer's stay-or-hide choice needs a second field anyway, which settles it, since a status cannot carry both without becoming two statuses.
+
+**The reminder and the summary would both have gone out, and no query could have stopped them.** Both select on `post_status => 'publish'` and today's date, and a cancelled event has both. So the exclusion is an explicit first line in each loop, asking one shared method so the two jobs cannot come to different conclusions about the same event, and the test asserts it is present in both files AND that it runs before the other per-event checks. "Your event is today" for an event that is not happening is the worst message this plugin could send.
+
+**Deleting is not a way around cancelling.** Deleting an event with registrations is refused, and the refusal links straight to cancelling rather than merely demanding it. Deleting a series whose events have registrations offers to cancel them all instead, with the same stay-or-hide choice and the same question about emailing. Once cancelled and the registrants told, a cancelled event or series can be deleted: cancel, notify, then delete. Deleting an event with nobody registered is unchanged.
+
+**The prompt appears only when there is somebody to tell.** With nobody registered it is a click in the way, so the whole block is absent rather than present and disabled. It triggers on cancelling, on deleting per the above, and on a change to the DATE, the TIME or the LOCATION. Nothing else: description, category, series, capacity and image do not change whether somebody turns up, and a notification that goes out for those is one that gets filtered, taking the date change with it. What is compared is the FORMATTED value, so storing `18:00` as `6:00 pm` is not a change anybody is told about.
+
+**The checkbox is ticked by default.** Somebody changing a date is thinking about the date, not about who needs telling, so the safe default is that people are told and unticking is a deliberate act. The hint names the one legitimate reason to untick it, which is that they are writing to those people some other way.
+
+**In the bulk case it asks once, and one person gets one email.** Changing a recurrence pattern across upcoming occurrences can touch twelve dates at once. The prompt names the total across all of them, not one per event, and counts DISTINCT PEOPLE as well as registrations, because twelve registrations across six moved dates may be four people and that is the number somebody needs before pressing send. `SFAF_Announce` then gathers every affected event, resolves every registrant across all of them, groups by ADDRESS and sends once: somebody registered for six of twelve occurrences gets one email listing six dates, not six emails. The address is the grouping key for the same reason it is the deduplication key in the reminder list, since one person may hold two registrations under two different names.
+
+**Two messages, and they are different.** CANCELLED names the event, its date and time, says plainly it is cancelled, and carries **no cancel link**: there is no place to release, and offering one would read as though something were still required of them. CHANGED names WHAT MOVED, old value to new value, for whichever of date, time or location changed, because a registrant should not have to remember what it was before in order to work out what is different. It carries the full new details, a corrected Add to calendar pair, and **the cancel link**, since somebody who cannot make the new time should be able to release their place in one click. Both use the existing banner, the same table markup for Outlook, a plain text alternative, AP dates and times through the one formatter, and the event's reply-to.
+
+**Teams are not notified**, and neither is the notification list. They were presumably part of the decision.
+
+**A refetch cannot un-cancel an imported event or move it.** Two things would have to go wrong and both are closed. `update_event()` writes an explicit field list and `post_status` is deliberately not among them, so there is no code path from a payload to the cancellation meta at all: a source cannot clear a flag it has no way to address. And a cancelled event is now refused by the refresh outright, which is the part the first lock does not cover, because the source still lists the event and keeps sending a date, a time and a location. Without it a refetch would happily move an event that is not happening and the change detection would have a real diff to report about it.
+
+**What cancelling an imported event does NOT do is cancel it at the source.** Eventbrite and GoFundMe Pro still hold their own copy, people may still be able to register there, and this plugin has no way to know or to stop it. The editor says so where somebody cancels one, because a silent half-cancellation is worse than a refusal.
+
+**Registration records survive all of it**, with the event title snapshot, and private events cancel exactly like any other with their registrants told the same way.
+
+**Nine faults planted, and the ninth found a hole in the test rather than in the code.** The reminder guard removed, the summary guard removed, the cancelled check reordered after the imported check, the refetch allowed through, the exclusion clause keyed on cancellation instead of visibility (which would hide every event meant to stay listed), a cancel link added to the cancellation email, the changed email reduced to only the new value, and one-email-per-date instead of per-person were all caught by name. The ninth removed `status = 'confirmed'` from the registrant query, and nothing failed: the `$wpdb` stub was applying that filter ITSELF, whatever the SQL said, so the rule was being enforced by the scaffolding rather than by the code under test. The stub now reads the query it is given, and the plant is caught.
+
+The access whitelist from 3.35.0 did its job unprompted: `POST:cancel_event` failed the build until it was added deliberately, with the event gate, so a team member who may edit an event may also cancel it. The date sweep caught this release's own test stub spelling out the house date format.
+
+VERIFIED: 52 PHP files parse under PHP 8.3; the callable audit resolves 112 plugin functions across 36 files and 32 classes with nothing unresolved, self-test passing; the whole `.claude` suite runs green, 15 PHP harnesses plus the JS panel test, the guard test and two self-tests; nine planted faults each caught by name; three stylesheets balance. Zip built with bsdtar, extracted, diffed file by file against the tree, and both the linter and the callable audit re-run from the extract.
 = 3.35.0 =
 
 **Teams now decide who can edit an event, not only who hears about it.** An event has an ORGANIZER, which is the person who created it and is `post_author` and nothing else: no second field, no snapshot, and it never changes implicitly. The organizer can always edit it and is always notified. An event with no team is editable by its organizer and calendar admins and nobody else. An event may name up to **two teams**, and everybody on either can edit it, see its details and read its registrations. Membership is **live**: joining a team grants access to every event that team already owns, including ones created long before, and leaving removes it, both without touching a single event. That is the same resolve-at-read-time rule teams already followed for notifications, and it is why a team is a set of user ids rather than a snapshot of anything.

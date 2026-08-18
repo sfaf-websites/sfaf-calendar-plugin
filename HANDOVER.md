@@ -4,24 +4,25 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-18, at 3.35.0.
+**Last updated:** 2026-08-18, at 3.36.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.35.0**, built as `sfaf-calendar-3.35.0.zip` in the project
+The plugin is at **3.36.0**, built as `sfaf-calendar-3.36.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.35.0, the deployment is stale or partial, and that
+screen: if it does not say 3.36.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
-**3.35.0 changed who can see and edit an event.** Teams are now an access model:
-an event may name up to two teams and everybody on either can edit it and read
-its registrations, live, without anything being copied onto the event. Read
-`PROJECT.md` §5 before touching any route that reads an event or its RSVPs. One
-function answers the edit question and `.claude/event-access-test.php` is a
-whitelist of all 43 routes that must ask it.
+**Two releases changed rules that other code has to respect.** 3.35.0 made teams
+an access model: one function answers who may edit an event and
+`.claude/event-access-test.php` is a whitelist of every route that must ask it.
+3.36.0 added cancellation as a state: a cancelled event is still `publish` with a
+date, so anything selecting on those two must ask `SFAF_Cancellation` as well.
+Read `PROJECT.md` §4 and §5 before touching a query over events or a route that
+reads one.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. That was the single most valuable unverified
@@ -56,15 +57,16 @@ the health check that sends the alert email. The nudge is what closes that.
 
 ## In flight
 
-- **3.35.0 is unverified on a live site**, and it is a permission change, so it
-  is the one to verify by hand rather than by reading the tests. The three things
-  worth doing in order: put somebody in a team, assign that team to an event they
-  did not create, and confirm they can open it and see its registrations and
-  cannot open anything else. Then take the team off and confirm access goes.
-- **3.34.0's Automation screen and confirmation-email buttons are also
-  unverified on a live site.** The email was rendered in a browser and looked at;
-  it has not been delivered to a mailbox. The test send on the Automation screen
-  is how that gets checked.
+- **3.36.0 is unverified on a live site.** Worth doing by hand, in order: cancel
+  an event that has a registration and confirm the email arrives and reads right;
+  confirm the event still appears on the public calendar marked cancelled and its
+  Register button is gone; confirm deleting it is refused before cancelling and
+  allowed after. Then move a date on an event with a registration and check the
+  email names the OLD date as well as the new one.
+- **3.35.0 is unverified on a live site**, and it is a permission change. Put
+  somebody in a team, assign that team to an event they did not create, confirm
+  they can open it and see its registrations and nothing else, then take the team
+  off and confirm access goes.
 - **The external ping has not been created yet.** Until it is, the only thing
   driving cron is visitor traffic and the page-view nudge from sfaf.org.
 - **The GFMP campaign image is deliberately unmapped.** Both fields their schema
@@ -79,7 +81,7 @@ the health check that sends the alert email. The nudge is what closes that.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. Until then the From address stays `websites@sfaf.org`. It is a setting, so when the mailbox exists somebody types it into Settings and nothing is deployed. |
 | **Val** | The EveryAction JSON file: a **sample with real events** before the adapter is written, and confirmation that his hourly job **writes atomically** (temp name, then rename) so a fetch cannot catch a half-written file | Asked. The field list is in `PROJECT.md` §8. Do not build the adapter against a guessed shape. |
-| **Salesforce admin** | The Pardot connected app: client ID and secret, Business Unit ID, a service user, and which OAuth flow | Asked. Campaign IDs already store against events; nothing talks to Pardot. |
+| **Salesforce admin** | The Pardot connected app: client ID and secret, Business Unit ID, a service user, OAuth flow | Asked. Campaign IDs store against events; nothing talks to Pardot. |
 
 ## Mark's own testing list
 
@@ -98,11 +100,11 @@ Not yet done, and each matters for a different reason.
    not been seen: it is due two hours before an event starts, which is what the
    15-minute runner in 3.34.0 exists to make accurate, and it needs an event with
    somebody registered and a staff mailbox being watched.
-4. **Send yourself the confirmation email** from Events > Automation and look at
-   the two Add to calendar buttons. They were rebuilt in 3.34.0 and have been
-   seen in a browser, not in a mail client. Outlook on Windows is the one that
-   matters, and the specific question is whether the two buttons are the same
-   height and whether the calendar glyph loads.
+4. **Send yourself every message type** from Events > Automation and read them
+   in Outlook on Windows, which is the client that breaks things. Two specific
+   questions: are the Add to calendar buttons the same height with the glyph
+   loaded (3.34.0), and does the changed-event message name the old value as
+   well as the new one (3.36.0). None of these has been seen in a mail client.
 
 ## Open decisions
 
@@ -117,14 +119,11 @@ Not yet done, and each matters for a different reason.
 
 ## Queued work
 
-1. **The `/caladmin` design audit**, carrying **106 findings against
-   `portal.css`** that have never been enumerated in the repo. The list needs to
-   be written down before it can be worked, and it should be split by mechanism
-   rather than worked top to bottom.
-2. **Simplify the event editor.** Creating an ordinary event is currently a
-   parade of checkboxes, most of which a normal event never needs. The shared
-   field list pattern means this is a rendering-order and disclosure problem, not
-   a data-model one.
+1. **The `/caladmin` design audit**, **106 findings against `portal.css`** never
+   written down in the repo. Enumerate them first, split by mechanism.
+2. **Simplify the event editor.** A parade of checkboxes, most of which a normal
+   event never needs, and two more cards since 3.35.0. A rendering-order and
+   disclosure problem, not a data-model one.
 
 ## Recent failures worth remembering
 

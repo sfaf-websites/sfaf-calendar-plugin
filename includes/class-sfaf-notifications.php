@@ -174,6 +174,10 @@ class SFAF_Notifications {
                 return self::build_alert( $event_id, $person, $context );
             case 'summary':
                 return self::build_summary( $event_id, $context );
+            case 'cancelled':
+                return self::build_cancelled( $event_id, $person );
+            case 'changed':
+                return self::build_changed( $event_id, $person, $context );
         }
         return null;
     }
@@ -451,6 +455,172 @@ class SFAF_Notifications {
      *
      * @param array $context can_edit_event: bool.
      */
+    /**
+     * (e) IT IS CANCELLED.
+     *
+     * NO CANCEL LINK, and that is not an oversight. Every other message to a
+     * registrant carries one so they can release a place they cannot use. There
+     * is no place to release here: the event is not happening, and offering to
+     * cancel a registration for it would read as though something were still
+     * required of them.
+     *
+     * The reason, when the organizer gave one, goes above the details rather
+     * than below. Somebody reading "cancelled" wants to know why before they
+     * want to be reminded when it was going to be.
+     */
+    private static function build_cancelled( $event_id, $person ) {
+        $f      = self::facts( $event_id );
+        $reason = trim( (string) get_post_meta( $event_id, '_uc_cancelled_reason', true ) );
+
+        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
+        if ( '' === $first && $person && ! empty( $person->name ) ) {
+            $first = trim( (string) $person->name );
+        }
+
+        $head = sprintf( '%s is cancelled.', $f['title'] );
+
+        $html  = SFAF_Email::heading( $head );
+        $html .= SFAF_Email::para(
+            ( '' !== $first ? $first . ', this' : 'This' )
+            . ' event is not going ahead, and you do not need to do anything.'
+        );
+        if ( '' !== $reason ) {
+            $html .= SFAF_Email::para( $reason );
+        }
+        $html .= SFAF_Email::para( 'It was going to be:' );
+        $html .= SFAF_Email::details( self::detail_rows( $f ) );
+        $html .= SFAF_Email::small_para(
+            'Your registration has been kept as a record that you signed up. Nothing else will be sent about this event.'
+        );
+
+        $text  = $head . "\n\n";
+        $text .= ( '' !== $first ? $first . ', this' : 'This' ) . " event is not going ahead, and you do not need to do anything.\n\n";
+        if ( '' !== $reason ) {
+            $text .= $reason . "\n\n";
+        }
+        $text .= "It was going to be:\n\n";
+        $text .= self::detail_text( $f ) . "\n\n";
+        $text .= "Your registration has been kept as a record that you signed up. Nothing else will be sent\nabout this event.\n";
+        $text .= "\n" . SFAF_Email::POSTAL;
+
+        return array(
+            'subject' => sprintf( 'Cancelled: %s', $f['title'] ),
+            'html'    => SFAF_Email::shell( sprintf( 'Cancelled, %s', $f['date'] ), $html ),
+            'text'    => $text,
+        );
+    }
+
+    /**
+     * (f) IT HAS MOVED.
+     *
+     * OLD VALUE TO NEW VALUE, FOR EACH THING THAT ACTUALLY MOVED, and this is
+     * the whole difference between this message and simply resending the
+     * details. A registrant should not have to remember what the event used to
+     * be in order to work out what changed about it. "This event has moved from
+     * Tuesday, August 12 to Wednesday, August 13" answers the question; a
+     * message that only carries the new date makes the reader do the diff, and
+     * some of them will not.
+     *
+     * THE CANCEL LINK IS HERE, unlike the cancellation message. Somebody who
+     * cannot make the new time should be able to release their place in one
+     * click, and this is the moment they find out they might not be able to
+     * make it.
+     *
+     * @param array $context {changes: array<string,array{from:string,to:string}>}
+     *                       Keyed by the field label, already formatted.
+     */
+    private static function build_changed( $event_id, $person, $context = array() ) {
+        $f       = self::facts( $event_id );
+        $changes = ( isset( $context['changes'] ) && is_array( $context['changes'] ) ) ? $context['changes'] : array();
+        $cancel  = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+
+        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
+        if ( '' === $first && $person && ! empty( $person->name ) ) {
+            $first = trim( (string) $person->name );
+        }
+
+        /*
+         * THE HEADLINE NAMES THE CHANGE WHEN THERE IS EXACTLY ONE, because that
+         * is the case where a sentence can carry the whole message and the
+         * reader is done. With two or more it says so and the list below does
+         * the work; a headline trying to hold three moves is a headline nobody
+         * finishes.
+         */
+        if ( 1 === count( $changes ) ) {
+            $only  = key( $changes );
+            $pair  = current( $changes );
+            $head  = sprintf( '%s has a new %s.', $f['title'], strtolower( $only ) );
+            $lead  = sprintf(
+                'It has moved from %s to %s.',
+                $pair['from'],
+                $pair['to']
+            );
+        } else {
+            $head = sprintf( '%s has changed.', $f['title'] );
+            $lead = 'Some details have moved. Here is what is different.';
+        }
+
+        $html  = SFAF_Email::heading( $head );
+        $html .= SFAF_Email::para( ( '' !== $first ? $first . ', ' : '' ) . lcfirst( $lead ) );
+
+        if ( count( $changes ) > 1 ) {
+            $rows = array();
+            foreach ( $changes as $label => $pair ) {
+                $rows[ $label ] = $pair['from'] . '  to  ' . $pair['to'];
+            }
+            $html .= SFAF_Email::details( $rows );
+        }
+
+        $html .= SFAF_Email::para( 'The event is now:' );
+        $html .= SFAF_Email::details( self::detail_rows( $f ) );
+
+        $gcal = sfaf_google_calendar_url( $event_id );
+        $ics  = sfaf_ics_url( $event_id );
+        $buttons = array();
+        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Google', 'primary', true, true ); }
+        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Apple or Outlook', 'outline', true, true ); }
+        if ( $buttons ) {
+            // The old entry in somebody's calendar is now wrong, so the one
+            // thing they most likely need is a corrected one.
+            $html .= SFAF_Email::label( 'Update your calendar' );
+            $html .= SFAF_Email::button_row( $buttons );
+        }
+
+        if ( $f['url'] ) {
+            $html .= SFAF_Email::link_para( $f['url'], 'See the event page' );
+        }
+        if ( $cancel ) {
+            $html .= SFAF_Email::rule();
+            $html .= SFAF_Email::small_para(
+                'Cannot make the new time? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
+            );
+        }
+
+        $text  = $head . "\n\n";
+        $text .= ( '' !== $first ? $first . ', ' : '' ) . lcfirst( $lead ) . "\n\n";
+        if ( count( $changes ) > 1 ) {
+            foreach ( $changes as $label => $pair ) {
+                $text .= $label . ': ' . $pair['from'] . ' to ' . $pair['to'] . "\n";
+            }
+            $text .= "\n";
+        }
+        $text .= "The event is now:\n\n" . self::detail_text( $f ) . "\n\n";
+        if ( $gcal || $ics ) { $text .= "Update your calendar\n"; }
+        if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
+        if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
+        if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
+        if ( $cancel ) {
+            $text .= "\nCannot make the new time? Release your place so somebody else can take it. We will ask\nyou to confirm: " . $cancel . "\n";
+        }
+        $text .= "\n" . SFAF_Email::POSTAL;
+
+        return array(
+            'subject' => sprintf( 'Changed: %s', $f['title'] ),
+            'html'    => SFAF_Email::shell( sprintf( 'Now %s, %s', $f['date'], $f['time'] ? $f['time'] : 'time to be confirmed' ), $html ),
+            'text'    => $text,
+        );
+    }
+
     private static function build_summary( $event_id, $context = array() ) {
         $f    = self::facts( $event_id );
         $rows = SFAF_RSVP::get_rsvps( $event_id, 'confirmed' );
@@ -666,6 +836,12 @@ class SFAF_Notifications {
 
         $due = array();
         foreach ( $query->posts as $id ) {
+            // Same reasoning as SFAF_Reminders::due_events(), and the same one
+            // question asked, so the two jobs cannot come to different
+            // conclusions about the same event. See SFAF_Cancellation.
+            if ( SFAF_Cancellation::skip_scheduled( $id ) ) {
+                continue;
+            }
             if ( SFAF_Reminders::is_imported( $id ) ) {
                 continue;
             }

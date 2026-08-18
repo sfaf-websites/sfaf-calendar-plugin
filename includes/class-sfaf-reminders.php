@@ -240,6 +240,21 @@ class SFAF_Reminders {
 
         $due = array();
         foreach ( $query->posts as $id ) {
+            /*
+             * A CANCELLED EVENT IS NOT DUE, AND THE QUERY ABOVE CANNOT KNOW IT.
+             *
+             * It asks for post_status 'publish' and today's date, and a
+             * cancelled event has both: cancellation is meta, deliberately, so
+             * that a new post status would not have to be added to the dozen
+             * places this plugin names 'publish' by hand. The cost of that
+             * decision is exactly this line, and it is why it is the FIRST test
+             * rather than folded in with the others. Sending "your event is
+             * today" for an event that is not happening is the worst message
+             * this plugin could send.
+             */
+            if ( SFAF_Cancellation::skip_scheduled( $id ) ) {
+                continue;
+            }
             if ( self::is_imported( $id ) ) {
                 continue;
             }

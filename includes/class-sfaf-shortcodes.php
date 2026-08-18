@@ -202,6 +202,10 @@ class SFAF_Shortcodes {
          * nests rather than appends.
          */
         SFAF_Privacy::exclude( $args );
+        // And cancelled events the organizer chose to hide. A different
+        // question about the same query, applied at the same place so the
+        // two cannot be excluded from one builder and not the other.
+        SFAF_Cancellation::exclude( $args );
 
         if ( $per_page <= 0 ) {
             $args['posts_per_page'] = -1;
@@ -646,6 +650,10 @@ class SFAF_Shortcodes {
         // double-join reason set out in the note there. See
         // SFAF_Privacy::exclude().
         SFAF_Privacy::exclude( $args );
+        // And cancelled events the organizer chose to hide. A different
+        // question about the same query, applied at the same place so the
+        // two cannot be excluded from one builder and not the other.
+        SFAF_Cancellation::exclude( $args );
 
         foreach ( array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer', 'venue' => 'uc_venue' ) as $key => $taxonomy ) {
             if ( '' !== $filters[ $key ] ) {

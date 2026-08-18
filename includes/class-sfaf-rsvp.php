@@ -232,6 +232,24 @@ class SFAF_RSVP {
             return array( 'success' => false, 'message' => 'This event could not be found.' );
         }
 
+        /*
+         * A CANCELLED EVENT TAKES NO NEW REGISTRATIONS.
+         *
+         * Checked at the write and not only by hiding the form. A cancelled
+         * event set to STAY is still on the public calendar by design, so its
+         * page is reachable, and a form removed from a template is not a
+         * refusal: an open tab from before the cancellation still posts, and so
+         * does anybody constructing the request. Defect one in PROJECT.md §5
+         * was a screen that relied on not being linked to.
+         *
+         * It says what happened rather than "not available", because the person
+         * reading it very likely came from a link they were sent and needs to
+         * know the event is off rather than that the button is broken.
+         */
+        if ( SFAF_Cancellation::is_cancelled( $data['event_id'] ) ) {
+            return array( 'success' => false, 'message' => 'This event has been cancelled, so registrations are closed.' );
+        }
+
         // Don't accept RSVPs for events that don't have RSVP enabled.
         if ( get_post_meta( $data['event_id'], '_uc_rsvp_enabled', true ) !== '1' ) {
             return array( 'success' => false, 'message' => 'RSVP is not available for this event.' );

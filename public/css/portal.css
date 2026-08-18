@@ -2281,3 +2281,38 @@ body.uc-modal-open { overflow: hidden; }
 .uc-reassign-events .uc-muted { margin-left: 6px; font-size: 12px; }
 .uc-reassign-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
 .uc-reassign-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+   CANCELLING (3.36.0).
+
+   A cancelled event is not an error state and not a warning: it is a decision
+   somebody made, and the screen says so plainly rather than shouting. The red
+   is reserved for the button that performs it and for the pill that reports it,
+   which are the two places a colour is carrying an actual consequence.
+   ------------------------------------------------------------------------- */
+.uc-cancel-card.is-cancelled { border-color: #b91c1c; }
+.uc-cancel-state { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: #b91c1c; }
+.uc-cancel-state .uc-muted { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; }
+.uc-cancel-form { margin-top: 12px; }
+.uc-cancel-visibility { margin: 0 0 12px; padding: 0; border: 0; }
+.uc-cancel-visibility legend { padding: 0; margin-bottom: 8px; font-size: 12.5px; font-weight: 700; }
+.uc-cancel-visibility .uc-radio-opt { display: flex; gap: 8px; align-items: flex-start;
+    margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+.uc-cancel-visibility .uc-radio-opt strong { display: block; }
+.uc-btn-danger { border-color: #b91c1c; color: #b91c1c; }
+.uc-btn-danger:hover { background: #b91c1c; color: #fff; }
+
+/* The count and the tick, wherever the prompt appears. One block, three
+   callers: cancelling one event, cancelling a series, and saving a move. */
+.uc-notice-block { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--p-border-strong);
+    border-left: 4px solid var(--uc-accent-text); border-radius: 10px; background: var(--p-bg); }
+.uc-notice-count { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.uc-notice-block .uc-hint { margin-top: 6px; }
+.uc-change-notice { max-width: 78ch; }
+
+/* Cancelled, in a list of events. Beside the status pill and never instead of
+   it: a cancelled event is still published or still a draft, and the row has to
+   say both. */
+.uc-pill-cancelled { background: #fef2f2; color: #b91c1c; border-color: #b91c1c; }
+
+.uc-cancel-instead { border-color: #b91c1c; }

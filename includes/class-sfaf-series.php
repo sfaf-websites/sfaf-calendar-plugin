@@ -448,6 +448,10 @@ class SFAF_Series {
         // wherever the series is shown to a visitor.
         if ( ! empty( $args['public_only'] ) ) {
             SFAF_Privacy::exclude( $query );
+            // And cancelled events the organizer chose to hide. A different
+            // question about the same query, applied at the same place so the
+            // two cannot be excluded from one builder and not the other.
+            SFAF_Cancellation::exclude( $query );
         }
 
         $q = new WP_Query( $query );

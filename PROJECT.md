@@ -597,6 +597,80 @@ blocked one reserves its exact box and a pair of buttons stays the same height
 either way. The test checks this by **stripping the images and reading again**,
 not by reasoning about alt text.
 
+### Cancelling, and why it is meta rather than a post status
+
+An event that is not happening still has to exist: somebody registered for it,
+and the registration is the record that they did. Deleting it strands them, so
+since 3.36.0 **deleting an event that has registrations is refused** and
+cancelling is the operation that exists instead.
+
+`SFAF_Cancellation` stores `_uc_cancelled`, `_uc_cancelled_visibility`
+(`stay`|`hide`) and `_uc_cancelled_at` on the event. **Not a post status**, and
+the reason is the one `SFAF_Sources` already writes down in another context:
+this plugin names `post_status => 'publish'` **by hand** in the shortcodes, the
+embed payload, the REST feed, the .ics, the reminder query, the summary query
+and the series listings. A new status is invisible to every one of those until
+each is found and changed, and the failure mode of missing one is an event that
+is cancelled everywhere except the place nobody checked. A meta flag inverts
+that: nothing changes about which queries return the event, the two places that
+must behave differently ask, and everywhere else keeps working. The organizer's
+`stay`/`hide` choice needs a second field anyway, which settles it.
+
+What cancelling does:
+
+| | |
+|---|---|
+| Public listing | The organizer chooses. **`stay`** (listed, marked cancelled) is the default: somebody who registered may come looking, and a vanished event tells them nothing. |
+| Registrations | Kept, all of them. |
+| New registrations | Refused at the write in `SFAF_RSVP`, and the button is not rendered. Both, because a form removed from a template is not a refusal. |
+| Reminders | Neither the morning-of nor the two-hour summary. **Both queries ask for `publish` and today's date, and a cancelled event satisfies both**, so the exclusion is an explicit first line in each loop rather than something the query can express. |
+| Refetch | `update_event()` refuses a cancelled event outright, so the source cannot move an event that is not happening. It could never clear the flag: `update_event()` writes an explicit field list and `post_status` is not on it. |
+
+**Cancelling an imported event is a local decision.** It takes the event off
+this calendar and stops its reminders. It does **not** cancel it at Eventbrite
+or GoFundMe Pro, where people may still be able to register, and the editor says
+so rather than implying otherwise.
+
+Deleting a **series** with registered events offers to cancel them all instead,
+and asks whether to email. Once cancelled, deleting is allowed: cancel, notify,
+then delete.
+
+### Telling registrants, and the one-email guarantee
+
+`SFAF_Announce` sends the two messages. **One person gets one email, whatever
+they registered for**, and that is why it is a class rather than a loop at each
+call site: changing a recurrence pattern can move twelve dates at once, and
+somebody registered for six of them would get six near-identical emails from the
+obvious implementation. A run gathers every affected event, resolves every
+registrant across all of them, **groups by address**, and sends once. Confirmed
+registrations only: somebody who already released their place is not written to.
+
+**Teams are not notified, and neither is the notification list.** They were
+presumably part of the decision.
+
+The two messages differ deliberately:
+
+- **Cancelled** names the event, its date and time, says plainly it is
+  cancelled, and carries **no cancel link**: there is no place to release, and
+  offering one reads as though something were still required of them.
+- **Changed** names **what moved, old value to new value**, for whichever of
+  date, time or location changed. A registrant should not have to remember what
+  it was before. It carries the full new details **and the cancel link**, since
+  somebody who cannot make the new time should be able to release their place in
+  one click.
+
+**Only date, time and location trigger anything.** Those three decide whether a
+person turns up. Description, category, series, capacity and image do not, and a
+notification that goes out for those is one that gets filtered, taking the date
+change with it. What is compared is the **formatted** value, so a change
+invisible to a reader cannot produce an email.
+
+The prompt appears **only when at least one person is registered**, and its
+checkbox is **ticked by default**: somebody changing a date is thinking about
+the date, not about who needs telling, so the safe default is that people are
+told and unticking is a deliberate act. In the bulk case it asks **once**,
+naming the total across every affected date.
+
 ### The four message types
 
 All four are **on** by default. `_uc_notify_off` records only what somebody has

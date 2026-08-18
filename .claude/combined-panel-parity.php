@@ -239,6 +239,13 @@ class SFAF_Privacy {
     public static function is_private( $post_id ) { return false; }
     public static function exclude( $args ) { return $args; }
 }
+class SFAF_Cancellation {
+    // Mirrors the SFAF_Privacy stub above: these harnesses render panels
+    // and do not exercise the exclusion. cancellation-test.php does.
+    public static function is_cancelled( $post_id ) { return false; }
+    public static function is_hidden( $post_id ) { return false; }
+    public static function exclude( $args ) { return $args; }
+}
 class SFAF_Embed {
     public static function is_embed_request() { return false; }
     public static function calendar_url() { return 'https://resources.sfaf.org/events/'; }

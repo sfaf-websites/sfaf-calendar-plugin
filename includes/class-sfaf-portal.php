@@ -10,6 +10,15 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SFAF_Portal {
 
+    /**
+     * Where a bulk save parks one occurrence's date, time and location before
+     * moving it, so the "this event has moved" email can say what it was.
+     *
+     * Written by apply_to_group(), read and deleted by movable_diff() in the
+     * same call, so it never persists past the request that wrote it.
+     */
+    const MOVED_FROM_META = '_uc_moved_from';
+
     /** Error string shown on the login screen. */
     private $login_error = '';
 
@@ -559,8 +568,80 @@ class SFAF_Portal {
                 if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
                     $this->redirect( 'events', array( 'msg' => 'trashed' ) );
                 }
+
+                /*
+                 * DELETING IS NOT A WAY AROUND CANCELLING.
+                 *
+                 * An event with registrations may not simply be deleted, because
+                 * deleting it is how somebody who signed up finds out nothing at
+                 * all: the page 404s, no message is sent, and the only record
+                 * that they were coming is a row pointing at a post that no
+                 * longer exists.
+                 *
+                 * Cancelling is the operation that exists for this, and it is
+                 * offered rather than merely demanded: the refusal links
+                 * straight to it. Once an event is cancelled and its
+                 * registrants have been told, deleting it is allowed, which is
+                 * why the exemption is on being cancelled rather than on having
+                 * sent anything. Somebody who cancels and chooses not to notify
+                 * has made that decision deliberately at the prompt, and this
+                 * is not the place to second-guess it.
+                 */
+                if ( ! SFAF_Cancellation::is_cancelled( $event_id ) && SFAF_Announce::has_registrations( $event_id ) ) {
+                    $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'delete_needs_cancel' ) );
+                }
+
                 wp_trash_post( $event_id );
                 $this->redirect( 'events', array( 'msg' => 'trashed' ) );
+                break;
+
+            /*
+             * CANCEL, AND UN-CANCEL.
+             *
+             * Its own action rather than a field on the event form, because it
+             * is a decision with consequences that the form's Save is not: it
+             * closes registration, stops the reminder and the summary, and asks
+             * whether to email everybody who signed up. A checkbox among thirty
+             * other fields would be pressed by accident.
+             */
+            case 'cancel_event':
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+
+                $undo = isset( $_POST['uncancel'] );
+
+                if ( $undo ) {
+                    SFAF_Cancellation::set( $event_id, false );
+                    $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'uncancelled' ) );
+                }
+
+                $visibility = ( isset( $_POST['cancel_visibility'] ) && 'hide' === $_POST['cancel_visibility'] )
+                    ? 'hide' : 'stay';
+                $reason = isset( $_POST['cancel_reason'] )
+                    ? sanitize_textarea_field( wp_unslash( $_POST['cancel_reason'] ) ) : '';
+
+                SFAF_Cancellation::set( $event_id, true, $visibility );
+                if ( '' !== $reason ) {
+                    update_post_meta( $event_id, '_uc_cancelled_reason', $reason );
+                } else {
+                    delete_post_meta( $event_id, '_uc_cancelled_reason' );
+                }
+
+                // The tick is the prompt's answer, and the prompt only appears
+                // when somebody is registered. No registrations, no question
+                // asked, nothing sent.
+                $told = array( 'people' => 0, 'sent' => 0 );
+                if ( isset( $_POST['notify_registrants'] ) ) {
+                    $told = SFAF_Announce::cancelled( array( $event_id ) );
+                }
+
+                $this->redirect( 'events/edit/' . $event_id, array(
+                    'msg'  => 'cancelled',
+                    'told' => (int) $told['sent'],
+                ) );
                 break;
 
             /*
@@ -600,6 +681,54 @@ class SFAF_Portal {
                 if ( 'delete_events' !== $mode
                     && isset( $_POST['keep_target'] ) && 'move' === sanitize_key( wp_unslash( $_POST['keep_target'] ) ) ) {
                     $move_to = isset( $_POST['keep_target_series'] ) ? intval( $_POST['keep_target_series'] ) : 0;
+                }
+
+                /*
+                 * DELETING A SERIES WITH REGISTRATIONS OFFERS TO CANCEL INSTEAD.
+                 *
+                 * Only under 'delete_events'. The other modes detach or move
+                 * events and leave every one of them standing, so nobody is
+                 * stranded and there is nothing to ask about.
+                 *
+                 * It OFFERS rather than refuses, which is the difference between
+                 * this and deleting a single event. A single event has one
+                 * alternative and the refusal can just name it. Here the
+                 * alternative has two further questions of its own, what happens
+                 * on the public calendar and whether to write to people, so the
+                 * offer is a screen rather than a sentence.
+                 */
+                if ( 'delete_events' === $mode ) {
+                    $in_series = SFAF_Series::events( $term_id );
+                    $counts    = SFAF_Announce::count_affected( $in_series );
+
+                    $confirmed = isset( $_POST['cancel_instead_confirmed'] );
+
+                    if ( $counts['people'] > 0 && ! $confirmed ) {
+                        set_transient( 'sfaf_series_delete_blocked_' . $user->ID, array(
+                            'series_id' => $term_id,
+                            'counts'    => $counts,
+                            'events'    => $in_series,
+                        ), 300 );
+                        $this->redirect( 'series/remove/' . $term_id, array( 'msg' => 'series_needs_cancel' ) );
+                    }
+
+                    if ( $counts['people'] > 0 && $confirmed && 'cancel' === ( isset( $_POST['instead'] ) ? sanitize_key( wp_unslash( $_POST['instead'] ) ) : '' ) ) {
+                        $visibility = ( isset( $_POST['cancel_visibility'] ) && 'hide' === $_POST['cancel_visibility'] ) ? 'hide' : 'stay';
+                        foreach ( $in_series as $eid ) {
+                            SFAF_Cancellation::set( $eid, true, $visibility );
+                        }
+                        $told = array( 'sent' => 0 );
+                        if ( isset( $_POST['notify_registrants'] ) ) {
+                            // One email per person across the whole series, not
+                            // one per date. See SFAF_Announce.
+                            $told = SFAF_Announce::cancelled( $in_series );
+                        }
+                        $this->redirect( 'series/edit/' . $term_id, array(
+                            'msg'  => 'series_cancelled',
+                            'n'    => count( $in_series ),
+                            'told' => (int) $told['sent'],
+                        ) );
+                    }
                 }
 
                 $done = SFAF_Series::remove( $term_id, $mode, $move_to );
@@ -1102,6 +1231,19 @@ class SFAF_Portal {
             }
         }
 
+        /*
+         * WHAT THE EVENT WAS, BEFORE THIS SAVE TOUCHES IT.
+         *
+         * Taken here and compared at the end, because the "this event has
+         * moved" email has to say the OLD value as well as the new one, and
+         * once the meta is written the old value is gone. Three fields only:
+         * date, time and location. Those are the three that change whether
+         * somebody turns up. A description, a category or a capacity does not,
+         * and mailing everybody who registered because a typo was fixed is how
+         * a notification becomes something people filter.
+         */
+        $was = $event_id ? self::movable_facts( $event_id ) : array();
+
         $role      = self::get_role( $user->ID );
         $save_mode = isset( $_POST['save_mode'] ) ? sanitize_key( $_POST['save_mode'] ) : 'draft';
 
@@ -1464,6 +1606,39 @@ class SFAF_Portal {
             $scope = 'this';
         }
 
+        /*
+         * TELL THE REGISTRANTS, IF ANYTHING THEY CARE ABOUT MOVED.
+         *
+         * After apply_to_group(), deliberately, so a bulk save that moved
+         * twelve occurrences reports on all twelve rather than on the one that
+         * was open. SFAF_Announce groups by address, so somebody registered for
+         * six of those twelve gets ONE email listing six dates.
+         *
+         * The tick is the prompt's answer and the prompt is only rendered when
+         * somebody is registered, so a save with nothing to tell arrives here
+         * with no marker and does nothing. The marker is checked rather than
+         * the checkbox alone, for the reason every other block in this method
+         * checks one: an unticked box submits nothing, and that has to mean
+         * "they said no" rather than "the form did not ask".
+         */
+        $moved = array();
+        if ( ! $is_new && $was ) {
+            $ids = ( 'all_upcoming' === $scope && ! empty( $targets ) ) ? $targets : array( $event_id );
+            foreach ( $ids as $id ) {
+                $diff = self::movable_diff(
+                    ( (int) $id === (int) $event_id ) ? $was : null,
+                    $id
+                );
+                if ( $diff ) {
+                    $moved[ (int) $id ] = $diff;
+                }
+            }
+        }
+
+        if ( $moved && isset( $_POST['change_notice_present'] ) && isset( $_POST['notify_registrants'] ) ) {
+            SFAF_Announce::changed( array_keys( $moved ), $moved );
+        }
+
         if ( $generated ) {
             $msg = 'generated_' . $generated;
         } elseif ( 'all_upcoming' === $scope ) {
@@ -1473,6 +1648,93 @@ class SFAF_Portal {
         }
 
         return array( 'id' => $event_id, 'msg' => $msg, 'written' => $written );
+    }
+
+    /* ---------------------------------------------------------------------
+     * What counts as a change worth telling somebody about
+     *
+     * THREE FIELDS. Date, time and location, because those three decide whether
+     * a person turns up in the right place at the right moment and nothing else
+     * on the form does. A description, a category, a series, a capacity or an
+     * image can all change without any registrant needing to know, and a
+     * notification that goes out for those is one that gets filtered, taking
+     * the date change with it.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * The three facts, as a person would read them.
+     *
+     * FORMATTED, NOT RAW. What is compared is what the email will print, so a
+     * change that is invisible to a reader cannot produce an email. Storing
+     * '18:00' as '6:00 pm' is not a change anybody should be told about, and
+     * comparing raw values would send one.
+     *
+     * @param int $event_id
+     * @return array<string,string> label => value
+     */
+    public static function movable_facts( $event_id ) {
+        $event_id = (int) $event_id;
+        $date     = (string) get_post_meta( $event_id, '_uc_event_date', true );
+        $start    = (string) get_post_meta( $event_id, '_uc_start_time', true );
+        $end      = (string) get_post_meta( $event_id, '_uc_end_time', true );
+
+        return array(
+            'Date'     => '' !== $date ? sfaf_ap_date( $date, 'full' ) : '',
+            'Time'     => sfaf_ap_time_range( $start, $end ),
+            'Location' => (string) sfaf_event_location( $event_id ),
+        );
+    }
+
+    /**
+     * What moved on this event, comparing a snapshot against the event now.
+     *
+     * @param array|null $before A movable_facts() snapshot, or null to read the
+     *                           group member's own stored "before" (see below).
+     * @param int        $event_id
+     * @return array<string,array{from:string,to:string}> Empty when nothing moved.
+     */
+    public static function movable_diff( $before, $event_id ) {
+        $event_id = (int) $event_id;
+
+        /*
+         * A GROUP MEMBER'S "BEFORE" IS NOT THE OPEN EVENT'S.
+         *
+         * apply_to_group() writes each occurrence its own previous values as it
+         * goes, because occurrence three's old date is not occurrence one's and
+         * an email saying otherwise would be wrong on eleven of twelve dates.
+         * When that record is absent the event did not move, whatever else the
+         * save did.
+         */
+        if ( null === $before ) {
+            $stored = get_post_meta( $event_id, self::MOVED_FROM_META, true );
+            delete_post_meta( $event_id, self::MOVED_FROM_META );
+            if ( ! is_array( $stored ) || empty( $stored ) ) {
+                return array();
+            }
+            $before = $stored;
+        }
+
+        $now  = self::movable_facts( $event_id );
+        $diff = array();
+
+        foreach ( $now as $label => $value ) {
+            $old = isset( $before[ $label ] ) ? (string) $before[ $label ] : '';
+            if ( $old === (string) $value ) {
+                continue;
+            }
+            // A field that was empty and still is, or that has only ever been
+            // empty, is not a move. Going from nothing to something IS one:
+            // "the location is now the Castro office" is worth sending.
+            if ( '' === $old && '' === (string) $value ) {
+                continue;
+            }
+            $diff[ $label ] = array(
+                'from' => '' !== $old ? $old : 'not set',
+                'to'   => '' !== (string) $value ? (string) $value : 'not set',
+            );
+        }
+
+        return $diff;
     }
 
     /**
@@ -1566,6 +1828,25 @@ class SFAF_Portal {
             if ( ! $target || 'uc_event' !== $target->post_type ) {
                 continue;
             }
+
+            /*
+             * EACH OCCURRENCE RECORDS ITS OWN "BEFORE", HERE, BEFORE IT MOVES.
+             *
+             * Occurrence three's old time is not occurrence one's, so a single
+             * snapshot taken from the event that happens to be open in the
+             * editor would put the wrong old value in eleven of twelve emails.
+             * Written as meta rather than returned because this method's answer
+             * is a count and has three callers; movable_diff() reads it back and
+             * deletes it in the same breath, so nothing accumulates and a stale
+             * record cannot be mistaken for a fresh one on a later save.
+             *
+             * The date is not in the group meta list below, so an occurrence
+             * keeps its own date and only the time and the location can move
+             * here. It is recorded anyway: what is compared is what the email
+             * prints, and this method is not the only thing that may ever
+             * change these.
+             */
+            update_post_meta( $target_id, self::MOVED_FROM_META, self::movable_facts( $target_id ) );
 
             $target_source = (string) get_post_meta( $target_id, SFAF_Sources::META_SOURCE, true );
             $target_owned  = ( '' !== $target_source ) ? SFAF_Sources::owned_fields_for( $target_source ) : array();
@@ -2198,6 +2479,10 @@ class SFAF_Portal {
         $map = array(
             'saved'          => 'Event saved.',
             'trashed'        => 'Event removed.',
+            'delete_needs_cancel' => 'This event has people registered, so it cannot be deleted. Cancel it instead: that keeps the registrations, closes new ones, stops the reminders, and offers to tell everybody who signed up. Once it is cancelled you can delete it.',
+            'series_needs_cancel' => 'Some events in this series have people registered, so deleting them is refused. Cancel them instead, below. Once they are cancelled and the people who signed up have been told, the series can be deleted.',
+            'cancelled'      => 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it.',
+            'uncancelled'    => 'Event is on again. Registrations are open and its reminders will go out as usual. Nobody has been told automatically: if you told people it was cancelled, tell them it is back.',
             'duplicated'     => 'Copied. This is a new draft with no date and no registrations, and the event it came from is unchanged. Set the date, check the details, then publish. If the original was imported, this copy is not: nothing here is tied to the platform and every field is yours to edit.',
             'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
@@ -2270,6 +2555,35 @@ class SFAF_Portal {
                 _n( 'event stays', 'events stay', $n ),
                 _n( 'is', 'are', $n )
             ) ) . '</div>';
+            return;
+        }
+
+        if ( 'cancelled' === $key ) {
+            $told = isset( $_GET['told'] ) ? max( 0, intval( $_GET['told'] ) ) : 0;
+            echo '<div class="uc-flash uc-flash-ok">'
+                . esc_html(
+                    'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it. '
+                    . ( $told
+                        ? sprintf( '%d %s told.', $told, _n( 'person was', 'people were', $told ) )
+                        : 'Nobody was emailed.' )
+                )
+                . '</div>';
+            return;
+        }
+
+        if ( 'series_cancelled' === $key ) {
+            $n    = isset( $_GET['n'] ) ? max( 0, intval( $_GET['n'] ) ) : 0;
+            $told = isset( $_GET['told'] ) ? max( 0, intval( $_GET['told'] ) ) : 0;
+            echo '<div class="uc-flash uc-flash-ok">'
+                . esc_html( sprintf(
+                    '%d %s cancelled, and every registration kept. %s The series still exists and can be deleted now.',
+                    $n,
+                    _n( 'event was', 'events were', $n ),
+                    $told
+                        ? sprintf( '%d %s told, one email each however many dates they were registered for.', $told, _n( 'person was', 'people were', $told ) )
+                        : 'Nobody was emailed.'
+                ) )
+                . '</div>';
             return;
         }
 
@@ -3579,6 +3893,20 @@ class SFAF_Portal {
                         if ( SFAF_Privacy::is_private( $id ) ) : ?>
                             <span class="uc-pill uc-pill-private"
                                   title="Hidden from the calendar, search, its series page and the sitemap. Reachable only by its direct link.">Private</span>
+                        <?php endif; ?>
+
+                        <?php
+                        /*
+                         * CANCELLED IS ITS OWN PILL, BESIDE THE STATUS AND NOT
+                         * INSTEAD OF IT. A cancelled event is still published or
+                         * still a draft, and the row has to say both: "Published,
+                         * Cancelled" is the truth, and replacing the status would
+                         * hide whether it is on the public calendar, which is the
+                         * next thing somebody wants to know.
+                         */
+                        if ( SFAF_Cancellation::is_cancelled( $id ) ) : ?>
+                            <span class="uc-pill uc-pill-cancelled"
+                                  title="<?php echo esc_attr( SFAF_Cancellation::label( $id ) . '. Takes no new registrations, and no reminders go out for it.' ); ?>">Cancelled</span>
                         <?php endif; ?>
                     </td>
                     <td><?php
@@ -5166,6 +5494,77 @@ class SFAF_Portal {
             $this->chrome_close();
             return;
         }
+
+        /*
+         * THE OFFER, SHOWN ONLY TO SOMEBODY WHOSE DELETE WAS JUST REFUSED.
+         *
+         * Read once and cleared, so it belongs to the redirect that set it
+         * rather than reappearing on the next visit to this screen. Same shape
+         * as the reassignment offer on the Users screen: the refusal names the
+         * problem, and the answer goes where the refusal put them.
+         */
+        $blocked_key = 'sfaf_series_delete_blocked_' . $user->ID;
+        $blocked     = get_transient( $blocked_key );
+        if ( $blocked ) {
+            delete_transient( $blocked_key );
+        }
+        if ( ! is_array( $blocked ) || (int) ( isset( $blocked['series_id'] ) ? $blocked['series_id'] : 0 ) !== $term_id ) {
+            $blocked = null;
+        }
+
+        if ( $blocked ) :
+            $c = $blocked['counts'];
+            ?>
+            <div class="uc-card uc-cancel-instead">
+                <div class="uc-card-head"><h2>Cancel these instead of deleting them</h2></div>
+                <p class="uc-hint">
+                    <strong><?php echo (int) $c['people']; ?></strong>
+                    <?php echo esc_html( 1 === (int) $c['people'] ? 'person is' : 'people are' ); ?>
+                    registered across <?php echo (int) $c['events']; ?>
+                    <?php echo esc_html( 1 === (int) $c['events'] ? 'event' : 'events' ); ?> in this series.
+                    Deleting them would leave those people with nothing: no page to visit and no message.
+                    Cancelling keeps every registration, closes new ones, and stops the reminders.
+                </p>
+                <form method="post" action="<?php echo esc_url( $this->url( 'series/remove/' . $term_id ) ); ?>">
+                    <input type="hidden" name="uc_action" value="remove_series" />
+                    <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                    <input type="hidden" name="remove_mode" value="delete_events" />
+                    <input type="hidden" name="cancel_instead_confirmed" value="1" />
+                    <input type="hidden" name="instead" value="cancel" />
+                    <?php wp_nonce_field( 'uc_portal_remove_series', 'uc_nonce' ); ?>
+
+                    <fieldset class="uc-cancel-visibility">
+                        <legend>What should happen to them on the public calendar?</legend>
+                        <label class="uc-radio-opt">
+                            <input type="radio" name="cancel_visibility" value="stay" checked />
+                            <span><strong>Leave them listed, marked cancelled.</strong> Somebody who registered may come looking.</span>
+                        </label>
+                        <label class="uc-radio-opt">
+                            <input type="radio" name="cancel_visibility" value="hide" />
+                            <span><strong>Take them off the public calendar.</strong> They stay here with their registrations.</span>
+                        </label>
+                    </fieldset>
+
+                    <div class="uc-notice-block">
+                        <label class="uc-check">
+                            <input type="checkbox" name="notify_registrants" value="1" checked />
+                            Email the <?php echo (int) $c['people']; ?>
+                            <?php echo esc_html( 1 === (int) $c['people'] ? 'person' : 'people' ); ?> that these are cancelled
+                        </label>
+                        <p class="uc-hint">
+                            One email each, however many of these dates they were registered for.
+                            Leave it ticked unless you are telling them another way.
+                        </p>
+                    </div>
+
+                    <div class="uc-form-actions">
+                        <button type="submit" class="uc-btn uc-btn-primary">Cancel these events</button>
+                        <a class="uc-btn" href="<?php echo esc_url( $this->url( 'series/edit/' . $term_id ) ); ?>">Leave everything alone</a>
+                    </div>
+                </form>
+            </div>
+            <?php
+        endif;
 
         $upcoming = SFAF_Series::upcoming_count( $term_id );
         $past     = SFAF_Series::past_count( $term_id );
@@ -6857,6 +7256,8 @@ class SFAF_Portal {
                  * where that question is asked. See render_notify_box().
                  */
                 ?>
+                <?php $this->render_cancel_card( $user, $event_id ); ?>
+
                 <?php $this->render_access_card( $user, $event_id ); ?>
 
                 <section class="uc-bento-card">
@@ -7138,6 +7539,50 @@ class SFAF_Portal {
             // before anything is edited, rather than in a box at the bottom
             // after it. See render_scope_header().
             ?>
+
+            <?php
+            /*
+             * THE CHANGE NOTICE, AND WHY IT IS RENDERED SERVER-SIDE AND ALWAYS.
+             *
+             * It carries the marker and the tick that decide whether a date,
+             * time or location move emails the people who registered. It is
+             * rendered whenever anybody is registered, WITHOUT trying to guess
+             * from here whether this particular save will move anything: what
+             * actually moved is decided after the write, by comparing the
+             * before-snapshot against the result, so a save that changes only
+             * the description arrives with the box ticked and sends nothing.
+             *
+             * The alternative is showing the block only once a field is dirty,
+             * which needs script to be right and fails open the moment the
+             * script does not run.
+             */
+            $notice_counts = $event_id ? SFAF_Announce::count_affected( $this->save_scope_ids( $event_id ) ) : array( 'people' => 0, 'registrations' => 0, 'events' => 0 );
+            if ( $notice_counts['people'] > 0 ) :
+                ?>
+                <div class="uc-notice-block uc-change-notice" data-uc-change-notice>
+                    <input type="hidden" name="change_notice_present" value="1" />
+                    <p class="uc-notice-count">
+                        <strong><?php echo (int) $notice_counts['people']; ?></strong>
+                        <?php echo esc_html( 1 === (int) $notice_counts['people'] ? 'person is' : 'people are' ); ?>
+                        registered
+                        <?php if ( $notice_counts['events'] > 1 ) : ?>
+                            across <?php echo (int) $notice_counts['events']; ?> of the dates this save can touch
+                        <?php endif; ?>.
+                    </p>
+                    <label class="uc-check">
+                        <input type="checkbox" name="notify_registrants" value="1" checked />
+                        Email them if the date, time or location changes
+                    </label>
+                    <p class="uc-hint">
+                        Only sent if one of those three actually moves. Changing the description, the category or
+                        anything else sends nothing.
+                        <?php if ( $notice_counts['events'] > 1 ) : ?>
+                            Somebody registered for several of these dates gets one email, not one per date.
+                        <?php endif; ?>
+                        Leave it ticked unless you are telling them another way.
+                    </p>
+                </div>
+            <?php endif; ?>
 
             <div class="uc-form-actions">
                 <?php
@@ -8146,6 +8591,177 @@ class SFAF_Portal {
      * @param WP_User $user
      * @param int     $event_id
      */
+    /**
+     * Which events a save of this one can reach.
+     *
+     * The event itself, plus every upcoming member of its recurrence group when
+     * one exists. Used to count who would be told, so the prompt names the
+     * total across all affected dates rather than the one that happens to be
+     * open in the editor. That is the difference between "3 people are
+     * registered" and the truth, which may be thirty across twelve dates.
+     *
+     * It is deliberately the WIDEST set the save could touch rather than the
+     * set it will: which occurrences move is decided by the scope buttons after
+     * this renders, and a count that shrank when somebody changed their mind
+     * would be a count nobody trusted.
+     *
+     * @param int $event_id
+     * @return int[]
+     */
+    private function save_scope_ids( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return array();
+        }
+        if ( SFAF_Recurrence::has_bulk_scope( $event_id ) ) {
+            $targets = SFAF_Recurrence::bulk_targets( $event_id );
+            if ( ! empty( $targets ) ) {
+                return array_values( array_unique( array_map( 'absint', array_merge( array( $event_id ), $targets ) ) ) );
+            }
+        }
+        return array( $event_id );
+    }
+
+    /**
+     * CANCEL THIS EVENT, and the prompt that goes with it.
+     *
+     * NOT INSIDE THE EVENT FORM. Forms cannot nest, and this posts its own
+     * action for a better reason than that: cancelling is not a field that gets
+     * saved along with thirty others. It closes registration, stops both
+     * scheduled emails and offers to write to everybody who signed up, and a
+     * control with those consequences sitting among the checkboxes is a control
+     * somebody presses while meaning to press Save.
+     *
+     * THE PROMPT APPEARS ONLY WHEN SOMEBODY IS REGISTERED. With nobody to tell,
+     * the question "shall we tell them" is a click in the way, so the whole
+     * notify block is absent rather than present and disabled.
+     *
+     * THE TICK DEFAULTS TO ON. Somebody cancelling an event is thinking about
+     * the event, not about who needs telling, so the safe default is that people
+     * are told and not telling them is a deliberate act. The hint says the one
+     * legitimate reason to untick it, which is that they are writing to people
+     * some other way.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_cancel_card( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            // Nothing to cancel before the first save.
+            return;
+        }
+        $post = get_post( $event_id );
+        if ( ! $post ) {
+            return;
+        }
+
+        $cancelled = SFAF_Cancellation::is_cancelled( $event_id );
+        $counts    = SFAF_Announce::count_affected( array( $event_id ) );
+        $has_regs  = $counts['people'] > 0;
+        $imported  = ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) );
+        $prov      = $imported ? SFAF_Sources::provenance( $event_id ) : array( 'label' => '' );
+        ?>
+        <section class="uc-bento-card uc-cancel-card<?php echo $cancelled ? ' is-cancelled' : ''; ?>">
+            <h2 class="uc-bento-title"><?php echo $cancelled ? 'This event is cancelled' : 'Cancel this event'; ?></h2>
+
+            <?php if ( $cancelled ) : ?>
+                <p class="uc-cancel-state">
+                    <?php echo esc_html( SFAF_Cancellation::label( $event_id ) ); ?>.
+                    <?php $at = SFAF_Cancellation::cancelled_at( $event_id ); ?>
+                    <?php if ( $at ) : ?>
+                        <span class="uc-muted">Cancelled <?php echo esc_html( sfaf_ap_datetime( $at ) ); ?>.</span>
+                    <?php endif; ?>
+                </p>
+                <p class="uc-hint">
+                    It takes no new registrations, and neither the morning-of reminder nor the two-hour
+                    summary will go out for it. Its <?php echo (int) $counts['registrations']; ?>
+                    <?php echo esc_html( 1 === (int) $counts['registrations'] ? 'registration is' : 'registrations are' ); ?>
+                    kept as the record that people signed up.
+                </p>
+                <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form">
+                    <input type="hidden" name="uc_action" value="cancel_event" />
+                    <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                    <input type="hidden" name="uncancel" value="1" />
+                    <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
+                    <button type="submit" class="uc-btn">Put it back on</button>
+                    <p class="uc-hint">
+                        Nobody is told automatically. If you emailed people that it was cancelled, tell them it is back.
+                    </p>
+                </form>
+            <?php else : ?>
+                <p class="uc-hint">
+                    A cancelled event keeps its registrations and takes no new ones. This is what to use
+                    instead of deleting: deleting an event that people have signed up for is refused.
+                </p>
+
+                <?php if ( $imported ) : ?>
+                    <p class="uc-field-note uc-field-note-attention">
+                        <?php echo $this->icon_needs(); ?>
+                        <span>
+                            This event came from <?php echo esc_html( $prov['label'] ); ?>. Cancelling it here takes it
+                            off this calendar and stops its reminders. It does <strong>not</strong> cancel it at
+                            <?php echo esc_html( $prov['label'] ); ?>, where people may still be able to register.
+                            Cancel it there too.
+                        </span>
+                    </p>
+                <?php endif; ?>
+
+                <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form" data-uc-confirm-cancel>
+                    <input type="hidden" name="uc_action" value="cancel_event" />
+                    <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                    <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
+
+                    <fieldset class="uc-cancel-visibility">
+                        <legend>What should happen to it on the public calendar?</legend>
+                        <label class="uc-radio-opt">
+                            <input type="radio" name="cancel_visibility" value="stay" checked />
+                            <span>
+                                <strong>Leave it listed, marked cancelled.</strong>
+                                Somebody who registered may come looking for it, and an event that has simply
+                                vanished tells them nothing.
+                            </span>
+                        </label>
+                        <label class="uc-radio-opt">
+                            <input type="radio" name="cancel_visibility" value="hide" />
+                            <span>
+                                <strong>Take it off the public calendar.</strong>
+                                It stays here and keeps its registrations.
+                            </span>
+                        </label>
+                    </fieldset>
+
+                    <label class="uc-field">
+                        <span class="uc-field-label">Why, in one line (optional)</span>
+                        <textarea name="cancel_reason" rows="2" placeholder="Shown to the people you tell."></textarea>
+                    </label>
+
+                    <?php if ( $has_regs ) : ?>
+                        <div class="uc-notice-block">
+                            <p class="uc-notice-count">
+                                <strong><?php echo (int) $counts['people']; ?></strong>
+                                <?php echo esc_html( 1 === (int) $counts['people'] ? 'person is' : 'people are' ); ?>
+                                registered for this event.
+                            </p>
+                            <label class="uc-check">
+                                <input type="checkbox" name="notify_registrants" value="1" checked />
+                                Email them that it is cancelled
+                            </label>
+                            <p class="uc-hint">
+                                Leave this ticked unless you are telling them another way.
+                            </p>
+                        </div>
+                    <?php else : ?>
+                        <p class="uc-hint">Nobody is registered, so there is nobody to tell.</p>
+                    <?php endif; ?>
+
+                    <button type="submit" class="uc-btn uc-btn-danger">Cancel this event</button>
+                </form>
+            <?php endif; ?>
+        </section>
+        <?php
+    }
+
     /**
      * Write the team access fields, if this person may set them.
      *

@@ -330,6 +330,11 @@ $ALLOWED = array(
     // --- Events: read or write one. Every one of these is the event gate. ---
     'POST:save_event'             => array( 'event', 'create' ),
     'POST:trash_event'            => array( 'event' ),
+    // Cancelling is an edit to one event: the same gate, deliberately, so a
+    // team member who may edit an event may also cancel it. It is not an
+    // admin-only action, because the person running an event is the one who
+    // knows it is not happening.
+    'POST:cancel_event'           => array( 'event' ),
     'POST:duplicate_event'        => array( 'event' ),
     'POST:save_rsvp_settings'     => array( 'event' ),
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),

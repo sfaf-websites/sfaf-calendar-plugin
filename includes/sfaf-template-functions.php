@@ -724,6 +724,13 @@ function sfaf_add_to_calendar( $post_id ) {
  * "Get Reminders" button (opens the reminder modal handled in calendar.js).
  */
 function sfaf_reminders_button( $post_id ) {
+    // Nothing to be reminded about. The reminder job skips a cancelled event
+    // (see SFAF_Cancellation::skip_scheduled), so offering to subscribe would
+    // promise a message that is never going to arrive.
+    if ( SFAF_Cancellation::is_cancelled( $post_id ) ) {
+        return '';
+    }
+
     if ( ! sfaf_show_feature( $post_id, 'reminders' ) ) {
         return '';
     }
@@ -769,6 +776,18 @@ function sfaf_reminders_button( $post_id ) {
  * event page, where the modal can talk to admin-ajax.
  */
 function sfaf_rsvp_block( $post_id ) {
+    /*
+     * A CANCELLED EVENT SHOWS NO REGISTER BUTTON.
+     *
+     * The refusal that matters is in SFAF_RSVP, at the write, because a form
+     * removed from a template is not a permission and an open tab still posts.
+     * This is the other half: not offering somebody a control that is going to
+     * refuse them. Both halves are needed and neither is sufficient.
+     */
+    if ( SFAF_Cancellation::is_cancelled( $post_id ) ) {
+        return '';
+    }
+
     if ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) !== '1' || ! sfaf_show_feature( $post_id, 'rsvp' ) ) {
         return '';
     }
