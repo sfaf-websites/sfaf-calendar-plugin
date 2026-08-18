@@ -166,9 +166,20 @@ class Fake_WPDB {
         if ( ! preg_match( '/event_id = (\d+)/', $sql, $m ) ) { return array(); }
         $event_id = (int) $m[1];
 
-        // Only when the query actually asks for it.
+        /*
+         * BOTH SHAPES THE REAL QUERIES USE. Reading only `status = 'x'` meant
+         * that when they changed to `status IN ('confirmed','subscribed')` this
+         * silently stopped filtering at all, and a 'cancelled' row came back
+         * from a query that excludes them. A stub that cannot read its input
+         * does not test the input.
+         */
         $wants = array();
-        if ( preg_match( "/status = '([a-z]+)'/", $sql, $s ) ) { $wants = array( $s[1] ); }
+        if ( preg_match( "/status\s+IN\s*\(([^)]*)\)/i", $sql, $s ) ) {
+            preg_match_all( "/'([a-z]+)'/", $s[1], $m2 );
+            $wants = $m2[1];
+        } elseif ( preg_match( "/status = '([a-z]+)'/", $sql, $s ) ) {
+            $wants = array( $s[1] );
+        }
 
         $out = array();
         foreach ( $this->rows as $r ) {
@@ -509,7 +520,84 @@ if ( $sam && false !== strpos( $sam['subject'], 'dates' ) ) {
     $fails[] = 'somebody on one date got the several-dates message';
 }
 
+/* ===========================================================================
+ * WHO COUNTS AS SOMEBODY TO TELL.
+ *
+ * THE ASSERTION THAT WOULD HAVE CAUGHT THE LIVE BUG. Until 3.39.0 SFAF_Announce
+ * counted status = 'confirmed' only, so anybody who pressed "Get Reminders"
+ * rather than registering was invisible: they are stored as 'subscribed', hold
+ * no place, and had asked in as many words to be told about this event. On an
+ * event whose only interest was subscribers, count_affected() answered 0, the
+ * prompt above the Save buttons never rendered, and moving the date told
+ * nobody.
+ *
+ * The 3.36.0 tests seeded 'confirmed' and 'cancelled' rows and never a
+ * 'subscribed' one, which is exactly why they passed while this was broken.
+ *
+ * The audience is now the one SFAF_Reminders::recipients() has always used, and
+ * that agreement is asserted from the source rather than assumed, because two
+ * definitions of "who is told about this event" is how they drift apart again.
+ * ======================================================================== */
+echo "Who counts as somebody to tell\n";
+
+$GLOBALS['wpdb']->rows = array();
+$GLOBALS['sent']       = array();
+
+make_event( 300, 'Reminder Only Session', $today );
+register_person( 300, 'sub@example.org', 'Sam', '', 'subscribed' );
+
+expect( 'a subscriber is somebody to tell', SFAF_Announce::has_registrations( 300 ), true );
+
+$counts = SFAF_Announce::count_affected( array( 300 ) );
+expect( 'and is counted by the prompt', $counts['people'], 1 );
+if ( 0 === $counts['people'] ) {
+    $fails[] = 'the prompt would not render at all on this event, which is the live bug: nothing appeared.';
+}
+
+$result = SFAF_Announce::changed( array( 300 ), array( 300 => array( 'Time' => array( 'from' => '2:30 pm', 'to' => '2:31 pm' ) ) ) );
+expect( 'and is written to', $result['sent'], 1 );
+
+/*
+ * AND THE MESSAGE DOES NOT TELL THEM ABOUT A PLACE THEY NEVER TOOK. A
+ * subscriber has no registration to have kept and no place to release.
+ */
+$to_sub = $GLOBALS['sent'][0];
+if ( false !== strpos( $to_sub['text'], 'Release your place' ) ) {
+    $fails[] = 'a subscriber was offered to release a place they never held';
+}
+if ( false === strpos( $to_sub['text'], 'Stop reminders' ) ) {
+    $fails[] = 'a subscriber was not offered the thing that is true for them, which is stopping reminders';
+}
+
+// A released registration is still out, which is the half that was right.
+$GLOBALS['wpdb']->rows = array();
+make_event( 301, 'Everybody Left', $today );
+register_person( 301, 'gone@example.org', 'Gone', '', 'cancelled' );
+expect( 'somebody who already cancelled is not counted', SFAF_Announce::has_registrations( 301 ), false );
+
+/*
+ * ONE DEFINITION OF THE AUDIENCE. Read out of both sources, because the bug was
+ * that there were two and the newer one was narrower.
+ */
+$ann_src = file_get_contents( $root . '/includes/class-sfaf-announce.php' );
+$rem_src = file_get_contents( $root . '/includes/class-sfaf-reminders.php' );
+
+if ( ! preg_match( "#status IN \('confirmed','subscribed'\)#", $rem_src ) ) {
+    $fails[] = 'SFAF_Reminders no longer uses the confirmed+subscribed audience, so the agreement below proves nothing';
+}
+// Comments first: the docblock above registrants() quotes the clause, and
+// counting that as a query is the sweep matching its own prose again.
+$ann_code = preg_replace( '#/\*.*?\*/#s', '', $ann_src );
+if ( 2 !== preg_match_all( "#status IN \('confirmed','subscribed'\)#", $ann_code ) ) {
+    $fails[] = 'SFAF_Announce does not ask for confirmed AND subscribed in both of its queries, so a subscriber is invisible to one of them';
+}
+
 /* --- The same, for a change rather than a cancellation. -------------------- */
+$GLOBALS['wpdb']->rows = array();
+foreach ( array( 100, 101, 103, 105 ) as $id ) { register_person( $id, 'dana@example.org', 'Dana' ); }
+register_person( 100, 'sam@example.org', 'Sam' );
+register_person( 104, 'jo@example.org', 'Jo' );
+
 $GLOBALS['sent'] = array();
 $by_event = array();
 foreach ( $group as $id ) {
@@ -536,7 +624,8 @@ echo "         ask first, that cancelling is refused on an imported event at BOT
 echo "         write and that removal at source neither cancels nor emails from here,\n";
 echo "         that the cancelled message carries no cancel link and the changed message carries both\n";
 echo "         old and new values plus the link, and that one person on four of six dates gets one\n";
-echo "         email naming four dates and not six\n\n";
+echo "         email naming four dates and not six; and that a REMINDER SUBSCRIBER counts as somebody\n";
+echo "         to tell, is written to, and is not offered a place they never held\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

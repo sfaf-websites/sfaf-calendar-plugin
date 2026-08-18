@@ -471,6 +471,7 @@ class SFAF_Notifications {
     private static function build_cancelled( $event_id, $person ) {
         $f      = self::facts( $event_id );
         $reason = trim( (string) get_post_meta( $event_id, '_uc_cancelled_reason', true ) );
+        $is_subscriber = ( $person && isset( $person->status ) && 'subscribed' === (string) $person->status );
 
         $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
         if ( '' === $first && $person && ! empty( $person->name ) ) {
@@ -489,8 +490,17 @@ class SFAF_Notifications {
         }
         $html .= SFAF_Email::para( 'It was going to be:' );
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
+        /*
+         * A SUBSCRIBER HOLDS NO PLACE. Somebody who pressed "Get Reminders"
+         * has no registration to have kept, and telling them theirs has been
+         * kept would be telling them about something they never did. They are
+         * written to because they asked to hear about this event, which is
+         * exactly what has changed about it.
+         */
         $html .= SFAF_Email::small_para(
-            'Your registration has been kept as a record that you signed up. Nothing else will be sent about this event.'
+            $is_subscriber
+                ? 'You asked to be reminded about this event. Nothing else will be sent about it.'
+                : 'Your registration has been kept as a record that you signed up. Nothing else will be sent about this event.'
         );
 
         $text  = $head . "\n\n";
@@ -500,7 +510,9 @@ class SFAF_Notifications {
         }
         $text .= "It was going to be:\n\n";
         $text .= self::detail_text( $f ) . "\n\n";
-        $text .= "Your registration has been kept as a record that you signed up. Nothing else will be sent\nabout this event.\n";
+        $text .= $is_subscriber
+            ? "You asked to be reminded about this event. Nothing else will be sent about it.\n"
+            : "Your registration has been kept as a record that you signed up. Nothing else will be sent\nabout this event.\n";
         $text .= "\n" . SFAF_Email::POSTAL;
 
         return array(
@@ -531,6 +543,7 @@ class SFAF_Notifications {
      */
     private static function build_changed( $event_id, $person, $context = array() ) {
         $f       = self::facts( $event_id );
+        $is_subscriber = ( $person && isset( $person->status ) && 'subscribed' === (string) $person->status );
         $changes = ( isset( $context['changes'] ) && is_array( $context['changes'] ) ) ? $context['changes'] : array();
         $cancel  = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
 
@@ -592,7 +605,9 @@ class SFAF_Notifications {
         if ( $cancel ) {
             $html .= SFAF_Email::rule();
             $html .= SFAF_Email::small_para(
-                'Cannot make the new time? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
+                $is_subscriber
+                    ? 'Not interested any more? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Stop reminders</a> for this event. We will ask you to confirm.'
+                    : 'Cannot make the new time? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
             );
         }
 
@@ -610,7 +625,9 @@ class SFAF_Notifications {
         if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
-            $text .= "\nCannot make the new time? Release your place so somebody else can take it. We will ask\nyou to confirm: " . $cancel . "\n";
+            $text .= $is_subscriber
+                ? "\nNot interested any more? Stop reminders for this event. We will ask you to confirm:\n" . $cancel . "\n"
+                : "\nCannot make the new time? Release your place so somebody else can take it. We will ask\nyou to confirm: " . $cancel . "\n";
         }
         $text .= "\n" . SFAF_Email::POSTAL;
 

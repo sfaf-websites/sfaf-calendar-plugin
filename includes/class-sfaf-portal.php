@@ -2565,8 +2565,8 @@ class SFAF_Portal {
             'user_removed_reassigned' => 'User removed from the calendar system, and taken out of any teams they were in. Their events were handed to the person you chose.',
             'reassign_first' => 'That person organizes events. Choose who should take them on before removing them, so nothing is left with nobody responsible for it.',
             'reassign_invalid' => 'That is not somebody who can take those events on. Pick a person who has calendar access.',
-            'team_saved'     => 'Team saved. Events that name it will notify whoever is in it at the moment the reminder goes out.',
-            'team_deleted'   => 'Team deleted. No event named it, so no notification changed.',
+            'team_saved'     => 'Team saved. Everybody in it can edit the events this team has access to, from now, including events set up before they joined.',
+            'team_deleted'   => 'Team deleted. No event named it, so nobody lost access and no notification changed.',
             'series_saved'   => 'Series saved. Nothing about the events in it changed: a series groups them, it does not overwrite them.',
             'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
@@ -8126,17 +8126,17 @@ class SFAF_Portal {
             <div class="uc-form-actions">
                 <?php
                 /*
-                 * CONFIRM ON SAVE, NAMING THE COUNT.
+                 * NO CONFIRMATION HERE (3.39.0).
                  *
-                 * This is the click that can rewrite a term's worth of
-                 * programming, so in "all upcoming" mode both buttons ask
-                 * "Update 12 events?" first. The sentence is built by the same
-                 * script that owns the scope, off the count in the banner, so
-                 * the number in the dialog and the number on screen are the
-                 * same number.
+                 * Both buttons used to ask "Update 12 events?" on the way to a
+                 * bulk save. The scope is answered once, at open, in the modal,
+                 * and the banner above states it permanently with a Change
+                 * control beside it, so asking again on Save was the question
+                 * put twice. That is the redundancy the per-field pencils had
+                 * before 3.23.0.
                  */
                 ?>
-                <button type="submit" name="save_mode" value="draft" class="uc-btn" data-uc-scope-confirm>Save Draft</button>
+                <button type="submit" name="save_mode" value="draft" class="uc-btn">Save Draft</button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -8158,9 +8158,9 @@ class SFAF_Portal {
                 $watched = $event_id ? SFAF_Sources::completeness_payload( $event_id ) : array();
                 ?>
                 <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
-                    <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary" data-uc-scope-confirm>Submit for Review</button>
+                    <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
                 <?php else : ?>
-                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary" data-uc-scope-confirm
+                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"
                             <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
                             <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
                 <?php endif; ?>
@@ -9434,7 +9434,7 @@ class SFAF_Portal {
                 <p class="uc-hint">Ask a calendar admin to change this.</p>
             <?php elseif ( empty( $teams ) ) : ?>
                 <p class="uc-muted">No teams exist yet.</p>
-                <p class="uc-hint">Teams are created under Users and Permissions.</p>
+                <p class="uc-hint">Teams are created under Users &amp; Teams.</p>
             <?php else : ?>
                 <?php // The marker: every box unticked posts nothing, and that
                       // has to mean "no teams" rather than "this form did not
@@ -9907,7 +9907,7 @@ class SFAF_Portal {
                          data-uc-picker-panel="teams">
                         <h4 class="uc-picker-heading">Teams</h4>
                         <?php if ( empty( $teams ) ) : ?>
-                            <p class="uc-muted">No teams yet. An admin can make one under Users.</p>
+                            <p class="uc-muted">No teams yet. An admin can make one under Users &amp; Teams.</p>
                         <?php else : ?>
                             <div class="uc-picker-options" data-uc-picker-options="teams">
                                 <?php foreach ( $teams as $team ) : $tsize = SFAF_Teams::size( $team['id'] ); ?>
@@ -9920,7 +9920,7 @@ class SFAF_Portal {
                                     </label>
                                 <?php endforeach; ?>
                             </div>
-                            <p class="uc-hint">A team is resolved when the reminder is sent, so it always reaches whoever is in it then, not whoever was in it today.</p>
+                            <p class="uc-hint">Picking a team here emails whoever is in it when the message goes out, not whoever is in it today. It does not change who can edit this event: that is the team on the access card.</p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -10917,32 +10917,45 @@ class SFAF_Portal {
 
                     <?php
                     /*
-                     * THREE EMPTY ROWS, NOT ONE. A set with one question is
-                     * rarely what anybody wants, and a repeater that starts at
-                     * one makes adding the second look like the unusual case.
-                     * Empty rows are dropped on save by clean_rows(), so
-                     * leaving them blank costs nothing.
+                     * ONE ROW, AND A CONTROL TO ADD ANOTHER.
+                     *
+                     * This was three fixed pairs, which is too many for a set
+                     * with one question, too few for a set with four, and gave
+                     * somebody who typed into a row they did not want no way to
+                     * take it out except blanking the fields.
+                     *
+                     * It is the repeater the event editor's FAQ block already
+                     * uses, markup for markup, so "+ Add" and the row remove
+                     * behave identically in both places and initRepeaters()
+                     * drives this one with no new script. Empty rows are
+                     * dropped by SFAF_FAQ_Sets::clean_rows() on save and are
+                     * never stored as blank questions.
                      */
-                    for ( $i = 0; $i < 3; $i++ ) :
-                        ?>
-                        <div class="uc-faq-newrow">
-                            <label class="uc-field">
-                                <span class="uc-field-label">Question <?php echo (int) ( $i + 1 ); ?></span>
-                                <input type="text" name="faq_set_rows[<?php echo (int) $i; ?>][question]" />
-                            </label>
-                            <label class="uc-field">
-                                <span class="uc-field-label">Answer</span>
-                                <textarea name="faq_set_rows[<?php echo (int) $i; ?>][answer]" rows="2"></textarea>
-                            </label>
+                    ?>
+                    <div class="uc-repeater" data-repeater>
+                        <div class="uc-repeater-rows">
+                            <div class="uc-repeater-row uc-faq-row">
+                                <input type="text" name="faq_set_rows[0][question]" placeholder="Question" />
+                                <textarea name="faq_set_rows[0][answer]" rows="2" placeholder="Answer"></textarea>
+                                <button type="button" class="uc-link-danger uc-repeater-remove" aria-label="Remove this question">&times;</button>
+                            </div>
                         </div>
-                    <?php endfor; ?>
+                        <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
+                        <template class="uc-repeater-tpl">
+                            <div class="uc-repeater-row uc-faq-row">
+                                <input type="text" name="faq_set_rows[__I__][question]" placeholder="Question" />
+                                <textarea name="faq_set_rows[__I__][answer]" rows="2" placeholder="Answer"></textarea>
+                                <button type="button" class="uc-link-danger uc-repeater-remove" aria-label="Remove this question">&times;</button>
+                            </div>
+                        </template>
+                    </div>
 
                     <div class="uc-form-actions">
                         <button type="submit" class="uc-btn uc-btn-primary">Create set</button>
                     </div>
                     <p class="uc-hint">
-                        Blank rows are ignored. You can add more questions by editing the set once it exists,
-                        and applying it to an event copies the rows rather than linking to them.
+                        Blank rows are ignored. Applying a set to an event copies its rows rather than linking
+                        to them, so editing the set afterwards never changes an event that already used it.
                     </p>
                 </form>
             </div>
@@ -11572,7 +11585,7 @@ class SFAF_Portal {
         <section class="uc-section" id="uc-teams">
             <div class="uc-section-head">
                 <h2>Teams</h2>
-                <p class="uc-section-sub">Named groups of calendar users, so an event can notify "Philanthropy" instead of five addresses.</p>
+                <p class="uc-section-sub">Named groups of calendar users. An event can give a team access, so everybody on it can edit that event and see who has registered.</p>
             </div>
 
             <div class="uc-card">
@@ -11580,9 +11593,10 @@ class SFAF_Portal {
                     <h2><?php echo count( $teams ); ?> <?php echo esc_html( 1 === count( $teams ) ? 'team' : 'teams' ); ?></h2>
                 </div>
                 <p class="uc-hint">
-                    A team is a name and a set of people, resolved when the reminder is sent. So taking somebody out
-                    of a team stops their notifications for every event naming it, and adding somebody puts them on
-                    events that were set up before they joined.
+                    A team is a name and a set of people, read fresh every time. Adding somebody gives them access to
+                    every event the team already has, including ones set up before they joined; taking somebody out
+                    removes it. Events can also email a team, which is a separate tick on the event and is off unless
+                    somebody sets it.
                 </p>
 
                 <?php if ( $err ) : ?>
@@ -11806,7 +11820,7 @@ class SFAF_Portal {
                                                     <span class="uc-member-email uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
                                                 </span>
                                                 <span class="uc-member-x" aria-hidden="true"><?php echo sfaf_icon( 'x', array( 'size' => '14px' ) ); ?></span>
-                                                <span class="uc-visually-hidden">In the team. Untick to take <?php echo esc_html( $m->display_name ); ?> out when this is saved.</span>
+                                                <span class="uc-visually-hidden">In the team.</span>
                                             </label>
                                             <input type="hidden" name="team_offered[]" value="<?php echo (int) $m->ID; ?>" />
                                         </li>

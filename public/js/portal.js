@@ -1579,7 +1579,30 @@
         function dismiss() {
             var back = choice.getAttribute('data-uc-scope-back') || '';
             var ref = document.referrer || '';
-            if (ref && ref.indexOf(window.location.origin + '/') === 0 && ref !== window.location.href) {
+
+            /*
+             * THE SAME SCREEN IS THE SAME SCREEN WHATEVER QUERY STRING IT IS
+             * WEARING, and comparing full URLs got that wrong.
+             *
+             * The loop this caused: arrive at the editor, answer the modal,
+             * save. The save redirects back to the editor with ?msg=saved on
+             * it, so the referrer (the editor, no msg) did not equal
+             * location.href (the editor, with msg), the guard passed, and
+             * Cancel navigated to this same editor again. The modal opened.
+             * Cancel again. There was no way out except answering.
+             */
+            var samePage = false;
+            if (ref) {
+                try {
+                    var refUrl = new URL(ref, window.location.href);
+                    samePage = (refUrl.origin === window.location.origin)
+                        && (refUrl.pathname === window.location.pathname);
+                } catch (e) {
+                    samePage = false;
+                }
+            }
+
+            if (ref && ref.indexOf(window.location.origin + '/') === 0 && !samePage) {
                 window.location.href = ref;
             } else if (back) {
                 window.location.href = back;
@@ -1661,15 +1684,20 @@
                 banner.focus();
             }
 
-            // The confirmation on the save buttons, naming the count. This is
-            // the click that can rewrite a term's worth of programming.
-            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-scope-confirm]'), function (btn) {
-                if (scope === 'all_upcoming') {
-                    btn.setAttribute('data-uc-scope-confirm-text', 'Update ' + count + ' events?');
-                } else {
-                    btn.removeAttribute('data-uc-scope-confirm-text');
-                }
-            });
+            /*
+             * NO SECOND CONFIRMATION ON THE SAVE BUTTONS (3.39.0).
+             *
+             * This used to arm one, naming the same count the banner states
+             * permanently two inches above it. Answering the question at open
+             * and being asked it again on Save is the redundancy the per-field
+             * pencils had before 3.23.0, and it has the same answer: the modal
+             * decides scope once, the banner reports it, and everything after
+             * follows without asking.
+             *
+             * What replaces it is the banner, which is already there, already
+             * says which scope is in force, and already carries a Change
+             * control for somebody who wants a different one.
+             */
         }
 
         Array.prototype.forEach.call(choice.querySelectorAll('[data-uc-scope]'), function (btn) {
@@ -1696,20 +1724,6 @@
                 window.location.reload();
             });
         }
-
-        /* Registered here, and initEditScope() is called before
-         * initConfirmButtons() so this runs first. stopImmediatePropagation()
-         * then keeps the completeness confirmation from asking a second
-         * question about a save the manager has already called off. */
-        Array.prototype.forEach.call(form.querySelectorAll('[data-uc-scope-confirm]'), function (btn) {
-            btn.addEventListener('click', function (e) {
-                var message = btn.getAttribute('data-uc-scope-confirm-text');
-                if (message && !window.confirm(message)) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                }
-            });
-        });
 
         /* Last, so every listener above is bound before the question can be
          * answered. Everything up to this point works whether or not this

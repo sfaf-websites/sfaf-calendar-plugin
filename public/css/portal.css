@@ -66,7 +66,13 @@
     --p-sidebar-text: #D1D3D4;
     --p-green: #8CC745;      /* Pantone 3561 UP */
     --p-gray: #D1D3D4;
-    --p-danger: #F04937;     /* Red, Pantone 179 CP */
+    --p-danger: #F04937;     /* Red, Pantone 179 CP. FILLS AND ICONS ONLY. */
+    /* The darkened red that can carry TEXT, exactly as --uc-teal-text is the
+       darkened teal that can. Brand red measures 3.68:1 on a card and 3.40:1
+       on the page, both under the 4.5:1 floor, which is why DESIGN.md has it
+       as large-text only. This is 5.44:1 and 5.03:1 on the same two grounds,
+       and is not a new colour: it is what the danger button is filled with. */
+    --p-danger-text: #c0392b;
 
     /* Web brand typefaces (brand guide v3.0, p.10). */
     --uc-font-heading: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -597,7 +603,7 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 
 .uc-btn-block { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 .uc-btn-sm { padding: 6px 12px; font-size: 13px; }
-.uc-link-danger { background: none; border: none; color: var(--p-danger); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
+.uc-link-danger { background: none; border: none; color: var(--p-danger-text); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
 .uc-link-danger:hover { text-decoration: underline; }
 .uc-link-ok { background: none; border: none; color: var(--p-green); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
 .uc-link-ok:hover { text-decoration: underline; }
@@ -2304,8 +2310,13 @@ body.uc-modal-open { overflow: hidden; }
 .uc-cancel-visibility .uc-radio-opt { display: flex; gap: 8px; align-items: flex-start;
     margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
 .uc-cancel-visibility .uc-radio-opt strong { display: block; }
-.uc-btn-danger { border-color: #b91c1c; color: #b91c1c; }
-.uc-btn-danger:hover { background: #b91c1c; color: #fff; }
+/* NO SECOND .uc-btn-danger HERE (3.39.0). This file already declares one,
+   white on #c0392b at 5.44:1. A second rule at the same specificity set
+   colour and border-colour and inherited the first rule's background, so the
+   delete button rendered #b91c1c on #c0392b: two reds, 1.19:1, very close to
+   invisible. That is the category-chip mistake from before 3.15.0, one colour
+   used as both tint and ink. Measured by .claude/destructive-contrast.php,
+   which now fails if this class is declared twice again. */
 
 /* The count and the tick, wherever the prompt appears. One block, three
    callers: cancelling one event, cancelling a series, and saving a move. */
@@ -2460,5 +2471,3 @@ body.uc-modal-open { overflow: hidden; }
 .uc-field .mce-toolbar-grp { border-bottom: 1px solid var(--p-border) !important; }
 
 /* The FAQ set create rows on the FAQ Sets screen. */
-.uc-faq-newrow { padding: 12px 0; border-bottom: 1px solid var(--p-border); }
-.uc-faq-newrow:last-of-type { border-bottom: 0; }

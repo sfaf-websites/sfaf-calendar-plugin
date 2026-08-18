@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-18, at 3.38.0.
+**Last updated:** 2026-08-18, at 3.39.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.38.0**, built as `sfaf-calendar-3.38.0.zip` in the project
+The plugin is at **3.39.0**, built as `sfaf-calendar-3.39.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.38.0, the deployment is stale or partial, and that
+screen: if it does not say 3.39.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **Two releases changed rules that other code has to respect.** 3.35.0 made teams
@@ -42,42 +42,40 @@ running, and ONLY THEN set `DISABLE_WP_CRON`. Doing that last step first
 with a mistyped URL leaves a site where nothing runs and nothing says so.
 The readme has the full version under "Scheduled Tasks".
 
-**Not `admin-ajax.php?action=sfaf_cron_ping`.** It runs this plugin's jobs only,
-so under `DISABLE_WP_CRON` it would stop every other scheduled job on the site.
-`PROJECT.md` §4 has the full reasoning.
-
-**Leave the page-view nudge switched on.** It is not a second scheduler. It is
-the request from sfaf.org that lets this site notice the external scheduler has
-died: if the pinger stops and nobody visits, no code here runs at all, including
-the health check that sends the alert email. The nudge is what closes that.
+**Not `admin-ajax.php?action=sfaf_cron_ping`**, which would stop every other
+scheduled job on the site. **Leave the page-view nudge on**: it is the request
+from sfaf.org that lets this site notice the scheduler has died. `PROJECT.md`
+§4 has both in full.
 
 ## In flight
 
-- **3.38.0 is unverified on a live site, and one part of it needs checking
-  before anything else: THE RICH TEXT EDITOR.** caladmin builds its own document
-  rather than running through `wp_head`, so TinyMCE is being started somewhere it
-  usually is not. Open any event and look at the Description field. If it is a
-  toolbar, it works. If it is a plain textarea showing tags, the scripts did not
-  start; nothing is lost and nothing is broken, but it needs the enqueue chased.
-  This could not be verified from the repo.
-- **Then, in order:** create a closure under Events > Closures spanning three
-  days and confirm the month grid marks all three and a list shows ONE card;
-  create an event, pick a series first, and confirm the prefill offer appears and
-  that typing a location first makes it ask before overwriting; confirm the
-  Automation screen and the caladmin cards no longer wear a coloured left edge.
-- **Older releases still unverified live**, and each has one thing worth doing
-  while on those screens: 3.37.0, add an organizer and confirm it reaches the
-  event picker; 3.35.0, put somebody in a team, assign it to an event they did
-  not create, and confirm they see that event's registrations and nothing else;
-  3.36.0, cancel an event with a registration, read the email, and confirm
-  deleting is refused before cancelling and allowed after.
+- **THE RICH TEXT EDITOR IS STILL THE FIRST THING TO CHECK.** caladmin builds
+  its own document rather than running through `wp_head`, so TinyMCE is being
+  started somewhere it usually is not. Open any event and look at the Description
+  field. If it is a toolbar, it works. If it is a plain textarea showing tags,
+  the scripts did not start; nothing is lost and nothing is broken, but it needs
+  the enqueue chased. This could not be verified from the repo.
+- **3.39.0 fixed three things Mark found by hand**, and each is worth confirming
+  on the same event he used: change a time on an event somebody is registered
+  for and check the prompt now appears naming them; confirm Save no longer asks
+  the scope question a second time; and confirm Cancel on the scope modal leaves
+  rather than reopening it. The prompt fix matters most for events whose only
+  interest is people who pressed **Get Reminders**: they were invisible to it.
+- **Then:** a three-day closure under Events > Closures marks three grid squares
+  and shows ONE list card; picking a series first on a new event offers the
+  prefill and asks before overwriting a typed location; no caladmin card wears a
+  coloured left edge any more.
+- **Older releases still unverified live.** The two worth doing are the ones
+  that touch data: put somebody in a team, assign it to an event they did not
+  create, and confirm they see that event's registrations and nothing else
+  (3.35.0); and cancel an event with a registration, read the email, and confirm
+  deleting is refused before cancelling and allowed after (3.36.0).
 - **The external ping has not been created yet.** Until it is, the only thing
   driving cron is visitor traffic and the page-view nudge from sfaf.org.
-- **The GFMP campaign image is deliberately unmapped.** Both fields their schema
-  offers were wrong, so campaigns fall through to the branded placeholder. The
-  open action is running the `[PROBE]` tool in `class-sfaf-gfmp.php` against a
-  real campaign; the `sfaf_gfmp_image_fields` filter then fixes it live with no
-  rebuild, and the probe tool is deleted in the same commit.
+- **The GFMP campaign image is deliberately unmapped**, so campaigns fall
+  through to the branded placeholder. Run the `[PROBE]` tool in
+  `class-sfaf-gfmp.php` against a real campaign, fix it live through the
+  `sfaf_gfmp_image_fields` filter, and delete the probe in the same commit.
 
 ## Blocked on other people
 
@@ -122,8 +120,8 @@ Not yet done, and each matters for a different reason.
 
 ## Queued work
 
-1. **The `/caladmin` design audit**, **106 findings against `portal.css`** never
-   written down in the repo. Enumerate them first, split by mechanism.
+1. **The `/caladmin` design audit**, 106 findings against `portal.css` never
+   written down. Enumerate first, split by mechanism.
 2. **Simplify the event editor.** A parade of checkboxes, and four more cards
    since 3.35.0. A rendering-order and disclosure problem, not a data-model one.
 
@@ -132,10 +130,11 @@ Not yet done, and each matters for a different reason.
 Only the ones still live or likely to recur. `PROJECT.md` §7 has the full set
 with the mechanisms.
 
-- **Tests that pass while the thing is broken.** Plant the fault a new checker
-  should catch and watch it fail, before trusting it. Of nine plants in 3.35.0
-  two were caught by nothing, and neither was a hole in the code: the test was
-  proving less than it claimed.
+- **Tests that pass while the thing is broken.** Plant the fault, and check what
+  the STUBS do: 3.39.0's live bug survived every 3.36.0 test because none seeded
+  a `subscribed` row, and correcting that found the $wpdb stub had silently
+  stopped filtering when the real query changed to `IN (...)`. A stub that
+  cannot read its input does not test its input.
 - **A rule that loses the cascade, and a rule nobody wrote.** Identical on
   screen, opposite fixes. Ask which before rewriting.
 - **Shell strings carrying `$`.** Write the script to a file and run the file.

@@ -98,6 +98,17 @@ class SFAF_Announce {
                     $by_person[ $email ] = array( 'person' => $row, 'events' => array() );
                 }
                 $by_person[ $email ]['events'][] = (int) $event_id;
+
+                /*
+                 * A REAL REGISTRATION OUTRANKS A SUBSCRIPTION when somebody
+                 * holds both across the affected dates. The messages differ
+                 * only in whether they talk about a place being held, and
+                 * somebody who holds one anywhere in this set should be written
+                 * to as though they do.
+                 */
+                if ( 'confirmed' === (string) $row->status ) {
+                    $by_person[ $email ]['person'] = $row;
+                }
             }
         }
 
@@ -240,11 +251,21 @@ class SFAF_Announce {
      * ------------------------------------------------------------------- */
 
     /**
-     * Everybody holding a confirmed place on this event.
+     * Everybody who asked to hear about this event.
      *
-     * Confirmed only: a cancelled registration is somebody who already released
-     * their place, and telling them an event they are not going to is not
-     * happening is noise.
+     * BOTH STATUSES, AND THAT IS THE 3.39.0 FIX. This counted 'confirmed' only,
+     * so anybody who pressed "Get Reminders" rather than registering was
+     * invisible to it: they are stored as 'subscribed', hold no place, and had
+     * asked in as many words to be told about this event. On an event whose
+     * only interest was subscribers, count_affected() answered 0, the prompt
+     * above the Save buttons never rendered, and no marker was posted, so a
+     * moved date told nobody. That is the bug found on the live site.
+     *
+     * The audience is now the same one SFAF_Reminders::recipients() has always
+     * used, `status IN ('confirmed','subscribed')`, because "who is told about
+     * this event" is one question and there is no reason for two answers to it.
+     * 'cancelled' stays out either way: that is somebody who has already asked
+     * to stop hearing about it.
      *
      * @param int $event_id
      * @return object[]
@@ -254,7 +275,7 @@ class SFAF_Announce {
         $table = $wpdb->prefix . 'uc_rsvps';
 
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM {$table} WHERE event_id = %d AND status = 'confirmed' ORDER BY id ASC",
+            "SELECT * FROM {$table} WHERE event_id = %d AND status IN ('confirmed','subscribed') ORDER BY id ASC",
             (int) $event_id
         ) );
 
@@ -298,12 +319,19 @@ class SFAF_Announce {
         return $out;
     }
 
-    /** Does this one event have anybody registered? The prompt's trigger. */
+    /**
+     * Does anybody need telling about this event? The prompt's trigger, and the
+     * refusal to delete an event out from under people.
+     *
+     * Same audience as registrants(), for the same reason: one question, one
+     * answer. Deleting an event that only subscribers are watching still
+     * strands them, so this counts them too.
+     */
     public static function has_registrations( $event_id ) {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
         return (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$table} WHERE event_id = %d AND status = 'confirmed'",
+            "SELECT COUNT(*) FROM {$table} WHERE event_id = %d AND status IN ('confirmed','subscribed')",
             (int) $event_id
         ) ) > 0;
     }

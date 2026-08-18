@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.38.0
+Stable tag: 3.39.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -528,6 +528,39 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.39.0 =
+
+**Three bugs found by hand on a live site, and three corrections.**
+
+**Why the change prompt did not fire, and it was not the trigger list.** Mark opened an event he is registered for, chose "this event only", changed the end time from 2:30 to 2:31 and saved. Nothing appeared.
+
+Ruling the suggested causes out first, because each would have needed a different fix: end time IS in the comparison, through `sfaf_ap_time_range()`, and reproducing the exact save shows the diff reporting `Time: 1-2:30 pm -> 1-2:31 pm`. Nothing normalises the minute away. The comparison runs on the ordinary Save path, after the write, and the prompt block renders inside the form and inside the scope fieldset, which the modal re-enables.
+
+**The audience was too narrow.** `SFAF_Announce` counted `status = 'confirmed'` only. Somebody who pressed "Get Reminders" rather than registering is stored as `subscribed`, holds no place, and was invisible to it: `count_affected()` answered 0, so the prompt block never rendered, no marker was posted, and nothing was sent. `SFAF_Reminders::recipients()` has always used `status IN ('confirmed','subscribed')`, so there were two definitions of "who is told about this event" and the newer one was narrower. There is one now.
+
+A subscriber gets the message worded for them: no "your registration has been kept" for a registration they never made, and "Stop reminders" rather than "Release your place" for a place they never held. The cancel link still reaches them, because that route moves a `subscribed` row to `cancelled` exactly as it does a `confirmed` one.
+
+**The 3.36.0 tests seeded `confirmed` and `cancelled` rows and never a `subscribed` one**, which is exactly why they passed throughout. The new assertion seeds a subscriber and checks all three halves: counted, written to, and not offered a place they never held. Planting the original bug back is caught by name, as is reverting only the count query, as is letting a cancelled row through.
+
+Correcting that exposed the same stub defect 3.36.0 already had to fix once: the `$wpdb` stand-in parsed `status = 'x'` and the queries now say `status IN (...)`, so it silently stopped filtering and a cancelled row came back from a query that excludes them. It reads both shapes now.
+
+**The scope question is asked once.** Answering "this event only" at the modal and being asked again on Save is the redundancy the per-field pencils had before 3.23.0, and the answer is the same: the modal decides scope once, the banner above the form states it permanently with a Change control beside it, and everything after follows without asking. The save-button confirmation is gone, and `data-uc-scope-confirm` went with it rather than being left as an attribute nobody reads.
+
+**Cancel no longer loops back into the dialog, and the cause was a full-URL comparison.** Dismissing the scope modal navigates to the referrer when it is a page on this site and not this same page, and "not this same page" compared complete URLs. A save redirects back to the editor with `?msg=saved` on it, so the referrer (the editor, no msg) did not equal the current URL (the editor, with msg), the guard passed, and Cancel navigated to the same editor again, which opened the modal again. There was no way out except answering. It compares the PATH now: the same screen is the same screen whatever query string it is wearing.
+
+**Every other dialog in caladmin was checked and none traps.** `ucConfirm()`, which draws the delete and publish confirmations, closes and removes itself on Cancel and navigates nowhere. Its `window.confirm()` fallback for browsers without `<dialog>` is native and cannot loop. The raw `confirm()` calls on the delete buttons are the same. The scope modal was the only one that navigated on dismissal, which is what made it the only one that could return to itself.
+
+**Red text on a red button, measured.** `.uc-btn-danger` was declared twice in `portal.css` at the same specificity. The older rule is a filled button, white on `#c0392b`. The rule 3.38.0 added for the cancel control was an outline: it set `color` and `border-color` and did NOT set `background`, so it won the ink and inherited the older rule's fill. The result measured **1.19:1** against a 4.5:1 floor. That is the category-chip mistake from before 3.15.0, one colour used as both tint and ink. The newer rule is deleted rather than patched, because the older one is correct at **5.44:1**.
+
+**Measuring it found a second failure that was not reported and is older.** `--p-danger` is Red, Pantone 179 CP, which `DESIGN.md` has as a large-text-only colour, and every `.uc-link-danger` in the portal was setting it as body text: **3.68:1** on a card and **3.40:1** on the page. Both are under the floor. Same fix and same shape as the teal in 3.20.0: brand red stays what fills things, and `--p-danger-text: #c0392b` carries writing, measuring **5.44:1** and **5.03:1** on those two grounds. It is not a new colour; it is what the danger button has always been filled with.
+
+`.claude/destructive-contrast.php` measures every pair and fails under 4.5:1. It also fails if `.uc-btn-danger` is declared twice again, or if the base rule sets an ink without saying what is behind it, which is the mechanism rather than the symptom. Brand red as body text stays in the table marked as rejected, with its number, because a measurement nobody can see is one somebody re-litigates.
+
+**The Teams copy said a team is a notification list, and since 3.35.0 it is primarily access.** Somebody reading it would think adding a person meant more email for them, when it gives them the right to edit that team's events and read their registrations. Both descriptions now lead with access and mention notification second, and both flash messages follow. The sweep also found the notify picker still defining a team by what notification does with one, which now describes the pick rather than the team, and two pointers naming a sidebar item renamed in 3.38.0. "Untick to take Mark Sapoznikov out when this is saved" is gone: a tick means in.
+
+**FAQ set creation starts with one row.** It shipped as three fixed pairs, which is too many for a set with one question, too few for a set with four, and offered no way to remove a row somebody had typed into except blanking it. It is the repeater the event editor's FAQ block already uses, markup for markup, so "+ Add FAQ" and the row remove behave identically in both places and `initRepeaters()` drives it with no new script. Empty rows are dropped by `clean_rows()` and were never stored as blank questions.
+
+VERIFIED: 58 PHP files parse under PHP 8.3; the callable audit resolves everything with nothing unresolved, self-test passing; the whole `.claude` suite runs green, 19 PHP harnesses plus the JS panel test, the guard test and two self-tests; the live bug reproduced from the source before the fix and caught by name after it, along with two variants of it; every destructive pair measured against 4.5:1; three stylesheets balance and five scripts pass `node --check`. Zip built with bsdtar, extracted, diffed file by file against the tree, and both the linter and the callable audit re-run from the extract.
 = 3.38.0 =
 
 **The curved coloured accent border is gone, and it was not only on the Automation screen.** That pattern is the most recognisable tell of generated UI, and sweeping for it found the portal was built on it: `.uc-card` and `.uc-bento-card` each carried `border-left: 3px solid teal` with an asymmetric `4px 12px 12px 4px` radius, so EVERY card in caladmin wore one. An accent that every card has distinguishes nothing at all, which is the whole test.
