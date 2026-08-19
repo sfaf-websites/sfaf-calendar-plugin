@@ -341,8 +341,38 @@ foreach ( array( 'post_status', 'post_author', 'uc_private', 'notify_choice', 'f
 }
 
 /* And the source itself must name the status rather than take one. */
-$src = file_get_contents( $root . '/includes/class-sfaf-request.php' );
-$code = preg_replace( '#/\*.*?\*/#s', '', $src );
+/*
+ * COMMENTS OUT WITH THE TOKENIZER, NOT WITH A REGEX.
+ *
+ * Every check below is "this file does not contain X", and this file's comments
+ * explain at length why it does not use wp.media, does not add a REST route and
+ * does not touch registrations. A sweep matching its own explanatory prose has
+ * happened five times on this project. A regex for block comments also misses
+ * the // ones, and token_get_all() knows the difference between a comment and a
+ * string that looks like one.
+ */
+$src  = file_get_contents( $root . '/includes/class-sfaf-request.php' );
+$code = '';
+foreach ( token_get_all( $src ) as $t ) {
+    if ( is_array( $t ) && in_array( $t[0], array( T_COMMENT, T_DOC_COMMENT ), true ) ) {
+        continue;
+    }
+    $code .= is_array( $t ) ? $t[1] : $t;
+}
+
+/* The tokenizer must actually be removing something, or every "is absent"
+ * assertion below passes for the wrong reason. */
+if ( strlen( $code ) >= strlen( $src ) ) {
+    $fails[] = 'stripping comments removed nothing, so the checks below prove nothing';
+}
+foreach ( array( 'wp.media', 'register_rest_route', 'add_rewrite_rule' ) as $mentioned ) {
+    if ( false === stripos( $src, $mentioned ) ) {
+        continue;
+    }
+    if ( false !== stripos( $code, $mentioned ) ) {
+        $fails[] = "$mentioned survives outside the comments, so the form does the thing it says it does not";
+    }
+}
 if ( ! preg_match( "#'post_status'\s*=>\s*'pending'#", $code ) ) {
     $fails[] = 'the insert does not name pending as the status, so the queue may never see a request';
 }
