@@ -112,6 +112,52 @@ Branches:
 
 ---
 
+### The featured image picker offers one folder, matched on the file path
+
+Event photographs live in `wp-content/uploads/calendar/`, a folder made with WP
+Media Folder. The caladmin picker offers **only** what is in it, so every
+selectable image is already 16:9 and already the right weight, and nobody has to
+remember the rule. `SFAF_Media_Folder` owns it.
+
+**It filters on `_wp_attached_file`, never on WP Media Folder's own API**, and
+that is the decision worth keeping. Files in that folder are on disk there, so
+core's own attachment meta reads `calendar/latino.jpg`. Core wrote it and core
+maintains it, whatever plugin put the file in the folder.
+
+> **Depend on the metadata, not on the plugin that produced it.** If WP Media
+> Folder is removed, every file stays put, the meta still starts with
+> `calendar/`, and the picker needs no change. What is lost is the ability to
+> MANAGE the folder, which is the plugin's actual job. Going through its
+> taxonomy would have made a third-party plugin a load-bearing dependency of the
+> event editor.
+
+The match is **anchored** (`REGEXP '^calendar/'`), so `photos/calendar/x.jpg` is
+not a calendar image. `path_is_inside()` is the same rule in PHP and the test
+runs both over the same cases, because two implementations of one rule drift.
+
+**The gate reads `$_REQUEST`, not the filtered arguments.**
+`wp_ajax_query_attachments()` intersects the incoming query against a whitelist
+of core's own keys BEFORE `ajax_query_attachments_args` fires, so a custom flag
+is gone by the time the filter sees it. Reading the filtered array would find
+nothing and the picker would silently show the whole library.
+
+**Narrowing is opt-in per request, and it has to be.** Both hooks are global.
+`upload_dir` runs for every upload anywhere and `ajax_query_attachments_args`
+runs for the WordPress media library itself, so an ungated version would hide
+most of the site's images from somebody writing an unrelated page. That failure
+is silent and would not look like the calendar's doing.
+
+**Choosing is narrowed; DISPLAY never is.** An event whose image predates the
+folder, or was set in the WordPress editor, renders exactly as before, and the
+URL field still takes any address. The test asserts that no display path
+mentions `SFAF_Media_Folder` at all, because the day one does is the day older
+events start losing pictures.
+
+Uploads made from caladmin land in the folder, deliberately overriding the
+year-and-month setting: the folder IS the organisation for these, and a date
+directory underneath would scatter the same pictures across twelve places a
+year. Without it an upload would be invisible to the picker that made it.
+
 ### Descriptions are rich text, with a deliberately short toolbar
 
 Event descriptions are `post_content` and have been plain text until 3.38.0.

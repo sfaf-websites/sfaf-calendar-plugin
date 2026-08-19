@@ -63,6 +63,29 @@ $edits = array(
         'return AP_DAYS[dow] + \', \' + AP_MONTHS[mo - 1] + \' \' + d + \', \' + y;',
         'return AP_DAYS[dow] + \', \' + AP_MONTHS[mo % 12] + \' \' + d + \', \' + y;' ),
 
+    /* The media filter loses its gate, so it narrows the WordPress media
+     * library on every screen of the site as well. */
+    'ungated-media' => array( 'includes/class-sfaf-media-folder.php',
+        "        if ( ! self::asked_for() ) {\n            return \$args;\n        }\n",
+        '' ),
+
+    /* The anchor goes, so photos/calendar/x.jpg counts as a calendar image. */
+    'unanchored' => array( 'includes/class-sfaf-media-folder.php',
+        "return '^' . preg_quote( self::prefix() );",
+        "return preg_quote( self::prefix() );" ),
+
+    /* The upload half goes, so uploads land in the month directory and are
+     * invisible to the picker that made them. */
+    'upload-elsewhere' => array( 'includes/class-sfaf-media-folder.php',
+        "add_filter( 'upload_dir', array( __CLASS__, 'upload_to_folder' ) );",
+        '' ),
+
+    /* Display starts asking about the folder, which is how an event with an
+     * older picture loses it. */
+    'display-filters' => array( 'includes/sfaf-template-functions.php',
+        'function sfaf_event_location( $post_id ) {',
+        "function sfaf_event_location( \$post_id ) {\n    \$unused = SFAF_Media_Folder::FOLDER;" ),
+
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",

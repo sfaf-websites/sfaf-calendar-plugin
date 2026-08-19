@@ -845,6 +845,100 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--p-border); }
 
 /* ---------------------------------------------------------------------------
+   THE EVENT EDITOR'S SAVE ROW IS THE POINT OF THE SCREEN (3.42.1)
+
+   WHAT WAS WRONG. Save and Publish were a right-aligned row with a hairline
+   over it, sitting between the last bento card and the cancel card, wearing the
+   same border as every divider on the page. Nothing said these were the actions
+   the whole screen exists for, and the destructive card underneath competed
+   with them on equal terms.
+
+   IT IS A BAND, NOT A BORDER. The row gets its own surface and sits clear of
+   the cards on both sides, so it reads as the end of the form rather than as
+   another rule inside it. That is the cheapest way to give a control weight
+   without making it bigger than the brand allows: position and surrounding
+   space, not size and colour.
+
+   NO SECOND ACCENT AND NO SECOND YELLOW. Publish already carries the one
+   yellow this design gives to actions, and adding a colour to the band it sits
+   on would put two competing signals in one place. The band is a surface. See
+   DESIGN.md on the single accent.
+
+   ONLY IN THE EVENT EDITOR, deliberately. Every other screen's action row is a
+   small form where the buttons are already the obvious next thing, and giving
+   all of them a band would spend the emphasis everywhere and mean nothing
+   anywhere.
+   --------------------------------------------------------------------------- */
+.uc-form-actions-primary {
+    align-items: center;
+    gap: 12px;
+    margin-top: 30px;
+    margin-bottom: 30px;
+    padding: 18px 20px;
+    border: 1px solid var(--p-border);
+    border-radius: 12px;
+    background: var(--p-surface-2, #f6f7f8);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+/* The buttons in that row are the largest controls on the page, which is the
+   other half of the weight. .uc-btn is chrome and carries its own size ladder,
+   so this is a size on a button rather than a step on the type scale. */
+.uc-form-actions-primary .uc-btn { padding: 11px 20px; font-size: 15px; font-weight: 600; }
+.uc-form-actions-primary .uc-btn-primary { padding: 11px 26px; }
+
+/* A caption on the left, so the row is not two buttons floating in a box and
+   the space between them and the edge is doing something. */
+.uc-form-actions-note { margin: 0 auto 0 0; font-size: 13px; line-height: 1.45; color: var(--p-muted, #6B6764); }
+
+@media (max-width: 600px) {
+    .uc-form-actions-primary { flex-wrap: wrap; }
+    .uc-form-actions-primary .uc-btn { flex: 1 1 auto; justify-content: center; }
+    .uc-form-actions-note { flex: 1 1 100%; margin-bottom: 4px; }
+}
+
+/* ---------------------------------------------------------------------------
+   CANCELLING IS SET APART, AND CLOSED (3.42.1)
+
+   It read as the next section of the form: a bento card in the same rhythm as
+   the cards above it, so somebody scrolling past Save landed straight in a set
+   of radio buttons and a red button. A destructive action should take a
+   deliberate act to reach, which is what the disclosure is for.
+
+   QUIET WHEN CLOSED. The summary is a line of text with a chevron, not a red
+   button: a closed disclosure that shouts is the same problem in a smaller box.
+   The red appears once it is open, on the control that actually does it.
+
+   The generous space above is doing the separating. There is no rule across the
+   page, because the save band already ends the form and a second divider would
+   be two endings.
+   --------------------------------------------------------------------------- */
+.uc-danger-zone { margin: 34px 0 40px; }
+.uc-danger-disclosure > summary { list-style: none; cursor: pointer; }
+.uc-danger-disclosure > summary::-webkit-details-marker { display: none; }
+.uc-danger-disclosure > summary::marker { content: ""; }
+.uc-danger-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 12px; margin: 0 0 0 -12px;
+    border-radius: 8px;
+    color: var(--p-muted, #6B6764);
+    font-size: 13px; font-weight: 600;
+}
+.uc-danger-toggle:hover { color: var(--p-text); background: var(--p-surface-2, #f6f7f8); }
+.uc-danger-disclosure > summary:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; border-radius: 8px; }
+.uc-disclosure-chevron { display: inline-flex; transition: transform 0.15s ease; }
+.uc-danger-disclosure[open] > summary .uc-disclosure-chevron { transform: rotate(90deg); }
+.uc-danger-body {
+    margin-top: 12px; padding: 20px;
+    border: 1px solid #e6c9c5;
+    border-radius: 12px;
+    background: #fdf7f6;
+}
+.uc-danger-body .uc-cancel-form { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .uc-disclosure-chevron { transition: none; }
+}
+
+/* ---------------------------------------------------------------------------
    A SAVE BUTTON NEEDS AIR UNDER IT, NOT JUST OVER IT.
 
    On the series editor the Save Series row had 22px above it and nothing

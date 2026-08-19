@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.42.0
+Stable tag: 3.42.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -527,6 +527,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.42.1 =
+
+**The event editor now says which controls are the point of the screen, and the picker only offers pictures that are already the right shape.**
+
+**SAVE AND PUBLISH HAVE WEIGHT.** They were a right-aligned pair under a hairline, sitting between the last card and the cancel card, wearing the same border as every divider on the page. Nothing marked them as the actions the whole screen exists for. They are a band now, with their own surface, clear of the cards on both sides, and the buttons are the largest controls on the page. The weight comes from position and space rather than from a second colour: Publish already carries the one yellow this design gives to actions, and putting another signal on the band it sits on would set two things competing in one place. Only the event editor gets this. Every other screen's action row is a small form where the buttons are already the obvious next thing, and doing it everywhere would spend the emphasis and mean nothing.
+
+A line on the left says what the two buttons differ ON, which is the one thing somebody hesitating between them needs and the one thing the labels cannot say.
+
+**CANCELLING IS SET APART AND CLOSED.** It read as the next section of the form: a card in the same rhythm as the cards above it, so somebody scrolling past Save landed straight in a set of radio buttons and a red button. It is a closed disclosure now, quiet when shut, and opening it is a deliberate act. The red appears once it is open, on the control that does it, because a closed disclosure that shouts is the same problem in a smaller box.
+
+**When the event is ALREADY cancelled it is not hidden**, and that is the point of splitting the two. Then it is not an action somebody needs protecting from, it is the most important fact on the screen and Reinstate is what they came to press. Hiding a status behind a disclosure is how somebody edits a cancelled event for ten minutes without noticing.
+
+The two sentences that used to open that card are gone. "A cancelled event keeps its registrations and takes no new ones. This is what to use instead of deleting" is background: it explains the feature to somebody not doing anything yet, and ran to three lines before the first control. The confirmation says it in one line while they are deciding, and the refusal to delete a registered event says the rest at the moment it applies.
+
+**THE FEATURED IMAGE PICKER SHOWS THE CALENDAR FOLDER ONLY.** Event photographs are cropped to 16:9 and filled, so the wrong shape loses faces. The media library holds every image the site has ever used, and asking somebody to pick the right one from that every time is asking them to remember a rule. Now everything on offer is already right.
+
+**Uploading still works and lands in the folder.** Somebody setting up an event with a picture nobody has prepared can upload it there and then; it goes into the calendar folder, so it is offered next time and can be resized later without moving. The alternative was an upload landing in this month's directory, invisible to this picker, with the event held up until somebody with media library access moved it. The size, **1200 x 675, 16:9**, was already stated at the control and still is.
+
+**Events whose picture sits outside the folder are untouched.** This is about choosing a NEW image, never about showing one, so nothing display-side asks about the folder and a test asserts that it never starts to. An event with a picture from before the folder existed, or one set through the WordPress editor, renders exactly as it did. The URL field beside the picker still takes any address at all.
+
+**It filters on the file path, not on WP Media Folder's API.** Files in that folder are on disk at `wp-content/uploads/calendar/`, so WordPress's own `_wp_attached_file` records `calendar/latino.jpg`. That is core metadata, written by core, present whatever plugin put the file there. So if WP Media Folder is ever removed, every file stays where it is, the meta still starts with `calendar/`, and the picker carries on with nothing to change. The folder stops being manageable, because there is no longer a screen for dragging things into it, but nothing breaks and no event loses a picture. Going through the plugin's own taxonomy would have tied the editor to a third-party plugin staying installed.
+
+The match is **anchored at the front**, so `photos/calendar/x.jpg` and `2026/08/calendar-flyer/x.jpg` are not calendar images. **If the folder ever turns out to be empty the picker says so** rather than opening on a blank grid that reads as broken, and names the folder it looked in.
 
 = 3.42.0 =
 

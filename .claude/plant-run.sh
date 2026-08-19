@@ -40,6 +40,10 @@ try preanswered     "the choice field ships answered"  .claude/notify-consent-te
 try checkbox-back   "the ticked checkbox returns"      .claude/notify-consent-test.php
 try unarmed         "the dialog is never armed"        .claude/notify-consent-test.php
 try formatter-drift "the browser formatter drifts"     .claude/ap-format-crosscheck.php
+try ungated-media   "the media filter loses its gate"  .claude/media-folder-test.php
+try unanchored      "the folder match loses its anchor" .claude/media-folder-test.php
+try upload-elsewhere "uploads stop landing in the folder" .claude/media-folder-test.php
+try display-filters "display starts filtering on the folder" .claude/media-folder-test.php
 
 restore
 echo "-------------------------------------------"

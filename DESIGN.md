@@ -330,6 +330,35 @@ are the instruments for saying which. Five columns giving a title, a badge, a
 timezone, an address and two verbs equal weight is a table with no answer in
 it.
 
+**When the instruments are already spent, use position and space** (3.42.1). The
+event editor's Save and Publish were a right-aligned pair under a hairline,
+between the last card and the cancel card, wearing the same border as every
+divider on the page. The obvious fix is more colour, and it was not available:
+Publish already carries the one yellow, and tinting the row it sits on would put
+two signals in one place competing to be the answer. So the row became a BAND
+with its own surface, set clear of the cards on both sides, with the largest
+buttons on the page. Surface, separation and size are the fourth instrument and
+they cost nothing from the palette.
+
+**And emphasis given everywhere is emphasis spent.** Only the event editor's row
+gets this. Every other screen's actions sit in a small form where they are
+already the obvious next thing, and a band on all of them would make the band
+mean nothing.
+
+**A destructive control is reached deliberately, not scrolled into** (3.42.1).
+Cancelling an event was a card in the same rhythm as the cards above it, so
+somebody scrolling past Save landed in radio buttons and a red button. It is a
+closed disclosure now, and the red only appears once it is open, on the control
+that does the thing: a closed disclosure that shouts is the same problem in a
+smaller box.
+
+> **A STATE IS NOT AN ACTION, and the two want opposite treatments.** The same
+> renderer shows a cancelled event's status and its Reinstate control, and that
+> is NOT hidden. Nobody needs protecting from it, it is the most important fact
+> on the screen, and it is what somebody came to press. Hiding a status behind a
+> disclosure is how somebody edits a cancelled event without noticing it is
+> cancelled.
+
 ---
 
 ## 5. CSS discipline

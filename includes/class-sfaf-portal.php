@@ -4904,7 +4904,28 @@ class SFAF_Portal {
                 $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
                 $in_series  = $event_id && SFAF_Series::id_for_event( $event_id ) > 0;
                 ?>
-                <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'image', $state ); ?>>
+                <?php
+                /*
+                 * THE PICKER OFFERS THE CALENDAR FOLDER ONLY (3.42.1).
+                 *
+                 * Marked on the field rather than switched on globally in the
+                 * script, because the pending queue renders this same control
+                 * once per queued event and a global switch is a thing that
+                 * gets flipped for one screen and forgotten on another. The
+                 * attribute travels with the control that needs it.
+                 *
+                 * Both halves are here: the query the picker makes, and the
+                 * folder an upload from it lands in. See SFAF_Media_Folder for
+                 * why this filters on the file path rather than through WP
+                 * Media Folder's own API.
+                 */
+                $folder_has_any = SFAF_Media_Folder::has_any();
+                ?>
+                <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"
+                     data-uc-media-folder="<?php echo esc_attr( SFAF_Media_Folder::FOLDER ); ?>"
+                     data-uc-media-flag="<?php echo esc_attr( SFAF_Media_Folder::FLAG ); ?>"
+                     <?php echo $folder_has_any ? '' : 'data-uc-media-folder-empty="1"'; ?>
+                     <?php echo $this->field_watch_attr( 'image', $state ); ?>>
                     <span class="uc-field-label">Featured Image
                         <span class="uc-img-source-tag"><?php echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source ); ?></span>
                         <?php echo $this->field_badge( $state, $label ); ?>
@@ -4961,6 +4982,26 @@ class SFAF_Portal {
                          */
                         ?>
                         <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.</p>
+                        <?php
+                        /*
+                         * WHAT THE PICKER WILL SHOW, SAID BEFORE IT IS OPENED.
+                         *
+                         * A picker that opens on eleven pictures when the media
+                         * library holds four hundred reads as broken unless
+                         * somebody was told to expect it. One line, and it also
+                         * says where an upload goes, which is the answer to the
+                         * next question.
+                         *
+                         * The empty case gets a different line, because then
+                         * the same screen means something else has gone wrong
+                         * and the person needs to know it is not them.
+                         */
+                        ?>
+                        <?php if ( $folder_has_any ) : ?>
+                            <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
+                        <?php else : ?>
+                            <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/<?php echo esc_html( SFAF_Media_Folder::FOLDER ); ?></code>.</span></p>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 <?php
@@ -8273,7 +8314,40 @@ class SFAF_Portal {
                 </div>
             <?php endif; ?>
 
-            <div class="uc-form-actions">
+            <?php
+            /*
+             * WHAT THE LEFT BUTTON DOES, WORKED OUT ONCE.
+             *
+             * Read here rather than beside the button because the caption on
+             * the row and the button's own label are the same decision, and
+             * two reads of get_post_status() could answer differently if
+             * anything between them ever wrote one.
+             */
+            $live        = $event_id ? get_post_status( $event_id ) : '';
+            $keep_status = ( 'publish' === $live || 'pending' === $live || 'future' === $live );
+            ?>
+            <?php
+            /*
+             * THE ACTIONS THIS SCREEN EXISTS FOR (3.42.1).
+             *
+             * uc-form-actions-primary is the event editor's row only. It is a
+             * band with its own surface, clear of the card above and the
+             * cancelling section below, because these two buttons were a
+             * right-aligned pair under a hairline that looked like every other
+             * divider on the page. See the note in portal.css for why the
+             * weight comes from position and space rather than from colour.
+             *
+             * The caption on the left says what the two buttons differ ON,
+             * which is the one thing somebody hesitating between them needs and
+             * the one thing the labels cannot say.
+             */
+            ?>
+            <div class="uc-form-actions uc-form-actions-primary">
+                <p class="uc-form-actions-note"><?php
+                    echo $keep_status
+                        ? 'Saving keeps this event exactly as public as it is now.'
+                        : 'Saving keeps this a draft. Publishing puts it on the public calendar.';
+                ?></p>
                 <?php
                 /*
                  * NO CONFIRMATION HERE (3.39.0).
@@ -8296,10 +8370,8 @@ class SFAF_Portal {
                  * decisions get their own control, not a side effect of the
                  * button somebody reaches for to save a typo.
                  */
-                $live = $event_id ? get_post_status( $event_id ) : '';
-                $keep = ( 'publish' === $live || 'pending' === $live || 'future' === $live );
                 ?>
-                <button type="submit" name="save_mode" value="<?php echo $keep ? 'keep' : 'draft'; ?>" class="uc-btn"><?php echo $keep ? 'Save' : 'Save Draft'; ?></button>
+                <button type="submit" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn"><?php echo $keep_status ? 'Save' : 'Save Draft'; ?></button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -9403,11 +9475,32 @@ class SFAF_Portal {
         $cancelled = SFAF_Cancellation::is_cancelled( $event_id );
         $counts    = SFAF_Announce::count_affected( array( $event_id ) );
         $has_regs  = $counts['people'] > 0;
-        ?>
-        <section class="uc-bento-card uc-cancel-card<?php echo $cancelled ? ' is-cancelled' : ''; ?>">
-            <h2 class="uc-bento-title"><?php echo $cancelled ? 'This event is cancelled' : 'Cancel this event'; ?></h2>
 
-            <?php if ( $cancelled ) : ?>
+        /*
+         * A CLOSED DISCLOSURE WHEN IT IS AN ACTION, A PLAIN CARD WHEN IT IS A
+         * STATE (3.42.1).
+         *
+         * This read as the next section of the form. Somebody scrolling past
+         * Save arrived at a full card of radio buttons and a red button, in the
+         * same rhythm as the cards above it, which is how a destructive control
+         * ends up looking like the next thing to fill in.
+         *
+         * So when the event is live, cancelling is one closed line and opening
+         * it is a deliberate act, which is the usual shape for something
+         * destructive and the same shape the schedule's remove controls use.
+         *
+         * WHEN THE EVENT IS ALREADY CANCELLED IT IS NOT HIDDEN, and that is the
+         * whole point of splitting the two. Then this is not an action anybody
+         * is being protected from, it is the most important FACT on the screen,
+         * and Reinstate is the thing somebody came here to press. Hiding a
+         * status behind a disclosure is how somebody edits a cancelled event
+         * for ten minutes without noticing it is cancelled.
+         */
+        if ( $cancelled ) :
+            ?>
+        <section class="uc-bento-card uc-cancel-card is-cancelled">
+            <h2 class="uc-bento-title">This event is cancelled</h2>
+
                 <p class="uc-cancel-state">
                     <?php echo esc_html( SFAF_Cancellation::label( $event_id ) ); ?>.
                     <?php $at = SFAF_Cancellation::cancelled_at( $event_id ); ?>
@@ -9431,11 +9524,31 @@ class SFAF_Portal {
                         Nobody is told automatically. If you emailed people that it was cancelled, tell them it is back.
                     </p>
                 </form>
-            <?php else : ?>
-                <p class="uc-hint">
-                    A cancelled event keeps its registrations and takes no new ones. This is what to use
-                    instead of deleting: deleting an event that people have signed up for is refused.
-                </p>
+        </section>
+            <?php
+            return;
+        endif;
+
+        /*
+         * NOT CANCELLED: the destructive control, closed.
+         *
+         * The two sentences that used to open this card are gone. "A cancelled
+         * event keeps its registrations and takes no new ones. This is what to
+         * use instead of deleting" is background: it explains the feature to
+         * somebody who is not doing anything yet, and it ran to three lines
+         * before the first control. What a person needs at the moment they act
+         * is in the confirmation, which says it in one line while they are
+         * deciding. The refusal to delete a registered event says the rest at
+         * the moment it applies, which is where it means something.
+         */
+        ?>
+        <section class="uc-danger-zone" aria-label="Cancelling this event">
+            <details class="uc-danger-disclosure" data-uc-disclosure>
+                <summary class="uc-danger-toggle" aria-expanded="false">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                    <span>Cancel this event</span>
+                </summary>
+                <div class="uc-danger-body">
 
                 <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form" data-uc-confirm-cancel>
                     <input type="hidden" name="uc_action" value="cancel_event" />
@@ -9497,7 +9610,9 @@ class SFAF_Portal {
 
                     <button type="submit" class="uc-btn uc-btn-danger">Cancel this event</button>
                 </form>
-            <?php endif; ?>
+
+                </div>
+            </details>
         </section>
         <?php
     }

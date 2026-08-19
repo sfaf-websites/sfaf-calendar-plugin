@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-19, at 3.42.0.
+**Last updated:** 2026-08-19, at 3.42.1.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.42.0**, built as `sfaf-calendar-3.42.0.zip` in the project
+The plugin is at **3.42.1**, built as `sfaf-calendar-3.42.1.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.42.0, the deployment is stale or partial, and that
+screen: if it does not say 3.42.1, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -104,6 +104,21 @@ events that were not saved a second time.
   organizer card no longer offers "Not listed? Add one". The cancel card is
   below the form now rather than in the side column, and its state line and its
   legend changed size: that is the type scale being applied, not a mistake.
+- **CONFIRM THE CALENDAR FOLDER IS REAL ON DISK. The picker in 3.42.1 assumes
+  it, and the screen will tell you if it is wrong.** Open any event and press
+  Choose Image. If it shows the calendar pictures, the assumption holds and
+  there is nothing to do. If it opens empty, the field above it will already be
+  saying so: the folder is not where WordPress records those files, and the
+  filter needs pointing at whatever `_wp_attached_file` actually holds. The
+  five-second version without opening caladmin: in Media, hover an event photo
+  and read its URL. `/wp-content/uploads/calendar/latino.jpg` is what this
+  release expects; `/wp-content/uploads/2026/08/latino.jpg` means WP Media
+  Folder is keeping the folder in the database only, and `SFAF_Media_Folder`
+  would have to match on its taxonomy instead, which is the dependency the
+  current version was written to avoid.
+- **Then upload one picture from caladmin and check where it lands.** It should
+  appear at `uploads/calendar/`, and be offered by the picker straight away.
+  That is the half that cannot be checked from the repo at all.
 - **3.42.0 IS THE ONE TO EXERCISE WITH A REAL REGISTRATION, and use a test
   event.** On an event somebody is registered for, change the end time and press
   Save. A dialog must appear naming how many people and showing the old time and

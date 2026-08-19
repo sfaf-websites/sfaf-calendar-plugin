@@ -600,11 +600,40 @@
                 return;
             }
             if (frame) { frame.open(); return; }
+
+            /*
+             * THE CALENDAR FOLDER ONLY, AND UPLOADS INTO IT (3.42.1).
+             *
+             * The flag goes on the frame's library, which wp.media sends to
+             * the server as part of the attachment query, and on the uploader's
+             * multipart params, which ride the upload request. One key does
+             * both, and SFAF_Media_Folder reads it on either route: the query
+             * side narrows to files whose path starts with the folder, the
+             * upload side puts new files there.
+             *
+             * NOTHING HERE FILTERS ANYTHING ON ITS OWN. If the server-side
+             * filter were removed this would quietly show the whole library
+             * again, which is the failure worth knowing about: the flag is a
+             * request, not the rule. The rule is in PHP, where it also applies
+             * to anything else that asks.
+             */
+            var flag = field.getAttribute('data-uc-media-flag');
+            var library = { type: 'image' };
+            if (flag) { library[flag] = '1'; }
+
             frame = wp.media({
                 title: 'Select Featured Image',
                 button: { text: 'Use this image' },
-                multiple: false
+                multiple: false,
+                library: library
             });
+
+            /* The uploader is built with the frame, so its params are set once
+             * the frame exists rather than on every open. */
+            if (flag && wp.Uploader && wp.Uploader.defaults) {
+                wp.Uploader.defaults.multipart_params = wp.Uploader.defaults.multipart_params || {};
+                wp.Uploader.defaults.multipart_params[flag] = '1';
+            }
             frame.on('select', function () {
                 var att = frame.state().get('selection').first().toJSON();
                 idInput.value = att.id;
