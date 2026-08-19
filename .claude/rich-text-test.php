@@ -124,23 +124,57 @@ foreach ( array( 'h1', 'h2', 'h4' ) as $level ) {
 $joiners = array( 'wp_strip_all_tags', 'strip_tags', 'wp_trim_words' );
 $prose   = array( 'get_the_excerpt', 'post_content', "['answer']", 'term->description', '$description' );
 
+/*
+ * PROSE HELD IN A VARIABLE COUNTS TOO.
+ *
+ * A first version looked at one statement at a time, so it saw
+ * `wp_trim_words( get_the_excerpt( $id ), 40 )` and missed
+ * `$source = get_the_excerpt( $id ); ... wp_trim_words( $source, 40 );`,
+ * which is the same fault written over two lines and is exactly what a real
+ * edit looks like. Planting it is what showed the hole.
+ *
+ * So a variable assigned from a prose source becomes a prose source itself for
+ * the rest of that file. One hop is enough for the shape that occurs here, and
+ * this is a checker rather than a type system.
+ */
+$safe = array( 'sfaf_flatten_html(', 'SFAF_Rich_Text::to_plain(' );
+
 foreach ( $code as $name => $src ) {
     if ( 'class-sfaf-rich-text.php' === $name ) {
         continue; // to_plain()'s own fallback names one, and says why.
     }
-    foreach ( preg_split( '/;\s*/', $src ) as $stmt ) {
-        $has_joiner = false;
+    $stmts = preg_split( '/;\s*/', $src );
+
+    /* Pass one: which variables end up holding prose. */
+    $tainted = array();
+    foreach ( $stmts as $stmt ) {
+        if ( ! preg_match( '/(\$[a-zA-Z_][a-zA-Z0-9_]*)\s*=[^=]/', $stmt, $m ) ) { continue; }
+        $is_safe = false;
+        foreach ( $safe as $s ) {
+            if ( false !== strpos( $stmt, $s ) ) { $is_safe = true; break; }
+        }
+        if ( $is_safe ) { continue; }
+        foreach ( $prose as $p ) {
+            if ( false !== strpos( $stmt, $p ) ) { $tainted[] = $m[1]; break; }
+        }
+    }
+    $tainted = array_values( array_unique( $tainted ) );
+
+    /* Pass two: a joiner over a prose source, or over one of those variables. */
+    foreach ( $stmts as $stmt ) {
         $which = '';
         foreach ( $joiners as $j ) {
-            if ( false !== strpos( $stmt, $j . '(' ) ) { $has_joiner = true; $which = $j; break; }
+            if ( false !== strpos( $stmt, $j . '(' ) ) { $which = $j; break; }
         }
-        if ( ! $has_joiner ) { continue; }
+        if ( '' === $which ) { continue; }
         /* Flattening first makes a trim safe, which is the fixed shape. */
-        if ( false !== strpos( $stmt, 'sfaf_flatten_html(' ) ) { continue; }
-        foreach ( $prose as $p ) {
+        foreach ( $safe as $s ) {
+            if ( false !== strpos( $stmt, $s ) ) { continue 2; }
+        }
+        foreach ( array_merge( $prose, $tainted ) as $p ) {
             if ( false !== strpos( $stmt, $p ) ) {
                 $fails[] = "$name joins prose with $which() on a statement mentioning $p; use sfaf_flatten_html(), which puts a space where the block tag was";
-                break;
+                continue 2;
             }
         }
     }
