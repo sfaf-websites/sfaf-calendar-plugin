@@ -146,6 +146,31 @@ if ( array( 'render_image_picker' ) !== $emitters ) {
         . '], and must be emitted by render_image_picker() alone; a second copy is how the series screen silently stopped working';
 }
 
+/*
+ * AND THE PARTS A BROKEN COPY WOULD STILL HAVE.
+ *
+ * The check above counts copies that carry the data hooks, which is a second
+ * WORKING picker. The fault this file exists for was a second BROKEN one: it
+ * had the button, the preview and the hidden input under the old element ids
+ * and none of the hooks, so counting hooks did not see it. Planting exactly
+ * that is what showed the hole.
+ *
+ * These are the structural parts. Wherever one appears, the whole picker is
+ * being written out by hand, whether or not that copy would work.
+ */
+foreach ( array( 'uc-choose-image', 'uc-image-preview', 'uc-remove-image', 'uc-image-url-field' ) as $part ) {
+    $where = array();
+    foreach ( $methods as $name => $body ) {
+        if ( false !== strpos( $body, $part ) ) {
+            $where[] = $name;
+        }
+    }
+    if ( array( 'render_image_picker' ) !== $where ) {
+        $fails[] = "$part is written in [" . implode( ', ', $where )
+            . '], and belongs to render_image_picker() alone; anywhere else is a hand-written picker, which is what stopped working on the series screen';
+    }
+}
+
 /* Everything the binder needs is in that one renderer. */
 $picker = isset( $methods['render_image_picker'] ) ? $methods['render_image_picker'] : '';
 foreach ( $required as $need ) {
