@@ -193,6 +193,39 @@ check(
     (bool) preg_match( '/\?\s*.*\$panel_grid\s*\.\s*\$panel_side/', $block ),
     'the combined mode does not put the grid before the sidebar in the DOM'
 );
+
+/*
+ * THE TWO HALVES ARE HANDED THE SAME MONTH, AND THE HEAD IS DRAWN ONCE.
+ *
+ * These are composition, so they are checked here rather than in
+ * combined-outcome-test.php: that file renders the two renderers and reads what
+ * came back, which is the right way to test what they produce, but it does not
+ * render the block that composes them. Planting both of these is what showed
+ * the gap, because the outcome test could not see either.
+ *
+ * If the month stops being passed, the sidebar reverts to "what is coming up"
+ * and sits beside a grid showing October with September's events in it. If the
+ * head flag stops being passed, the grid draws its own head inside a container
+ * that already has one across the top.
+ */
+/*
+ * SCOPED TO THE COMPOSITION, NOT TO THE FILE. Both of these calls appear twice:
+ * once where the block composes the panels and once in ajax_load_month(), which
+ * redraws them. A check that only asked whether the string exists anywhere was
+ * satisfied by the ajax copy while the panel had lost it, and both plants
+ * passed. Anchored on the surrounding line instead.
+ */
+check(
+    (bool) preg_match(
+        '/sidebar_count\(\s*\$args\[.count.\]\s*\),\s*isset\(\s*\$args\[.heading.\]\s*\)\s*\?\s*\$args\[.heading.\]\s*:\s*null,\s*\$month/s',
+        $block
+    ),
+    'the combined mode does not hand its month to render_sidebar(), so the sidebar and the grid would show different months'
+);
+check(
+    false !== strpos( $block, 'if ( $want_grid ) { echo $this->render_month_grid( $month, $filters, ! $combined ); }' ),
+    'the combined mode does not tell the grid to leave its head out, so the month name would be drawn twice'
+);
 check(
     false !== strpos( $block, ': $panel_list . $panel_grid' ),
     'the other modes no longer keep the original list-then-grid order'
