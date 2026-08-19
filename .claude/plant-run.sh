@@ -35,6 +35,11 @@ try drop-scope      "scope answer not carried"         .claude/save-outcome-test
 try off-ladder      "size/weight off the type ladder"  .claude/type-scale-sweep.php
 try organizer-field "inline organizer field returns"   .claude/organizers-test.php
 try organizer-save  "inline organizer save returns"    .claude/organizers-test.php
+try loose-gate      "the gate accepts anything truthy" .claude/notify-consent-test.php
+try preanswered     "the choice field ships answered"  .claude/notify-consent-test.php
+try checkbox-back   "the ticked checkbox returns"      .claude/notify-consent-test.php
+try unarmed         "the dialog is never armed"        .claude/notify-consent-test.php
+try formatter-drift "the browser formatter drifts"     .claude/ap-format-crosscheck.php
 
 restore
 echo "-------------------------------------------"

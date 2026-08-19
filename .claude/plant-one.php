@@ -35,6 +35,34 @@ $edits = array(
                 <?php
                 break;' ),
 
+    /* The gate accepts anything truthy again, which is what a ticked checkbox
+     * amounted to: mail on any post that carries the key at all. */
+    'loose-gate' => array( 'includes/sfaf-notify-consent.php',
+        "return 'send' === sfaf_notify_choice( \$post );",
+        "return ! empty( \$post['notify_choice'] );" ),
+
+    /* The hidden field ships pre-answered, which mails everybody on every save
+     * exactly as the ticked box did. */
+    'preanswered' => array( $P,
+        '<input type="hidden" name="notify_choice" value="" data-uc-notify-choice />',
+        '<input type="hidden" name="notify_choice" value="send" data-uc-notify-choice />' ),
+
+    /* The ticked checkbox itself comes back. */
+    'checkbox-back' => array( $P,
+        '<input type="hidden" name="notify_choice" value="" data-uc-notify-choice />',
+        '<input type="checkbox" name="notify_registrants" value="1" checked />' ),
+
+    /* The dialog is never armed, so the question is never asked. */
+    'unarmed' => array( 'public/js/portal.js',
+        "run('notifyConsent', initNotifyConsent);",
+        '' ),
+
+    /* The browser's date formatter drifts from the plugin's by one month, so
+     * the dialog stays quiet about a date that really moved. */
+    'formatter-drift' => array( 'public/js/portal.js',
+        'return AP_DAYS[dow] + \', \' + AP_MONTHS[mo - 1] + \' \' + d + \', \' + y;',
+        'return AP_DAYS[dow] + \', \' + AP_MONTHS[mo % 12] + \' \' + d + \', \' + y;' ),
+
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",
