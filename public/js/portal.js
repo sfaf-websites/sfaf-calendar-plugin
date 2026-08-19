@@ -49,6 +49,11 @@
         run('liveSearch', initLiveSearch);
         run('editScope', initEditScope);
         run('confirmButtons', initConfirmButtons);
+        // AFTER confirmButtons and BEFORE completeness, for the same reason the
+        // three above are ordered: these all bind to the same save buttons and
+        // fire in registration order. Whether to email people who have already
+        // signed up outranks a reminder that the image is missing.
+        run('notifyConsent', initNotifyConsent);
         run('completeness', initCompleteness);
         run('asyncActions', initAsyncActions);
         run('disclosures', initDisclosures);
@@ -2699,5 +2704,427 @@
         // A series may already be chosen, from the "add a date" link on a
         // series screen, in which case the offer should be there on arrival.
         build();
+    }
+
+    /* ---------------------------------------------------------------------
+     * ASKING BEFORE ANYBODY IS EMAILED (3.42.0)
+     *
+     * WHAT THIS REPLACED. A checkbox, ticked, sitting among thirty other
+     * controls on the event form, and a second one on the cancel card. Between
+     * them they decided whether every person registered for an event got mail
+     * saying it had moved or was off. The common case was that nobody noticed
+     * them, so the mail went by default, and it cannot be recalled.
+     *
+     * SO THE QUESTION IS ASKED AT THE MOMENT OF SAVING, and only when there is
+     * something to ask about: a date, start time, end time or location that
+     * actually changed, AND at least one person registered or subscribed. With
+     * neither, this does nothing at all and the save goes straight through. A
+     * click in the way of a save that cannot email anybody is a click that
+     * teaches people to dismiss dialogs.
+     *
+     * DETECTION IS DONE ON THE FORMATTED VALUES, which is what the server
+     * compares in movable_diff(): '18:00' and '6 pm' are the same fact and
+     * nobody should be told about the difference. The server stamps the event's
+     * current formatted facts on the block, this reads the controls and formats
+     * them the same way, and the two are compared. That is why apDate() and
+     * apTimeRange() below exist, and why .claude/ap-format-crosscheck.php holds
+     * them to the PHP versions case by case.
+     *
+     * THE SERVER IS STILL THE AUTHORITY ON WHAT IS SENT. This decides whether
+     * to ASK. What actually goes out is decided after the write, by comparing
+     * the before-snapshot against the result, and gated on the answer this
+     * records. So a dialog shown when nothing really moved sends nothing, and
+     * an answer of 'send' on an unchanged event sends nothing.
+     *
+     * NO ANSWER MEANS NO MAIL. The hidden field ships empty. With scripting
+     * off there is no dialog, so nothing is ever sent, which is the safe
+     * direction: not sending leaves a manager able to send, and sending cannot
+     * be taken back. The screen the save lands on says which happened.
+     * ------------------------------------------------------------------ */
+
+    /* uc-ap-format start. .claude/ap-format-crosscheck.php slices between these
+     * two markers and runs the functions against the PHP formatters. Keep them. */
+    var AP_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December'];
+    var AP_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    /* sfaf_ap_date( $d, 'full' ), which is date_i18n( 'l, F j, Y' ).
+     * Built from the parts rather than from a Date the browser parsed, because
+     * new Date('2026-09-08') is UTC midnight and prints as the 7th anywhere
+     * west of Greenwich. That is the same defect the PHP side documents in
+     * sfaf_local_timestamp(). */
+    function apDate(iso) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+        if (!m) { return ''; }
+        var y = parseInt(m[1], 10), mo = parseInt(m[2], 10), d = parseInt(m[3], 10);
+        if (mo < 1 || mo > 12 || d < 1 || d > 31) { return ''; }
+        var dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+        return AP_DAYS[dow] + ', ' + AP_MONTHS[mo - 1] + ' ' + d + ', ' + y;
+    }
+
+    /* sfaf_ap_time(): ":00" dropped, meridiem lowercase. */
+    function apTime(hhmm, meridiem) {
+        var m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '').trim());
+        if (!m) { return ''; }
+        var h = parseInt(m[1], 10), min = m[2];
+        if (h < 0 || h > 23) { return ''; }
+        var suffix = h < 12 ? 'am' : 'pm';
+        var h12 = h % 12;
+        if (0 === h12) { h12 = 12; }
+        var clock = ('00' === min) ? String(h12) : (h12 + ':' + min);
+        return (false === meridiem) ? clock : (clock + ' ' + suffix);
+    }
+
+    /* sfaf_ap_time_range(): the first meridiem is omitted when both match. */
+    function apTimeRange(start, end) {
+        start = String(start || '').trim();
+        end = String(end || '').trim();
+        if (!start) { return ''; }
+        if (!end) { return apTime(start); }
+        var sm = /^(\d{1,2}):/.exec(start);
+        var em = /^(\d{1,2}):/.exec(end);
+        if (!sm || !em) { return apTime(start); }
+        var sh = parseInt(sm[1], 10);
+        var eh = parseInt(em[1], 10);
+        var same = ((sh < 12) === (eh < 12));
+        return apTime(start, !same) + '–' + apTime(end);
+    }
+
+    /* SFAF_Venues::compose(): street, city, then state and ZIP as one bit. */
+    function composeAddress(street, city, state, zip) {
+        var tail = (String(state || '').trim() + ' ' + String(zip || '').trim()).trim();
+        var bits = [];
+        [String(street || '').trim(), String(city || '').trim(), tail].forEach(function (bit) {
+            if (bit) { bits.push(bit); }
+        });
+        return bits.join(', ');
+    }
+    /* uc-ap-format end. */
+
+    /* What sfaf_event_location() would return if this form were saved now.
+     *
+     * The venue branch reads the chosen option's data-uc-display, which the
+     * server rendered with SFAF_Venues::display(), rather than rebuilding the
+     * string here: composing the same address twice in two languages is how
+     * they come to disagree. */
+    function locationNow(form) {
+        var mode = form.querySelector('input[name="location_mode"]:checked');
+        if (!mode) {
+            var plain = form.querySelector('input[name="location"]');
+            return plain ? plain.value.trim() : '';
+        }
+        if ('venue' === mode.value) {
+            var sel = form.querySelector('select[name="venue"]');
+            var opt = (sel && sel.selectedIndex >= 0) ? sel.options[sel.selectedIndex] : null;
+            if (opt && parseInt(sel.value, 10) > 0) {
+                return (opt.getAttribute('data-uc-display') || '').trim();
+            }
+        }
+        function val(name) {
+            var el = form.querySelector('[name="location_' + name + '"]');
+            return el ? el.value : '';
+        }
+        var composed = composeAddress(val('street'), val('city'), val('state'), val('zip'));
+        if (composed) { return composed; }
+        var fallback = form.querySelector('input[name="location"]');
+        return fallback ? fallback.value.trim() : '';
+    }
+
+    function factsNow(form) {
+        function val(name) {
+            var el = form.querySelector('[name="' + name + '"]');
+            return el ? el.value : '';
+        }
+        return {
+            Date: apDate(val('date')),
+            Time: apTimeRange(val('start_time'), val('end_time')),
+            Location: locationNow(form)
+        };
+    }
+
+    /* movable_diff()'s rule: a fact that was empty and still is has not moved,
+     * and an empty side is written as "not set" rather than as nothing. */
+    function factsDiff(before, after) {
+        var out = [];
+        ['Date', 'Time', 'Location'].forEach(function (label) {
+            var from = String(before[label] || '');
+            var to = String(after[label] || '');
+            if (from === to) { return; }
+            if (!from && !to) { return; }
+            out.push({ label: label, from: from || 'not set', to: to || 'not set' });
+        });
+        return out;
+    }
+
+    /*
+     * A DIALOG WITH TWO ANSWERS AND A WAY OUT, and no default among them.
+     *
+     * Cancel is first in the source, so showModal() focuses it: the answer that
+     * changes nothing is the one a stray Return key finds. Neither of the two
+     * real answers is marked as the default, because both do something and the
+     * whole fault being fixed was one of them happening by inaction.
+     *
+     * Returns via callback: 'send', 'silent', or null for cancel.
+     */
+    function ucAskNotify(opts, done) {
+        var supported = false;
+        try {
+            supported = typeof document.createElement('dialog').showModal === 'function';
+        } catch (err) {
+            supported = false;
+        }
+
+        /* No <dialog>: ask with confirm() rather than not asking. Two questions
+         * in sequence, because confirm() has only two answers and there are
+         * three. The way out is offered first. */
+        if (!supported) {
+            if (!window.confirm(opts.lead + '\n\nOK to continue, Cancel to go back to the form.')) {
+                done(null);
+                return;
+            }
+            if (!opts.sendQuestion) {
+                done('silent');
+                return;
+            }
+            done(window.confirm(opts.sendQuestion) ? 'send' : 'silent');
+            return;
+        }
+
+        var dialog = document.createElement('dialog');
+        dialog.className = 'uc-confirm-modal uc-notify-modal';
+
+        var form = document.createElement('form');
+        form.method = 'dialog';
+
+        var title = document.createElement('h2');
+        title.className = 'uc-notify-modal-title';
+        title.textContent = opts.title;
+        form.appendChild(title);
+
+        var lead = document.createElement('p');
+        lead.className = 'uc-confirm-msg';
+        lead.textContent = opts.lead;
+        form.appendChild(lead);
+
+        if (opts.changes && opts.changes.length) {
+            var list = document.createElement('ul');
+            list.className = 'uc-notify-changes';
+            opts.changes.forEach(function (c) {
+                var li = document.createElement('li');
+                var name = document.createElement('span');
+                name.className = 'uc-notify-change-label';
+                name.textContent = c.label;
+                var was = document.createElement('span');
+                was.className = 'uc-notify-was';
+                was.textContent = c.from;
+                var arrow = document.createElement('span');
+                arrow.className = 'uc-notify-arrow';
+                arrow.setAttribute('aria-hidden', 'true');
+                arrow.textContent = '→';
+                var now = document.createElement('span');
+                now.className = 'uc-notify-now';
+                now.textContent = c.to;
+                li.appendChild(name);
+                li.appendChild(was);
+                li.appendChild(arrow);
+                li.appendChild(now);
+                list.appendChild(li);
+            });
+            form.appendChild(list);
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'uc-confirm-actions uc-notify-actions';
+
+        var cancel = document.createElement('button');
+        cancel.type = 'submit';
+        cancel.value = 'cancel';
+        cancel.className = 'uc-btn uc-btn-sm';
+        cancel.textContent = opts.cancelLabel;
+
+        var send = document.createElement('button');
+        send.type = 'submit';
+        send.value = 'send';
+        send.className = 'uc-btn uc-btn-sm uc-btn-primary';
+        send.textContent = opts.sendLabel;
+
+        var silent = document.createElement('button');
+        silent.type = 'submit';
+        silent.value = 'silent';
+        silent.className = 'uc-btn uc-btn-sm';
+        silent.textContent = opts.silentLabel;
+
+        actions.appendChild(cancel);
+        actions.appendChild(silent);
+        actions.appendChild(send);
+        form.appendChild(actions);
+        dialog.appendChild(form);
+        document.body.appendChild(dialog);
+
+        dialog.addEventListener('close', function () {
+            document.body.classList.remove('uc-modal-open');
+            var answer = dialog.returnValue;
+            dialog.remove();
+            done(('send' === answer || 'silent' === answer) ? answer : null);
+        });
+
+        document.body.classList.add('uc-modal-open');
+        dialog.showModal();
+    }
+
+    /*
+     * RESUBMIT WITHOUT LOSING WHICH BUTTON WAS PRESSED.
+     *
+     * The save buttons are name="save_mode" with three different values, and
+     * form.submit() posts none of them: a bare submit() drops the submitter,
+     * which would send save_mode absent and take the status decision away from
+     * the button somebody actually pressed. requestSubmit(submitter) keeps it.
+     * Where that is missing the name and value are carried by a hidden input
+     * instead, which posts identically.
+     */
+    function resubmit(form, submitter) {
+        if (typeof form.requestSubmit === 'function') {
+            try {
+                form.requestSubmit(submitter || undefined);
+                return;
+            } catch (err) {
+                /* Fall through to the hidden-input route. */
+            }
+        }
+        if (submitter && submitter.name) {
+            var carry = document.createElement('input');
+            carry.type = 'hidden';
+            carry.name = submitter.name;
+            carry.value = submitter.value;
+            form.appendChild(carry);
+        }
+        form.submit();
+    }
+
+    function initChangeNotice() {
+        var block = document.querySelector('[data-uc-change-notice]');
+        if (!block) { return; }
+        var form = block.closest('form');
+        var field = block.querySelector('[data-uc-notify-choice]');
+        if (!form || !field) { return; }
+
+        var people = parseInt(block.getAttribute('data-uc-notify-people'), 10) || 0;
+        var events = parseInt(block.getAttribute('data-uc-notify-events'), 10) || 0;
+        if (people < 1) { return; }
+
+        /* The event as stored, formatted by the server. Comparing against these
+         * rather than against the controls' initial values means the dialog
+         * asks about exactly what movable_diff() would call a move. */
+        var before = {
+            Date: block.getAttribute('data-uc-fact-date') || '',
+            Time: block.getAttribute('data-uc-fact-time') || '',
+            Location: block.getAttribute('data-uc-fact-location') || ''
+        };
+
+        var answered = false;
+
+        form.addEventListener('submit', function (e) {
+            if (answered) {
+                answered = false;
+                return;
+            }
+            var changes = factsDiff(before, factsNow(form));
+            if (!changes.length) {
+                /* Nothing anybody registered would care about moved, so there is
+                 * nothing to ask and the empty field means nothing is sent. */
+                return;
+            }
+
+            e.preventDefault();
+            var submitter = e.submitter || null;
+
+            var lead = people + (1 === people ? ' person is' : ' people are') + ' registered';
+            lead += (events > 1) ? (' across ' + events + ' of the dates this save can touch. ') : ' for this event. ';
+            lead += 'Emailing them cannot be undone.';
+
+            ucAskNotify({
+                title: 'Should they be told?',
+                lead: lead,
+                changes: changes,
+                sendQuestion: 'Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?',
+                sendLabel: 'Save and email ' + (1 === people ? 'them' : 'them all'),
+                silentLabel: 'Save without telling them',
+                cancelLabel: 'Back to the form'
+            }, function (answer) {
+                if (null === answer) {
+                    /* Nothing saved and nothing sent. Everything typed is still
+                     * on the form, because it was never submitted. */
+                    return;
+                }
+                field.value = answer;
+                answered = true;
+                resubmit(form, submitter);
+            });
+        });
+    }
+
+    /*
+     * CANCELLING ASKS ONCE, AND THE EMAIL QUESTION RIDES THAT ASK.
+     *
+     * Cancelling is already deliberate, so it does not get a dialog of its own
+     * plus a second one about mail. The one confirmation states how many people
+     * would be told and offers both answers. With nobody registered there is
+     * nothing to ask about, so it stays a plain confirmation.
+     */
+    function initCancelConsent() {
+        document.querySelectorAll('form[data-uc-confirm-cancel]').forEach(function (form) {
+            var field = form.querySelector('[data-uc-notify-choice]');
+            var counter = form.querySelector('[data-uc-cancel-count]');
+            var people = counter ? (parseInt(counter.getAttribute('data-uc-cancel-count'), 10) || 0) : 0;
+            var answered = false;
+
+            form.addEventListener('submit', function (e) {
+                if (answered) {
+                    answered = false;
+                    return;
+                }
+                e.preventDefault();
+                var submitter = e.submitter || null;
+
+                if (people < 1 || !field) {
+                    ucAskNotify({
+                        title: 'Cancel this event?',
+                        lead: 'It keeps its registrations and takes no new ones. Nobody is registered, so there is nobody to tell.',
+                        changes: [],
+                        sendQuestion: '',
+                        sendLabel: 'Cancel the event',
+                        silentLabel: 'Cancel the event',
+                        cancelLabel: 'Leave it alone'
+                    }, function (answer) {
+                        if (null === answer) { return; }
+                        answered = true;
+                        resubmit(form, submitter);
+                    });
+                    return;
+                }
+
+                ucAskNotify({
+                    title: 'Cancel this event?',
+                    lead: people + (1 === people ? ' person is' : ' people are') + ' registered. '
+                        + 'The event keeps its registrations and takes no new ones. '
+                        + 'Emailing them cannot be undone.',
+                    changes: [],
+                    sendQuestion: 'Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?',
+                    sendLabel: 'Cancel and email ' + (1 === people ? 'them' : 'them all'),
+                    silentLabel: 'Cancel without telling them',
+                    cancelLabel: 'Leave it alone'
+                }, function (answer) {
+                    if (null === answer) { return; }
+                    field.value = answer;
+                    answered = true;
+                    resubmit(form, submitter);
+                });
+            });
+        });
+    }
+
+    function initNotifyConsent() {
+        initChangeNotice();
+        initCancelConsent();
     }
 })();

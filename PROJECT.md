@@ -873,8 +873,11 @@ they registered for**, and that is why it is a class rather than a loop at each
 call site: changing a recurrence pattern can move twelve dates at once, and
 somebody registered for six of them would get six near-identical emails from the
 obvious implementation. A run gathers every affected event, resolves every
-registrant across all of them, **groups by address**, and sends once. Confirmed
-registrations only: somebody who already released their place is not written to.
+registrant across all of them, **groups by address**, and sends once.
+**Confirmed AND subscribed** since 3.39.0: somebody who only pressed Get
+Reminders holds no place but is still expecting to turn up, and there is one
+definition of "who is told about this event" rather than two. Somebody who
+released their place is `cancelled` and is not written to.
 
 **Teams are not notified, and neither is the notification list.** They were
 presumably part of the decision.
@@ -896,11 +899,52 @@ notification that goes out for those is one that gets filtered, taking the date
 change with it. What is compared is the **formatted** value, so a change
 invisible to a reader cannot produce an email.
 
-The prompt appears **only when at least one person is registered**, and its
-checkbox is **ticked by default**: somebody changing a date is thinking about
-the date, not about who needs telling, so the safe default is that people are
-told and unticking is a deliberate act. In the bulk case it asks **once**,
-naming the total across every affected date.
+### Consent to send is one answer, given at the moment of saving
+
+**Sending is a decision somebody makes, never a state a form is left in.** Until
+3.42.0 it was a checkbox on the event form, ticked, among thirty other controls,
+plus a second one on the cancel card. The reasoning was that somebody changing a
+date is thinking about the date rather than about who needs telling, so the safe
+default was that people are told. **That was the wrong way round**, because it
+made the common outcome the irreversible one: the box was not noticed, mail went
+to everybody registered, and nothing can recall it.
+
+`sfaf_should_notify()` in `includes/sfaf-notify-consent.php` is the one answer,
+asked by all three paths that can send manager-caused mail: the save, the cancel
+and the series cancel. **Only `notify_choice=send` sends.** No value, an
+unrecognised value, or a form posted with scripting off all mean silence.
+
+> **The default direction of an irreversible action is not the convenient one.**
+> Not sending leaves a manager able to send; sending cannot be taken back, and
+> what it reaches is people being told, wrongly, that something changed. A
+> ticked box fails open, so anything that posted to the save route mailed
+> everybody. This fails closed.
+
+**Asked only when there is something to ask about**: one of the four fields
+actually changed AND somebody is registered or subscribed. Otherwise the save
+goes straight through. A click in the way of a save that cannot email anybody
+teaches people to dismiss dialogs, which is how the next real question gets
+dismissed too. In the bulk case it asks **once**, naming the total across every
+affected date.
+
+**Because it fails closed, the save says which of the two happened**, in the
+same number the dialog asked about. A dialog can be mis-clicked or dismissed by
+a browser nobody tested, and silence about silence is how somebody comes to
+believe twelve people were told when they were not. Nothing is said when nothing
+moved, because then there was never a question.
+
+**The browser decides whether to ASK; the server decides what is SENT.** The
+dialog compares formatted values against the ones the server stamped on the
+form, which is `movable_diff()`'s own rule, so it needs a second copy of
+`sfaf_ap_date()` and `sfaf_ap_time_range()` in `portal.js`. Those are held to
+the PHP ones by `.claude/ap-format-crosscheck.php`, which slices the real
+functions out of both files. What actually goes out is still decided after the
+write, from the before-snapshot, so an answer of send on an event that did not
+move sends nothing.
+
+**None of this touches automatic mail.** Registration confirmations, the
+morning-of reminder and the two-hour summary are the thing the person signed up
+for, are not caused by an edit, and are never gated on an answer.
 
 ### The four message types
 

@@ -561,9 +561,19 @@ class SFAF_Portal {
                  * lives: the view, the sort and the filters all ride it, and a
                  * reload has to mean the same thing as arriving.
                  */
+                /*
+                 * SAY WHICH OF THE TWO HAPPENED (3.42.0). The question is
+                 * asked in a dialog now, and a dialog is a thing somebody can
+                 * mis-click, so the screen they land on states the outcome:
+                 * how many were emailed, or that nobody was. Only when
+                 * something actually moved, because otherwise there was never
+                 * a question to answer.
+                 */
                 $this->redirect( 'events/edit/' . $result['id'], array(
                     'msg'        => $result['msg'],
                     'edit_scope' => $result['scope'],
+                    'moved'      => (int) $result['moved'],
+                    'told'       => (int) $result['told'],
                 ) );
                 break;
 
@@ -659,11 +669,12 @@ class SFAF_Portal {
                     delete_post_meta( $event_id, '_uc_cancelled_reason' );
                 }
 
-                // The tick is the prompt's answer, and the prompt only appears
-                // when somebody is registered. No registrations, no question
-                // asked, nothing sent.
+                // The answer comes off the cancel confirmation, which states how
+                // many people would be told (3.42.0). No answer means no mail:
+                // see sfaf_should_notify(). No registrations means the dialog
+                // never asks, so nothing is sent either.
                 $told = array( 'people' => 0, 'sent' => 0 );
-                if ( isset( $_POST['notify_registrants'] ) ) {
+                if ( sfaf_should_notify( $_POST ) ) {
                     $told = SFAF_Announce::cancelled( array( $event_id ) );
                 }
 
@@ -747,9 +758,11 @@ class SFAF_Portal {
                             SFAF_Cancellation::set( $eid, true, $visibility );
                         }
                         $told = array( 'sent' => 0 );
-                        if ( isset( $_POST['notify_registrants'] ) ) {
+                        if ( sfaf_should_notify( $_POST ) ) {
                             // One email per person across the whole series, not
-                            // one per date. See SFAF_Announce.
+                            // one per date. See SFAF_Announce. The answer is one
+                            // of two buttons on the confirmation screen since
+                            // 3.42.0; no answer means no mail.
                             $told = SFAF_Announce::cancelled( $in_series );
                         }
                         $this->redirect( 'series/edit/' . $term_id, array(
@@ -1707,12 +1720,18 @@ class SFAF_Portal {
          * was open. SFAF_Announce groups by address, so somebody registered for
          * six of those twelve gets ONE email listing six dates.
          *
-         * The tick is the prompt's answer and the prompt is only rendered when
-         * somebody is registered, so a save with nothing to tell arrives here
-         * with no marker and does nothing. The marker is checked rather than
-         * the checkbox alone, for the reason every other block in this method
-         * checks one: an unticked box submits nothing, and that has to mean
-         * "they said no" rather than "the form did not ask".
+         * CONSENT IS AN ANSWER, NOT A LEFTOVER TICK (3.42.0).
+         *
+         * This used to read a checkbox that was ticked by default, so the
+         * common case was mail going out because nobody noticed a box among
+         * thirty other controls. It is now a dialog raised at the moment of
+         * saving, and only an explicit 'send' sends. Anything else, including
+         * a form posted with no answer at all, is silence: see
+         * sfaf_should_notify().
+         *
+         * The DIFF still decides WHO and WHAT, exactly as before, and it is
+         * still computed after the write so that a bulk save reports on every
+         * occurrence it moved. Consent decides only whether that goes out.
          */
         $moved = array();
         if ( ! $is_new && $was ) {
@@ -1728,8 +1747,10 @@ class SFAF_Portal {
             }
         }
 
-        if ( $moved && isset( $_POST['change_notice_present'] ) && isset( $_POST['notify_registrants'] ) ) {
-            SFAF_Announce::changed( array_keys( $moved ), $moved );
+        $told = 0;
+        if ( $moved && sfaf_should_notify( $_POST ) ) {
+            $result = SFAF_Announce::changed( array_keys( $moved ), $moved );
+            $told   = (int) $result['sent'];
         }
 
         if ( $generated ) {
@@ -1740,7 +1761,19 @@ class SFAF_Portal {
             $msg = 'saved';
         }
 
-        return array( 'id' => $event_id, 'msg' => $msg, 'written' => $written, 'scope' => $scope );
+        /*
+         * 'moved' AND 'told' TRAVEL BACK SEPARATELY, because "nobody was
+         * emailed" is only reassuring if the manager knows something moved.
+         * A save that changed a description reports neither.
+         */
+        return array(
+            'id'      => $event_id,
+            'msg'     => $msg,
+            'written' => $written,
+            'scope'   => $scope,
+            'moved'   => $moved ? 1 : 0,
+            'told'    => $told,
+        );
     }
 
     /* ---------------------------------------------------------------------
@@ -2811,13 +2844,13 @@ class SFAF_Portal {
                 'Saved. %d upcoming %s updated. Past occurrences were not touched.',
                 $n,
                 _n( 'occurrence was', 'occurrences were', $n )
-            ) ) . '</div>';
+            ) . $this->notify_outcome() ) . '</div>';
             return;
         }
         if ( 0 === strpos( $key, 'generated_' ) ) {
             $n = (int) substr( $key, 10 );
             echo '<div class="uc-flash">' . esc_html( sprintf(
-                'Saved, and %d further %s created. Each one is a separate event you can edit or delete on its own — nothing regenerates them.',
+                'Saved, and %d further %s created. Each one is a separate event you can edit or delete on its own, and nothing regenerates them.',
                 $n,
                 _n( 'date was', 'dates were', $n )
             ) ) . '</div>';
@@ -2825,8 +2858,42 @@ class SFAF_Portal {
         }
 
         if ( isset( $map[ $key ] ) ) {
-            echo '<div class="uc-flash">' . esc_html( $map[ $key ] ) . '</div>';
+            $extra = ( 'saved' === $key ) ? $this->notify_outcome() : '';
+            echo '<div class="uc-flash">' . esc_html( $map[ $key ] . $extra ) . '</div>';
         }
+    }
+
+    /**
+     * What the save did about telling the people who are registered.
+     *
+     * SAID EVERY TIME SOMETHING MOVED, INCLUDING WHEN NOTHING WAS SENT.
+     *
+     * The question is a dialog now, and a dialog can be mis-clicked or
+     * dismissed by a browser nobody tested. Leaving the manager to assume is
+     * how somebody believes twelve people were told that an event moved when
+     * they were not. So the screen the save lands on states which of the two
+     * happened, in the same number the dialog asked about.
+     *
+     * NOTHING IS SAID WHEN NOTHING MOVED, because then there was never a
+     * question: a save that changed the description is not a save anybody
+     * needed to be told about, and a line saying "nobody was emailed" on one is
+     * noise that would train people to stop reading the flash.
+     *
+     * @return string Empty, or a sentence to append.
+     */
+    private function notify_outcome() {
+        if ( empty( $_GET['moved'] ) ) {
+            return '';
+        }
+        $told = isset( $_GET['told'] ) ? absint( $_GET['told'] ) : 0;
+        if ( $told > 0 ) {
+            return sprintf(
+                ' %d %s emailed about the change.',
+                $told,
+                _n( 'person was', 'people were', $told )
+            );
+        }
+        return ' The date, time or location changed and nobody was emailed about it.';
     }
 
     /* =====================================================================
@@ -5882,20 +5949,30 @@ class SFAF_Portal {
                         </label>
                     </fieldset>
 
-                    <div class="uc-notice-block">
-                        <label class="uc-check">
-                            <input type="checkbox" name="notify_registrants" value="1" checked />
-                            Email the <?php echo (int) $c['people']; ?>
-                            <?php echo esc_html( 1 === (int) $c['people'] ? 'person' : 'people' ); ?> that these are cancelled
-                        </label>
-                        <p class="uc-hint">
-                            One email each, however many of these dates they were registered for.
-                            Leave it ticked unless you are telling them another way.
-                        </p>
-                    </div>
+                    <?php
+                    /*
+                     * TWO BUTTONS, NOT A TICKED BOX (3.42.0).
+                     *
+                     * This screen is already the confirmation, so the email
+                     * question belongs on its buttons rather than in a checkbox
+                     * above them. Each button carries its own answer, so the
+                     * decision is the same click as the commitment and there is
+                     * no state to misread. Neither is a default: leaving is the
+                     * third control and nothing happens without a press.
+                     */
+                    ?>
+                    <p class="uc-hint">
+                        One email each, however many of these dates they were registered for.
+                    </p>
 
                     <div class="uc-form-actions">
-                        <button type="submit" class="uc-btn uc-btn-primary">Cancel these events</button>
+                        <button type="submit" name="notify_choice" value="send" class="uc-btn uc-btn-primary">
+                            Cancel these and email the <?php echo (int) $c['people']; ?>
+                            <?php echo esc_html( 1 === (int) $c['people'] ? 'person' : 'people' ); ?>
+                        </button>
+                        <button type="submit" name="notify_choice" value="silent" class="uc-btn">
+                            Cancel these without telling them
+                        </button>
                         <a class="uc-btn" href="<?php echo esc_url( $this->url( 'series/edit/' . $term_id ) ); ?>">Leave everything alone</a>
                     </div>
                 </form>
@@ -8156,45 +8233,43 @@ class SFAF_Portal {
 
             <?php
             /*
-             * THE CHANGE NOTICE, AND WHY IT IS RENDERED SERVER-SIDE AND ALWAYS.
+             * THE CHANGE NOTICE IS A QUESTION ASKED ON SAVE, NOT A TICK ON THE
+             * FORM (3.42.0).
              *
-             * It carries the marker and the tick that decide whether a date,
-             * time or location move emails the people who registered. It is
-             * rendered whenever anybody is registered, WITHOUT trying to guess
-             * from here whether this particular save will move anything: what
-             * actually moved is decided after the write, by comparing the
-             * before-snapshot against the result, so a save that changes only
-             * the description arrives with the box ticked and sends nothing.
+             * What was here was a checkbox, ticked, sitting among thirty other
+             * controls, and it decided whether everybody registered got an
+             * email. The common case was that it was not noticed, so mail went
+             * out by default and could not be recalled. A control somebody
+             * scrolls past is not a decision.
              *
-             * The alternative is showing the block only once a field is dirty,
-             * which needs script to be right and fails open the moment the
-             * script does not run.
+             * WHAT IS LEFT HERE IS FACTS, NOT A CONTROL. The count and the
+             * event's current date, time and location are stamped where the
+             * script can read them, and the question is put at the moment of
+             * saving by the dialog in portal.js, which can say what actually
+             * changed because it can see what was typed. Nothing here posts.
+             *
+             * THE HIDDEN FIELD STARTS EMPTY AND MUST. Empty means "no answer",
+             * which sfaf_should_notify() reads as silence, so a form submitted
+             * with scripting off, or by anything that is not this screen, sends
+             * nothing rather than mailing everybody. See
+             * includes/sfaf-notify-consent.php for why the default direction is
+             * silence.
+             *
+             * The count is still rendered server-side and always, for the same
+             * reason it always was: what actually moved is decided after the
+             * write, by comparing the before-snapshot against the result.
              */
             $notice_counts = $event_id ? SFAF_Announce::count_affected( $this->save_scope_ids( $event_id ) ) : array( 'people' => 0, 'registrations' => 0, 'events' => 0 );
+            $notice_facts  = $event_id ? self::movable_facts( $event_id ) : array();
             if ( $notice_counts['people'] > 0 ) :
                 ?>
-                <div class="uc-notice-block uc-change-notice" data-uc-change-notice>
-                    <input type="hidden" name="change_notice_present" value="1" />
-                    <p class="uc-notice-count">
-                        <strong><?php echo (int) $notice_counts['people']; ?></strong>
-                        <?php echo esc_html( 1 === (int) $notice_counts['people'] ? 'person is' : 'people are' ); ?>
-                        registered
-                        <?php if ( $notice_counts['events'] > 1 ) : ?>
-                            across <?php echo (int) $notice_counts['events']; ?> of the dates this save can touch
-                        <?php endif; ?>.
-                    </p>
-                    <label class="uc-check">
-                        <input type="checkbox" name="notify_registrants" value="1" checked />
-                        Email them if the date, time or location changes
-                    </label>
-                    <p class="uc-hint">
-                        Only sent if one of those three actually moves. Changing the description, the category or
-                        anything else sends nothing.
-                        <?php if ( $notice_counts['events'] > 1 ) : ?>
-                            Somebody registered for several of these dates gets one email, not one per date.
-                        <?php endif; ?>
-                        Leave it ticked unless you are telling them another way.
-                    </p>
+                <div class="uc-change-notice" data-uc-change-notice
+                     data-uc-notify-people="<?php echo (int) $notice_counts['people']; ?>"
+                     data-uc-notify-events="<?php echo (int) $notice_counts['events']; ?>"
+                     data-uc-fact-date="<?php echo esc_attr( isset( $notice_facts['Date'] ) ? $notice_facts['Date'] : '' ); ?>"
+                     data-uc-fact-time="<?php echo esc_attr( isset( $notice_facts['Time'] ) ? $notice_facts['Time'] : '' ); ?>"
+                     data-uc-fact-location="<?php echo esc_attr( isset( $notice_facts['Location'] ) ? $notice_facts['Location'] : '' ); ?>">
+                    <input type="hidden" name="notify_choice" value="" data-uc-notify-choice />
                 </div>
             <?php endif; ?>
 
@@ -8729,7 +8804,15 @@ class SFAF_Portal {
                         <option value="0">Choose a venue</option>
                         <?php foreach ( $venues as $v ) :
                             $addr = SFAF_Venues::address( $v->term_id ); ?>
-                            <option value="<?php echo (int) $v->term_id; ?>" <?php selected( $venue_id, $v->term_id ); ?>>
+                            <?php /* data-uc-display is what sfaf_event_location() would
+                                   * return for an event at this venue. The change dialog
+                                   * needs the location a save WOULD produce, and composing
+                                   * it a second time in JavaScript is how the two drift.
+                                   * The option's own label is a different string on
+                                   * purpose: it separates with a dash so the list reads. */ ?>
+                            <option value="<?php echo (int) $v->term_id; ?>"
+                                    data-uc-display="<?php echo esc_attr( SFAF_Venues::display( $v->term_id ) ); ?>"
+                                    <?php selected( $venue_id, $v->term_id ); ?>>
                                 <?php echo esc_html( '' !== $addr ? $v->name . ' - ' . $addr : $v->name ); ?>
                             </option>
                         <?php endforeach; ?>
@@ -9383,23 +9466,33 @@ class SFAF_Portal {
                         <textarea name="cancel_reason" rows="2" placeholder="Shown to the people you tell."></textarea>
                     </label>
 
+                    <?php
+                    /*
+                     * THE EMAIL QUESTION RIDES THE CANCEL CONFIRMATION (3.42.0).
+                     *
+                     * There was a ticked checkbox here with the same fault as
+                     * the one on the event form: it decided whether everybody
+                     * registered was emailed, and it was easy not to notice.
+                     *
+                     * Cancelling is ALREADY a deliberate act behind a
+                     * confirmation, so this does not get a second dialog. The
+                     * existing confirmation states how many people would be
+                     * told and offers the two answers, and the button that
+                     * opened it now commits nothing on its own.
+                     *
+                     * The count is stamped for that dialog to read. The hidden
+                     * field starts empty, and empty means do not send.
+                     */
+                    ?>
+                    <input type="hidden" name="notify_choice" value="" data-uc-notify-choice />
                     <?php if ( $has_regs ) : ?>
-                        <div class="uc-notice-block">
-                            <p class="uc-notice-count">
-                                <strong><?php echo (int) $counts['people']; ?></strong>
-                                <?php echo esc_html( 1 === (int) $counts['people'] ? 'person is' : 'people are' ); ?>
-                                registered for this event.
-                            </p>
-                            <label class="uc-check">
-                                <input type="checkbox" name="notify_registrants" value="1" checked />
-                                Email them that it is cancelled
-                            </label>
-                            <p class="uc-hint">
-                                Leave this ticked unless you are telling them another way.
-                            </p>
-                        </div>
+                        <p class="uc-notice-count" data-uc-cancel-count="<?php echo (int) $counts['people']; ?>">
+                            <strong><?php echo (int) $counts['people']; ?></strong>
+                            <?php echo esc_html( 1 === (int) $counts['people'] ? 'person is' : 'people are' ); ?>
+                            registered for this event. You will be asked whether to email them.
+                        </p>
                     <?php else : ?>
-                        <p class="uc-hint">Nobody is registered, so there is nobody to tell.</p>
+                        <p class="uc-hint" data-uc-cancel-count="0">Nobody is registered, so there is nobody to tell.</p>
                     <?php endif; ?>
 
                     <button type="submit" class="uc-btn uc-btn-danger">Cancel this event</button>

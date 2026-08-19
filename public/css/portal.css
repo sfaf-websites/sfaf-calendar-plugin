@@ -1430,6 +1430,35 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-confirm-actions { display: flex; justify-content: flex-end; gap: 10px;
     padding: 0 24px 20px; }
 
+/* ---------------------------------------------------------------------------
+   THE EMAIL QUESTION (3.42.0)
+
+   Wider than a plain confirmation because it carries a list: this one has to
+   say what changed as well as what will happen, and old-to-new on one line is
+   the whole point of showing it at all.
+
+   THE TWO ANSWERS ARE THE SAME SIZE AS EACH OTHER, deliberately. Only one of
+   them wears the primary colour, because it is the one that does the thing the
+   dialog is named for, but neither is bigger and neither is pre-focused. The
+   fault being fixed was mail going out by inaction, so nothing here should be
+   reachable by pressing Return without reading.
+
+   The values use ink and a strikethrough to separate old from new rather than
+   weight, because 14px/600 is the card heading's step and a value in a list is
+   not a heading. See DESIGN.md.
+   --------------------------------------------------------------------------- */
+.uc-notify-modal { width: min(520px, calc(100vw - 32px)); }
+.uc-notify-modal-title { margin: 0; padding: 22px 24px 0; font-size: 20px; font-weight: 700; }
+.uc-notify-modal .uc-confirm-msg { padding-top: 10px; padding-bottom: 14px; }
+.uc-notify-changes { margin: 0 24px 18px; padding: 14px 16px; list-style: none;
+    display: grid; gap: 12px; border-radius: 10px; background: var(--p-surface-2, #f6f7f8); }
+.uc-notify-changes li { display: grid; gap: 3px; }
+.uc-notify-change-label { font-size: 13px; font-weight: 600; }
+.uc-notify-was { color: var(--p-muted, #6B6764); text-decoration: line-through; }
+.uc-notify-arrow { color: var(--p-muted, #6B6764); padding: 0 4px; }
+.uc-notify-changes li > span:not(.uc-notify-change-label) { display: inline; }
+.uc-notify-actions { flex-wrap: wrap; }
+
 /* ---------- Settings ---------- */
 .uc-settings-section h2 { margin-bottom: 14px; }
 .uc-settings-section .uc-field { margin-bottom: 12px; }

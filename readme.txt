@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.41.0
+Stable tag: 3.42.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -528,6 +528,24 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.42.0 =
+
+**Nobody registered gets an email because somebody did not notice a checkbox.**
+
+**WHAT WAS WRONG.** Changing the date, the time or the location of an event with people signed up emailed all of them, and the only thing standing between a save and that mail was a checkbox on the form, ticked, sitting among thirty other controls. The cancel card had a second one exactly like it. A checkbox somebody scrolls past is not a decision, and mail cannot be recalled.
+
+**THE QUESTION IS ASKED WHEN IT MATTERS, AND ONLY THEN.** On Save, if the date, the start time, the end time or the location actually changed AND at least one person is registered or subscribed, a dialog appears before anything is written. It names how many people would be told and what changed, old value to new value. It offers two answers, "Save and email them" and "Save without telling them", and a way out that saves nothing and sends nothing, leaving everything typed still on the form. With nobody registered, or with none of those four fields touched, there is no dialog: a click in the way of a save that cannot email anybody is a click that teaches people to dismiss dialogs.
+
+**THE DEFAULT DIRECTION IS SILENCE, WHICH IS THE WHOLE POINT.** A ticked box fails open, so anything posting to the save route mailed everybody. Now only an explicit answer sends. No answer, an unrecognised answer, or a form posted with scripting off all mean nobody is written to. The costs are not symmetrical: not sending leaves a manager able to send, and sending cannot be taken back. So that nobody is left assuming, the screen a save lands on says which of the two happened, in the same number the dialog asked about: "3 people were emailed about the change", or "the date, time or location changed and nobody was emailed about it".
+
+**CANCELLING ASKS ONCE, NOT TWICE.** Cancelling is already deliberate, so it does not get a dialog about cancelling and a second one about mail. The confirmation states how many people would be told and carries both answers. Cancelling a whole series is the same question on the screen that already exists for it, as two buttons rather than a tick above them. Worth saying: the cancel card's confirmation did not previously exist. `data-uc-confirm-cancel` was on the form and nothing in the JavaScript read it, so cancelling an event with registrations went straight through on one click.
+
+**AUTOMATIC MAIL IS UNTOUCHED.** Registration confirmations, the morning-of reminder and the two-hour summary send exactly as they always have. They are not caused by somebody editing and are not asked about: they are the thing the person signed up for. Only mail a manager's edit would cause is behind this.
+
+**Checked by exercising it, not by reading it.** The 3.36.0 tests for this area passed while every save was cancelling the event, because they asserted properties of the source. So the new one is written as the two sentences that matter, "no mail is written when the choice is do-not-send" and "mail is written when it is send", and decides each by running the real gate and the real mailer and counting what came out. It also holds the old checkbox name to zero occurrences, because that name failing open is what this release is about.
+
+**The dialog and the plugin agree on what counts as a change.** Deciding whether to ask means comparing formatted values, which is what the server does: `18:00` and `6 pm` are one fact and nobody should be told about the difference. That needs a second copy of two formatters in the browser, so there is a cross-check holding them to the PHP ones over twenty-one cases including midnight, noon and a range that crosses from am to pm. Drift in one direction asks about changes nobody made; in the other it stays quiet about a real one, which is the silent failure.
+
 = 3.41.0 =
 
 **Saving an event cancelled it. Every save, on every release from 3.36.0 to 3.40.0, and everybody registered was emailed that the event was off.**
@@ -710,7 +728,7 @@ VERIFIED: 54 PHP files parse under PHP 8.3; the callable audit resolves 112 plug
 
 **The prompt appears only when there is somebody to tell.** With nobody registered it is a click in the way, so the whole block is absent rather than present and disabled. It triggers on cancelling, on deleting per the above, and on a change to the DATE, the TIME or the LOCATION. Nothing else: description, category, series, capacity and image do not change whether somebody turns up, and a notification that goes out for those is one that gets filtered, taking the date change with it. What is compared is the FORMATTED value, so storing `18:00` as `6:00 pm` is not a change anybody is told about.
 
-**The checkbox is ticked by default.** Somebody changing a date is thinking about the date, not about who needs telling, so the safe default is that people are told and unticking is a deliberate act. The hint names the one legitimate reason to untick it, which is that they are writing to those people some other way.
+**It is a question, and there is no default.** Until 3.42.0 this was a checkbox, ticked, on the reasoning that somebody changing a date is thinking about the date rather than about who needs telling. That was the wrong way round: it made the irreversible outcome the one that happened when nobody was paying attention. The question is now put at the moment of saving, offering "Save and email them" and "Save without telling them", and neither happens by inaction. Nothing is sent unless one of them is pressed, so a form posted with scripting off, or by anything that is not this screen, tells nobody. Because of that, the screen the save lands on says which of the two happened.
 
 **In the bulk case it asks once, and one person gets one email.** Changing a recurrence pattern across upcoming occurrences can touch twelve dates at once. The prompt names the total across all of them, not one per event, and counts DISTINCT PEOPLE as well as registrations, because twelve registrations across six moved dates may be four people and that is the number somebody needs before pressing send. `SFAF_Announce` then gathers every affected event, resolves every registrant across all of them, groups by ADDRESS and sends once: somebody registered for six of twelve occurrences gets one email listing six dates, not six emails. The address is the grouping key for the same reason it is the deduplication key in the reminder list, since one person may hold two registrations under two different names.
 

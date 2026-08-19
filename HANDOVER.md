@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-18, at 3.41.0.
+**Last updated:** 2026-08-19, at 3.42.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.41.0**, built as `sfaf-calendar-3.41.0.zip` in the project
+The plugin is at **3.42.0**, built as `sfaf-calendar-3.42.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.41.0, the deployment is stale or partial, and that
+screen: if it does not say 3.42.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -104,10 +104,21 @@ events that were not saved a second time.
   organizer card no longer offers "Not listed? Add one". The cancel card is
   below the form now rather than in the side column, and its state line and its
   legend changed size: that is the type scale being applied, not a mistake.
+- **3.42.0 IS THE ONE TO EXERCISE WITH A REAL REGISTRATION, and use a test
+  event.** On an event somebody is registered for, change the end time and press
+  Save. A dialog must appear naming how many people and showing the old time and
+  the new one. Press "Save without telling them": the change must be saved, no
+  mail must arrive, and the flash must say nobody was emailed. Do it again and
+  press "Save and email them": the mail arrives and the flash counts it. Then
+  change only the DESCRIPTION and save, and confirm no dialog appears at all.
+  Then press Cancel on the dialog and confirm nothing was saved and everything
+  typed is still on the form. The cancel card asks the same question now, and it
+  did not ask anything at all before: `data-uc-confirm-cancel` was on the form
+  and nothing read it, so cancelling was one click with no confirmation.
 - **3.39.0 and 3.38.0 need one pass over the editor.** On an event somebody is
-  registered for, change a time and check the prompt appears naming them,
-  including anybody who only pressed **Get Reminders**, who used to be invisible
-  to it. Cancel on the scope modal leaves. A three-day closure marks three grid
+  registered for, change a time and check the dialog names them, including
+  anybody who only pressed **Get Reminders**, who used to be invisible to it.
+  Cancel on the scope modal leaves. A three-day closure marks three grid
   squares and shows ONE list card. Picking a series first offers the prefill and
   asks before overwriting a typed location. No caladmin card wears a coloured
   left edge.
