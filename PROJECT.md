@@ -219,12 +219,28 @@ side by side, and navigating moves both in one request.
   gap is what made them read as two cards, so it is zero and the divider
   separates them.
 
-> **This mode has shipped three faults in three releases and the suite passed
+**`render_combined_parts()` builds all three pieces, and both the first render
+and the ajax redraw ask it.** There is no second composition.
+
+> **The redraw composed it again, and that is how 3.45.0 shipped half applied.**
+> It decided whether the grid drew its own heading from a boolean the browser
+> sent, so a caller that did not send it, including a browser holding an older
+> script, got a heading inside the left column under the spanning one. First
+> load was right and navigating was not. **The shape is read from the VIEW
+> now**, normalized by the same function and asked the same
+> `is_combined_view()`, so a redraw cannot choose a shape the first render would
+> not have.
+
+> **This mode has shipped four faults in four releases and the suite passed
 > every time**, because each test asserted something about the markup rather
 > than the markup. `.claude/combined-outcome-test.php` renders the real
 > renderers and reads what came back. Its `WP_Query` honours the date clauses,
 > and its self-test proves that: a harness that returns the same rows whatever
 > it is asked would pass every assertion in the file while proving nothing.
+
+> **When one thing is produced in two places, compare the OUTPUTS.** A check
+> asking whether a string exists anywhere is satisfied by either copy, which is
+> what this file's own 3.45.0 note said before 3.45.0 shipped exactly that.
 
 ### caladmin asks for its own assets, and there are two of them
 

@@ -65,9 +65,11 @@ try faqsets-500     "the 3.44.0 five hundred returns"  .claude/screen-assets-tes
 try media-ungated   "media templates lose their gate"  .claude/screen-assets-test.php
 try no-month-floor  "the month floor comes off"        .claude/combined-outcome-test.php
 try month-upper-only "the month binding loses its floor" .claude/combined-outcome-test.php
-try sidebar-unbound "the sidebar stops following the grid" .claude/embed-modes-test.php
 try floor-has-prev  "the floor offers a way back"      .claude/combined-outcome-test.php
-try two-heads       "the combined mode draws two heads" .claude/embed-modes-test.php
+try redraw-composes "the redraw composes it a second time" .claude/combined-outcome-test.php
+try shape-from-client "the shape comes from the client" .claude/combined-outcome-test.php
+try grid-draws-head "the combined grid draws its own head" .claude/combined-outcome-test.php
+try range-line-back "the range line comes back"        .claude/combined-outcome-test.php
 
 restore
 echo "-------------------------------------------"

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.45.0
+Stable tag: 3.45.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.45.1 =
+
+**The combined view was composed twice, and only the first render had the 3.45.0 changes.**
+
+**WHAT WAS ACTUALLY WRONG.** The block composed the head, the grid and the sidebar; `ajax_load_month()` composed the same three again when somebody navigated. Two compositions of one thing, so they drifted. The redraw decided whether the grid drew its own heading from a **boolean the browser sent**, so any caller that did not send it, including a browser still holding an older `calendar.js`, got a grid carrying its own heading inside the left column while the spanning one above it stayed where it was. First load looked right and navigating did not.
+
+**One composition now.** `render_combined_parts()` builds all three pieces, and both the first render and the redraw ask it. There is no second place that produces this markup, so the two cannot differ. **The shape is no longer a parameter either:** the redraw reads the VIEW, normalizes it with the same function the first render used, and asks the same `is_combined_view()`. A caller that sends nothing gets the same answer the block would have given.
+
+**THE DATE RANGE LINE UNDER THE HEADING IS GONE.** It read "26 Jul to 5 Sep, 16 events": the grid's full span, which runs into the neighbouring months because the grid starts on a Sunday, plus a count. It explained the greyed cells at each end, which is a question nobody asks. The span is still in the table's caption, where a screen reader meets it before the grid.
+
+**And the count that was actually on screen is gone.** 3.45.0 was asked to remove "29 events coming up" from the month view and removed the count inside the month head instead, which is a different number in a different element. The one on screen is the block's own count line, and it counts every published event from today forward across all months, which beside a grid showing one month is a number about something else. It is dropped in the month and combined views and kept in the list view, where it counts exactly what the list is paging through.
+
+**Everything else in 3.45.0 was in the shipped file and reaching the combined renderer.** Rendering the block here and reading the markup shows the shared container, the spanning head, the sidebar panel, the month tabs, the centred heading cells and the venue row all present. If none of them appear on a live page, the page is not running this renderer: check that the block or shortcode says `view="combined"`, because every one of those five is gated on it while the centred heading is not, which is exactly the pattern of "only the heading changed".
+
+**The check that would have caught it.** This project's own 3.45.0 report named the blind spot and then shipped it: a check asking whether a string exists anywhere is satisfied by either copy when the same calls appear in two places. So the new assertions compare the composition's OUTPUT rather than looking for its source, hold the redraw to having no composition of its own, and refuse the client-sent shape flag by name. The drift is planted and caught.
 
 = 3.45.0 =
 

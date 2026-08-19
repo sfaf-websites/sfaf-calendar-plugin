@@ -331,9 +331,26 @@ if ( 1 !== substr_count( $head, 'uc-month-label' ) ) {
     fail( 'the head does not carry exactly one month label' );
 }
 
-/* THE COUNT IS GONE from the head. */
+/*
+ * THE HEAD IS THE MONTH NAME AND THE CONTROLS. Nothing else.
+ *
+ * Both of these were asked for and both are easy to put back without noticing:
+ * the count competed with the month name for the same glance, and the range
+ * described the grid's full span, which runs into the neighbouring months and
+ * answers a question nobody asks.
+ */
 if ( false !== strpos( $head, 'uc-month-count' ) ) {
     fail( 'the month head still carries the event count, which was removed for competing with the month name' );
+}
+if ( false !== strpos( $head, 'uc-month-range' ) ) {
+    fail( 'the month head carries the date range line again, which was removed in 3.45.1' );
+}
+
+/* And the block-level count is out of the month views, which is the line that
+ * was actually on screen when 3.45.0 was asked to remove a count. */
+$block_src = file_get_contents( $root . '/includes/class-sfaf-shortcodes.php' );
+if ( ! preg_match( "#if \(\s*! \\\$combined && 'calendar' !== \\\$view \)#", $block_src ) ) {
+    fail( 'the "events coming up" line is not gated out of the month and combined views' );
 }
 
 /* ---------------------------------------------------------------------------
@@ -411,6 +428,109 @@ if ( false === strpos( $grid, 'Next Month One' ) ) {
 }
 if ( false === strpos( $sc->render_sidebar( array(), 20, null, $next_month ), 'Next Month One' ) ) {
     fail( "the sidebar for $next_month does not show an event that is in that month" );
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. THE FIRST RENDER AND THE REDRAW PRODUCE THE SAME MARKUP (3.45.1).
+ *
+ * THE FAULT THIS CATCHES. The block composed head, grid and sidebar, and the
+ * ajax redraw composed the same three again. Two compositions of one thing, so
+ * they drifted: the redraw decided whether the grid drew its own head from a
+ * boolean the browser sent, and any caller that did not send it got a grid with
+ * a heading inside the left column while the spanning one above stayed put.
+ * First load looked right and navigating did not.
+ *
+ * A CHECK ASKING WHETHER A STRING EXISTS ANYWHERE CANNOT SEE THAT, which this
+ * project's own 3.45.0 report said in as many words: the same calls appear in
+ * both places, so either copy satisfies it. This compares the two OUTPUTS,
+ * byte for byte, for the same month.
+ * ------------------------------------------------------------------------ */
+foreach ( array( $this_month, $next_month ) as $month ) {
+    $parts = $sc->render_combined_parts( $month, array(), 20, '' );
+
+    foreach ( array( 'head', 'grid', 'side' ) as $piece ) {
+        if ( ! isset( $parts[ $piece ] ) || '' === $parts[ $piece ] ) {
+            fail( "render_combined_parts() gave no $piece for $month" );
+        }
+    }
+
+    /* The grid must not carry a head of its own: the head spans both halves. */
+    if ( isset( $parts['grid'] ) && preg_match( '#class="uc-month-head(?:\s|")#', $parts['grid'] ) ) {
+        fail( "the combined grid for $month draws its own head, so the month name appears twice" );
+    }
+    /* And the head must be a head. */
+    if ( isset( $parts['head'] ) && 1 !== preg_match_all( '#class="uc-month-head(?:\s|")#', $parts['head'] ) ) {
+        fail( "the combined head for $month is not exactly one head" );
+    }
+
+    /*
+     * THE SAME CALL TWICE IS THE SAME MARKUP. If a second composition is ever
+     * added, this is what fails: two renderings of one month that differ.
+     */
+    $again = $sc->render_combined_parts( $month, array(), 20, '' );
+    foreach ( array( 'head', 'grid', 'side' ) as $piece ) {
+        if ( $parts[ $piece ] !== $again[ $piece ] ) {
+            fail( "render_combined_parts() is not deterministic for $month: two calls gave different $piece" );
+        }
+    }
+}
+
+/*
+ * AND THERE IS EXACTLY ONE COMPOSITION. Both the block and the ajax must reach
+ * it; neither may build the three pieces itself. This is the source half, and
+ * it is here rather than in embed-modes-test.php because it is about this
+ * renderer rather than about the block's panels.
+ */
+$sc_src  = file_get_contents( $root . '/includes/class-sfaf-shortcodes.php' );
+$sc_code = '';
+foreach ( token_get_all( $sc_src ) as $t ) {
+    if ( is_array( $t ) && in_array( $t[0], array( T_COMMENT, T_DOC_COMMENT ), true ) ) { continue; }
+    $sc_code .= is_array( $t ) ? $t[1] : $t;
+}
+if ( substr_count( $sc_code, 'render_combined_parts(' ) < 3 ) {
+    fail( 'fewer than three mentions of render_combined_parts(): the definition, the block and the redraw all need it' );
+}
+/*
+ * The redraw must not build the pieces itself.
+ *
+ * SCOPED TO THE METHOD BODY. A regex from the method name to the next
+ * render_month_head( ran straight past the end of the method and matched the
+ * definition further down, so it failed on correct code. The body is taken by
+ * matching braces, which is the only way to know where a method stops.
+ */
+function body_of( $code, $name ) {
+    $at = strpos( $code, 'function ' . $name . '(' );
+    if ( false === $at ) { return ''; }
+    $open = strpos( $code, '{', $at );
+    if ( false === $open ) { return ''; }
+    $depth = 0;
+    for ( $i = $open, $n = strlen( $code ); $i < $n; $i++ ) {
+        if ( '{' === $code[ $i ] ) { $depth++; }
+        if ( '}' === $code[ $i ] ) {
+            $depth--;
+            if ( 0 === $depth ) { return substr( $code, $open, $i - $open + 1 ); }
+        }
+    }
+    return '';
+}
+$ajax_body = body_of( $sc_code, 'ajax_load_month' );
+if ( '' === $ajax_body ) {
+    fail( 'ajax_load_month() was not found, so the redraw is not being checked at all' );
+}
+foreach ( array( 'render_month_head(', 'render_sidebar(' ) as $built ) {
+    if ( false !== strpos( $ajax_body, $built ) ) {
+        fail( "ajax_load_month() calls $built itself rather than asking render_combined_parts(), which is the second composition again" );
+    }
+}
+if ( false === strpos( $ajax_body, 'render_combined_parts(' ) ) {
+    fail( 'ajax_load_month() does not ask render_combined_parts(), so the redraw composes the view a second time' );
+}
+/* And the shape must come from the view rather than a boolean the client sends. */
+if ( false !== strpos( $sc_code, "! empty( \$_POST['combined'] )" ) ) {
+    fail( 'the redraw still takes its shape from a combined flag the browser sends, so a caller that omits it gets a different shape' );
+}
+if ( false === strpos( $sc_code, "\$this->is_combined_view( \$view )" ) ) {
+    fail( 'the redraw does not ask is_combined_view(), so it can decide a shape the first render would not have' );
 }
 
 /* ---------------------------------------------------------------------------

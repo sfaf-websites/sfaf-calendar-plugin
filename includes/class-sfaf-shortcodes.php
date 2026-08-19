@@ -925,6 +925,44 @@ class SFAF_Shortcodes {
 
 
     /**
+     * The combined view's three pieces, built in ONE place (3.45.1).
+     *
+     * WHAT WENT WRONG. The first render composed head, grid and sidebar in
+     * render_calendar_block(); the ajax redraw composed the same three in
+     * ajax_load_month(). Two compositions of one thing, which is the fault the
+     * image picker had in 3.43.1 and the fault this file's own report named in
+     * 3.45.0: the same calls in two places, and a check asking whether a string
+     * exists anywhere is satisfied by either copy.
+     *
+     * They had already drifted in a way that only showed after navigating. The
+     * ajax decided whether the grid drew its own head from a BOOLEAN THE CLIENT
+     * SENT. Any caller that did not send it, including a browser holding an
+     * older calendar.js, got a grid with a head inside the left column while
+     * the spanning head above it stayed put: two headings, the live one no
+     * longer spanning, which is what "it goes left aligned when you navigate"
+     * looks like.
+     *
+     * SO THE SHAPE IS NOT A PARAMETER ANY MORE. Both callers ask this, and this
+     * decides. There is no way for the two to produce different markup for the
+     * same month, because there is no second place that produces it.
+     *
+     * @param string $month   Y-m, already normalized.
+     * @param array  $filters
+     * @param int    $count   Sidebar length.
+     * @param string $heading Sidebar heading, '' for the default.
+     * @return array{head:string,grid:string,side:string}
+     */
+    public function render_combined_parts( $month, $filters, $count, $heading = '' ) {
+        $month = $this->normalize_month( $month );
+        return array(
+            'head' => $this->render_month_head( $month ),
+            // false: the head spans both halves, so the grid never draws one.
+            'grid' => $this->render_month_grid( $month, $filters, false ),
+            'side' => $this->render_sidebar( $filters, $count, ( '' !== $heading ? $heading : null ), $month ),
+        );
+    }
+
+    /**
      * The month name, with the navigation either side.
      *
      * ITS OWN METHOD SO THE COMBINED MODE CAN PUT IT ACROSS BOTH HALVES.
@@ -939,7 +977,6 @@ class SFAF_Shortcodes {
         $month  = $this->normalize_month( $month );
         $grid   = $this->month_grid_days( $month );
         $prefix = substr( $grid['first'], 0, 7 );
-        $range  = sfaf_ap_date_range( $grid['start'], $grid['end'] );
 
         ob_start();
         ?>
@@ -974,8 +1011,23 @@ class SFAF_Shortcodes {
                 </div>
 
                 <div class="uc-month-heading">
+                    <?php
+                    /*
+                     * THE MONTH NAME AND NOTHING ELSE (3.45.1).
+                     *
+                     * The line under it read "26 Jul to 5 Sep, 16 events": the
+                     * grid's full span, which runs into the neighbouring months
+                     * because the grid starts on a Sunday, plus a count. It
+                     * explained the greyed cells at each end, which is a
+                     * question nobody asks, and it put two more things beside
+                     * the one word this row exists to say.
+                     *
+                     * The span is still in the table's caption, where a screen
+                     * reader meets it before the grid, and the greyed cells are
+                     * marked as outside the month in the markup itself.
+                     */
+                    ?>
                     <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
-                    <p class="uc-month-range"><?php echo esc_html( $range ); ?></p>
                 </div>
 
                 <div class="uc-month-nav-side uc-month-nav-fwd">
@@ -2132,6 +2184,9 @@ class SFAF_Shortcodes {
         ob_start();
         ?>
         <div class="uc-calendar<?php echo $compact ? ' uc-calendar-compact' : ''; ?> uc-view-<?php echo esc_attr( $view ); ?>"
+             <?php // The redraw sends this back, so the server decides the shape
+                   // from the same value the first render used. ?>
+             data-view="<?php echo esc_attr( $view ); ?>"
              data-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-render="<?php echo $compact ? 'compact' : 'card'; ?>"
              data-per-page="<?php echo (int) $per_page; ?>"
@@ -2272,10 +2327,27 @@ class SFAF_Shortcodes {
                  * event in July beside thirty-eight still to come.
                  */
                 ?>
-                <div class="uc-event-count">
-                    <span class="uc-count-number"><?php echo (int) $events['total']; ?></span>
-                    <?php echo esc_html( _n( 'event coming up', 'events coming up', (int) $events['total'] ) ); ?>
-                </div>
+                <?php
+                /*
+                 * NOT IN A MONTH VIEW (3.45.1).
+                 *
+                 * "29 events coming up" counts every published event from today
+                 * forward, across all months. Beside a grid showing one month
+                 * that is a number about something else, and 3.45.0 was asked
+                 * to remove it. What was removed then was the count inside the
+                 * month head, which is a different number in a different
+                 * element: this is the one that was on screen.
+                 *
+                 * The list view keeps it, because there it counts exactly what
+                 * the list is paging through.
+                 */
+                ?>
+                <?php if ( ! $combined && 'calendar' !== $view ) : ?>
+                    <div class="uc-event-count">
+                        <span class="uc-count-number"><?php echo (int) $events['total']; ?></span>
+                        <?php echo esc_html( _n( 'event coming up', 'events coming up', (int) $events['total'] ) ); ?>
+                    </div>
+                <?php endif; ?>
                 <?php if ( $toggle ) { echo $this->render_view_toggle( $view ); } ?>
             </div>
 
@@ -2370,8 +2442,26 @@ class SFAF_Shortcodes {
 
             ob_start();
             ?>
+            <?php
+            /*
+             * THE COMBINED MODE'S THREE PIECES COME FROM ONE PLACE, and so does
+             * the ajax redraw's. See render_combined_parts().
+             */
+            $parts = $combined
+                ? $this->render_combined_parts(
+                    $month,
+                    $filters,
+                    self::sidebar_count( $args['count'] ),
+                    isset( $args['heading'] ) ? (string) $args['heading'] : ''
+                )
+                : array( 'head' => '', 'grid' => '', 'side' => '' );
+            ?>
             <div class="uc-view-panel uc-panel-calendar"<?php echo $panel_hidden( 'calendar' ); ?>>
-                <?php if ( $want_grid ) { echo $this->render_month_grid( $month, $filters, ! $combined ); } ?>
+                <?php
+                if ( $want_grid ) {
+                    echo $combined ? $parts['grid'] : $this->render_month_grid( $month, $filters );
+                }
+                ?>
             </div>
             <?php
             $panel_grid = ob_get_clean();
@@ -2395,14 +2485,7 @@ class SFAF_Shortcodes {
                  * the other. $month is the value render_month_grid() was handed
                  * on the line above, so they cannot disagree by construction.
                  */
-                $panel_side = '<div class="uc-view-panel uc-panel-sidebar">'
-                    . $this->render_sidebar(
-                        $filters,
-                        self::sidebar_count( $args['count'] ),
-                        isset( $args['heading'] ) ? $args['heading'] : null,
-                        $month
-                    )
-                    . '</div>';
+                $panel_side = '<div class="uc-view-panel uc-panel-sidebar">' . $parts['side'] . '</div>';
             }
             ?>
 
@@ -2441,7 +2524,7 @@ class SFAF_Shortcodes {
                  * order it is in are kept the same thing.
                  */
                 echo $combined
-                    ? '<div class="uc-combined-head">' . $this->render_month_head( $month ) . '</div>' . $panel_grid . $panel_side
+                    ? '<div class="uc-combined-head">' . $parts['head'] . '</div>' . $panel_grid . $panel_side
                     : $panel_list . $panel_grid;
                 ?>
             </div>
@@ -2674,7 +2757,22 @@ class SFAF_Shortcodes {
          * The count and the heading come off the block rather than from
          * defaults, so a rebuilt sidebar is the same sidebar.
          */
-        $combined = ! empty( $_POST['combined'] );
+        /*
+         * THE SHAPE COMES FROM THE VIEW, NOT FROM A BOOLEAN (3.45.1).
+         *
+         * This read a `combined` flag the browser sent, so a caller that did
+         * not send it got a different shape: a grid carrying its own head,
+         * dropped into the left column under a spanning head that stayed where
+         * it was. A browser holding an older calendar.js is exactly such a
+         * caller, and that is what "the heading goes left aligned when you
+         * navigate" was.
+         *
+         * The view is normalized by the same function the block uses, and
+         * is_combined_view() is the same question asked in the same words, so
+         * the redraw cannot decide a shape the first render would not have.
+         */
+        $view     = $this->normalize_view( isset( $_POST['view'] ) ? wp_unslash( $_POST['view'] ) : '' );
+        $combined = $this->is_combined_view( $view );
         $side_ct  = isset( $_POST['side_count'] ) ? absint( $_POST['side_count'] ) : 0;
         $side_hd  = isset( $_POST['side_heading'] ) ? sanitize_text_field( wp_unslash( $_POST['side_heading'] ) ) : '';
 
@@ -2693,10 +2791,13 @@ class SFAF_Shortcodes {
             wp_send_json_success( array_merge( $cached, array( 'month' => $month, 'cached' => true ) ) );
         }
 
-        $payload = array( 'html' => $this->render_month_grid( $month, $filters, ! $combined ) );
         if ( $combined ) {
-            $payload['head'] = $this->render_month_head( $month );
-            $payload['side'] = $this->render_sidebar( $filters, $side_ct, '' !== $side_hd ? $side_hd : null, $month );
+            // The same three pieces the first render composed, from the same
+            // method. See render_combined_parts().
+            $parts   = $this->render_combined_parts( $month, $filters, $side_ct, $side_hd );
+            $payload = array( 'html' => $parts['grid'], 'head' => $parts['head'], 'side' => $parts['side'] );
+        } else {
+            $payload = array( 'html' => $this->render_month_grid( $month, $filters ) );
         }
 
         set_transient( $key, $payload, 10 * MINUTE_IN_SECONDS );

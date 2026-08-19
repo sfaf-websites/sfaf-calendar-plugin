@@ -328,7 +328,10 @@
             organizer: $block.attr('data-filter-organizer') || '',
             series: $block.attr('data-filter-series') || '',
             venue: $block.attr('data-filter-venue') || '',
-            combined: $panels.length ? '1' : '',
+            /* THE VIEW, NOT A BOOLEAN. The server decides the shape from this,
+               with the same normalize_view() the first render used, so a redraw
+               cannot produce a shape the first render would not have. */
+            view: $block.attr('data-view') || ($panels.length ? 'combined' : ''),
             side_count: $panels.attr('data-uc-side-count') || '',
             side_heading: $panels.attr('data-uc-side-heading') || ''
         };

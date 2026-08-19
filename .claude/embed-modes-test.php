@@ -215,16 +215,26 @@ check(
  * satisfied by the ajax copy while the panel had lost it, and both plants
  * passed. Anchored on the surrounding line instead.
  */
+/*
+ * ONE COMPOSITION, AND THE BLOCK USES IT (3.45.1).
+ *
+ * These two used to check the block's own argument lists: that it passed the
+ * month to render_sidebar() and the head flag to render_month_grid(). It did
+ * both, and the redraw in ajax_load_month() composed the same three pieces
+ * again with its own rules, so the two paths produced different markup for the
+ * same month and only the first render was right.
+ *
+ * There is one composition now, so the useful claim is that the block asks it
+ * rather than assembling the pieces itself. The two outputs being identical is
+ * asserted where they can be compared: combined-outcome-test.php.
+ */
 check(
-    (bool) preg_match(
-        '/sidebar_count\(\s*\$args\[.count.\]\s*\),\s*isset\(\s*\$args\[.heading.\]\s*\)\s*\?\s*\$args\[.heading.\]\s*:\s*null,\s*\$month/s',
-        $block
-    ),
-    'the combined mode does not hand its month to render_sidebar(), so the sidebar and the grid would show different months'
+    false !== strpos( $block, '$this->render_combined_parts(' ),
+    'the combined mode does not go through render_combined_parts(), so it composes the view a second time'
 );
 check(
-    false !== strpos( $block, 'if ( $want_grid ) { echo $this->render_month_grid( $month, $filters, ! $combined ); }' ),
-    'the combined mode does not tell the grid to leave its head out, so the month name would be drawn twice'
+    false !== strpos( $block, "\$parts['head']" ) && false !== strpos( $block, "\$parts['side']" ) && false !== strpos( $block, "\$parts['grid']" ),
+    'the combined mode does not use all three pieces of the one composition, so at least one is still built locally'
 );
 check(
     false !== strpos( $block, ': $panel_list . $panel_grid' ),

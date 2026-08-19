@@ -198,20 +198,39 @@ $edits = array(
         "            \$args['meta_query'][] = array(\n                'key'     => '_uc_event_date',\n                'value'   => \$filters['month'] . '-01',\n                'compare' => '>=',\n                'type'    => 'DATE',\n            );\n",
         '' ),
 
-    /* The sidebar stops being told the month, so the two halves disagree. */
-    'sidebar-unbound' => array( 'includes/class-sfaf-shortcodes.php',
-        "                        isset( \$args['heading'] ) ? \$args['heading'] : null,\n                        \$month\n                    )",
-        "                        isset( \$args['heading'] ) ? \$args['heading'] : null\n                    )" ),
-
     /* The floor month offers a way back again. */
     'floor-has-prev' => array( 'includes/class-sfaf-shortcodes.php',
         "            \$at_floor = \$this->is_floor_month( \$prefix );",
         "            \$at_floor = false;" ),
 
-    /* The grid draws its own head in the combined mode, so there are two. */
-    'two-heads' => array( 'includes/class-sfaf-shortcodes.php',
-        "echo \$this->render_month_grid( \$month, \$filters, ! \$combined );",
-        "echo \$this->render_month_grid( \$month, \$filters );" ),
+    /*
+     * sidebar-unbound and two-heads were retired in 3.45.1. Both planted the
+     * two-place composition, which no longer exists: redraw-composes and
+     * grid-draws-head plant the same faults against the one that does. A plant
+     * that cannot apply is a plant nobody is checking.
+     */
+
+    /* THE 3.45.0 DRIFT, exactly as it shipped: the redraw composes the view a
+     * second time, with its own rules, from a flag the browser sends. */
+    'redraw-composes' => array( 'includes/class-sfaf-shortcodes.php',
+        "            \$parts   = \$this->render_combined_parts( \$month, \$filters, \$side_ct, \$side_hd );\n            \$payload = array( 'html' => \$parts['grid'], 'head' => \$parts['head'], 'side' => \$parts['side'] );",
+        "            \$payload = array(\n                'html' => \$this->render_month_grid( \$month, \$filters, false ),\n                'head' => \$this->render_month_head( \$month ),\n                'side' => \$this->render_sidebar( \$filters, \$side_ct, null, \$month ),\n            );" ),
+
+    /* The shape goes back to a boolean the client sends, so a caller that omits
+     * it gets a grid with a heading of its own. */
+    'shape-from-client' => array( 'includes/class-sfaf-shortcodes.php',
+        "        \$view     = \$this->normalize_view( isset( \$_POST['view'] ) ? wp_unslash( \$_POST['view'] ) : '' );\n        \$combined = \$this->is_combined_view( \$view );",
+        "        \$combined = ! empty( \$_POST['combined'] );" ),
+
+    /* The combined grid draws its own head again, so the month name is twice. */
+    'grid-draws-head' => array( 'includes/class-sfaf-shortcodes.php',
+        "            'grid' => \$this->render_month_grid( \$month, \$filters, false ),",
+        "            'grid' => \$this->render_month_grid( \$month, \$filters, true )," ),
+
+    /* The range line under the heading comes back. */
+    'range-line-back' => array( 'includes/class-sfaf-shortcodes.php',
+        '                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid[\'label\'] ); ?></h3>',
+        '                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid[\'label\'] ); ?></h3>' . "\n" . '                    <p class="uc-month-range">range</p>' ),
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",
