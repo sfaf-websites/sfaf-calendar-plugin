@@ -2135,7 +2135,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-portal textarea.uc-invalid { border-color: #dc2626; box-shadow: 0 0 0 1px #dc2626; }
 .uc-portal input.uc-invalid:focus,
 .uc-portal textarea.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
-.uc-portal .uc-field-error { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: #b91c1c; font-weight: 600; }
+.uc-portal .uc-field-error { margin: 5px 0 0; font-size: 13px; line-height: 1.45; color: #b91c1c; font-weight: 600; }
 
 /* ---------------------------------------------------------------------------
  * Sortable table headings and list paging (Events list).
@@ -2321,7 +2321,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-reassign-events { margin: 0 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.7; }
 .uc-reassign-events .uc-muted { margin-left: 6px; font-size: 12px; }
 .uc-reassign-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
-.uc-reassign-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+.uc-reassign-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
 
 /* ---------------------------------------------------------------------------
    CANCELLING (3.36.0).
@@ -2332,11 +2332,15 @@ body.uc-modal-open { overflow: hidden; }
    which are the two places a colour is carrying an actual consequence.
    ------------------------------------------------------------------------- */
 .uc-cancel-card.is-cancelled { border-color: #b91c1c; }
-.uc-cancel-state { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: #b91c1c; }
+/* Body, and the red ink is what carries it. There is no 700 at this size on the
+   ladder, and the card title above already says the event is cancelled, so the
+   weight was doing the title's job a second time. */
+.uc-cancel-state { margin: 0 0 8px; font-size: 14px; font-weight: 400; color: #b91c1c; }
 .uc-cancel-state .uc-muted { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; }
 .uc-cancel-form { margin-top: 12px; }
 .uc-cancel-visibility { margin: 0 0 12px; padding: 0; border: 0; }
-.uc-cancel-visibility legend { padding: 0; margin-bottom: 8px; font-size: 12.5px; font-weight: 700; }
+/* A legend over a set of radio options is a field label, and takes that step. */
+.uc-cancel-visibility legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
 .uc-cancel-visibility .uc-radio-opt { display: flex; gap: 8px; align-items: flex-start;
     margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
 .uc-cancel-visibility .uc-radio-opt strong { display: block; }

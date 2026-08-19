@@ -208,9 +208,20 @@ escaped the same fate because every one of its headings happened to carry
 **The ladder is checked, not asserted.** `php .claude/type-scale-sweep.php`
 reports every rule in `portal.css` that sets a size and a weight that is not one
 of the seven steps; the count is zero and a build that raises it fails. Run it
-with `--self-test` first, which plants seven cases and proves it can reject
+with `--self-test` first, which plants eleven cases and proves it can reject
 them. Chrome is exempt BY SELECTOR and every exemption carries its reason, so
 widening the ladder is a decision somebody writes down.
+
+**The first version of it could not see a half pixel, which is the one value the
+ladder exists to forbid.** It matched `(\d+)px`, and the digits in `13.5px` are
+not followed by `px`, so every fractional rule was skipped rather than judged,
+and its self-test passed because every case in it was a whole number. Six real
+rules were hiding behind that: `.uc-field-error` and `.uc-reassign-form label`
+at 12.5px/600, `.uc-cancel-state` at 13.5px/700, `.uc-cancel-visibility legend`
+at 12.5px/700, and two now exempt by name. So the cancel card was carrying two
+of them, the reassign form one and every field error one, which is what "the
+scale was applied to headings and not to what sits under them" looks like away
+from the card that got reported.
 
 **The scale was applied to headings and not to what sits under them, which is
 why the complaint came back.** Twelve rules were between two steps. The one that

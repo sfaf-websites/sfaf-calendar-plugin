@@ -91,6 +91,8 @@ $exempt = array(
 	'uc-member-chip'      => 'a chip',
 	'uc-optin-yes'        => 'a status marker in a table cell, not a sentence',
 	'uc-remove-sub-label' => 'the second line inside a radio option, part of the control',
+	'uc-add-toggle'       => 'a filled yellow button that happens to be a <summary>; chrome, like .uc-btn',
+	'uc-portal-me-name'   => 'the name in the sidebar identity block, beside the role caption already exempt above; the dark sidebar is measured on its own terms, see DESIGN.md',
 );
 
 /* --------------------------------------------------------------------------
@@ -118,15 +120,33 @@ function offenders( $css, $ladder, $exempt ) {
 	foreach ( blocks( $css ) as $b ) {
 		list( $sel, $body ) = $b;
 
-		if ( ! preg_match( '#font-size:\s*(\d+)px#', $body, $s ) ) {
+		/*
+		 * FRACTIONAL SIZES ARE THE POINT, NOT AN EDGE CASE.
+		 *
+		 * This read `(\d+)px`, which cannot match `13.5px` at all: the digits
+		 * have to be followed immediately by "px", so the rule was skipped
+		 * rather than judged. A half pixel is BY DEFINITION between two steps,
+		 * so the one value the ladder exists to forbid was the one value the
+		 * sweep could not see, and portal.css had a dozen of them. The
+		 * self-test did not catch it because every case in it was a whole
+		 * number, which is the same fault as the tests this release is about:
+		 * it asserted the checker worked on the shape already known to be
+		 * wrong.
+		 */
+		if ( ! preg_match( '#font-size:\s*([0-9]*\.?[0-9]+)px#', $body, $s ) ) {
 			continue;
 		}
 		if ( ! preg_match( '#font-weight:\s*(\d+)#', $body, $w ) ) {
 			continue; // inherits its weight, which is how a scale holds
 		}
 
-		$size   = (int) $s[1];
+		$raw    = (float) $s[1];
+		$size   = (int) $raw;
 		$weight = (int) $w[1];
+
+		/* A size that is not a whole pixel is off the ladder whatever weight it
+		 * carries, and is reported at its real value rather than truncated. */
+		$fractional = ( abs( $raw - $size ) > 0.0001 );
 
 		$skip = false;
 		foreach ( $exempt as $needle => $why ) {
@@ -139,8 +159,8 @@ function offenders( $css, $ladder, $exempt ) {
 			continue;
 		}
 
-		if ( ! isset( $ladder[ $size ] ) || ! in_array( $weight, $ladder[ $size ], true ) ) {
-			$found[] = array( $sel, $size, $weight );
+		if ( $fractional || ! isset( $ladder[ $size ] ) || ! in_array( $weight, $ladder[ $size ], true ) ) {
+			$found[] = array( $sel, $fractional ? $s[1] : $size, $weight );
 		}
 	}
 	return $found;
@@ -159,6 +179,11 @@ if ( $self ) {
 		array( '.uc-planted-e { font-size: 13px; font-weight: 600; }', false, 'a field label, which is a step' ),
 		array( '.uc-btn-planted { font-size: 15px; font-weight: 500; }', false, 'exempt: buttons are chrome' ),
 		array( "/* .uc-planted-f { font-size: 11px; font-weight: 300; } */", false, 'in a comment, so not a rule' ),
+		/* The half pixel, which the first version of this file could not see. */
+		array( '.uc-planted-g { font-size: 13.5px; font-weight: 550; }', true, 'a half pixel at a weight that is not a step' ),
+		array( '.uc-planted-h { font-size: 13.5px; font-weight: 600; }', true, 'a half pixel is off the ladder even at a real weight' ),
+		array( '.uc-planted-i { font-size: 12.5px; font-weight: 700; }', true, 'the other half pixel actually in the file' ),
+		array( '.uc-planted-j { font-size: 13px; font-weight: 600; line-height: 1.5; }', false, 'a step, with other properties around it' ),
 	);
 	$bad = 0;
 	echo "SELF TEST\n" . str_repeat( '=', 72 ) . "\n";
@@ -188,7 +213,7 @@ echo "         against the seven steps in DESIGN.md; chrome is exempt by name\n\
 if ( $hits ) {
 	echo 'OFF THE LADDER: ' . count( $hits ) . "\n";
 	foreach ( $hits as $h ) {
-		printf( "  . %dpx / %d  %s\n", $h[1], $h[2], $h[0] );
+		printf( "  . %spx / %d  %s\n", $h[1], $h[2], $h[0] );
 	}
 	echo "\nEach one renders between two steps, so the elements above and below it stop\n";
 	echo "reading as a hierarchy. Move it onto a step or exempt it by name with a reason.\n";
