@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.43.0
+Stable tag: 3.43.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -527,6 +527,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.43.1 =
+
+**Choose Image did nothing on the series screen, and the reason was not the one it looked like.**
+
+**IT WAS NOT THE MEDIA LIBRARY.** caladmin builds its own document, so anything needing `wp_enqueue_media()` has to be asked for per screen, which is the shape the rich text editor had in 3.38.0 and the obvious suspicion here. It was wrong. Every screen carrying a picker was already enqueueing, in the right order, before the document head was written. Checking the enqueue would have found nothing and cost a day.
+
+**THE PICKER WAS THE SAME MARKUP WRITTEN OUT TWICE.** When it was rebound from `getElementById('uc-featured-image-id')` to data attributes, so the pending queue could render several on one page, the event editor's copy was updated and the series screen's was not. `bindImageField()` looks for `data-uc-image-id`, `data-uc-image-preview` and `data-uc-image-preview-img`, found none of them there, and returned before binding the click. **Nothing at all was wired to the button**, which is exactly what pressing it did.
+
+**Which screens were affected: New Series and Edit Series**, which are one renderer, so it is one screen in two states. The event editor and the pending queue were fine, because they share a control. Categories, venues, organizers and FAQ sets have no image picker, so there was nothing to miss. Two places rendered picker markup and one of them was broken.
+
+**Rebinding the broken copy would have been the wrong fix.** 3.42.1 filtered the picker to the calendar folder and routed its uploads there, on the copy that worked. Fixing only the binding would have left the series screen offering the whole media library and uploading into the month directory, and the two would have gone on drifting. **So there is one renderer now.** The hooks the script needs, the folder attributes, the buttons, the size line and the folder note are emitted in exactly one place, and a screen wanting a picker calls it rather than copying markup.
+
+**Checked by asserting the contract, not by looking.** The new check reads what `bindImageField()` requires OUT OF the script rather than restating it, so adding a required hook to the JavaScript and not to the markup fails the build. It then asserts those hooks are emitted in exactly one place, that every picker wrapper carries the calendar-folder attributes, and that every screen rendering one loads the media library, walking the call graph so a sub-renderer is not asked to enqueue what its caller already did.
+
+Two faults in that checker were found by making it fail on purpose: it read only the first early return in `bindImageField()` and so believed one hook was required instead of four, and its call walk ran past the enqueue up into the router and reported `handle()` as a broken screen. Both are the shape of the bug it is about.
 
 = 3.43.0 =
 

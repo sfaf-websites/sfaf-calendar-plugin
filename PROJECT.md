@@ -179,6 +179,38 @@ notes. **Two queues is one queue somebody stops checking.**
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
 
+### There is one image picker, and it is a renderer rather than markup
+
+`render_image_picker()` emits every featured-image control in caladmin: the
+event editor's, the pending queue's and the series screen's. `image_picker_atts()`
+puts the calendar-folder attributes on the wrapper. Nothing else emits either.
+
+**It was two copies, and one of them silently stopped working.** The picker was
+rebound from `getElementById('uc-featured-image-id')` to data attributes so the
+pending queue could render several on one page. The event editor's copy was
+updated; the series screen's was not. `bindImageField()` requires
+`data-uc-image-id`, `data-uc-image-preview` and `data-uc-image-preview-img`,
+found none, and returned before binding the click, so Choose Image had no
+handler at all.
+
+> **The enqueue was the obvious suspect and was not the fault.** caladmin builds
+> its own document, so `wp_enqueue_media()` is a per-screen decision and 3.38.0
+> had exactly that shape with TinyMCE. Every screen here was already enqueueing
+> correctly. **A control that does nothing is not evidence about loading**: a
+> script can be present and still never bind. Start from what the binder needs
+> and check the element has it.
+
+> **Rebinding the broken copy would have been worse than leaving it.** 3.42.1
+> had already filtered the working copy to the calendar folder and routed its
+> uploads there. A fixed second copy would have offered the whole media library
+> from one screen and the folder from another, which is harder to notice than a
+> button that does nothing.
+
+`.claude/image-picker-test.php` **reads the required hooks out of `portal.js`**
+rather than restating them, asserts they are emitted in exactly one place,
+asserts every wrapper carries the folder attributes, and walks the call graph so
+that a sub-renderer is not asked to enqueue what its caller already did.
+
 ### The featured image picker offers one folder, matched on the file path
 
 Event photographs live in `wp-content/uploads/calendar/`, a folder made with WP

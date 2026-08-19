@@ -4887,6 +4887,127 @@ class SFAF_Portal {
      * @param string $field
      * @param array  $ctx
      */
+    /**
+     * The attributes that make a picker's wrapper a calendar-folder picker.
+     *
+     * On the WRAPPER rather than repeated on each control, because that is
+     * where portal.js reads them from, and returned as a string so a caller
+     * cannot put half of them on.
+     *
+     * @param bool $folder_has_any
+     * @return string
+     */
+    private function image_picker_atts( $folder_has_any ) {
+        return ' data-uc-media-folder="' . esc_attr( SFAF_Media_Folder::FOLDER ) . '"'
+            . ' data-uc-media-flag="' . esc_attr( SFAF_Media_Folder::FLAG ) . '"'
+            . ( $folder_has_any ? '' : ' data-uc-media-folder-empty="1"' );
+    }
+
+    /**
+     * THE FEATURED IMAGE PICKER. ONE OF THEM, WHEREVER IT APPEARS.
+     *
+     * WHAT WENT WRONG WITHOUT THIS. The picker was markup written out twice,
+     * once in the event editor and once on the series screen. When it was
+     * rebound from `getElementById('uc-featured-image-id')` to data attributes,
+     * so that the pending queue could render several on one page, the event
+     * editor's copy was updated and the series screen's was not. Its Choose
+     * Image button then did NOTHING AT ALL: bindImageField() looks for
+     * `[data-uc-image-id]`, `[data-uc-image-preview]` and
+     * `[data-uc-image-preview-img]`, found none of them, and returned before it
+     * bound the click. The media library was loaded correctly on that screen
+     * the whole time, which is why the enqueue was the wrong place to look.
+     *
+     * Then 3.42.1 filtered the picker to the calendar folder and routed its
+     * uploads there, on the copy that worked, and the other copy would have
+     * gone on offering the whole library if anybody had fixed only the binding.
+     *
+     * So there is one renderer. The four hooks the script needs, the folder
+     * attributes, the buttons, the size and the folder note are emitted here
+     * and nowhere else, and a new screen wanting a picker calls this rather
+     * than copying markup. The parts that genuinely differ between screens are
+     * arguments.
+     *
+     * @param array $args
+     */
+    private function render_image_picker( $args ) {
+        $a = array_merge( array(
+            'uid'         => 'x',
+            'id_name'     => 'featured_image_id',
+            'url_name'    => 'image_url',
+            'id_value'    => 0,
+            'url_value'   => '',
+            'preview'     => '',
+            'show_remove' => false,
+            'locked_note' => '',
+            'after_buttons' => '',
+            'url_label'   => 'Or an image URL',
+            'url_help'    => '',
+            'extra_hint'  => '',
+            'folder_has_any' => true,
+        ), $args );
+        ?>
+        <input type="hidden" name="<?php echo esc_attr( $a['id_name'] ); ?>"
+               id="uc-featured-image-id-<?php echo esc_attr( $a['uid'] ); ?>"
+               data-uc-image-id value="<?php echo (int) $a['id_value']; ?>" />
+        <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $a['uid'] ); ?>"
+             data-uc-image-preview<?php echo $a['preview'] ? '' : ' style="display:none;"'; ?>>
+            <img src="<?php echo esc_url( $a['preview'] ); ?>" alt="" data-uc-image-preview-img />
+        </div>
+
+        <?php if ( '' !== $a['locked_note'] ) : ?>
+            <p class="uc-hint"><?php echo esc_html( $a['locked_note'] ); ?></p>
+            <?php return; ?>
+        <?php endif; ?>
+
+        <div class="uc-image-buttons">
+            <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
+            <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
+        </div>
+        <?php echo $a['after_buttons']; // Already-built markup from the caller. ?>
+        <label class="uc-field uc-image-url-field">
+            <span class="uc-field-label"><?php echo esc_html( $a['url_label'] ); ?>
+                <?php echo $a['url_help']; // sfaf_help() output. ?>
+            </span>
+            <input type="url" name="<?php echo esc_attr( $a['url_name'] ); ?>"
+                   id="uc-image-url-<?php echo esc_attr( $a['uid'] ); ?>"
+                   data-uc-image-url value="<?php echo esc_attr( $a['url_value'] ); ?>"
+                   placeholder="https://…/image.jpg" />
+        </label>
+        <?php if ( '' !== $a['extra_hint'] ) : ?>
+            <p class="uc-hint"><?php echo esc_html( $a['extra_hint'] ); ?></p>
+        <?php endif; ?>
+        <?php
+        /*
+         * THE SPEC STAYS INLINE, AND IT IS THE ONE THING HERE THAT DOES.
+         *
+         * Card images are cropped to 16:9 and filled, so a portrait photograph
+         * loses its top and bottom and a group shot can lose the faces. This is
+         * the difference between cropping before uploading and finding out
+         * afterwards, it is one line, and it is read every time somebody picks
+         * a picture rather than once. Behind a "?" it would be read never.
+         */
+        ?>
+        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.</p>
+        <?php
+        /*
+         * WHAT THE PICKER WILL SHOW, SAID BEFORE IT IS OPENED.
+         *
+         * A picker that opens on eleven pictures when the media library holds
+         * four hundred reads as broken unless somebody was told to expect it.
+         * One line, and it also says where an upload goes, which is the answer
+         * to the next question. The empty case gets a different line, because
+         * then the same screen means something else has gone wrong and the
+         * person needs to know it is not them.
+         */
+        ?>
+        <?php if ( $a['folder_has_any'] ) : ?>
+            <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
+        <?php else : ?>
+            <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/<?php echo esc_html( SFAF_Media_Folder::FOLDER ); ?></code>.</span></p>
+        <?php endif; ?>
+        <?php
+    }
+
     private function render_manager_control( $field, $ctx ) {
         $event_id = (int) $ctx['event_id'];
         $uid      = $ctx['uid'];
@@ -4922,9 +5043,7 @@ class SFAF_Portal {
                 $folder_has_any = SFAF_Media_Folder::has_any();
                 ?>
                 <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"
-                     data-uc-media-folder="<?php echo esc_attr( SFAF_Media_Folder::FOLDER ); ?>"
-                     data-uc-media-flag="<?php echo esc_attr( SFAF_Media_Folder::FLAG ); ?>"
-                     <?php echo $folder_has_any ? '' : 'data-uc-media-folder-empty="1"'; ?>
+                     <?php echo $this->image_picker_atts( $folder_has_any ); ?>
                      <?php echo $this->field_watch_attr( 'image', $state ); ?>>
                     <span class="uc-field-label">Featured Image
                         <span class="uc-img-source-tag"><?php echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source ); ?></span>
@@ -4943,66 +5062,30 @@ class SFAF_Portal {
                       * WHICH field is waiting; the sentence explaining why is
                       * the same sentence every time and belongs in one place.
                       */ ?>
-                    <input type="hidden" name="featured_image_id" id="uc-featured-image-id-<?php echo esc_attr( $uid ); ?>" data-uc-image-id value="<?php echo (int) $thumb_id; ?>" />
-                    <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $uid ); ?>" data-uc-image-preview<?php echo $preview ? '' : ' style="display:none;"'; ?>>
-                        <img src="<?php echo esc_url( $preview ); ?>" alt="" data-uc-image-preview-img />
-                    </div>
-                    <?php if ( 'locked' === $state ) : ?>
-                        <p class="uc-hint"><?php echo esc_html( $label ); ?> supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.</p>
-                    <?php else : ?>
-                        <div class="uc-image-buttons">
-                            <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
-                            <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo ( 'event' === $img_source ) ? '' : ' style="display:none;"'; ?>>Remove</button>
-                        </div>
-                        <?php if ( 'event' === $img_source && $in_series ) : ?>
-                            <label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>
-                        <?php endif; ?>
-                        <label class="uc-field uc-image-url-field">
-                            <span class="uc-field-label">Or an image URL
-                                <?php echo sfaf_help(
-                                    'uc-help-imgurl-' . $uid,
-                                    'A picture set here overrides the series image for this one date. The URL is the fallback: it is used only when no image has been chosen from the library, so pasting one never fights with a chosen file.',
-                                    'the image URL'
-                                ); ?>
-                            </span>
-                            <input type="url" name="image_url" id="uc-image-url-<?php echo esc_attr( $uid ); ?>" data-uc-image-url value="<?php echo esc_attr( $own_url ); ?>" placeholder="https://…/image.jpg" />
-                        </label>
-                        <?php
-                        /*
-                         * THE SPEC STAYS INLINE, AND IT IS THE ONE THING HERE
-                         * THAT DOES.
-                         *
-                         * Card images are cropped to 16:9 and filled, so a
-                         * portrait photograph loses its top and bottom and a
-                         * group shot can lose the faces. This is the difference
-                         * between cropping before uploading and finding out
-                         * afterwards, it is one line, and it is read every time
-                         * somebody picks a picture rather than once. Behind a
-                         * "?" it would be read never.
-                         */
-                        ?>
-                        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.</p>
-                        <?php
-                        /*
-                         * WHAT THE PICKER WILL SHOW, SAID BEFORE IT IS OPENED.
-                         *
-                         * A picker that opens on eleven pictures when the media
-                         * library holds four hundred reads as broken unless
-                         * somebody was told to expect it. One line, and it also
-                         * says where an upload goes, which is the answer to the
-                         * next question.
-                         *
-                         * The empty case gets a different line, because then
-                         * the same screen means something else has gone wrong
-                         * and the person needs to know it is not them.
-                         */
-                        ?>
-                        <?php if ( $folder_has_any ) : ?>
-                            <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
-                        <?php else : ?>
-                            <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/<?php echo esc_html( SFAF_Media_Folder::FOLDER ); ?></code>.</span></p>
-                        <?php endif; ?>
-                    <?php endif; ?>
+                    <?php
+                    $reset_box = ( 'event' === $img_source && $in_series )
+                        ? '<label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>'
+                        : '';
+                    $this->render_image_picker( array(
+                        'uid'         => $uid,
+                        'id_name'     => 'featured_image_id',
+                        'url_name'    => 'image_url',
+                        'id_value'    => $thumb_id,
+                        'url_value'   => $own_url,
+                        'preview'     => $preview,
+                        'show_remove' => ( 'event' === $img_source ),
+                        'locked_note' => ( 'locked' === $state )
+                            ? $label . ' supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.'
+                            : '',
+                        'after_buttons' => $reset_box,
+                        'url_help'    => sfaf_help(
+                            'uc-help-imgurl-' . $uid,
+                            'A picture set here overrides the series image for this one date. The URL is the fallback: it is used only when no image has been chosen from the library, so pasting one never fights with a chosen file.',
+                            'the image URL'
+                        ),
+                        'folder_has_any' => $folder_has_any,
+                    ) );
+                    ?>
                 </div>
                 <?php
                 break;
@@ -5826,22 +5909,32 @@ class SFAF_Portal {
                     <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" required />
                 </label>
 
-                <div class="uc-field uc-image-field">
+                <?php
+                /*
+                 * THE SAME PICKER AS THE EVENT EDITOR, AND THAT IS THE FIX.
+                 *
+                 * This was a second copy of the markup, and it had missed the
+                 * rebind from element ids to data attributes, so Choose Image
+                 * did nothing here at all. Rebinding this copy on its own would
+                 * have left it offering the whole media library while the
+                 * editor's offered the calendar folder. See
+                 * render_image_picker().
+                 */
+                ?>
+                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any() ); ?>>
                     <span class="uc-field-label">Image</span>
-                    <input type="hidden" name="series_image_id" id="uc-featured-image-id" value="<?php echo (int) $img_id; ?>" />
-                    <div class="uc-image-preview" id="uc-image-preview"<?php echo $preview ? '' : ' style="display:none;"'; ?>>
-                        <img src="<?php echo esc_url( $preview ); ?>" alt="" id="uc-image-preview-img" />
-                    </div>
-                    <div class="uc-image-buttons">
-                        <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
-                        <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $preview ? '' : ' style="display:none;"'; ?>>Remove</button>
-                    </div>
-                    <label class="uc-field uc-image-url-field">Or enter image URL
-                        <input type="url" name="series_image_url" id="uc-image-url" value="<?php echo esc_attr( $img_url ); ?>" placeholder="https://…/image.jpg" />
-                    </label>
-                    <p class="uc-hint">Shown on the series page, and used by any event in the series with no image of its own.</p>
-                    <p class="uc-hint"><strong>Best size: 1200 x 675 pixels (16:9 landscape).</strong> Event cards crop
-                        to this shape and fill it, so anything taller loses its top and bottom.</p>
+                    <?php $this->render_image_picker( array(
+                        'uid'         => 'series',
+                        'id_name'     => 'series_image_id',
+                        'url_name'    => 'series_image_url',
+                        'id_value'    => $img_id,
+                        'url_value'   => $img_url,
+                        'preview'     => $preview,
+                        'show_remove' => (bool) $preview,
+                        'url_label'   => 'Or enter image URL',
+                        'extra_hint'  => 'Shown on the series page, and used by any event in the series with no image of its own.',
+                        'folder_has_any' => SFAF_Media_Folder::has_any(),
+                    ) ); ?>
                 </div>
 
                 <label class="uc-field">

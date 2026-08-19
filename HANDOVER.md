@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-19, at 3.43.0.
+**Last updated:** 2026-08-19, at 3.43.1.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.43.0**, built as `sfaf-calendar-3.43.0.zip` in the project
+The plugin is at **3.43.1**, built as `sfaf-calendar-3.43.1.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.43.0, the deployment is stale or partial, and that
+screen: if it does not say 3.43.1, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -104,6 +104,12 @@ events that were not saved a second time.
   organizer card no longer offers "Not listed? Add one". The cancel card is
   below the form now rather than in the side column, and its state line and its
   legend changed size: that is the type scale being applied, not a mistake.
+- **CHECK CHOOSE IMAGE ON NEW SERIES AND ON EDIT SERIES.** It did nothing at
+  all before 3.43.1 and now shares the event editor's control, so the picker
+  should open on the calendar folder and an upload from it should land there.
+  Worth one look on the event editor and the pending queue too, since that
+  control was rewritten to come from the same renderer even though it was
+  working.
 - **THE REQUEST FORM NEEDS ONE END-TO-END PASS, AND ITS ADDRESS NEEDS SHARING.**
   It is at `/?uc_event_request=1`, which nothing links to on purpose: send that
   address to staff yourself, or have it put on the intranet. The pass: enter
