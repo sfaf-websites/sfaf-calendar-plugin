@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.42.1
+Stable tag: 3.43.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -527,6 +527,38 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.43.0 =
+
+**Staff can ask for an event without an account, and the request arrives filled in rather than as an email somebody retypes.**
+
+**WHAT IT REPLACES.** Most SFAF staff will never manage events; they want MarCom to add one. That meant an email or an Asana task and somebody retyping it into caladmin. This is one page that puts the same information straight into the pending queue.
+
+**IT IS NOT A CUT-DOWN caladmin**, deliberately. No sidebar, no events list, no navigation, no account. A restricted portal would mean every screen growing a second set of permission questions, and the answer to "what can a requester see" would live in forty places instead of one file.
+
+**HOW THE LINK WORKS.** Somebody enters their work address on `/?uc_event_request=1`. If it is an sfaf.org address, a link arrives that opens the form; the link carries a token and the token is the only credential, which is what lets this work with no account. The token is 32 random hex characters from the same generator the reminder cancel links use, so there is one answer to "how strong is that token". **It works for 60 minutes.**
+
+The token is stored as a transient rather than a row: nothing about somebody who has not submitted anything is worth keeping, it expires with no cleanup job, and it needs no schema change. **The stored key is a hash of the token, not the token**, so the options table never holds a working credential.
+
+**Asking for a link says the same thing whatever happens.** Sent, refused by a rate limit, or dropped because the mailbox does not exist: all three render the identical page. Anything else would answer "is that a real address here" for anybody who asked. A non-sfaf.org address IS told plainly, because that reveals nothing about a person and somebody who mistyped their own address needs to know rather than watching a link never arrive.
+
+**WHAT IS ON THE FORM:** their name, the event name, a description, categories, a series, the date and times, whether it repeats and until when in plain words, a venue or a free-text place, a picture, whether people register and how many places, and anything else we should know. **Not on it:** private events, the notification list, reply-to, the donate link, display toggles and FAQ sets, because those are decisions for whoever approves it.
+
+**Choosing a series prefills the photo and nothing else, by doing nothing.** An event in a series with no picture of its own already falls back to the series image, so there is no copying and nothing to go stale if the series photo changes before anybody approves the request.
+
+**Repeating is recorded in words, not set as a schedule.** Generating dates makes N independent posts, and doing that from an unapproved request would put fifty-two events one button press away. The request says "every week, until March 3" and whoever approves it sets the real schedule on the screen built for that.
+
+**The picture is chosen from the calendar folder, and there is no upload.** The media library frame needs an account, so on a page with none it would not open at all; this is the same rule in the only shape that works, a grid of radio buttons over the same folder query the event editor uses. **1200 x 675** is stated on it. Nothing suitable means asking Roxane Chicoine for one, which is the answer the brief gives and a better one than an upload endpoint reachable with no account.
+
+**WHAT HAPPENS ON SUBMIT.** A pending event is created, the requester gets an emailed copy of what they sent, and everybody whose calendar role is Admin gets one message naming the requester and the event and linking straight to it. **Nothing after that:** no reminder and no approval notice, because chasing is a person's job and a system that nags on somebody's behalf teaches people to filter it.
+
+**Admins are found two ways, because there are two ways to be one.** A site administrator is a calendar Admin with no `_uc_calendar_role` meta at all, so the meta query alone would miss exactly the people this is for. Both sets are gathered and each is put through the same `get_role()` the portal asks.
+
+**A REQUEST IS DISTINGUISHABLE IN THE QUEUE.** Pending has meant "arrived from GoFundMe Pro or Eventbrite and needs an image and a description", which is a different job from reading something a colleague filled in properly. The row carries a **Staff request** badge and the requester's name and address instead of an author, and the event editor shows a read-only panel with who asked, when, what they said about repeating, and their notes. **No second queue:** two queues is one queue somebody stops checking.
+
+**IT IS TREATED AS A PUBLIC SURFACE.** Every id must resolve to a term that already exists, every date is parsed and compared back to what it parsed from, every string is capped and stripped of markup, and the picture must be an attachment that is an image and already in the calendar folder, which is three checks rather than one. The status is named in the code and never read from the form. There is no REST route: `is_embed_request()` matches an exact string and a new route would fail CORS from sfaf.org, so this hangs off a front-end query var like the cancel link, which also means no rewrite rule and no flush on an install updated by overwriting the folder.
+
+**Four rate limits, because one is not enough.** Link requests are capped per address and per client, and submissions per token and per client. Without the per-address limit one person's inbox can be filled; without the per-client limit every address in the organisation can be hit once each. There is a honeypot field, and it fails exactly as a success looks, because telling a bot it was caught is telling whoever wrote it what to change.
 
 = 3.42.1 =
 

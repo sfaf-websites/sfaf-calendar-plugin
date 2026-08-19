@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.42.1
+ * Version: 3.43.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.42.1' );
+define( 'SFAF_VERSION', '3.43.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -99,6 +99,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-optins.php',
     'includes/class-sfaf-privacy.php',
     'includes/class-sfaf-media-folder.php',
+    'includes/class-sfaf-request.php',
     'includes/class-sfaf-cancellation.php',
     // The mail layer, before anything that sends: SFAF_Email builds and hands
     // to wp_mail(), SFAF_Notifications decides who gets what, and
@@ -183,6 +184,10 @@ function sfaf_init() {
     // sends its own uploads there. Filters on core's own _wp_attached_file, so
     // it does not depend on WP Media Folder staying installed.
     SFAF_Media_Folder::register();
+
+    // The public event request form. A front-end query var, like the cancel
+    // link, so no rewrite rule and no REST route: see the note in the class.
+    SFAF_Request::register();
 
     $post_types = new SFAF_Post_Types();
     $post_types->register();

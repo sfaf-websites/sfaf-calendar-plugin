@@ -112,6 +112,73 @@ Branches:
 
 ---
 
+### The public event request form
+
+**One page, no account, and not a restricted caladmin.** Most staff will never
+manage events; they want to ask MarCom to add one. `SFAF_Request` owns the whole
+of it: the link request, the form, the validation, the insert and the two
+emails.
+
+> **A cut-down portal would have been the expensive answer.** Every caladmin
+> screen would grow a second set of permission questions, and "what can a
+> requester see" would be answered in forty places instead of one file. A
+> separate surface has one answer, in one place, and it is this file.
+
+**Access is a token in a link, and the token is the only credential.**
+`SFAF_Reminders::new_token()` is the same generator the cancel links use, so
+there is one answer to how strong it is. It lives 60 minutes.
+
+- **Stored as a transient, keyed on a hash of the token.** No row, because
+  nothing about somebody who has not submitted anything is worth keeping; no
+  schema change and no `SFAF_DB_VERSION` bump for a value that lives an hour;
+  and the options table never holds a usable credential.
+- **Requesting a link renders one page whatever happens.** Sent, rate-limited,
+  or dropped for a mailbox that does not exist: identical. A different screen
+  for any of them answers "is that a real address here". A non-sfaf.org address
+  is refused out loud, because that reveals nothing about a person.
+- **The domain test is `sfaf.org` or a subdomain of it**, so `notsfaf.org` and
+  `sfaf.org.example.com` are both refused.
+
+**No REST route, and this is the reason to keep it that way.**
+`is_embed_request()` matches an exact string, so a new route would fail CORS
+from sfaf.org. This hangs off a front-end query var on `template_redirect`, like
+the cancel link and the .ics endpoint, which also means **no rewrite rule and no
+flush**, so it works on an install updated by overwriting the folder.
+
+**Everything from the browser is re-derived.** Every term id must resolve to a
+term that exists; dates are parsed and compared back to what they parsed from,
+so `2026-02-30` cannot roll into March; strings are capped and stripped of
+markup; and the picture must be an attachment, be an image, and already be in
+the calendar folder. **The status is named in the code**, never read from the
+form, and `post_author` stays 0 because nobody logged in made it.
+
+> **Rate limiting takes two subjects, not one.** Per address and per client on
+> the link, per token and per client on the submission. Without the per-address
+> limit one inbox can be filled; without the per-client limit every address in
+> the organisation can be hit once each. Neither closes it alone.
+
+**The picture grid is not `wp.media`, and cannot be.** The frame needs a
+logged-in user with `upload_files`, so on this page it would not open. It is
+radio buttons over the same `SFAF_Media_Folder` query the editor's picker uses.
+**There is no upload**, deliberately: an upload endpoint reachable with no
+account is the highest-risk thing this form could carry, and "ask Roxane for an
+image" is the answer the organisation already has.
+
+**Repeating is recorded in words and never as `PATTERN_META`.** Generation is a
+creation-time action that makes N independent posts, so half-filling the pattern
+from an unapproved request would put fifty-two events one button press away. The
+approver reads the sentence and sets the schedule on the screen built for it.
+
+**A request is marked in the queue, not given a queue.** Pending has meant "an
+import that needs an image and a description"; a request arrives filled in and
+needs reading. The row carries a badge and the requester's name, and the editor
+carries a read-only panel with who asked, when, the repeat sentence and the
+notes. **Two queues is one queue somebody stops checking.**
+
+**Nothing is sent after the confirmation.** No reminder, no approval notice.
+Chasing is a person's job, and a system that nags on somebody's behalf teaches
+people to filter it.
+
 ### The featured image picker offers one folder, matched on the file path
 
 Event photographs live in `wp-content/uploads/calendar/`, a folder made with WP

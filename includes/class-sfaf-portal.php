@@ -7795,6 +7795,8 @@ class SFAF_Portal {
             <?php $this->render_refresh_panel( $user, $event_id, $prov ); ?>
         <?php endif; ?>
 
+        <?php $this->render_request_panel( $event_id ); ?>
+
         <?php
         // FAQ sets. Above the form, not inside it: forms cannot nest and these
         // post and redirect on their own. Only on a saved event, since there
@@ -10996,16 +10998,56 @@ class SFAF_Portal {
                     <tbody>
                     <?php foreach ( $ids as $id ) :
                         $author = get_userdata( get_post_field( 'post_author', $id ) );
-                        $date   = get_post_meta( $id, '_uc_event_date', true ); ?>
-                        <tr>
-                            <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
+                        $date   = get_post_meta( $id, '_uc_event_date', true );
+                        /*
+                         * A STAFF REQUEST IS NOT A CONTRIBUTOR'S DRAFT AND IS
+                         * NOT AN IMPORT (3.43.0).
+                         *
+                         * Pending has meant "arrived from GoFundMe Pro or
+                         * Eventbrite and needs an image and a description",
+                         * which is a different job from reading something a
+                         * colleague filled in properly. Imports already have
+                         * their own sections above this table; what this marks
+                         * is the difference between the two kinds of thing IN
+                         * this table, which is a badge and a name, not a second
+                         * queue for somebody to remember to look at.
+                         *
+                         * post_author is 0 on a request, because nobody was
+                         * logged in, so "Submitted by" reads the requester's
+                         * own name rather than "Unknown".
+                         */
+                        $req_name  = (string) get_post_meta( $id, SFAF_Request::META_NAME, true );
+                        $req_email = (string) get_post_meta( $id, SFAF_Request::META_EMAIL, true );
+                        $req_at    = (string) get_post_meta( $id, SFAF_Request::META_AT, true );
+                        $is_req    = ( '' !== $req_email ); ?>
+                        <tr<?php echo $is_req ? ' class="uc-row-request"' : ''; ?>>
+                            <td>
+                                <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
+                                <?php if ( $is_req ) : ?>
+                                    <span class="uc-source-badge uc-badge-request">Staff request</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : 'Not set'; ?></td>
-                            <td><?php echo esc_html( $author ? $author->display_name : 'Unknown' ); ?></td>
+                            <td>
+                                <?php if ( $is_req ) : ?>
+                                    <?php echo esc_html( '' !== $req_name ? $req_name : $req_email ); ?>
+                                    <span class="uc-muted"><?php echo esc_html( $req_email ); ?></span>
+                                <?php else : ?>
+                                    <?php echo esc_html( $author ? $author->display_name : 'Unknown' ); ?>
+                                <?php endif; ?>
+                            </td>
                             <?php // The submission date, through the formatter as well. get_the_date()
                                   // with a format string is the same call-site formatting as date_i18n(),
                                   // and it is the one that hid from the first sweep. 'U' is a timestamp,
                                   // not a display format, so it stays. ?>
-                            <td><?php echo esc_html( sfaf_ap_date( (int) get_the_date( 'U', $id ), 'short_year' ) ); ?></td>
+                            <td><?php
+                                // A request records its own moment, because the
+                                // post date is when the insert ran and those can
+                                // differ once anything queues.
+                                echo esc_html( ( $is_req && '' !== $req_at )
+                                    ? sfaf_ap_date( $req_at, 'short_year' )
+                                    : sfaf_ap_date( (int) get_the_date( 'U', $id ), 'short_year' ) );
+                            ?></td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
                                     <a class="uc-action-link" href="<?php echo esc_url( get_permalink( $id ) ); ?>" target="_blank" rel="noopener">Preview</a>
@@ -11045,6 +11087,63 @@ class SFAF_Portal {
      * @param int     $event_id
      * @param array   $prov     SFAF_Sources::provenance() for this event.
      */
+    /**
+     * What a staff request asked for, above the form that answers it.
+     *
+     * TWO THINGS THE EVENT ITSELF CANNOT HOLD. The repeat answer is in plain
+     * words rather than a pattern, deliberately, because generating a schedule
+     * from an unapproved request would be creating fifty-two posts on somebody
+     * else's say-so; and the notes are addressed to whoever approves this, not
+     * to a reader of the calendar, so they must never reach the event body.
+     *
+     * Read-only. Everything here is a record of what was asked, and the form
+     * below is where the answer is given. Nothing on this panel posts.
+     *
+     * @param int $event_id
+     */
+    private function render_request_panel( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return;
+        }
+        $email = (string) get_post_meta( $event_id, SFAF_Request::META_EMAIL, true );
+        if ( '' === $email ) {
+            return;
+        }
+
+        $name   = (string) get_post_meta( $event_id, SFAF_Request::META_NAME, true );
+        $at     = (string) get_post_meta( $event_id, SFAF_Request::META_AT, true );
+        $repeat = (string) get_post_meta( $event_id, SFAF_Request::META_REPEAT, true );
+        $notes  = (string) get_post_meta( $event_id, SFAF_Request::META_NOTES, true );
+        $where  = (string) get_post_meta( $event_id, SFAF_Request::META_VENUE, true );
+        ?>
+        <div class="uc-card uc-request-panel">
+            <div class="uc-card-head"><h2>Requested by a colleague</h2></div>
+            <p class="uc-request-who">
+                <strong><?php echo esc_html( '' !== $name ? $name : $email ); ?></strong>
+                <a href="mailto:<?php echo esc_attr( $email ); ?>"><?php echo esc_html( $email ); ?></a>
+                <?php if ( '' !== $at ) : ?>
+                    <span class="uc-muted">asked on <?php echo esc_html( sfaf_ap_date( $at, 'short_year' ) ); ?></span>
+                <?php endif; ?>
+            </p>
+            <?php if ( '' !== $repeat ) : ?>
+                <p class="uc-hint"><strong>Repeating:</strong> <?php echo esc_html( $repeat ); ?>.
+                    Said in words rather than set as a schedule, because generating the dates is a decision
+                    taken here. Use the Repeats control below.</p>
+            <?php endif; ?>
+            <?php if ( '' !== $where ) : ?>
+                <p class="uc-hint"><strong>Place given as:</strong> <?php echo esc_html( $where ); ?>. Add it as a venue if it will be used again.</p>
+            <?php endif; ?>
+            <?php if ( '' !== $notes ) : ?>
+                <div class="uc-request-notes">
+                    <span class="uc-field-label">Anything else they told us</span>
+                    <p><?php echo esc_html( $notes ); ?></p>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
     private function render_refresh_panel( $user, $event_id, $prov ) {
         $key    = 'sfaf_refresh_result_' . $user->ID . '_' . (int) $event_id;
         $result = get_transient( $key );

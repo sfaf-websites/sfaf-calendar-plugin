@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-19, at 3.42.1.
+**Last updated:** 2026-08-19, at 3.43.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.42.1**, built as `sfaf-calendar-3.42.1.zip` in the project
+The plugin is at **3.43.0**, built as `sfaf-calendar-3.43.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.42.1, the deployment is stale or partial, and that
+screen: if it does not say 3.43.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -104,6 +104,18 @@ events that were not saved a second time.
   organizer card no longer offers "Not listed? Add one". The cancel card is
   below the form now rather than in the side column, and its state line and its
   legend changed size: that is the type scale being applied, not a mistake.
+- **THE REQUEST FORM NEEDS ONE END-TO-END PASS, AND ITS ADDRESS NEEDS SHARING.**
+  It is at `/?uc_event_request=1`, which nothing links to on purpose: send that
+  address to staff yourself, or have it put on the intranet. The pass: enter
+  your own sfaf.org address, wait for the link, fill the form in, submit. Check
+  that the request appears in Pending marked **Staff request** with your name on
+  it, that opening it shows the read-only panel with your notes, that you got a
+  copy by email, and that Mark and Eric each got one. Then try the same with a
+  non-sfaf.org address and confirm it is refused. **Use a test event**, and
+  reject it afterwards.
+- **Nothing decides who counts as an approver except the Admin role.** If
+  somebody new should be told about requests, give them Admin on the Users
+  screen; there is no separate list to maintain, and there deliberately is not.
 - **CONFIRM THE CALENDAR FOLDER IS REAL ON DISK. The picker in 3.42.1 assumes
   it, and the screen will tell you if it is wrong.** Open any event and press
   Choose Image. If it shows the calendar pictures, the assumption holds and

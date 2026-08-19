@@ -897,6 +897,74 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 }
 
 /* ---------------------------------------------------------------------------
+   THE PUBLIC REQUEST FORM (3.43.0)
+
+   Its own page, its own document, and no navigation of any kind: somebody
+   arriving here has no calendar account and nothing else on this site to go to.
+   The width is a reading width rather than the portal's, because there is no
+   sidebar taking the left third and a form at full window width is a form
+   nobody finishes.
+
+   IT REUSES portal.css RATHER THAN CARRYING ITS OWN. One stylesheet means the
+   fields, the buttons and the type here are the same objects as everywhere
+   else, so the ladder and the palette apply without a second copy to keep in
+   step. What is added below is only the page frame and the picture grid.
+   --------------------------------------------------------------------------- */
+.uc-request-page { background: var(--p-bg, #f2f3f4); }
+.uc-request-wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 64px; }
+.uc-request-card { padding: 28px; border: 1px solid var(--p-border); border-radius: 14px;
+    background: #fff; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
+.uc-request-card h1 { margin: 0 0 10px; font-size: 24px; font-weight: 800; }
+.uc-request-card > .uc-hint { margin-bottom: 22px; }
+.uc-request-card .uc-field { margin-bottom: 18px; }
+.uc-request-card fieldset.uc-field { border: 0; padding: 0; margin-inline: 0; }
+.uc-request-card legend.uc-field-label { padding: 0; }
+
+/* The honeypot. Off-screen rather than display:none, because some bots skip
+   what is not rendered, and hidden from assistive technology as well so it is
+   never read out to somebody filling this in. */
+.uc-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---------------------------------------------------------------------------
+   PICKING A PICTURE WITH NO MEDIA LIBRARY
+
+   wp.media needs an account, so this is radio buttons over the same calendar
+   folder the editor's picker queries. The control is the image: the radio
+   itself is hidden and the chosen one takes a ring, which is the same way a
+   category chip says it is selected.
+   --------------------------------------------------------------------------- */
+.uc-request-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px; margin: 12px 0; }
+.uc-request-image { position: relative; display: block; cursor: pointer; border-radius: 10px;
+    overflow: hidden; border: 2px solid transparent; background: var(--p-surface-2, #f6f7f8); }
+.uc-request-image img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.uc-request-image input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.uc-request-image:has(input:checked) { border-color: var(--p-text); }
+.uc-request-image:has(input:focus-visible) { outline: 2px solid var(--p-text); outline-offset: 2px; }
+.uc-request-image-none { display: flex; align-items: center; justify-content: center;
+    min-height: 84px; border: 2px dashed var(--p-border); font-size: 13px; font-weight: 600; }
+.uc-request-image-none:has(input:checked) { border-style: solid; border-color: var(--p-text); }
+
+/* ---------------------------------------------------------------------------
+   A REQUEST IN THE QUEUE, AND ON THE EVENT IT BECAME
+
+   Pending has meant "an import that needs an image and a description". A staff
+   request arrives filled in and needs reading rather than completing, so the
+   row says which kind it is. A badge and a name, not a second table: two
+   queues is one queue somebody stops checking.
+   --------------------------------------------------------------------------- */
+/* THE BADGE IS THE WHOLE MARKER, and there is no coloured edge on the row.
+   One was written and the decoration audit refused it, correctly: the row
+   already says "Staff request" in words, so an edge in the same colour repeats
+   it and the colour carries nothing of its own. See DESIGN.md. */
+.uc-badge-request { background: #e3f7f9; color: #0C666F; }
+.uc-request-panel .uc-request-who { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
+.uc-request-panel .uc-request-who .uc-muted { margin-left: 6px; }
+.uc-request-notes { margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+    background: var(--p-surface-2, #f6f7f8); }
+.uc-request-notes p { margin: 4px 0 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+
+/* ---------------------------------------------------------------------------
    CANCELLING IS SET APART, AND CLOSED (3.42.1)
 
    It read as the next section of the form: a bento card in the same rhythm as

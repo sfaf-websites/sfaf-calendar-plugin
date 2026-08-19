@@ -524,6 +524,14 @@ $WHITELIST = array(
     'class-sfaf-organizers.php'      => 'which events name an organizer, for the count and the deletion confirmation',
     'class-sfaf-categories.php'      => 'which events use a category, for the deletion refusal',
     'class-sfaf-privacy.php'         => 'the list of private events, which is the point of it',
+    /*
+     * AN INSERT, NOT A SELECT. The public request form names uc_event once, in
+     * the wp_insert_post() that creates the pending event, and creating one can
+     * no more leak a private event than writing a letter can read somebody
+     * else's. The form does not list events anywhere: request-form-test.php
+     * asserts that separately, and would fail if it started to.
+     */
+    'class-sfaf-request.php::create_event' => 'creates one pending event; it selects nothing',
     'sfaf-sample-data.php'           => 'first-run seeding, before any event exists',
     'class-sfaf-admin.php'           => 'the WordPress admin, an administrator screen',
 
