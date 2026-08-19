@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.44.1
+Stable tag: 3.45.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -40,7 +40,7 @@ Events display on this site through the [sfaf_calendar] shortcode and a styled s
 * `[sfaf_calendar]` - Full calendar with filters
 * `[sfaf_calendar category="support-groups"]` - Filtered by category
 * `[sfaf_calendar layout="compact" show_filters="no"]` - Compact list, no filter bar
-* `[sfaf_calendar view="combined"]` - Month grid and the upcoming dates sidebar side by side, stacking below 888px
+* `[sfaf_calendar view="combined"]` - Month grid and the upcoming dates sidebar side by side, stacking below 864px
 * `[sfaf_calendar source_links="yes"]` - Imported events open at their source listing
 * `[upcoming_events count="5" category="fundraising"]` - Compact upcoming events widget
 
@@ -188,7 +188,7 @@ blocks are most often in.
 * Sidebar mode: **200px**
 * List mode: **260px**
 * Month grid: **260px**
-* Combined mode: **260px**, and it goes side by side at **888px**
+* Combined mode: **260px**, and it goes side by side at **864px**
 
 The month grid and combined views cap at **1200px** rather than 900px, because
 a grid is seven columns and every pixel of column width is room for the title
@@ -197,13 +197,16 @@ leaves 109.1px of title once the 32px thumbnail and its 8px gap are taken.
 Below 930px of container width the thumbnail is dropped and the entry is a
 title and a time, which is what it was before 3.31.0.
 
-The combined mode has no minimum of its own because below 888px it stops being
+The combined mode has no minimum of its own because below 864px it stops being
 a two-column layout: the sidebar wraps under the grid and each takes the full
 width, at which point it is the month grid and the sidebar, whose 260px and
-200px apply unchanged. 888px is where the changeover happens, not a minimum.
+200px apply unchanged. 864px is where the changeover happens, not a minimum.
 
-That number is the two flex bases plus the gap, 576 + 288 + 24, because flex
-line breaking uses each item's flex-basis rather than its shrunk width. It is
+That number is the two flex bases, 576 + 288, because flex line breaking uses
+each item's flex-basis rather than its shrunk width. There is no gap in the sum
+any more: since 3.45.0 the two halves are one container with a divider between
+them rather than two cards 24px apart, so the gap is zero and the changeover
+moved from 888px to 864px with neither basis touched. It is
 pinned in two places rather than trusted: `.claude/embed-modes-test.php` reads
 the three values back out of the stylesheet and fails if they no longer add up
 to the number published here, and the width probe renders the mode either side
@@ -527,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.45.0 =
+
+**The combined view is one calendar rather than two cards, and the public calendar no longer goes backwards.**
+
+**ONE UNIT.** The month grid and the sidebar were two bordered cards 24px apart, which reads as two things placed beside each other. They are one container now: one border around both, a divider between them rather than an edge each, and the month name spanning the top so it plainly governs both halves. The gap is what made them two, so it is zero and the divider does the separating. That moves the point where they stop fitting side by side from 888px to 864px, which is the two flex bases with nothing between them. Both bases are untouched, and the number is recomputed from the stylesheet by the build rather than published from memory.
+
+**THE SIDEBAR SHOWS THE MONTH THE GRID SHOWS.** It listed whatever was coming up regardless, so navigating to October moved one half and left the other on August. Now the two agree by construction: the block hands the same month to both, and navigating moves both together in one request. Clicking a date in the grid still does nothing to the sidebar, exactly as before.
+
+The sidebar display mode on its own is unchanged and still lists what is coming up across months. Only the combined mode binds to a month.
+
+**MONTH TABS UNDER THE LIST**, with a count in each, because that is where somebody runs out of this month and the count answers "is there anything next month" before a click is spent finding out there is not. **The next month always shows. The previous one appears only once somebody has moved forward**, since the current month is the floor, so on the current month there is one tab and a month or more forward there are two and somebody can walk in either direction. The counts come through the same query the list uses, so a tab cannot promise events the list would not show.
+
+**THE MONTH HEADING IS CENTRED** with the navigation either side, rather than pushed left with a date range and a count crowded around it. **The event count is gone from the month view**: the grid is already showing what is on, and the number was competing with the month name for the same glance. The table caption still carries it for anybody arriving by screen reader, who has no grid to look at, and the list view's own count is untouched.
+
+**THE CURRENT MONTH IS THE FLOOR, IN EVERY DISPLAY MODE, AND IT IS ENFORCED SERVER SIDE.** A public calendar has no reason to browse backwards. **What happened before:** the month rides a parameter on the REST route and on the ajax loader, so anything could ask for `month=2019-03` and get a payload built for March 2019, with a working grid and a previous-month control to keep going. **What happens now:** any month before the current one comes back as the current one, and the response names the month it actually built, so a caller that asked for something old gets a calendar rather than an error. The clamp is in `normalize_month()`, which is the one place all four callers pass through, rather than on the route, so the ajax loader and the shortcode are covered by the same line.
+
+**Two things it deliberately does not touch.** A past event reached by DIRECT LINK still resolves: that is a URL rather than navigation, people arrive there from bookmarks, search results and reminder emails they kept, and the event page never calls this. And the caladmin Events list and its Archived view are staff screens that need the past; nothing in the portal calls this either.
+
+**THE SIDEBAR ROW GAINS THE VENUE, on its own line.** Not appended to the date and time, which is already two elements held apart so a clock cannot be split from its meridiem; a third clause there would break wherever the column ran out. It is the short form, so "Strut" rather than the full postal address, and it is left out entirely when there is nothing to say rather than leaving a blank line.
+
+**Checked by rendering it, which is the point.** This mode has shipped three faults in three releases and the suite passed every time, because each test asserted something ABOUT the markup rather than the markup. The new check runs the real renderers and reads what came back: both halves render their events, the sidebar lists the displayed month and only that month, the head appears once, the floor offers no way back, the tabs count correctly and the venue is its own element. Its harness has a query that honours the date clauses, which is what makes any of that testable; a self-test proves the harness filters, because a stub that returns the same rows whatever it is asked would pass every assertion above while proving nothing.
+
+That check found a real fault in this release before it shipped: binding the list to a month set only an upper bound, so October's sidebar opened with the last days of August in it and the tab under it counted them. Both ends are set now.
 
 = 3.44.1 =
 
@@ -962,7 +989,7 @@ VERIFIED: 46 PHP files parse under PHP 8.3; the callable audit resolves 112 plug
 
 **The changeover moves from 920px to 888px**, and only because the column did. It is still the two flex bases plus the gap: 576 for the grid, now 288 for the sidebar rather than 320 for the list, plus 24. Both bases are breakpoints plus headroom on the same principle, that going side by side must never be worse than stacking: 576 clears the 560px where the grid collapses to dots, and 288 clears the 272px where the sidebar row stops putting its thumbnail beside the text. The panel is capped at 380px, where the sidebar caps itself, so surplus width goes to the grid instead of into a gap. At the 1200px cap: sidebar 380px, grid 796px.
 
-**On sfaf.org nothing about the stacking changes.** That template is locked at about 770px, which is below 888 as it was below 920, so the mode stacks there and always will: the month grid above, the sidebar card beneath it at its own 380px width. The two-column layout needs 888px and is for wider hosts.
+**On sfaf.org nothing about the stacking changes.** That template is locked at about 770px, which is below 864 as it was below 920, so the mode stacks there and always will: the month grid above, the sidebar card beneath it at its own 380px width. The two-column layout needs 864px and is for wider hosts.
 
 **The parity test now compares the right panel against the sidebar mode.** `.claude/combined-panel-parity.php` renders one sidebar through `render_sidebar()` and puts that same string in a combined block and standalone, resizing the standalone host to the width the panel actually measured, at 770px stacked and 1000px side by side. It compares all 105 elements per panel for identity, computed display, rendered box **and typography**: nesting `.uc-sidebar` inside `.uc-calendar` exposes it to every `.uc-calendar`-scoped rule in the stylesheet, and a rule that repaints a heading changes nothing about its size. Result: no difference of any kind at either width. Planting a colour that only differs because of the nesting fails it, which is how that check was verified.
 

@@ -80,7 +80,7 @@ cannot be widened. It is not a setting on our side.
 Anything whose two-column layout needs more than 770px will stack on sfaf.org
 forever. That is a fact to design around, not a bug to fix:
 
-- The combined mode goes side by side at **888px**, so on sfaf.org it is always
+- The combined mode goes side by side at **864px**, so on sfaf.org it is always
   the month grid above the sidebar card.
 - The month grid drops its cell entries at 560px of its own column. Side by side
   at 770px would hand it 413px, so side by side would be *worse* than stacking.
@@ -178,6 +178,53 @@ notes. **Two queues is one queue somebody stops checking.**
 **Nothing is sent after the confirmation.** No reminder, no approval notice.
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
+
+### The current month is the floor, and it is clamped where the value is read
+
+The public calendar never shows a month earlier than the current one, in any
+display mode. `SFAF_Shortcodes::normalize_month()` clamps it, and that is the
+one place the REST route, the ajax month loader, `month_grid_days()` and
+`render_calendar_block()` all pass through.
+
+> **Clamp where the value is normalized, not on the route.** The month rides a
+> parameter, so before 3.45.0 anything could ask the route for `2019-03` and get
+> a payload built for it, with a working grid and a previous-month control to
+> keep going. Clamping on the route would have left the ajax loader open.
+
+**Clamped, never refused.** An out-of-range month comes back as the current one
+and the response names the month it built. A 400 would be correct and would
+break any bookmark of a month that has since passed.
+
+**Two things it must never reach**, and neither calls it: the single event page,
+because a past event reached by direct link is a URL rather than navigation and
+people arrive there from bookmarks and old reminder emails; and caladmin's
+Events list and Archived view, which are staff screens that need the past.
+
+### The combined view is one calendar
+
+The month grid and the sidebar sit in one container: one border, a divider
+between them, and the month name spanning the top. **The sidebar lists the month
+the grid is showing**, which is what makes them one thing rather than two views
+side by side, and navigating moves both in one request.
+
+- The month is passed to `render_sidebar()` by the block, which is the same
+  value it passed `render_month_grid()`, so they cannot disagree by
+  construction.
+- Binding to a month sets **both** ends of the window. An upper bound alone gave
+  October's list the last days of August, which is exactly the disagreement the
+  change was meant to remove.
+- The sidebar DISPLAY MODE is unbound and still spans months. Only the combined
+  mode binds.
+- The changeover is **864px**, the two flex bases with no gap between them. The
+  gap is what made them read as two cards, so it is zero and the divider
+  separates them.
+
+> **This mode has shipped three faults in three releases and the suite passed
+> every time**, because each test asserted something about the markup rather
+> than the markup. `.claude/combined-outcome-test.php` renders the real
+> renderers and reads what came back. Its `WP_Query` honours the date clauses,
+> and its self-test proves that: a harness that returns the same rows whatever
+> it is asked would pass every assertion in the file while proving nothing.
 
 ### caladmin asks for its own assets, and there are two of them
 

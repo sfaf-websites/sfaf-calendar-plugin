@@ -179,9 +179,18 @@ check(
     'the combined mode does not force the view toggle off, so a hand-written shortcode could render one'
 );
 
-// The grid is emitted before the list, in the DOM, for the combined mode only.
+/*
+ * The grid is emitted before the sidebar, in the DOM, for the combined mode.
+ *
+ * MATCHED AS AN ORDER RATHER THAN AS A LINE. This was a grep for the exact
+ * string `? $panel_grid . $panel_side`, and 3.45.0 put the month head in front
+ * of them on the same expression, which is the same order and a different line.
+ * A test that fails when correct code is rearranged teaches people to edit the
+ * test. What matters is that the grid comes first; the real check that it does
+ * is combined-outcome-test.php, which renders it and reads the markup.
+ */
 check(
-    false !== strpos( $block, '? $panel_grid . $panel_side' ),
+    (bool) preg_match( '/\?\s*.*\$panel_grid\s*\.\s*\$panel_side/', $block ),
     'the combined mode does not put the grid before the sidebar in the DOM'
 );
 check(
@@ -213,13 +222,15 @@ check(
  * the file rather than trusted, because the readme publishes it and a basis
  * nudged later would make that number a lie.
  */
-preg_match( '/\.uc-view-panels-combined\s*\{[^}]*gap:\s*(\d+)px/', $css, $g );
+preg_match( '/\.uc-view-panels-combined\s*\{[^}]*gap:\s*(\d+)(?:px)?\s*;/', $css, $g );
 preg_match( '/uc-panel-calendar\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c1 );
 preg_match( '/uc-panel-sidebar\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c2 );
 
 $stack = ( isset( $g[1], $c1[1], $c2[1] ) ) ? ( (int) $c1[1] + (int) $c2[1] + (int) $g[1] ) : 0;
+/* 864 since 3.45.0: the gap between the halves went to zero when they became
+ * one container with a divider, so the wrap point is the two bases alone. */
 check( $stack > 0, 'could not read the combined mode bases and gap out of the CSS' );
-check( 888 === $stack, "the combined mode now stacks at {$stack}px and the readme publishes 888px" );
+check( 864 === $stack, "the combined mode now stacks at {$stack}px and the readme publishes 864px" );
 
 /*
  * SIDE BY SIDE MUST NEVER BE WORSE THAN STACKING, which is the fault the 400px

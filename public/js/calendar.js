@@ -204,7 +204,11 @@
             showView($block, $(this).attr('data-view') || 'list', true);
         });
 
-        $(document).on('click', '.uc-month [data-goto]', function () {
+        /* SCOPED TO THE BLOCK, NOT TO THE GRID (3.45.0). The month head moved
+           out of .uc-month in the combined mode, to span both halves, and the
+           month tabs live under the sidebar. Both carry data-goto and both mean
+           the same thing, so one handler answers for all of them. */
+        $(document).on('click', '.uc-calendar [data-goto]', function () {
             loadMonth($(this).closest('.uc-calendar'), $(this).attr('data-goto'));
         });
 
@@ -310,6 +314,10 @@
     }
 
     function monthParams($block, month) {
+        /* The combined mode redraws both halves, so the request has to say so
+           and has to carry what the sidebar was built with. See
+           ajax_load_month(). */
+        var $panels = $block.find('.uc-view-panels-combined');
         return {
             action: 'uc_load_month',
             nonce: ucData.nonce,
@@ -319,7 +327,10 @@
             groups: activeGroups($block),
             organizer: $block.attr('data-filter-organizer') || '',
             series: $block.attr('data-filter-series') || '',
-            venue: $block.attr('data-filter-venue') || ''
+            venue: $block.attr('data-filter-venue') || '',
+            combined: $panels.length ? '1' : '',
+            side_count: $panels.attr('data-uc-side-count') || '',
+            side_heading: $panels.attr('data-uc-side-heading') || ''
         };
     }
 
@@ -341,10 +352,28 @@
         if (!$panel.length || !month) {
             return;
         }
+        /*
+         * BOTH HALVES MOVE TOGETHER (3.45.0).
+         *
+         * The sidebar shows the month the grid shows, so swapping the grid
+         * alone would leave October beside September's list. Applied in one
+         * place, from one response, so the two cannot get out of step: there is
+         * no path here that updates one and not the other.
+         */
+        function applyMonth($block, data) {
+            $panel.html(data.html);
+            if (typeof data.side === 'string') {
+                $block.find('.uc-panel-sidebar').html(data.side);
+            }
+            if (typeof data.head === 'string') {
+                $block.find('.uc-combined-head').html(data.head);
+            }
+            bindMonthGrid($block);
+        }
+
         var key = monthKey($block, month);
         if (monthCache[key]) {
-            $panel.html(monthCache[key]);
-            bindMonthGrid($block);
+            applyMonth($block, monthCache[key]);
             return;
         }
 
@@ -357,9 +386,8 @@
                     showMonthError($block, month);
                     return;
                 }
-                monthCache[key] = res.data.html;
-                $panel.html(res.data.html);
-                bindMonthGrid($block);
+                monthCache[key] = res.data;
+                applyMonth($block, res.data);
             })
             .fail(function () {
                 showMonthError($block, month);

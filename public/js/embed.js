@@ -852,7 +852,11 @@
             return;
         }
 
-        var navs = grid.querySelectorAll('[data-goto]');
+        /* FROM THE CONTAINER, NOT THE GRID (3.45.0). The month head spans both
+           halves in the combined mode and so sits outside .uc-month, and the
+           month tabs are under the sidebar. Both carry data-goto and both mean
+           "move the whole view", so both are bound here. */
+        var navs = container.querySelectorAll('[data-goto]');
         for (var i = 0; i < navs.length; i++) {
             (function (button) {
                 button.addEventListener('click', function () {

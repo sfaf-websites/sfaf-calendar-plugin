@@ -1475,9 +1475,56 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
  * bites, because side by side the panel is never under its 288px basis; it is
  * declared for symmetry so neither panel looks like the exception.
  * ======================================================================== */
-.uc-calendar .uc-view-panels-combined { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
+/* ---------------------------------------------------------------------------
+   ONE CALENDAR, NOT TWO CARDS WITH A GAP (3.45.0)
+
+   The two halves were separate cards 24px apart, which reads as two things
+   placed beside each other. They are one container now: one border around both,
+   a divider between them rather than an edge each, and the month name spanning
+   the top so it plainly governs both.
+
+   THE GAP IS WHAT MADE THEM TWO, so it is zero and the divider does the
+   separating. That moves the point where they stop fitting side by side from
+   888px to 864px, which is 576 + 288 with no gap between. Recorded because the
+   888 was a measured number with a note of its own, and this is deliberately a
+   different one rather than a number that drifted.
+
+   overflow: hidden on the container is what lets the panels' square corners sit
+   inside a rounded border. It is safe here: nothing in either panel is
+   positioned outside its own box, and the one thing that could be, the
+   add-to-calendar menu, does not appear in either of these panels.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-view-panels-combined {
+    display: flex; flex-wrap: wrap; align-items: stretch; gap: 0;
+    border: 1px solid var(--uc-border, #D1D3D4);
+    border-radius: 14px;
+    background: #fff;
+}
+.uc-calendar .uc-view-panels-combined > .uc-combined-head { flex: 1 1 100%; min-width: 0; border-bottom: 1px solid var(--uc-border, #D1D3D4); }
 .uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 576px; min-width: 0; }
 .uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { flex: 1 1 288px; max-width: 380px; min-width: 0; }
+
+/* The divider. A border on the grid side only, so there is one line between the
+   halves rather than two touching. When they wrap it moves to the bottom of the
+   grid, which is the same line in the stacked shape. */
+.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { border-right: 1px solid var(--uc-border, #D1D3D4); }
+@media (max-width: 863px) {
+    .uc-calendar .uc-view-panels-combined > .uc-panel-calendar {
+        border-right: 0; border-bottom: 1px solid var(--uc-border, #D1D3D4);
+    }
+}
+
+/* Inside one container the halves carry their own padding, because the
+   container cannot: padding on it would sit outside the divider. */
+.uc-calendar .uc-view-panels-combined > .uc-combined-head { padding: 18px 20px 14px; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { padding: 16px 18px 20px; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { padding: 16px 18px 20px; }
+
+/* The grid drops its own outer border inside the shared one: two boxes, one
+   inside the other, both rounded, is the boxes-inside-boxes the design rules
+   forbid. */
+.uc-calendar .uc-view-panels-combined .uc-month-wrap { border: 0; border-radius: 0; }
+.uc-calendar .uc-view-panels-combined .uc-sidebar { border: 0; padding: 0; background: none; }
 
 /* ---------------------------------------------------------------------------
    EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.
@@ -1610,8 +1657,26 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 
 /* ---------- Month header ---------- */
 .uc-month { position: relative; }
-.uc-month-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.uc-month-heading { min-width: 0; }
+/* ---------------------------------------------------------------------------
+   THE MONTH NAME IN THE MIDDLE, CONTROLS EITHER SIDE (3.45.0)
+
+   It used to sit left with a date range and an event count crowded beside it
+   and the navigation pushed to the far right, so the most important word on the
+   calendar was competing with three other things for the same glance.
+
+   The two side cells are given equal flex so the heading is centred against the
+   container rather than against whatever the controls happen to measure. On the
+   floor month the back cell is empty and stays: an empty cell of the same width
+   keeps the name in the same place when somebody navigates, and a heading that
+   jumps sideways as you page through months is worse than a little unused
+   space.
+   ------------------------------------------------------------------------ */
+.uc-month-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.uc-month-heading { min-width: 0; flex: 0 1 auto; text-align: center; }
+.uc-month-nav-side { flex: 1 1 0; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.uc-month-nav-back { justify-content: flex-start; }
+.uc-month-nav-fwd { justify-content: flex-end; }
+.uc-month-nav-side .uc-month-nav { border: 1px solid var(--uc-border); border-radius: 8px; background: #fff; }
 .uc-calendar .uc-month-label { font-size: 20px; font-weight: 800; line-height: 1.15; color: var(--uc-text); }
 .uc-calendar .uc-month-range { margin: 2px 0 0; font-size: 12px; color: var(--uc-secondary); }
 .uc-month-count { position: relative; margin-left: 10px; padding-left: 11px; }
@@ -2221,6 +2286,50 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    left to separate.
    ------------------------------------------------------------------------- */
 .uc-sidebar-when { display: block; font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); line-height: 1.4; }
+
+/* ---------------------------------------------------------------------------
+   THE VENUE, ON ITS OWN LINE (3.45.0)
+
+   NOT APPENDED TO THE DATE AND TIME. That line is already two elements held
+   apart so a clock cannot be split from its meridiem; a third clause on it
+   would break wherever the column ran out, which at the widths this mode runs
+   at is often.
+
+   THE ROW CAN CARRY IT, and this was checked rather than assumed. The body
+   column is 150px at its flex basis and the panel's own basis is 288px, so at
+   the narrowest side-by-side width the body has about 220px. "Strut" and "1035
+   Market St" both fit; the SHORT form is what is rendered, never the full
+   postal address, which is why. Anything longer is clipped with an ellipsis on
+   one line rather than wrapping to three, because a row that grows changes the
+   height of every row beside it.
+   ------------------------------------------------------------------------ */
+.uc-sidebar-where {
+    display: block; font-size: 12.5px; font-weight: 400;
+    color: var(--uc-secondary); line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------------------
+   THE MONTH TABS, UNDER THE LIST (3.45.0)
+
+   Where somebody runs out of this month. The count is the point: it answers
+   "is there anything next month" before a click is spent finding out there is
+   not. The next month is always offered; the previous one only exists once
+   somebody has moved forward, because the current month is the floor.
+   ------------------------------------------------------------------------ */
+.uc-month-tabs { display: flex; gap: 8px; margin: 14px 0 2px; }
+.uc-month-tab {
+    flex: 1 1 0; min-width: 0;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    padding: 9px 12px; cursor: pointer;
+    border: 1px solid var(--uc-border); border-radius: 8px; background: #fff;
+    font: inherit; text-align: left;
+}
+.uc-month-tab:hover { border-color: var(--uc-text); }
+.uc-month-tab:focus-visible { outline: 2px solid var(--uc-text); outline-offset: 2px; }
+.uc-month-tab-name { font-size: 13px; font-weight: 600; color: var(--uc-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uc-month-tab-count { font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); flex: 0 0 auto; }
 .uc-sidebar .uc-when-date, .uc-sidebar .uc-when-time { white-space: nowrap; }
 .uc-sidebar .uc-when-sep { margin: 0 3px; }
 /* Raised for the same reason as .uc-series-list: `.uc-sidebar p` declares

@@ -79,6 +79,22 @@ class SFAF_Shortcodes {
              */
             's'         => isset( $raw['s'] ) ? sanitize_text_field( (string) $raw['s'] ) : '',
             /*
+             * THE MONTH THE LIST IS BOUND TO, or '' for "everything upcoming".
+             *
+             * A FILTER RATHER THAN AN ARGUMENT ON THE RENDERER, because the
+             * combined mode's sidebar has to show the month the grid is showing
+             * and the ajax that redraws it on navigation has to ask for the
+             * same thing. One filter reaches both through build_query_args(),
+             * which is the same reason search lives here.
+             *
+             * It only ever NARROWS. The builder's "today or later" clause is
+             * set first and this adds an upper bound to it, so binding the list
+             * to the current month cannot show anything that has already
+             * happened, and binding it to a past month is impossible because
+             * normalize_month() will not return one.
+             */
+            'month'     => isset( $raw['month'] ) ? $this->normalize_month_or_blank( $raw['month'] ) : '',
+            /*
              * THE GROUPS A VISITOR PICKED, as series slugs.
              *
              * Separate from 'series', which is the block's own scope and takes
@@ -206,6 +222,46 @@ class SFAF_Shortcodes {
         // question about the same query, applied at the same place so the
         // two cannot be excluded from one builder and not the other.
         SFAF_Cancellation::exclude( $args );
+
+        /*
+         * BOUND TO ONE MONTH, when the caller asked for that.
+         *
+         * Appended as a sibling of the "today or later" clause, so the two are
+         * ANDed and the window is "from today, and no later than the end of
+         * this month". On the current month that means the rest of it, which is
+         * what somebody looking at the current month wants: the days that have
+         * gone are not coming back.
+         */
+        if ( '' !== $filters['month'] ) {
+            /*
+             * BOTH ENDS, AND THE FIRST VERSION ONLY SET ONE.
+             *
+             * With an upper bound alone the window was "from today to the end
+             * of October", so October's sidebar opened with the last days of
+             * August in it and the tab under it counted them. The grid beside
+             * it showed October. That is precisely the disagreement between the
+             * two halves this release exists to remove, and it was introduced
+             * by the change meant to remove it.
+             *
+             * The lower bound is the first of the month. It sits alongside the
+             * builder's "today or later" clause rather than replacing it, so
+             * both hold and the effective floor is whichever is later: the
+             * current month shows the rest of itself, and a future month shows
+             * all of itself.
+             */
+            $args['meta_query'][] = array(
+                'key'     => '_uc_event_date',
+                'value'   => $filters['month'] . '-01',
+                'compare' => '>=',
+                'type'    => 'DATE',
+            );
+            $args['meta_query'][] = array(
+                'key'     => '_uc_event_date',
+                'value'   => $this->month_last_day( $filters['month'] ),
+                'compare' => '<=',
+                'type'    => 'DATE',
+            );
+        }
 
         if ( $per_page <= 0 ) {
             $args['posts_per_page'] = -1;
@@ -519,14 +575,118 @@ class SFAF_Shortcodes {
      * @return string
      */
     public function normalize_month( $raw ) {
+        /*
+         * THE CURRENT MONTH IS THE FLOOR, AND IT IS ENFORCED HERE (3.45.0).
+         *
+         * A public calendar has no reason to browse backwards: everything
+         * before today has happened. The controls have never offered it past
+         * the current month, but the month rides a parameter on the REST route
+         * and on the ajax loader, so ANYTHING could ask for 2019-03 and get a
+         * payload built for it. This is the one place all four callers pass
+         * through, which is why the clamp is here rather than on the route.
+         *
+         * CLAMPED, NOT REFUSED. An out-of-range month comes back as the current
+         * one, and the response says which month it actually built, so a caller
+         * that asked for something old gets a calendar rather than an error. A
+         * 400 would be correct and would break any bookmark of a month that has
+         * since passed, which is a real thing on a page somebody left open.
+         *
+         * WHAT THIS MUST NOT REACH, and does not: the single event page, which
+         * is a URL rather than navigation. People arrive at a past event from
+         * bookmarks, from search results and from reminder emails they kept,
+         * and that has to resolve. It never calls this. Nor does caladmin,
+         * whose Events list and Archived view are staff screens that need the
+         * past; nothing in SFAF_Portal calls this either.
+         *
+         * A Y-m string compares correctly with a plain string comparison, which
+         * is the one thing this format is good for.
+         */
+        $floor = current_time( 'Y-m' );
+
         $raw = trim( (string) $raw );
         if ( preg_match( '/^(\d{4})-(\d{2})$/', $raw, $m ) ) {
             $month = (int) $m[2];
             if ( $month >= 1 && $month <= 12 ) {
-                return $raw;
+                return ( $raw < $floor ) ? $floor : $raw;
             }
         }
-        return current_time( 'Y-m' );
+        return $floor;
+    }
+
+    /**
+     * A month, clamped, or '' when nothing usable was asked for.
+     *
+     * normalize_month() answers "which month am I drawing", so it always names
+     * one. This answers "is the list bound to a month", where the honest answer
+     * is often no, and an empty string must not become the current month or
+     * every unbound list would silently gain an upper bound.
+     *
+     * @param mixed $raw
+     * @return string Y-m or ''.
+     */
+    /**
+     * The last calendar day of a month, as Y-m-d.
+     *
+     * Built in UTC for the reason month_grid_days() sets out: these are
+     * calendar days rather than moments, and stepping through a zone that
+     * observes DST can land on the same date twice.
+     *
+     * @param string $month Y-m.
+     * @return string
+     */
+    public function month_last_day( $month ) {
+        $month = $this->normalize_month( $month );
+        $first = new DateTimeImmutable( $month . '-01', new DateTimeZone( 'UTC' ) );
+        return $first->modify( 'last day of this month' )->format( 'Y-m-d' );
+    }
+
+    /**
+     * The month before or after this one, clamped by the floor.
+     *
+     * @param string $month Y-m.
+     * @param int    $step  -1 or 1.
+     * @return string Y-m, or '' when the step would go below the floor.
+     */
+    public function month_step( $month, $step ) {
+        $month = $this->normalize_month( $month );
+        $first = new DateTimeImmutable( $month . '-01', new DateTimeZone( 'UTC' ) );
+        $moved = $first->modify( ( $step > 0 ? '+' : '-' ) . abs( (int) $step ) . ' month' )->format( 'Y-m' );
+        return ( $moved < current_time( 'Y-m' ) ) ? '' : $moved;
+    }
+
+    /**
+     * How many events fall in a month, for the tabs under the sidebar.
+     *
+     * Counted through build_query_args() rather than a query of its own, so a
+     * tab cannot promise events the list would not show: the same privacy
+     * exclusion, the same cancelled-and-hidden exclusion and the same filters.
+     *
+     * @param string $month Y-m.
+     * @param array  $filters
+     * @return int
+     */
+    public function month_event_count( $month, $filters ) {
+        $filters['month'] = $month;
+        $counted = new WP_Query( array_merge(
+            $this->build_query_args( -1, 1, $filters ),
+            array( 'fields' => 'ids', 'no_found_rows' => false, 'posts_per_page' => 200 )
+        ) );
+        return (int) $counted->post_count;
+    }
+
+    private function normalize_month_or_blank( $raw ) {
+        $raw = trim( (string) $raw );
+        return ( '' === $raw ) ? '' : $this->normalize_month( $raw );
+    }
+
+    /**
+     * Is this month the floor, so there is nothing before it to offer?
+     *
+     * @param string $month Y-m, already normalized.
+     * @return bool
+     */
+    public function is_floor_month( $month ) {
+        return ( (string) $month === current_time( 'Y-m' ) );
     }
 
     /**
@@ -763,6 +923,74 @@ class SFAF_Shortcodes {
         );
     }
 
+
+    /**
+     * The month name, with the navigation either side.
+     *
+     * ITS OWN METHOD SO THE COMBINED MODE CAN PUT IT ACROSS BOTH HALVES.
+     * In every other mode render_month_grid() emits it in place, exactly
+     * where it always was. One renderer either way, so the two cannot
+     * drift into showing different controls for the same month.
+     *
+     * @param string $month Y-m.
+     * @return string
+     */
+    public function render_month_head( $month ) {
+        $month  = $this->normalize_month( $month );
+        $grid   = $this->month_grid_days( $month );
+        $prefix = substr( $grid['first'], 0, 7 );
+        $range  = sfaf_ap_date_range( $grid['start'], $grid['end'] );
+
+        ob_start();
+        ?>
+            <?php
+            /*
+             * THE MONTH NAME IS THE HEADING OF THE WHOLE CALENDAR (3.45.0).
+             *
+             * Centred, with a control either side, rather than pushed left with
+             * a date range and a count crowded around it. In the combined mode
+             * this row spans both halves, so it reads as governing the grid AND
+             * the list beneath it rather than labelling the grid alone.
+             *
+             * THE EVENT COUNT IS GONE. "29 events coming up" beside a grid that
+             * is already showing them is a number nobody needs and it competed
+             * with the month name for the same glance. The caption below still
+             * carries it, because a screen reader arriving at the table has no
+             * grid to look at. The list view's own count is untouched.
+             *
+             * NO PREVIOUS BUTTON ON THE FLOOR. The current month is as far back
+             * as a public calendar goes, so on it there is nothing to point at
+             * and the control is absent rather than disabled: a dead button is
+             * a promise the calendar cannot keep.
+             */
+            $at_floor = $this->is_floor_month( $prefix );
+            ?>
+            <div class="uc-month-head<?php echo $at_floor ? ' is-floor' : ''; ?>">
+                <div class="uc-month-nav-side uc-month-nav-back">
+                    <?php if ( ! $at_floor ) : ?>
+                        <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
+                                aria-label="Previous month"><span aria-hidden="true">&lsaquo;</span></button>
+                    <?php endif; ?>
+                </div>
+
+                <div class="uc-month-heading">
+                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
+                    <p class="uc-month-range"><?php echo esc_html( $range ); ?></p>
+                </div>
+
+                <div class="uc-month-nav-side uc-month-nav-fwd">
+                    <?php if ( ! $at_floor ) : ?>
+                        <button type="button" class="uc-month-nav uc-month-today" data-goto="<?php echo esc_attr( current_time( 'Y-m' ) ); ?>">Today</button>
+                    <?php endif; ?>
+                    <button type="button" class="uc-month-nav uc-month-next" data-goto="<?php echo esc_attr( $grid['next'] ); ?>"
+                            aria-label="Next month"><span aria-hidden="true">&rsaquo;</span></button>
+                </div>
+            </div>
+
+        <?php
+        return ob_get_clean();
+    }
+
     /**
      * The month grid itself.
      *
@@ -780,7 +1008,7 @@ class SFAF_Shortcodes {
      * @param array  $filters
      * @return string
      */
-    public function render_month_grid( $month, $filters ) {
+    public function render_month_grid( $month, $filters, $with_head = true ) {
         $data  = $this->month_grid_data( $month, $filters );
         $grid  = $data['grid'];
         $today = current_time( 'Y-m-d' );
@@ -799,35 +1027,16 @@ class SFAF_Shortcodes {
              data-today="<?php echo esc_attr( $today ); ?>">
 
             <?php
-            // Compact header: what month this is on the left, controls on the
-            // right. The date range underneath is the grid's real span, which
-            // is what explains the greyed cells at each end.
-            $range = sfaf_ap_date_range( $grid['start'], $grid['end'] );
+            /*
+             * THE HEAD IS RENDERED SOMEWHERE ELSE IN THE COMBINED MODE, which
+             * is why it is a method and takes a flag. There it spans both
+             * halves, so it reads as governing the calendar rather than the
+             * grid alone. See render_month_head().
+             */
+            if ( $with_head ) {
+                echo $this->render_month_head( $month );
+            }
             ?>
-            <div class="uc-month-head">
-                <div class="uc-month-heading">
-                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
-                    <p class="uc-month-range">
-                        <?php echo esc_html( $range ); ?>
-                        <span class="uc-month-count"><?php
-                            echo esc_html( sprintf(
-                                _n( '%d event', '%d events', (int) $data['in_month'] ),
-                                (int) $data['in_month']
-                            ) );
-                        ?></span>
-                    </p>
-                </div>
-
-                <?php // Previous / Today / Next as one segmented control. ?>
-                <div class="uc-month-nav-group" role="group" aria-label="Change month">
-                    <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
-                            aria-label="Previous month"><span aria-hidden="true">&lsaquo;</span></button>
-                    <button type="button" class="uc-month-nav uc-month-today" data-goto="<?php echo esc_attr( current_time( 'Y-m' ) ); ?>">Today</button>
-                    <button type="button" class="uc-month-nav uc-month-next" data-goto="<?php echo esc_attr( $grid['next'] ); ?>"
-                            aria-label="Next month"><span aria-hidden="true">&rsaquo;</span></button>
-                </div>
-            </div>
-
             <?php // The wrapper carries the outer border and radius: a
                   // border-collapse table cannot round its own corners. ?>
             <div class="uc-month-wrap">
@@ -1077,8 +1286,22 @@ class SFAF_Shortcodes {
         return ( $count > 0 ) ? $count : 10;
     }
 
-    public function render_sidebar( $filters, $count, $heading = null ) {
-        $count  = max( 1, min( 50, (int) $count ) );
+    public function render_sidebar( $filters, $count, $heading = null, $month = '' ) {
+        $count = max( 1, min( 50, (int) $count ) );
+
+        /*
+         * BOUND TO A MONTH, OR NOT, AND THE CALLER DECIDES (3.45.0).
+         *
+         * The sidebar display mode is still "what is coming up" and passes no
+         * month. The combined mode passes the month its grid is showing, which
+         * is what makes the two halves one calendar rather than two views that
+         * happen to sit beside each other: navigating to October moves both.
+         */
+        $month = ( '' === $month ) ? '' : $this->normalize_month( $month );
+        if ( '' !== $month ) {
+            $filters['month'] = $month;
+        }
+
         $events = $this->render_events( $count, 1, $filters, 'sidebar' );
         $head   = self::sidebar_heading( $heading );
 
@@ -1112,10 +1335,68 @@ class SFAF_Shortcodes {
                     <?php // REQUIRED EMPTY STATE. A programme on hiatus must not
                           // leave a blank box on a live page: say so, and still
                           // offer the way through to everything else. ?>
-                    <p class="uc-sidebar-empty">No upcoming dates scheduled just now.</p>
+                    <p class="uc-sidebar-empty"><?php
+                        echo esc_html( '' !== $month ? 'Nothing scheduled this month.' : 'No upcoming dates scheduled just now.' );
+                    ?></p>
                 <?php endif; ?>
             </div>
+            <?php if ( '' !== $month ) { echo $this->render_month_tabs( $month, $filters ); } ?>
             <a class="uc-sidebar-all" href="<?php echo esc_url( $all_url ); ?>">See all events &rarr;</a>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * The neighbouring months, with what is on in each.
+     *
+     * UNDER THE LIST, BECAUSE THAT IS WHERE SOMEBODY RUNS OUT. They have read
+     * this month; the question they have then is what is next, and the count
+     * answers it before they spend a click finding out it is empty.
+     *
+     * THE NEXT MONTH ALWAYS SHOWS. The previous one appears only once somebody
+     * has moved forward, because the current month is the floor and a control
+     * pointing at nothing is worse than no control. So on the current month
+     * there is one tab, and a month or more forward there are two and somebody
+     * can walk in either direction.
+     *
+     * These are buttons rather than links, and carry the same data-goto the
+     * month navigation uses, so one handler moves the whole view and there is
+     * no second definition of what changing month means.
+     *
+     * @param string $month Y-m, already normalized.
+     * @param array  $filters
+     * @return string
+     */
+    private function render_month_tabs( $month, $filters ) {
+        $prev = $this->month_step( $month, -1 );
+        $next = $this->month_step( $month, 1 );
+
+        $tabs = array();
+        if ( '' !== $prev ) {
+            $tabs[] = array( 'month' => $prev, 'dir' => 'prev' );
+        }
+        if ( '' !== $next ) {
+            $tabs[] = array( 'month' => $next, 'dir' => 'next' );
+        }
+        if ( empty( $tabs ) ) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div class="uc-month-tabs" role="group" aria-label="Other months">
+            <?php foreach ( $tabs as $tab ) :
+                $count = $this->month_event_count( $tab['month'], $filters );
+                $label = sfaf_ap_date( $tab['month'] . '-01', 'month_year' );
+                ?>
+                <button type="button"
+                        class="uc-month-tab uc-month-tab-<?php echo esc_attr( $tab['dir'] ); ?>"
+                        data-goto="<?php echo esc_attr( $tab['month'] ); ?>">
+                    <span class="uc-month-tab-name"><?php echo esc_html( $label ); ?></span>
+                    <span class="uc-month-tab-count"><?php echo (int) $count; ?></span>
+                </button>
+            <?php endforeach; ?>
         </div>
         <?php
         return ob_get_clean();
@@ -1187,6 +1468,26 @@ class SFAF_Shortcodes {
                     </span>
                 <?php else : ?>
                     <span class="uc-sidebar-when"><span class="uc-when-date">Date to be confirmed</span></span>
+                <?php endif; ?>
+                <?php
+                /*
+                 * THE VENUE ON ITS OWN LINE (3.45.0).
+                 *
+                 * NOT APPENDED TO THE DATE AND TIME. That line is already two
+                 * elements held apart so a clock cannot be split from its
+                 * meridiem, and a third clause on it would break wherever the
+                 * column ran out. The short form is used, so this is "Strut"
+                 * rather than the full postal address: on a row 44px tall
+                 * beside a thumbnail, the street and the zip are the longest
+                 * thing present and carry the least.
+                 *
+                 * It is left out entirely when there is nothing to say, so an
+                 * online event does not get a blank line.
+                 */
+                $where = sfaf_event_location_short( $post_id );
+                ?>
+                <?php if ( '' !== $where ) : ?>
+                    <span class="uc-sidebar-where"><?php echo esc_html( $where ); ?></span>
                 <?php endif; ?>
             </span>
         </a>
@@ -2070,7 +2371,7 @@ class SFAF_Shortcodes {
             ob_start();
             ?>
             <div class="uc-view-panel uc-panel-calendar"<?php echo $panel_hidden( 'calendar' ); ?>>
-                <?php if ( $want_grid ) { echo $this->render_month_grid( $month, $filters ); } ?>
+                <?php if ( $want_grid ) { echo $this->render_month_grid( $month, $filters, ! $combined ); } ?>
             </div>
             <?php
             $panel_grid = ob_get_clean();
@@ -2085,20 +2386,62 @@ class SFAF_Shortcodes {
              */
             $panel_side = '';
             if ( $combined ) {
+                /*
+                 * THE SAME MONTH THE GRID IS SHOWING (3.45.0).
+                 *
+                 * Passed rather than left to default, because that is the whole
+                 * of what makes these one calendar: the grid and the list agree
+                 * about which month they are describing, and moving one moves
+                 * the other. $month is the value render_month_grid() was handed
+                 * on the line above, so they cannot disagree by construction.
+                 */
                 $panel_side = '<div class="uc-view-panel uc-panel-sidebar">'
                     . $this->render_sidebar(
                         $filters,
                         self::sidebar_count( $args['count'] ),
-                        isset( $args['heading'] ) ? $args['heading'] : null
+                        isset( $args['heading'] ) ? $args['heading'] : null,
+                        $month
                     )
                     . '</div>';
             }
             ?>
 
-            <div class="uc-view-panels<?php echo $combined ? ' uc-view-panels-combined' : ''; ?>">
+            <?php
+            /*
+             * WHAT THE SIDEBAR NEEDS TO BE REBUILT ON NAVIGATION (3.45.0).
+             *
+             * Moving month redraws both halves, and the ajax that does it has
+             * to rebuild the sidebar with the SAME count and heading it was
+             * first rendered with, or October's list would silently be a
+             * different length from September's. Stamped here rather than
+             * guessed there.
+             */
+            $side_count = $combined ? self::sidebar_count( $args['count'] ) : 0;
+            $side_head  = ( $combined && isset( $args['heading'] ) ) ? (string) $args['heading'] : '';
+            ?>
+            <div class="uc-view-panels<?php echo $combined ? ' uc-view-panels-combined' : ''; ?>"
+                 <?php if ( $combined ) : ?>
+                 data-uc-combined="1"
+                 data-uc-side-count="<?php echo (int) $side_count; ?>"
+                 data-uc-side-heading="<?php echo esc_attr( $side_head ); ?>"
+                 <?php endif; ?>>
                 <?php
+                /*
+                 * ONE CALENDAR, NOT TWO CARDS SIDE BY SIDE (3.45.0).
+                 *
+                 * The month name spans the top of the container, so it governs
+                 * both halves, and the two panels sit inside one border with a
+                 * divider between them rather than carrying an edge each. The
+                 * grid is told not to draw its own head, because there is one
+                 * head and it is up here.
+                 *
+                 * The head is emitted FIRST in the document as well as at the
+                 * top visually, which is the same reason the grid is emitted
+                 * before the sidebar: the order somebody reads it in and the
+                 * order it is in are kept the same thing.
+                 */
                 echo $combined
-                    ? $panel_grid . $panel_side
+                    ? '<div class="uc-combined-head">' . $this->render_month_head( $month ) . '</div>' . $panel_grid . $panel_side
                     : $panel_list . $panel_grid;
                 ?>
             </div>
@@ -2319,22 +2662,46 @@ class SFAF_Shortcodes {
         );
         $filters['groups'] = $this->clamp_groups( $filters, $filters['groups'] );
 
+        /*
+         * THE COMBINED MODE MOVES BOTH HALVES (3.45.0).
+         *
+         * Navigation used to redraw the grid alone, which was right while the
+         * sidebar showed "what is coming up" regardless of month. Now that it
+         * shows the month the grid is showing, redrawing one without the other
+         * would leave October's grid beside September's list, which is exactly
+         * the disagreement this release exists to remove.
+         *
+         * The count and the heading come off the block rather than from
+         * defaults, so a rebuilt sidebar is the same sidebar.
+         */
+        $combined = ! empty( $_POST['combined'] );
+        $side_ct  = isset( $_POST['side_count'] ) ? absint( $_POST['side_count'] ) : 0;
+        $side_hd  = isset( $_POST['side_heading'] ) ? sanitize_text_field( wp_unslash( $_POST['side_heading'] ) ) : '';
+
+        // The cache is per shape as well as per month: a combined payload
+        // carries two more pieces of markup and must not be served to a grid.
         $key    = 'sfaf_month_' . md5( wp_json_encode( array(
-            'month'   => $month,
-            'filters' => $this->normalize_filters( $filters ),
-            'day'     => current_time( 'Y-m-d' ),
-            'version' => (int) get_option( SFAF_Embed::CACHE_VERSION_OPTION, 1 ),
+            'month'    => $month,
+            'filters'  => $this->normalize_filters( $filters ),
+            'day'      => current_time( 'Y-m-d' ),
+            'combined' => $combined ? array( $side_ct, $side_hd ) : false,
+            'version'  => (int) get_option( SFAF_Embed::CACHE_VERSION_OPTION, 1 ),
         ) ) );
         $cached = get_transient( $key );
 
-        if ( is_string( $cached ) && '' !== $cached ) {
-            wp_send_json_success( array( 'html' => $cached, 'month' => $month, 'cached' => true ) );
+        if ( is_array( $cached ) && isset( $cached['html'] ) ) {
+            wp_send_json_success( array_merge( $cached, array( 'month' => $month, 'cached' => true ) ) );
         }
 
-        $html = $this->render_month_grid( $month, $filters );
-        set_transient( $key, $html, 10 * MINUTE_IN_SECONDS );
+        $payload = array( 'html' => $this->render_month_grid( $month, $filters, ! $combined ) );
+        if ( $combined ) {
+            $payload['head'] = $this->render_month_head( $month );
+            $payload['side'] = $this->render_sidebar( $filters, $side_ct, '' !== $side_hd ? $side_hd : null, $month );
+        }
 
-        wp_send_json_success( array( 'html' => $html, 'month' => $month, 'cached' => false ) );
+        set_transient( $key, $payload, 10 * MINUTE_IN_SECONDS );
+
+        wp_send_json_success( array_merge( $payload, array( 'month' => $month, 'cached' => false ) ) );
     }
 
     /**
