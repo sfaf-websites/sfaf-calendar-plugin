@@ -126,7 +126,9 @@ body.uc-portal {
 :where(.uc-portal) a { color: var(--uc-accent-text); text-decoration: none; }
 .uc-portal a:hover { text-decoration: underline; }
 .uc-portal h1 { font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
-.uc-portal h2 { font-size: 17px; font-weight: 700; margin: 0; }
+/* 17px sat between the section step and the subhead, and this is what every
+   h2 in the portal falls back to when it is not a card heading. Subhead. */
+.uc-portal h2 { font-size: 16px; font-weight: 600; margin: 0; }
 
 /* ---------------------------------------------------------------------------
    THE TYPE SCALE. FIVE STEPS, AND EVERY ONE OF THEM IS VISIBLY DIFFERENT.
@@ -679,6 +681,27 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
     background: var(--uc-band);
     border-bottom: 1px solid var(--p-border);
 }
+/* THE SAME RULE FOR THE OTHER KIND OF CARD.
+
+   .uc-card got this because sixteen of thirty-nine cards had a bare heading and
+   no band. .uc-bento-card did not, and has only escaped the same fate because
+   every one of its headings happens to carry .uc-bento-title today. A heading at
+   the top of a card IS that card's heading, and should not depend on somebody
+   remembering a class, which is the argument DESIGN.md already makes. */
+.uc-bento-card > h2:first-child,
+.uc-bento-card > h3:first-child {
+    font-family: var(--uc-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--sfaf-darkgray);
+    margin: -18px -18px 16px;
+    padding: 10px 18px;
+    background: var(--uc-band);
+    border-bottom: 1px solid var(--p-border);
+}
+
 .uc-empty { color: var(--p-muted); padding: 24px; text-align: center; }
 
 .uc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -807,9 +830,13 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-field-row { display: flex; gap: 12px; }
 .uc-field-row .uc-field { flex: 1; }
 .uc-fieldset { border: 1px solid var(--p-border); border-radius: 10px; padding: 14px 16px; margin: 0; }
-.uc-fieldset legend { font-size: 13px; font-weight: 700; padding: 0 6px; }
+.uc-fieldset legend { font-size: 13px; font-weight: 600; padding: 0 6px; }
 .uc-hint { font-size: 12px; color: var(--p-muted); margin: 6px 0 0; }
-.uc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+/* A checkbox label is body text. It was 14px/500, which is not a step, and
+   the Classification card is almost entirely these: eight categories, every
+   organizer, and a field label above each group trying to outrank them by one
+   weight. Body puts the two a full step apart, which is what the ladder is for. */
+.uc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; margin-bottom: 8px; }
 /* The box holds its size and the label takes the rest, so a two-word label
    never wraps because the control grew. The gap owns the spacing. */
 .uc-check input[type="checkbox"], .uc-check input[type="radio"] { flex: 0 0 auto; margin: 0; }
@@ -1030,7 +1057,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    not undo that by itself. The width reset lives with the rule that caused it,
    where the next person to read `.uc-field input` will see it. */
 .uc-radio-row { display: flex; align-items: center; gap: 8px; margin: 0 0 6px;
-    font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; }
+    font-size: 14px; font-weight: 400; cursor: pointer; text-align: left; }
 .uc-radio-row input[type="radio"] { flex: 0 0 auto; width: auto; margin: 0; }
 .uc-radio-row span { flex: 1 1 auto; }
 
@@ -1295,7 +1322,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-filters-bar.uc-searching input[type="search"] { opacity: 0.7; }
 
 /* ---------- The schedule (series screen) ---------- */
-.uc-schedule-sentence { margin: 0 0 14px; font-family: var(--uc-font-heading, inherit); font-size: 17px; font-weight: 700; }
+.uc-schedule-sentence { margin: 0 0 14px; font-family: var(--uc-font-heading, inherit); font-size: 16px; font-weight: 600; }
 /* Four actions now, and the fourth (Remove) lives on each row. The three that
    fold are one family and read as one, rather than as two controls and a new
    thing bolted on beside them. */
@@ -1378,7 +1405,10 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-user-cats { grid-column: 1 / -1; font-size: 13px; }
 .uc-user-cats summary { cursor: pointer; color: var(--uc-accent-text); }
 .uc-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; margin-top: 8px; }
-.uc-check-grid .uc-check { margin-bottom: 0; font-size: 13px; }
+/* No size override. 13px is the FIELD LABEL's size, so a checkbox in a grid
+   rendered at exactly the size of the label above it. Density comes from the
+   6px gap, not from shrinking the type below its step. */
+.uc-check-grid .uc-check { margin-bottom: 0; }
 /* Save and Remove, together, in the row's third column. .uc-user-remove is
    gone: it was a second form rendered after the row's closing tag, which is
    what put a bare "Remove" link under the list instead of against a person. */
@@ -1823,7 +1853,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker[open] > .uc-picker-toggle { border-bottom: 1px solid var(--p-border); border-radius: 10px 10px 0 0; }
 .uc-picker-toggle:hover { background: var(--p-bg); }
 .uc-picker-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
-.uc-picker-count { font-weight: 400; font-size: 13px; color: var(--p-muted); }
+.uc-picker-count { font-weight: 400; font-size: 12px; color: var(--p-muted); }
 .uc-picker-panel { padding: 12px 14px 14px; }
 
 .uc-picker-tabs { display: none; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--p-border); }
@@ -2196,7 +2226,7 @@ body.uc-modal-open { overflow: hidden; }
    rather than as one run-on sentence, so a long address takes its own line
    instead of pushing the date off the row. */
 .uc-queue-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px;
-    margin: 0; font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--p-muted); }
+    margin: 0; font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); }
 .uc-queue-links { margin: 6px 0 0; font-size: 12px; }
 .uc-queue-actions { flex: 0 0 auto; padding-top: 2px; }
 
@@ -2221,7 +2251,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-queue-item > .uc-queue-panel { margin: 10px 0 0; }
 .uc-queue-panel { border: 0; border-radius: 0; background: none; }
 .uc-queue-panel > summary { width: fit-content; cursor: pointer; padding: 2px 0;
-    font-size: 12px; font-weight: 500; color: var(--p-muted); list-style: revert; }
+    font-size: 13px; font-weight: 600; color: var(--p-muted); list-style: revert; }
 .uc-queue-panel > summary:hover { color: var(--uc-accent-text); }
 .uc-queue-panel > summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
 .uc-queue-panel[open] > summary { margin-bottom: 10px; }
@@ -2279,7 +2309,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-role-help-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
 .uc-role-help-body { padding: 0 16px 16px; }
 .uc-role-help-list { margin: 0; }
-.uc-role-help-list dt { margin: 12px 0 2px; font-size: 13px; font-weight: 700; }
+.uc-role-help-list dt { margin: 12px 0 2px; font-size: 13px; font-weight: 600; }
 .uc-role-help-list dt:first-child { margin-top: 0; }
 .uc-role-help-list dd { margin: 0; font-size: 13px; line-height: 1.6; color: var(--p-muted); max-width: 78ch; }
 
@@ -2361,7 +2391,7 @@ body.uc-modal-open { overflow: hidden; }
 }
 .uc-organizer-row:last-child { border-bottom: 0; }
 .uc-organizer-id { grid-area: id; min-width: 0; }
-.uc-organizer-id strong { display: block; font-size: 14.5px; line-height: 1.4; }
+.uc-organizer-id strong { display: block; font-size: 14px; line-height: 1.4; }
 .uc-organizer-id .uc-muted { display: block; margin-top: 2px; font-size: 12px; line-height: 1.5; }
 .uc-organizer-id code { font-size: 11.5px; }
 .uc-organizer-actions { grid-area: actions; display: flex; gap: 8px; align-items: center; }
@@ -2374,8 +2404,6 @@ body.uc-modal-open { overflow: hidden; }
 
 /* Add one without leaving the event form. A disclosure under the picker, so it
    is out of the way until it is wanted and costs nothing when it is not. */
-.uc-organizer-inline { margin: 6px 0 14px; }
-.uc-organizer-inline-body { margin-top: 10px; }
 
 /* The pointer to the WordPress fallback screen. Present, and quiet: it is a
    fallback, not a route anybody should be taking by default. */
@@ -2435,7 +2463,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-organizer-row { padding: 16px; align-items: center; }
 .uc-organizer-row:nth-child(even) { background: var(--p-bg); }
 .uc-organizer-row:hover { background: var(--uc-band, #f1f5f9); }
-.uc-organizer-id strong { font-size: 15px; font-weight: 700; }
+.uc-organizer-id strong { font-size: 14px; font-weight: 600; }
 .uc-organizer-id .uc-muted + .uc-muted { margin-top: 4px; }
 
 /* The role help is a disclosure INSIDE the add-user card now, not a card of its

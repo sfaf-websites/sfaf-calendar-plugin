@@ -200,7 +200,27 @@ is not on this ladder, it is the wrong element, not a missing step.
 
 A heading at the top of a card **is** that card's heading and takes the band
 automatically. It is not a class somebody has to remember to add, because for
-sixteen of thirty-nine cards they did not.
+sixteen of thirty-nine cards they did not. Both kinds of card carry that rule
+now: `.uc-card` since 3.17.0 and `.uc-bento-card` since 3.41.0, which had only
+escaped the same fate because every one of its headings happened to carry
+`.uc-bento-title`.
+
+**The ladder is checked, not asserted.** `php .claude/type-scale-sweep.php`
+reports every rule in `portal.css` that sets a size and a weight that is not one
+of the seven steps; the count is zero and a build that raises it fails. Run it
+with `--self-test` first, which plants seven cases and proves it can reject
+them. Chrome is exempt BY SELECTOR and every exemption carries its reason, so
+widening the ladder is a decision somebody writes down.
+
+**The scale was applied to headings and not to what sits under them, which is
+why the complaint came back.** Twelve rules were between two steps. The one that
+was reported was the Classification card reading heavier than every other card
+in the editor: its heading is the same `.uc-bento-title` as all of them, but the
+card is almost entirely checkbox labels, and `.uc-check` was 14px/500. Half a
+step above body, and inside `.uc-check-grid` it was shrunk to 13px with the 500
+left, which is the FIELD LABEL's own size. A card with thirty of those reads as
+a wall no matter what its heading does. A checkbox label is a choice, so it is
+body: 14px/400.
 
 ---
 

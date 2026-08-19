@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.40.0
+Stable tag: 3.41.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -527,6 +527,40 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.41.0 =
+
+**Saving an event cancelled it. Every save, on every release from 3.36.0 to 3.40.0, and everybody registered was emailed that the event was off.**
+
+**IT IS OLDER THAN IT LOOKED.** It was reported against 3.39.0 and 3.40.0, which is where somebody happened to press Save on an event that mattered. The call site tells a longer story: the cancel card has sat inside the event form since 3.36.0, the release that added it, so it was never once correct. Five releases, not two, and the search for affected events has to go back that far.
+
+**WHAT HAPPENED.** The Cancel this event card was rendered into the event editor's side column, and that column is echoed inside the event form. HTML forbids one form inside another: every browser drops the inner start tag and keeps its children, so the cancel card's inputs joined the event form. Pressing Save therefore posted `uc_action=save_event` AND `uc_action=cancel_event`, plus both nonces. PHP takes the last value of a repeated key, so what arrived was `cancel_event` with the matching cancel nonce, and the security check passed because both halves came from the same card. The event was cancelled, the cancellation email went to every confirmed registrant and every subscriber, and `save_event` never ran, so the edit was discarded as well.
+
+**WHAT TO DO ABOUT THE EVENTS THIS HIT.** A cancelled event is a state, not a deletion, so nothing is gone. In caladmin, open each affected event and use Reinstate on the cancel card. To find them: they are the events showing as cancelled that nobody meant to cancel, and the ones a manager edited at any point from 3.36.0 to this release. `_uc_cancelled_at` on each event is the timestamp of the save that did it, which makes the list checkable rather than a guess. **A SECOND SAVE PUT IT BACK ON, SO THE CANCELLED LIST IS NOT THE WHOLE LIST.** Once an event was cancelled the card rendered its reinstate form instead, and that form's `uncancel` field joined the event form exactly as the first one had. So saving the same event again silently un-cancelled it. An event edited twice reads as perfectly normal today and its registrants were still emailed that it was off. Anything edited between 3.36.0 and this release is worth checking, not only what currently shows as cancelled.
+
+**The emails cannot be unsent.** If registrants were told an event was cancelled and it was not, that needs a correction from a person, and this plugin has no route for one: send it yourself, from the list on the event's registrations screen.
+
+**How many messages went out, per accidental save:** one for each distinct email address holding a `confirmed` or `subscribed` row on that event, which is one message per person however many dates were involved. An event nobody had signed up for sent none, and the cancellation still happened. The exact number is not recoverable from the repo, because the plugin keeps no log of sent mail.
+
+**The fix is that the card is outside the form**, below it, with the reason written where somebody would put it back. Two checks now assert it: one that no renderer opening a form is called inside another form and that no form carries two actions or two nonces, and one that works out what the event form actually posts once forms are flattened and PHP has taken the last of every repeated key.
+
+**A save was also able to unpublish a published event**, which is unrelated and was found by writing the assertion for the above. `save_mode` had three values and every one of them set a status, with `draft` as the fallback when nothing was posted. Save Draft was also the first submit button in the form, which is the one a browser presses when somebody hits Enter in a text field. On anything already published or pending that button is now **Save**, it keeps the status the event has, and a save naming no mode leaves the status alone rather than choosing one.
+
+**The scope dialog no longer reappears after every save.** 3.39.0 removed the confirmation armed on the save buttons and fixed the dismiss comparison, both of which shipped and both of which are still in place. Neither was the cause: the second ask was never on the button, it was on the page a save redirects to, which is a fresh load of the editor and asked the question again as though it had never been answered. The answer now rides the redirect, the editor opens already answered with the banner stating which scope is in force, and Change reopens the question by dropping it from the address. It also works with scripting off now, which it did not before: the fieldset arrived disabled and only JavaScript unlocked it.
+
+**Venue and series were checked for the same fault the organizer picker had. Both are one per event on purpose, and they differ in how safe that is.** The mechanism is identical to the organizer one either way: both read `reset( get_the_terms() )`, which is the alphabetically first, and both write through a `set_for_event( $post_id, $term_id )` that takes a single id and replaces. So an event holding two would keep one and drop the other on the next save, silently, exactly as organizers did.
+
+What differs is whether anything can give an event two in the first place, and that is the question that matters.
+
+**Venue is genuinely closed.** `uc_venue` registers with `show_ui => false`, so there is no WordPress screen at all, and the portal's control is a single select over a taxonomy nothing else writes. Nothing reachable can put two on an event.
+
+**Series is not as closed as it looks, and this is worth one live check.** It registers with `show_ui => true` and `meta_box_cb => false`. That removes the CLASSIC editor's metabox, which is what the "no metabox" reading was based on, but `uc_event` registers with `show_in_rest => true` and supports the editor, so events open in the block editor, and the block editor decides which taxonomy panels to draw from `show_ui` rather than from `meta_box_cb`. A Series panel may therefore be sitting on the WordPress post editor, and that is the same route that put two organizers on an event. **Open an event in the WordPress post editor and look.** If a Series panel is there, series has the organizer fault and is one deliberate change away from being closed like venue; if it is not, the limit is real and this note is what stops it being re-derived.
+
+Neither is being re-registered on a guess. Changing `show_in_rest` or `show_ui` on a public taxonomy moves its archive, its REST payload and what satellites read, and that is not a change to make from an inference about another program's editor.
+
+**The Classification card no longer reads heavier than every other card in the editor.** Its heading was never the problem. The card is almost entirely checkbox labels, and those were set half a step above body text, then shrunk inside a grid to exactly the size of the field label above them. Twelve rules across the portal were sitting between two steps of the type scale for the same reason, and there is now a sweep that fails a build for a new one. A heading at the top of a bento card also takes its band structurally now, as it already did for the other kind of card.
+
+**Creating an organizer from the event editor is gone**, reversing part of 3.37.0. The friction it removed was real at the time and is now small, because organizers got their own screen in the same release; what it added is permanent and lands on somebody else, because a name typed mid-event gets whatever spelling was in somebody's head and the list acquires three of the same organizer, each owning some events. Organizers are made on the Organizers screen.
 
 = 3.40.0 =
 

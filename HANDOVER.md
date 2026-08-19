@@ -4,25 +4,29 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-18, at 3.40.0.
+**Last updated:** 2026-08-18, at 3.41.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.40.0**, built as `sfaf-calendar-3.40.0.zip` in the project
+The plugin is at **3.41.0**, built as `sfaf-calendar-3.41.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.40.0, the deployment is stale or partial, and that
+screen: if it does not say 3.41.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
-**Two releases changed rules that other code has to respect.** 3.35.0 made teams
-an access model: one function answers who may edit an event and
-`.claude/event-access-test.php` is a whitelist of every route that must ask it.
-3.36.0 added cancellation as a state: a cancelled event is still `publish` with a
-date, so anything selecting on those two must ask `SFAF_Cancellation` as well.
-Read `PROJECT.md` §4 and §5 before touching a query over events or a route that
-reads one.
+**INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
+3.36.0 to 3.40.0, pressing Save in the caladmin event editor cancelled the event
+and emailed everybody registered that it was off, and the edit was discarded. It
+was reported against 3.39.0 and 3.40.0, but the cause has been there since
+3.36.0. See "Events cancelled by a save" below for what to do about the ones it
+hit.
+
+**Read `PROJECT.md` §4 and §5 before touching a query over events or a route
+that reads one.** Teams are an access model (3.35.0) and cancellation is a state
+rather than a status (3.36.0), so a cancelled event is still `publish` with a
+date and anything selecting on those two must ask `SFAF_Cancellation` as well.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. That was the single most valuable unverified
@@ -32,20 +36,42 @@ here, not a "does it work" question.
 ## Cron now depends on an external service
 
 **If reminders stop silently in six months, look at cron-jobs.org first, before
-anything in this plugin.** That is the trade 3.34.0 made deliberately, in
-exchange for the plugin needing no server configuration and staying portable.
+anything in this plugin.** The order matters and getting it wrong means nothing
+runs at all: create the ping first (every 15 minutes,
+`wp-cron.php?doing_wp_cron`, no parameter or key), confirm on **Events >
+Automation** that tasks are running, and ONLY THEN set `DISABLE_WP_CRON`.
+`PROJECT.md` §4 and the readme's "Scheduled Tasks" have the full version,
+including why it must not be the admin-ajax route and why the page-view nudge
+stays on.
 
-The order matters and getting it wrong means nothing runs at all: create the
-ping first (**cron-jobs.org**, every 15 minutes, `wp-cron.php?doing_wp_cron`,
-no parameter or key), confirm on **Events > Automation** that tasks are
-running, and ONLY THEN set `DISABLE_WP_CRON`. Doing that last step first
-with a mistyped URL leaves a site where nothing runs and nothing says so.
-The readme has the full version under "Scheduled Tasks".
+## Events cancelled by a save
 
-**Not `admin-ajax.php?action=sfaf_cron_ping`**, which would stop every other
-scheduled job on the site. **Leave the page-view nudge on**: it is the request
-from sfaf.org that lets this site notice the scheduler has died. `PROJECT.md`
-§4 has both in full.
+**This needs a person, and part of it cannot be undone.** From 3.36.0 to 3.41.0,
+every save on the caladmin event editor cancelled the event instead of saving
+it. Nothing was deleted, so:
+
+1. **Reinstate them.** Open each affected event in caladmin and press Reinstate
+   on the cancel card. The event returns to exactly what it was.
+2. **Find them** two ways, and use both. In caladmin, anything showing as
+   cancelled that nobody meant to cancel. And ask whoever edits events which
+   ones they touched since 3.36.0 went on, because a save that was meant to fix
+   a typo is the shape of this.
+3. **A second save put it back on, so the cancelled list is not the whole
+   list.** Once cancelled, the card showed its reinstate form instead, and that
+   form's field joined the event form the same way, so saving again silently
+   un-cancelled it. An event that was edited twice looks completely normal today
+   and its registrants were still told it was off. This is why step 2 asks
+   people what they touched rather than trusting the screen.
+4. **The emails cannot be unsent, and a correction has to come from a person.**
+   Everybody confirmed and everybody subscribed on each affected event was told
+   it was cancelled, one message each. There is no route in this plugin for a
+   correction. Each event's registrations screen lists them; write to that list
+   yourself.
+
+How many were affected is not knowable from the repo, and the plugin keeps no
+log of sent mail. `_uc_cancelled_at` on each event is the timestamp of the save
+that did it, which is what makes step 2 checkable rather than a guess, for the
+events that were not saved a second time.
 
 ## In flight
 
@@ -54,20 +80,35 @@ from sfaf.org that lets this site notice the scheduler has died. `PROJECT.md`
   two through the WordPress post editor and later saved here lost one silently,
   with no log of it. If Eric knows of co-hosted events from before now, open them
   and check. Nothing to do if organizers were only ever set in caladmin.
+- **CHECK WHETHER THE WORDPRESS POST EDITOR SHOWS A SERIES PANEL.** One look
+  settles it. Venue is closed (`show_ui => false`, no screen anywhere), but
+  `uc_series` is `show_ui => true` with `meta_box_cb => false`, which only
+  closes the classic metabox, and events open in the block editor, which
+  chooses its taxonomy panels off `show_ui`. If a Series panel is there, an
+  event can be given two series the same way it could be given two organizers,
+  and a caladmin save would then drop one silently. If it is not there, the
+  limit is real. Nothing was changed on the guess, because those flags also
+  decide the public archive and the satellite payload.
 - **THE RICH TEXT EDITOR IS STILL THE FIRST THING TO CHECK.** caladmin builds
   its own document rather than running through `wp_head`, so TinyMCE is being
   started somewhere it usually is not. Open any event and look at the Description
   field. If it is a toolbar, it works. If it is a plain textarea showing tags,
   the scripts did not start; nothing is lost and nothing is broken, but it needs
   the enqueue chased. This could not be verified from the repo.
+- **3.41.0 needs one pass, and it is the pass that matters most.** On a
+  repeating event: open it, answer the scope question, change something, Save.
+  The event must still be published, must NOT be cancelled, the change must be
+  there, and the scope question must not be asked again. Then press Enter in the
+  title field and confirm it saves rather than unpublishing. Then check the left
+  button on a published event reads Save and not Save Draft, and that the
+  organizer card no longer offers "Not listed? Add one".
 - **3.39.0 and 3.38.0 need one pass over the editor.** On an event somebody is
-  registered for, change a time and check the prompt appears naming them; check
-  Save does not ask the scope question twice and Cancel on the scope modal
-  leaves. Then: a three-day closure marks three grid squares and shows ONE list
-  card; picking a series first offers the prefill and asks before overwriting a
-  typed location; no caladmin card wears a coloured left edge. The prompt fix
-  matters most where the only interest is people who pressed **Get Reminders**:
-  they were invisible to it.
+  registered for, change a time and check the prompt appears naming them,
+  including anybody who only pressed **Get Reminders**, who used to be invisible
+  to it. Cancel on the scope modal leaves. A three-day closure marks three grid
+  squares and shows ONE list card. Picking a series first offers the prefill and
+  asks before overwriting a typed location. No caladmin card wears a coloured
+  left edge.
 - **Older releases still unverified live.** The two worth doing are the ones
   that touch data: put somebody in a team, assign it to an event they did not
   create, and confirm they see that event's registrations and nothing else
@@ -91,23 +132,19 @@ from sfaf.org that lets this site notice the scheduler has died. `PROJECT.md`
 
 Not yet done, and each matters for a different reason.
 
-1. **Confirm a private event is absent from the Yoast sitemap.** The plugin
-   writes Yoast's own noindex meta and registers the sitemap-exclusion filter,
-   but nobody has loaded the sitemap and looked. Privacy is a claim about every
-   route, and this is the one route that is a third party's code.
+1. **Load the Yoast sitemap and confirm a private event is not in it.** The
+   noindex meta and the exclusion filter are both written; nobody has looked,
+   and this is the one privacy route that is a third party's code.
 2. **Grep the sfaf.org theme for `sfaf_is_in_series` and `sfaf_get_series_name`.**
-   Theme-facing on purpose, called nowhere in the plugin, so they cannot be
-   deleted until the theme is known not to call them. One grep settles it.
-3. **The two-hour pre-event summary, unattended.** The morning-of reminder is
-   proved (2026-08-18, 6:58am, unassisted). The summary is the other half and has
-   not been seen: it is due two hours before an event starts, which is what the
-   15-minute runner in 3.34.0 exists to make accurate, and it needs an event with
-   somebody registered and a staff mailbox being watched.
+   Theme-facing on purpose and called nowhere in the plugin, so they cannot be
+   deleted until the theme is known not to call them.
+3. **Watch for the two-hour pre-event summary, unattended.** Needs an event with
+   somebody registered and a staff mailbox being watched. The morning-of
+   reminder is proved; this is the other half and has never been seen.
 4. **Send yourself every message type** from Events > Automation and read them
-   in Outlook on Windows, which is the client that breaks things. Two specific
-   questions: are the Add to calendar buttons the same height with the glyph
-   loaded (3.34.0), and does the changed-event message name the old value as
-   well as the new one (3.36.0). None of these has been seen in a mail client.
+   in Outlook on Windows, which is the client that breaks things. Are the Add to
+   calendar buttons the same height with the glyph loaded (3.34.0), and does the
+   changed-event message name the old value as well as the new one (3.36.0)?
 
 ## Open decisions
 
@@ -130,11 +167,13 @@ Not yet done, and each matters for a different reason.
 Only the ones still live or likely to recur. `PROJECT.md` §7 has the full set
 with the mechanisms.
 
+- **Tests that assert something other than the behaviour that matters.** Three
+  releases running, and 3.41.0 treats it as the finding rather than a footnote.
+  Write the assertion in the words of the OUTCOME, then find a way to decide it;
+  `.claude/save-outcome-test.php` is what that looks like here. §7 has all three
+  instances.
 - **Tests that pass while the thing is broken.** Plant the fault, and check what
-  the STUBS do: 3.39.0's live bug survived every 3.36.0 test because none seeded
-  a `subscribed` row, and correcting that found the $wpdb stub had silently
-  stopped filtering when the real query changed to `IN (...)`. A stub that
-  cannot read its input does not test its input.
+  the STUBS do. A stub that cannot read its input does not test its input.
 - **A rule that loses the cascade, and a rule nobody wrote.** Identical on
   screen, opposite fixes. Ask which before rewriting.
 - **Shell strings carrying `$`.** Write the script to a file and run the file.

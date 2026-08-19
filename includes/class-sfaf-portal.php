@@ -546,7 +546,25 @@ class SFAF_Portal {
         switch ( $action ) {
             case 'save_event':
                 $result = $this->save_event_from_post( $user );
-                $this->redirect( 'events/edit/' . $result['id'], array( 'msg' => $result['msg'] ) );
+                /*
+                 * THE SCOPE ANSWER RIDES THE REDIRECT (3.41.0).
+                 *
+                 * A save lands back on the editor, and the editor asks the
+                 * scope question on every load, so it was asked again after
+                 * every save as though it had never been answered. 3.39.0
+                 * removed the confirmation from the save BUTTON, which is a
+                 * different second ask and was correctly removed; this is the
+                 * one on the page somebody lands on afterwards.
+                 *
+                 * Carried in the URL rather than a transient because the
+                 * address bar is where every other piece of this screen's state
+                 * lives: the view, the sort and the filters all ride it, and a
+                 * reload has to mean the same thing as arriving.
+                 */
+                $this->redirect( 'events/edit/' . $result['id'], array(
+                    'msg'        => $result['msg'],
+                    'edit_scope' => $result['scope'],
+                ) );
                 break;
 
             /* ---- Removing things. -------------------------------------------
@@ -1304,14 +1322,30 @@ class SFAF_Portal {
         $was = $event_id ? self::movable_facts( $event_id ) : array();
 
         $role      = self::get_role( $user->ID );
-        $save_mode = isset( $_POST['save_mode'] ) ? sanitize_key( $_POST['save_mode'] ) : 'draft';
+        $save_mode = isset( $_POST['save_mode'] ) ? sanitize_key( $_POST['save_mode'] ) : 'keep';
 
+        /*
+         * 'keep' IS THE ONLY MODE THAT DOES NOT DECIDE A STATUS.
+         *
+         * Every other one sets it, and the fallback used to be 'draft', so a
+         * save that arrived without a save_mode took a published event off the
+         * public calendar. That is not hypothetical: "Save Draft" was the first
+         * submit button in the form, which is the one a browser activates when
+         * somebody presses Enter in a text field.
+         *
+         * Leaving a status alone is the only safe thing to do with a status
+         * nobody chose, so it is both a real mode and the fallback. A new event
+         * has no status to keep, and a draft is what an unsaved event is.
+         */
         if ( $save_mode === 'publish' ) {
             $status = in_array( $role, array( 'admin', 'editor' ), true ) ? 'publish' : $this->contributor_status( $user );
         } elseif ( $save_mode === 'review' ) {
             $status = 'pending';
-        } else {
+        } elseif ( $save_mode === 'draft' ) {
             $status = 'draft';
+        } else {
+            $existing = $event_id ? get_post_status( $event_id ) : '';
+            $status   = $existing ? $existing : 'draft';
         }
 
         // WHICH FIELDS THIS SAVE IS ALLOWED TO WRITE.
@@ -1706,7 +1740,7 @@ class SFAF_Portal {
             $msg = 'saved';
         }
 
-        return array( 'id' => $event_id, 'msg' => $msg, 'written' => $written );
+        return array( 'id' => $event_id, 'msg' => $msg, 'written' => $written, 'scope' => $scope );
     }
 
     /* ---------------------------------------------------------------------
@@ -4995,49 +5029,34 @@ class SFAF_Portal {
 
                 <?php
                 /*
-                 * ADD ONE WITHOUT LEAVING THE FORM, AND WITHOUT POSTING ONE.
+                 * NO INLINE ORGANIZER CREATION HERE. REVERSED IN 3.41.0.
                  *
-                 * The friction this closes is not only that there was no
-                 * Organizers screen. It is that setting up an event for a new
-                 * programme meant abandoning a half-typed event, going
-                 * somewhere else, and coming back to start again.
+                 * 3.37.0 put a "Not listed? Add one" field on this card. The
+                 * reasoning was that setting up an event for a new programme
+                 * meant abandoning a half-typed event to go and make the
+                 * organizer somewhere else, and that a field riding the
+                 * ordinary Save closed that without the 3.3.0 fault of a
+                 * button that posts and discards unsaved typing. That part of
+                 * the reasoning was right and is why it was a field.
                  *
-                 * SO IT IS A FIELD ON THIS FORM, NOT A BUTTON THAT POSTS.
-                 * The FAQ set control was a button that applied by posting and
-                 * redirecting, which discarded every unsaved edit on the
-                 * screen, and people learned not to press it. That was the
-                 * 3.3.0 fault and it is not being rebuilt here. This input
-                 * travels with the ordinary Save: the term is created inside
-                 * save_event_from_post() and assigned in the same request, so
-                 * there is no second submit, no redirect, no lost typing, and
-                 * nothing at all happens if the box is left empty.
+                 * WHAT CHANGED IS THAT THE PREMISE WENT AWAY. The same
+                 * release gave organizers their own screen, so this list is
+                 * one somebody curates deliberately, and a text box beside it
+                 * invents entries in passing. An organizer typed mid-event
+                 * gets whatever spelling was in somebody's head, which is how
+                 * a list acquires "Stonewall Project", "The Stonewall
+                 * Project" and "Stonewall", each owning some events. Merging
+                 * them afterwards is manual and nobody does it.
                  *
-                 * It also needs no script and no ajax route. A route would have
-                 * been a new surface to gate, and the access whitelist would
-                 * rightly have failed the build until it was; a field that
-                 * rides an existing gated save is simply covered by it.
+                 * The friction it removed was real and is now small: the
+                 * Organizers screen is two clicks away and makes the term in
+                 * one field. The cost it added is permanent and lands on
+                 * somebody else. So this is a picker of things that exist,
+                 * and making one is a decision taken on the screen for it.
                  *
-                 * The select wins when both are filled: an explicit choice from
-                 * the list beats a leftover in the text box.
+                 * The save half is gone too; see save_event_from_post().
                  */
                 ?>
-                <details class="uc-organizer-inline" data-uc-disclosure>
-                    <summary class="uc-team-add-toggle" aria-expanded="false">
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                        <span>Not listed? Add one</span>
-                    </summary>
-                    <div class="uc-organizer-inline-body">
-                        <label class="uc-field">
-                            <span class="uc-field-label">New organizer</span>
-                            <input type="text" name="organizer_new" value=""
-                                   placeholder="The Stonewall Project" autocomplete="off" />
-                            <span class="uc-hint uc-hint-spec">
-                                Created when you save this event, and used for it. Nothing else on this form is
-                                lost. If the name already exists, that one is used rather than a second copy.
-                            </span>
-                        </label>
-                    </div>
-                </details>
                 <?php
                 break;
 
@@ -5219,30 +5238,14 @@ class SFAF_Portal {
             $orgs = array_values( array_unique( array_filter( $orgs ) ) );
 
             /*
-             * A NEW ORGANIZER TYPED ON THIS FORM, created here, in this same
-             * request. See the note on the control in the field renderer for
-             * why it is a field and not a button that posts: the 3.3.0 FAQ set
-             * control applied by posting and redirecting, discarding every
-             * unsaved edit on the screen.
-             *
-             * THE SELECT WINS. Somebody who picked from the list and also left
-             * something in the text box meant the list: an explicit choice
-             * beats a leftover. Only when the select says None does the typed
-             * name decide anything.
-             *
-             * A failure is swallowed rather than failing the save. The rest of
-             * what they typed is legitimate and losing an event over a
-             * duplicate slug would teach them that saving is unreliable; the
-             * organizer field simply stays as it was, which is visible on the
-             * screen they land on.
+             * organizer_new IS GONE (3.41.0). This used to create a term from
+             * a text box on the event editor, in the same request as the save.
+             * The field is off that card, and this half is deliberately
+             * removed rather than left reading a POST key nothing sends: a
+             * save that can still invent an organizer is a way back in for
+             * anything that posts here. Organizers are made on the Organizers
+             * screen. See the note on the control in render_manager_control().
              */
-            if ( ! empty( $_POST['organizer_new'] ) ) {
-                $made = SFAF_Organizers::save( 0, wp_unslash( $_POST['organizer_new'] ) );
-                if ( ! is_wp_error( $made ) && ! in_array( (int) $made, $orgs, true ) ) {
-                    $orgs[] = (int) $made;
-                }
-            }
-
             wp_set_object_terms( $event_id, $orgs, 'uc_organizer' );
         }
 
@@ -7710,7 +7713,19 @@ class SFAF_Portal {
              * from whenever the JavaScript happens to run.
              */
             ?>
-            <fieldset class="uc-scope-fields"<?php echo $has_bulk ? ' data-uc-scope-fields disabled' : ''; ?>>
+            <?php
+            /*
+             * LOCKED ONLY WHILE THE QUESTION IS OPEN.
+             *
+             * An answer carried back from a save is a server-side answer, so
+             * the fieldset is not disabled on that load and the screen works
+             * with scripting off. The data attribute stays either way, because
+             * it is how the script finds the fieldset to re-lock what the
+             * chosen scope forbids.
+             */
+            $scope_locked = $has_bulk && '' === $this->carried_edit_scope();
+            ?>
+            <fieldset class="uc-scope-fields"<?php echo $has_bulk ? ' data-uc-scope-fields' : ''; ?><?php echo $scope_locked ? ' disabled' : ''; ?>>
 
             <?php
             /*
@@ -7810,8 +7825,22 @@ class SFAF_Portal {
                  * where that question is asked. See render_notify_box().
                  */
                 ?>
-                <?php $this->render_cancel_card( $user, $event_id ); ?>
-
+                <?php
+                /*
+                 * THE CANCEL CARD IS NOT HERE ANY MORE, AND MUST NEVER COME BACK.
+                 *
+                 * It renders its own <form>, and this is inside the event
+                 * <form>. Forms cannot nest: every parser drops the inner start
+                 * tag and keeps its children, so the cancel form's uc_action and
+                 * uc_nonce joined the event form. PHP takes the last value of a
+                 * repeated key, so EVERY SAVE POSTED uc_action=cancel_event with
+                 * the matching cancel nonce, cancelled the event, emailed
+                 * everybody registered, and never ran the save at all.
+                 *
+                 * It is rendered after </form> now. The access card below is
+                 * safe here because it emits fields and no form of its own.
+                 */
+                ?>
                 <?php $this->render_access_card( $user, $event_id ); ?>
 
                 <section class="uc-bento-card">
@@ -8182,7 +8211,20 @@ class SFAF_Portal {
                  * before 3.23.0.
                  */
                 ?>
-                <button type="submit" name="save_mode" value="draft" class="uc-btn">Save Draft</button>
+                <?php
+                /*
+                 * "SAVE DRAFT" ON A PUBLISHED EVENT WAS A DESTRUCTIVE BUTTON
+                 * WEARING AN ORDINARY LABEL, and it sat first in the form,
+                 * which is where a browser sends an Enter keypress. On anything
+                 * already published or pending it is "Save", and it keeps the
+                 * status the event has. Taking an event down is a decision, and
+                 * decisions get their own control, not a side effect of the
+                 * button somebody reaches for to save a typo.
+                 */
+                $live = $event_id ? get_post_status( $event_id ) : '';
+                $keep = ( 'publish' === $live || 'pending' === $live || 'future' === $live );
+                ?>
+                <button type="submit" name="save_mode" value="<?php echo $keep ? 'keep' : 'draft'; ?>" class="uc-btn"><?php echo $keep ? 'Save' : 'Save Draft'; ?></button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -8225,7 +8267,22 @@ class SFAF_Portal {
             </div>
             </fieldset>
         </form>
+
         <?php
+        /*
+         * CANCELLING, BELOW THE FORM AND OUTSIDE IT.
+         *
+         * Its own form, so it must not be nested inside the event form, which
+         * is what made every Save cancel the event instead of saving it. Same
+         * placement rule as the FAQ set panel above the form: a control that
+         * posts its own action needs its own form, and a form needs somewhere
+         * that is not inside another one.
+         *
+         * Below rather than above because it is the destructive thing on this
+         * screen and should not be the first control somebody meets.
+         */
+        $this->render_cancel_card( $user, $event_id );
+
         $this->chrome_close();
     }
 
@@ -10106,13 +10163,54 @@ class SFAF_Portal {
      * @param int[] $targets     Upcoming events in this event's recurrence group.
      * @param array $locked      field => reason, from bulk_locked_fields().
      */
+    /**
+     * The recurrence scope a save carried back here, or ''.
+     *
+     * ONE READER, because two would drift: the header decides whether to ask
+     * the question and the form decides whether to arrive locked, and those two
+     * answers have to be the same answer. Named edit_scope rather than scope
+     * because scope is already this portal's mine/all filter and one name
+     * meaning two things on one screen is how a value ends up in the wrong link.
+     *
+     * A query string is checked, not trusted: it must name one of the two
+     * scopes. The worst a forged value can do is pre-answer a question the
+     * manager can still change from the banner, and the save re-derives the real
+     * scope from the POST regardless.
+     *
+     * @return string 'this', 'all_upcoming' or ''.
+     */
+    private function carried_edit_scope() {
+        if ( ! isset( $_GET['edit_scope'] ) ) {
+            return '';
+        }
+        $asked = sanitize_key( wp_unslash( $_GET['edit_scope'] ) );
+        return in_array( $asked, array( 'this', 'all_upcoming' ), true ) ? $asked : '';
+    }
+
     private function render_scope_header( $event_id, $targets, $locked ) {
         $count = count( $targets );
         if ( ! $event_id || $count < 2 ) {
             return;
         }
         ?>
+        <?php
+        /*
+         * ALREADY ANSWERED, WHEN THE SAVE SAID SO.
+         *
+         * A save redirects here carrying the scope it used, so the question is
+         * not put again: the block renders hidden, the banner renders open, and
+         * the fieldset is not disabled. Somebody who wants a different scope
+         * uses the Change control on the banner, which is what it is for.
+         *
+         * CHECKED, NOT TRUSTED. It is a query string, so it must name one of
+         * the two scopes; anything else asks the question normally. The worst a
+         * forged value can do is pre-answer a question the manager can still
+         * change, and the save re-derives the real scope server-side anyway.
+         */
+        $answered = $this->carried_edit_scope();
+        ?>
         <div class="uc-scope" data-uc-scope-choice data-uc-scope-count="<?php echo (int) $count; ?>"
+             <?php echo $answered ? ' data-uc-scope-answered="' . esc_attr( $answered ) . '" hidden' : ''; ?>
              data-uc-scope-back="<?php echo esc_url( $this->url( 'events' ) ); ?>">
             <h2 class="uc-scope-title" id="uc-scope-title">How should this save apply?</h2>
             <p class="uc-scope-lead" id="uc-scope-lead">
@@ -10151,7 +10249,8 @@ class SFAF_Portal {
             </div>
             <noscript>
                 <p class="uc-scope-noscript">
-                    Choosing a scope needs JavaScript. With it switched off this form saves this event only.
+                    Choosing a scope needs JavaScript. With it switched off, events in a repeating group
+                    cannot be edited here.
                 </p>
             </noscript>
         </div>
@@ -10161,8 +10260,15 @@ class SFAF_Portal {
               // moment they press the button, not only at the moment they
               // chose. It also takes focus when the dialog closes, so the
               // answer is the first thing announced after the question. ?>
-        <div class="uc-scope-banner" data-uc-scope-banner hidden role="status" tabindex="-1">
-            <span data-uc-scope-banner-text></span>
+        <div class="uc-scope-banner<?php echo ( 'all_upcoming' === $answered ) ? ' uc-scope-banner-all' : ''; ?>"
+             data-uc-scope-banner<?php echo $answered ? '' : ' hidden'; ?> role="status" tabindex="-1">
+            <span data-uc-scope-banner-text><?php
+                echo $answered
+                    ? esc_html( ( 'all_upcoming' === $answered )
+                        ? sprintf( 'Editing all %d upcoming occurrences.', (int) $count )
+                        : 'Editing this event only.' )
+                    : '';
+            ?></span>
             <button type="button" class="uc-btn uc-btn-sm" data-uc-scope-change>Change</button>
         </div>
 
@@ -10174,7 +10280,7 @@ class SFAF_Portal {
          * this: the markup is the affordance, not the rule.
          */
         ?>
-        <input type="hidden" name="edit_scope" value="this" data-uc-scope-input />
+        <input type="hidden" name="edit_scope" value="<?php echo esc_attr( $answered ? $answered : 'this' ); ?>" data-uc-scope-input />
         <script type="application/json" id="uc-scope-locked"><?php
             echo wp_json_encode( $locked, JSON_HEX_TAG | JSON_HEX_AMP );
         ?></script>

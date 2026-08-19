@@ -1650,7 +1650,7 @@
             }
         }
 
-        function choose(scope) {
+        function choose(scope, quiet) {
             input.value = scope;
             answered = true;
 
@@ -1680,8 +1680,12 @@
                 banner.removeAttribute('hidden');
                 // Where focus goes when the dialog closes. The banner states
                 // the answer, so it is both the sensible landing place for the
-                // keyboard and the right thing to have read out next.
-                banner.focus();
+                // keyboard and the right thing to have read out next. Not on a
+                // load that arrived already answered: there was no question, and
+                // moving focus would scroll past the message the save left.
+                if (!quiet) {
+                    banner.focus();
+                }
             }
 
             /*
@@ -1721,8 +1725,29 @@
             // unlocked and typed into cannot be un-typed, and re-locking them
             // while keeping the text would misrepresent what would be saved.
             changeBtn.addEventListener('click', function () {
-                window.location.reload();
+                /* Drop the scope a save carried in, or the reload would apply
+                 * the very answer this button was pressed to change and the
+                 * question would never come back. */
+                var url = window.location.href.replace(/([?&])edit_scope=[^&]*(&|$)/, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
             });
+        }
+
+        /*
+         * ALREADY ANSWERED? APPLY IT AND ASK NOTHING (3.41.0).
+         *
+         * A save redirects back to the editor carrying the scope it used, and
+         * the editor asked the question again on that load as though it had
+         * never been answered. choose() does everything the answer implies:
+         * unlocks the fieldset, re-locks what the scope forbids, and shows the
+         * banner with its Change control for somebody who wants a different
+         * one. It is called with the dialog never having been built, which its
+         * `else` branch already handles by hiding the block.
+         */
+        var carried = choice.getAttribute('data-uc-scope-answered');
+        if (carried === 'this' || carried === 'all_upcoming') {
+            choose(carried, true);
+            return;
         }
 
         /* Last, so every listener above is bound before the question can be

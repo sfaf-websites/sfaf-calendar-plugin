@@ -348,14 +348,25 @@ The count comes from a query, **not from the term's own `count`**, because
 WordPress counts only published posts and a manager with three drafts against an
 organizer would be told "0 events" and then surprised by the confirmation.
 
-**Adding one from the event editor is a field, not a button.** The friction was
-never only the missing screen: it was that a new programme meant abandoning a
-half-typed event to go elsewhere. So `organizer_new` is an input on the event
-form, created inside `save_manager_fields_from_post()` in the same request as
-the ordinary Save. No second submit, no redirect, nothing typed is lost, and no
-new route to gate. That is deliberately not the shape of the FAQ set control
-before 3.3.0, which applied by posting and redirecting, discarded every unsaved
-edit, and taught people not to press it. The select wins when both are filled.
+**One is made on the Organizers screen, and nowhere else.** 3.37.0 added a
+"Not listed? Add one" field to the event editor's organizer card, on the
+reasoning that a new programme meant abandoning a half-typed event to go
+elsewhere, and made it a FIELD riding the ordinary Save rather than a button
+that posts, because the FAQ set control before 3.3.0 applied by posting and
+redirecting, discarded every unsaved edit, and taught people not to press it.
+That half of the reasoning still stands and applies to the next control anybody
+adds to that card.
+
+**Reversed in 3.41.0**, because the premise went with it: the same release gave
+organizers their own screen, so the picker lists something curated, and a text
+box beside a curated list invents entries in passing. A name typed mid-event
+gets whatever spelling was in somebody's head, the list acquires "Stonewall
+Project", "The Stonewall Project" and "Stonewall", each owning some events, and
+merging them afterwards is manual. The friction removed was real and is now two
+clicks; the cost added is permanent and lands on somebody else. Both halves are
+asserted gone, the field and the save that read it, because a save still reading
+`organizer_new` is reachable by anything that posts to `save_event` whether or
+not a field is drawn.
 
 **Imported events are unaffected.** `organizer` is on `manager_fields()` for
 both adapters, so no fetch has ever written it and none can: a platform's
@@ -1350,6 +1361,73 @@ markup was right the whole time, which is why the panels were in the inspector.
 > broken. And the on-site twin (`calendar.js`) and the embed (`embed.js`) are
 > documented twins that drift silently: the same trap sat unreached in the
 > other runtime.
+
+**A form inside a form, and every save cancelled the event.** The cancel card was
+rendered into the event editor's side column, which is echoed inside the event
+`<form>`. HTML forbids nested forms, so every parser drops the inner start tag
+and keeps its children: the cancel card's `uc_action`, its nonce and its
+notify-registrants checkbox joined the event form. PHP takes the last value of a
+repeated key, so Save posted `cancel_event` with the matching cancel nonce, the
+security check passed because both halves came from the same card, and
+`save_event` never ran, so the edit was discarded as well. **It shipped in
+3.36.0, the release that added the cancel card, and was found live on 3.40.0,
+five releases later.** The card was never once outside the form: the call site
+sits between the event form's open and close tag in every one of 3.36.0, 3.37.0,
+3.38.0, 3.39.0 and 3.40.0. Earlier notes in this file and in the changelog put
+the start at 3.38.0 or 3.39.0, which was read off the releases where it happened
+to be noticed rather than off the call site.
+
+> **A renderer that emits a form cannot be composed into one.** The rule is
+> structural and is now checked structurally: no renderer opening a form is
+> called between another form's open and close, and no form is given two actions
+> or two nonces. A second `uc_action` is destructive whether or not it brings a
+> form with it, which is why the count is asserted and not only the nesting.
+
+**Three releases of tests asserting something other than the behaviour that
+mattered.** This is the finding, not a footnote on the one above.
+
+- 3.31.x asserted both panels were built and neither was marked hidden, then
+  counted the visible cards. Both passed while the mode showed nothing, and then
+  while every card was a 40px strip with no title and no button.
+- 3.39.0 asserted `data-uc-scope-confirm` was gone and that `dismiss()` compared
+  paths. Both were true and stayed true, while the scope dialog went on
+  appearing after every save, because the second ask was never on the save
+  button: it was on the page a save redirects to.
+- 3.40.0's assertions about the event editor were greps over the source, and the
+  destructive fault above does not exist in the source. It exists only once a
+  parser has read it.
+
+> The common shape is not "the tests were too weak". Each asserted a PROPERTY OF
+> THE CODE believed to imply the outcome, and never the outcome. **Write the
+> assertion in the words of the outcome first, then find a way to decide it.**
+> "A save leaves the event published and uncancelled" is decided by working out
+> what the browser posts and what PHP makes of it, which is what
+> `.claude/save-outcome-test.php` does. Writing that assertion is also what
+> found a second, unrelated defect: `save_mode` fell back to `draft`, so a save
+> naming no mode unpublished a published event, and Save Draft was the first
+> submit button in the form, which is the one a browser presses on Enter.
+
+**A single-select control over a taxonomy that accepts many.** Categories had it
+until 3.8.0, organizers until 3.40.0: the picker read index zero and the save
+wrote an array of that one back through `wp_set_object_terms()`, whose default
+REPLACES. Venue and series have the same shape and are the deliberate case:
+both are one per event, both read `reset( get_the_terms() )` and both write a
+single id through `set_for_event()`, so if an event did hold two, a save would
+keep the alphabetically first and drop the other silently.
+
+> **The limit is only as real as the narrowest route into the data**, and the
+> routes differ. `uc_venue` registers `show_ui => false`, so there is no screen
+> and nothing can give an event two. `uc_series` registers `show_ui => true`
+> with `meta_box_cb => false`, which closes the CLASSIC metabox only; `uc_event`
+> is `show_in_rest => true` and supports the editor, and the block editor picks
+> its taxonomy panels off `show_ui`. So series may be reachable the same way
+> organizers were. **Unverified, and it needs a person to open the WordPress post
+> editor and look**, which is why nothing was re-registered on the inference:
+> `show_in_rest` and `show_ui` on a public taxonomy also decide its archive and
+> what satellites read.
+
+> **Ask whether the LIMIT is in the data model or only in the control.** When it
+> is only in the control, the loss is silent, unlogged and unrecoverable.
 
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not

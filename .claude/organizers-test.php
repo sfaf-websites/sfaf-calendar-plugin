@@ -386,63 +386,59 @@ if ( false !== strpos( $org_src, 'register_taxonomy' ) ) {
 }
 
 /* ===========================================================================
- * 4. CREATE FROM THE EVENT EDITOR, WITHOUT LOSING UNSAVED WORK.
+ * 4. NO CREATING ONE FROM THE EVENT EDITOR. REVERSED IN 3.41.0.
  *
- * The property that matters is structural, so it is checked structurally: the
- * control must be a FIELD on the event form, whose value is read inside
- * save_event_from_post(). If it were a button posting its own uc_action, the
- * form would submit, redirect, and discard everything typed since the page
- * loaded. That is exactly what the FAQ set control did until 3.3.0.
+ * 3.37.0 added a "Not listed? Add one" field to the organizer control, and this
+ * section asserted it was there, that it was a FIELD rather than a button that
+ * posts, and that a typed name already ticked was not added twice. Those were
+ * the right assertions for a control that should exist.
+ *
+ * It should not. The same release gave organizers their own screen, which is
+ * what the field was compensating for, and a text box beside a curated list
+ * invents entries in passing: an organizer typed mid-event gets whatever
+ * spelling was in somebody's head, and the list acquires three of them, each
+ * owning some events. Merging afterwards is manual.
+ *
+ * SO THE ASSERTION IS INVERTED, AND IT IS CHECKED IN BOTH HALVES. That is the
+ * shape cancellation-test settled on when the native-only rule removed a
+ * control: the renderer not drawing it is not on its own a guarantee, because a
+ * save still reading the POST key is a second way in for anything that posts
+ * here. What is KEPT from the old section is everything about not losing
+ * unsaved work, because the next control somebody adds to this card is subject
+ * to it.
  * ======================================================================== */
 echo "Adding one from the event editor\n";
 
 $portal_src = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
 
-// It is an input on the form.
-if ( false === strpos( $portal_src, 'name="organizer_new"' ) ) {
-    $fails[] = 'there is no organizer_new field on the event form, so the editor still cannot add one';
+/* No field. */
+if ( false !== strpos( $portal_src, 'name="organizer_new"' ) ) {
+    $fails[] = 'the organizer_new field is back on the event editor. Organizers are made on the Organizers screen; a text box beside the picker invents near-duplicates in passing.';
 }
 
-/*
- * IT IS READ ON THE PATH AN ORDINARY SAVE ALREADY TAKES.
- *
- * The organizer is a MANAGER field, so it is written by
- * save_manager_fields_from_post() rather than inline in save_event_from_post().
- * That is the shared-field-list rule: one list, one render, one save. What
- * matters for losing work is not which of the two methods holds the line, but
- * that the line is reached by the ordinary Save with no second submit, so both
- * halves of that chain are asserted.
- */
+/* And no save reading it. Checked separately, because either half alone would
+ * be a live path: a field with no save is a lie, and a save with no field is
+ * reachable by anything that posts to this action. */
 if ( ! preg_match( '#function save_manager_fields_from_post\s*\(.*?\)\s*\{#s', $portal_src, $m, PREG_OFFSET_CAPTURE ) ) {
     $fails[] = 'save_manager_fields_from_post() not found';
 } else {
     $body = substr( $portal_src, $m[0][1], 8000 );
-    if ( false === strpos( $body, 'organizer_new' ) ) {
-        $fails[] = 'organizer_new is not handled in save_manager_fields_from_post(), so it does not ride the ordinary save';
+    $body = preg_replace( '#/\*.*?\*/#s', '', $body );
+    if ( false !== strpos( $body, "_POST['organizer_new']" ) ) {
+        $fails[] = 'the save still reads organizer_new, so an organizer can be created by posting to save_event even with no field on the form';
     }
-}
-
-if ( ! preg_match( '#function save_event_from_post\s*\(.*?\)\s*\{#s', $portal_src, $m, PREG_OFFSET_CAPTURE ) ) {
-    $fails[] = 'save_event_from_post() not found';
-} else {
-    $body = substr( $portal_src, $m[0][1], 20000 );
-    if ( false === strpos( $body, 'save_manager_fields_from_post' ) ) {
-        $fails[] = 'save_event_from_post() no longer calls save_manager_fields_from_post(), so the new-organizer field is never read on an ordinary save';
+    if ( preg_match( '#SFAF_Organizers::save\(#', $body ) ) {
+        $fails[] = 'the event save still creates organizer terms. Creating one is a decision taken on the Organizers screen.';
     }
 }
 
 /*
- * THE RENDERER OPENS NO FORM OF ITS OWN.
+ * THE RENDERER OPENS NO FORM OF ITS OWN, AND POSTS NOTHING ON ITS OWN.
  *
- * This is the assertion that encodes the 3.3.0 lesson structurally. A control
- * that opens its own <form> submits on its own, which means leaving the event
- * form and discarding everything typed into it. A control that emits only
- * fields belongs to whichever form encloses it, and the only form that calls
- * render_manager_control() is the event form.
- *
- * Checked by slicing the method rather than the file, because file order is not
- * DOM order here: this renderer is defined above the form markup and called
- * from inside it.
+ * Kept from the reversed section, because it is the durable half. A control on
+ * this card with its own form or its own submit leaves the event form and
+ * discards every unsaved edit, which is the 3.3.0 FAQ set fault, and it is also
+ * the 3.40.0 nested-form fault by another name.
  */
 if ( ! preg_match( '#function render_manager_control\s*\(.*?\)\s*\{#s', $portal_src, $m, PREG_OFFSET_CAPTURE ) ) {
     $fails[] = 'render_manager_control() not found';
@@ -457,11 +453,8 @@ if ( ! preg_match( '#function render_manager_control\s*\(.*?\)\s*\{#s', $portal_
             if ( 0 === $depth ) { $end = $i; break; }
         }
     }
-    $method = substr( $portal_src, $start, $end - $start );
+    $method = preg_replace( '#/\*.*?\*/#s', '', substr( $portal_src, $start, $end - $start ) );
 
-    if ( false === strpos( $method, 'name="organizer_new"' ) ) {
-        $fails[] = 'the organizer_new input is not rendered by render_manager_control()';
-    }
     if ( preg_match( '#<form\b#', $method ) ) {
         $fails[] = 'render_manager_control() opens a form. A control with its own form submits on its own, which leaves the event form and discards every unsaved edit. That was the 3.3.0 FAQ set fault.';
     }
@@ -471,10 +464,9 @@ if ( ! preg_match( '#function render_manager_control\s*\(.*?\)\s*\{#s', $portal_
 }
 
 /*
- * AND THERE IS NO SEPARATE ACTION FOR IT. This is the assertion that actually
- * encodes the 3.3.0 lesson: a `create_organizer` arm in the POST dispatcher
- * would mean a second submit from the event screen, and a second submit is what
- * discards the form.
+ * AND NO SEPARATE ACTION APPEARED IN ITS PLACE. Removing the field is not an
+ * invitation to rebuild it as a button: from the event editor that is a second
+ * submit, and a second submit discards the form.
  */
 if ( preg_match( "#case 'create_organizer':#", $portal_src ) ) {
     $fails[] = 'a create_organizer POST action exists. From the event editor that is a second submit, which discards every unsaved edit. It was the 3.3.0 FAQ set fault.';
@@ -484,19 +476,12 @@ if ( preg_match( '#name="uc_action" value="create_organizer"#', $portal_src ) ) 
 }
 
 /*
- * THE TYPED ORGANIZER IS ADDED, NOT AN ALTERNATIVE.
- *
- * "The select wins" was correct while the control was a single select and the
- * two were alternatives. With checkboxes, ticking two and typing a third means
- * three hosts. What must still hold is that it is not added twice when it names
- * one already ticked, which save() makes possible by returning the existing
- * term for a duplicate name.
+ * THE ORGANIZERS SCREEN IS WHERE ONE IS MADE, so it has to be able to. This is
+ * what carries the removed field's job, and removing the field is only correct
+ * while this holds.
  */
-if ( ! preg_match( '#! in_array\( \(int\) \$made, \$orgs, true \)#', $portal_src ) ) {
-    $fails[] = 'a newly typed organizer is not checked against the ticked ones, so naming one already ticked would add it twice';
-}
-if ( preg_match( '#if \( ! \$org && ! empty\( \$_POST\[.organizer_new.\] \) \)#', $portal_src ) ) {
-    $fails[] = 'the new-organizer box is still gated on nothing being chosen, which was the single-select rule: it would now refuse to add a third host to an event that already names two';
+if ( ! preg_match( "#case 'save_organizer':#", $portal_src ) ) {
+    $fails[] = 'there is no save_organizer action, so nothing can create an organizer at all';
 }
 
 /* ===========================================================================
@@ -521,8 +506,10 @@ echo "checked: name, slug and description are all an organizer carries; a rename
 echo "         slug and an explicit slug change does; a duplicate name returns the existing term;\n";
 echo "         the count covers drafts as well as published; deletion is ALLOWED and reports the\n";
 echo "         count while the venue refusal stays a refusal; the taxonomy keeps public, its rewrite\n";
-echo "         slug, show_in_rest and its WordPress fallback screen; the editor's add-one control is\n";
-echo "         a field on the event form and not a second submit; and organizer stays a manager\n";
+echo "         slug, show_in_rest and its WordPress fallback screen; the editor offers no way to\n";
+echo "         create one, in the renderer or in the save, and no second submit replaced it; that\n";
+echo "         the Organizers screen still can, since it now carries that job alone; organizer\n";
+echo "         stays a manager\n";
 echo "         field on both adapters so no fetch writes it; that an event can hold SEVERAL\n";
 echo "         organizers, ordered by name so two surfaces cannot disagree, phrased 'A and B' and\n";
 echo "         'A, B and C' with no serial comma, counted when one of several, and that neither the\n";
