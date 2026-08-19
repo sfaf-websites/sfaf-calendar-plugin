@@ -124,6 +124,28 @@ $edits = array(
         '<span class="uc-source-badge uc-badge-request">Staff request</span>',
         '' ),
 
+    /* The series screen goes back to its own copy of the markup, which is the
+     * 3.43.1 bug exactly: hooks the binder never finds. */
+    'picker-copy' => array( $P,
+        "                    <?php \$this->render_image_picker( array(\n                        'uid'         => 'series',",
+        "                    <input type=\"hidden\" name=\"series_image_id\" id=\"uc-featured-image-id\" value=\"0\" />\n                    <div class=\"uc-image-preview\" id=\"uc-image-preview\"><img id=\"uc-image-preview-img\" /></div>\n                    <button type=\"button\" class=\"uc-btn uc-choose-image\">Choose Image</button>\n                    <?php \$this->render_image_picker( array(\n                        'uid'         => 'series'," ),
+
+    /* The series picker loses the folder attributes, so that screen would
+     * offer the whole media library while the editor offers the folder. */
+    'picker-unfiltered' => array( $P,
+        '<div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any() ); ?>>',
+        '<div class="uc-field uc-image-field">' ),
+
+    /* A screen stops loading the media library. */
+    'no-media-enqueue' => array( $P,
+        "        \$this->load_media = true;\n        wp_enqueue_media();\n\n        \$this->chrome_open( \$user, 'series' );",
+        "        \$this->chrome_open( \$user, 'series' );" ),
+
+    /* The renderer drops a hook the binder needs, so every picker dies. */
+    'picker-hook-gone' => array( $P,
+        '               data-uc-image-id value="<?php echo (int) $a[\'id_value\']; ?>" />',
+        '               value="<?php echo (int) $a[\'id_value\']; ?>" />' ),
+
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",

@@ -51,6 +51,10 @@ try no-rate-limit   "the rate limiter always says yes"  .claude/request-form-tes
 try token-as-key    "the token is stored under itself"  .claude/request-form-test.php
 try status-from-post "the status is read from the form" .claude/request-form-test.php
 try unmarked-request "a request is unmarked in the queue" .claude/request-form-test.php
+try picker-copy     "the series copies the markup again" .claude/image-picker-test.php
+try picker-unfiltered "a picker loses the folder filter" .claude/image-picker-test.php
+try no-media-enqueue "a screen stops loading the library" .claude/image-picker-test.php
+try picker-hook-gone "the renderer drops a required hook" .claude/image-picker-test.php
 
 restore
 echo "-------------------------------------------"
