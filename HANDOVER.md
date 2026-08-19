@@ -101,7 +101,9 @@ events that were not saved a second time.
   there, and the scope question must not be asked again. Then press Enter in the
   title field and confirm it saves rather than unpublishing. Then check the left
   button on a published event reads Save and not Save Draft, and that the
-  organizer card no longer offers "Not listed? Add one".
+  organizer card no longer offers "Not listed? Add one". The cancel card is
+  below the form now rather than in the side column, and its state line and its
+  legend changed size: that is the type scale being applied, not a mistake.
 - **3.39.0 and 3.38.0 need one pass over the editor.** On an event somebody is
   registered for, change a time and check the prompt appears naming them,
   including anybody who only pressed **Get Reminders**, who used to be invisible
@@ -172,6 +174,12 @@ with the mechanisms.
   Write the assertion in the words of the OUTCOME, then find a way to decide it;
   `.claude/save-outcome-test.php` is what that looks like here. §7 has all three
   instances.
+- **And it happened again inside the fix.** The type scale sweep written for
+  this release matched `(\d+)px`, so it could not see `13.5px`, which is the one
+  value the ladder exists to forbid, and its self-test passed because every case
+  in it was a whole number. Six real rules were hiding behind it. **A new
+  checker gets a case for the shape you have NOT already seen**, not only the
+  one that prompted it.
 - **Tests that pass while the thing is broken.** Plant the fault, and check what
   the STUBS do. A stub that cannot read its input does not test its input.
 - **A rule that loses the cascade, and a rule nobody wrote.** Identical on
