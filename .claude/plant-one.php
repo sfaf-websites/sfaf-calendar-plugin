@@ -187,6 +187,31 @@ $edits = array(
     'media-ungated' => array( 'includes/class-sfaf-portal.php',
         "        if ( \$this->load_media ) {\n            wp_print_media_templates();\n        }",
         "        if ( \$this->load_media || \$this->load_editor ) {\n            wp_print_media_templates();\n        }" ),
+    /* The floor comes off, so the route serves a past month again. */
+    'no-month-floor' => array( 'includes/class-sfaf-shortcodes.php',
+        "                return ( \$raw < \$floor ) ? \$floor : \$raw;",
+        "                return \$raw;" ),
+
+    /* The month binding loses its lower bound, which is the fault the outcome
+     * test caught before this release shipped. */
+    'month-upper-only' => array( 'includes/class-sfaf-shortcodes.php',
+        "            \$args['meta_query'][] = array(\n                'key'     => '_uc_event_date',\n                'value'   => \$filters['month'] . '-01',\n                'compare' => '>=',\n                'type'    => 'DATE',\n            );\n",
+        '' ),
+
+    /* The sidebar stops being told the month, so the two halves disagree. */
+    'sidebar-unbound' => array( 'includes/class-sfaf-shortcodes.php',
+        "                        isset( \$args['heading'] ) ? \$args['heading'] : null,\n                        \$month\n                    )",
+        "                        isset( \$args['heading'] ) ? \$args['heading'] : null\n                    )" ),
+
+    /* The floor month offers a way back again. */
+    'floor-has-prev' => array( 'includes/class-sfaf-shortcodes.php',
+        "            \$at_floor = \$this->is_floor_month( \$prefix );",
+        "            \$at_floor = false;" ),
+
+    /* The grid draws its own head in the combined mode, so there are two. */
+    'two-heads' => array( 'includes/class-sfaf-shortcodes.php',
+        "echo \$this->render_month_grid( \$month, \$filters, ! \$combined );",
+        "echo \$this->render_month_grid( \$month, \$filters );" ),
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",

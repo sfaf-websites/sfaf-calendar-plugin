@@ -63,6 +63,11 @@ try toolbar-colour  "the toolbar grows a colour picker" .claude/rich-text-test.p
 try heading-h2      "the heading competes with the page" .claude/rich-text-test.php
 try faqsets-500     "the 3.44.0 five hundred returns"  .claude/screen-assets-test.php
 try media-ungated   "media templates lose their gate"  .claude/screen-assets-test.php
+try no-month-floor  "the month floor comes off"        .claude/combined-outcome-test.php
+try month-upper-only "the month binding loses its floor" .claude/combined-outcome-test.php
+try sidebar-unbound "the sidebar stops following the grid" .claude/combined-outcome-test.php
+try floor-has-prev  "the floor offers a way back"      .claude/combined-outcome-test.php
+try two-heads       "the combined mode draws two heads" .claude/combined-outcome-test.php
 
 restore
 echo "-------------------------------------------"
