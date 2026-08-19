@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-19, at 3.44.0.
+**Last updated:** 2026-08-19, at 3.44.1.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.44.0**, built as `sfaf-calendar-3.44.0.zip` in the project
+The plugin is at **3.44.1**, built as `sfaf-calendar-3.44.1.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.44.0, the deployment is stale or partial, and that
+screen: if it does not say 3.44.1, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -104,6 +104,14 @@ events that were not saved a second time.
   organizer card no longer offers "Not listed? Add one". The cancel card is
   below the form now rather than in the side column, and its state line and its
   legend changed size: that is the type scale being applied, not a mistake.
+- **OPEN ALL FOUR SCREENS THAT CARRY A PICKER OR AN EDITOR, AND CONFIRM EACH
+  RETURNS A PAGE.** This is the pass nothing in the build can do: there is no
+  WordPress in the build environment, so no check there proves a screen loads.
+  The four are **FAQ Sets**, **the event editor**, **Pending** and **New or Edit
+  Series**. FAQ Sets is the one that returned 500 on 3.44.0. On each, confirm
+  the page is complete to the footer, the sidebar is full width, and the FAQ
+  answer is an editor with a toolbar rather than a small plain box. **Do this
+  after every release that touches a screen's assets.**
 - **CHECK CHOOSE IMAGE ON NEW SERIES AND ON EDIT SERIES.** It did nothing at
   all before 3.43.1 and now shares the event editor's control, so the picker
   should open on the calendar folder and an upload from it should land there.

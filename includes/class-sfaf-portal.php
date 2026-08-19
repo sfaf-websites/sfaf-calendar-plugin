@@ -23,7 +23,29 @@ class SFAF_Portal {
     private $login_error = '';
 
     /** Whether to load the WP media library (event form image picker). */
+    /**
+     * TWO ASSETS, TWO FLAGS, AND CONFLATING THEM RETURNED A 500 (3.44.1).
+     *
+     * caladmin builds its own document, so anything WordPress would normally
+     * print into a page has to be asked for. There was one flag for that, named
+     * for the media library, and it did three jobs: print the enqueued styles
+     * and scripts, print the media Backbone templates, and print the editor
+     * settings.
+     *
+     * 3.44.0 gave the FAQ Sets screen a rich text control and set that flag to
+     * get the scripts. It had no reason to call wp_enqueue_media() and did not,
+     * so foot() reached wp_print_media_templates() on a request where the media
+     * stack had never been loaded, and the screen fataled halfway through its
+     * own footer. The document went out truncated, which is why the chrome
+     * looked squeezed rather than absent.
+     *
+     * So: load_media means "this screen opens the media library" and is what
+     * pairs with wp_enqueue_media(). load_editor means "this screen has a rich
+     * text control". Either one means the enqueued styles and scripts get
+     * printed; only load_media prints media templates.
+     */
     private $load_media = false;
+    private $load_editor = false;
 
     /* =====================================================================
      * Bootstrap
@@ -2433,7 +2455,8 @@ class SFAF_Portal {
     })(document.documentElement);
     </script>
     <?php
-    if ( $this->load_media ) {
+    // Either control needs whatever it enqueued printed into this head.
+    if ( $this->load_media || $this->load_editor ) {
         wp_print_styles();
         wp_print_head_scripts();
     }
@@ -2443,11 +2466,24 @@ class SFAF_Portal {
     }
 
     private function foot() {
-        if ( $this->load_media ) {
-            // The portal builds its own document, so print the enqueued media
-            // scripts + Backbone templates manually to power wp.media here.
+        // The portal builds its own document, so whatever either control
+        // enqueued has to be printed by hand.
+        if ( $this->load_media || $this->load_editor ) {
             wp_print_footer_scripts();
+        }
+
+        /*
+         * MEDIA TEMPLATES ONLY WHERE THE MEDIA LIBRARY WAS ENQUEUED.
+         *
+         * This is the 500. It used to hang off the one flag, so a screen that
+         * set the flag for the editor alone reached a media-stack function on a
+         * request that had never loaded the media stack.
+         */
+        if ( $this->load_media ) {
             wp_print_media_templates();
+        }
+
+        if ( $this->load_editor ) {
             /*
              * THE TOOLBAR, ONCE, FOR THE ROWS THE BROWSER BUILDS.
              *
@@ -5871,7 +5907,9 @@ class SFAF_Portal {
         $set     = $term_id ? SFAF_Series::default_faq_set( $term_id ) : '';
         $sets    = SFAF_FAQ_Sets::all();
 
-        $this->load_media = true;
+        // A picker and a rich text description, so both.
+        $this->load_media  = true;
+        $this->load_editor = true;
         wp_enqueue_media();
 
         $this->chrome_open( $user, 'series' );
@@ -7774,6 +7812,7 @@ class SFAF_Portal {
         $this->load_media = true;
         wp_enqueue_media();
         // Rows added by the browser need the editor too. See SFAF_Rich_Text.
+        $this->load_editor = true;
         SFAF_Rich_Text::enqueue();
 
         /*
@@ -11016,6 +11055,7 @@ class SFAF_Portal {
         $this->load_media = true;
         wp_enqueue_media();
         // Rows added by the browser need the editor too. See SFAF_Rich_Text.
+        $this->load_editor = true;
         SFAF_Rich_Text::enqueue();
 
         $this->chrome_open( $user, 'pending' );
@@ -11423,7 +11463,7 @@ class SFAF_Portal {
          * already gone out, which is the ordering that made a control do
          * nothing before.
          */
-        $this->load_media = true;
+        $this->load_editor = true;
         SFAF_Rich_Text::enqueue();
 
         $this->chrome_open( $user, 'faq-sets' );

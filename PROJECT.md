@@ -179,6 +179,42 @@ notes. **Two queues is one queue somebody stops checking.**
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
 
+### caladmin asks for its own assets, and there are two of them
+
+The portal builds its own document rather than going through `wp_head`, so
+anything WordPress would normally print has to be requested. Two flags, and they
+are separate because conflating them returned a 500 in 3.44.0.
+
+| Flag | Means | Pairs with |
+|---|---|---|
+| `load_media` | this screen opens the media library | `wp_enqueue_media()` |
+| `load_editor` | this screen has a rich text control | `wp_editor()` or `SFAF_Rich_Text::enqueue()` |
+
+Either prints the enqueued styles and scripts. **Only `load_media` prints media
+templates**, because `wp_print_media_templates()` is a media-stack function and
+is not safe on a request that never loaded the media stack.
+
+> **A flag that means two things will be set for one of them.** FAQ Sets set the
+> single old flag to get its scripts printed, having no reason to enqueue media
+> and not doing so, and the footer then reached a media function with no media
+> stack behind it. The screen fataled halfway through its own footer, so the
+> document went out truncated and the chrome looked squeezed rather than absent.
+
+> **The screens that did not break were lucky, not correct.** The event editor
+> and the pending queue render the same FAQ control and survived only because
+> they call `wp_enqueue_media()` for their image picker, which has nothing to do
+> with rich text. Removing the picker from either would have broken them the
+> same way. `.claude/screen-assets-test.php` now requires each screen to declare
+> what it uses and to use only what it declared.
+
+**This is the third fatal here that lint could not see**, and the honest note is
+that the check which would catch it, rendering the screen and asserting a
+complete document, is not possible in the build environment: there is no
+WordPress, no database and no HTTP server. Stubbing enough of WordPress would
+mean the test deciding which functions exist, which is the question the bug
+turned on. The contract check is the closest achievable thing, and loading the
+screens stays a manual pass.
+
 ### Rich text is a rule, and one control
 
 **Any field where somebody writes more than a sentence and it is DISPLAYED AS

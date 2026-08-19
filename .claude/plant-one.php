@@ -138,7 +138,7 @@ $edits = array(
 
     /* A screen stops loading the media library. */
     'no-media-enqueue' => array( $P,
-        "        \$this->load_media = true;\n        wp_enqueue_media();\n\n        \$this->chrome_open( \$user, 'series' );",
+        "        \$this->load_media  = true;\n        \$this->load_editor = true;\n        wp_enqueue_media();\n\n        \$this->chrome_open( \$user, 'series' );",
         "        \$this->chrome_open( \$user, 'series' );" ),
 
     /* The renderer drops a hook the binder needs, so every picker dies. */
@@ -176,6 +176,17 @@ $edits = array(
     'heading-h2' => array( 'includes/class-sfaf-rich-text.php',
         "'block_formats' => 'Paragraph=p;Heading=h3',",
         "'block_formats' => 'Paragraph=p;Heading=h2'," ),
+    /* THE 3.44.0 FIVE HUNDRED, exactly as it shipped: a screen declaring the
+     * media flag to get its scripts printed, having never enqueued media, so
+     * foot() reaches wp_print_media_templates() with no media stack. */
+    'faqsets-500' => array( 'includes/class-sfaf-portal.php',
+        "        \$this->load_editor = true;\n        SFAF_Rich_Text::enqueue();\n\n        \$this->chrome_open( \$user, 'faq-sets' );",
+        "        \$this->load_media = true;\n        SFAF_Rich_Text::enqueue();\n\n        \$this->chrome_open( \$user, 'faq-sets' );" ),
+
+    /* The media templates go back to riding whichever flag is set. */
+    'media-ungated' => array( 'includes/class-sfaf-portal.php',
+        "        if ( \$this->load_media ) {\n            wp_print_media_templates();\n        }",
+        "        if ( \$this->load_media || \$this->load_editor ) {\n            wp_print_media_templates();\n        }" ),
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",

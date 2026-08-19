@@ -61,6 +61,8 @@ try faq-stripped    "an answer is stripped on save"    .claude/rich-text-test.ph
 try faq-escaped     "an answer is escaped on display"  .claude/rich-text-test.php
 try toolbar-colour  "the toolbar grows a colour picker" .claude/rich-text-test.php
 try heading-h2      "the heading competes with the page" .claude/rich-text-test.php
+try faqsets-500     "the 3.44.0 five hundred returns"  .claude/screen-assets-test.php
+try media-ungated   "media templates lose their gate"  .claude/screen-assets-test.php
 
 restore
 echo "-------------------------------------------"

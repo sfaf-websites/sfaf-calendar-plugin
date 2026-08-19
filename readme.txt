@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.44.0
+Stable tag: 3.44.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -527,6 +527,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.44.1 =
+
+**The FAQ Sets screen returned HTTP 500 on 3.44.0. Install this over it.**
+
+**WHAT HAPPENED.** caladmin builds its own document, so anything WordPress would normally print into a page has to be asked for. There was one flag for that, named for the media library, and it did three jobs at once: print the enqueued styles and scripts, print the media library's own templates, and print the editor settings.
+
+3.44.0 gave FAQ Sets a rich text control and set that flag to get its scripts printed. That screen has no image picker, so it had no reason to call `wp_enqueue_media()` and did not. The footer then reached `wp_print_media_templates()` on a request where the media stack had never been loaded, and the screen fataled part of the way through its own footer. The document went out truncated, which is why the chrome looked squeezed rather than simply absent, and why the answer field was a small textarea: the scripts that would have turned it into an editor were in the part that never arrived.
+
+**One flag doing two jobs was the whole fault.** There are two now. `load_media` means "this screen opens the media library" and is what pairs with `wp_enqueue_media()`. `load_editor` means "this screen has a rich text control". Either one prints the enqueued styles and scripts; only `load_media` prints media templates.
+
+**WHICH OTHER SCREENS WERE AFFECTED: none, and they survived BY ACCIDENT.** The event editor and the pending queue render FAQ answers through the same control and did not fatal, because both happen to call `wp_enqueue_media()` for their image picker, which has nothing to do with rich text. Take the picker off either screen and its FAQ editors would have failed exactly the same way. Both now declare what they actually use, and so does the series screen.
+
+**HOW A 500 GOT THROUGH THIRTY-NINE CHECKS.** PHP lint could never have seen it: the file parses perfectly. The callable audit could not either: every function involved exists. The fault was a function that is only safe once something has been enqueued, reached on a request that never enqueued it. That is the third fatal on this project that lint could not see.
+
+**What would actually catch it is rendering the screen and asserting a complete document comes back, and that cannot be done here.** There is no WordPress in this environment, no database and no HTTP server, and stubbing enough of WordPress to render a portal screen would mean the test deciding which functions exist, which is the exact question this bug turned on. So the new check asserts the contract instead: a screen declaring `load_media` must call `wp_enqueue_media()`, a screen rendering a rich text control must declare `load_editor`, media-stack functions are reachable only under `load_media`, and the flags are set before the head is written. The first and third each catch this fatal on their own, and the real 3.44.0 fault is planted and caught. **Loading the screens is still a manual pass, and it is named in the hand-off.**
+
+Two faults in that checker were found by making it fail on purpose: it missed a flag written with its assignment aligned, and it compared against the first `chrome_open()` rather than the last, so it reported every screen's permission branch as setting flags too late.
 
 = 3.44.0 =
 
