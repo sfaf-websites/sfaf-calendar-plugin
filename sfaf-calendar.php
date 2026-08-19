@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.43.1
+ * Version: 3.44.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.43.1' );
+define( 'SFAF_VERSION', '3.44.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -104,6 +104,7 @@ $sfaf_includes = array(
     // The mail layer, before anything that sends: SFAF_Email builds and hands
     // to wp_mail(), SFAF_Notifications decides who gets what, and
     // sfaf-notify-consent.php answers whether a manager asked for any of it.
+    'includes/class-sfaf-rich-text.php',
     'includes/sfaf-notify-consent.php',
     'includes/class-sfaf-email.php',
     'includes/class-sfaf-notifications.php',
@@ -466,7 +467,12 @@ function sfaf_output_ics() {
     $end->setTimezone( $utc );
 
     $host        = wp_parse_url( home_url(), PHP_URL_HOST );
-    $description = wp_strip_all_tags( get_the_excerpt( $post_id ) );
+    /*
+     * FLATTENED, NOT STRIPPED. wp_strip_all_tags() joins the text either
+     * side of a tag with nothing between, so a two-paragraph description
+     * arrived in the calendar file as "...the firstThe second...".
+     */
+    $description = sfaf_flatten_html( get_the_excerpt( $post_id ) );
 
     $lines   = array();
     $lines[] = 'BEGIN:VCALENDAR';

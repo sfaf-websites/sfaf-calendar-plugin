@@ -568,7 +568,9 @@ function sfaf_google_calendar_url( $post_id ) {
         'action'   => 'TEMPLATE',
         'text'     => get_the_title( $post_id ),
         'dates'    => $start_utc->format( 'Ymd\THis\Z' ) . '/' . $end_utc->format( 'Ymd\THis\Z' ),
-        'details'  => wp_strip_all_tags( get_the_excerpt( $post_id ) ),
+        // Flattened, not stripped: see sfaf_flatten_html(). Google shows this
+        // as the event's notes, and joined words are what stripping gives.
+        'details'  => sfaf_flatten_html( get_the_excerpt( $post_id ) ),
         'location' => sfaf_event_location( $post_id ),
     );
 
@@ -1240,7 +1242,7 @@ function sfaf_faq_accordion_html( $post_id ) {
                         <span class="uc-faq-q-text"><?php echo esc_html( $f['question'] ); ?></span>
                         <span class="uc-faq-toggle" aria-hidden="true">+</span>
                     </button>
-                    <div class="uc-faq-a"><?php echo wpautop( esc_html( $f['answer'] ) ); ?></div>
+                    <div class="uc-faq-a"><?php echo SFAF_Rich_Text::display( $f['answer'] ); ?></div>
                 </div>
             <?php endforeach; ?>
         </div>

@@ -54,6 +54,9 @@
         // fire in registration order. Whether to email people who have already
         // signed up outranks a reminder that the image is missing.
         run('notifyConsent', initNotifyConsent);
+        // After repeaters, so the rows that exist on load are in the document
+        // before their editors are started.
+        run('richText', initRichText);
         run('completeness', initCompleteness);
         run('asyncActions', initAsyncActions);
         run('disclosures', initDisclosures);
@@ -3155,5 +3158,91 @@
     function initNotifyConsent() {
         initChangeNotice();
         initCancelConsent();
+    }
+
+    /* ---------------------------------------------------------------------
+     * RICH TEXT ON ROWS THAT DID NOT EXIST WHEN THE PAGE WAS BUILT (3.44.0)
+     *
+     * wp_editor() renders the editors it is asked for while the page is being
+     * assembled. A FAQ row cloned from a <template> afterwards has nothing
+     * rendered for it, so its editor has to be started here, with
+     * wp.editor.initialize().
+     *
+     * THE SETTINGS ARE NOT WRITTEN HERE. They come from the JSON block that
+     * SFAF_Rich_Text::settings_json() prints, which is the same array
+     * wp_editor() was given. A second copy of the toolbar in this file is
+     * exactly the drift 3.43.1 was about, one screen quietly allowing
+     * something another does not.
+     *
+     * IT DEGRADES TO THE TEXTAREA IT ALREADY IS. Every one of these is a real
+     * <textarea> with a real name, so if wp.editor is missing the row still
+     * works, still posts and still saves. Nothing here builds a control.
+     * ------------------------------------------------------------------ */
+    function richTextSettings() {
+        var el = document.getElementById('uc-rich-settings');
+        if (!el) { return null; }
+        try {
+            return JSON.parse(el.textContent || el.innerHTML);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function initRichText() {
+        var settings = richTextSettings();
+        if (!settings || !window.wp || !wp.editor || typeof wp.editor.initialize !== 'function') {
+            return;
+        }
+
+        var seq = 0;
+        function start(area) {
+            if (!area || area.getAttribute('data-uc-rich-on')) { return; }
+            /* wp_editor() ids may hold lowercase letters, numbers and dashes
+             * only, and a field name here is `faqs[3][answer]`. */
+            if (!area.id) {
+                seq++;
+                area.id = 'uc-rich-' + seq + '-' + Math.max(1, seq);
+            }
+            area.setAttribute('data-uc-rich-on', '1');
+            try {
+                wp.editor.initialize(area.id, settings);
+            } catch (err) {
+                area.removeAttribute('data-uc-rich-on');
+            }
+        }
+
+        document.querySelectorAll('textarea[data-uc-rich]').forEach(function (area) {
+            /* Not the ones still inside a <template>: they are the pattern for
+             * future rows, not rows. */
+            if (area.closest('template')) { return; }
+            start(area);
+        });
+
+        /*
+         * A new row arrives by cloning, and a removed one has to have its
+         * editor taken down or TinyMCE keeps an instance pointed at an element
+         * that is no longer in the document, and the next row with that id
+         * silently fails to start.
+         */
+        document.addEventListener('click', function (e) {
+            var add = e.target.closest ? e.target.closest('.uc-repeater-add') : null;
+            if (add) {
+                /* After initRepeaters() has appended the clone. */
+                window.setTimeout(function () {
+                    document.querySelectorAll('textarea[data-uc-rich]').forEach(function (area) {
+                        if (!area.closest('template')) { start(area); }
+                    });
+                }, 0);
+                return;
+            }
+            var remove = e.target.closest ? e.target.closest('.uc-repeater-remove') : null;
+            if (remove) {
+                var row = remove.closest('.uc-repeater-row');
+                if (!row) { return; }
+                row.querySelectorAll('textarea[data-uc-rich][data-uc-rich-on]').forEach(function (area) {
+                    try { wp.editor.remove(area.id); } catch (err) { /* nothing to take down */ }
+                });
+            }
+        }, true);
     }
 })();

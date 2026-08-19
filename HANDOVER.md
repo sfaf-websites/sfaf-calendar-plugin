@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-19, at 3.43.1.
+**Last updated:** 2026-08-19, at 3.44.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.43.1**, built as `sfaf-calendar-3.43.1.zip` in the project
+The plugin is at **3.44.0**, built as `sfaf-calendar-3.44.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.43.1, the deployment is stale or partial, and that
+screen: if it does not say 3.44.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from

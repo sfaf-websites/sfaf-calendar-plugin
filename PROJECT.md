@@ -179,6 +179,60 @@ notes. **Two queues is one queue somebody stops checking.**
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
 
+### Rich text is a rule, and one control
+
+**Any field where somebody writes more than a sentence and it is DISPLAYED AS
+PROSE gets the editor.** Stated as a rule so a field added later inherits it.
+`SFAF_Rich_Text` owns the toolbar, the rendering, the sanitising and the
+conversion back to plain text.
+
+Both halves of the rule do work. "More than a sentence" excludes labels and
+one-line notes, where a toolbar is clutter. "Displayed as prose" excludes
+anything read as a VALUE: a title attribute, an ICS field, a JSON-LD string, a
+search index. HTML in one of those is not formatting, it is corruption.
+
+**Qualifying today:** the event description, the series description, and FAQ
+answers. **Excluded:** the cancel reason (one line, and it goes into an email as
+a value), the organizer description (its own label says it is not displayed),
+the public request form's fields (anonymous input is stripped on purpose, see
+§3), and every email body (below).
+
+> **One control, because the copies would differ in what somebody may TYPE.**
+> 3.43.1 found the image picker written out twice and one copy silently
+> broken. A rich text control is worse: one screen offering font colours and
+> another not is a calendar branded in some places and not others, and nobody
+> notices until it is everywhere. `wp_editor()` has exactly one caller and the
+> toolbar exactly one definition, asserted by
+> `.claude/rich-text-test.php`.
+
+**The browser gets the toolbar from the server**, as JSON printed by
+`settings_json()`. FAQ rows are cloned from a template after load, so their
+editors are started by `wp.editor.initialize()`, and a second copy of the
+toolbar written into `portal.js` would be the same drift in a new place.
+
+**Email bodies do not get it.** An HTML email is not a browser: clients strip
+`<style>`, ignore most of what they do not strip, and the plain text
+alternative has to carry the same message with no markup at all. The bodies are
+also token templates, and a token wrapped in markup by an editor stops matching.
+They stay plain text, which both halves of a message can carry.
+
+> **Turning plain text into HTML breaks everything that reads it as a value.**
+> `strip_tags()` and `wp_strip_all_tags()` join the text either side of a tag
+> with nothing between, so two paragraphs become "OneTwo". 3.38.0 found that in
+> `wp_trim_words()` before it reached the cards. `sfaf_flatten_html()` puts a
+> space where the block tag was, and is the only way prose becomes text here.
+> The test refuses any statement that joins a prose field with one of the three.
+
+**What existing content does:** nothing. Everything stored is plain text with
+line breaks, and every display path runs `wpautop()`, so it reads as the
+paragraphs it always looked like. Nothing is migrated.
+
+**Imported FAQ answers were being stripped on the way in.** `SFAF_Sources`
+sanitised them with `sanitize_textarea_field()`, which removes every tag, so a
+platform sending HTML had its paragraph boundaries destroyed before storage.
+They are kept as markup now. The first fetch after upgrading reports those rows
+as changed once, because the stored string genuinely changes.
+
 ### There is one image picker, and it is a renderer rather than markup
 
 `render_image_picker()` emits every featured-image control in caladmin: the

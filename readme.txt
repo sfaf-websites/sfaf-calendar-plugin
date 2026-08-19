@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.43.1
+Stable tag: 3.44.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -527,6 +527,38 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.44.0 =
+
+**Rich text wherever somebody writes prose, stated as a rule rather than a list, and one control for all of it.**
+
+**THE RULE.** Any field where somebody writes more than a sentence AND it is displayed as prose gets the editor. Both halves do work: "more than a sentence" excludes labels and one-line notes, where a toolbar is clutter; "displayed as prose" excludes anything read as a value, where markup is not formatting but corruption. A field added next year inherits this without anybody deciding again.
+
+**WHAT QUALIFIED:** the event description (had it since 3.38.0), **the series description**, and **FAQ answers**, everywhere they are written: the event editor, the pending queue's panel and the FAQ Sets screen.
+
+**WHAT WAS EXCLUDED, and why.** The cancel reason is one line by its own label and travels into an email as a value. The organizer description says on its own label that it is not shown anywhere, so it is an internal note. The public request form's description and notes take anonymous input, which 3.43.0 strips markup from on purpose; a rich control there would be an unauthenticated HTML surface. **The venue and category descriptions do not exist**: venues carry a name and an address, categories a name, a colour and an icon. Nothing was built to fill the gap.
+
+**EMAIL BODIES GET NOTHING, and that is a decision rather than an omission.** An HTML email is not a browser: clients strip what they do not understand, and every message here also has a plain text alternative that must carry the same words with no markup at all. The bodies are token templates too, and a token wrapped in markup by an editor stops matching. Plain text is the only thing both halves of a message can carry.
+
+**ONE CONTROL, WHICH IS THE PART THAT MATTERS.** 3.43.1 found the image picker written out twice, one copy silently broken and the two carrying different rules. A rich text control is worse to duplicate, because the copies would differ in **what somebody may type**: one screen with font colours and another without is a calendar branded in some places and not others, and nobody notices until it is everywhere. `wp_editor()` now has exactly one caller and the toolbar exactly one definition, both asserted. The browser reads the same settings from the server rather than carrying its own, because FAQ rows are cloned after the page loads and their editors have to be started in script.
+
+**The toolbar:** bold, italic, links, bulleted and numbered lists, one heading. No colours, sizes or alignment. The heading is **h3**, below the page's own title and its sections, so it cannot break reading order for anybody navigating by headings.
+
+**WHAT BREAKS WHEN PLAIN TEXT BECOMES HTML, checked one at a time.**
+
+**Trimming was wrong in four places and had been since 3.38.0.** `strip_tags()` and `wp_strip_all_tags()` join the text either side of a tag with nothing between, so two paragraphs become "OneTwo". The event description has been rich text for six releases, so this was already live in **the page's meta description and its schema.org payload**, **the .ics file's DESCRIPTION**, **the Add to Google Calendar link's notes**, and the fetch report's before-and-after line. Nothing on screen showed any of it. All four flatten now, which puts a space where the block tag was. The public calendar's cards were already correct, because 3.38.0 fixed that one.
+
+**Copying carries formatting intact.** The series prefill and the FAQ set copy both move stored values without touching them, and the prefill already wrote through TinyMCE rather than the textarea.
+
+**Imported FAQ text was being stripped on the way IN.** The GoFundMe Pro adapter takes the answer verbatim, and the store then ran `sanitize_textarea_field()` on it, which removes every tag: a platform sending HTML had its paragraph boundaries destroyed before anything was saved. What shape it actually arrives in is not knowable from here and has never been observed, which is why there is a probe tool in that file; what is certain is what this plugin did to it. Answers are kept as markup now. **The first fetch after upgrading will report imported FAQ rows as changed once**, because the stored string genuinely changes.
+
+**Existing content needs no migration.** Everything stored is plain text with line breaks and every display path runs it through `wpautop()`, so it reads as the paragraphs it always looked like.
+
+**The embed** renders the description through the same prose island 3.22.0 added, and the FAQ accordion is not in the embed at all, so there is nowhere new for this text to appear unstyled.
+
+**THE COPY SWEEP.** Cut: the FAQ set field's paragraph about rows becoming the event's own, which is the data model; "The values are copied. Editing the series later does not change this event." on the prefill panel, keeping "The date is never filled in." because that is what will happen; and "which is why every category has both", which defends a decision nobody on that screen is making.
+
+**And the reason it keeps coming back is now written where copy gets written.** This has been swept in 3.15.0, 3.19.0 and 3.37.0, and it returns because a sweep removes sentences without changing how the next one is written. `CLAUDE.md` carries the test as something to run before typing a label, with what to delete, what to keep, and the observation that most of these paragraphs exist because the field's name was vague.
 
 = 3.43.1 =
 

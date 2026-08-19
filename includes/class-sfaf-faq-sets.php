@@ -125,7 +125,7 @@ class SFAF_FAQ_Sets {
                 continue;
             }
             $q = sanitize_text_field( isset( $row['question'] ) ? $row['question'] : '' );
-            $a = sanitize_textarea_field( isset( $row['answer'] ) ? $row['answer'] : '' );
+            $a = SFAF_Rich_Text::sanitize( isset( $row['answer'] ) ? $row['answer'] : '' );
             if ( '' === $q && '' === $a ) {
                 continue;
             }

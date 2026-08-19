@@ -64,9 +64,32 @@ class SFAF_SEO {
      * Shared bits
      * ------------------------------------------------------------------- */
 
+    /**
+     * The event, in one line, for a meta tag and for JSON-LD.
+     *
+     * FLATTENED, NOT STRIPPED, AND THIS WAS WRONG UNTIL 3.44.0.
+     *
+     * Both halves had the fault 3.38.0 found in wp_trim_words(): it calls
+     * wp_strip_all_tags(), which joins the text either side of a tag with
+     * nothing between, so a description of two paragraphs came out as
+     * "...the first oneThe second one...". get_the_excerpt() has it too when
+     * WordPress builds the excerpt itself, because it runs the content through
+     * the_content, which wraps it in paragraphs, and then trims it the same way.
+     *
+     * The description has been rich text since 3.38.0, so this has been
+     * producing joined words in the page's meta description and in the
+     * schema.org payload for several releases. Nothing on screen showed it.
+     *
+     * FLATTEN FIRST, THEN TRIM. wp_trim_words() is kept for the length, and it
+     * is safe once there are no tags left for it to join across.
+     *
+     * @param int $id
+     * @return string
+     */
     private function description( $id ) {
         $excerpt = get_the_excerpt( $id );
-        return wp_strip_all_tags( $excerpt ? $excerpt : wp_trim_words( get_post_field( 'post_content', $id ), 40 ) );
+        $source  = $excerpt ? $excerpt : get_post_field( 'post_content', $id );
+        return wp_trim_words( sfaf_flatten_html( $source ), 40 );
     }
 
     private function image_url( $id ) {
@@ -205,9 +228,15 @@ class SFAF_SEO {
             $entities[] = array(
                 '@type'          => 'Question',
                 'name'           => $f['question'],
+                /*
+                 * PLAIN TEXT. An answer is rich text since 3.44.0, and
+                 * schema.org wants the words: markup here is either ignored or
+                 * shown verbatim in a search result. Flattened, never stripped,
+                 * so two paragraphs do not arrive joined into one word.
+                 */
                 'acceptedAnswer' => array(
                     '@type' => 'Answer',
-                    'text'  => $f['answer'],
+                    'text'  => SFAF_Rich_Text::to_plain( $f['answer'] ),
                 ),
             );
         }

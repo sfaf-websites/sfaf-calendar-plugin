@@ -707,7 +707,10 @@ class SFAF_Sources {
             case 'image':
                 return has_post_thumbnail( $post_id ) || '' !== (string) get_post_meta( $post_id, '_uc_image_url', true );
             case 'description':
-                return '' !== trim( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ) );
+                // Flattened rather than stripped. Only emptiness is being asked
+                // here, so both answer the same, but keeping one way of turning
+                // prose into text means there is no exception to explain later.
+                return '' !== trim( sfaf_flatten_html( (string) get_post_field( 'post_content', $post_id ) ) );
             case 'title':
                 return '' !== trim( (string) get_post_field( 'post_title', $post_id ) );
             case 'location':
@@ -1137,7 +1140,10 @@ class SFAF_Sources {
                 continue;
             }
             $question = sanitize_text_field( isset( $row['question'] ) ? $row['question'] : '' );
-            $answer   = sanitize_textarea_field( isset( $row['answer'] ) ? $row['answer'] : '' );
+            // KEPT AS MARKUP, NOT STRIPPED (3.44.0). An answer is rich text now,
+            // and a platform that sends HTML had its paragraph boundaries
+            // removed here, which is the joining fault in the storing direction.
+            $answer   = SFAF_Rich_Text::sanitize( isset( $row['answer'] ) ? $row['answer'] : '' );
 
             // A row that sanitizes down to nothing would be dropped again by
             // sfaf_normalize_faqs() on the next read, and so be counted as
@@ -1215,7 +1221,7 @@ class SFAF_Sources {
 
     /** A short, single-line version of a value, for change reports. */
     private static function excerpt( $value ) {
-        $value = trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $value ) ) );
+        $value = trim( preg_replace( '/\s+/', ' ', sfaf_flatten_html( (string) $value ) ) );
         if ( '' === $value ) {
             return '(empty)';
         }

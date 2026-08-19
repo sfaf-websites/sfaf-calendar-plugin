@@ -1589,7 +1589,7 @@ class SFAF_Portal {
             $faqs = array();
             foreach ( (array) wp_unslash( $raw ) as $row ) {
                 $q = isset( $row['question'] ) ? sanitize_text_field( $row['question'] ) : '';
-                $a = isset( $row['answer'] ) ? sanitize_textarea_field( $row['answer'] ) : '';
+                $a = isset( $row['answer'] ) ? SFAF_Rich_Text::sanitize( $row['answer'] ) : '';
                 if ( $q === '' && $a === '' ) { continue; }
                 $faqs[] = array( 'question' => $q, 'answer' => $a );
             }
@@ -2448,6 +2448,18 @@ class SFAF_Portal {
             // scripts + Backbone templates manually to power wp.media here.
             wp_print_footer_scripts();
             wp_print_media_templates();
+            /*
+             * THE TOOLBAR, ONCE, FOR THE ROWS THE BROWSER BUILDS.
+             *
+             * A FAQ row cloned after load has no editor rendered for it, so
+             * portal.js starts one with wp.editor.initialize(). It reads the
+             * settings from here rather than carrying its own copy, because
+             * two definitions of what somebody may type is the drift this
+             * whole arrangement exists to prevent. See SFAF_Rich_Text.
+             */
+            ?><script type="application/json" id="uc-rich-settings"><?php
+                echo SFAF_Rich_Text::settings_json();
+            ?></script><?php
         }
         ?><script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/sfaf-email.js?ver=' . SFAF_VERSION ); ?>"></script>
 <script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
@@ -4337,7 +4349,6 @@ class SFAF_Portal {
                 </div>
                 <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
                 <p class="uc-hint">
-                    The values are copied. Editing the series later does not change this event.
                     The date is never filled in.
                 </p>
             </div>
@@ -4350,32 +4361,14 @@ class SFAF_Portal {
     }
 
     private function description_editor( $ctx, $state ) {
-        $content = $ctx['post'] ? $ctx['post']->post_content : '';
-
-        // A source-owned description is not editable here, and a disabled
-        // TinyMCE is not a thing: the fallback textarea carries the lock.
-        if ( 'locked' === $state ) {
-            ?>
-            <textarea name="description" rows="8" disabled><?php echo esc_textarea( $content ); ?></textarea>
-            <?php
-            return;
-        }
-
-        wp_editor( $content, 'uc-description', array(
-            'textarea_name' => 'description',
-            'textarea_rows' => 10,
-            'media_buttons' => false,
-            'teeny'         => true,
-            'quicktags'     => false,
-            'tinymce'       => array(
-                'toolbar1'      => 'formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo',
-                'toolbar2'      => '',
-                'toolbar3'      => '',
-                'block_formats' => 'Paragraph=p;Heading=h3',
-                'menubar'       => false,
-                'statusbar'     => false,
-            ),
-        ) );
+        // The toolbar, the fallback and the locked case all live in
+        // SFAF_Rich_Text now. This screen chooses the field and nothing else.
+        SFAF_Rich_Text::render(
+            'uc-description',
+            'description',
+            $ctx['post'] ? $ctx['post']->post_content : '',
+            array( 'rows' => 10, 'locked' => ( 'locked' === $state ) )
+        );
     }
 
     private function faq_set_picker() {
@@ -4505,7 +4498,7 @@ class SFAF_Portal {
                 <?php foreach ( $manual as $i => $f ) : ?>
                     <div class="uc-repeater-row uc-faq-row">
                         <input type="text" name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][question]" value="<?php echo esc_attr( $f['question'] ); ?>" placeholder="Question" />
-                        <textarea name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][answer]" rows="2" placeholder="Answer"><?php echo esc_textarea( $f['answer'] ); ?></textarea>
+                        <?php SFAF_Rich_Text::deferred( $name . '[' . (int) $i . '][answer]', $f['answer'], array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
                         <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                     </div>
                 <?php endforeach; ?>
@@ -4514,7 +4507,7 @@ class SFAF_Portal {
             <template class="uc-repeater-tpl">
                 <div class="uc-repeater-row uc-faq-row">
                     <input type="text" name="<?php echo esc_attr( $name ); ?>[__I__][question]" placeholder="Question" />
-                    <textarea name="<?php echo esc_attr( $name ); ?>[__I__][answer]" rows="2" placeholder="Answer"></textarea>
+                    <?php SFAF_Rich_Text::deferred( $name . '[__I__][answer]', '', array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
                     <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                 </div>
             </template>
@@ -5719,7 +5712,7 @@ class SFAF_Portal {
 
                 <p class="uc-hint">
                     An event can be in several. The first one alphabetically supplies the color of its card and the
-                    picture shown when it has no image of its own, which is why every category has both.
+                    picture shown when it has no image of its own.
                 </p>
 
                 <?php if ( empty( $cats ) ) : ?>
@@ -5937,11 +5930,18 @@ class SFAF_Portal {
                     ) ); ?>
                 </div>
 
-                <label class="uc-field">
+                <?php
+                /*
+                 * A label, not a <label>. It wrapped the whole field, and a
+                 * <label> around an editor means clicking anywhere in the
+                 * toolbar focuses the textarea underneath it.
+                 */
+                ?>
+                <div class="uc-field">
                     <span class="uc-field-label">Description</span>
-                    <textarea name="series_desc" rows="6"><?php echo esc_textarea( $term ? $term->description : '' ); ?></textarea>
-                    <span class="uc-hint">What this series is. Shown on the series page, including while it has no dates scheduled.</span>
-                </label>
+                    <?php SFAF_Rich_Text::render( 'uc-series-desc', 'series_desc', $term ? $term->description : '', array( 'rows' => 8 ) ); ?>
+                    <span class="uc-hint">Shown on the series page, including while it has no dates scheduled.</span>
+                </div>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Default FAQ set</span>
@@ -5953,10 +5953,6 @@ class SFAF_Portal {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="uc-hint">
-                        Copied onto each event created into this series, so nobody has to remember to pick it. The rows
-                        become that event's own and can be edited or cleared. Existing events are not changed.
-                    </span>
                 </label>
             </div>
 
@@ -7777,6 +7773,8 @@ class SFAF_Portal {
         // Load the WP media library for the image picker on this page.
         $this->load_media = true;
         wp_enqueue_media();
+        // Rows added by the browser need the editor too. See SFAF_Rich_Text.
+        SFAF_Rich_Text::enqueue();
 
         /*
          * THE RICH TEXT EDITOR, ENQUEUED BEFORE THE HEAD PRINTS.
@@ -11017,6 +11015,8 @@ class SFAF_Portal {
         // would be the drift this whole arrangement exists to prevent.
         $this->load_media = true;
         wp_enqueue_media();
+        // Rows added by the browser need the editor too. See SFAF_Rich_Text.
+        SFAF_Rich_Text::enqueue();
 
         $this->chrome_open( $user, 'pending' );
         $ids = $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) );
@@ -11413,6 +11413,19 @@ class SFAF_Portal {
             $this->render_dashboard( $user );
             return;
         }
+
+        /*
+         * ANSWERS ARE RICH TEXT, AND THE ROWS ARE BUILT BY THE BROWSER.
+         *
+         * Set BEFORE chrome_open(), because that writes the document head and
+         * the flag is what makes it print WordPress's enqueued styles and
+         * scripts into it. Setting it afterwards enqueues into a head that has
+         * already gone out, which is the ordering that made a control do
+         * nothing before.
+         */
+        $this->load_media = true;
+        SFAF_Rich_Text::enqueue();
+
         $this->chrome_open( $user, 'faq-sets' );
         $sets = SFAF_FAQ_Sets::all();
 
@@ -11488,7 +11501,7 @@ class SFAF_Portal {
                         <div class="uc-repeater-rows">
                             <div class="uc-repeater-row uc-faq-row">
                                 <input type="text" name="faq_set_rows[0][question]" placeholder="Question" />
-                                <textarea name="faq_set_rows[0][answer]" rows="2" placeholder="Answer"></textarea>
+                                <?php SFAF_Rich_Text::deferred( 'faq_set_rows[0][answer]', '', array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
                                 <button type="button" class="uc-link-danger uc-repeater-remove" aria-label="Remove this question">&times;</button>
                             </div>
                         </div>
@@ -11496,7 +11509,7 @@ class SFAF_Portal {
                         <template class="uc-repeater-tpl">
                             <div class="uc-repeater-row uc-faq-row">
                                 <input type="text" name="faq_set_rows[__I__][question]" placeholder="Question" />
-                                <textarea name="faq_set_rows[__I__][answer]" rows="2" placeholder="Answer"></textarea>
+                                <?php SFAF_Rich_Text::deferred( 'faq_set_rows[__I__][answer]', '', array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
                                 <button type="button" class="uc-link-danger uc-repeater-remove" aria-label="Remove this question">&times;</button>
                             </div>
                         </template>

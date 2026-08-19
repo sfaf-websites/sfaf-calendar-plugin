@@ -102,11 +102,44 @@ exist**, say so. Do not build X and report it as moved.
 
 ## 6. Copy
 
+**APPLY THIS WHILE WRITING THE SENTENCE, NOT IN A SWEEP AFTERWARDS.** This has
+been swept three times, in 3.15.0, 3.19.0 and 3.37.0, and it comes back every
+time because new copy is written the same way it always was. A sweep removes the
+sentences; it does not change how the next one gets written. So the test below
+is a thing to run in your head BEFORE typing a label or a hint.
+
+**THE TEST, one sentence at a time:**
+
+> Does this tell somebody **what to do**, or **what will happen to them**?
+
+If it does neither, it does not ship. In particular, delete a sentence that:
+
+- **justifies a design decision.** "which is why every category has both",
+  "so nobody has to remember to pick it". Nobody using the screen is making
+  that decision.
+- **explains how the software stores something.** "The rows become that
+  event's own", "The values are copied". That is the data model, and it is
+  `PROJECT.md`'s job.
+- **explains why a control exists**, or why it is where it is.
+- **reassures about a problem the reader did not know they had.**
+
+**KEEP:**
+
+- genuine instruction: image dimensions, "0 means unlimited", "choose last
+  rather than fourth if you mean the final one".
+- warnings about anything **irreversible**: mail that cannot be recalled, a
+  removal nothing puts back.
+- what a control **will not** do, when somebody would otherwise assume it does:
+  "the date is never filled in", "not shown on the event page".
+
+**Write the field's NAME first and see what is left to say.** Most of these
+sentences exist because the label was vague. "Default FAQ set" needs no
+paragraph under it. A hint that repeats the label is worse than none.
+
+Other rules:
+
 - **No em dashes anywhere**, including user-facing copy. En dashes are required
   for AP ranges and are correct.
-- Helper text says **what to do** or **what will happen**. A sentence that
-  justifies a design decision does not ship. Apply the test per sentence, not
-  per paragraph.
 - American English.
 - Scope every count and every label to what the viewer can act on.
 
