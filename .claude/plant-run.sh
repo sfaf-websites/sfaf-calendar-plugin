@@ -55,6 +55,12 @@ try picker-copy     "the series copies the markup again" .claude/image-picker-te
 try picker-unfiltered "a picker loses the folder filter" .claude/image-picker-test.php
 try no-media-enqueue "a screen stops loading the library" .claude/image-picker-test.php
 try picker-hook-gone "the renderer drops a required hook" .claude/image-picker-test.php
+try second-editor   "a second wp_editor caller"        .claude/rich-text-test.php
+try joins-paragraphs "a value context joins paragraphs" .claude/rich-text-test.php
+try faq-stripped    "an answer is stripped on save"    .claude/rich-text-test.php
+try faq-escaped     "an answer is escaped on display"  .claude/rich-text-test.php
+try toolbar-colour  "the toolbar grows a colour picker" .claude/rich-text-test.php
+try heading-h2      "the heading competes with the page" .claude/rich-text-test.php
 
 restore
 echo "-------------------------------------------"

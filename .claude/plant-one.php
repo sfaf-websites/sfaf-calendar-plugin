@@ -146,6 +146,36 @@ $edits = array(
         '               data-uc-image-id value="<?php echo (int) $a[\'id_value\']; ?>" />',
         '               value="<?php echo (int) $a[\'id_value\']; ?>" />' ),
 
+    /* A second caller of wp_editor(), which is a second control with its own
+     * rules. This is the 3.43.1 duplication in a worse place. */
+    'second-editor' => array( 'includes/class-sfaf-portal.php',
+        "    private function description_editor( \$ctx, \$state ) {",
+        "    private function description_editor( \$ctx, \$state ) {\n        if ( false ) { wp_editor( '', 'x', array( 'tinymce' => array( 'toolbar1' => 'bold,forecolor' ) ) ); }" ),
+
+    /* The value contexts go back to joining paragraphs. */
+    'joins-paragraphs' => array( 'includes/class-sfaf-seo.php',
+        "return wp_trim_words( sfaf_flatten_html( \$source ), 40 );",
+        "return wp_trim_words( \$source, 40 );" ),
+
+    /* An FAQ answer is stripped on save again, so formatting is lost. */
+    'faq-stripped' => array( 'includes/class-sfaf-faq-sets.php',
+        "\$a = SFAF_Rich_Text::sanitize( isset( \$row['answer'] ) ? \$row['answer'] : '' );",
+        "\$a = sanitize_textarea_field( isset( \$row['answer'] ) ? \$row['answer'] : '' );" ),
+
+    /* An answer is escaped on display, so a formatted one shows its tags. */
+    'faq-escaped' => array( 'includes/sfaf-template-functions.php',
+        "<div class=\"uc-faq-a\"><?php echo SFAF_Rich_Text::display( \$f['answer'] ); ?></div>",
+        "<div class=\"uc-faq-a\"><?php echo wpautop( esc_html( \$f['answer'] ) ); ?></div>" ),
+
+    /* The toolbar grows a colour picker. */
+    'toolbar-colour' => array( 'includes/class-sfaf-rich-text.php',
+        "'toolbar1'      => 'formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo',",
+        "'toolbar1'      => 'formatselect,bold,italic,forecolor,bullist,numlist,link,unlink,undo,redo'," ),
+
+    /* The heading competes with the page's own structure. */
+    'heading-h2' => array( 'includes/class-sfaf-rich-text.php',
+        "'block_formats' => 'Paragraph=p;Heading=h3',",
+        "'block_formats' => 'Paragraph=p;Heading=h2'," ),
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",
