@@ -44,6 +44,13 @@ try ungated-media   "the media filter loses its gate"  .claude/media-folder-test
 try unanchored      "the folder match loses its anchor" .claude/media-folder-test.php
 try upload-elsewhere "uploads stop landing in the folder" .claude/media-folder-test.php
 try display-filters "display starts filtering on the folder" .claude/media-folder-test.php
+try loose-domain    "the domain check is loosened"      .claude/request-form-test.php
+try any-attachment  "any attachment can be attached"    .claude/request-form-test.php
+try loose-date      "an impossible date is accepted"    .claude/request-form-test.php
+try no-rate-limit   "the rate limiter always says yes"  .claude/request-form-test.php
+try token-as-key    "the token is stored under itself"  .claude/request-form-test.php
+try status-from-post "the status is read from the form" .claude/request-form-test.php
+try unmarked-request "a request is unmarked in the queue" .claude/request-form-test.php
 
 restore
 echo "-------------------------------------------"

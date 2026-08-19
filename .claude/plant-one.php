@@ -86,6 +86,44 @@ $edits = array(
         'function sfaf_event_location( $post_id ) {',
         "function sfaf_event_location( \$post_id ) {\n    \$unused = SFAF_Media_Folder::FOLDER;" ),
 
+    /* The domain check is loosened to "ends with", so notsfaf.org gets a link
+     * and the form is open to anybody who can register that name. */
+    'loose-domain' => array( 'includes/class-sfaf-request.php',
+        "return ( \$domain === self::DOMAIN || self::ends_with( \$domain, '.' . self::DOMAIN ) );",
+        "return self::ends_with( \$domain, self::DOMAIN );" ),
+
+    /* The image check drops the folder half, so any attachment id in the
+     * library can be attached to a public event. */
+    'any-attachment' => array( 'includes/class-sfaf-request.php',
+        "                && SFAF_Media_Folder::holds( \$id ) ) {",
+        '                ) {' ),
+
+    /* The date is taken as posted, so 2026-02-30 rolls into March. */
+    'loose-date' => array( 'includes/class-sfaf-request.php',
+        "        if ( ! checkdate( (int) \$m[2], (int) \$m[3], (int) \$m[1] ) ) {\n            return '';\n        }\n",
+        '' ),
+
+    /* The rate limiter always says yes. */
+    'no-rate-limit' => array( 'includes/class-sfaf-request.php',
+        "        \$count = (int) get_transient( \$key );\n        if ( \$count >= \$limit ) {\n            return false;\n        }\n",
+        "        \$count = (int) get_transient( \$key );\n" ),
+
+    /* The token is stored under itself, so the options table holds a working
+     * credential. */
+    'token-as-key' => array( 'includes/class-sfaf-request.php',
+        "    private static function key_for( \$token ) {\n        return hash( 'sha256', (string) \$token );\n    }",
+        "    private static function key_for( \$token ) {\n        return (string) \$token;\n    }" ),
+
+    /* The status comes off the form. */
+    'status-from-post' => array( 'includes/class-sfaf-request.php',
+        "'post_status'  => 'pending',",
+        "'post_status'  => isset( \$_POST['post_status'] ) ? \$_POST['post_status'] : 'pending'," ),
+
+    /* The queue stops marking a request, so it reads as a contributor draft. */
+    'unmarked-request' => array( $P,
+        '<span class="uc-source-badge uc-badge-request">Staff request</span>',
+        '' ),
+
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",
