@@ -99,6 +99,24 @@ class SFAF_Credentials {
              * not secrecy here. See the readme for what those must be.
              */
             'google_maps_embed_key'    => 'text',
+
+            /*
+             * Cloudflare Turnstile, for the public community submission form.
+             *
+             * The site key is 'text' for the same reason the Maps key is: it is
+             * rendered into the widget on a public page, so anybody can already
+             * read it and hiding it in the form would stop an admin checking
+             * which key is in place without protecting anything. The secret is
+             * 'secret', because it is the half that proves a token, and it is
+             * never rendered back.
+             *
+             * Both come from the same Cloudflare account Gravity Forms already
+             * uses on this site. See SFAF_Turnstile::ready(): one without the
+             * other draws a widget nothing checks, so the form treats that as
+             * not configured.
+             */
+            'turnstile_site_key'       => 'text',
+            'turnstile_secret_key'     => 'secret',
         );
     }
 

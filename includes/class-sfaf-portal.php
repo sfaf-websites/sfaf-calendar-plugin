@@ -4710,7 +4710,7 @@ class SFAF_Portal {
      * @return string[]
      */
     private function manager_field_order() {
-        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
+        return array( 'image', 'description', 'category', 'organizer', 'listing_detail', 'fundraising_progress', 'private' );
     }
 
     /**
@@ -4774,6 +4774,30 @@ class SFAF_Portal {
         $fields     = array_diff( $fields, array( 'fundraising_progress' ) );
         if ( $has_donate ) {
             $fields[] = 'fundraising_progress';
+        }
+
+        /*
+         * THE FOUR LINES A COMMUNITY SUBMISSION PUTS ON THE LISTING (3.46.0).
+         *
+         * OFFERED WHEREVER ONE OF THEM HAS A VALUE, rather than wherever the
+         * event came from a submission. They are ordinary event fields once
+         * they exist, and a public value nobody can correct is worse than no
+         * value: a submitter's typo in the cost line would otherwise sit on the
+         * calendar permanently, because the form that wrote it is not somewhere
+         * they can go back to.
+         *
+         * NOT ON EVERY EVENT, because four empty boxes on every editor is four
+         * more things to read past on the screen this project already has a
+         * queued job to simplify.
+         */
+        $fields = array_diff( $fields, array( 'listing_detail' ) );
+        if ( $ctx['event_id'] ) {
+            foreach ( array( SFAF_Submit::META_COST, SFAF_Submit::META_AGE, SFAF_Submit::META_CONTACT, SFAF_Submit::META_RSVP_URL ) as $detail_key ) {
+                if ( '' !== (string) get_post_meta( $ctx['event_id'], $detail_key, true ) ) {
+                    $fields[] = 'listing_detail';
+                    break;
+                }
+            }
         }
 
         /*
@@ -5280,6 +5304,40 @@ class SFAF_Portal {
                 <?php
                 break;
 
+            case 'listing_detail':
+                $d_cost    = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
+                $d_age     = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
+                $d_contact = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT, true );
+                $d_rsvp    = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
+                ?>
+                <div class="uc-field uc-listing-detail">
+                    <span class="uc-field-label">Listing detail</span>
+                    <p class="uc-hint">Somebody outside SFAF wrote these and they are on the event page. Empty a box to take that line off.</p>
+                    <?php // The marker, so an empty box means empty rather than
+                          // "this screen did not ask". Same discipline as the
+                          // two toggles below. ?>
+                    <input type="hidden" name="uc_listing_detail_present" value="1" />
+                    <label class="uc-field">
+                        <span class="uc-field-label">Cost</span>
+                        <input type="text" name="listing_cost" maxlength="120" value="<?php echo esc_attr( $d_cost ); ?>" />
+                    </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Age restriction</span>
+                        <input type="text" name="listing_age" maxlength="120" value="<?php echo esc_attr( $d_age ); ?>" />
+                    </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Contact shown publicly</span>
+                        <input type="text" name="listing_contact" maxlength="200" value="<?php echo esc_attr( $d_contact ); ?>" />
+                    </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Registration link</span>
+                        <input type="url" name="listing_rsvp_url" maxlength="500" value="<?php echo esc_attr( $d_rsvp ); ?>" />
+                        <span class="uc-hint">Somewhere else people sign up. Not this calendar's own registration.</span>
+                    </label>
+                </div>
+                <?php
+                break;
+
             case 'fundraising_progress':
                 $on     = ( '1' === (string) get_post_meta( $event_id, sfaf_fundraising_progress_meta_key(), true ) );
                 $goal   = (float) get_post_meta( $event_id, '_uc_gofundme_goal', true );
@@ -5475,6 +5533,32 @@ class SFAF_Portal {
          * off. And because the control always posts a hidden 0 beside the
          * checkbox, a screen that DOES offer it always says which way.
          */
+        /*
+         * LISTING DETAIL. Marker-gated like the two below it, so a screen that
+         * did not carry the control cannot blank four public lines by saving.
+         *
+         * SANITISED THE SAME WAY THE FORM DID. A manager is trusted more than a
+         * stranger, but these four values are printed on a public page, and the
+         * rule for what may be in one belongs to the field rather than to
+         * whoever last touched it. An emptied box DELETES the meta rather than
+         * storing '', so the template's single test for absence stays single.
+         */
+        if ( isset( $_POST['uc_listing_detail_present'] ) ) {
+            $detail = array(
+                SFAF_Submit::META_COST     => SFAF_Submissions::line( isset( $_POST['listing_cost'] ) ? wp_unslash( $_POST['listing_cost'] ) : '', 120 ),
+                SFAF_Submit::META_AGE      => SFAF_Submissions::line( isset( $_POST['listing_age'] ) ? wp_unslash( $_POST['listing_age'] ) : '', 120 ),
+                SFAF_Submit::META_CONTACT  => SFAF_Submissions::line( isset( $_POST['listing_contact'] ) ? wp_unslash( $_POST['listing_contact'] ) : '', 200 ),
+                SFAF_Submit::META_RSVP_URL => SFAF_Submissions::url( isset( $_POST['listing_rsvp_url'] ) ? wp_unslash( $_POST['listing_rsvp_url'] ) : '' ),
+            );
+            foreach ( $detail as $detail_key => $detail_value ) {
+                if ( '' === $detail_value ) {
+                    delete_post_meta( $event_id, $detail_key );
+                } else {
+                    update_post_meta( $event_id, $detail_key, $detail_value );
+                }
+            }
+        }
+
         if ( isset( $_POST['show_fund_progress'] ) ) {
             update_post_meta(
                 $event_id,
@@ -11152,12 +11236,40 @@ class SFAF_Portal {
                         $req_name  = (string) get_post_meta( $id, SFAF_Request::META_NAME, true );
                         $req_email = (string) get_post_meta( $id, SFAF_Request::META_EMAIL, true );
                         $req_at    = (string) get_post_meta( $id, SFAF_Request::META_AT, true );
-                        $is_req    = ( '' !== $req_email ); ?>
+                        /*
+                         * WHAT KIND IT IS, ASKED RATHER THAN INFERRED (3.46.0).
+                         *
+                         * This was $is_req = ( '' !== $req_email ), and that stopped
+                         * being an answer the moment a second form started writing an
+                         * address to the same key: every community submission would
+                         * have read as a staff request. SFAF_Submissions::kind() is
+                         * the one place that decides, and the badge, the panel and
+                         * the notification all ask it.
+                         */
+                        $kind      = SFAF_Submissions::kind( $id );
+                        $is_req    = ( '' !== $req_email );
+                        $badge     = SFAF_Submissions::kind_label( $kind );
+                        $shot      = SFAF_Uploads::url( (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true ), 'thumbnail' ); ?>
                         <tr<?php echo $is_req ? ' class="uc-row-request"' : ''; ?>>
                             <td>
+                                <?php
+                                /*
+                                 * THE SUBMITTED FILE, WHERE IT CAN BE SEEN.
+                                 *
+                                 * A working copy rather than the published image, so
+                                 * it is shown and never set as the thumbnail. The
+                                 * folder is meant to be emptied, and when it has been
+                                 * SFAF_Uploads::url() answers '' and this simply is
+                                 * not drawn.
+                                 */
+                                if ( '' !== $shot ) : ?>
+                                    <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true ), 'full' ) ); ?>" target="_blank" rel="noopener">
+                                        <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
+                                    </a>
+                                <?php endif; ?>
                                 <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
-                                <?php if ( $is_req ) : ?>
-                                    <span class="uc-source-badge uc-badge-request">Staff request</span>
+                                <?php if ( '' !== $badge ) : ?>
+                                    <span class="uc-source-badge uc-badge-<?php echo esc_attr( $kind ); ?>"><?php echo esc_html( $badge ); ?></span>
                                 <?php endif; ?>
                             </td>
                             <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : 'Not set'; ?></td>
@@ -11249,9 +11361,31 @@ class SFAF_Portal {
         $repeat = (string) get_post_meta( $event_id, SFAF_Request::META_REPEAT, true );
         $notes  = (string) get_post_meta( $event_id, SFAF_Request::META_NOTES, true );
         $where  = (string) get_post_meta( $event_id, SFAF_Request::META_VENUE, true );
+
+        /*
+         * ONE PANEL, TWO KINDS, AND IT ASKS WHICH (3.46.0).
+         *
+         * A community submission carries fields a staff request never has,
+         * and the person reading this needs to know which sort of stranger
+         * sent it: a colleague to chase, or a member of the public whose
+         * name must not end up on the listing. Same panel, because it is
+         * the same question being answered, and the extra rows are drawn
+         * only where they exist.
+         */
+        $kind      = SFAF_Submissions::kind( $event_id );
+        $community = ( SFAF_Submissions::KIND_COMMUNITY === $kind );
+        $shot_id   = (int) get_post_meta( $event_id, SFAF_Submit::META_IMAGE, true );
+        $shot      = SFAF_Uploads::url( $shot_id, 'medium' );
+        $cost      = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
+        $age       = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
+        $contact   = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT, true );
+        $rsvp_url  = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
         ?>
         <div class="uc-card uc-request-panel">
-            <div class="uc-card-head"><h2>Requested by a colleague</h2></div>
+            <div class="uc-card-head"><h2><?php echo $community ? 'Submitted by a member of the public' : 'Requested by a colleague'; ?></h2></div>
+            <?php if ( $community ) : ?>
+                <p class="uc-hint">Their name and address are for reaching them about this event. Neither is shown on the listing.</p>
+            <?php endif; ?>
             <p class="uc-request-who">
                 <strong><?php echo esc_html( '' !== $name ? $name : $email ); ?></strong>
                 <a href="mailto:<?php echo esc_attr( $email ); ?>"><?php echo esc_html( $email ); ?></a>
@@ -11267,10 +11401,40 @@ class SFAF_Portal {
             <?php if ( '' !== $where ) : ?>
                 <p class="uc-hint"><strong>Place given as:</strong> <?php echo esc_html( $where ); ?>. Add it as a venue if it will be used again.</p>
             <?php endif; ?>
+            <?php if ( '' !== $contact ) : ?>
+                <p class="uc-hint"><strong>Contact for the listing:</strong> <?php echo esc_html( $contact ); ?>. This one IS public, and is theirs rather than ours.</p>
+            <?php endif; ?>
+            <?php if ( '' !== $cost ) : ?>
+                <p class="uc-hint"><strong>Cost:</strong> <?php echo esc_html( $cost ); ?>. Nothing is collected here.</p>
+            <?php endif; ?>
+            <?php if ( '' !== $age ) : ?>
+                <p class="uc-hint"><strong>Ages:</strong> <?php echo esc_html( $age ); ?></p>
+            <?php endif; ?>
+            <?php if ( '' !== $rsvp_url ) : ?>
+                <p class="uc-hint"><strong>They register at:</strong> <a href="<?php echo esc_url( $rsvp_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $rsvp_url ); ?></a></p>
+            <?php endif; ?>
             <?php if ( '' !== $notes ) : ?>
                 <div class="uc-request-notes">
                     <span class="uc-field-label">Anything else they told us</span>
                     <p><?php echo esc_html( $notes ); ?></p>
+                </div>
+            <?php endif; ?>
+            <?php
+            /*
+             * THE FILE THEY SENT, AND WHAT TO DO WITH IT.
+             *
+             * It is not the event's picture and pressing Approve will not make
+             * it one. The line under it says what the next step actually is,
+             * because a thumbnail sitting on a screen with an image picker on
+             * it otherwise reads as already set.
+             */
+            if ( '' !== $shot ) : ?>
+                <div class="uc-request-shot">
+                    <span class="uc-field-label">The picture they sent</span>
+                    <a href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
+                        <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
+                    </a>
+                    <p class="uc-hint">Download it, size it, and upload the finished one through the image picker. This file is not used on the event.</p>
                 </div>
             <?php endif; ?>
         </div>

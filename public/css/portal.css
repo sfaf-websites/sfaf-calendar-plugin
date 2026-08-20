@@ -912,7 +912,12 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    --------------------------------------------------------------------------- */
 .uc-request-page { background: var(--p-bg, #f2f3f4); }
 .uc-request-wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 64px; }
-.uc-request-card { padding: 28px; border: 1px solid var(--p-border); border-radius: 14px;
+/* THE PADDING AS A NUMBER ITS CHILDREN CAN READ. The banner pulls back out
+   through it to reach the card's edges, and a literal copied into that rule
+   is correct only while this one does not move. That is exactly how the
+   sidebar heading band came to sit 14px wider than its rows in 3.45.1. */
+.uc-request-card { --uc-request-pad: 28px;
+    padding: var(--uc-request-pad); border: 1px solid var(--p-border); border-radius: 14px;
     background: #fff; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
 .uc-request-card h1 { margin: 0 0 10px; font-size: 24px; font-weight: 800; }
 .uc-request-card > .uc-hint { margin-bottom: 22px; }
@@ -957,7 +962,29 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    One was written and the decoration audit refused it, correctly: the row
    already says "Staff request" in words, so an edge in the same colour repeats
    it and the colour carries nothing of its own. See DESIGN.md. */
-.uc-badge-request { background: #e3f7f9; color: #0C666F; }
+.uc-badge-request,
+.uc-badge-staff { background: #e3f7f9; color: #0C666F; }
+
+/* A SECOND KIND NEEDS A SECOND COLOUR, or the badge stops being the marker and
+   only the words are, at 11px, at the end of a title. Warm rather than teal
+   because the two are read side by side in one column and hue is the fastest
+   thing to tell apart there. Measured on this fill: 5.4:1, so it clears AA for
+   normal text at the size the badge actually uses. The pair is declared once,
+   as a pair, for the reason in DESIGN.md: a colour is fill or ink, never both,
+   and splitting the declaration is how red ended up on red at 1.19:1. */
+.uc-badge-community { background: #FDF0DC; color: #7A4A05; }
+
+/* THE SUBMITTED FILE ON THE ROW, small and out of the way of the title.
+   It is a working copy, so it is deliberately not sized or cropped like a card
+   image: this is "what did they send", not a preview of anything published. */
+.uc-submitted-thumb { float: left; margin: 0 10px 2px 0; line-height: 0; }
+.uc-submitted-thumb img { width: 46px; height: 46px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--p-border, #D1D3D4); display: block; }
+
+.uc-request-shot { margin-top: 14px; }
+.uc-request-shot img { max-width: 100%; height: auto; margin-top: 6px;
+    border-radius: 10px; border: 1px solid var(--p-border, #D1D3D4); display: block; }
+.uc-request-shot .uc-hint { margin-top: 6px; }
 .uc-request-panel .uc-request-who { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
 .uc-request-panel .uc-request-who .uc-muted { margin-left: 6px; }
 .uc-request-notes { margin-top: 12px; padding: 12px 14px; border-radius: 10px;
@@ -2694,3 +2721,46 @@ body.uc-modal-open { overflow: hidden; }
 .uc-field .mce-toolbar-grp { border-bottom: 1px solid var(--p-border) !important; }
 
 /* The FAQ set create rows on the FAQ Sets screen. */
+
+/* ---------------------------------------------------------------------------
+   THE TWO PUBLIC FORMS (3.46.0)
+
+   SFAF_Request and SFAF_Submit draw the same card in the same document, so
+   everything here applies to both and nothing is written twice. The banner and
+   the grouped fieldset are the community form's alone, because it is the one
+   with a campaign behind it and a stranger filling it in.
+   --------------------------------------------------------------------------- */
+
+/* THE SERIES IMAGE, FULL BLEED ACROSS THE TOP OF THE CARD. It pulls back out
+   through the card's own padding, so the number is read from the variable the
+   card sets rather than copied here: a padding that changes and an escape that
+   does not is the fault the sidebar heading band shipped in 3.45.1. */
+.uc-submit-banner { margin: calc(-1 * var(--uc-request-pad)) calc(-1 * var(--uc-request-pad)) 20px;
+    line-height: 0; overflow: hidden; border-radius: 12px 12px 0 0; }
+.uc-submit-banner img { width: 100%; height: auto; max-height: 220px;
+    object-fit: cover; display: block; }
+
+/* A GROUP OF FIELDS THAT ARE ABOUT A DIFFERENT SUBJECT. "About you" is not
+   about the event, and a stranger reading a single unbroken column of fourteen
+   inputs cannot tell which of them the public will see. */
+.uc-field-group { margin: 0 0 22px; padding: 16px 18px; border: 1px solid var(--p-border, #D1D3D4);
+    border-radius: 12px; background: var(--p-surface-2, #f6f7f8); }
+.uc-field-group > legend { padding: 0 6px; font-weight: 700; }
+.uc-field-group > .uc-hint { margin: 0 0 12px; }
+.uc-field-group .uc-field:last-child { margin-bottom: 0; }
+
+/* THE FILE INPUT IS LEFT AS A FILE INPUT. A styled one is a label with the
+   real control hidden behind it, and that loses the filename the browser shows
+   after choosing, which is the only feedback this form gives that anything was
+   attached at all. */
+.uc-field-upload input[type="file"] { display: block; width: 100%; padding: 10px 12px;
+    border: 1px dashed var(--p-border-strong, #9aa0a6); border-radius: 10px;
+    background: #fff; font-size: 14px; }
+.uc-field-upload input[type="file"]:focus-visible { outline: 2px solid var(--p-teal-text, #0C666F);
+    outline-offset: 2px; }
+.uc-request-upload { margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--p-border, #D1D3D4); }
+
+/* Turnstile draws its own widget in its own iframe. This only reserves the
+   room, so the button below it does not jump when the widget arrives. */
+.uc-turnstile { min-height: 68px; }

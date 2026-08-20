@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.45.2
+ * Version: 3.46.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.45.2' );
+define( 'SFAF_VERSION', '3.46.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -99,7 +99,13 @@ $sfaf_includes = array(
     'includes/class-sfaf-optins.php',
     'includes/class-sfaf-privacy.php',
     'includes/class-sfaf-media-folder.php',
+    // Files sent by people with no account, and what the two public forms
+    // share. Both load before the forms that call them.
+    'includes/class-sfaf-uploads.php',
+    'includes/class-sfaf-turnstile.php',
+    'includes/class-sfaf-submissions.php',
     'includes/class-sfaf-request.php',
+    'includes/class-sfaf-submit.php',
     'includes/class-sfaf-cancellation.php',
     // The mail layer, before anything that sends: SFAF_Email builds and hands
     // to wp_mail(), SFAF_Notifications decides who gets what, and
@@ -189,6 +195,11 @@ function sfaf_init() {
     // The public event request form. A front-end query var, like the cancel
     // link, so no rewrite rule and no REST route: see the note in the class.
     SFAF_Request::register();
+
+    // The public community submission form. Same arrangement, and the same
+    // reason for it: the query var's VALUE names the series, so a second
+    // campaign is a URL and a series rather than another registration.
+    SFAF_Submit::register();
 
     $post_types = new SFAF_Post_Types();
     $post_types->register();

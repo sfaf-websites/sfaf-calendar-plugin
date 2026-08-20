@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-20, at 3.45.2.
+**Last updated:** 2026-08-20, at 3.46.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.45.2**, built as `sfaf-calendar-3.45.2.zip` in the project
+The plugin is at **3.46.0**, built as `sfaf-calendar-3.46.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.45.2, the deployment is stale or partial, and that
+screen: if it does not say 3.46.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -178,6 +178,32 @@ events that were not saved a second time.
   a fault the suite passed, and four of the six were embed-only. Nothing in the
   build lays anything out, so this cannot be closed by a check. The five things
   to look at are in `PROJECT.md` §1, under "The combined view is one calendar".
+- **PUT THE TURNSTILE KEYS IN BEFORE SHARING THE COMMUNITY FORM'S ADDRESS.**
+  Events > Integrations > Cloudflare Turnstile, both keys, from the account
+  Gravity Forms already uses here. **Without both, no widget is drawn at all**,
+  and the form is then protected only by the honeypot and the rate limits. It
+  still works, so nothing will tell you it is missing except that panel.
+- **MAKE THE Cycle to Zero SERIES, AND CHECK ITS PICTURE, BEFORE SENDING
+  ANYBODY THE LINK.** The form's address is `/?uc_event_submit=<series-slug>`,
+  the banner is that series' image and the heading is its name, so a series with
+  no picture gives a form with no banner. An address naming no series says the
+  link is not right, which is also what a typo in the slug looks like.
+- **3.46.0 NEEDS ONE END-TO-END PASS ON EACH FORM, AND THE UPLOAD IS THE PART
+  NOTHING IN THE BUILD CAN TOUCH.** There is no WordPress and no browser here,
+  so every claim about a real file is a claim about code that has never run.
+  On the community form: submit with a photo, and check it appears in
+  `uploads/calendar-submissions/` with a generated name rather than the one you
+  sent, that the pending row shows the thumbnail badged **Community
+  submission**, that admins got an email and you got a copy, and that the event
+  is NOT visible until approved. Then try a `.txt` renamed to `.jpg` and
+  confirm it is refused. Then submit with no picture and confirm that is
+  normal. On the staff form: check the description is a toolbar rather than a
+  plain box, that formatting survives the save, and that sending a photo does
+  NOT become the event's image.
+- **CHECK THAT `uploads/calendar-submissions/` DOES NOT APPEAR IN THE CALADMIN
+  PICKER.** Open Choose Image on any event. If a raw submission is offered
+  there, the two folders have collided and the picker is showing unapproved
+  files. Nothing else in the release depends on that separation holding.
 
 ## Blocked on other people
 

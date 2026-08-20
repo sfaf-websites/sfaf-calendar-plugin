@@ -2025,6 +2025,35 @@ class SFAF_Admin {
                     </div>
                 </div>
 
+                <!-- CLOUDFLARE TURNSTILE -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'check', array( 'size' => '20px' ) ); ?></span>
+                        <div class="uc-panel-info">
+                            <h2>Cloudflare Turnstile</h2>
+                            <p>Spam protection for the public event submission form.</p>
+                        </div>
+                        <span class="uc-panel-status <?php echo SFAF_Turnstile::ready() ? 'uc-status-connected' : 'uc-status-pending'; ?>"><?php echo SFAF_Turnstile::ready() ? 'Connected' : 'Not configured'; ?></span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Site key</label>
+                            <input type="text" name="uc_settings[turnstile_site_key]" value="<?php echo esc_attr( $c( 'turnstile_site_key' ) ); ?>" class="uc-input uc-monospace" placeholder="0x4AAAAAAA..." />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Secret key</label>
+                            <input type="password" name="uc_settings[turnstile_secret_key]" value="" class="uc-input uc-monospace" placeholder="<?php echo SFAF_Credentials::has( 'turnstile_secret_key' ) ? 'Stored. Type a new one to replace it.' : '0x4AAAAAAA...'; ?>" autocomplete="new-password" />
+                        </div>
+                        <p class="description">
+                            <strong>Both keys, or the widget does not appear at all.</strong> A site key with no secret would draw a checkbox that nothing verifies. Use the same Cloudflare account and domain that Gravity Forms already uses on this site.
+                        </p>
+                        <p class="description">
+                            This protects the community submission form at <code><?php echo esc_html( SFAF_Submit::QUERY_VAR ); ?>=</code>, which has no login and no email check. The staff request form does not use it: a link sent to an sfaf.org mailbox is already a stronger check. If Cloudflare cannot be reached the submission still goes through, and the honeypot, the rate limits and the pending queue still apply.
+                        </p>
+                    </div>
+                </div>
+
                 <!-- GOFUNDME PRO -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">

@@ -160,9 +160,16 @@ form, and `post_author` stays 0 because nobody logged in made it.
 **The picture grid is not `wp.media`, and cannot be.** The frame needs a
 logged-in user with `upload_files`, so on this page it would not open. It is
 radio buttons over the same `SFAF_Media_Folder` query the editor's picker uses.
-**There is no upload**, deliberately: an upload endpoint reachable with no
-account is the highest-risk thing this form could carry, and "ask Roxane for an
-image" is the answer the organisation already has.
+**Picking from that grid sets the featured image**, because everything in it is
+already an approved picture. Sending one of your own does not: see "Files from
+people with no account" below.
+
+**The description is rich text from 3.46.0, and is sanitised on the way in.**
+3.43.0 stripped markup from everything here and said why. Staff behind an
+emailed link is a lower risk than that rule was written for, so the description
+alone is prose now. What arrives is still a POST body whoever the form was drawn
+for, so it goes through `SFAF_Submissions::prose()` rather than being trusted
+because an editor drew it.
 
 **Repeating is recorded in words and never as `PATTERN_META`.** Generation is a
 creation-time action that makes N independent posts, so half-filling the pattern
@@ -173,11 +180,111 @@ approver reads the sentence and sets the schedule on the screen built for it.
 import that needs an image and a description"; a request arrives filled in and
 needs reading. The row carries a badge and the requester's name, and the editor
 carries a read-only panel with who asked, when, the repeat sentence and the
-notes. **Two queues is one queue somebody stops checking.**
+notes. **Two queues is one queue somebody stops checking**, and that held when a
+third kind arrived: a community submission is a third badge, not a third queue.
+
+> **WHAT KIND A ROW IS, IS ASKED RATHER THAN INFERRED.** The badge tested
+> `'' !== _uc_request_email`, and that stopped being an answer the moment a
+> second form wrote an address to the same key: every community submission would
+> have read as a staff request. `SFAF_Submissions::kind()` is the one place that
+> decides. It answers import first, because that is decided by another subsystem
+> entirely and a row can only be one thing, and it falls back to the address
+> test last, which is what keeps requests made before the marker existed badging
+> correctly with no migration.
 
 **Nothing is sent after the confirmation.** No reminder, no approval notice.
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
+
+### Files from people with no account
+
+**The riskiest thing in the plugin, handled in one place both forms call.**
+`SFAF_Uploads` is the whole of it. 3.43.0 refused to carry an upload at all and
+was right to; the risk is handled rather than avoided now, and the reasoning
+that made it a refusal is what the checks are built from.
+
+**A submitted file is a WORKING COPY and is never the published image.** It
+lands in `calendar-submissions/`, a different folder from the `calendar/` one
+the pickers offer, and it is offered by no picker at all. The pending row shows
+it, approval does not copy it, and the published picture is still chosen at
+approval from the approved folder. **Nothing points at the submissions folder
+permanently**, so it can be emptied at any time; a row whose file has gone shows
+no thumbnail and nothing else changes.
+
+> **The two folders must not overlap, and that is why the name is not a child.**
+> `calendar-submissions/` sits beside `calendar/` rather than inside it. A
+> submissions folder underneath would fall inside `SFAF_Media_Folder`'s own
+> anchored prefix, so every raw upload would appear in the caladmin picker,
+> which is the one thing the split exists to prevent. Both prefixes are anchored
+> at the front, so `photos/calendar-submissions/` is neither of them.
+
+**The order of the checks is the design**, and `store()` numbers them 1 to 13.
+Each runs only on input the previous one has narrowed, so nothing expensive or
+credulous happens to a file that was never going to be accepted. The two that
+carry the most weight: the **rate limit comes before the file is touched**,
+because otherwise the work is the denial of service; and **`is_uploaded_file()`
+comes before anything reads the path**, because without it a crafted request
+naming a local file would have the rest of the routine copy that file into the
+media library.
+
+**Nothing the browser says is believed.** Not the name, which is discarded and
+regenerated from the type that was found; not the claimed MIME type; not the
+reported size, which is read from disk instead. The type is decided by
+`getimagesize()` and confirmed by `finfo` against the same list, because a file
+crafted to fool one reader is far easier to make than one that fools both.
+
+**Four formats, and no SVG.** An SVG is a document: it carries script and
+external references, and it would be served from our own domain, so accepting
+one from an anonymous form is accepting stored XSS. There is no setting that
+adds it.
+
+### The community submission form
+
+**`SFAF_Submit` is not the request form with the email check removed.** The
+request form's gate is an sfaf.org mailbox, and its questions assume a colleague
+who knows what a series and a venue are. This has no gate at all, the submitter
+is a stranger, and the questions are the ones a stranger can answer. The two
+share `SFAF_Submissions` and nothing else.
+
+**The URL names the series, and that is the whole of the configuration.**
+`/?uc_event_submit=cycle-to-zero`. A series record already carries a name and an
+image, so pointing the form at one gives it a heading, a banner and the series
+every submission joins. **A second campaign is a URL and a series, not another
+build**, and there is deliberately no separate banner setting, because a second
+place to put the picture is a second place for it to be wrong.
+
+- **An unknown slug says the link is not right and stops.** Listing what exists
+  would turn a submission form into a directory of every campaign the calendar
+  knows about.
+- **No REST route**, for the same reason the request form has none.
+- **The status is named in the code** and `post_author` stays 0.
+- **Turnstile stands in for the mailbox**, and is never the only protection: the
+  honeypot still runs, both rate limits still count, every field is still
+  validated, and the result is still a row somebody has to approve. It **fails
+  open on a Cloudflare outage**, which is only tolerable because of that list. A
+  missing token is still a refusal.
+
+**What is internal and what is public, decided per field.** The submitter's own
+name and address are kept for reaching them and are read by no template. The
+contact line is public, because they answered it knowing that. **Cost is free
+text, blank by default, and absent rather than empty when blank**: an event with
+no cost given is not a free event, and inventing "Free" would put a claim on the
+page that nobody made.
+
+> **A public value nobody here can correct is worse than no value.** The four
+> lines a submission adds show on the event editor wherever one of them has a
+> value, through the shared manager field list. Without that, a submitter's typo
+> would sit on the calendar permanently, because the form that wrote it is not
+> somewhere they can go back to.
+
+**Anonymous prose is narrower than staff prose, and that is deliberate.**
+`SFAF_Rich_Text::sanitize()` is `wp_kses_post()`, which is the right rule for
+somebody with an account. `SFAF_Submissions::prose()` allows exactly what the
+toolbar can produce: `p`, `br`, `strong`, `b`, `em`, `i`, `ul`, `ol`, `li`,
+`h3`, `blockquote`, and `a` with `href` and `title` on http, https or mailto.
+**No `img`, no `style`, no `class`, no `id`, no `target`.** None of them can be
+produced by the control, and every one is a way to reach outside the box the
+prose is drawn in.
 
 ### The current month is the floor, and it is clamped where the value is read
 

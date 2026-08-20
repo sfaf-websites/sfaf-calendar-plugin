@@ -52,9 +52,8 @@ class SFAF_Request {
     /** How long a link works for. */
     const TOKEN_TTL = 3600;
 
-    /** Transient prefixes. One per thing being counted, so they cannot collide. */
+    /** Where a live link is stored, keyed on a hash of the token. */
     const TOKEN_PREFIX = 'sfaf_evreq_tok_';
-    const RATE_PREFIX  = 'sfaf_evreq_rate_';
 
     /* What a request records about itself, beyond the event's own fields. */
     const META_NAME   = '_uc_request_name';
@@ -214,29 +213,11 @@ class SFAF_Request {
      * @return bool True when this one is allowed.
      */
     private static function allow( $bucket, $who, $limit, $window ) {
-        $key   = self::RATE_PREFIX . $bucket . '_' . hash( 'sha256', (string) $who );
-        $count = (int) get_transient( $key );
-        if ( $count >= $limit ) {
-            return false;
-        }
-        // The window starts at the first hit and is not extended by later ones,
-        // so somebody cannot be held out indefinitely by their own retries.
-        set_transient( $key, $count + 1, $window );
-        return true;
+        return SFAF_Submissions::allow( $bucket, $who, $limit, $window );
     }
 
-    /**
-     * Who is asking, for rate limiting only.
-     *
-     * NOT TREATED AS IDENTITY AND NOT STORED. It is spoofable and it is shared:
-     * an office behind one address is one client here. That is why it is the
-     * second limit rather than the only one.
-     *
-     * @return string
-     */
     private static function client() {
-        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
-        return '' !== $ip ? $ip : 'unknown';
+        return SFAF_Submissions::client();
     }
 
     /* =====================================================================
@@ -386,8 +367,26 @@ class SFAF_Request {
             $errors['title'] = 'The event needs a name.';
         }
 
-        $clean['description'] = $str( 'description', 5000 );
-        if ( '' === $clean['description'] ) {
+        /*
+         * PROSE, NOT A STRIPPED LINE (3.46.0).
+         *
+         * 3.43.0 stripped markup from everything here, and said why: nobody
+         * needs to send HTML through a request form, and text can never become
+         * anything else later. Staff behind an emailed link is a lower risk
+         * than that rule was written for, so the description is a rich text
+         * field now.
+         *
+         * IT IS STILL SANITISED ON THE WAY IN, and by the narrow list rather
+         * than by wp_kses_post(). The editor is trusted to be convenient, never
+         * to be the check: what actually arrives is a POST body, and a POST
+         * body is a POST body whoever the form was drawn for. See
+         * SFAF_Submissions::prose() for exactly what survives.
+         */
+        $clean['description'] = self::cap(
+            SFAF_Submissions::prose( isset( $post['description'] ) ? wp_unslash( $post['description'] ) : '' ),
+            8000
+        );
+        if ( '' === trim( wp_strip_all_tags( $clean['description'] ) ) ) {
             $errors['description'] = 'Write a description. An event with none is blank on the calendar.';
         }
 
@@ -586,13 +585,36 @@ class SFAF_Request {
         }
 
         $checked = self::validate( $_POST );
+
+        /*
+         * THE UPLOAD IS COUNTED SEPARATELY FROM THE SUBMISSION. A rejected form
+         * can be resent several times over, and each attempt may carry a file;
+         * without its own counter, the disk work rides on a limit that was set
+         * for creating pending posts.
+         */
+        $upload = SFAF_Uploads::store( 'uc_image', function () use ( $token ) {
+            return SFAF_Submissions::allow( 'upload_tok', $token, 10, self::TOKEN_TTL );
+        } );
+        if ( '' !== $upload['error'] ) {
+            $checked['errors']['uc_image'] = $upload['error'];
+        }
+
         if ( ! empty( $checked['errors'] ) ) {
+            /* A file input cannot be refilled by the server, so the visitor has
+             * to choose it again anyway; keeping this one would leave an orphan
+             * on disk for every rejected attempt. */
+            if ( $upload['id'] ) {
+                wp_delete_attachment( $upload['id'], true );
+            }
             self::render_form( $token, $email, $checked['clean'], $checked['errors'] );
             return;
         }
 
-        $event_id = self::create_event( $checked['clean'], $email );
+        $event_id = self::create_event( $checked['clean'], $email, (int) $upload['id'] );
         if ( ! $event_id ) {
+            if ( $upload['id'] ) {
+                wp_delete_attachment( $upload['id'], true );
+            }
             self::render_form( $token, $email, $checked['clean'], array(
                 'form' => 'Something went wrong saving that. Try once more, and if it happens again email the MarCom team.',
             ) );
@@ -620,7 +642,7 @@ class SFAF_Request {
      * @param string $email The address the token belongs to.
      * @return int Event id, or 0.
      */
-    private static function create_event( $c, $email ) {
+    private static function create_event( $c, $email, $upload_id = 0 ) {
         $event_id = wp_insert_post( array(
             'post_type'    => 'uc_event',
             'post_status'  => 'pending',
@@ -671,6 +693,20 @@ class SFAF_Request {
             }
         }
 
+        /*
+         * A SENT FILE IS A WORKING COPY, NOT THE FEATURED IMAGE. It is recorded
+         * so the pending row can show what arrived, and set_post_thumbnail() is
+         * deliberately not called on it: the published picture is chosen at
+         * approval from the calendar folder, so nothing points at the
+         * submissions folder permanently and it can be emptied. A picture
+         * PICKED from the calendar folder above is a different thing and does
+         * become the thumbnail, because it is already an approved image.
+         */
+        if ( $upload_id ) {
+            update_post_meta( $event_id, SFAF_Submit::META_IMAGE, (int) $upload_id );
+        }
+
+        update_post_meta( $event_id, SFAF_Submissions::META_KIND, SFAF_Submissions::KIND_STAFF );
         update_post_meta( $event_id, self::META_NAME, $c['name'] );
         update_post_meta( $event_id, self::META_EMAIL, $email );
         update_post_meta( $event_id, self::META_AT, current_time( 'mysql' ) );
@@ -843,30 +879,23 @@ class SFAF_Request {
      * nothing that would let somebody navigate anywhere.
      * ================================================================== */
 
-    private static function page_open( $title ) {
-        status_header( 200 );
-        header( 'Content-Type: text/html; charset=utf-8' );
-        /* Nothing here should ever be framed or indexed. */
-        header( 'X-Frame-Options: SAMEORIGIN' );
-        ?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
-<head>
-<meta charset="<?php bloginfo( 'charset' ); ?>" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="robots" content="noindex, nofollow" />
-<title><?php echo esc_html( $title ); ?></title>
-<link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
-</head>
-<body class="uc-portal uc-request-page">
-<div class="uc-request-wrap">
-        <?php
+    /**
+     * The document, the honeypot and the rate limiter now live in
+     * SFAF_Submissions, because the community form needs every one of them
+     * and a second copy is a second thing to change. These stay as thin
+     * delegations rather than being deleted at every call site, so this file
+     * still reads as one form from top to bottom.
+     *
+     * @param string $title
+     * @param array  $args 'editor'.
+     */
+    private static function page_open( $title, $args = array() ) {
+        SFAF_Submissions::page_open( $title, array_merge( array( 'body_class' => 'uc-request-page' ), $args ) );
     }
 
-    private static function page_close() {
-        ?>
-</div>
-<script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
-</body></html><?php
+    /** @param array $args 'editor'. */
+    private static function page_close( $args = array() ) {
+        SFAF_Submissions::page_close( $args );
     }
 
     private static function render_start( $error = '' ) {
@@ -948,13 +977,9 @@ class SFAF_Request {
         self::page_close();
     }
 
-    /** A field no person sees. See handle_link_request(). */
+    /** A field no person sees. See SFAF_Submissions::honeypot(). */
     private static function honeypot() {
-        ?>
-        <div class="uc-hp" aria-hidden="true">
-            <label>Website<input type="text" name="uc_website" value="" tabindex="-1" autocomplete="off" /></label>
-        </div>
-        <?php
+        SFAF_Submissions::honeypot();
     }
 
     /**
@@ -973,7 +998,15 @@ class SFAF_Request {
             return isset( $errors[ $key ] ) ? $errors[ $key ] : '';
         };
 
-        self::page_open( 'Request an event' );
+        /*
+         * ENQUEUED BEFORE THE PAGE OPENS. This builds its own document, so
+         * page_open() prints whatever has been enqueued BY THE TIME IT RUNS.
+         * Asking after it is asking too late, and the editor silently stays a
+         * plain textarea. caladmin documents the same trap.
+         */
+        SFAF_Rich_Text::enqueue();
+
+        self::page_open( 'Request an event', array( 'editor' => true ) );
         ?>
         <div class="uc-request-card">
             <h1>Request an event</h1>
@@ -988,7 +1021,7 @@ class SFAF_Request {
                 <p class="uc-field-error" role="alert">Some of this needs another look. The fields are marked below.</p>
             <?php endif; ?>
 
-            <form method="post" action="<?php echo esc_url( self::form_url( $token ) ); ?>" class="uc-form">
+            <form method="post" action="<?php echo esc_url( self::form_url( $token ) ); ?>" class="uc-form" enctype="multipart/form-data">
                 <input type="hidden" name="uc_request_action" value="submit_request" />
                 <input type="hidden" name="uc_token" value="<?php echo esc_attr( $token ); ?>" />
                 <?php self::honeypot(); ?>
@@ -1005,12 +1038,19 @@ class SFAF_Request {
                     <?php self::field_error( $err( 'title' ) ); ?>
                 </label>
 
-                <label class="uc-field">
+                <div class="uc-field">
                     <span class="uc-field-label">Description</span>
-                    <textarea name="description" rows="5" required maxlength="5000"><?php echo esc_textarea( $v( 'description' ) ); ?></textarea>
+                    <?php
+                    SFAF_Rich_Text::render(
+                        'uc-request-description',
+                        'description',
+                        (string) $v( 'description' ),
+                        array( 'rows' => 6 )
+                    );
+                    ?>
                     <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
                     <?php self::field_error( $err( 'description' ) ); ?>
-                </label>
+                </div>
 
                 <?php $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) ); ?>
                 <?php if ( ! is_wp_error( $cats ) && ! empty( $cats ) ) : ?>
@@ -1098,7 +1138,7 @@ class SFAF_Request {
                            placeholder="470 Castro St, San Francisco" />
                 </label>
 
-                <?php self::render_image_choice( (int) $v( 'image' ) ); ?>
+                <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ) ); ?>
 
                 <label class="uc-check">
                     <input type="checkbox" name="rsvp" value="1" <?php checked( (bool) $v( 'rsvp', false ) ); ?> />
@@ -1122,7 +1162,7 @@ class SFAF_Request {
             </form>
         </div>
         <?php
-        self::page_close();
+        self::page_close( array( 'editor' => true ) );
     }
 
     private static function field_error( $message ) {
@@ -1149,7 +1189,7 @@ class SFAF_Request {
      *
      * @param int $chosen
      */
-    private static function render_image_choice( $chosen ) {
+    private static function render_image_choice( $chosen, $upload_error = '' ) {
         $images = get_posts( array(
             'post_type'      => 'attachment',
             'post_status'    => 'inherit',
@@ -1168,13 +1208,10 @@ class SFAF_Request {
         ?>
         <fieldset class="uc-field uc-request-images">
             <legend class="uc-field-label">Picture</legend>
-            <p class="uc-hint uc-hint-spec">
-                <strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.
-            </p>
             <?php if ( empty( $images ) ) : ?>
                 <p class="uc-hint">
-                    There are no calendar pictures to choose from yet. Ask Roxane Chicoine for one before
-                    you submit, or send this without a picture and say so in the notes.
+                    There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for
+                    your event, or send this without a picture and say so in the notes.
                 </p>
             <?php else : ?>
                 <div class="uc-request-image-grid">
@@ -1194,10 +1231,24 @@ class SFAF_Request {
                     <?php endforeach; ?>
                 </div>
                 <p class="uc-hint">
-                    Nothing here suitable? Ask <strong>Roxane Chicoine</strong> for an image before you
-                    submit, and it will be in this list.
+                    Nothing here suitable? Ask <strong>Roxane Chicoine</strong> for an image for your event.
                 </p>
             <?php endif; ?>
+
+            <?php
+            /*
+             * OR SEND ONE. The list above is the approved folder, and picking
+             * from it gives the event a finished picture straight away. This is
+             * the other case: somebody has a photo of their own. It is a
+             * WORKING COPY rather than the published image, which is why it
+             * lands in a different folder and does not become the thumbnail.
+             * See SFAF_Uploads.
+             */
+            ?>
+            <div class="uc-request-upload">
+                <p class="uc-hint">Or send your own, and somebody will size it for the calendar.</p>
+                <?php SFAF_Submissions::image_field( $upload_error ); ?>
+            </div>
         </fieldset>
         <?php
     }

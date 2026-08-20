@@ -532,6 +532,7 @@ $WHITELIST = array(
      * asserts that separately, and would fail if it started to.
      */
     'class-sfaf-request.php::create_event' => 'creates one pending event; it selects nothing',
+    'class-sfaf-submit.php::create_event'  => 'creates one pending event; it selects nothing',
     'sfaf-sample-data.php'           => 'first-run seeding, before any event exists',
     'class-sfaf-admin.php'           => 'the WordPress admin, an administrator screen',
 

@@ -209,14 +209,54 @@ if ( $saves < 3 ) {
 }
 
 /* ---------------------------------------------------------------------------
- * 6. THE PUBLIC FORM DOES NOT GET AN EDITOR.
+ * 6. THE PUBLIC FORMS GET THE EDITOR, AND THE NARROW LIST WITH IT (3.46.0).
  *
- * 3.43.0 strips markup from anonymous input on purpose. A rich control there
- * would be an unauthenticated HTML surface, which is the opposite decision.
+ * THIS ASSERTION USED TO SAY THE OPPOSITE, and it was right when it was
+ * written: 3.43.0 stripped markup from anonymous input on purpose, and a rich
+ * control there would have been an unauthenticated HTML surface. Mark weighed
+ * that and reversed it, so the rule changed rather than the check being
+ * deleted.
+ *
+ * THE NEW RULE. A public form may render the editor. What it may NOT do is
+ * store what wp_kses_post() would allow, because that is the rule for somebody
+ * with an account. Anonymous prose goes through SFAF_Submissions::prose(), and
+ * the contents of that list are asserted in .claude/request-form-test.php
+ * against the arguments actually handed to wp_kses().
+ *
+ * So the thing to catch here is a public form reaching for the WIDE
+ * sanitizer, which would look entirely reasonable in a diff.
  * ------------------------------------------------------------------------ */
-if ( false !== strpos( $code['class-sfaf-request.php'], 'SFAF_Rich_Text::render' )
-    || false !== strpos( $code['class-sfaf-request.php'], 'wp_editor' ) ) {
-    $fails[] = 'the public request form renders a rich text editor; anonymous input is stripped on purpose';
+foreach ( array( 'class-sfaf-request.php', 'class-sfaf-submit.php' ) as $public ) {
+    if ( ! isset( $code[ $public ] ) ) {
+        $fails[] = "$public is not being read, so section 6 checks nothing";
+        continue;
+    }
+    if ( false !== strpos( $code[ $public ], 'SFAF_Rich_Text::sanitize' ) ) {
+        $fails[] = "$public sanitises with wp_kses_post() through SFAF_Rich_Text::sanitize(); anonymous prose takes the narrow list";
+    }
+    if ( false !== strpos( $code[ $public ], 'wp_kses_post' ) ) {
+        $fails[] = "$public calls wp_kses_post() directly on input from a public form";
+    }
+    if ( false === strpos( $code[ $public ], 'SFAF_Submissions::prose' ) ) {
+        $fails[] = "$public does not put its description through SFAF_Submissions::prose()";
+    }
+}
+
+/* AND THE EDITOR IS ASKED FOR BEFORE THE DOCUMENT OPENS. Both forms build
+ * their own page, so page_open() prints only what was enqueued by the time it
+ * ran. Enqueueing afterwards leaves a plain textarea and no error, which is
+ * the trap caladmin already documents. */
+foreach ( array( 'class-sfaf-request.php', 'class-sfaf-submit.php' ) as $public ) {
+    if ( ! isset( $code[ $public ] ) || false === strpos( $code[ $public ], 'SFAF_Rich_Text::render' ) ) {
+        continue;
+    }
+    $enqueue = strpos( $code[ $public ], 'SFAF_Rich_Text::enqueue' );
+    $render  = strpos( $code[ $public ], 'SFAF_Rich_Text::render' );
+    if ( false === $enqueue ) {
+        $fails[] = "$public renders an editor without enqueueing one, so it stays a plain textarea";
+    } elseif ( $enqueue > $render ) {
+        $fails[] = "$public enqueues the editor after it renders one, which is after the head has printed";
+    }
 }
 
 /* ---------------------------------------------------------------------------

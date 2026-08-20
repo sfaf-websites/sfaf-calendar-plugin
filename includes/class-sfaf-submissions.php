@@ -1,0 +1,398 @@
+<?php
+/**
+ * What the two public forms share.
+ *
+ * THERE ARE TWO FORMS AND THEY ARE NOT THE SAME FORM.
+ * ---------------------------------------------------------------------------
+ * `SFAF_Request` is staff, reached by a link emailed to an sfaf.org address.
+ * `SFAF_Submit` is the public, reached by a plain URL naming a series, with no
+ * email check and no login at all. They ask different questions, they are
+ * protected differently, and they produce differently marked pending rows.
+ *
+ * What they genuinely have in common is here, once: the rate limiter, the
+ * honeypot, the page chrome, the prose allow-list, and the one function that
+ * answers what kind of pending event something is. Everything else stayed with
+ * the form that owns it, because two things that merely look alike are not one
+ * thing, and a shared method with a mode flag is how the combined view shipped
+ * five faults.
+ *
+ * WHY THE PROSE ALLOW-LIST IS HERE AND NOT IN SFAF_Rich_Text.
+ * ---------------------------------------------------------------------------
+ * `SFAF_Rich_Text::sanitize()` is `wp_kses_post()`, and its own docblock gives
+ * the reason: it is the rule WordPress already applies to post content, and a
+ * second list would be a second answer that could drift. That reasoning holds
+ * for STAFF prose, written by somebody with an account, and it is left alone.
+ *
+ * It does not hold for a form anybody on the internet can post to.
+ * `wp_kses_post()` permits `<img>`, `<video>`, `<audio>`, `<iframe>` on some
+ * configurations, inline `style`, and `class`/`id` on nearly everything. From
+ * an anonymous submitter that is a tracking pixel, an off-site request made by
+ * every visitor who opens the event, and a way to move things around the page
+ * they were not meant to be on. So submitted prose gets a narrower list, and
+ * the list is EXACTLY WHAT THE TOOLBAR CAN PRODUCE: the editor cannot make
+ * anything else, so nothing legitimate is lost by refusing the rest.
+ *
+ * @package SFAF_Calendar
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+class SFAF_Submissions {
+
+    /** Transient prefix for every counter either form keeps. */
+    const RATE_PREFIX = 'sfaf_subm_rate_';
+
+    /**
+     * How a pending event says what it is.
+     *
+     * ITS OWN KEY, RATHER THAN INFERRED FROM WHICH FIELDS ARE FILLED IN. Both
+     * forms record a submitter address, so "has an email" cannot tell a staff
+     * request from a community submission, and the pending queue used exactly
+     * that test. A row that is asked what it is must be able to answer.
+     */
+    const META_KIND = '_uc_submission_kind';
+
+    const KIND_STAFF     = 'staff';
+    const KIND_COMMUNITY = 'community';
+
+    /* =====================================================================
+     * What kind of pending event is this
+     * ================================================================== */
+
+    /**
+     * One answer, for the badge, the panel and the notification.
+     *
+     * THE ORDER MATTERS AND IS NOT ALPHABETICAL. An import is decided first
+     * because it is decided by a different subsystem entirely and a row can
+     * only be one thing. Then the explicit marker. Then the legacy test, which
+     * is the ONLY thing that keeps requests made before this release showing as
+     * requests: they have an address and no marker, and there is no migration.
+     *
+     * @param int $event_id
+     * @return string 'import' | 'community' | 'staff' | 'local'
+     */
+    public static function kind( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return 'local';
+        }
+
+        if ( class_exists( 'SFAF_Sources' ) ) {
+            $prov = SFAF_Sources::provenance( $event_id );
+            if ( is_array( $prov ) && ! empty( $prov['source'] ) ) {
+                return 'import';
+            }
+        }
+
+        $marked = (string) get_post_meta( $event_id, self::META_KIND, true );
+        if ( self::KIND_COMMUNITY === $marked ) {
+            return self::KIND_COMMUNITY;
+        }
+        if ( self::KIND_STAFF === $marked ) {
+            return self::KIND_STAFF;
+        }
+
+        /* Written by every request since 3.43.0, and by nothing else. */
+        if ( '' !== (string) get_post_meta( $event_id, SFAF_Request::META_EMAIL, true ) ) {
+            return self::KIND_STAFF;
+        }
+
+        return 'local';
+    }
+
+    /**
+     * What the queue calls it. One phrase per kind, in one place.
+     *
+     * @param string $kind
+     * @return string '' when there is nothing to badge.
+     */
+    public static function kind_label( $kind ) {
+        $labels = array(
+            self::KIND_STAFF     => 'Staff request',
+            self::KIND_COMMUNITY => 'Community submission',
+        );
+        return isset( $labels[ $kind ] ) ? $labels[ $kind ] : '';
+    }
+
+    /* =====================================================================
+     * Rate limiting
+     * ================================================================== */
+
+    /**
+     * Count one action against a limit, and say whether it may proceed.
+     *
+     * A COUNTER, NOT A LOCKOUT. It expires on its own, so nothing has to
+     * unblock anybody and a mistake costs somebody an hour rather than an
+     * account. The window starts at the first hit and is NOT extended by later
+     * ones, so nobody can be held out indefinitely by their own retries.
+     *
+     * The subject is hashed rather than stored: an address in a transient key
+     * is an address sitting in the options table for anyone with database
+     * access to read.
+     *
+     * @param string $bucket What is being counted.
+     * @param string $who    The subject, already normalised.
+     * @param int    $limit  How many are allowed in the window.
+     * @param int    $window Seconds.
+     * @return bool True when this one is allowed.
+     */
+    public static function allow( $bucket, $who, $limit, $window ) {
+        $key   = self::RATE_PREFIX . $bucket . '_' . hash( 'sha256', (string) $who );
+        $count = (int) get_transient( $key );
+        if ( $count >= $limit ) {
+            return false;
+        }
+        set_transient( $key, $count + 1, $window );
+        return true;
+    }
+
+    /**
+     * Who is asking, for rate limiting only.
+     *
+     * NOT TREATED AS IDENTITY AND NOT STORED. It is spoofable and it is shared:
+     * a whole office behind one address is one client here. That is exactly why
+     * it is never the only limit.
+     *
+     * REMOTE_ADDR AND NOTHING ELSE. X-Forwarded-For is written by the client
+     * and, unless every proxy in front of this site is known and trusted, a
+     * limiter that reads it can be defeated by sending a different value each
+     * time, which is worse than no limiter because it looks like one.
+     *
+     * @return string
+     */
+    public static function client() {
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+        return ( '' !== $ip ) ? $ip : 'unknown';
+    }
+
+    /* =====================================================================
+     * Text arriving from a form
+     * ================================================================== */
+
+    /**
+     * Prose from a public form, reduced to what the toolbar can produce.
+     *
+     * WHAT IS ALLOWED, AND NOTHING ELSE:
+     *
+     *   p, br               paragraphs and the breaks inside them
+     *   strong, b, em, i    the toolbar's bold and italic
+     *   ul, ol, li          the toolbar's two list buttons
+     *   h3                  the only heading `block_formats` offers
+     *   a[href,title]       the toolbar's link button
+     *   blockquote          survives a paste without becoming a div
+     *
+     * NO ATTRIBUTES BEYOND href AND title. No `class`, no `id`, no `style`, no
+     * `target`, no `rel`, and no data attributes, because none of them can be
+     * produced by the control and every one of them is a way to reach outside
+     * the box the prose is drawn in.
+     *
+     * NO IMG. Somebody who wants a picture on the event uses the upload field,
+     * which is checked; an `<img src>` in prose is an off-site request made by
+     * every visitor and is checked by nothing.
+     *
+     * THE HREF IS CHECKED FOR ITS PROTOCOL, not just kses-escaped. kses already
+     * drops `javascript:`, and this narrows further to the three schemes that
+     * make sense in an event description, so `data:` cannot smuggle a document
+     * into a link.
+     *
+     * @param mixed $value Already unslashed, as WordPress orders it.
+     * @return string
+     */
+    public static function prose( $value ) {
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        $allowed = array(
+            'p'          => array(),
+            'br'         => array(),
+            'strong'     => array(),
+            'b'          => array(),
+            'em'         => array(),
+            'i'          => array(),
+            'ul'         => array(),
+            'ol'         => array(),
+            'li'         => array(),
+            'h3'         => array(),
+            'blockquote' => array(),
+            'a'          => array( 'href' => true, 'title' => true ),
+        );
+
+        $out = wp_kses( $value, $allowed, array( 'http', 'https', 'mailto' ) );
+
+        /*
+         * AND THE RESULT IS NORMALISED. wp_kses() removes tags; it does not
+         * collapse what removing them left behind, so a paste can arrive as
+         * several hundred empty paragraphs that are correct HTML and read as a
+         * blank description with a scrollbar.
+         */
+        $out = preg_replace( '#(?:<p>\s*</p>\s*)+#i', '', $out );
+        $out = preg_replace( '#(?:<br\s*/?>\s*){3,}#i', '<br /><br />', $out );
+
+        return trim( (string) $out );
+    }
+
+    /**
+     * A single-line value: no markup at all, whitespace collapsed, capped.
+     *
+     * FOR EVERY FIELD THAT IS NOT PROSE. A title, a name, a location, a cost.
+     * None of them has any reason to carry markup, and a value that arrives as
+     * text can never be anything else later, wherever it is printed.
+     *
+     * @param mixed $raw Already unslashed.
+     * @param int   $max Characters.
+     * @return string
+     */
+    public static function line( $raw, $max ) {
+        if ( ! is_string( $raw ) ) {
+            return '';
+        }
+        $out = sanitize_text_field( $raw );
+        $out = preg_replace( '/\s+/u', ' ', $out );
+        if ( null === $out ) {
+            /* preg_replace returns null on a malformed UTF-8 subject. */
+            $out = sanitize_text_field( $raw );
+        }
+        return trim( SFAF_Request::cap( $out, $max ) );
+    }
+
+    /**
+     * An external link, or ''.
+     *
+     * THE SCHEME IS CHECKED AFTER esc_url_raw() RATHER THAN BEFORE. esc_url_raw
+     * normalises as well as filters, so a value inspected first is not the
+     * value that would be stored. Only http and https: a `mailto:` in a field
+     * labelled "link to register" is a mistake worth refusing rather than
+     * storing and rendering as a broken button.
+     *
+     * @param mixed $raw
+     * @param int   $max
+     * @return string
+     */
+    public static function url( $raw, $max = 500 ) {
+        if ( ! is_string( $raw ) ) {
+            return '';
+        }
+        $raw = trim( $raw );
+        if ( '' === $raw ) {
+            return '';
+        }
+        $url = esc_url_raw( SFAF_Request::cap( $raw, $max ), array( 'http', 'https' ) );
+        if ( '' === $url ) {
+            return '';
+        }
+        $scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+        return ( 'http' === $scheme || 'https' === $scheme ) ? $url : '';
+    }
+
+    /* =====================================================================
+     * Page chrome
+     * ================================================================== */
+
+    /**
+     * The document both forms are drawn in.
+     *
+     * IT BUILDS ITS OWN DOCUMENT, so anything WordPress would normally print
+     * has to be asked for. That is the same arrangement caladmin has, and the
+     * same trap: an editor enqueued AFTER this runs has nothing printed for it.
+     * Callers enqueue first, then open the page. See SFAF_Rich_Text::enqueue().
+     *
+     * @param string $title
+     * @param array  $args 'body_class', 'editor' (print what wp_editor needs).
+     */
+    public static function page_open( $title, $args = array() ) {
+        $args = array_merge( array( 'body_class' => 'uc-request-page', 'editor' => false ), $args );
+
+        status_header( 200 );
+        header( 'Content-Type: text/html; charset=utf-8' );
+        /* Nothing here should ever be framed or indexed. */
+        header( 'X-Frame-Options: SAMEORIGIN' );
+        ?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+<meta charset="<?php bloginfo( 'charset' ); ?>" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title><?php echo esc_html( $title ); ?></title>
+<link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
+<?php
+if ( $args['editor'] ) {
+    wp_print_styles();
+    wp_print_head_scripts();
+}
+?>
+</head>
+<body class="uc-portal <?php echo esc_attr( $args['body_class'] ); ?>">
+<div class="uc-request-wrap">
+        <?php
+    }
+
+    /**
+     * @param array $args 'editor'.
+     */
+    public static function page_close( $args = array() ) {
+        $args = array_merge( array( 'editor' => false ), $args );
+        ?>
+</div>
+<script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
+<?php
+if ( $args['editor'] ) {
+    wp_print_footer_scripts();
+}
+?>
+</body></html><?php
+    }
+
+    /**
+     * A field no person sees and every naive bot fills.
+     *
+     * It fails exactly as a success looks, because telling a bot it was caught
+     * is telling whoever wrote it what to change.
+     */
+    public static function honeypot() {
+        ?>
+        <div class="uc-hp" aria-hidden="true">
+            <label>Website<input type="text" name="uc_website" value="" tabindex="-1" autocomplete="off" /></label>
+        </div>
+        <?php
+    }
+
+    /** Was the honeypot filled in? */
+    public static function trapped() {
+        return ! empty( $_POST['uc_website'] );
+    }
+
+    /** One error line under a field. */
+    public static function field_error( $message ) {
+        if ( '' === (string) $message ) {
+            return;
+        }
+        echo '<span class="uc-field-error">' . esc_html( $message ) . '</span>';
+    }
+
+    /**
+     * The image field both forms carry.
+     *
+     * ONE CONTROL, so the accepted formats and the size ceiling are stated
+     * once and cannot disagree with what SFAF_Uploads actually enforces: the
+     * numbers below are read from that class rather than typed here.
+     *
+     * @param string $error
+     */
+    public static function image_field( $error = '' ) {
+        $mb = (int) round( SFAF_Uploads::MAX_BYTES / 1048576 );
+        ?>
+        <label class="uc-field uc-field-upload">
+            <span class="uc-field-label">Picture</span>
+            <input type="file" name="uc_image" accept="image/jpeg,image/png,image/gif,image/webp" />
+            <span class="uc-hint">
+                JPEG, PNG, GIF or WebP, up to <?php echo (int) $mb; ?>MB. Landscape works best.
+                Leave this empty if you do not have one.
+            </span>
+            <?php self::field_error( $error ); ?>
+        </label>
+        <?php
+    }
+}

@@ -227,6 +227,7 @@ function sfaf_icon_paths() {
         'link'      => '<path d="M10.5 13.5a4.5 4.5 0 0 0 6.8.5l2.4-2.4a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4"/><path d="M13.5 10.5a4.5 4.5 0 0 0-6.8-.5L4.3 12.4a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4"/>',
         'bolt'      => '<path d="M13 2.5 4.5 14H11l-1 7.5L19.5 10H13z"/>',
         'venue'     => '<path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/>',
+        'ticket'    => '<path d="M4 8.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1.6a2.4 2.4 0 0 0 0 4.8v1.6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.6a2.4 2.4 0 0 0 0-4.8z"/><path d="M14 7v2M14 11v2M14 15v2"/>',
         'mail'      => '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/>',
         'check'     => '<path d="M20 6.5 9.5 17 4 11.5"/>',
         'x'         => '<path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/>',
@@ -1949,6 +1950,65 @@ function sfaf_event_location( $post_id ) {
     return trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
 }
 
+/**
+ * The four facts a community submission adds, and nothing else reads.
+ *
+ * ONE ACCESSOR EACH, RATHER THAN A get_post_meta() AT EVERY CALL SITE. Each of
+ * these is BLANK BY DEFAULT and blank means "say nothing", not "say nothing is
+ * known": an event with no cost line is not a free event, it is an event whose
+ * cost was not given. So every one of them returns '' and the template tests
+ * for '' in exactly one way, which is what keeps "not displayed when blank"
+ * true in every place the value appears.
+ *
+ * They are INFORMATIONAL. Nothing here takes a payment, checks an age or
+ * validates a phone number. See SFAF_Submit for what is actually collected.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_cost( $post_id ) {
+    return trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_COST, true ) );
+}
+
+/** @param int $post_id @return string */
+function sfaf_event_age_restriction( $post_id ) {
+    return trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_AGE, true ) );
+}
+
+/**
+ * The contact the submitter gave FOR THE PUBLIC.
+ *
+ * NOT THE SUBMITTER'S OWN ADDRESS. That is kept internally under
+ * SFAF_Request::META_EMAIL and is deliberately unreachable from any template:
+ * somebody proposing an event to a campaign calendar has not agreed to have
+ * their own address published, and this field is the one they answered knowing
+ * it would be.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_public_contact( $post_id ) {
+    return trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_CONTACT, true ) );
+}
+
+/**
+ * Where people register, when it is somewhere else.
+ *
+ * RE-CHECKED ON THE WAY OUT. It was checked on the way in, and this checks it
+ * again before it becomes an href, because a stored value can predate the rule
+ * that would have refused it and a link is the one place that matters.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_rsvp_url( $post_id ) {
+    $url = trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_RSVP_URL, true ) );
+    if ( '' === $url ) {
+        return '';
+    }
+    $scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+    return ( 'http' === $scheme || 'https' === $scheme ) ? $url : '';
+}
 /**
  * The three usable stops of a category colour's own family.
  *

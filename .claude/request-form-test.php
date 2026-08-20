@@ -94,6 +94,43 @@ class SFAF_Portal {
     public static function link( $p = '' ) { return 'https://example.org/caladmin/' . $p; }
 }
 
+/*
+ * wp_kses() IS NOT RE-IMPLEMENTED HERE, AND THAT IS DELIBERATE.
+ *
+ * A hand-written stripper in a test file would be a second, worse kses, and
+ * every assertion about it would be an assertion about the stub. What this
+ * plugin actually controls is the ALLOW-LIST it hands to kses, so the stub
+ * records the arguments and the assertions are made against those. What kses
+ * does with a correct list is WordPress's business and is tested there.
+ *
+ * It still strips the obvious cases, so a caller that passes nothing sensible
+ * does not silently look correct: anything not in the list given is removed.
+ */
+$GLOBALS['kses_calls'] = array();
+function wp_kses( $string, $allowed, $protocols = array() ) {
+    $GLOBALS['kses_calls'][] = array( 'allowed' => $allowed, 'protocols' => $protocols );
+    $keep = implode( '', array_map( function ( $t ) { return '<' . $t . '>'; }, array_keys( (array) $allowed ) ) );
+    return strip_tags( (string) $string, $keep );
+}
+function wp_kses_post( $string ) { return (string) $string; }
+function esc_url_raw( $url, $protocols = null ) {
+    $url = trim( (string) $url );
+    if ( '' === $url ) { return ''; }
+    $scheme = strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) );
+    if ( is_array( $protocols ) && ! in_array( $scheme, $protocols, true ) ) { return ''; }
+    return $url;
+}
+function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
+function wp_strip_all_tags( $t, $break = false ) { return trim( strip_tags( (string) $t ) ); }
+
+class SFAF_Uploads {
+    const MAX_BYTES = 10485760;
+}
+class SFAF_Submit {
+    const META_IMAGE = '_uc_submitted_image';
+}
+
+require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-request.php';
 
 function expect( $label, $got, $want ) {
@@ -290,16 +327,30 @@ expect( 'and stores zero', $out['clean']['capacity'], 0 );
 $out = SFAF_Request::validate( good_post( array( 'capacity' => '40' ) ) );
 expect( 'a capacity with no registration is ignored', $out['clean']['capacity'], 0 );
 
-/* Markup and length. */
+/* Markup and length.
+ *
+ * THE DESCRIPTION IS PROSE FROM 3.46.0 AND THE TITLE IS STILL A LINE. Mark
+ * reversed the 3.43.0 decision for the description alone, so the assertion
+ * changed shape rather than being dropped: the title must still carry no
+ * markup at all, and the description must carry ONLY what the toolbar can
+ * produce. What that list is, and that it excludes img and script, is proved
+ * in section 9 against the arguments actually handed to wp_kses().
+ */
 $out = SFAF_Request::validate( good_post( array(
     'title'       => 'Board <script>alert(1)</script> Social',
-    'description' => '<a href="https://evil.example">click</a> here',
+    'description' => '<p>Come <strong>along</strong></p><script>alert(1)</script>',
 ) ) );
-if ( false !== strpos( $out['clean']['title'], '<' ) || false !== strpos( $out['clean']['description'], '<' ) ) {
-    $fails[] = 'markup survives sanitisation, so a request can store HTML';
+if ( false !== strpos( $out['clean']['title'], '<' ) ) {
+    $fails[] = 'markup survives in the title, which is a line and never prose';
 }
 if ( false !== stripos( $out['clean']['title'], 'script' ) && false !== strpos( $out['clean']['title'], '<' ) ) {
     $fails[] = 'a script tag survives in the title';
+}
+if ( false !== stripos( $out['clean']['description'], '<script' ) ) {
+    $fails[] = 'a script tag survives in the description';
+}
+if ( false === strpos( $out['clean']['description'], '<strong>' ) ) {
+    $fails[] = 'the description lost its formatting, so the rich text control stores nothing it produces';
 }
 
 $out = SFAF_Request::validate( good_post( array(
@@ -308,7 +359,7 @@ $out = SFAF_Request::validate( good_post( array(
     'notes'       => str_repeat( 'c', 20000 ),
 ) ) );
 expect( "the title is capped",       strlen( $out["clean"]["title"] ), 200 );
-expect( 'the description is capped', strlen( $out['clean']['description'] ), 5000 );
+expect( 'the description is capped', strlen( $out['clean']['description'] ), 8000 );
 expect( 'the notes are capped',      strlen( $out['clean']['notes'] ), 2000 );
 
 /* Arrays where a string belongs, which is the shape that reaches a type error. */
@@ -449,12 +500,123 @@ if ( preg_match_all( "#'post_type'\s*=>\s*'([a-z_]+)'#", $code, $m ) ) {
  * 8. THE QUEUE CAN TELL A REQUEST FROM AN IMPORT.
  * ------------------------------------------------------------------------ */
 $portal = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
-foreach ( array( 'SFAF_Request::META_EMAIL', 'uc-badge-request', 'render_request_panel' ) as $needle ) {
+foreach ( array( 'SFAF_Request::META_EMAIL', 'SFAF_Submissions::kind', 'render_request_panel' ) as $needle ) {
     if ( false === strpos( $portal, $needle ) ) {
         $fails[] = "the portal does not use $needle, so a staff request is indistinguishable in the queue";
     }
 }
 
+/*
+ * AND IT CAN TELL THE TWO KINDS OF SUBMISSION APART.
+ *
+ * Both forms write an address to the same meta key, so "has an email" stopped
+ * being an answer in 3.46.0. The row asks kind() and badges what it says, and
+ * the two labels must differ or the marker is only in the class attribute.
+ */
+if ( false === strpos( $portal, 'SFAF_Submissions::kind_label' ) ) {
+    $fails[] = 'the queue does not ask kind_label(), so both kinds of submission carry the same words';
+}
+if ( SFAF_Submissions::kind_label( SFAF_Submissions::KIND_STAFF )
+    === SFAF_Submissions::kind_label( SFAF_Submissions::KIND_COMMUNITY ) ) {
+    $fails[] = 'a staff request and a community submission are badged with the same words';
+}
+if ( '' !== SFAF_Submissions::kind_label( 'import' ) ) {
+    $fails[] = 'an import is badged by this list as well as by the import queue, so it would carry two';
+}
+
+/* ---------------------------------------------------------------------------
+ * 9. WHAT SUBMITTED PROSE IS ACTUALLY ALLOWED TO CARRY.
+ *
+ * ASSERTED AGAINST THE ARGUMENTS HANDED TO wp_kses(), not against a stripper
+ * written in this file. The plugin controls the allow-list; kses's behaviour
+ * given a correct list is WordPress's own and is tested there. A stub that
+ * re-implemented it would only ever prove the stub.
+ *
+ * THE LIST IS NOT wp_kses_post(). That is the rule for a logged-in author, and
+ * SFAF_Rich_Text::sanitize() keeps using it for the event editor. Anonymous
+ * prose is narrower, and this is where that stays true.
+ * ------------------------------------------------------------------------ */
+$GLOBALS['kses_calls'] = array();
+SFAF_Submissions::prose( '<p>hi</p>' );
+if ( empty( $GLOBALS['kses_calls'] ) ) {
+    $fails[] = 'prose() does not go through wp_kses() at all, so nothing is filtered';
+} else {
+    $call    = $GLOBALS['kses_calls'][0];
+    $allowed = array_keys( (array) $call['allowed'] );
+
+    /* Everything the toolbar can produce has to survive, or the control makes
+     * formatting the visitor then loses on save. */
+    foreach ( array( 'p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h3', 'a' ) as $tag ) {
+        if ( ! in_array( $tag, $allowed, true ) ) {
+            $fails[] = "submitted prose refuses <$tag>, which the toolbar can produce";
+        }
+    }
+
+    /* And nothing that reaches outside the box the prose is drawn in. */
+    foreach ( array( 'script', 'iframe', 'img', 'style', 'object', 'embed', 'form', 'input', 'video', 'audio', 'svg', 'link', 'meta' ) as $tag ) {
+        if ( in_array( $tag, $allowed, true ) ) {
+            $fails[] = "submitted prose allows <$tag>, which an anonymous form must not accept";
+        }
+    }
+
+    /* No attribute beyond the link's own two. class, id and style are how
+     * prose escapes its container; on* is script by another name. */
+    foreach ( (array) $call['allowed'] as $tag => $attrs ) {
+        foreach ( array_keys( (array) $attrs ) as $attr ) {
+            if ( 'a' === $tag && in_array( $attr, array( 'href', 'title' ), true ) ) {
+                continue;
+            }
+            $fails[] = "submitted prose allows the $attr attribute on <$tag>";
+        }
+    }
+
+    $protocols = (array) $call['protocols'];
+    if ( empty( $protocols ) ) {
+        $fails[] = 'submitted prose passes no protocol list, so kses falls back to every scheme it knows';
+    }
+    foreach ( $protocols as $scheme ) {
+        if ( ! in_array( $scheme, array( 'http', 'https', 'mailto' ), true ) ) {
+            $fails[] = "submitted prose permits the $scheme: scheme in a link";
+        }
+    }
+}
+
+/* The parts that ARE ours, checked by running them. */
+expect( 'a run of empty paragraphs is collapsed', SFAF_Submissions::prose( '<p></p><p>  </p><p>real</p>' ), '<p>real</p>' );
+expect( 'a wall of breaks is cut back',           SFAF_Submissions::prose( 'a<br /><br /><br /><br />b' ), 'a<br /><br />b' );
+expect( 'a non-string is not prose',              SFAF_Submissions::prose( array( 'x' ) ), '' );
+
+expect( 'a line collapses its whitespace', SFAF_Submissions::line( "two    spaces\n\nand a break", 200 ), 'two spaces and a break' );
+expect( 'a line is capped',                strlen( SFAF_Submissions::line( str_repeat( 'z', 500 ), 120 ) ), 120 );
+expect( 'a line carries no markup',        SFAF_Submissions::line( '<b>x</b>', 100 ), 'x' );
+
+expect( 'an https link survives',   SFAF_Submissions::url( 'https://example.org/x' ), 'https://example.org/x' );
+expect( 'an http link survives',    SFAF_Submissions::url( 'http://example.org/x' ),  'http://example.org/x' );
+expect( 'a javascript: link does not', SFAF_Submissions::url( 'javascript:alert(1)' ), '' );
+expect( 'a data: link does not',       SFAF_Submissions::url( 'data:text/html,<script>' ), '' );
+expect( 'a mailto: is not a web link', SFAF_Submissions::url( 'mailto:a@b.org' ), '' );
+expect( 'an empty link is empty',      SFAF_Submissions::url( '' ), '' );
+
+/* ---------------------------------------------------------------------------
+ * 10. THE UPLOAD REFUSES BEFORE IT READS.
+ *
+ * store() is not called here, because it needs $_FILES, a writable uploads
+ * directory and wp_handle_upload(). What IS checked is the part that decides
+ * WHAT MAY BE SENT, because that list is the whole of the file policy and an
+ * SVG appearing in it is the difference between an image upload and stored
+ * XSS on our own domain.
+ * ------------------------------------------------------------------------ */
+$uploads_src = file_get_contents( $root . '/includes/class-sfaf-uploads.php' );
+foreach ( array( 'is_uploaded_file', 'getimagesize', 'finfo_file', 'image_type_to_extension', 'realpath', 'chmod' ) as $needed ) {
+    if ( false === strpos( $uploads_src, $needed ) ) {
+        $fails[] = "the upload handler never calls $needed(), so one of the numbered checks is missing";
+    }
+}
+foreach ( array( 'svg', 'image/svg', 'application/pdf' ) as $never ) {
+    if ( false !== stripos( $uploads_src, "=> '" . $never ) ) {
+        $fails[] = "the upload handler lists $never as an accepted type";
+    }
+}
 /* ---------------------------------------------------------------------------
  * Result.
  * ------------------------------------------------------------------------ */

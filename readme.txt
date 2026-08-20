@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.45.2
+Stable tag: 3.46.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,34 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.46.0 =
+
+**Uploads on both public forms, and a second form for community submissions.**
+
+**PEOPLE CAN SEND A PICTURE NOW, ON BOTH FORMS.** 3.43.0 deliberately had none, because an upload endpoint reachable with no account is the riskiest thing such a page can carry. That has been weighed and the risk is handled rather than avoided, in one place both forms call.
+
+**A submitted file is a WORKING COPY and never the published image.** It lands in a media folder called Calendar submissions, which is separate from the calendar folder that holds approved images, and it is offered by no picker. The pending row shows it so you can see what arrived; approving does not copy it anywhere. The published picture is still chosen at approval from the calendar folder, after somebody has downloaded the submitted one, resized it and given it alt text. **Nothing points at that folder permanently, so it can be emptied whenever you like** and no published event loses anything: a row whose file has gone simply shows no thumbnail.
+
+**What the handler checks, in this order.** Is there a file at all, and is no file the answer (an image is optional on both forms and a submission without one is normal). What PHP says went wrong. The rate limit, before the file is touched, because otherwise the work is the denial of service. Whether it is genuinely an upload rather than a path the request named. The size, read from the file rather than from the browser, against a 10MB ceiling. What is actually inside it, which must be a JPEG, PNG, GIF or WebP. Then a second, independent reader has to agree with the first. Then the dimensions, against a pixel ceiling, because a small file can decompress enormously. Then the submitted name is discarded entirely and a new one generated from the type that was found. Then the move, then the mode with the execute bits cleared, then a check that the file is where it was put, and only then is it an attachment. **No SVG, on purpose:** an SVG is a document that carries script, served from our own domain.
+
+**A SECOND PUBLIC FORM, FOR COMMUNITY SUBMISSIONS.** The first use is Cycle to Zero, where the public propose events for the ride's calendar. It replaces a Google Form. There is no login and no email check: the address is public and printed on the campaign's own site, and Cloudflare Turnstile stands in for the mailbox the staff form has. Keys go on **Events > Integrations**, and without both of them the widget does not appear at all rather than appearing unchecked.
+
+**THE URL NAMES THE SERIES, AND THAT IS THE WHOLE OF THE SETUP.** `/?uc_event_submit=cycle-to-zero`. The banner and the series every submission joins both come from that series record, which already carries a name and an image, so **a second campaign next year is a URL and a series rather than another build**. There is deliberately no separate banner setting: a second place to put the picture is a second place for it to be wrong. An address that names no series says the link is not right and stops, rather than listing what exists.
+
+**What it asks.** The submitter's name and email, **kept internally and never shown on the calendar**, which is how you reach somebody about an unclear submission. Then the event: name, description, date, start and end, and where, which their old form had no field for at all. Then cost as free text, blank by default and **not shown at all when blank**, because an event with no cost given is not a free event. An age restriction, also free text, since "18+", "all ages" and "21+ after 9pm" are all real answers. An optional link to register somewhere else. A contact **that IS shown publicly**, which is theirs rather than ours and distinct from their own details. An optional picture, and anything else they want you to know, kept internal.
+
+It does not ask about categories, private events, notification lists, reply-to addresses, display toggles or FAQ sets. Those are decisions taken at approval by somebody who knows the calendar.
+
+**Every submission arrives as a pending event that nobody can see**, badged **Community submission** so it is distinguishable at a glance from a staff request and from an import. Admins get one email each, with the submitter as the reply-to. The submitter gets a copy of what they sent, on screen and by email, and nothing after that.
+
+**The four public lines can be corrected.** Cost, ages, contact and the registration link appear on the event editor wherever one of them has a value, because a value written by somebody outside SFAF that nobody here can fix would otherwise be on the calendar permanently.
+
+**THE STAFF FORM'S DESCRIPTION IS RICH TEXT NOW.** Same control as everywhere else. It is still **sanitised on the way in** rather than trusted: what arrives is a POST body whoever the form was drawn for. Both public forms allow exactly what the toolbar can produce, which is paragraphs, bold, italic, the two list types, one heading level, blockquote and links on http, https or mailto. **No images, no inline styles, no classes and no target attributes**, none of which the control can make and every one of which is a way to reach outside the box the prose is drawn in. That is deliberately narrower than the rule for somebody with an account.
+
+**Two lines of copy on the staff form.** The image spec is gone: it described how the software crops rather than what somebody should do. And "Nothing here suitable?" now says to ask Roxane Chicoine for an image for your event.
+
+**Repeating is still asked in words rather than as a pattern, and that stands.** These are one-off events in practice, and anybody running something weekly gets a caladmin account because they will be handling registrations every week. The form still does not ask who receives RSVP notifications either: a one-off requester does not know who owns that list, and it is set at approval.
 
 = 3.45.2 =
 

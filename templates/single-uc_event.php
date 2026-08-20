@@ -156,7 +156,7 @@ while ( have_posts() ) :
                     echo sfaf_galaxy_block( $post_id );
 
                     // Frequently asked questions. This event's own, and the only
-                    // ones there are — see sfaf_faq_meta_key().
+                    // ones there are: see sfaf_faq_meta_key().
                     echo sfaf_faq_accordion_html( $post_id );
 
                     // Other events in this series.
@@ -203,7 +203,51 @@ while ( have_posts() ) :
                                     <span><?php echo esc_html( implode( ', ', wp_list_pluck( $venues, 'name' ) ) ); ?></span>
                                 </li>
                             <?php endif; ?>
-                        </ul>
+                            <?php
+                            /*
+                             * WHAT A COMMUNITY SUBMISSION ADDS (3.46.0).
+                             *
+                             * Each is blank by default and BLANK MEANS THE LINE
+                             * IS NOT THERE, rather than a line saying nothing is
+                             * known. An event with no cost given is not a free
+                             * event, so inventing "Free" here would put a claim
+                             * on the page that nobody made.
+                             *
+                             * Every one of these came from a public form, so
+                             * every one is escaped as text. The registration link
+                             * is the single exception and it is the reason
+                             * sfaf_event_rsvp_url() re-checks the scheme on the
+                             * way out rather than trusting what was stored.
+                             */
+                            $cost    = sfaf_event_cost( $post_id );
+                            $ages    = sfaf_event_age_restriction( $post_id );
+                            $contact = sfaf_event_public_contact( $post_id );
+                            $signup  = sfaf_event_rsvp_url( $post_id );
+                            ?>
+                            <?php if ( '' !== $cost ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'ticket' ); ?></span>
+                                    <span><?php echo esc_html( $cost ); ?></span>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ( '' !== $ages ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'users' ); ?></span>
+                                    <span><?php echo esc_html( $ages ); ?></span>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ( '' !== $contact ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'mail' ); ?></span>
+                                    <span><?php echo esc_html( $contact ); ?></span>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ( '' !== $signup ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'link' ); ?></span>
+                                    <span><a href="<?php echo esc_url( $signup ); ?>" target="_blank" rel="noopener noreferrer nofollow ugc">Register for this event</a></span>
+                                </li>
+                            <?php endif; ?>                        </ul>
 
                         <?php
                         // RSVP block.
