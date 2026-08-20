@@ -759,11 +759,41 @@
             return;
         }
 
-        var cached = monthCache[monthCacheKey(container, month)];
-        if (cached) {
-            panel.innerHTML = cached;
+        /*
+         * BOTH HALVES MOVE TOGETHER, HERE TOO (3.45.2).
+         *
+         * The combined mode's month name spans both halves and its right-hand
+         * column lists the month the grid is showing, so the payload carries
+         * three pieces and all three are applied in one place. This applied the
+         * grid alone and the grid arrived carrying a month name of its own,
+         * which left two sets of navigation on screen disagreeing about the
+         * month: the spanning one, still on the month before, and the one that
+         * had just been dropped into the left column.
+         *
+         * THE CACHE HOLDS THE WHOLE PAYLOAD, not one string out of it. Holding
+         * the grid alone is the same fault a second time, delayed until
+         * somebody navigates back to a month they have already seen.
+         */
+        function applyMonth(data) {
+            if (!data || typeof data.html !== 'string') {
+                return;
+            }
+            panel.innerHTML = data.html;
+            var side = panelOf(container, 'sidebar');
+            if (side && typeof data.side === 'string') {
+                side.innerHTML = data.side;
+            }
+            var head = container.querySelector('.uc-combined-head');
+            if (head && typeof data.head === 'string') {
+                head.innerHTML = data.head;
+            }
             bindMonth(container);
             prefetchAround(container, month);
+        }
+
+        var cached = monthCache[monthCacheKey(container, month)];
+        if (cached) {
+            applyMonth(cached);
             return;
         }
 
@@ -773,10 +803,8 @@
         }
 
         request(container, 1, 'month', function (data) {
-            panel.innerHTML = data.html;
-            monthCache[monthCacheKey(container, month)] = data.html;
-            bindMonth(container);
-            prefetchAround(container, month);
+            monthCache[monthCacheKey(container, month)] = data;
+            applyMonth(data);
         }, function () {
             // FAILURE MUST NOT LOOK LIKE AN EMPTY MONTH. A blank grid is
             // indistinguishable from a month with nothing on, which is common
@@ -839,8 +867,12 @@
                 if (!target || monthCache[monthCacheKey(container, target)]) {
                     return;
                 }
+                /* THE WHOLE PAYLOAD, the same shape loadMonth() stores. Two
+                   writers putting two different shapes into one cache is how a
+                   prefetched month comes to apply differently from a fetched
+                   one, and it only shows on the months somebody warmed. */
                 request(container, 1, 'month', function (data) {
-                    monthCache[monthCacheKey(container, target)] = data.html;
+                    monthCache[monthCacheKey(container, target)] = data;
                 }, function () { /* silent by design */ }, { month: target });
             })(neighbours[i]);
         }

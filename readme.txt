@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.45.1
+Stable tag: 3.45.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,23 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.45.2 =
+
+**The list view was showing one month, two navigations fought in the embedded combined view, and the sidebar's heading band was wider than its rows.**
+
+**THE LIST SHOWED THE CURRENT MONTH ONLY.** 27 upcoming events, 5 on screen. 3.45.0 bound the combined mode's sidebar to the month the grid is drawing, deliberately, so the two halves move together. It did that with a FILTER called `month`, and a block already carries an attribute called `month` meaning something completely different: which month the GRID is drawing. `render_calendar_block()` hands its whole attribute array to the filter normalizer, and the embed endpoint fills that attribute in on every single request, because the function answering "which month am I drawing" never returns nothing. So every list quietly gained an upper bound. Two different things sharing one key, and the collision was the whole of the bug.
+
+**The bound month is a parameter one renderer sets, not a filter any caller can fill in.** It is called `bound_month` now, and nothing reads it off an attribute, an embed parameter or a form field, so no display month can reach it by being spelled the same way. The sidebar renderer sets it when its caller passed a month; the list never sets it. All four display modes were then checked through the doors a visitor actually arrives by: the list shows everything coming up across every month, the combined view's sidebar shows the displayed month, the sidebar display mode on its own still spans months exactly as it did before 3.45.0, and the grid draws the month it was given.
+
+**TWO MONTH NAVIGATIONS IN AN EMBEDDED COMBINED VIEW.** Only in an embed, and only after navigating. First load was correct everywhere, and this site's own calendar was correct throughout. 3.45.0 moved the month name out of the grid so it could span both halves, and 3.45.1 put the composition in one method so the first render and the redraw could not disagree. The REST route that serves embedded calendars was never told: it kept asking for a grid with its heading left on, so navigating dropped a grid carrying its own month name and its own previous and next into the left column, underneath the spanning head, which still said the month before. It asks the same composition as the other two callers now, and the redraw moves the head, the grid and the sidebar together.
+
+Two things that came with it. The sidebar and the head are markup going to another domain, and the pass that makes every URL absolute read only the grid by name, so a redrawn column of events would have arrived on somebody else's page with root-relative image URLs that resolve against their site. Every piece is resolved now. And the payload cache keyed on the month alone, so a combined payload and a plain grid payload shared an entry and whichever was built first was served to both.
+
+**THE SIDEBAR'S HEADING BAND WAS WIDER THAN ITS ROWS.** The band pulls back out through the card's padding to reach the card's edges, and the amount was written into it as a number. In the combined mode the card is not a card: the panel around it carries the border and the padding, so the card's own padding is zero, the band escaped 14px through padding that was not there, and it finished 14px outside the rows on each side. The escape is now the padding itself rather than a copy of it, so a context that changes the padding cannot forget to change the escape. The row hover tint had the same number written into it twice and is fixed the same way.
+
+**WHY THE SUITE KEPT PASSING.** Five releases in a row this mode shipped a fault the checks passed. Not one of those faults was in a renderer: the renderers were correct every time, and the harness that called them said so, honestly and uselessly. Every one was at the SEAM, in what the entry point hands the renderers or what the context around them is. So the new check calls no renderer directly. Every assertion enters through one of the four doors a visitor comes through, and reads what came back. It asserts nothing about the source text, because three source-string assertions have now been satisfied by the wrong copy.
+
 
 = 3.45.1 =
 

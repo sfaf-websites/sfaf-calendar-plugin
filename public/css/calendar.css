@@ -1524,7 +1524,15 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    inside the other, both rounded, is the boxes-inside-boxes the design rules
    forbid. */
 .uc-calendar .uc-view-panels-combined .uc-month-wrap { border: 0; border-radius: 0; }
-.uc-calendar .uc-view-panels-combined .uc-sidebar { border: 0; padding: 0; background: none; }
+/* The sidebar is not a card in here: the panel around it carries the border and
+   the padding. Zeroing the padding means zeroing the escape its heading band
+   and its row hover pull out through, or both finish outside the rows they sit
+   above. One rule sets all three, which is why they are properties rather than
+   numbers written into each child. See the note on .uc-sidebar. */
+.uc-calendar .uc-view-panels-combined .uc-sidebar {
+    --uc-sidebar-pad-x: 0px; --uc-sidebar-pad-t: 0px; --uc-sidebar-head-radius: 0px;
+    border: 0; padding: 0; background: none;
+}
 
 /* ---------------------------------------------------------------------------
    EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.
@@ -2012,9 +2020,30 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    the card at its 380px cap, side by side; a 200px one renders it at 200,
    stacked; and the changeover is at 272px to the pixel.
    ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   THE CARD'S OWN PADDING, DECLARED AS A NUMBER ITS CHILDREN CAN READ (3.45.2)
+
+   Two things inside this card pull back OUT through this padding to reach the
+   card's edges: the heading band and the row hover tint. Both had the 6px and
+   the 14px written into them as literals, which is correct exactly as long as
+   this rule is the one in force.
+
+   IT IS NOT, IN THE COMBINED MODE. There the card is not a card: it has no
+   border, no background and no padding, because the panel around it carries
+   18px of its own. So the band pulled 14px out through padding that was zero
+   and finished 14px OUTSIDE the rows on each side, sitting 4px short of the
+   panel's edge. A tinted band wider than the column under it, lined up with
+   nothing.
+
+   As a custom property the escape is whatever the padding actually is in the
+   context the card landed in, and the combined rule sets both to zero along
+   with the padding it is already zeroing. One value, one place, and a context
+   that changes the padding cannot forget to change the escape.
+   ------------------------------------------------------------------------ */
 .uc-sidebar { font-family: var(--uc-font-heading); min-width: 200px; max-width: 380px;
+    --uc-sidebar-pad-x: 14px; --uc-sidebar-pad-t: 6px; --uc-sidebar-head-radius: 13px;
     background: #fff; border: 1px solid var(--uc-border-strong);
-    border-radius: 14px; padding: 6px 14px 14px;
+    border-radius: 14px; padding: var(--uc-sidebar-pad-t) var(--uc-sidebar-pad-x) 14px;
     box-shadow: var(--uc-lift); }
 .uc-sidebar-list { display: flex; flex-direction: column; }
 
@@ -2074,8 +2103,12 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
     text-decoration: none; color: inherit; background: none; }
 .uc-sidebar-row:first-child { border-top: 0; }
 /* The hover is a tint pulled out to the padding edge, so the row highlights
-   full width without a box being drawn around it. */
-.uc-sidebar-row:hover { background: var(--uc-bg); box-shadow: -14px 0 0 var(--uc-bg), 14px 0 0 var(--uc-bg); }
+   full width without a box being drawn around it. Out through the padding the
+   card actually has, for the reason the heading band is; a fixed 14px here
+   overhung the row by 14px in the combined mode, where the padding is zero. */
+.uc-sidebar-row:hover { background: var(--uc-bg);
+    box-shadow: calc(-1 * var(--uc-sidebar-pad-x, 14px)) 0 0 var(--uc-bg),
+                var(--uc-sidebar-pad-x, 14px) 0 0 var(--uc-bg); }
 .uc-sidebar-row:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; border-radius: 6px; }
 
 /* ---------------------------------------------------------------------------
@@ -2242,14 +2275,20 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    ------------------------------------------------------------------------- */
 .uc-sidebar .uc-sidebar-heading {
     display: block;
-    /* Out through the card's 6px top and 14px side padding, to its edges. */
-    margin: -6px -14px 14px;
+    /* Out through whatever padding the card actually has, to its edges. In the
+       combined mode that is zero and the band ends flush with the rows; see
+       the note on .uc-sidebar. */
+    margin: calc(-1 * var(--uc-sidebar-pad-t)) calc(-1 * var(--uc-sidebar-pad-x)) 14px;
     padding: 13px 16px;
     background: var(--uc-band);
     border: 0;
     border-bottom: 1px solid var(--uc-border);
-    /* 13px, not 14px: inside the card's 1px border. */
-    border-radius: 13px 13px 0 0;
+    /* 13px, not 14px: inside the card's 1px border. Zero where there is no
+       border and no corner to sit inside, which is the combined mode. Stated
+       rather than derived from the padding: a calc that can go negative is a
+       declaration the browser throws away, and a dropped border-radius is a
+       harder thing to see than a wrong one. */
+    border-radius: var(--uc-sidebar-head-radius) var(--uc-sidebar-head-radius) 0 0;
     font-family: var(--uc-font-heading);
     font-size: 18px;
     font-weight: 700;

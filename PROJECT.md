@@ -242,6 +242,46 @@ and the ajax redraw ask it.** There is no second composition.
 > asking whether a string exists anywhere is satisfied by either copy, which is
 > what this file's own 3.45.0 note said before 3.45.0 shipped exactly that.
 
+> **THE BOUND MONTH IS A PARAMETER ONE RENDERER SETS, NEVER A FILTER A CALLER
+> FILLS IN.** 3.45.0 bound the sidebar with a filter key called `month`, and a
+> block already carries an ATTRIBUTE called `month` meaning a different thing:
+> which month the grid draws. `render_calendar_block()` hands its whole
+> attribute array to `normalize_filters()`, and `SFAF_Embed::normalize_params()`
+> fills that attribute in on every request because `normalize_month()` answers
+> "which month am I drawing" and so never returns `''`. Every list silently
+> gained an upper bound: 27 upcoming events, 5 on screen. The key is
+> `bound_month` now, and nothing reads it off an attribute, an embed parameter
+> or a POST field. **Two things sharing one key is the fault; renaming one of
+> them is the fix, not adding a condition.**
+
+> **A SEAM IS NOT A RENDERER, AND EVERY FAULT HERE HAS BEEN AT A SEAM.** Six
+> releases, six faults, and `render_sidebar()`, `render_month_grid()` and
+> `render_events()` were correct every single time, so a harness that calls them
+> said so honestly and uselessly. What was wrong was what the ENTRY POINT handed
+> them, or the CONTEXT they landed in. `.claude/display-mode-scope-test.php`
+> therefore calls no renderer directly: every assertion enters through one of
+> the four doors a visitor comes through, `render_calendar_block()`,
+> `ajax_load_block()`, `SFAF_Embed::build_payload()` and `calendar.css`, and
+> reads what came back. **It asserts nothing about source text**, because three
+> source-string assertions have now been satisfied by the wrong copy.
+
+> **WHAT NO CHECK HERE CAN SEE, AND WHAT THAT LEAVES FOR A PERSON.** There is no
+> browser and no WordPress in the build environment, so nothing is laid out and
+> nothing is clicked. Overlap, overflow, stacking order, a band that is wider
+> than its rows once a real font has loaded, and anything that only appears
+> after two interactions are all invisible to it. Section 4 of that file is
+> arithmetic over declared CSS values, which decides that two numbers agree, not
+> that the result looks right. **After any release touching this mode, on the
+> EMBEDDED calendar on another domain** (four of the six faults were embed-only,
+> because first load composes correctly on both and the embed comes in by a
+> different door): the list shows more than one month; navigating twice leaves
+> one month name and one previous and next with both halves on the same month;
+> navigating BACK to a month already seen behaves the same, since that path is
+> served from a cache the first visit filled and has been wrong on its own; the
+> heading band lines up with the rows in both the combined view and the sidebar
+> alone; and the event photos load rather than showing blank placeholders,
+> which is how a root-relative URL escaping to another domain shows up.
+
 ### caladmin asks for its own assets, and there are two of them
 
 The portal builds its own document rather than going through `wp_head`, so

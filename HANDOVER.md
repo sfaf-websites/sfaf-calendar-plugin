@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-19, at 3.45.1.
+**Last updated:** 2026-08-20, at 3.45.2.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.45.1**, built as `sfaf-calendar-3.45.1.zip` in the project
+The plugin is at **3.45.2**, built as `sfaf-calendar-3.45.2.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.45.1, the deployment is stale or partial, and that
+screen: if it does not say 3.45.2, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -173,6 +173,11 @@ events that were not saved a second time.
 - **The GFMP campaign image is deliberately unmapped**, so campaigns show the
   branded placeholder. Run the `[PROBE]` tool in `class-sfaf-gfmp.php` against a
   real campaign, fix it live through `sfaf_gfmp_image_fields`, delete the probe.
+- **THE COMBINED VIEW NEEDS A PASS IN A BROWSER AFTER EVERY RELEASE THAT TOUCHES
+  IT, AND ON THE EMBED, NOT ONLY ON SFAF.ORG.** Six releases running it shipped
+  a fault the suite passed, and four of the six were embed-only. Nothing in the
+  build lays anything out, so this cannot be closed by a check. The five things
+  to look at are in `PROJECT.md` §1, under "The combined view is one calendar".
 
 ## Blocked on other people
 
@@ -181,6 +186,7 @@ events that were not saved a second time.
 | **Aaron** | DNS for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing is deployed when the mailbox exists. |
 | **Val** | The EveryAction JSON file: a **sample with real events**, and confirmation his hourly job **writes atomically** | Asked. Field list in `PROJECT.md` §8. Do not build against a guessed shape. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
+
 
 ## Mark's own testing list
 

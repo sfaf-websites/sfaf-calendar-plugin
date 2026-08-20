@@ -423,13 +423,56 @@ class SFAF_Embed {
                 // must not be rebuilt underneath the visitor.
                 $payload = array(
                     'mode'      => 'month',
-                    'html'      => $this->shortcodes->render_month_grid( $params['month'], $resolved ),
+                    'html'      => '',
                     'month'     => $params['month'],
                     'total'     => 0,
                     'page'      => 1,
                     'max_pages' => 1,
                     'has_more'  => false,
                 );
+
+                /*
+                 * EXCEPT IN THE COMBINED MODE, WHERE THERE ARE THREE PIECES
+                 * (3.45.2).
+                 *
+                 * 3.45.0 moved the month name out of the grid so it could span
+                 * both halves, and 3.45.1 put the composition in one method so
+                 * the first render and the redraw could not disagree. THIS
+                 * ROUTE WAS NEVER TOLD. It kept calling render_month_grid()
+                 * with the head left on, so navigating in an embed dropped a
+                 * grid carrying its own month name and its own previous/next
+                 * into the left column, underneath the spanning head, which
+                 * still said the month before. Two navigations, each moving one
+                 * half. First load was correct, because first load is a block
+                 * and the block has always composed this properly.
+                 *
+                 * The sidebar comes back too, for the reason it does on this
+                 * site: the right-hand column lists the month the grid is
+                 * showing, so a redraw that moves one and not the other is the
+                 * disagreement 3.45.0 exists to remove.
+                 *
+                 * SAME METHOD AS BOTH OTHER CALLERS. There is no fourth
+                 * composition here; this asks the one that already exists.
+                 *
+                 * ONE BRANCH, NOT A GRID OVERWRITTEN. Rendering the grid into
+                 * the payload above and then replacing it here would run the
+                 * month's query twice on every navigation, and leave a
+                 * composed-then-discarded grid as the thing a later reader sees
+                 * first.
+                 */
+                if ( $this->shortcodes->is_combined_view( $params['view'] ) ) {
+                    $parts = $this->shortcodes->render_combined_parts(
+                        $params['month'],
+                        $resolved,
+                        $params['count'],
+                        ( null === $params['heading'] ) ? '' : (string) $params['heading']
+                    );
+                    $payload['html'] = $parts['grid'];
+                    $payload['head'] = $parts['head'];
+                    $payload['side'] = $parts['side'];
+                } else {
+                    $payload['html'] = $this->shortcodes->render_month_grid( $params['month'], $resolved );
+                }
             } elseif ( $params['mode'] === 'items' ) {
                 $events  = $this->shortcodes->render_events(
                     $params['per_page'],
@@ -461,17 +504,28 @@ class SFAF_Embed {
             sfaf_set_source_links( null );
         }
 
-        // Undo any lazy-loading rewrite first, so the real image URL is in src
-        // before URLs are resolved; then make everything absolute. Order
-        // matters — a URL parked in data-orig-src has to be moved into src
-        // before absolutize_urls() can qualify it.
-        $payload['html'] = $this->normalize_lazy_images( $payload['html'] );
-
-        // Every URL in the markup is resolved against this site before it goes
-        // out. The host page is on another domain, so a root-relative path like
-        // /wp-content/uploads/photo.jpg would resolve against the host and 404
-        // — which is what turned event images into blank placeholders.
-        $payload['html'] = $this->absolutize_urls( $payload['html'] );
+        /*
+         * EVERY PIECE OF MARKUP IN THE PAYLOAD, NOT THE FIRST ONE (3.45.2).
+         *
+         * This read 'html' by name, and a combined month payload carries 'head'
+         * and 'side' as well. The sidebar is full of images and event links, so
+         * naming one key would have sent a column of root-relative URLs to a
+         * page on another domain: exactly the blank placeholders this pass
+         * exists to prevent, appearing only after somebody navigated.
+         *
+         * Undo any lazy-loading rewrite first, so the real image URL is in src
+         * before URLs are resolved; then make everything absolute. Order
+         * matters: a URL parked in data-orig-src has to be moved into src
+         * before absolutize_urls() can qualify it. The host page is on another
+         * domain, so a root-relative path like /wp-content/uploads/photo.jpg
+         * would otherwise resolve against the host and 404.
+         */
+        foreach ( array( 'html', 'head', 'side' ) as $piece ) {
+            if ( ! isset( $payload[ $piece ] ) || '' === $payload[ $piece ] ) {
+                continue;
+            }
+            $payload[ $piece ] = $this->absolutize_urls( $this->normalize_lazy_images( $payload[ $piece ] ) );
+        }
 
         $payload['per_page']     = $params['per_page'];
         $payload['calendar_url'] = self::calendar_url();
@@ -972,6 +1026,22 @@ class SFAF_Embed {
 
         if ( 'month' === $params['mode'] ) {
             $identity['month'] = $params['month'];
+            /*
+             * THE CACHE IS PER SHAPE AS WELL AS PER MONTH (3.45.2).
+             *
+             * A combined month payload carries two more pieces of markup than a
+             * grid one, and the two were sharing an entry: whichever shape was
+             * asked for first was served to the other, so an ordinary month
+             * view could be handed a headless grid and lose its month name
+             * entirely. The count and the heading are in the key for the reason
+             * they are in the sidebar's below, because the sidebar is part of
+             * what this payload now contains.
+             */
+            if ( $this->shortcodes->is_combined_view( $params['view'] ) ) {
+                $identity['view']    = 'combined';
+                $identity['count']   = $params['count'];
+                $identity['heading'] = ( null === $params['heading'] ) ? '~default~' : (string) $params['heading'];
+            }
             return $identity;
         }
 

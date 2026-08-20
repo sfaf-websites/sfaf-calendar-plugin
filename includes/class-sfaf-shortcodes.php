@@ -79,21 +79,32 @@ class SFAF_Shortcodes {
              */
             's'         => isset( $raw['s'] ) ? sanitize_text_field( (string) $raw['s'] ) : '',
             /*
-             * THE MONTH THE LIST IS BOUND TO, or '' for "everything upcoming".
+             * THE MONTH THE QUERY IS BOUND TO, or '' for "everything upcoming".
              *
-             * A FILTER RATHER THAN AN ARGUMENT ON THE RENDERER, because the
-             * combined mode's sidebar has to show the month the grid is showing
-             * and the ajax that redraws it on navigation has to ask for the
-             * same thing. One filter reaches both through build_query_args(),
-             * which is the same reason search lives here.
+             * NOT CALLED 'month', AND THAT IS THE WHOLE OF WHY THIS KEY EXISTS
+             * (3.45.2). It was, and a block carries a `month` attribute meaning
+             * something completely different: which month the GRID is drawing.
+             * render_calendar_block() hands its whole $args array to this
+             * method, and SFAF_Embed::normalize_params() always fills that
+             * attribute in, because normalize_month() answers "which month am I
+             * drawing" and so never returns ''. So every embedded list was
+             * silently bounded to the current month: 27 upcoming events, 5 on
+             * screen. Two different things sharing one key, and the collision
+             * was the bug.
+             *
+             * A RENDERER SETS THIS, A BLOCK NEVER DOES. render_sidebar() sets
+             * it when its caller passed a month, and month_event_count() sets
+             * it to count one. Nothing reads it off an attribute, an embed
+             * parameter or a POST field, so no display month can reach it by
+             * being spelled the same way.
              *
              * It only ever NARROWS. The builder's "today or later" clause is
-             * set first and this adds an upper bound to it, so binding the list
-             * to the current month cannot show anything that has already
-             * happened, and binding it to a past month is impossible because
-             * normalize_month() will not return one.
+             * set first and this adds a window inside it, so binding to the
+             * current month cannot show anything that has already happened, and
+             * binding to a past month is impossible because normalize_month()
+             * will not return one.
              */
-            'month'     => isset( $raw['month'] ) ? $this->normalize_month_or_blank( $raw['month'] ) : '',
+            'bound_month' => isset( $raw['bound_month'] ) ? $this->normalize_month_or_blank( $raw['bound_month'] ) : '',
             /*
              * THE GROUPS A VISITOR PICKED, as series slugs.
              *
@@ -232,7 +243,7 @@ class SFAF_Shortcodes {
          * what somebody looking at the current month wants: the days that have
          * gone are not coming back.
          */
-        if ( '' !== $filters['month'] ) {
+        if ( '' !== $filters['bound_month'] ) {
             /*
              * BOTH ENDS, AND THE FIRST VERSION ONLY SET ONE.
              *
@@ -251,13 +262,13 @@ class SFAF_Shortcodes {
              */
             $args['meta_query'][] = array(
                 'key'     => '_uc_event_date',
-                'value'   => $filters['month'] . '-01',
+                'value'   => $filters['bound_month'] . '-01',
                 'compare' => '>=',
                 'type'    => 'DATE',
             );
             $args['meta_query'][] = array(
                 'key'     => '_uc_event_date',
-                'value'   => $this->month_last_day( $filters['month'] ),
+                'value'   => $this->month_last_day( $filters['bound_month'] ),
                 'compare' => '<=',
                 'type'    => 'DATE',
             );
@@ -614,17 +625,6 @@ class SFAF_Shortcodes {
     }
 
     /**
-     * A month, clamped, or '' when nothing usable was asked for.
-     *
-     * normalize_month() answers "which month am I drawing", so it always names
-     * one. This answers "is the list bound to a month", where the honest answer
-     * is often no, and an empty string must not become the current month or
-     * every unbound list would silently gain an upper bound.
-     *
-     * @param mixed $raw
-     * @return string Y-m or ''.
-     */
-    /**
      * The last calendar day of a month, as Y-m-d.
      *
      * Built in UTC for the reason month_grid_days() sets out: these are
@@ -666,7 +666,7 @@ class SFAF_Shortcodes {
      * @return int
      */
     public function month_event_count( $month, $filters ) {
-        $filters['month'] = $month;
+        $filters['bound_month'] = $month;
         $counted = new WP_Query( array_merge(
             $this->build_query_args( -1, 1, $filters ),
             array( 'fields' => 'ids', 'no_found_rows' => false, 'posts_per_page' => 200 )
@@ -674,6 +674,17 @@ class SFAF_Shortcodes {
         return (int) $counted->post_count;
     }
 
+    /**
+     * A month, clamped, or '' when nothing usable was asked for.
+     *
+     * normalize_month() answers "which month am I drawing", so it always names
+     * one. This answers "is the query bound to a month", where the honest
+     * answer is often no, and an empty string must not become the current month
+     * or every unbound list would silently gain an upper bound.
+     *
+     * @param mixed $raw
+     * @return string Y-m or ''.
+     */
     private function normalize_month_or_blank( $raw ) {
         $raw = trim( (string) $raw );
         return ( '' === $raw ) ? '' : $this->normalize_month( $raw );
@@ -1348,10 +1359,15 @@ class SFAF_Shortcodes {
          * month. The combined mode passes the month its grid is showing, which
          * is what makes the two halves one calendar rather than two views that
          * happen to sit beside each other: navigating to October moves both.
+         *
+         * THIS IS THE ONLY RENDERER THAT BINDS (3.45.2). The bound month is a
+         * parameter this method sets, and the list never sets it. It used to be
+         * a filter any caller could fill in by naming a key, and the block
+         * filled it in for every mode; see normalize_filters().
          */
         $month = ( '' === $month ) ? '' : $this->normalize_month( $month );
         if ( '' !== $month ) {
-            $filters['month'] = $month;
+            $filters['bound_month'] = $month;
         }
 
         $events = $this->render_events( $count, 1, $filters, 'sidebar' );
@@ -2202,7 +2218,9 @@ class SFAF_Shortcodes {
              data-filter-s="<?php echo esc_attr( $filters['s'] ); ?>"
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
-             data-view="<?php echo esc_attr( $view ); ?>"
+             <?php // data-view is declared once, at the top of this tag. It was
+                   // written twice, and a browser keeps the first and drops the
+                   // second, so the two could have disagreed with no sign of it. ?>
              <?php
              /*
               * CARRIED ON THE BLOCK SO IT TRAVELS WITH THE PASTED SNIPPET, and

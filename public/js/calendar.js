@@ -364,6 +364,12 @@
          * no path here that updates one and not the other.
          */
         function applyMonth($block, data) {
+            /* A payload, not a string. jQuery's .html(undefined) is a getter,
+               so without this a malformed entry redraws nothing and looks
+               exactly like a month that would not move. */
+            if (!data || typeof data.html !== 'string') {
+                return;
+            }
             $panel.html(data.html);
             if (typeof data.side === 'string') {
                 $block.find('.uc-panel-sidebar').html(data.side);
@@ -425,9 +431,15 @@
             if (!month || monthCache[key]) {
                 return;
             }
+            /* THE WHOLE PAYLOAD, the same shape loadMonth() stores (3.45.2).
+               This stored the grid string alone while loadMonth() stored the
+               object, so applyMonth() read .html off a string, got undefined,
+               and jQuery's .html(undefined) is a GETTER: clicking through to a
+               warmed month changed nothing at all, silently, and only on the
+               months the prefetch had reached. */
             $.post(ucData.ajaxUrl, monthParams($block, month)).done(function (res) {
                 if (res && res.success && res.data && typeof res.data.html === 'string') {
-                    monthCache[key] = res.data.html;
+                    monthCache[key] = res.data;
                 }
             });
         });

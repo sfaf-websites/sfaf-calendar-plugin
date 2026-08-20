@@ -11940,7 +11940,7 @@ class SFAF_Portal {
                     <?php foreach ( $non_members as $u ) : ?>
                         <option value="<?php echo (int) $u->ID; ?>"><?php
                             echo esc_html( $u->display_name . ' (' . $u->user_email . ')' );
-                            echo self::is_site_admin( $u->ID ) ? ' — administrator' : '';
+                            echo self::is_site_admin( $u->ID ) ? ', administrator' : '';
                         ?></option>
                     <?php endforeach; ?>
                 </select>
