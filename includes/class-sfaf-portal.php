@@ -982,6 +982,31 @@ class SFAF_Portal {
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
                 wp_update_post( array( 'ID' => $event_id, 'post_status' => 'publish' ) );
+
+                /*
+                 * THE TWO ANSWERS FROM THE APPROVAL PROMPT (3.48.0).
+                 *
+                 * BOTH ARE RE-DERIVED FROM WHO ACTUALLY SUBMITTED IT, not from
+                 * anything the form said about them. The POST carries two
+                 * ticks and nothing else: no address, no name. An address that
+                 * arrived in the request would be an address anybody who can
+                 * reach this route could nominate, and this one goes on a list
+                 * that is sent registrant names and email addresses.
+                 *
+                 * ORDER MATTERS. The list is written first so the message can
+                 * truthfully say what they will now receive, and the message is
+                 * only told about the list when the list actually changed.
+                 */
+                $who = SFAF_Submissions::submitter( $event_id );
+                if ( $who['is_submission'] && $who['usable'] ) {
+                    $listed = ! empty( $_POST['notify_submitter'] )
+                        && SFAF_Submissions::add_to_notify_list( $event_id, $who['email'] );
+
+                    if ( ! empty( $_POST['tell_submitter'] ) ) {
+                        SFAF_Submissions::send_published_notice( $event_id, $listed );
+                    }
+                }
+
                 $this->redirect( 'pending', array( 'msg' => 'approved' ) );
                 break;
 
@@ -11183,6 +11208,80 @@ class SFAF_Portal {
         return array( 'status' => 'pending', 'per_page' => 100, 'scope' => 'all' );
     }
 
+    /**
+     * The two questions Approve asks about a submission.
+     *
+     * ONE INTERRUPTION, TWO TICKS. Both decisions are about the same person at
+     * the same moment, so they are one dialog. Two prompts in a row is how a
+     * manager learns to press the second one without reading it.
+     *
+     * THE MARKUP IS A PLAIN PANEL IN THE PAGE. portal.js moves it into a real
+     * <dialog> and opens it modally when Approve is pressed; with no
+     * JavaScript, or no <dialog>, it stays visible beside the button and the
+     * ticks work exactly as they read. That is the same arrangement the
+     * recurrence scope question uses, and the same reason: the enhancement can
+     * fail and leave a usable screen.
+     *
+     * THE INPUTS CARRY `form=`, so they post with the Approve form wherever
+     * they physically sit. Without that, moving the panel into a dialog
+     * appended to <body> would detach them and both answers would arrive as
+     * "unticked" no matter what was pressed.
+     *
+     * NO ADDRESS MEANS NO OFFER. An event whose submitter left no usable
+     * address gets a sentence saying so rather than two ticks that would send
+     * to nothing, because a tick that cannot do anything still reads as a
+     * promise that it did.
+     *
+     * @param int   $event_id
+     * @param array $who From SFAF_Submissions::submitter().
+     */
+    private function render_approve_ask( $event_id, $who ) {
+        if ( empty( $who['is_submission'] ) ) {
+            return;
+        }
+        $form = 'uc-approve-' . (int) $event_id;
+        ?>
+        <div class="uc-approve-ask" id="uc-approve-ask-<?php echo (int) $event_id; ?>"
+             data-uc-approve-form="<?php echo esc_attr( $form ); ?>">
+            <?php if ( empty( $who['usable'] ) ) : ?>
+                <p class="uc-hint">
+                    No usable email address came with this one, so nothing can be sent to whoever submitted it.
+                </p>
+            <?php else : ?>
+                <p class="uc-approve-who">
+                    Submitted by <strong><?php echo esc_html( $who['name'] ); ?></strong>
+                    <span class="uc-muted"><?php echo esc_html( $who['email'] ); ?></span>
+                </p>
+                <label class="uc-check">
+                    <input type="checkbox" name="tell_submitter" value="1" form="<?php echo esc_attr( $form ); ?>" />
+                    Email <?php echo esc_html( $who['name'] ); ?> that this event is published
+                </label>
+                <?php
+                /*
+                 * TICKED BY DEFAULT, AND THE WORDING SAYS BOTH THINGS.
+                 *
+                 * Somebody running an event who does not get their own
+                 * registrations has a real problem, so the useful default is
+                 * on. What the notification list actually carries is TWO
+                 * messages, not one, and the second of them lists every
+                 * registrant by name and address. A label saying only
+                 * "registrations" would be describing half of what the tick
+                 * does, to the person deciding whether to do it.
+                 */
+                ?>
+                <label class="uc-check">
+                    <input type="checkbox" name="notify_submitter" value="1" checked form="<?php echo esc_attr( $form ); ?>" />
+                    Send <?php echo esc_html( $who['name'] ); ?> registrations for this event
+                </label>
+                <p class="uc-hint">
+                    They get an email each time somebody registers, and a list of everybody registered
+                    on the morning of the event, with names and email addresses. Untick it if that is not right.
+                </p>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
     private function render_pending( $user ) {
         if ( ! $this->is_admin_role( $user ) ) {
             $this->render_dashboard( $user );
@@ -11306,7 +11405,10 @@ class SFAF_Portal {
                         $kind      = SFAF_Submissions::kind( $id );
                         $is_req    = ( '' !== $req_email );
                         $badge     = SFAF_Submissions::kind_label( $kind );
-                        $shot      = SFAF_Uploads::url( (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true ), 'thumbnail' ); ?>
+                        $shot      = SFAF_Uploads::url( (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true ), 'thumbnail' );
+                        /* Who sent it, for the two questions Approve asks. One
+                         * reader for both forms; see SFAF_Submissions::submitter(). */
+                        $who       = SFAF_Submissions::submitter( $id ); ?>
                         <tr<?php echo $is_req ? ' class="uc-row-request"' : ''; ?>>
                             <td>
                                 <?php
@@ -11354,12 +11456,15 @@ class SFAF_Portal {
                                 <div class="uc-actions">
                                     <a class="uc-action-link" href="<?php echo esc_url( get_permalink( $id ) ); ?>" target="_blank" rel="noopener">Preview</a>
                                     <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
-                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>"
+                                          id="uc-approve-<?php echo (int) $id; ?>">
                                         <input type="hidden" name="uc_action" value="approve_event" />
                                         <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
                                         <?php wp_nonce_field( 'uc_portal_approve_event', 'uc_nonce' ); ?>
-                                        <button class="uc-link-ok" type="submit">Approve</button>
+                                        <button class="uc-link-ok" type="submit"
+                                            <?php echo $who['is_submission'] ? ' data-uc-approve-ask="uc-approve-ask-' . (int) $id . '"' : ''; ?>>Approve</button>
                                     </form>
+                                    <?php $this->render_approve_ask( $id, $who ); ?>
                                     <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" onsubmit="return confirm('Reject and remove this event?');">
                                         <input type="hidden" name="uc_action" value="reject_event" />
                                         <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />

@@ -110,6 +110,14 @@ class SFAF_Venues { public static function exists( $id ) { return false; } }
  * code or it proves nothing. */
 require_once $root . '/includes/class-sfaf-media-folder.php';
 class SFAF_Portal { public static function link( $p = '' ) { return 'https://example.org/caladmin/' . $p; } }
+class SFAF_FAQ_Sets { const MAX_ROWS = 50; }
+
+/* THE REAL to_plain(), because clean_faqs() decides emptiness with it and a
+ * stub that just stripped tags would be the very reader 3.38.0 forbade. */
+function sfaf_flatten_html( $html ) {
+    return trim( preg_replace( '/\s+/', ' ', strip_tags( preg_replace( '#<(p|div|br|li|h[1-6])[^>]*>#i', ' ', (string) $html ) ) ) );
+}
+require_once $root . '/includes/class-sfaf-rich-text.php';
 
 require_once $root . '/includes/class-sfaf-uploads.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
@@ -125,12 +133,12 @@ require_once $root . '/includes/class-sfaf-submit.php';
  * ====================================================================== */
 $out = SFAF_Submit::validate( array() );
 
-foreach ( array( 'submitter_name', 'submitter_email', 'title', 'description', 'date', 'start_time', 'end_time', 'street', 'contact_name', 'contact_email' ) as $required ) {
+foreach ( array( 'submitter_name', 'submitter_email', 'title', 'description', 'date', 'start_time', 'end_time', 'street', 'contact_name', 'contact_email', 'cost' ) as $required ) {
     if ( ! isset( $out['errors'][ $required ] ) ) {
         fail( "an empty submission is accepted for $required, which is a required field" );
     }
 }
-foreach ( array( 'cost', 'age', 'rsvp_url', 'notes' ) as $optional ) {
+foreach ( array( 'age', 'rsvp_url', 'notes' ) as $optional ) {
     if ( isset( $out['errors'][ $optional ] ) ) {
         fail( "an empty submission is refused for $optional, which is optional" );
     }
@@ -159,6 +167,7 @@ function good( $over = array() ) {
         'zip'             => '94114',
         'contact_name'    => 'Ride desk',
         'contact_email'   => 'rides@example.org',
+        'cost'            => 'free',
     ), $over );
 }
 
@@ -198,6 +207,83 @@ if ( false !== strpos( $out['clean']['contact_name'], '<' ) ) {
 expect( 'a javascript: registration link is dropped', $out['clean']['rsvp_url'], '' );
 if ( ! isset( $out['errors']['rsvp_url'] ) ) {
     fail( 'a refused registration link is dropped silently, so the submitter never learns it was not kept' );
+}
+
+/* =========================================================================
+ * 3b. COST IS AN ANSWER, AND "OTHER" WITH AN EMPTY BOX IS NOT ONE.
+ *
+ * The dropdown used to carry a "Not saying" entry, which read as an option and
+ * was really a way to answer without answering. There are three real answers
+ * now and the field is required, so both shapes of non-answer are refused: no
+ * choice at all, and the escape hatch chosen with nothing typed behind it.
+ * ====================================================================== */
+$out = SFAF_Submit::validate( good( array( 'cost' => 'other', 'cost_other' => '' ) ) );
+if ( ! isset( $out['errors']['cost_other'] ) ) {
+    fail( 'cost "Something else" with an empty box is accepted, which is no answer wearing the shape of one' );
+}
+
+$out = SFAF_Submit::validate( good( array( 'cost' => 'other', 'cost_other' => '   ' ) ) );
+if ( ! isset( $out['errors']['cost_other'] ) ) {
+    fail( 'cost "Something else" with only whitespace is accepted' );
+}
+
+$out = SFAF_Submit::validate( good( array( 'cost' => 'other', 'cost_other' => '$15 at the door' ) ) );
+if ( isset( $out['errors']['cost_other'] ) || isset( $out['errors']['cost'] ) ) {
+    fail( 'cost "Something else" with a real answer is refused' );
+}
+expect( 'the typed cost is kept', $out['clean']['cost_other'], '$15 at the door' );
+
+/* A value the control never offered is no answer, which is also what a forged
+ * one gets. "Not saying" is the one that used to exist and must not come back. */
+foreach ( array( '', 'not_saying', 'nonsense' ) as $bad ) {
+    $out = SFAF_Submit::validate( good( array( 'cost' => $bad ) ) );
+    if ( ! isset( $out['errors']['cost'] ) ) {
+        fail( 'cost accepted the value "' . $bad . '", which the control does not offer' );
+    }
+}
+if ( array_key_exists( '', SFAF_Submit::cost_options() ) ) {
+    fail( 'the cost list still carries an empty option, which is a way to answer without answering' );
+}
+expect( 'three cost answers, and no more', count( SFAF_Submit::cost_options() ), 3 );
+
+/* Free has to be sayable, because it is the question people ask. */
+$out = SFAF_Submit::validate( good( array( 'cost' => 'free' ) ) );
+if ( ! empty( $out['errors'] ) ) {
+    fail( 'a submission that says Free is refused: ' . implode( ', ', array_keys( $out['errors'] ) ) );
+}
+expect( 'Free is stored as words, not as a key', SFAF_Submit::choice_phrase( 'free', '', 'cost' ), 'Free' );
+
+/* =========================================================================
+ * 3c. FAQs AND CAPACITY.
+ *
+ * Empty rows go silently, because the repeater starts with one and most
+ * submitters will send it untouched. A HALF-filled row is kept: somebody meant
+ * it, and dropping it quietly is worse than showing a gap at review.
+ * ====================================================================== */
+expect( 'an untouched repeater stores nothing', SFAF_Submit::clean_faqs( array( array( 'question' => '', 'answer' => '' ) ) ), array() );
+expect( 'a non-array is not FAQs', SFAF_Submit::clean_faqs( 'x' ), array() );
+
+$faqs = SFAF_Submit::clean_faqs( array(
+    array( 'question' => 'Is there parking?', 'answer' => '<p>Yes, <strong>free</strong>.</p><script>alert(1)</script>' ),
+    array( 'question' => '',                  'answer' => '' ),
+    array( 'question' => 'Question only',     'answer' => '' ),
+) );
+expect( 'empty rows are dropped and the rest kept', count( $faqs ), 2 );
+if ( false !== stripos( $faqs[0]['answer'], '<script' ) ) {
+    fail( 'a script tag survives in a submitted FAQ answer' );
+}
+if ( false === strpos( $faqs[0]['answer'], '<strong>' ) ) {
+    fail( 'a submitted FAQ answer lost the formatting it is allowed to keep' );
+}
+expect( 'a half-filled row is kept', $faqs[1]['question'], 'Question only' );
+
+$out = SFAF_Submit::validate( good( array( 'capacity' => '40' ) ) );
+expect( 'a capacity is kept', $out['clean']['capacity'], 40 );
+$out = SFAF_Submit::validate( good( array( 'capacity' => '' ) ) );
+expect( 'a blank capacity means unlimited', $out['clean']['capacity'], 0 );
+$out = SFAF_Submit::validate( good( array( 'capacity' => '-3' ) ) );
+if ( ! isset( $out['errors']['capacity'] ) ) {
+    fail( 'a negative capacity is accepted' );
 }
 
 /* An array where a string belongs is the shape that reaches a type error. */

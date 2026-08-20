@@ -88,10 +88,16 @@ class SFAF_Submit {
      * calendar and three things to anybody filtering later. The list matches
      * the Google Form this replaces, so nobody has to learn a new answer.
      *
+     * THERE IS NO "NOT SAYING" ANY MORE (3.48.0). It read as an option and was
+     * really a way to answer without answering, and an event either costs
+     * something or it does not. Saying FREE explicitly is worth having, because
+     * it is the question people ask; leaving cost blank was not an answer to it.
+     * So the field is required, and its three entries are three real answers.
+     *
      * 'other' IS A REAL STORED VALUE and not a marker for "empty": it means the
      * submitter had something to say that the list does not cover, and what
-     * they said is in the companion field. Blank is still blank, and blank
-     * still means the listing says nothing about cost.
+     * they said is in the companion field, which is REQUIRED when it is chosen.
+     * Other with an empty box is no answer wearing the shape of one.
      *
      * ONE LIST, READ BY THE CONTROL AND BY THE VALIDATOR, so a value the form
      * can offer is exactly a value the validator will keep.
@@ -100,7 +106,6 @@ class SFAF_Submit {
      */
     public static function cost_options() {
         return array(
-            ''         => 'Not saying',
             'free'     => 'Free',
             'donation' => 'Donation',
             'other'    => 'Something else',
@@ -377,11 +382,21 @@ class SFAF_Submit {
         }
 
         /* ---- Optional detail, as choices rather than open boxes. ---- */
+        /*
+         * COST IS REQUIRED, AND SO IS THE BOX BEHIND "Something else".
+         *
+         * Two refusals rather than one, because they are two different mistakes
+         * and a single message would have to describe both. Anything that is
+         * not one of the three offered keys is treated as no answer, which is
+         * also what a forged value gets.
+         */
         $cost_key        = isset( $post['cost'] ) ? sanitize_key( wp_unslash( $post['cost'] ) ) : '';
         $clean['cost']   = array_key_exists( $cost_key, self::cost_options() ) ? $cost_key : '';
         $clean['cost_other'] = ( 'other' === $clean['cost'] ) ? $line( 'cost_other', 120 ) : '';
-        if ( 'other' === $clean['cost'] && '' === $clean['cost_other'] ) {
-            $errors['cost_other'] = 'Say what it costs, or choose one of the options above.';
+        if ( '' === $clean['cost'] ) {
+            $errors['cost'] = 'Say what it costs to come. Choose Free if there is no charge.';
+        } elseif ( 'other' === $clean['cost'] && '' === $clean['cost_other'] ) {
+            $errors['cost_other'] = 'Say what it costs, or choose Free or Donation above.';
         }
 
         $age_key       = isset( $post['age_restriction'] ) ? sanitize_key( wp_unslash( $post['age_restriction'] ) ) : '';
@@ -427,12 +442,86 @@ class SFAF_Submit {
             $errors['contact_email'] = 'Give an email address or a phone number, so people can ask about the event.';
         }
 
+        /*
+         * HOW MANY PLACES. THE SAME RULE THE EVENT EDITOR USES, and it is worth
+         * naming: BLANK MEANS UNLIMITED, and 0 also means unlimited, so neither
+         * is an error. A capacity is a number of places, and refusing 0 would
+         * make somebody guess which of blank and 0 the software wanted.
+         *
+         * IT DOES NOT SWITCH REGISTRATION ON. Whether this calendar takes the
+         * registrations, or the submitter's own link does, is a decision taken
+         * at approval by somebody who can see both answers. Storing the number
+         * records what was asked for without deciding that.
+         */
+        $clean['capacity'] = 0;
+        if ( isset( $post['capacity'] ) && '' !== trim( (string) $post['capacity'] ) ) {
+            $cap = (int) $post['capacity'];
+            if ( $cap < 0 || $cap > 100000 ) {
+                $errors['capacity'] = 'Give a number of places between 0 and 100000, or leave it blank for no limit.';
+            } else {
+                $clean['capacity'] = $cap;
+            }
+        }
+
+        $clean['faqs'] = self::clean_faqs( isset( $post['faq'] ) ? $post['faq'] : array() );
+
         $clean['notes'] = SFAF_Submissions::line(
             isset( $post['notes'] ) ? wp_unslash( $post['notes'] ) : '',
             2000
         );
 
         return array( 'clean' => $clean, 'errors' => $errors );
+    }
+
+    /**
+     * Question and answer pairs from the form, reduced to what may be stored.
+     *
+     * NOT SFAF_FAQ_Sets::clean_rows(), AND THAT IS THE WHOLE POINT. That method
+     * sanitises an answer with SFAF_Rich_Text::sanitize(), which is
+     * wp_kses_post(): the right rule for somebody with an account, and far too
+     * wide for a form anybody on the internet can post to. These answers go
+     * through SFAF_Submissions::prose(), the same narrow list the description
+     * uses, so a submitted FAQ cannot carry an image, a style or a class.
+     *
+     * EMPTY ROWS ARE DROPPED SILENTLY. The repeater starts with one row and
+     * most submitters will send it untouched; refusing that, or storing a pair
+     * of empty strings, would both be wrong. A row counts when it has EITHER a
+     * question or an answer, because a half-filled row is something somebody
+     * meant and losing it quietly would be worse than showing Mark a gap.
+     *
+     * CAPPED AT THE SAME NUMBER AS EVERY OTHER FAQ LIST, read from that class
+     * rather than typed again here.
+     *
+     * @param mixed $rows
+     * @return array<int,array{question:string,answer:string}>
+     */
+    public static function clean_faqs( $rows ) {
+        if ( ! is_array( $rows ) ) {
+            return array();
+        }
+        $out = array();
+        foreach ( $rows as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+            $q = SFAF_Submissions::line( isset( $row['question'] ) ? wp_unslash( $row['question'] ) : '', 300 );
+            $a = SFAF_Submissions::prose( isset( $row['answer'] ) ? wp_unslash( $row['answer'] ) : '' );
+            $a = SFAF_Request::cap( $a, 4000 );
+            /* to_plain(), not wp_strip_all_tags(): the latter joins the text
+             * either side of a block tag with nothing between, so "<p>a</p>
+             * <p>b</p>" becomes "ab". Only emptiness is being decided here, but
+             * the rule is the rule everywhere prose is flattened, and a reader
+             * that is wrong in one place gets copied to a place where it
+             * matters. See SFAF_Rich_Text::to_plain(). */
+            if ( '' === $q && '' === trim( SFAF_Rich_Text::to_plain( $a ) ) ) {
+                continue;
+            }
+            $out[] = array( 'question' => $q, 'answer' => $a );
+            if ( count( $out ) >= SFAF_FAQ_Sets::MAX_ROWS ) {
+                break;
+            }
+        }
+        return $out;
     }
 
     /* =====================================================================
@@ -592,6 +681,20 @@ class SFAF_Submit {
             if ( '' !== $value ) {
                 update_post_meta( $event_id, $key, $value );
             }
+        }
+
+        if ( $c['capacity'] > 0 ) {
+            update_post_meta( $event_id, '_uc_capacity', $c['capacity'] );
+        }
+
+        /*
+         * THE FAQs GO ON THE EVENT, not into a set. A set is a reusable list
+         * somebody curates; these are one event's own questions, which is what
+         * the event's own FAQ meta is for, and it is the same key the editor
+         * writes so they open for review as ordinary FAQs with no second path.
+         */
+        if ( ! empty( $c['faqs'] ) ) {
+            update_post_meta( $event_id, sfaf_faq_meta_key(), $c['faqs'] );
         }
 
         if ( $image_id ) {
@@ -978,13 +1081,27 @@ class SFAF_Submit {
 
                 <div class="uc-field">
                     <span class="uc-field-label">Cost</span>
-                    <select name="cost" data-uc-reveal="uc-cost-other">
+                    <?php
+                    /*
+                     * THE EMPTY OPTION IS A PROMPT, NOT AN ANSWER.
+                     *
+                     * A required <select> whose first entry is a real answer
+                     * pre-selects that answer, so everybody who never touched
+                     * the control would submit "Free", which is a claim nobody
+                     * made. This entry is disabled, so it cannot be chosen back
+                     * once somebody has moved off it, and it fails `required`,
+                     * so the browser asks before the server has to.
+                     */
+                    ?>
+                    <select name="cost" required data-uc-reveal="uc-cost-other">
+                        <option value="" disabled <?php selected( '', (string) $v( 'cost' ) ); ?>>Choose one</option>
                         <?php foreach ( self::cost_options() as $key => $label ) : ?>
                             <option value="<?php echo esc_attr( $key ); ?>" <?php selected( (string) $v( 'cost' ), (string) $key ); ?>>
                                 <?php echo esc_html( $label ); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php SFAF_Submissions::field_error( $err( 'cost' ) ); ?>
                     <label class="uc-field uc-reveal-target" id="uc-cost-other">
                         <span class="uc-field-label">What it costs</span>
                         <input type="text" name="cost_other" maxlength="120" value="<?php echo esc_attr( $v( 'cost_other' ) ); ?>"
@@ -992,6 +1109,13 @@ class SFAF_Submit {
                         <?php SFAF_Submissions::field_error( $err( 'cost_other' ) ); ?>
                     </label>
                 </div>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">How many places, if there is a limit</span>
+                    <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
+                    <span class="uc-hint">Leave it blank if there is no limit.</span>
+                    <?php SFAF_Submissions::field_error( $err( 'capacity' ) ); ?>
+                </label>
 
                 <div class="uc-field">
                     <span class="uc-field-label">Age restriction</span>
@@ -1054,6 +1178,58 @@ class SFAF_Submit {
                 </fieldset>
 
                 <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
+
+                <?php
+                /*
+                 * THE SAME REPEATER THE EVENT EDITOR HAS, and deliberately the
+                 * same markup: `data-repeater`, a rows container, an add button
+                 * and a template with __I__ in the name. initRepeaters() in
+                 * portal.js already drives that shape, so this adds a control
+                 * to a screen rather than a second control.
+                 *
+                 * ONE ROW TO START, EMPTY. A submitter with nothing to add
+                 * leaves it and it is dropped on save; a submitter with one
+                 * question does not have to find a button before they can type.
+                 *
+                 * A PLAIN TEXTAREA FOR THE ANSWER, not the rich text control.
+                 * The editor's rows use SFAF_Rich_Text::deferred() because a
+                 * manager writing an answer wants formatting. A stranger
+                 * answering "is there parking" does not, and every editor on a
+                 * public page is more script for a browser we know nothing
+                 * about. What survives is the same narrow list either way, so
+                 * nothing is lost by asking for text.
+                 */
+                $faq_rows = (array) $v( 'faqs', array() );
+                if ( empty( $faq_rows ) ) {
+                    $faq_rows = array( array( 'question' => '', 'answer' => '' ) );
+                }
+                ?>
+                <div class="uc-field">
+                    <span class="uc-field-label">Questions people often ask</span>
+                    <span class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</span>
+                    <div class="uc-repeater" data-repeater>
+                        <div class="uc-repeater-rows">
+                            <?php foreach ( $faq_rows as $i => $row ) : ?>
+                                <div class="uc-repeater-row uc-faq-row">
+                                    <input type="text" name="faq[<?php echo (int) $i; ?>][question]" maxlength="300"
+                                           value="<?php echo esc_attr( isset( $row['question'] ) ? $row['question'] : '' ); ?>" placeholder="Question" />
+                                    <textarea name="faq[<?php echo (int) $i; ?>][answer]" rows="3" placeholder="Answer"><?php
+                                        echo esc_textarea( isset( $row['answer'] ) ? $row['answer'] : '' );
+                                    ?></textarea>
+                                    <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add a question</button>
+                        <template class="uc-repeater-tpl">
+                            <div class="uc-repeater-row uc-faq-row">
+                                <input type="text" name="faq[__I__][question]" maxlength="300" placeholder="Question" />
+                                <textarea name="faq[__I__][answer]" rows="3" placeholder="Answer"></textarea>
+                                <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Anything else we should know</span>

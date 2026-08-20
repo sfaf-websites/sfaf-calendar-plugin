@@ -3289,3 +3289,115 @@
         trigger.addEventListener('change', function () { sync(trigger); });
     });
 })();
+
+/* ---------------------------------------------------------------------------
+   THE APPROVAL PROMPT (3.48.0)
+
+   Approving a submission asks two things about the person who sent it, and both
+   are about the same person at the same moment, so they are ONE dialog. Two
+   prompts in a row is how a manager learns to press the second without reading
+   it.
+
+   THE PANEL IS ALREADY IN THE PAGE. This moves it into a real <dialog> and
+   opens it modally, then puts it back where it was. With this script missing,
+   or in a browser with no <dialog>, the panel stays visible beside the Approve
+   button and the ticks work exactly as they read: the enhancement can fail and
+   leave a usable screen, which is the same arrangement the recurrence scope
+   question uses.
+
+   THE INPUTS CARRY `form=`, so they still post with the Approve form while they
+   are sitting in the dialog. Without that they would be detached from it the
+   moment the panel moved, and both answers would arrive unticked whatever was
+   pressed.
+   --------------------------------------------------------------------------- */
+(function () {
+    var buttons = document.querySelectorAll('[data-uc-approve-ask]');
+    if (!buttons.length) { return; }
+
+    var supported = false;
+    try {
+        supported = typeof document.createElement('dialog').showModal === 'function';
+    } catch (err) {
+        supported = false;
+    }
+    if (!supported) { return; }
+
+    /* Only hidden once we know we can show it again. */
+    document.querySelectorAll('.uc-approve-ask').forEach(function (panel) {
+        panel.hidden = true;
+    });
+
+    buttons.forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            if (btn.hasAttribute('data-uc-approved')) {
+                btn.removeAttribute('data-uc-approved');
+                return;
+            }
+            var panel = document.getElementById(btn.getAttribute('data-uc-approve-ask'));
+            if (!panel) { return; }
+
+            e.preventDefault();
+
+            /* Where to put it back. A marker rather than a remembered parent
+               and index, because the row around it can be re-rendered by
+               nothing else on this screen but a marker is cheap and exact. */
+            var home = document.createComment('uc-approve-ask');
+            panel.parentNode.insertBefore(home, panel);
+
+            var dialog = document.createElement('dialog');
+            dialog.className = 'uc-confirm-modal uc-approve-modal';
+
+            var form = document.createElement('form');
+            form.method = 'dialog';
+
+            var heading = document.createElement('p');
+            heading.className = 'uc-confirm-msg';
+            heading.textContent = 'Publish this event?';
+
+            var actions = document.createElement('div');
+            actions.className = 'uc-confirm-actions';
+
+            var cancel = document.createElement('button');
+            cancel.type = 'submit';
+            cancel.value = 'cancel';
+            cancel.className = 'uc-btn uc-btn-sm';
+            cancel.textContent = 'Cancel';
+
+            var ok = document.createElement('button');
+            ok.type = 'submit';
+            ok.value = 'ok';
+            ok.className = 'uc-btn uc-btn-sm uc-btn-primary';
+            ok.textContent = 'Approve';
+
+            actions.appendChild(cancel);
+            actions.appendChild(ok);
+
+            form.appendChild(heading);
+            panel.hidden = false;
+            form.appendChild(panel);
+            form.appendChild(actions);
+            dialog.appendChild(form);
+            document.body.appendChild(dialog);
+
+            dialog.addEventListener('close', function () {
+                document.body.classList.remove('uc-modal-open');
+                var answer = dialog.returnValue;
+
+                /* Home first, whatever the answer: a cancelled dialog that took
+                   the panel with it would leave the row unable to ask again. */
+                panel.hidden = true;
+                home.parentNode.insertBefore(panel, home);
+                home.parentNode.removeChild(home);
+                dialog.remove();
+
+                if ('ok' === answer) {
+                    btn.setAttribute('data-uc-approved', '1');
+                    btn.click();
+                }
+            });
+
+            document.body.classList.add('uc-modal-open');
+            dialog.showModal();
+        });
+    });
+})();

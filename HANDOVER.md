@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-20, at 3.47.0.
+**Last updated:** 2026-08-20, at 3.48.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.47.0**, built as `sfaf-calendar-3.47.0.zip` in the project
+The plugin is at **3.48.0**, built as `sfaf-calendar-3.48.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.47.0, the deployment is stale or partial, and that
+screen: if it does not say 3.48.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -216,6 +216,15 @@ events that were not saved a second time.
   exempt now. **An approved one with no organizer still fires**, which is the
   case the alert is actually for, so do not read a silent morning as the alert
   being switched off.
+- **THE APPROVAL PROMPT SENDS REGISTRANT DATA OUTSIDE SFAF, AND IT IS TICKED BY
+  DEFAULT.** Approving a submission now asks two things. The second one puts the
+  submitter's address on the event's notification list, which means they get an
+  alert each time somebody registers AND the morning-of summary listing
+  **everybody registered, by name and email address**. That is right for the
+  person running the event and wrong for anybody else, so **read the name on the
+  prompt before pressing Approve**. Untick it when the submitter is not the
+  organizer. Nothing is sent for an event whose submitter left no usable
+  address, and the prompt says so instead of offering the ticks.
 - **THE 30-DAY COOKIE ON THE STAFF FORM NEEDS ONE PASS ON A SHARED MACHINE.**
   Follow a link, submit, close the browser, and come back to
   `/?uc_event_request=1`: it should open the form directly and say which

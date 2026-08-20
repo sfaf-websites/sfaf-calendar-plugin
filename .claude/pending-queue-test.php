@@ -35,6 +35,11 @@ date_default_timezone_set( 'America/Los_Angeles' );
 $fails = array();
 $self  = in_array( '--self-test', $argv, true );
 function fail( $m ) { global $fails; $fails[] = $m; }
+function expect( $label, $got, $want ) {
+    if ( $got !== $want ) {
+        fail( $label . ': got ' . var_export( $got, true ) . ', expected ' . var_export( $want, true ) );
+    }
+}
 
 /* ---------------------------------------------------------------------------
  * WordPress, in miniature.
@@ -83,6 +88,10 @@ function add_query_arg( $a, $v = '', $u = '' ) {
 }
 function wp_json_encode( $v, $f = 0 ) { return json_encode( $v, $f ); }
 function is_email( $e ) { return (bool) filter_var( (string) $e, FILTER_VALIDATE_EMAIL ); }
+function sanitize_email( $e ) {
+    $e = trim( (string) $e );
+    return is_email( $e ) ? $e : '';
+}
 function wp_strip_all_tags( $t, $b = false ) { return trim( strip_tags( (string) $t ) ); }
 function wp_kses_post( $t ) { return (string) $t; }
 function wp_kses( $t, $a, $p = array() ) { return (string) $t; }
@@ -210,6 +219,14 @@ class WP_Query {
 
 class SFAF_Teams {
     public static function events_for_user( $uid ) { return array(); }
+}
+/* THE REAL META KEY. Section 5 asserts that an address reaches the list the
+ * notification system actually reads, so the key has to be the shipping one:
+ * a stubbed constant would prove the address reached a string this file made
+ * up. Only the constant is needed here, not the sending machinery. */
+class SFAF_Reminders {
+    const NOTIFY_EMAILS_META = '_uc_notify_emails';
+    public static function new_token() { return bin2hex( random_bytes( 16 ) ); }
 }
 class SFAF_Sources {
     const STATUS_PENDING  = 'uc_imported';
@@ -376,6 +393,63 @@ if ( ! $orphan->invoke( null, 105 ) ) {
 }
 unset( $GLOBALS['posts'][105], $GLOBALS['meta'][105] );
 
+/* =========================================================================
+ * 5. WHAT APPROVAL ACTUALLY DOES WITH THE SUBMITTER'S ADDRESS.
+ *
+ * THE TICK PUTS A REAL ADDRESS ON A REAL LIST, and that list is sent registrant
+ * names and email addresses. So the assertion is not that a checkbox exists: it
+ * is that the address lands where it was said it would land, that approving
+ * twice does not land it twice, and that an event with no usable address is
+ * offered nothing rather than offered a tick that sends to nowhere.
+ * ====================================================================== */
+$GLOBALS['meta'][102][SFAF_Request::META_NAME] = 'Jane Smith';
+
+$who = SFAF_Submissions::submitter( 102 );
+expect( 'the submitter is named', $who['name'], 'Jane Smith' );
+expect( 'and their address is usable', $who['usable'], true );
+expect( 'and it is a submission', $who['is_submission'], true );
+
+/* Added once. */
+expect( 'the address goes on the list', SFAF_Submissions::add_to_notify_list( 102, $who['email'] ), true );
+$listed = (array) get_post_meta( 102, SFAF_Reminders::NOTIFY_EMAILS_META, true );
+if ( ! in_array( 'b@example.org', $listed, true ) ) {
+    fail( 'the submitter is not on the notification list, so ticking the box sends them nothing' );
+}
+
+/* And not twice, however many times Approve is pressed. */
+expect( 'a second approval adds nothing', SFAF_Submissions::add_to_notify_list( 102, $who['email'] ), false );
+expect( 'and the list still holds one entry', count( (array) get_post_meta( 102, SFAF_Reminders::NOTIFY_EMAILS_META, true ) ), 1 );
+
+/* Case is not a second person. */
+expect( 'a differently cased address is the same person', SFAF_Submissions::add_to_notify_list( 102, 'B@Example.ORG' ), false );
+
+/* WHAT MUST NOT REACH THE LIST. Nothing that is not an address, and nothing
+ * from an event that has no submitter to speak of. */
+foreach ( array( '', 'not-an-address', 'a@b', '<script>' ) as $bad ) {
+    if ( SFAF_Submissions::add_to_notify_list( 102, $bad ) ) {
+        fail( 'the notification list accepted "' . $bad . '", which is not an address' );
+    }
+}
+
+/* An event nobody submitted offers neither question. */
+$plain = SFAF_Submissions::submitter( 103 );
+expect( 'an event an admin made is not a submission', $plain['is_submission'], false );
+
+/* A submission whose stored address is not one: the prompt has to say so
+ * rather than offer to send to nothing. */
+$GLOBALS['posts'][106] = array( 'post_title' => 'No usable address', 'post_status' => 'pending', 'post_author' => 0 );
+$GLOBALS['meta'][106]  = array(
+    '_uc_event_date'            => date( 'Y-m-d', strtotime( '+15 days' ) ),
+    SFAF_Request::META_EMAIL    => 'whoops at example dot org',
+    SFAF_Submissions::META_KIND => SFAF_Submissions::KIND_COMMUNITY,
+);
+$broken = SFAF_Submissions::submitter( 106 );
+expect( 'a stored non-address is still a submission', $broken['is_submission'], true );
+expect( 'but it is not usable', $broken['usable'], false );
+if ( SFAF_Submissions::add_to_notify_list( 106, $broken['email'] ) ) {
+    fail( 'an unusable address was put on the notification list anyway' );
+}
+
 /* ---------------------------------------------------------------------------
  * SELF TEST. Every case is a shape this file has NOT already seen pass.
  * ------------------------------------------------------------------------ */
@@ -408,6 +482,20 @@ if ( $self ) {
         echo "ok       an unscoped query returns more than an author-scoped one\n";
     } else {
         echo "BROKEN:  scoping by author changes nothing, so this file cannot see the fault it exists for\n";
+        $bad++;
+    }
+
+    /* THE STUBBED META KEY MUST BE THE SHIPPING ONE. Section 5 asserts an
+     * address reaches the list the notification system reads; if this constant
+     * drifted from SFAF_Reminders' own, it would be asserting that the address
+     * reached a string invented in this file. Read out of the real source
+     * rather than trusted, because that is the whole risk of stubbing it. */
+    $reminders_src = file_get_contents( $root . '/includes/class-sfaf-reminders.php' );
+    if ( preg_match( "/const\s+NOTIFY_EMAILS_META\s*=\s*'([^']+)'/", $reminders_src, $m )
+        && $m[1] === SFAF_Reminders::NOTIFY_EMAILS_META ) {
+        echo "ok       the stubbed notification meta key matches the shipping one\n";
+    } else {
+        echo "BROKEN:  NOTIFY_EMAILS_META here is not what SFAF_Reminders declares; section 5 writes to nothing\n";
         $bad++;
     }
 

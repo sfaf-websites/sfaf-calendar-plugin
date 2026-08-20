@@ -263,12 +263,62 @@ place to put the picture is a second place for it to be wrong.
   is exactly a value the validator keeps. The stored value is the WORDS, not
   the key: a key is a form's private business and everything that reads these
   is showing them to somebody.
+- **Cost is REQUIRED and has no "not saying" entry**, and the escape's box is
+  required when the escape is chosen. An event either costs something or it
+  does not, and Free is worth saying because it is the question people ask. The
+  list's first entry is a disabled prompt, because a required `<select>` whose
+  first entry is a real answer pre-selects that answer.
+- **FAQs and a capacity come with the submission.** The FAQs use the editor's
+  repeater and land on the event's own FAQ meta, so they review like any other
+  field; their answers take the NARROW allow-list, never `wp_kses_post()`. The
+  capacity records what was asked for and **does not switch registration on**,
+  because whether this calendar takes the registrations or the submitter's own
+  link does is a decision taken at approval.
 - **The event contact is three fields and is public. The submitter's own name
   and address are two fields and are not.** Different keys, different labels,
   and only the first is readable from a template.
 - **A submitted address does not create a venue.** The venue list is offered
   first; the parts are stored as the submitter's answer, and promoting one is a
   decision taken at approval by somebody who knows it will be used again.
+
+### Approving a submission asks two questions, once
+
+**One dialog, two ticks.** Both decisions are about the same person at the same
+moment. Two prompts in a row is how a manager learns to press the second without
+reading it.
+
+**Until 3.48.0 neither form sent anything after its confirmation**, and both said
+so deliberately: chasing is a person's job, and a system that nags on somebody's
+behalf teaches people to filter it. That still holds for "still waiting". It does
+not hold for **"it is live"**, which the submitter cannot learn any other way and
+is the thing they are waiting to hear. It is still a per-event tick rather than a
+hook on the status, so an event published by any other route sends nothing.
+
+> **THE SECOND TICK SENDS REGISTRANT DATA OUTSIDE SFAF, AND THAT IS THE
+> DECISION RATHER THAN AN OVERSIGHT.** It puts the submitter's address on the
+> event's notification list, which already accepts typed addresses for people
+> with no account here. That list carries TWO messages and they get both: the
+> **registration alert**, naming who just registered and how many places are
+> taken, and the **morning-of summary**, which lists everybody registered by
+> name and email address. It is ticked by default because an organizer who does
+> not receive their own registrations has a real problem. The label says both
+> things rather than saying "registrations", because the person deciding has to
+> be told what it actually sends.
+
+- **A typed address, treated as one.** `user_id` 0, no caladmin link offered, no
+  capability inferred. One more entry on an existing list rather than a
+  mechanism of its own.
+- **Idempotent, and case is not a second person.** Approving twice leaves one
+  entry.
+- **Both answers are re-derived from the event at approval.** The POST carries
+  two ticks and nothing else: no address, no name. An address arriving in the
+  request would be an address anybody who can reach that route could nominate,
+  onto a list that is sent people's names and addresses.
+- **No usable address means neither question is offered**, and the prompt says
+  so. A tick that cannot do anything still reads as a promise that it did.
+- The prompt is a plain panel that portal.js lifts into a `<dialog>`, and its
+  inputs carry `form=` so they still post from inside it. With no JavaScript it
+  stays beside the button and works exactly as it reads.
 
 ### A submission has no author, and that is the decision
 

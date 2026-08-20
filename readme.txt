@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.47.0
+Stable tag: 3.48.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.48.0 =
+
+**More of the submission form is answered rather than typed, and approving one now asks two questions about the person who sent it.**
+
+**COST IS AN ANSWER NOW.** The "Not saying" entry is gone. It read as an option and was really a way to answer without answering, and an event either costs something or it does not. Three answers, **Free, Donation and Something else**, and the field is required, because saying Free explicitly is worth having: it is the question people ask. Something else reveals a box that is **also required**, since Other with an empty box is no answer wearing the shape of one. The first entry in the list is a disabled "Choose one" prompt, so nobody submits "Free" simply by never touching the control.
+
+**SUBMITTERS CAN SEND FAQs.** The same repeater the event editor has, question and answer, starting with one empty row and controls to add and remove. Empty rows are dropped silently on save, because most people will send that one row untouched. A **half-filled** row is kept: somebody meant it, and losing it quietly is worse than showing a gap at review. They arrive as the event's own FAQs, on the same meta key the editor writes, so they open for review like any other field.
+
+The answers go through the **narrow allow-list** the description uses, not the wide one the event editor uses. A stranger's FAQ answer cannot carry an image, a style or a class.
+
+**AND A CAPACITY.** A number, optional, blank meaning unlimited, exactly as the event editor treats it. **It does not switch registration on.** Whether this calendar takes the registrations or the submitter's own link does is a decision taken at approval by somebody who can see both answers.
+
+**APPROVING A SUBMISSION NOW ASKS TWO THINGS, IN ONE DIALOG.** Both are about the same person at the same moment, so they are one interruption. Two prompts in a row is how somebody learns to press the second without reading it.
+
+1. **Email them that the event is published.** Until now neither form sent anything after its confirmation, deliberately, on the grounds that chasing is a person's job. That still holds for "still waiting". It does not hold for "it is live", which is the thing a submitter is actually waiting to hear and cannot find out any other way. It is still not automatic: somebody ticks it, per event.
+2. **Send them registrations for this event.** **Ticked by default**, because somebody running an event who does not receive their own registrations has a real problem.
+
+**WHAT THE SECOND TICK ACTUALLY SENDS, because it is registrant data going to somebody outside SFAF.** The address goes onto the event's notification list, which already accepts typed addresses for people with no account here. That list carries **two** messages, and they get both: **an alert each time somebody registers**, naming that person and how many places are taken, and **the morning-of summary two hours before the event, which lists everybody registered by name and email address**. One list carries both, so it is one decision rather than two, and the control says so in those words rather than implying it is only registrations. Untick it when that is not right.
+
+**If the submitter left no usable address, neither question is offered.** The prompt says so instead, because a tick that cannot do anything still reads as a promise that it did.
+
+The prompt is a plain panel in the page that the browser lifts into a dialog. With no JavaScript it stays visible beside the Approve button and the ticks work exactly as they read.
+
+**Both addresses are re-derived from the event at approval.** The form posts two ticks and nothing else: no address, no name. An address arriving in the request would be an address anybody who could reach that route could nominate, and this one goes on a list that is sent people's names and email addresses.
+
 
 = 3.47.0 =
 

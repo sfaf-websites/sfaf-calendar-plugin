@@ -117,6 +117,162 @@ class SFAF_Submissions {
     }
 
     /* =====================================================================
+     * What happens when a submission is approved
+     * ================================================================== */
+
+    /**
+     * Who sent this, if anybody did.
+     *
+     * ONE READER FOR BOTH FORMS, because a staff request and a community
+     * submission record their submitter under the same two keys and the
+     * approval screen has no reason to care which it is looking at.
+     *
+     * `usable` IS SEPARATE FROM `email` ON PURPOSE. An address can be stored
+     * and still not be one: it predates a validation change, or it was a
+     * request from before the field existed. The approval prompt has to say so
+     * rather than offer to send to nothing, and a caller that only looked at
+     * whether the string was empty would offer it.
+     *
+     * @param int $event_id
+     * @return array{name:string,email:string,usable:bool,is_submission:bool}
+     */
+    public static function submitter( $event_id ) {
+        $event_id = (int) $event_id;
+        $kind     = self::kind( $event_id );
+        $email    = strtolower( trim( (string) get_post_meta( $event_id, SFAF_Request::META_EMAIL, true ) ) );
+        $name     = trim( (string) get_post_meta( $event_id, SFAF_Request::META_NAME, true ) );
+
+        return array(
+            'name'          => ( '' !== $name ) ? $name : $email,
+            'email'         => $email,
+            'usable'        => ( '' !== $email && is_email( $email ) ),
+            'is_submission' => in_array( $kind, array( self::KIND_STAFF, self::KIND_COMMUNITY ), true ),
+        );
+    }
+
+    /**
+     * Put the submitter on the event's notification list.
+     *
+     * A TYPED ADDRESS, WHICH IS EXACTLY WHAT THIS IS. The list already accepts
+     * free-text addresses for people who have no account here, and somebody who
+     * submitted through a public form is precisely that. So this is one more
+     * entry on a list that already exists rather than a mechanism of its own,
+     * and everything downstream treats it the way it treats any typed address:
+     * `user_id` 0, no caladmin links offered, no capability inferred.
+     *
+     * WHAT THAT MEANS THEY WILL RECEIVE, and it is worth being plain about it,
+     * because it is registrant data going to somebody outside SFAF:
+     *
+     *   - THE REGISTRATION ALERT, each time somebody registers. It names the
+     *     person who just registered and how many places are taken.
+     *   - THE MORNING-OF SUMMARY, two hours before the event, which lists
+     *     EVERYBODY REGISTERED, by name and email address.
+     *
+     * One list carries both, so this is one decision rather than two, and the
+     * control that offers it says so in those words.
+     *
+     * IDEMPOTENT, and it does not disturb what is already there. Approving
+     * twice, or approving an event a manager has already added them to, leaves
+     * one entry.
+     *
+     * @param int    $event_id
+     * @param string $email
+     * @return bool True when the list changed.
+     */
+    public static function add_to_notify_list( $event_id, $email ) {
+        $event_id = (int) $event_id;
+        $email    = sanitize_email( trim( (string) $email ) );
+        if ( ! $event_id || ! $email || ! is_email( $email ) ) {
+            return false;
+        }
+
+        $stored = get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true );
+        $list   = is_array( $stored ) ? $stored : array();
+
+
+        foreach ( $list as $existing ) {
+            if ( strtolower( trim( (string) $existing ) ) === strtolower( $email ) ) {
+                return false;
+            }
+        }
+
+        $list[] = $email;
+        update_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, array_values( $list ) );
+        return true;
+    }
+
+    /**
+     * Tell the submitter their event is on the calendar.
+     *
+     * THIS IS THE ONE MESSAGE EITHER FORM SENDS AFTER ITS CONFIRMATION, and
+     * until 3.48.0 there were none: both forms said so, in as many words, on
+     * the grounds that chasing is a person's job and a system that nags teaches
+     * people to filter it. That reasoning still holds for "still waiting". It
+     * does not hold for "it is live", which is a fact the submitter cannot find
+     * out any other way and the thing they are actually waiting to hear.
+     *
+     * IT IS STILL NOT AUTOMATIC. A manager ticks it, per event, at approval.
+     * Nothing here fires on a status change, so an event published by any other
+     * route sends nothing.
+     *
+     * @param int  $event_id
+     * @param bool $on_notify_list Whether they were also added to the list, so
+     *                             the message can say what they will now get.
+     * @return bool
+     */
+    public static function send_published_notice( $event_id, $on_notify_list = false ) {
+        $event_id = (int) $event_id;
+        $who      = self::submitter( $event_id );
+        if ( ! $who['usable'] ) {
+            return false;
+        }
+
+        $title = get_the_title( $event_id );
+        $date  = (string) get_post_meta( $event_id, '_uc_event_date', true );
+        $start = (string) get_post_meta( $event_id, '_uc_start_time', true );
+        $end   = (string) get_post_meta( $event_id, '_uc_end_time', true );
+        $link  = get_permalink( $event_id );
+
+        $rows = array( 'Event' => $title );
+        if ( '' !== $date ) {
+            $rows['Date'] = sfaf_ap_date( $date, 'full' );
+        }
+        if ( '' !== $start ) {
+            $rows['Time'] = sfaf_ap_time_range( $start, $end );
+        }
+
+        $html = SFAF_Email::heading( 'Your event is on the calendar' )
+            . SFAF_Email::para( 'The event you sent us has been reviewed and is now published.' )
+            . SFAF_Email::details( $rows )
+            . SFAF_Email::button_row( array( SFAF_Email::button( $link, 'See your event' ) ) );
+
+        $text = "Your event is on the calendar.\n\n" . $title . "\n";
+        if ( '' !== $date ) {
+            $text .= sfaf_ap_date( $date, 'full' ) . "\n";
+        }
+        $text .= "\n" . $link;
+
+        if ( $on_notify_list ) {
+            /*
+             * SAID BECAUSE THEY WILL START RECEIVING MAIL. Somebody who is
+             * added to a notification list and then gets a message listing
+             * strangers' names and addresses should have been told it was
+             * coming, and told what it is, by the people who added them.
+             */
+            $html .= SFAF_Email::rule()
+                . SFAF_Email::small_para( 'You will get an email each time somebody registers, and a list of everybody registered on the morning of the event. Reply to this message if you would rather not.' );
+            $text .= "\n\nYou will get an email each time somebody registers, and a list of everybody registered on the morning of the event. Reply if you would rather not.";
+        }
+
+        return (bool) SFAF_Email::send(
+            $who['email'],
+            'Your event is on the calendar: ' . $title,
+            SFAF_Email::shell( 'Your event is published', $html ),
+            $text
+        );
+    }
+
+    /* =====================================================================
      * Rate limiting
      * ================================================================== */
 

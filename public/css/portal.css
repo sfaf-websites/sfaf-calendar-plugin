@@ -2835,3 +2835,24 @@ body.uc-modal-open { overflow: hidden; }
     line-height: 1.35; font-weight: 600; color: var(--p-text);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; }
+
+/* ---------------------------------------------------------------------------
+   THE APPROVAL PROMPT (3.48.0)
+
+   The panel sits in the pending row and portal.js lifts it into the dialog. It
+   is styled for BOTH places, because without JavaScript it never moves, and a
+   block that only looks right inside a dialog would be the fallback looking
+   broken rather than plain.
+   --------------------------------------------------------------------------- */
+.uc-approve-ask { margin: 8px 0 0; padding: 12px 14px; border: 1px solid var(--p-border);
+    border-radius: 10px; background: var(--p-surface-2, #f6f7f8); text-align: left; }
+.uc-approve-ask[hidden] { display: none; }
+.uc-approve-who { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
+.uc-approve-who .uc-muted { margin-left: 6px; }
+.uc-approve-ask .uc-check { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+.uc-approve-ask .uc-hint { margin: 2px 0 0; }
+
+/* Wider than a one-sentence confirm, because this one carries two decisions and
+   a sentence explaining what the second sends. */
+.uc-approve-modal { max-width: 480px; }
+.uc-approve-modal .uc-approve-ask { margin-top: 12px; }
