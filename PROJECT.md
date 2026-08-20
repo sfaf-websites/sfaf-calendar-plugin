@@ -258,6 +258,56 @@ place to put the picture is a second place for it to be wrong.
   knows about.
 - **No REST route**, for the same reason the request form has none.
 - **The status is named in the code** and `post_author` stays 0.
+- **Cost and age are closed lists with one escape each**, not open boxes, and
+  the list is read by the control and the validator so a value the form offers
+  is exactly a value the validator keeps. The stored value is the WORDS, not
+  the key: a key is a form's private business and everything that reads these
+  is showing them to somebody.
+- **The event contact is three fields and is public. The submitter's own name
+  and address are two fields and are not.** Different keys, different labels,
+  and only the first is readable from a template.
+- **A submitted address does not create a venue.** The venue list is offered
+  first; the parts are stored as the submitter's answer, and promoting one is a
+  decision taken at approval by somebody who knows it will be used again.
+
+### A submission has no author, and that is the decision
+
+**Nobody is logged in when a public form runs, so `post_author` is 0 on every
+staff request and every community submission.** That was recorded as
+deliberate, and 3.47.0 kept it after the alternatives cost a release.
+
+> **WHY NOT A SYSTEM ACCOUNT, AND WHY NOT THE APPROVING ADMIN.** A system user
+> is a new principal to secure: it owns events, appears in every people picker,
+> and can be granted capabilities by anything that iterates users. Assigning to
+> an admin puts a name against work they did not do, which is the same mistake
+> as the badge that read "Staff request" on a stranger's submission, and makes
+> "My events" claim a row nobody created. Authorless is honest. The cost is
+> that queries have to cope, and the cost is exactly two places.
+
+**Both of them are places that asked an author-shaped question of a post that
+has no author, and both shipped as faults.**
+
+- **THE PENDING QUEUE FILTERED ITSELF BY AUTHORSHIP.** It passed no scope, and
+  an unset scope in `query_events()` means "your own plus your teams'", so every
+  submission was excluded from the one screen built to review them and was
+  reachable only by the link in its own notification email. It passes `'all'`
+  now, through `pending_query_args()`, which the screen and its nav badge both
+  read so the badge cannot count a different set from the list. It was the
+  3.19.0 scoping; the 3.35.0 per-event gate is asked per route and was never
+  involved, and the status was `pending` throughout.
+- **THE ORPHAN ALERT REPORTED EVERY SUBMISSION.** "Nobody has been given this
+  yet" and "whoever had it has left" are different states.
+  `event_is_orphaned()` exempts a submission that is **awaiting review**, and
+  only that: an APPROVED one with no owner still fires, because publishing
+  without giving it an organizer is precisely the case the alert exists for.
+  The status is the signal, so nothing extra is written and nothing needs
+  cleaning up.
+
+> **THE COMMENT ON THAT SCOPE DESCRIBED A CHECK THAT DOES NOT EXIST.** It said
+> an unset scope shows everything to anyone who may view all. There is no
+> `can_view_all()` on that path and there never was, so the next caller read the
+> comment and omitted the argument. A comment describing a capability check that
+> is not in the code is worse than no comment.
 - **Turnstile stands in for the mailbox**, and is never the only protection: the
   honeypot still runs, both rate limits still count, every field is still
   validated, and the result is still a row somebody has to approve. It **fails

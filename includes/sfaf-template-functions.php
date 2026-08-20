@@ -1988,7 +1988,50 @@ function sfaf_event_age_restriction( $post_id ) {
  * @return string
  */
 function sfaf_event_public_contact( $post_id ) {
-    return trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_CONTACT, true ) );
+    $post_id = (int) $post_id;
+
+    /*
+     * THREE FIELDS SINCE 3.47.0, AND ONE BEFORE THAT.
+     *
+     * The single open box is still read, because events submitted on 3.46.0
+     * have one and there is no migration: a stored value that predates a
+     * change is not a value to throw away. The three-part answer wins where
+     * it exists, which is every submission from 3.47.0 onwards.
+     *
+     * ONE FORMATTER, in SFAF_Submit, so the event page, the admin email and
+     * the submitter's copy cannot phrase the same three fields three ways.
+     */
+    $line = SFAF_Submit::contact_line( array(
+        'contact_name'  => (string) get_post_meta( $post_id, SFAF_Submit::META_CONTACT_NAME, true ),
+        'contact_email' => (string) get_post_meta( $post_id, SFAF_Submit::META_CONTACT_EMAIL, true ),
+        'contact_phone' => (string) get_post_meta( $post_id, SFAF_Submit::META_CONTACT_PHONE, true ),
+    ) );
+    if ( '' !== $line ) {
+        return $line;
+    }
+    return trim( (string) get_post_meta( $post_id, SFAF_Submit::META_CONTACT, true ) );
+}
+
+/**
+ * The venue's own website, when one was given.
+ *
+ * BESIDE THE ADDRESS, AND NOT ON THE CARD. A card already carries a date, a
+ * time, a place, a category and often a photo; a second link on it competes
+ * with the one that opens the event. Somebody who wants the venue's hours is
+ * already on the event page by the time they want them.
+ *
+ * Re-checked on the way out, for the reason sfaf_event_rsvp_url() is.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_venue_website( $post_id ) {
+    $url = trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_VENUE_URL, true ) );
+    if ( '' === $url ) {
+        return '';
+    }
+    $scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+    return ( 'http' === $scheme || 'https' === $scheme ) ? $url : '';
 }
 
 /**

@@ -163,6 +163,136 @@ class SFAF_Request {
     }
 
     /* =====================================================================
+     * Remembering a confirmed address for 30 days
+     *
+     * WHAT IT IS AND WHAT IT IS NOT. Once somebody has followed a link sent to
+     * their sfaf.org mailbox, this browser is told to remember that address so
+     * they go straight to the form for a month instead of asking for a link
+     * every time. It is NOT a login: it grants nothing anywhere else, it is
+     * read on this one query var, and the only thing it can do is prefill the
+     * form and mint a fresh short-lived token for that same address.
+     *
+     * IT IS SIGNED, WHICH IS THE WHOLE OF ITS SECURITY. A cookie holding a
+     * plain address would let anybody submit as any colleague by editing one
+     * string. The value carries an HMAC over the address and its expiry, keyed
+     * on a WordPress salt, so a cookie this server did not write is refused. It
+     * still says nothing secret, so it does not need to be secret; it needs to
+     * be unforgeable.
+     *
+     * THE DOMAIN RULE STILL APPLIES ON THE WAY OUT. remembered() re-asks
+     * is_staff_address(), so an address that stopped qualifying, or a cookie
+     * from before the rule changed, is refused rather than trusted because it
+     * was trusted once.
+     *
+     * IT IS SHOWN, NOT SILENT. A shared machine is the case this has to be safe
+     * on, so the form says which address it is about to submit as, and offers a
+     * way to switch that clears the cookie.
+     * ================================================================== */
+
+    /** The cookie's name, and how long it lasts. */
+    const COOKIE      = 'sfaf_evreq_who';
+    const COOKIE_DAYS = 30;
+
+    /**
+     * The signature over an address and its expiry.
+     *
+     * wp_salt() rather than a constant of ours: it is already per-install,
+     * already secret, and already rotated by the same tooling that rotates
+     * everything else. A hard-coded key in a plugin file is the same key on
+     * every site that installs it.
+     *
+     * @param string $email
+     * @param int    $expires
+     * @return string
+     */
+    private static function cookie_signature( $email, $expires ) {
+        return hash_hmac( 'sha256', strtolower( $email ) . '|' . (int) $expires, wp_salt( 'auth' ) );
+    }
+
+    /**
+     * Remember this address in this browser.
+     *
+     * Called only after a token has resolved, which is the moment the mailbox
+     * has proved the address belongs to whoever is holding the link.
+     *
+     * @param string $email
+     */
+    public static function remember( $email ) {
+        if ( headers_sent() || ! self::is_staff_address( $email ) ) {
+            return;
+        }
+        $email   = strtolower( trim( $email ) );
+        $expires = time() + ( self::COOKIE_DAYS * DAY_IN_SECONDS );
+        setcookie( self::COOKIE, $email . '|' . $expires . '|' . self::cookie_signature( $email, $expires ), array(
+            'expires'  => $expires,
+            'path'     => '/',
+            'secure'   => is_ssl(),
+            /* No script has any reason to read this, and one that could would
+             * be reading a colleague's address off a shared machine. */
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ) );
+    }
+
+    /** Stop remembering, and say so to the browser rather than just to us. */
+    public static function forget() {
+        if ( headers_sent() ) {
+            return;
+        }
+        setcookie( self::COOKIE, '', array(
+            'expires'  => time() - DAY_IN_SECONDS,
+            'path'     => '/',
+            'secure'   => is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ) );
+        unset( $_COOKIE[ self::COOKIE ] );
+    }
+
+    /**
+     * The remembered address, or '' if there is not a good one.
+     *
+     * EVERY FAILURE CLEARS THE COOKIE. A malformed, expired, unsigned or
+     * no-longer-staff value is not just ignored: it is removed, so a browser
+     * carrying a bad one stops sending it rather than failing this check on
+     * every page load forever.
+     *
+     * @return string
+     */
+    public static function remembered() {
+        if ( empty( $_COOKIE[ self::COOKIE ] ) ) {
+            return '';
+        }
+
+        $parts = explode( '|', (string) wp_unslash( $_COOKIE[ self::COOKIE ] ) );
+        if ( 3 !== count( $parts ) ) {
+            self::forget();
+            return '';
+        }
+
+        $email   = strtolower( trim( $parts[0] ) );
+        $expires = (int) $parts[1];
+        $given   = (string) $parts[2];
+
+        if ( $expires < time() ) {
+            self::forget();
+            return '';
+        }
+        /* hash_equals, not ===: a timing-safe comparison costs nothing here and
+         * the alternative leaks how much of a forged signature was right. */
+        if ( ! hash_equals( self::cookie_signature( $email, $expires ), $given ) ) {
+            self::forget();
+            return '';
+        }
+        if ( ! self::is_staff_address( $email ) ) {
+            self::forget();
+            return '';
+        }
+
+        return $email;
+    }
+
+    /* =====================================================================
      * Addresses and rate limits
      * ================================================================== */
 
@@ -199,7 +329,7 @@ class SFAF_Request {
      * WHY BOTH AN ADDRESS AND AN ADDRESS-LESS COUNTER EXIST. An open form with
      * an email step is a way to send mail to arbitrary sfaf.org addresses:
      * without a per-address limit, one person's inbox can be filled, and
-     * without a per-client limit, every address in the organisation can be
+     * without a per-client limit, every address in the organization can be
      * hit once each. Neither limit alone closes it.
      *
      * A COUNTER, NOT A LOCKOUT. It expires on its own, so nothing has to
@@ -239,18 +369,47 @@ class SFAF_Request {
             exit;
         }
 
+        /*
+         * SWITCHING ADDRESS IS AN ACTION, AND IT IS THE FIRST THING CHECKED.
+         * Somebody on a shared machine who has noticed a colleague's address on
+         * the form needs the way out to work whatever else is in the request.
+         */
+        if ( ! empty( $_GET['uc_switch'] ) ) {
+            self::forget();
+            self::render_start();
+            exit;
+        }
+
         $token = isset( $_GET['uc_token'] ) ? sanitize_text_field( wp_unslash( $_GET['uc_token'] ) ) : '';
         if ( $posted && 'submit_request' === $action ) {
             $token = isset( $_POST['uc_token'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_token'] ) ) : '';
         }
 
         if ( '' === $token ) {
+            /*
+             * A REMEMBERED ADDRESS SKIPS THE EMAIL STEP, AND NOTHING ELSE.
+             *
+             * The cookie does not authorise a submission by itself: it names an
+             * address, and a FRESH token is minted for that address exactly as
+             * if a link had just been followed. So the submission path below is
+             * unchanged, the token still expires in an hour, and every rate
+             * limit still counts. What is saved is the round trip through a
+             * mailbox, not any of the checking.
+             */
+            $known = self::remembered();
+            if ( '' !== $known ) {
+                self::render_form( self::issue_token( $known ), $known, array(), array(), true );
+                exit;
+            }
             self::render_start();
             exit;
         }
 
         $email = self::resolve_token( $token );
         if ( '' === $email ) {
+            /* The link failed, so whatever this browser was remembering about
+             * it is not worth keeping either. */
+            self::forget();
             self::render_expired();
             exit;
         }
@@ -260,6 +419,9 @@ class SFAF_Request {
             exit;
         }
 
+        /* Following a live link is the proof that the mailbox is theirs, so
+         * this is the one place the cookie is written. */
+        self::remember( $email );
         self::render_form( $token, $email, array(), array() );
         exit;
     }
@@ -810,14 +972,17 @@ class SFAF_Request {
         $html = SFAF_Email::heading( 'An event has been requested' )
             . SFAF_Email::para( $c['name'] . ' has asked for an event to be added. It is in the pending queue as a staff request.' )
             . SFAF_Email::details( $rows )
-            . SFAF_Email::button_row( array( SFAF_Email::button( $edit, 'Open the request' ) ) )
-            . SFAF_Email::link_para( $queue, 'See everything waiting' );
+            /* The queue first, for the reason in SFAF_Submit: the review
+             * screen is where the decision is taken, and an editor link
+             * skips it. */
+            . SFAF_Email::button_row( array( SFAF_Email::button( $queue, 'Open the pending queue' ) ) )
+            . SFAF_Email::link_para( $edit, 'Or go straight to this request' );
 
         $text = $c['name'] . " has asked for an event to be added.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
             . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n\n"
             . "Requested by: " . $c['name'] . ' (' . $email . ")\n\n"
-            . "Open it: " . $edit . "\nThe queue: " . $queue;
+            . "The queue: " . $queue . "\nThis one: " . $edit;
 
         $subject = 'Event requested: ' . $c['title'];
         $shell   = SFAF_Email::shell( $c['name'] . ' asked for an event', $html );
@@ -857,7 +1022,7 @@ class SFAF_Request {
         );
 
         $html = SFAF_Email::heading( 'Thanks, that is with the team' )
-            . SFAF_Email::para( 'Here is what you sent. The MarCom team will look at it and put it on the calendar, or come back to you if something needs sorting out.' )
+            . SFAF_Email::para( 'Here is what you sent. The MarCom team will look at it and put it on the calendar, or email you if we have questions.' )
             . SFAF_Email::details( $rows )
             . SFAF_Email::rule()
             . SFAF_Email::small_para( 'Nothing else happens automatically. If it is urgent, tell somebody on the team directly.' );
@@ -940,7 +1105,9 @@ class SFAF_Request {
                 Nothing arrived? Check the junk folder, then ask for another link. If you have asked
                 several times in the last hour, give it a few minutes first.
             </p>
-            <p><a class="uc-btn" href="<?php echo esc_url( self::start_url() ); ?>">Ask again</a></p>
+            <div class="uc-form-actions uc-form-actions-primary">
+                <a class="uc-btn uc-btn-primary" href="<?php echo esc_url( self::start_url() ); ?>">Ask again</a>
+            </div>
         </div>
         <?php
         self::page_close();
@@ -952,7 +1119,9 @@ class SFAF_Request {
         <div class="uc-request-card">
             <h1>That link has expired</h1>
             <p>Links work for <?php echo (int) round( self::TOKEN_TTL / 60 ); ?> minutes. Ask for a new one and it will open the form.</p>
-            <p><a class="uc-btn uc-btn-primary" href="<?php echo esc_url( self::start_url() ); ?>">Get a new link</a></p>
+            <div class="uc-form-actions uc-form-actions-primary">
+                <a class="uc-btn uc-btn-primary" href="<?php echo esc_url( self::start_url() ); ?>">Get a new link</a>
+            </div>
         </div>
         <?php
         self::page_close();
@@ -990,7 +1159,7 @@ class SFAF_Request {
      * @param array  $c      Values to put back, after a rejected submission.
      * @param array  $errors field => message.
      */
-    private static function render_form( $token, $email, $c, $errors ) {
+    private static function render_form( $token, $email, $c, $errors, $remembered = false ) {
         $v = function ( $key, $fallback = '' ) use ( $c ) {
             return isset( $c[ $key ] ) ? $c[ $key ] : $fallback;
         };
@@ -1010,10 +1179,26 @@ class SFAF_Request {
         ?>
         <div class="uc-request-card">
             <h1>Request an event</h1>
-            <p class="uc-hint">
-                Asking as <strong><?php echo esc_html( $email ); ?></strong>. Fill this in and the MarCom
-                team will take it from here.
+            <?php
+            /*
+             * WHOSE REQUEST THIS IS ABOUT TO BE, ON THE FORM.
+             *
+             * It always said the address. What it did not have was a way out,
+             * and a remembered address on a shared machine is exactly the case
+             * where somebody needs one: without it, a colleague's name goes on
+             * a request nobody notices was theirs.
+             */
+            ?>
+            <p class="uc-hint uc-request-who-line">
+                Asking as <strong><?php echo esc_html( $email ); ?></strong>.
+                <a href="<?php echo esc_url( add_query_arg( 'uc_switch', '1', self::start_url() ) ); ?>">Not you? Use a different address</a>
             </p>
+            <?php if ( $remembered ) : ?>
+                <p class="uc-hint">
+                    This browser will remember you for <?php echo (int) self::COOKIE_DAYS; ?> days, so you can come
+                    straight back to this form.
+                </p>
+            <?php endif; ?>
 
             <?php if ( '' !== $err( 'form' ) ) : ?>
                 <p class="uc-field-error" role="alert"><?php echo esc_html( $err( 'form' ) ); ?></p>
@@ -1189,6 +1374,41 @@ class SFAF_Request {
      *
      * @param int $chosen
      */
+    /**
+     * Is this "title" just the file it came from?
+     *
+     * WordPress sets an attachment's title from its filename on upload, with
+     * the extension dropped and separators turned into spaces. So a picture
+     * nobody titled comes back as "img 2847 final v3", which reads as a caption
+     * and tells a person nothing. Two shapes are enough to catch it: something
+     * with no lower-case letters and no spaces, or something that is mostly
+     * digits and separators.
+     *
+     * DELIBERATELY CONSERVATIVE. A real title that trips this is shown as no
+     * title, which loses a little; a filename that slips through is shown as a
+     * caption, which is the thing worth avoiding.
+     *
+     * @param string $title
+     * @return bool
+     */
+    private static function looks_like_a_filename( $title ) {
+        $title = trim( (string) $title );
+        if ( '' === $title ) {
+            return true;
+        }
+        /* An extension still on it, or a word with no vowels and a number. */
+        if ( preg_match( '/\.(jpe?g|png|gif|webp|tiff?|bmp)$/i', $title ) ) {
+            return true;
+        }
+        /* Mostly digits, dashes and underscores: dsc_0043, 20260814-1200x675. */
+        $letters = preg_match_all( '/[a-z]/i', $title );
+        $digits  = preg_match_all( '/[0-9]/', $title );
+        if ( $digits > 0 && $letters <= $digits ) {
+            return true;
+        }
+        return false;
+    }
+
     private static function render_image_choice( $chosen, $upload_error = '' ) {
         $images = get_posts( array(
             'post_type'      => 'attachment',
@@ -1223,10 +1443,31 @@ class SFAF_Request {
                         $thumb = wp_get_attachment_image_url( $img->ID, 'medium' );
                         if ( ! $thumb ) {
                             continue;
-                        } ?>
+                        }
+                        /*
+                         * THE TITLE, NOT THE ALT TEXT (3.47.0).
+                         *
+                         * Alt text describes what is IN the picture, for
+                         * somebody who cannot see it. The title says what the
+                         * picture is FOR, which is the question a person
+                         * choosing between twelve thumbnails is actually
+                         * asking. They are different jobs and this grid needs
+                         * the second one.
+                         *
+                         * NO TITLE MEANS NOTHING IS SHOWN. WordPress falls back
+                         * to the filename when a title was never set, and
+                         * "img-2847-final-v3" is worse than a bare thumbnail:
+                         * it looks like information and is not.
+                         */
+                        $title = trim( (string) get_the_title( $img->ID ) );
+                        $named = ( '' !== $title && ! self::looks_like_a_filename( $title ) );
+                        ?>
                         <label class="uc-request-image">
                             <input type="radio" name="image_id" value="<?php echo (int) $img->ID; ?>" <?php checked( (int) $img->ID, $chosen ); ?> />
                             <img src="<?php echo esc_url( $thumb ); ?>" alt="" loading="lazy" />
+                            <?php if ( $named ) : ?>
+                                <span class="uc-request-image-title"><?php echo esc_html( $title ); ?></span>
+                            <?php endif; ?>
                         </label>
                     <?php endforeach; ?>
                 </div>

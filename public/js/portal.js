@@ -3246,3 +3246,46 @@
         }, true);
     }
 })();
+
+/* ---------------------------------------------------------------------------
+   A CHOICE THAT REVEALS A FIELD (3.47.0)
+
+   The submission form asks for cost and age as closed lists with an escape, and
+   for a venue with an address as the alternative. In each case one control
+   decides whether a second one is worth showing.
+
+   IT STARTS FROM VISIBLE AND HIDES, RATHER THAN STARTING HIDDEN AND SHOWING.
+   That is the whole of the progressive enhancement here: with this script
+   missing or broken, every field is on the page and the form still works. The
+   opposite arrangement, hidden in CSS until JavaScript says otherwise, means
+   somebody who picks "Something else" with no JavaScript is asked for a value
+   in a box they cannot see, and is then refused for leaving it empty.
+
+   The trigger names its target by id and says which value reveals it, so the
+   venue select (reveal when "Somewhere else", value 0) and the two choice
+   selects (reveal on "other") are the same mechanism rather than three.
+   --------------------------------------------------------------------------- */
+(function () {
+    var triggers = document.querySelectorAll('[data-uc-reveal]');
+    if (!triggers.length) { return; }
+
+    function sync(trigger) {
+        var target = document.getElementById(trigger.getAttribute('data-uc-reveal'));
+        if (!target) { return; }
+        var when = trigger.getAttribute('data-uc-reveal-when');
+        if (when === null) { when = 'other'; }
+        var on = (String(trigger.value) === String(when));
+        target.hidden = !on;
+        /* A hidden field must not be submitted as an empty answer, and must not
+           be reachable by keyboard while it is off screen. `hidden` alone does
+           neither for the controls inside it. */
+        target.querySelectorAll('input, select, textarea').forEach(function (field) {
+            field.disabled = !on;
+        });
+    }
+
+    triggers.forEach(function (trigger) {
+        sync(trigger);
+        trigger.addEventListener('change', function () { sync(trigger); });
+    });
+})();

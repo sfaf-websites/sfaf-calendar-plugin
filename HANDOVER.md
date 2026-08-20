@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-20, at 3.46.0.
+**Last updated:** 2026-08-20, at 3.47.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.46.0**, built as `sfaf-calendar-3.46.0.zip` in the project
+The plugin is at **3.47.0**, built as `sfaf-calendar-3.47.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.46.0, the deployment is stale or partial, and that
+screen: if it does not say 3.47.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -204,6 +204,24 @@ events that were not saved a second time.
   PICKER.** Open Choose Image on any event. If a raw submission is offered
   there, the two folders have collided and the picker is showing unapproved
   files. Nothing else in the release depends on that separation holding.
+- **THE TEST CTZ EVENT FROM 3.46.0 IS STILL THERE AND SHOULD NOW BE VISIBLE.**
+  It is post 60379, status `pending`, and 3.47.0 is what makes the queue show
+  it. Open **Pending** after installing: it should be in the list, badged
+  **Community submission**. Reject it once you have seen it. **If it is still
+  missing, stop and say so**, because then the exclusion is something other
+  than the author filter and this release fixed the wrong thing.
+- **AND THE ORPHAN EMAIL SHOULD STOP NAMING IT.** The daily check ran and
+  reported it with "a deleted account" as its organizer, which was a false
+  positive: nobody had been given it yet. A submission awaiting review is
+  exempt now. **An approved one with no organizer still fires**, which is the
+  case the alert is actually for, so do not read a silent morning as the alert
+  being switched off.
+- **THE 30-DAY COOKIE ON THE STAFF FORM NEEDS ONE PASS ON A SHARED MACHINE.**
+  Follow a link, submit, close the browser, and come back to
+  `/?uc_event_request=1`: it should open the form directly and say which
+  address it is about to submit as. Press **Not you? Use a different address**
+  and confirm it goes back to asking for an address. That control is the whole
+  reason this is safe on a machine two people use.
 
 ## Blocked on other people
 

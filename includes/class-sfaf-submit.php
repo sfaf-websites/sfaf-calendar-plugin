@@ -67,6 +67,146 @@ class SFAF_Submit {
     const META_CONTACT = '_uc_public_contact';
     const META_RSVP_URL = '_uc_rsvp_url';
 
+    /* Where a submitted address is kept, part by part, for promotion later. */
+    const META_STREET = '_uc_submitted_street';
+    const META_CITY   = '_uc_submitted_city';
+    const META_STATE  = '_uc_submitted_state';
+    const META_ZIP    = '_uc_submitted_zip';
+
+    /* The event's own contact, which IS public. Three fields, not one box. */
+    const META_CONTACT_NAME  = '_uc_contact_name';
+    const META_CONTACT_EMAIL = '_uc_contact_email';
+    const META_CONTACT_PHONE = '_uc_contact_phone';
+
+    const META_VENUE_URL = '_uc_venue_website';
+
+    /**
+     * What it costs to come, as a closed list plus an escape.
+     *
+     * A CHOICE, NOT A BOX (3.47.0). An open field produced "Free", "free" and
+     * "No charge" for one thing, which is three things to a reader skimming a
+     * calendar and three things to anybody filtering later. The list matches
+     * the Google Form this replaces, so nobody has to learn a new answer.
+     *
+     * 'other' IS A REAL STORED VALUE and not a marker for "empty": it means the
+     * submitter had something to say that the list does not cover, and what
+     * they said is in the companion field. Blank is still blank, and blank
+     * still means the listing says nothing about cost.
+     *
+     * ONE LIST, READ BY THE CONTROL AND BY THE VALIDATOR, so a value the form
+     * can offer is exactly a value the validator will keep.
+     *
+     * @return array<string,string>
+     */
+    public static function cost_options() {
+        return array(
+            ''         => 'Not saying',
+            'free'     => 'Free',
+            'donation' => 'Donation',
+            'other'    => 'Something else',
+        );
+    }
+
+    /**
+     * Who may come, as a closed list plus an escape.
+     *
+     * @return array<string,string>
+     */
+    public static function age_options() {
+        return array(
+            ''      => 'Not saying',
+            'all'   => 'All ages',
+            '18'    => '18+',
+            '21'    => '21+',
+            'other' => 'Something else',
+        );
+    }
+
+    /**
+     * The words a chosen key turns into on the event page.
+     *
+     * SEPARATE FROM THE LABELS ABOVE, because a control says "Not saying" and a
+     * listing says nothing at all. One method decides the public wording, so a
+     * card, an email and the event page cannot phrase the same choice three
+     * ways.
+     *
+     * @param string $key
+     * @param string $other What they typed when they picked 'other'.
+     * @param string $which 'cost' or 'age'.
+     * @return string '' when there is nothing to show.
+     */
+    public static function choice_phrase( $key, $other, $which ) {
+        $key = (string) $key;
+        if ( '' === $key ) {
+            return '';
+        }
+        if ( 'other' === $key ) {
+            return trim( (string) $other );
+        }
+        $words = ( 'cost' === $which )
+            ? array( 'free' => 'Free', 'donation' => 'Donation' )
+            : array( 'all' => 'All ages', '18' => '18+', '21' => '21+' );
+        return isset( $words[ $key ] ) ? $words[ $key ] : '';
+    }
+
+    /**
+     * A series name as its owners write it.
+     *
+     * "Cycle To Zero" IS NOT A NAME ANYBODY CHOSE (3.47.0). It is what title
+     * case does to "Cycle to Zero", and the campaign's own site and style guide
+     * both keep the lower-case "to". WordPress does not title-case a term name,
+     * so whatever is stored is what shows; this fixes the ONE class of mistake
+     * that gets typed by hand, which is capitalising the small words.
+     *
+     * THE STORED NAME IS NOT REWRITTEN. Only what is printed. A term name is
+     * somebody's data and a display helper has no business editing it, and the
+     * moment this guessed wrong on a real name there would be no way to
+     * override it.
+     *
+     * ONLY BETWEEN OTHER WORDS. "To Zero and Beyond" keeps its leading To,
+     * because a small word that starts a name is capitalised in every style
+     * guide, and the last word is left alone for the same reason.
+     *
+     * @param WP_Term|string $series
+     * @return string
+     */
+    public static function series_name( $series ) {
+        $name = is_object( $series ) ? (string) $series->name : (string) $series;
+        $name = trim( $name );
+        if ( '' === $name ) {
+            return '';
+        }
+
+        $small = array( 'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in',
+            'nor', 'of', 'on', 'or', 'the', 'to', 'up', 'via', 'with' );
+
+        $words = preg_split( '/(\s+)/u', $name, -1, PREG_SPLIT_DELIM_CAPTURE );
+        if ( ! is_array( $words ) ) {
+            return $name;
+        }
+
+        /* Which entries are words rather than the whitespace between them. */
+        $positions = array();
+        foreach ( $words as $i => $w ) {
+            if ( '' !== trim( $w ) ) { $positions[] = $i; }
+        }
+        $last = count( $positions ) - 1;
+
+        foreach ( $positions as $n => $i ) {
+            if ( 0 === $n || $n === $last ) {
+                continue;
+            }
+            $lower = function_exists( 'mb_strtolower' ) ? mb_strtolower( $words[ $i ], 'UTF-8' ) : strtolower( $words[ $i ] );
+            /* Only a plainly capitalised small word: ALL CAPS is somebody being
+             * deliberate and is left exactly as it was. */
+            if ( in_array( $lower, $small, true ) && $words[ $i ] !== $lower && $words[ $i ] !== strtoupper( $words[ $i ] ) ) {
+                $words[ $i ] = $lower;
+            }
+        }
+
+        return implode( '', $words );
+    }
+
     public static function register() {
         add_action( 'template_redirect', array( __CLASS__, 'maybe_render' ) );
     }
@@ -192,25 +332,99 @@ class SFAF_Submit {
             $errors['end_time'] = 'The end time needs to be after the start time.';
         }
 
-        /* ---- Where. Free text: a stranger does not know our venue list. ---- */
-        $clean['location'] = $line( 'location', 250 );
-        if ( '' === $clean['location'] ) {
-            $errors['location'] = 'Say where it happens, so people can get there.';
+        /* ---- Where. A venue we already know, or an address in parts. ----
+         *
+         * FREE TEXT WAS A LINE SOMEBODY HAD TO PARSE. Venues have carried
+         * street, city, state and zip separately since 3.13.0, so one box meant
+         * either retyping it at approval or a map that will not resolve.
+         *
+         * PICKING A VENUE DOES NOT CREATE ONE, AND NEITHER DOES TYPING. The
+         * list offers what exists; the parts are stored as the submitter's
+         * answer and nothing more. Promoting an address to a real venue is a
+         * decision taken at approval, on the screen built for it, once somebody
+         * knows it will be used again.
+         */
+        $clean['venue'] = 0;
+        if ( ! empty( $post['venue'] ) ) {
+            $id = (int) $post['venue'];
+            if ( $id && SFAF_Venues::exists( $id ) ) {
+                $clean['venue'] = $id;
+            }
         }
 
-        /* ---- Optional detail. ---- */
-        $clean['cost'] = $line( 'cost', 120 );
-        $clean['age']  = $line( 'age_restriction', 120 );
+        $clean['street'] = $line( 'street', 200 );
+        $clean['city']   = $line( 'city', 100 );
+        $clean['state']  = $line( 'state', 40 );
+        $clean['zip']    = $line( 'zip', 20 );
+        $clean['venue_url'] = SFAF_Submissions::url( isset( $post['venue_url'] ) ? wp_unslash( $post['venue_url'] ) : '' );
+        if ( '' === $clean['venue_url'] && ! empty( $post['venue_url'] ) ) {
+            $errors['venue_url'] = 'That does not look like a web address. It needs to start with http:// or https://.';
+        }
+
+        /* The one line the calendar and the map actually read, composed from
+         * whichever half was answered. Kept as _uc_location so every existing
+         * reader works with no second code path. */
+        $clean['location'] = $clean['venue']
+            ? SFAF_Venues::display( $clean['venue'] )
+            : trim( implode( ', ', array_filter( array(
+                $clean['street'],
+                $clean['city'],
+                trim( $clean['state'] . ' ' . $clean['zip'] ),
+            ) ) ) );
+
+        if ( ! $clean['venue'] && '' === $clean['street'] ) {
+            $errors['street'] = 'Say where it happens, so people can get there. Pick a venue above, or give the street address.';
+        }
+
+        /* ---- Optional detail, as choices rather than open boxes. ---- */
+        $cost_key        = isset( $post['cost'] ) ? sanitize_key( wp_unslash( $post['cost'] ) ) : '';
+        $clean['cost']   = array_key_exists( $cost_key, self::cost_options() ) ? $cost_key : '';
+        $clean['cost_other'] = ( 'other' === $clean['cost'] ) ? $line( 'cost_other', 120 ) : '';
+        if ( 'other' === $clean['cost'] && '' === $clean['cost_other'] ) {
+            $errors['cost_other'] = 'Say what it costs, or choose one of the options above.';
+        }
+
+        $age_key       = isset( $post['age_restriction'] ) ? sanitize_key( wp_unslash( $post['age_restriction'] ) ) : '';
+        $clean['age']  = array_key_exists( $age_key, self::age_options() ) ? $age_key : '';
+        $clean['age_other'] = ( 'other' === $clean['age'] ) ? $line( 'age_other', 120 ) : '';
+        if ( 'other' === $clean['age'] && '' === $clean['age_other'] ) {
+            $errors['age_other'] = 'Say who can come, or choose one of the options above.';
+        }
 
         $clean['rsvp_url'] = SFAF_Submissions::url( isset( $post['rsvp_url'] ) ? wp_unslash( $post['rsvp_url'] ) : '' );
         if ( '' === $clean['rsvp_url'] && ! empty( $post['rsvp_url'] ) ) {
             $errors['rsvp_url'] = 'That does not look like a web address. It needs to start with http:// or https://.';
         }
 
-        /* ---- Shown publicly, and distinct from the submitter's details. ---- */
-        $clean['contact'] = $line( 'contact', 200 );
-        if ( '' === $clean['contact'] ) {
-            $errors['contact'] = 'Give the contact people should use about this event. It goes on the listing.';
+        /* ---- The EVENT's contact. Shown publicly. Three fields, not one box.
+         *
+         * THERE ARE TWO CONTACT IDEAS ON THIS FORM AND THEY MUST NOT MERGE.
+         * The submitter's own name and address, above, are internal and exist
+         * so somebody can reach them about an unclear submission. THIS one goes
+         * on the public listing, phone included, and is often a different
+         * person entirely. They are stored under different keys, labelled
+         * differently on the form, and only this one is readable from a
+         * template.
+         *
+         * A NAME, AND AT LEAST ONE WAY TO REACH THEM. A name with neither is a
+         * line on a listing that helps nobody, and requiring both would refuse
+         * an organizer who only wants to give a phone number.
+         */
+        $clean['contact_name'] = $line( 'contact_name', 120 );
+        if ( '' === $clean['contact_name'] ) {
+            $errors['contact_name'] = 'Give the name people should ask for.';
+        }
+
+        $c_email = isset( $post['contact_email'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $post['contact_email'] ) ) ) ) : '';
+        $clean['contact_email'] = ( '' !== $c_email && is_email( $c_email ) ) ? $c_email : '';
+        if ( '' === $clean['contact_email'] && '' !== $c_email ) {
+            $errors['contact_email'] = 'That does not look like an email address.';
+        }
+
+        $clean['contact_phone'] = $line( 'contact_phone', 40 );
+
+        if ( '' === $clean['contact_email'] && '' === $clean['contact_phone'] && ! isset( $errors['contact_email'] ) ) {
+            $errors['contact_email'] = 'Give an email address or a phone number, so people can ask about the event.';
         }
 
         $clean['notes'] = SFAF_Submissions::line(
@@ -239,7 +453,7 @@ class SFAF_Submit {
          * RATE LIMITED ON THE CLIENT AND ON THE CAMPAIGN. The client limit is
          * what stops one person filling the queue; the campaign limit is what
          * stops a distributed run filling ONE calendar, which is the thing the
-         * organisers would actually notice. Both are counters that expire.
+         * organizers would actually notice. Both are counters that expire.
          */
         if ( ! SFAF_Submissions::allow( 'submit_ip', SFAF_Submissions::client(), 5, HOUR_IN_SECONDS )
             || ! SFAF_Submissions::allow( 'submit_series', (string) $series->term_id, 60, HOUR_IN_SECONDS ) ) {
@@ -290,7 +504,7 @@ class SFAF_Submit {
                 wp_delete_attachment( $upload['id'], true );
             }
             self::render_form( $series, $checked['clean'], array(
-                'form' => 'Something went wrong saving that. Try once more, and if it happens again let the organisers know.',
+                'form' => 'Something went wrong saving that. Try once more, and if it happens again let the organizers know.',
             ) );
             return;
         }
@@ -343,17 +557,37 @@ class SFAF_Submit {
         update_post_meta( $event_id, '_uc_end_time', $c['end'] );
         update_post_meta( $event_id, '_uc_location', $c['location'] );
 
+        /*
+         * A CHOSEN VENUE IS A REAL VENUE. A typed address is not, and does not
+         * become one: the parts are kept as the submitter's answer so somebody
+         * can promote them at approval if this turns out to be a place that is
+         * used repeatedly. Nothing here creates a term.
+         */
+        if ( $c['venue'] ) {
+            SFAF_Venues::set_for_event( $event_id, (int) $c['venue'] );
+        }
+
         SFAF_Series::set_for_event( $event_id, (int) $series->term_id );
         update_post_meta( $event_id, self::META_SERIES, (int) $series->term_id );
 
         /* Optional, and written only when there is something to write, so a
          * blank one is absent rather than an empty string the template would
-         * then have to test for a second way. */
+         * then have to test for a second way. The two choices are stored as the
+         * WORDS they mean rather than as their keys: a key is a form's private
+         * business, and everything that reads these is showing them to
+         * somebody. See choice_phrase(). */
         foreach ( array(
-            self::META_COST     => $c['cost'],
-            self::META_AGE      => $c['age'],
-            self::META_CONTACT  => $c['contact'],
-            self::META_RSVP_URL => $c['rsvp_url'],
+            self::META_COST          => self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' ),
+            self::META_AGE           => self::choice_phrase( $c['age'], $c['age_other'], 'age' ),
+            self::META_CONTACT_NAME  => $c['contact_name'],
+            self::META_CONTACT_EMAIL => $c['contact_email'],
+            self::META_CONTACT_PHONE => $c['contact_phone'],
+            self::META_RSVP_URL      => $c['rsvp_url'],
+            self::META_VENUE_URL     => $c['venue_url'],
+            self::META_STREET        => $c['street'],
+            self::META_CITY          => $c['city'],
+            self::META_STATE         => $c['state'],
+            self::META_ZIP           => $c['zip'],
         ) as $key => $value ) {
             if ( '' !== $value ) {
                 update_post_meta( $event_id, $key, $value );
@@ -373,6 +607,26 @@ class SFAF_Submit {
         }
 
         return $event_id;
+    }
+
+    /**
+     * The event's public contact, as one readable line.
+     *
+     * ONE PLACE, because it appears in two emails and on the event page,
+     * and three formatters would phrase the same three fields three ways.
+     * The phone is included deliberately: the form says it will be, and a
+     * line that quietly dropped it would make that sentence untrue.
+     *
+     * @param array $c
+     * @return string
+     */
+    public static function contact_line( $c ) {
+        $parts = array_filter( array(
+            isset( $c['contact_name'] ) ? $c['contact_name'] : '',
+            isset( $c['contact_email'] ) ? $c['contact_email'] : '',
+            isset( $c['contact_phone'] ) ? $c['contact_phone'] : '',
+        ) );
+        return implode( ', ', $parts );
     }
 
     /* =====================================================================
@@ -401,35 +655,49 @@ class SFAF_Submit {
 
         $rows = array(
             'Event'    => $c['title'],
-            'Calendar' => $series->name,
+            'Calendar' => self::series_name( $series ),
             'Date'     => sfaf_ap_date( $c['date'], 'full' ),
             'Time'     => sfaf_ap_time_range( $c['start'], $c['end'] ),
             'Where'    => $c['location'],
         );
-        if ( '' !== $c['cost'] ) {
-            $rows['Cost'] = $c['cost'];
+        $cost_words = self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' );
+        $age_words   = self::choice_phrase( $c['age'], $c['age_other'], 'age' );
+        if ( '' !== $cost_words ) {
+            $rows['Cost'] = $cost_words;
         }
-        if ( '' !== $c['age'] ) {
-            $rows['Ages'] = $c['age'];
+        if ( '' !== $age_words ) {
+            $rows['Ages'] = $age_words;
         }
-        $rows['Contact shown publicly'] = $c['contact'];
+        $rows['Contact shown publicly'] = self::contact_line( $c );
+        if ( '' !== $c['venue_url'] ) {
+            $rows['Venue website'] = $c['venue_url'];
+        }
         if ( '' !== $c['rsvp_url'] ) {
             $rows['Registration link'] = $c['rsvp_url'];
         }
         $rows['Submitted by'] = $c['submitter_name'] . ' (' . $c['submitter_email'] . ')';
 
         $html = SFAF_Email::heading( 'Somebody submitted an event' )
-            . SFAF_Email::para( 'A member of the public submitted an event to the ' . $series->name . ' calendar. It is in the pending queue and nobody can see it yet.' )
+            . SFAF_Email::para( 'A member of the public submitted an event to the ' . self::series_name( $series ) . ' calendar. It is in the pending queue and nobody can see it yet.' )
             . SFAF_Email::details( $rows )
-            . SFAF_Email::button_row( array( SFAF_Email::button( $edit, 'Open the submission' ) ) )
-            . SFAF_Email::link_para( $queue, 'See everything waiting' );
+            /*
+             * THE QUEUE IS THE BUTTON, THE EVENT IS THE LINK (3.47.0).
+             *
+             * These were the other way round, and sending an approver
+             * straight into an editor skips the screen the review
+             * actually happens on: what else is waiting, what came from
+             * where, and the reject action. The event is still one click
+             * away for somebody who only wants to read this one.
+             */
+            . SFAF_Email::button_row( array( SFAF_Email::button( $queue, 'Open the pending queue' ) ) )
+            . SFAF_Email::link_para( $edit, 'Or go straight to this submission' );
 
-        $text = 'A member of the public submitted an event to the ' . $series->name . " calendar.\n\n"
+        $text = 'A member of the public submitted an event to the ' . self::series_name( $series ) . " calendar.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
             . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n"
             . $c['location'] . "\n\n"
             . 'Submitted by: ' . $c['submitter_name'] . ' (' . $c['submitter_email'] . ")\n\n"
-            . 'Open it: ' . $edit . "\nThe queue: " . $queue;
+            . 'The queue: ' . $queue . "\nThis one: " . $edit;
 
         $subject = 'Event submitted: ' . $c['title'];
         $shell   = SFAF_Email::shell( 'An event was submitted', $html );
@@ -458,33 +726,35 @@ class SFAF_Submit {
 
         $rows = array(
             'Event'    => $c['title'],
-            'Calendar' => $series->name,
+            'Calendar' => self::series_name( $series ),
             'Date'     => sfaf_ap_date( $c['date'], 'full' ),
             'Time'     => sfaf_ap_time_range( $c['start'], $c['end'] ),
             'Where'    => $c['location'],
         );
-        if ( '' !== $c['cost'] ) {
-            $rows['Cost'] = $c['cost'];
+        $cost_words = self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' );
+        $age_words   = self::choice_phrase( $c['age'], $c['age_other'], 'age' );
+        if ( '' !== $cost_words ) {
+            $rows['Cost'] = $cost_words;
         }
-        if ( '' !== $c['age'] ) {
-            $rows['Ages'] = $c['age'];
+        if ( '' !== $age_words ) {
+            $rows['Ages'] = $age_words;
         }
-        $rows['Contact on the listing'] = $c['contact'];
+        $rows['Contact on the listing'] = self::contact_line( $c );
         if ( '' !== $c['rsvp_url'] ) {
             $rows['Registration link'] = $c['rsvp_url'];
         }
 
-        $html = SFAF_Email::heading( 'Thanks, that is with the organisers' )
-            . SFAF_Email::para( 'Here is what you sent to the ' . $series->name . ' calendar. Somebody reads every submission before it goes up, and will email you if anything needs sorting out.' )
+        $html = SFAF_Email::heading( 'Thanks, we have it' )
+            . SFAF_Email::para( 'Here is what you sent to the ' . self::series_name( $series ) . ' calendar. Somebody reviews every submission before it goes on the calendar, so it will not appear straight away. If we have questions we will email you.' )
             . SFAF_Email::details( $rows )
             . SFAF_Email::rule()
             . SFAF_Email::small_para( 'Your name and email address are not shown on the calendar. You will not get another message about this automatically.' );
 
-        $text = "Thanks, that is with the organisers.\n\n"
+        $text = "Thanks, we have it.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
             . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n"
             . $c['location'] . "\n\n"
-            . 'Somebody reads every submission before it goes on the calendar. '
+            . 'Somebody reviews every submission before it goes on the calendar. '
             . 'Your name and email are not shown there.';
 
         SFAF_Email::send(
@@ -519,16 +789,18 @@ class SFAF_Submit {
         ?>
         <div class="uc-request-card">
             <?php self::banner( $series ); ?>
-            <h1>Thanks, that is with the organisers</h1>
+            <h1>Thanks, we have it</h1>
             <?php if ( '' !== $title ) : ?>
-                <p><strong><?php echo esc_html( $title ); ?></strong> has gone to the <?php echo esc_html( $series->name ); ?> team, and we have emailed you a copy of what you sent.</p>
+                <p><strong><?php echo esc_html( $title ); ?></strong> has gone to the <?php echo esc_html( self::series_name( $series ) ); ?> team, and we have emailed you a copy of what you sent.</p>
             <?php else : ?>
-                <p>Your event has gone to the <?php echo esc_html( $series->name ); ?> team.</p>
+                <p>Your event has gone to the <?php echo esc_html( self::series_name( $series ) ); ?> team.</p>
             <?php endif; ?>
             <p class="uc-hint">
-                Somebody reads every submission before it goes on the calendar, so it will not appear straight away. If something needs sorting out they will email you.
+                Somebody reviews every submission before it goes on the calendar, so it will not appear straight away. If we have questions we will email you.
             </p>
-            <p><a class="uc-btn" href="<?php echo esc_url( self::url( $series->slug ) ); ?>">Submit another event</a></p>
+            <div class="uc-form-actions uc-form-actions-primary">
+                <a class="uc-btn uc-btn-primary" href="<?php echo esc_url( self::url( $series->slug ) ); ?>">Submit another event</a>
+            </div>
         </div>
         <?php
         SFAF_Submissions::page_close();
@@ -579,16 +851,16 @@ class SFAF_Submit {
         SFAF_Rich_Text::enqueue();
 
         SFAF_Submissions::page_open(
-            'Submit an event: ' . $series->name,
+            'Submit an event: ' . self::series_name( $series ),
             array( 'body_class' => 'uc-request-page uc-submit-page', 'editor' => true )
         );
         ?>
         <div class="uc-request-card">
             <?php self::banner( $series ); ?>
-            <h1>Submit an event to <?php echo esc_html( $series->name ); ?></h1>
+            <h1>Submit an event to <?php echo esc_html( self::series_name( $series ) ); ?></h1>
             <p class="uc-hint">
-                Tell us about your event and the organisers will look at it before it goes on the calendar.
-                Your name and email stay with the organisers and are not shown on the listing.
+                Tell us about your event. Somebody reviews every submission before it goes on the calendar.
+                Your name and email are not shown on the listing.
             </p>
 
             <?php if ( '' !== $err( 'form' ) ) : ?>
@@ -603,7 +875,7 @@ class SFAF_Submit {
 
                 <fieldset class="uc-field-group">
                     <legend class="uc-field-label">About you</legend>
-                    <p class="uc-hint">Kept by the organisers. Never shown on the calendar.</p>
+                    <p class="uc-hint">Not shown on the calendar.</p>
                     <label class="uc-field">
                         <span class="uc-field-label">Your name</span>
                         <input type="text" name="submitter_name" required maxlength="120" value="<?php echo esc_attr( $v( 'submitter_name' ) ); ?>" />
@@ -655,25 +927,88 @@ class SFAF_Submit {
                     </label>
                 </div>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">Where</span>
-                    <input type="text" name="location" required maxlength="250" value="<?php echo esc_attr( $v( 'location' ) ); ?>"
-                           placeholder="470 Castro St, San Francisco" />
-                    <?php SFAF_Submissions::field_error( $err( 'location' ) ); ?>
-                </label>
+                <fieldset class="uc-field-group">
+                    <legend class="uc-field-label">Where it happens</legend>
+                    <?php $venues = SFAF_Venues::all(); ?>
+                    <?php if ( ! empty( $venues ) ) : ?>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Venue</span>
+                            <select name="venue" data-uc-reveal="uc-address" data-uc-reveal-when="0">
+                                <option value="0">Somewhere else</option>
+                                <?php foreach ( (array) $venues as $venue ) : ?>
+                                    <option value="<?php echo (int) $venue->term_id; ?>" <?php selected( (int) $v( 'venue' ), (int) $venue->term_id ); ?>>
+                                        <?php echo esc_html( $venue->name ); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="uc-hint">Pick one of these, or choose Somewhere else and give the address.</span>
+                        </label>
+                    <?php endif; ?>
 
-                <label class="uc-field">
+                    <div class="uc-address-parts uc-reveal-target" id="uc-address">
+                        <label class="uc-field">
+                            <span class="uc-field-label">Street address</span>
+                            <input type="text" name="street" maxlength="200" value="<?php echo esc_attr( $v( 'street' ) ); ?>"
+                                   placeholder="470 Castro St" />
+                            <?php SFAF_Submissions::field_error( $err( 'street' ) ); ?>
+                        </label>
+                        <div class="uc-field-row">
+                            <label class="uc-field">
+                                <span class="uc-field-label">City</span>
+                                <input type="text" name="city" maxlength="100" value="<?php echo esc_attr( $v( 'city' ) ); ?>" placeholder="San Francisco" />
+                            </label>
+                            <label class="uc-field uc-field-narrow">
+                                <span class="uc-field-label">State</span>
+                                <input type="text" name="state" maxlength="40" value="<?php echo esc_attr( $v( 'state' ) ); ?>" placeholder="CA" />
+                            </label>
+                            <label class="uc-field uc-field-narrow">
+                                <span class="uc-field-label">ZIP</span>
+                                <input type="text" name="zip" maxlength="20" value="<?php echo esc_attr( $v( 'zip' ) ); ?>" placeholder="94114" />
+                            </label>
+                        </div>
+                    </div>
+
+                    <label class="uc-field">
+                        <span class="uc-field-label">Venue website</span>
+                        <input type="url" name="venue_url" maxlength="500" value="<?php echo esc_attr( $v( 'venue_url' ) ); ?>" placeholder="https://" />
+                        <span class="uc-hint">Shown beside the address on the event page.</span>
+                        <?php SFAF_Submissions::field_error( $err( 'venue_url' ) ); ?>
+                    </label>
+                </fieldset>
+
+                <div class="uc-field">
                     <span class="uc-field-label">Cost</span>
-                    <input type="text" name="cost" maxlength="120" value="<?php echo esc_attr( $v( 'cost' ) ); ?>"
-                           placeholder="Free, $15 at the door, $20 suggested donation" />
-                    <span class="uc-hint">Leave this empty and the listing says nothing about cost. No money is taken here.</span>
-                </label>
+                    <select name="cost" data-uc-reveal="uc-cost-other">
+                        <?php foreach ( self::cost_options() as $key => $label ) : ?>
+                            <option value="<?php echo esc_attr( $key ); ?>" <?php selected( (string) $v( 'cost' ), (string) $key ); ?>>
+                                <?php echo esc_html( $label ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label class="uc-field uc-reveal-target" id="uc-cost-other">
+                        <span class="uc-field-label">What it costs</span>
+                        <input type="text" name="cost_other" maxlength="120" value="<?php echo esc_attr( $v( 'cost_other' ) ); ?>"
+                               placeholder="$15 at the door" />
+                        <?php SFAF_Submissions::field_error( $err( 'cost_other' ) ); ?>
+                    </label>
+                </div>
 
-                <label class="uc-field">
+                <div class="uc-field">
                     <span class="uc-field-label">Age restriction</span>
-                    <input type="text" name="age_restriction" maxlength="120" value="<?php echo esc_attr( $v( 'age' ) ); ?>"
-                           placeholder="All ages, 18+, 21+ after 9pm" />
-                </label>
+                    <select name="age_restriction" data-uc-reveal="uc-age-other">
+                        <?php foreach ( self::age_options() as $key => $label ) : ?>
+                            <option value="<?php echo esc_attr( $key ); ?>" <?php selected( (string) $v( 'age' ), (string) $key ); ?>>
+                                <?php echo esc_html( $label ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label class="uc-field uc-reveal-target" id="uc-age-other">
+                        <span class="uc-field-label">Who can come</span>
+                        <input type="text" name="age_other" maxlength="120" value="<?php echo esc_attr( $v( 'age_other' ) ); ?>"
+                               placeholder="21+ after 9pm" />
+                        <?php SFAF_Submissions::field_error( $err( 'age_other' ) ); ?>
+                    </label>
+                </div>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Registration link</span>
@@ -683,26 +1018,53 @@ class SFAF_Submit {
                     <?php SFAF_Submissions::field_error( $err( 'rsvp_url' ) ); ?>
                 </label>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">Contact for the listing</span>
-                    <input type="text" name="contact" required maxlength="200" value="<?php echo esc_attr( $v( 'contact' ) ); ?>"
-                           placeholder="rides@example.org, or 415 555 0100" />
-                    <span class="uc-hint">This one IS shown publicly, for people asking about the event.</span>
-                    <?php SFAF_Submissions::field_error( $err( 'contact' ) ); ?>
-                </label>
+                <?php
+                /*
+                 * THE SECOND CONTACT, AND THE FORM SAYS SO IN AS MANY WORDS.
+                 *
+                 * "About you" at the top is internal. This is the event's own
+                 * contact and goes on the public page, so the legend, the hint
+                 * and the phone field all say that rather than leaving somebody
+                 * to work it out from the field order.
+                 */
+                ?>
+                <fieldset class="uc-field-group">
+                    <legend class="uc-field-label">Contact for the event</legend>
+                    <p class="uc-hint">
+                        <strong>This one appears on the public listing</strong>, including the phone number if you give one.
+                        Give the details people should use to ask about the event, which may not be yours.
+                    </p>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Name</span>
+                        <input type="text" name="contact_name" required maxlength="120" value="<?php echo esc_attr( $v( 'contact_name' ) ); ?>" />
+                        <?php SFAF_Submissions::field_error( $err( 'contact_name' ) ); ?>
+                    </label>
+                    <div class="uc-field-row">
+                        <label class="uc-field">
+                            <span class="uc-field-label">Email</span>
+                            <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $v( 'contact_email' ) ); ?>" />
+                            <?php SFAF_Submissions::field_error( $err( 'contact_email' ) ); ?>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Phone</span>
+                            <input type="tel" name="contact_phone" maxlength="40" value="<?php echo esc_attr( $v( 'contact_phone' ) ); ?>" />
+                        </label>
+                    </div>
+                    <span class="uc-hint">Give an email address, a phone number, or both.</span>
+                </fieldset>
 
                 <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Anything else we should know</span>
                     <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
-                    <span class="uc-hint">For the organisers. Not shown on the listing.</span>
+                    <span class="uc-hint">Not shown on the listing.</span>
                 </label>
 
                 <?php SFAF_Turnstile::field(); ?>
 
                 <div class="uc-form-actions uc-form-actions-primary">
-                    <p class="uc-form-actions-note">Somebody reads every submission before it goes on the calendar. You will get a copy by email.</p>
+                    <p class="uc-form-actions-note">Somebody reviews every submission before it goes on the calendar. You will get a copy by email.</p>
                     <button type="submit" class="uc-btn uc-btn-primary">Submit this event</button>
                 </div>
             </form>

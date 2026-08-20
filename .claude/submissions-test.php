@@ -125,7 +125,7 @@ require_once $root . '/includes/class-sfaf-submit.php';
  * ====================================================================== */
 $out = SFAF_Submit::validate( array() );
 
-foreach ( array( 'submitter_name', 'submitter_email', 'title', 'description', 'date', 'start_time', 'end_time', 'location', 'contact' ) as $required ) {
+foreach ( array( 'submitter_name', 'submitter_email', 'title', 'description', 'date', 'start_time', 'end_time', 'street', 'contact_name', 'contact_email' ) as $required ) {
     if ( ! isset( $out['errors'][ $required ] ) ) {
         fail( "an empty submission is accepted for $required, which is a required field" );
     }
@@ -153,8 +153,12 @@ function good( $over = array() ) {
         'date'            => date( 'Y-m-d', strtotime( '+20 days' ) ),
         'start_time'      => '18:00',
         'end_time'        => '20:00',
-        'location'        => '470 Castro St, San Francisco',
-        'contact'         => 'rides@example.org',
+        'street'          => '470 Castro St',
+        'city'            => 'San Francisco',
+        'state'           => 'CA',
+        'zip'             => '94114',
+        'contact_name'    => 'Ride desk',
+        'contact_email'   => 'rides@example.org',
     ), $over );
 }
 
@@ -173,8 +177,8 @@ if ( false === strpos( $out['clean']['description'], '<strong>' ) ) {
 $out = SFAF_Submit::validate( good( array(
     'title'       => 'Ride <script>alert(1)</script> Night',
     'description' => '<p>ok</p><script>alert(1)</script><img src=x onerror=alert(1)>',
-    'location'    => "  two    spaces  ",
-    'contact'     => '<b>rides@example.org</b>',
+    'street'       => "  two    spaces  ",
+    'contact_name' => '<b>Ride desk</b>',
     'rsvp_url'    => 'javascript:alert(1)',
 ) ) );
 
@@ -187,8 +191,8 @@ if ( false !== stripos( $out['clean']['description'], '<script' ) ) {
 if ( false !== stripos( $out['clean']['description'], '<img' ) ) {
     fail( 'an img tag survives in the description, which is an off-site request on every view' );
 }
-expect( 'the location collapses its whitespace', $out['clean']['location'], 'two spaces' );
-if ( false !== strpos( $out['clean']['contact'], '<' ) ) {
+expect( 'the street collapses its whitespace', $out['clean']['street'], 'two spaces' );
+if ( false !== strpos( $out['clean']['contact_name'], '<' ) ) {
     fail( 'markup survives in the public contact, which is printed on the event page' );
 }
 expect( 'a javascript: registration link is dropped', $out['clean']['rsvp_url'], '' );

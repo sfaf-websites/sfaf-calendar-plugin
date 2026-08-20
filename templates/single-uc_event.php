@@ -247,6 +247,16 @@ while ( have_posts() ) :
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'link' ); ?></span>
                                     <span><a href="<?php echo esc_url( $signup ); ?>" target="_blank" rel="noopener noreferrer nofollow ugc">Register for this event</a></span>
                                 </li>
+                            <?php endif; ?>
+                            <?php
+                            /* The venue's own site, beside the address rather
+                             * than on the card. See sfaf_event_venue_website(). */
+                            $venue_site = sfaf_event_venue_website( $post_id );
+                            if ( '' !== $venue_site ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'home' ); ?></span>
+                                    <span><a href="<?php echo esc_url( $venue_site ); ?>" target="_blank" rel="noopener noreferrer nofollow ugc">Venue website</a></span>
+                                </li>
                             <?php endif; ?>                        </ul>
 
                         <?php

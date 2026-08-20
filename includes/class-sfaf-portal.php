@@ -283,6 +283,37 @@ class SFAF_Portal {
         if ( ! $post || 'uc_event' !== $post->post_type ) {
             return false;
         }
+
+        /*
+         * "NOBODY HAS BEEN GIVEN IT YET" IS NOT "WHOEVER HAD IT HAS GONE"
+         * (3.47.0).
+         *
+         * This alert exists for one thing: an event somebody used to own and
+         * nobody owns now, which is discovered months later when it needs
+         * editing. A public submission is the opposite case. It has no author
+         * BY CONSTRUCTION, because nobody was logged in to make it, and it is
+         * sitting in a queue precisely so that a person can look at it and
+         * give it one. That is the system working.
+         *
+         * Left as it was, EVERY community submission would have produced an
+         * orphan email the next morning, and the one alert that matters would
+         * be buried under a daily list of things that are fine. An alert that
+         * cries wolf is worse than no alert, because it trains the person
+         * reading it to skim.
+         *
+         * SO THE TEST IS "AWAITING REVIEW", NOT "IS A SUBMISSION". A submission
+         * that has been APPROVED and published still has no author, and at that
+         * point it genuinely is an event nobody owns: somebody looked at it and
+         * put it on the calendar without giving it an organizer, which is the
+         * thing worth being told about. Approving is what moves it from pending
+         * to publish, so the status is the signal and nothing extra has to be
+         * written or cleaned up.
+         */
+        if ( 'pending' === $post->post_status && (int) $post->post_author <= 0
+            && 'local' !== SFAF_Submissions::kind( (int) $event_id ) ) {
+            return false;
+        }
+
         $author = (int) $post->post_author;
         if ( $author <= 0 || ! get_userdata( $author ) ) {
             return true;
@@ -2571,7 +2602,9 @@ class SFAF_Portal {
          */
         $pending_count = 0;
         if ( isset( $nav['pending'] ) ) {
-            $pending_count  = count( $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) ) );
+            /* The same arguments the screen itself uses, or the badge counts a
+             * different set from the list it links to. */
+            $pending_count  = count( $this->query_events( $user, $this->pending_query_args() ) );
             $pending_count += count( SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING ) );
         }
         ?>
@@ -11126,6 +11159,30 @@ class SFAF_Portal {
      * Rendering — pending queue
      * ================================================================== */
 
+    /**
+     * What the pending queue asks for. ONE DEFINITION (3.47.0).
+     *
+     * The screen and the count beside Pending in the nav both read this, so a
+     * badge can never count a different set from the list it links to. It is
+     * also what .claude/pending-queue-test.php runs, which is the whole reason
+     * it is a method rather than an array written out twice: a test holding its
+     * own copy of these arguments would keep passing while the screen changed
+     * underneath it.
+     *
+     * SCOPE 'all', SAID OUT LOUD. This queue is not "My Events" and never was.
+     * It passed no scope, and an unset scope means "your own plus your teams'",
+     * so the queue filtered itself by AUTHORSHIP. Both public forms set
+     * post_author to 0 on purpose, because nobody was logged in to author the
+     * post, so every staff request and every community submission was excluded
+     * from the one screen built to review them, reachable only by the link in
+     * its own notification email. The screen is admin-only either way.
+     *
+     * @return array
+     */
+    private function pending_query_args() {
+        return array( 'status' => 'pending', 'per_page' => 100, 'scope' => 'all' );
+    }
+
     private function render_pending( $user ) {
         if ( ! $this->is_admin_role( $user ) ) {
             $this->render_dashboard( $user );
@@ -11143,7 +11200,7 @@ class SFAF_Portal {
         SFAF_Rich_Text::enqueue();
 
         $this->chrome_open( $user, 'pending' );
-        $ids = $this->query_events( $user, array( 'status' => 'pending', 'per_page' => 100 ) );
+        $ids = $this->query_events( $user, $this->pending_query_args() );
 
         // "Fetch updates" and its report moved here from the Dashboard in
         // 2.12.0. It is an import action, its result is an import queue, and
@@ -12795,10 +12852,20 @@ class SFAF_Portal {
         /*
          * WHOSE EVENTS. THREE STATES, AND SAYING NOTHING IS THE SAFE ONE.
          *
-         *   (unset)  the access rule, unchanged since this method was written:
-         *            a contributor sees their own, anyone who may view all
-         *            sees everything. Every caller that predates 3.19.0 is in
-         *            this state and behaves exactly as it did.
+         *   (unset)  THIS PERSON'S OWN EVENTS, PLUS THEIR TEAMS'. Whoever they
+         *            are, including an admin. This line used to say "anyone who
+         *            may view all sees everything", and the code below has
+         *            never done that: there is no can_view_all() check on the
+         *            unset path, and there never was. A comment describing a
+         *            capability check that does not exist is worse than no
+         *            comment, because the next caller reads it and omits the
+         *            argument. That is exactly how the pending queue came to
+         *            filter itself by authorship and hide every public
+         *            submission, which have post_author 0 by design.
+         *
+         *            SO A SCREEN THAT MUST SHOW EVERYTHING SAYS 'all'. It is
+         *            one word, and it is the difference between a queue and a
+         *            personal list.
          *   'mine'   this person's own events, whoever they are. For an admin
          *            or an editor that is a filter, not a gate.
          *   'all'    no author filter at all.

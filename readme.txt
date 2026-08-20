@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.46.0
+Stable tag: 3.47.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,39 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.47.0 =
+
+**A submitted event was in no list at all, and everything a submission asks is now a choice rather than an open box.**
+
+**A COMMUNITY SUBMISSION WAS REACHABLE ONLY BY THE LINK IN ITS OWN NOTIFICATION EMAIL.** Fix this one first: lose the email and the event was invisible. **The status was never wrong.** It saved as `pending`, exactly as intended, which is why the daily orphan email could see it while both screens could not.
+
+**What excluded it was the author.** Both public forms set `post_author` to 0 on purpose, because nobody is logged in to author a public submission. The pending queue passed no scope, and an unset scope means "your own events plus your teams'", so **the review queue was filtering itself by who wrote it**. An authorless post matches nobody, so it was in neither the queue nor the default Events view. It was the 3.19.0 scoping, not the 3.35.0 access gate, and not the status. The queue now says `all` out loud, in one method both the screen and its nav badge read, so the badge can never count a different set from the list it links to.
+
+**The comment above that code claimed a capability check that has never existed.** It said an unset scope shows everything to anyone who may view all. There is no such check on that path and there never was, so the next caller read the comment and omitted the argument. It now describes what the code does.
+
+**THE ORPHAN ALERT WAS A FALSE POSITIVE BY DESIGN.** It reported every submission as having "a deleted account" for an organizer. "Nobody has been given this yet" and "whoever had it has left" are different states, and left alone every community submission would have produced an orphan email the next morning, burying the one alert that matters. A submission **awaiting review** is now exempt. An approved one with no owner still fires, because that means somebody looked at it and published it without giving it an organizer, which is exactly what the alert is for.
+
+**Submissions stay authorless, deliberately.** The alternative was a system account or assigning each one to an admin. A system account is a new principal to secure that then owns events and appears in pickers; assigning to an admin puts a name against work they did not do, which is the same mistake as the badge fault. The cost of leaving them authorless was two queries, and both are now fixed and tested by running them rather than by reading them.
+
+**EVERY ANSWER WITH A KNOWN SET IS A CHOICE NOW.** Cost is Free, Donation or Something else. Age is All ages, 18+, 21+ or Something else. Both reveal a text field when somebody picks the last one. This is what their Google Form already does, and it stops "Free", "free" and "No charge" arriving for one thing. Cost is still informational and no money is handled anywhere.
+
+**THE EVENT CONTACT IS THREE FIELDS: NAME, EMAIL AND PHONE.** Name is required and at least one of email or phone. **There are two contact ideas on that form and they are now labelled so they cannot be confused:** the submitter's own name and email are internal and reach them about an unclear submission, and the event contact goes on the public listing. The form says so in bold, including that the phone number appears there if given.
+
+**THE ADDRESS IS STRUCTURED.** The venue list is offered first, with street, city, state and ZIP as the alternative, because venues have carried those separately since 3.13.0 and one free-text line meant somebody retyping it at approval or a map that would not resolve. **A submitted address does not create a venue record**; the parts are kept so one can be promoted at approval if the place turns out to be used repeatedly. **A venue website** can be given and appears beside the address on the event page, not on the card, which is already carrying a lot.
+
+**STAFF CAN STAY SIGNED IN FOR 30 DAYS.** Once a link has been followed, that browser remembers the address and goes straight to the form. It is scoped to this form, grants nothing else, and is signed so it cannot be edited into a colleague's address. **The form shows which address it is about to submit as, with a way to switch**, because a shared machine is the case it has to be safe on. Any failure clears it, and the sfaf.org check still applies to a new address.
+
+**THE CALENDAR PICTURES NOW SHOW WHAT THEY ARE.** The staff form's grid was twelve thumbnails with nothing to tell them apart. Each shows its **title** from the media library, which says what a picture is for; alt text describes what is in it and is a different job. **No title means nothing is shown**, and a title WordPress made from the filename counts as no title, because "img 2847 final v3" looks like information and is not.
+
+**THE BANNER WAS BEING CROPPED TO A LETTERBOX.** It had a 220px cap with `object-fit: cover`, and a series image is prepared for cards at 16:9, so a 1200x675 picture was cut to roughly 5.5:1 and lost about two thirds of its height out of the middle. It now shows **the whole image at its own proportions**. A separate wider banner image was considered and rejected: it would be a second place to put the artwork, empty for every campaign whose series predates it, and cropping is only ever correct when you know what is in the frame.
+
+**THE CONFIRMATION PAGE'S ONLY ACTION WAS THE SECONDARY BUTTON.** All four terminal pages on the two forms put their action in a bare paragraph rather than the action row every other screen uses, so it lost the row's separation and its size step, and a white button on a white card is the weight used when something else matters more. They use the same row and the primary weight now. Paragraph spacing on these pages was also the browser default rather than the portal's, which is the same "new surface, missed the baseline" as Automation and FAQ Sets.
+
+**Copy.** "organisers" and "sorting out" were British and are gone, along with the rest of the sweep. The confirmation now reads "Thanks, we have it", and says somebody reviews every submission and that we will email if we have questions. **A series called "Cycle to Zero" no longer prints as "Cycle To Zero"**: small words inside a name keep their case, and the stored name is not rewritten, only what is shown. The cost hint that explained what the software does not do is gone.
+
+**The community form is not styled in any campaign's colours**, and will not be. One template serves every campaign, so a palette here would follow every future campaign form regardless of whose it is. The banner from the series record carries the identity; the SFAF palette carries everything else.
+
 
 = 3.46.0 =
 

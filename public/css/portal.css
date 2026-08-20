@@ -2737,8 +2737,27 @@ body.uc-modal-open { overflow: hidden; }
    does not is the fault the sidebar heading band shipped in 3.45.1. */
 .uc-submit-banner { margin: calc(-1 * var(--uc-request-pad)) calc(-1 * var(--uc-request-pad)) 20px;
     line-height: 0; overflow: hidden; border-radius: 12px 12px 0 0; }
-.uc-submit-banner img { width: 100%; height: auto; max-height: 220px;
-    object-fit: cover; display: block; }
+/* THE WHOLE PICTURE, AT ITS OWN PROPORTIONS (3.47.0).
+
+   BEFORE: `max-height: 220px` with `object-fit: cover`, which crops. A series
+   image is prepared for CARDS, which are 16:9, so a 1200x675 picture at the
+   card's aspect was being cut to roughly 1200x220, a 5.5:1 letterbox. That
+   takes about two thirds of the height out of the middle of somebody's
+   artwork, and on a campaign banner the part that goes is usually the part
+   with the logo or the faces in it.
+
+   AFTER: no height cap and no cover, so the image is shown whole at its
+   natural proportions. On a 720px card a 16:9 image is 405px tall, which is
+   a banner rather than a strip and is the shape the picture was made in.
+
+   WHY NOT A SECOND, WIDER IMAGE. It would be a second place to put the
+   artwork, which is the setting this form deliberately does not have, and it
+   would be empty for every campaign whose series predates it. Showing the
+   whole of the one image that exists is correct for any shape somebody
+   uploads; cropping is only correct when you know what is in the frame. If a
+   campaign later wants a distinct banner, the honest fix is a wider series
+   image, not a second field here. */
+.uc-submit-banner img { width: 100%; height: auto; display: block; }
 
 /* A GROUP OF FIELDS THAT ARE ABOUT A DIFFERENT SUBJECT. "About you" is not
    about the event, and a stranger reading a single unbroken column of fourteen
@@ -2764,3 +2783,55 @@ body.uc-modal-open { overflow: hidden; }
 /* Turnstile draws its own widget in its own iframe. This only reserves the
    room, so the button below it does not jump when the widget arrives. */
 .uc-turnstile { min-height: 68px; }
+/* ---------------------------------------------------------------------------
+   THE BASELINE THE TWO PUBLIC FORMS WERE MISSING (3.47.0)
+
+   These pages are new surfaces built outside caladmin's chrome, and they picked
+   up the card and the field styles while missing two things every portal screen
+   has. The same thing happened to Automation and to FAQ Sets, so this is the
+   third instance rather than a one-off.
+
+   1. PROSE RHYTHM. .uc-request-card styled h1, the lead hint and .uc-field, and
+      never plain <p>. Every paragraph on a confirmation page was therefore at
+      the browser default 1em, which is neither the portal's scale nor
+      consistent with the hints beside it.
+
+   2. THE ACTION ROW. The submit forms used .uc-form-actions-primary; the four
+      terminal pages put their only action in a bare <p>. So the button lost the
+      row's border, its 30px separation and its size step, and a neutral white
+      .uc-btn on a white card is the SECONDARY weight being asked to be the only
+      thing on the page. Those pages now use the same row and the primary
+      weight, which is a markup fix rather than a rule added here.
+   --------------------------------------------------------------------------- */
+.uc-request-card p { margin: 0 0 14px; line-height: 1.6; }
+.uc-request-card p:last-child { margin-bottom: 0; }
+/* The action row is the end of the page, so it does not also carry the card's
+   bottom margin under it. */
+.uc-request-card .uc-form-actions-primary:last-child { margin-bottom: 0; }
+
+/* THE REVEALED FIELD. Hidden only once the script has decided, never by CSS
+   alone: see the note in portal.js. [hidden] needs saying because .uc-field is
+   display:block and would win. */
+.uc-reveal-target[hidden] { display: none; }
+.uc-address-parts { margin-top: 4px; }
+
+/* State and ZIP sit beside a city that needs the room. */
+.uc-field-narrow { flex: 0 0 auto; max-width: 110px; }
+
+/* NO COLOURED EDGE ON THE PUBLIC GROUP, AND THE AUDIT WAS RIGHT TO REFUSE IT.
+   One was written, arguing that the internal/public distinction is the most
+   consequential thing on this form. It is, but colour is not the only thing
+   carrying it: the legend says "Contact for the event" and the hint above the
+   fields says in bold that it appears on the public listing. Where the words
+   already say it, an edge in brand teal is decoration, and DESIGN.md keeps
+   accent edges only where colour is the SOLE carrier. The words stay; the
+   edge goes. */
+
+/* THE PICTURE'S TITLE, UNDER IT (3.47.0). The grid was twelve thumbnails with
+   nothing saying what any of them is for. Two lines at most and then an
+   ellipsis: a title long enough to need three lines is a title that would set
+   the row height for every tile beside it. */
+.uc-request-image-title { display: block; padding: 6px 8px 8px; font-size: 13px;
+    line-height: 1.35; font-weight: 600; color: var(--p-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; }
