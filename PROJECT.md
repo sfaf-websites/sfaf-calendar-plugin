@@ -196,6 +196,13 @@ third kind arrived: a community submission is a third badge, not a third queue.
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
 
+**NOTHING DECIDES WHO COUNTS AS AN APPROVER EXCEPT THE ADMIN ROLE**, and
+there deliberately is no second list. Whoever holds Admin on the Users screen is
+notified about requests and can approve them; adding somebody means giving them
+Admin, and removing them means taking it away. A separate list of approvers
+would be a second answer to the same question, free to disagree with the first
+and certain to fall out of date.
+
 ### Files from people with no account
 
 **The riskiest thing in the plugin, handled in one place both forms call.**
@@ -358,6 +365,13 @@ has no author, and both shipped as faults.**
 > `can_view_all()` on that path and there never was, so the next caller read the
 > comment and omitted the argument. A comment describing a capability check that
 > is not in the code is worse than no comment.
+> **BOTH KEYS OR NO WIDGET IS DRAWN AT ALL.** The panel at Events >
+> Integrations > Cloudflare Turnstile takes a site key and a secret, and with
+> either one missing the form renders and submits with no challenge on it,
+> protected only by the honeypot and the rate limits. Nothing announces this:
+> the form still works, and the only place it shows is that panel. Put both keys
+> in before the community form's address is shared with anybody.
+
 - **Turnstile stands in for the mailbox**, and is never the only protection: the
   honeypot still runs, both rate limits still count, every field is still
   validated, and the result is still a row somebody has to approve. It **fails
@@ -857,6 +871,13 @@ Draft"**, and `save_mode=draft` sets the status to `draft`.
 `uc_imported` with `pending`. A draft is in neither, so saving work in progress
 takes the event **out of the queue it was being reviewed in**, and it is then
 findable only through the Events list under a status filter.
+
+**NOTHING IN CALADMIN WARNS ABOUT UNSAVED WORK, ANYWHERE.** There is no
+`beforeunload` handler in `portal.js` at all, so closing a tab, following a link
+or pressing Back mid-edit discards everything typed, silently, on every screen
+rather than only on this one. It is worth stating as a property of the portal
+and not of imports: the imported event is simply where it costs the most,
+because there is no way to save that work in place either.
 
 **And nothing protects the alternative.** There is no `beforeunload` handler
 anywhere in `portal.js`, so a manager who fills in half an imported campaign and
@@ -1909,6 +1930,19 @@ boundary and be refused about half the time. `wp-cron.php` needs no parameter,
 header or key, and never consults `DISABLE_WP_CRON`: that constant only
 suppresses the spawn from ordinary page loads.
 
+**THE ORDER THESE ARE SWITCHED ON IN IS LOAD-BEARING, and getting it wrong
+means nothing runs at all.** `DISABLE_WP_CRON` stops the pseudo-cron before
+anything has been proved to replace it, so it goes LAST:
+
+1. **Create the external ping first.** Every 15 minutes, at
+   `wp-cron.php?doing_wp_cron`, with no parameter, header or key.
+2. **Confirm on Events > Automation that tasks are running**, from that ping
+   rather than from your own page views.
+3. **Only then set `DISABLE_WP_CRON`.**
+
+Reversing 1 and 3 leaves a site with no scheduler at all, and the only symptom
+is that nothing happens overnight.
+
 **(2) stays switched on after (1) exists, and is not a second scheduler.** The
 health check that sends the "tasks have stopped" alert hangs off `wp_loaded`,
 deliberately not off the runner, since a monitor inside the thing being
@@ -2125,18 +2159,27 @@ worth not saying.
 Be honest about this in any hand-off. Almost everything in this plugin has been
 **statically verified and never executed** in the situation it was written for.
 
-**Never run in production at all:**
+**PROVED ON 2026-08-18, AND IT WAS THE MOST VALUABLE UNVERIFIED THING HERE.** A
+morning-of reminder went out **unassisted at 6:58am** against real
+registrations. That settles the scheduled path end to end in one observation:
+cron fired without a person, the reminder pass found the event, the send-once
+ledger let it through, the 6am timing rule held, and the mail left the server.
+Everything downstream of "does the unattended path work at all" is a
+**reliability** question from here, not an existence one.
 
-- **Reminders have never been sent by the scheduled path.** The send-once
-  design, the ledger's unique key, the 6am/midnight timing rule, the failure
-  accounting: none of it has ever run unattended against real registrations.
-- **The cron trigger has never fired in production.** No confirmed real system
-  cron, and the embed ping has never been observed driving a run on the live
-  site.
-- **No email has been confirmed as delivered.** `class-sfaf-email.php` says so at
-  the top of the file. Whether Postmark forwards Reply-To, and whether a
-  `text/plain` part arrives at all, are facts about the transport visible only in
-  a received message. `send_test()` exists to find out and the answer has not
+**Still never run in production:**
+
+- **The pre-event summary has never been seen.** The morning-of reminder is its
+  sibling and is now proved; the two-hour summary needs an event with somebody
+  registered and a mailbox being watched, and that has not happened.
+- **The external scheduler has never driven a run.** What fired on 2026-08-18
+  was the page-view nudge and visitor traffic. The cron-jobs.org ping does not
+  exist yet, so `DISABLE_WP_CRON` is not set and the pseudo-cron is still what
+  the site depends on. See §4 for the order that has to be followed.
+- **No email has been confirmed as RECEIVED.** One has demonstrably been sent,
+  which is a different fact. Whether Postmark forwards Reply-To, and whether a
+  `text/plain` part arrives at all, are properties of the transport visible only
+  in a received message. `send_test()` exists to find out and the answer has not
   been recorded.
 - **Neither import adapter has been observed running unattended.** GFMP and
   Eventbrite have been exercised by hand; the hourly fetch path has not.
@@ -2331,6 +2374,31 @@ keep the alphabetically first and drop the other silently.
 > **Ask whether the LIMIT is in the data model or only in the control.** When it
 > is only in the control, the loss is silent, unlogged and unrecoverable.
 
+**A checker that was blind for a reason that had nothing to do with the code.**
+Until 3.49.0 the linter, the callable audit and the date sweep all walked
+`.build-stage/`, the byte-identical copy of the plugin that `build-zip.sh`
+leaves behind. Every finding was counted twice, and because the copy sits at a
+path none of the exemptions name, the date sweep reported the date formatter for
+being the date formatter. **It surfaced only when the suite ran AFTER a build**,
+which is not the usual order, so it survived unnoticed through several releases
+and made one clean run clean by luck of sequencing rather than by being correct.
+
+> **Ask what the checker is looking AT, not only what it is looking for.** A
+> tool that reads the tree will read whatever is in the tree, including things
+> the build put there. Every tree-walking check now skips `.build-stage/` the
+> same way it skips `Old Calendar Files/`.
+
+**A new checker gets a case for the shape you have NOT already seen.** The type
+scale sweep matched `(\d+)px`, so it could not see `13.5px`, which is precisely
+the value the ladder exists to forbid. Its self-test passed because every case
+in it was a whole number, and six real violations sat behind it. The same shape
+appeared again in 3.49.1: a rendering test modelled a TinyMCE textarea as
+holding the typed value, which is the one thing such a textarea never does, and
+the planted fault went uncaught until the fixture was corrected.
+
+> **A self-test built only from the case that prompted the checker proves the
+> checker handles that case.** Give it the input you think cannot happen.
+
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not
 answer "why does this still look like that". Start from the element as rendered
@@ -2370,7 +2438,15 @@ grounds, not technical ones**. It would work, and the exposure is unacceptable.
 Do not revisit this by finding a cleverer set of API calls; the constraint is
 the key's scope.
 
-**The agreed mechanism.**
+> **THE SOURCE HAS MOVED TO A MangoApps TRACKERS ENDPOINT**, and what is being
+> waited on from Val is now that endpoint plus a **sample response**. The shape
+> below was agreed when it was going to be a file he wrote; the privacy
+> reasoning above is unaffected and is the part worth keeping, because it is the
+> half nobody can reconstruct later. **Do not build the adapter until the sample
+> exists**: the GFMP spec has been wrong or silent four times and every one cost
+> a release.
+
+**The agreed mechanism**, as it stood when the file was the source.
 
 - **Val**, who manages EveryAction, runs a **cron job on the hour** that writes a
   **JSON file of events** to the shared host.
