@@ -705,6 +705,74 @@ plain text so this never bit, and it would have bitten every card on the public
 calendar and in every embed the day this shipped. `sfaf_flatten_html()` turns
 block tags into spaces **before** stripping, which is the only order that works.
 
+### "Has this field been filled in" is asked in two languages, off one list
+
+`SFAF_Sources::completeness_fields()` is that list. The server reads storage
+through `field_is_filled()`; the browser reads the FORM, because the warning has
+to clear as somebody types rather than stating what was true at page load.
+
+**The entry's `inputs` is the `name` attribute exactly as the editor emits it,
+brackets and all.** That is the string a DOM selector needs, and the `$_POST`
+key is that minus a trailing `[]`, derived by `post_key_for_input()`.
+
+> **3.49.1: THE LIST HELD THE POST KEY, AND THE TWO ARE THE SAME STRING FOR
+> EVERY FIELD EXCEPT THE TWO THAT TAKE SEVERAL VALUES.** Categories have been
+> multi-select since 3.8.0 and organizers since 3.40.0, so the controls are
+> `category[]` and `organizer[]`. `[name="category"]` matched nothing, the live
+> check took its "these controls are not on this form" branch, and that branch
+> answers from stored state. On an imported event nobody has saved, stored state
+> is empty, so ticking every box on the screen never cleared the warning.
+>
+> **The fallback branch is what made it silent.** A selector matching nothing is
+> indistinguishable, at runtime, from a field that genuinely is not on this
+> screen, and the second is a real case worth keeping. So the branch stays and
+> the TEST carries the weight: `.claude/completeness-test.php` renders the real
+> manager controls and asserts every declared input matches a real name
+> attribute. Nothing else can see the mismatch, because neither file is wrong on
+> its own.
+
+**A rich text field does not keep its value in the control that carries its
+name.** TinyMCE holds the content in an iframe and writes it back to the
+textarea at submit, so reading `.value` gives the page-load value forever. The
+browser side asks the editor when one is running and not hidden, and binds to
+the editor's own events, because typing in an iframe fires nothing on the form.
+A hidden editor means the plain-text tab is showing and the textarea is then the
+truth.
+
+**A checkbox carries its value whether or not it is ticked.** `checked` is the
+only thing that answers for a checkbox or a radio, and asking a category box for
+`.value` returns a term id, which reads as filled. That was not the shipped
+fault but it was one edit away from being the next one.
+
+**The three shapes are named in the engine's own comment**, between the markers
+`.claude/completeness-test.php` slices it from. Keep the markers.
+
+### There is no way to save a half-finished imported event
+
+**An omission, not a decision, and it is worth knowing before somebody loses an
+afternoon.** The editor's left button is decided by `$keep_status`, which is
+true for `publish`, `pending` and `future`. An imported event sits in the custom
+`uc_imported` status, which is in none of those, so the button is **"Save
+Draft"**, and `save_mode=draft` sets the status to `draft`.
+
+**What that costs.** `SFAF_Sources::queue_ids()` matches `uc_imported` and
+`uc_dismissed` only, and the unified pending list of 3.49.0 merges
+`uc_imported` with `pending`. A draft is in neither, so saving work in progress
+takes the event **out of the queue it was being reviewed in**, and it is then
+findable only through the Events list under a status filter.
+
+**And nothing protects the alternative.** There is no `beforeunload` handler
+anywhere in `portal.js`, so a manager who fills in half an imported campaign and
+closes the tab, or follows a link, loses everything typed with no prompt.
+
+> **The one-line version of the fix is adding `uc_imported` to `$keep_status`,
+> and it is deliberately NOT in 3.49.1.** It changes which events stay in the
+> queue after a save, which is a behaviour change rather than a bug fix, and it
+> wants deciding rather than slipping into a patch release. The queue's own
+> manager panel already saves these fields in place, through
+> `save_manager_fields`, without touching the status, so the capability exists;
+> what is missing is the same thing from the full editor.
+
 ### The pending queue is one list, and the filter is not the badge
 
 **One list, with controls over it (3.49.0).** It used to stack three blocks:

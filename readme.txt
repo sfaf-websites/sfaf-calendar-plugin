@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.49.0
+Stable tag: 3.49.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.49.1 =
+
+**Fix: the publish warning named fields that were filled in.**
+
+Opening a pending GoFundMe Pro event, writing a description, choosing a category and choosing an organizer, then pressing Publish still asked for all three. The warning was right about WHICH fields a campaign leaves to a person; it was wrong about whether they had been filled in.
+
+**It was not one fault. It was two, and they landed on the same three fields.**
+
+**The live check looks for controls by name, and two of the names had brackets.** Categories have taken several values since 3.8.0 and organizers since 3.40.0, so the controls are `category[]` and `organizer[]`. The list the check reads from held `category` and `organizer`, which is what PHP calls them once submitted and is not what the browser has to match. Finding no control at all, the check fell back to what was stored, and nothing is stored on an event nobody has saved yet, so ticking boxes could never clear it.
+
+**The description is a rich text editor, and a rich text editor does not keep its text in the box behind it.** TinyMCE holds the content in its own frame and writes it back only at submit, so reading the textarea gave whatever the page loaded with. Typing a description never cleared the warning either, for a completely different reason. The check now asks the editor, and listens to it, so the amber clears as the words are typed.
+
+**The warning also says less.** It used to read "This event still needs a description, a category, and an organizer. GoFundMe Pro cannot supply that, so it stays empty on the live page until somebody writes it here. Publish anyway?" The middle sentence explains why the software could not fill the field in, to somebody who is looking at the empty field. It now names what is missing and asks the question: **"This event still needs a description, a category, and an organizer. Publish anyway?"**
+
+**The check is asserted by running it.** This is the fourth time a check has read something other than what the interface writes, so the new one renders the real controls, reads their real name attributes, and runs the real JavaScript over them: fill all four and nothing warns, empty each in turn and it names that field and no other. The shipped fault was planted back in all three of its forms and every one was caught.
+
+**Known, not fixed here: there is still no way to save a half-finished imported event.** On an imported campaign the left button is "Save Draft", which takes it out of the pending queue, and the right one publishes it. Nothing saves work in progress in place, and nothing warns before leaving the page, so a part-filled event closed by accident is lost. That is an omission rather than a decision and is written up in PROJECT.md.
 
 = 3.49.0 =
 

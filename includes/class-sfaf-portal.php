@@ -8809,10 +8809,18 @@ class SFAF_Portal {
                 // Baking the finished sentence in here is what made the button
                 // warn about an image that had just been chosen: it was written
                 // when the page was rendered and nothing rewrote it.
-                $confirm_tpl = sprintf(
-                    'This event still needs %%s. %s cannot supply that, so it stays empty on the live page until somebody writes it here. Publish anyway?',
-                    $prov['label'] ? $prov['label'] : 'The source'
-                );
+                /*
+                 * WHICH FIELDS, AND THE CHOICE. Nothing else.
+                 *
+                 * It used to carry "GoFundMe Pro cannot supply that, so it
+                 * stays empty on the live page until somebody writes it here",
+                 * which explains why the software could not fill the field in.
+                 * The manager is looking at the empty field, has just been
+                 * told which ones are empty, and is being asked one question.
+                 * Predates the copy rule in CLAUDE.md §6 and does not survive
+                 * it: it tells nobody what to do or what will happen to them.
+                 */
+                $confirm_tpl = 'This event still needs %s. Publish anyway?';
                 $confirm = ! empty( $missing )
                     ? str_replace( '%s', SFAF_Sources::field_phrase( $missing ), $confirm_tpl )
                     : '';

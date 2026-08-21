@@ -594,10 +594,28 @@ class SFAF_Sources {
      * halves and they used to be written down in two different places:
      *
      *   'phrase'  how the field is named to a person.
-     *   'inputs'  the POST field names the editor submits, which are exactly
-     *             the names SFAF_Portal::save_event_from_post() reads back.
+     *   'inputs'  THE `name` ATTRIBUTE EXACTLY AS THE EDITOR EMITS IT, brackets
+     *             and all. See the warning below: this used to hold the PHP key
+     *             instead, and the two are the same string for every field
+     *             except the two that take several values.
      *   field_is_filled() below is the storage half, read on page load and by
      *             the pending queue.
+     *
+     * > **`category[]` IS THE NAME; `$_POST['category']` IS THE KEY, AND
+     * > STORING THE KEY HERE COST 3.49.1.** PHP turns a `name="category[]"`
+     * > control into `$_POST['category']`, so the old entries genuinely were
+     * > "the names save_event_from_post() reads back" and the docblock was
+     * > accurate about its own half. The browser uses the same list as a DOM
+     * > selector, and `[name="category"]` matches NOTHING when the control is
+     * > `category[]`. The live check then took its "these controls are not on
+     * > this form" branch and fell back to the stored answer, which on an
+     * > unsaved import is empty, so choosing categories never cleared the
+     * > warning.
+     * >
+     * > **The name attribute is the one string both halves can derive from.**
+     * > PHP's key is this minus a trailing `[]`, mechanically; a DOM selector
+     * > cannot recover the brackets from the key. So the attribute is what is
+     * > stored, and anything wanting the POST key strips the suffix.
      *
      * WHY THE CONTROL NAMES BELONG HERE. The publish warning, the amber field
      * highlight and the queue icon all came off missing_manager_fields(), so
@@ -626,9 +644,26 @@ class SFAF_Sources {
             'title'       => array( 'phrase' => 'a title',       'inputs' => array( 'title' ) ),
             'location'    => array( 'phrase' => 'a location',    'inputs' => array( 'location' ) ),
             'date'        => array( 'phrase' => 'a date',        'inputs' => array( 'date' ) ),
-            'category'    => array( 'phrase' => 'a category',    'inputs' => array( 'category' ) ),
-            'organizer'   => array( 'phrase' => 'an organizer',  'inputs' => array( 'organizer' ) ),
+            /* Checkbox groups since 3.8.0 and 3.40.0. The brackets are part of
+             * the name and are what the browser has to match on. */
+            'category'    => array( 'phrase' => 'a category',    'inputs' => array( 'category[]' ) ),
+            'organizer'   => array( 'phrase' => 'an organizer',  'inputs' => array( 'organizer[]' ) ),
         );
+    }
+
+    /**
+     * The `$_POST` key a control name arrives under.
+     *
+     * One line, in one place, so nothing has to remember which way the
+     * conversion goes. PHP drops the trailing `[]` and collects the values into
+     * an array under what is left.
+     *
+     * @param string $input A name attribute from completeness_fields().
+     * @return string
+     */
+    public static function post_key_for_input( $input ) {
+        $input = (string) $input;
+        return ( '[]' === substr( $input, -2 ) ) ? substr( $input, 0, -2 ) : $input;
     }
 
     /**

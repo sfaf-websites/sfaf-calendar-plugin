@@ -1290,6 +1290,131 @@
         });
     }
 
+    /* --- completeness engine start -------------------------------------
+     *
+     * WHAT COUNTS AS FILLED, FOR ONE CONTROL AND FOR ONE FIELD.
+     *
+     * Between markers because .claude/completeness-test.php slices this out
+     * and runs it under node against a form built from the control names the
+     * real editor emits. Do not remove the markers; the test fails loudly if
+     * they are missing, rather than quietly checking nothing.
+     *
+     * THREE KINDS OF CONTROL AND THEY DO NOT ANSWER THE SAME WAY. 3.49.1 shipped
+     * because this asked all of them for `.value`:
+     *
+     *   a CHECKBOX or RADIO carries its value whether or not it is ticked, so
+     *     `.value` on an unticked category box is a term id and reads as filled.
+     *     `checked` is the only thing that answers.
+     *
+     *   a TEXTAREA RUN BY TinyMCE does not hold what is on the screen. The
+     *     content lives in the editor's iframe and is written back to the
+     *     textarea at submit, so `.value` is whatever the page loaded with.
+     *     Typing a description therefore never cleared the warning.
+     *
+     *   everything else is `.value`, which is what this always did.
+     * ------------------------------------------------------------------ */
+
+    /* The editor behind a textarea, when TinyMCE is running and not hidden. A
+     * hidden editor means the plain-text tab is showing, and then the textarea
+     * IS the truth. */
+    function activeEditorFor(el) {
+        if (!el || !el.id || !window.tinymce || typeof window.tinymce.get !== 'function') {
+            return null;
+        }
+        var ed = window.tinymce.get(el.id);
+        if (!ed || (typeof ed.isHidden === 'function' && ed.isHidden())) {
+            return null;
+        }
+        return ed;
+    }
+
+    /* A control counts as filled when its trimmed value is neither empty nor
+     * "0": "0" is the None option on a select and the no-attachment value of
+     * the featured-image field. Same rule as
+     * SFAF_Sources::completeness_fields() documents. */
+    function controlFilled(el) {
+        if (!el || el.disabled) {
+            return false;
+        }
+
+        var type = (el.type || '').toLowerCase();
+        if (type === 'checkbox' || type === 'radio') {
+            return !!el.checked;
+        }
+
+        var ed = activeEditorFor(el);
+        if (ed) {
+            /* format:'text' so a TinyMCE document holding nothing but an empty
+             * paragraph reads as empty, which is what it looks like. */
+            return (ed.getContent({ format: 'text' }) || '').trim() !== '';
+        }
+
+        var v = (el.value || '').trim();
+        return v !== '' && v !== '0';
+    }
+
+    /* A field is filled when ANY of its controls is: the image is filled by a
+     * chosen attachment OR a pasted URL, exactly as field_is_filled() treats it
+     * server-side; a category is filled by any one box being ticked. */
+    function fieldFilled(entry, form) {
+        var i;
+        var controls = [];
+        for (i = 0; i < entry.inputs.length; i++) {
+            controls = controls.concat(
+                Array.prototype.slice.call(
+                    form.querySelectorAll('[name="' + entry.inputs[i] + '"]')
+                )
+            );
+        }
+        /* A field whose controls are not on this form at all keeps whatever the
+         * server decided, rather than being declared empty by absence.
+         *
+         * THIS BRANCH IS A FALLBACK AND MUST NOT BE LOAD-BEARING. It is what
+         * turned 3.49.1's selector mismatch into a silent wrong answer instead
+         * of a visible one: every category control was present and none of them
+         * matched, so this returned the stored state forever. The test asserts
+         * that every declared input matches a real control in the rendered
+         * editor, which is the assertion that keeps this branch rare. */
+        if (!controls.length) {
+            return !!entry.filled;
+        }
+        for (i = 0; i < controls.length; i++) {
+            if (controlFilled(controls[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /* "an image, a description, and a category": the same joining as
+     * SFAF_Sources::field_phrase(). */
+    function completenessPhrase(list) {
+        if (!list.length) {
+            return '';
+        }
+        if (list.length === 1) {
+            return list[0];
+        }
+        if (list.length === 2) {
+            return list[0] + ' and ' + list[1];
+        }
+        // The serial comma, matching SFAF_Sources::field_phrase().
+        return list.slice(0, -1).join(', ') + ', and ' + list[list.length - 1];
+    }
+
+    /* Every field that is still empty, phrased. The one answer the banner, the
+     * amber highlight and the Publish sentence are all computed from. */
+    function missingFields(fields, form) {
+        var missing = [];
+        fields.forEach(function (entry) {
+            if (!fieldFilled(entry, form)) {
+                missing.push(entry.phrase);
+            }
+        });
+        return missing;
+    }
+    /* --- completeness engine end ---------------------------------------- */
+
     /* ---------------------------------------------------------------------
      * The live completeness check.
      *
@@ -1328,59 +1453,6 @@
         var text = document.querySelector('[data-uc-missing-text]');
         var publish = form.querySelector('[data-uc-confirm-template]');
 
-        /* A control counts as filled when its trimmed value is neither empty
-         * nor "0" — "0" is the None option on the category and organizer
-         * selects and the no-attachment value of the featured-image field.
-         * Same rule as SFAF_Sources::completeness_fields() documents. */
-        function controlFilled(el) {
-            if (!el || el.disabled) {
-                return false;
-            }
-            var v = (el.value || '').trim();
-            return v !== '' && v !== '0';
-        }
-
-        /* A field is filled when ANY of its controls is: the image is filled by
-         * a chosen attachment OR a pasted URL, exactly as field_is_filled()
-         * treats it server-side. */
-        function fieldFilled(entry) {
-            var i;
-            var controls = [];
-            for (i = 0; i < entry.inputs.length; i++) {
-                controls = controls.concat(
-                    Array.prototype.slice.call(
-                        form.querySelectorAll('[name="' + entry.inputs[i] + '"]')
-                    )
-                );
-            }
-            // A field whose controls are not on this form at all keeps whatever
-            // the server decided, rather than being declared empty by absence.
-            if (!controls.length) {
-                return !!entry.filled;
-            }
-            for (i = 0; i < controls.length; i++) {
-                if (controlFilled(controls[i])) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /* "an image, a description, and a category": the same joining as
-         * SFAF_Sources::field_phrase(). */
-        function phrase(list) {
-            if (!list.length) {
-                return '';
-            }
-            if (list.length === 1) {
-                return list[0];
-            }
-            if (list.length === 2) {
-                return list[0] + ' and ' + list[1];
-            }
-            // The serial comma, matching SFAF_Sources::field_phrase().
-            return list.slice(0, -1).join(', ') + ', and ' + list[list.length - 1];
-        }
 
         function toggle(el, hidden) {
             if (!el) {
@@ -1397,7 +1469,7 @@
             var missing = [];
 
             fields.forEach(function (entry) {
-                var filled = fieldFilled(entry);
+                var filled = fieldFilled(entry, form);
                 if (!filled) {
                     missing.push(entry.phrase);
                 }
@@ -1413,7 +1485,7 @@
             });
 
             if (text) {
-                text.textContent = phrase(missing);
+                text.textContent = completenessPhrase(missing);
             }
             toggle(banner, missing.length === 0);
 
@@ -1421,7 +1493,7 @@
                 if (missing.length) {
                     publish.setAttribute(
                         'data-uc-confirm',
-                        publish.getAttribute('data-uc-confirm-template').replace('%s', phrase(missing))
+                        publish.getAttribute('data-uc-confirm-template').replace('%s', completenessPhrase(missing))
                     );
                 } else {
                     publish.removeAttribute('data-uc-confirm');
@@ -1429,12 +1501,40 @@
             }
         }
 
-        /* input covers typing, change covers the selects and the media picker
-         * (which sets the hidden field's value and fires nothing on its own —
-         * hence the explicit refresh from initImagePicker). */
+        /* input covers typing, change covers the selects, the checkbox groups
+         * and the media picker (which sets the hidden field's value and fires
+         * nothing on its own, hence the explicit refresh from
+         * initImagePicker). */
         form.addEventListener('input', refresh);
         form.addEventListener('change', refresh);
         window.sfafRefreshCompleteness = refresh;
+
+        /* TYPING IN TinyMCE FIRES NOTHING ON THE FORM. Its content is in an
+         * iframe, so neither listener above ever sees it, and the description
+         * would stay amber until something else on the page happened to change.
+         * The editor is asked for its own events instead.
+         *
+         * `init` matters as much as the change events: TinyMCE usually starts
+         * AFTER this runs, and until it has started activeEditorFor() finds
+         * nothing and the textarea's page-load value is what gets read. */
+        if (window.tinymce && typeof window.tinymce.on === 'function') {
+            try {
+                window.tinymce.on('AddEditor', function (e) {
+                    if (!e || !e.editor || typeof e.editor.on !== 'function') {
+                        return;
+                    }
+                    /* keyup and SetContent between them cover typing, pasting,
+                     * the toolbar buttons and anything set by script. */
+                    ['init', 'keyup', 'change', 'SetContent', 'Undo', 'Redo'].forEach(function (ev) {
+                        e.editor.on(ev, refresh);
+                    });
+                });
+            } catch (err) {
+                /* An editor that will not be listened to leaves the field
+                 * refreshing on the form's own events, which is where it was
+                 * before. Never let this stop the rest of the check binding. */
+            }
+        }
 
         refresh();
     }

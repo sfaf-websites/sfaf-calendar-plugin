@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-21, at 3.49.0.
+**Last updated:** 2026-08-21, at 3.49.1.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.49.0**, built as `sfaf-calendar-3.49.0.zip` in the project
+The plugin is at **3.49.1**, built as `sfaf-calendar-3.49.1.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.49.0, the deployment is stale or partial, and that
+screen: if it does not say 3.49.1, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -240,6 +240,27 @@ events that were not saved a second time.
 | **Val** | The EveryAction JSON file: a **sample with real events**, and confirmation his hourly job **writes atomically** | Asked. Field list in `PROJECT.md` §8. Do not build against a guessed shape. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
+
+## Saving a half-finished imported event loses it from the queue
+
+**Known, reported, and deliberately not fixed in 3.49.1.** On an imported
+GoFundMe Pro or Eventbrite event the editor's left button is **"Save Draft"**,
+because `$keep_status` covers `publish`, `pending` and `future` and an import
+sits in `uc_imported`. Saving therefore sets the status to `draft`, and a draft
+is in neither the import queue nor the unified pending list, so **the event
+disappears from the screen it was being reviewed on**. The alternative is
+Publish, which puts it live.
+
+**There is no third option and nothing warns.** No `beforeunload` handler exists
+anywhere in `portal.js`, so a part-filled campaign closed by accident is gone.
+
+**Until it is fixed, fill an imported event in one sitting**, or use the Save
+these fields control on the Pending queue's own panel, which writes the same
+fields without touching the status.
+
+The fix is one line, adding `uc_imported` to `$keep_status`, and it was held back
+because it changes which events stay in the queue after a save. That is a
+decision, not a bug fix. See PROJECT.md.
 
 ## Mark's own testing list
 
