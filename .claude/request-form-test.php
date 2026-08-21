@@ -78,8 +78,11 @@ class SFAF_Reminders {
 }
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
+    public static function set_for_event( $a, $b ) {}
+    public static function all() { return array(); }
 }
 class SFAF_Venues {
+    public static function set_for_event( $a, $b ) {}
     public static function exists( $id ) { return in_array( (int) $id, isset( $GLOBALS['terms']['uc_venue'] ) ? $GLOBALS['terms']['uc_venue'] : array(), true ); }
 }
 class SFAF_Media_Folder {
@@ -126,11 +129,38 @@ function wp_strip_all_tags( $t, $break = false ) { return trim( strip_tags( (str
 class SFAF_Uploads {
     const MAX_BYTES = 10485760;
 }
-class SFAF_Submit {
-    const META_IMAGE = '_uc_submitted_image';
+/*
+ * THE REAL SFAF_Submit AND SFAF_FAQ_Sets, not stubs.
+ *
+ * SFAF_Request::validate() sends the requester's own rows through
+ * SFAF_Submit::clean_faqs(), and faqs_for() reads a set through
+ * SFAF_FAQ_Sets. Both are exactly what the FAQ assertions below are about, so
+ * a stub of either would be a test of this file rather than of the plugin.
+ */
+class SFAF_Rich_Text {
+    public static function sanitize( $v ) { return (string) $v; }
+    public static function to_plain( $v ) { return trim( strip_tags( (string) $v ) ); }
+    public static function enqueue() {}
+    public static function render( $id, $name, $content, $args = array() ) {}
+    public static function deferred( $name, $content, $args = array() ) {}
+}
+class SFAF_Turnstile {
+    public static function field() {}
+    public static function verify() { return true; }
+}
+/* The set store is an option. Real reads and writes, so "copy, not
+ * reference" is decided by the code rather than by a stub that hands back a
+ * fresh array every time. */
+$GLOBALS['options'] = array();
+if ( ! function_exists( 'get_option' ) ) {
+    function get_option( $n, $d = false ) { return isset( $GLOBALS['options'][ $n ] ) ? $GLOBALS['options'][ $n ] : $d; }
+    function update_option( $n, $v, $a = null ) { $GLOBALS['options'][ $n ] = $v; return true; }
+    function delete_option( $n ) { unset( $GLOBALS['options'][ $n ] ); return true; }
 }
 
+require_once $root . '/includes/class-sfaf-faq-sets.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
+require_once $root . '/includes/class-sfaf-submit.php';
 require_once $root . '/includes/class-sfaf-request.php';
 
 function expect( $label, $got, $want ) {
@@ -617,6 +647,120 @@ foreach ( array( 'svg', 'image/svg', 'application/pdf' ) as $never ) {
         $fails[] = "the upload handler lists $never as an accepted type";
     }
 }
+/* =========================================================================
+ * FAQs: A SET, THE REQUESTER'S OWN, OR BOTH (3.52.0).
+ *
+ * The three things this has to get right are all decisions rather than
+ * mechanics, so each is asserted rather than assumed:
+ *
+ *   1. THE SET IS COPIED, NOT REFERENCED. Editing it afterwards must not touch
+ *      an event already submitted, and nothing may record which set was used.
+ *   2. THE SET'S QUESTIONS COME FIRST, the requester's after. No interleaving.
+ *   3. THE CLEANUP RULE IS THE NARROW ONE, unchanged, for rows from either
+ *      source.
+ * ====================================================================== */
+$GLOBALS['options']['sfaf_faq_sets'] = array(
+    'parking' => array(
+        'name'    => 'Parking and access',
+        'rows'    => array(
+            array( 'question' => 'Is there parking?',      'answer' => '<p>Yes, <strong>free</strong>.</p>' ),
+            array( 'question' => 'Is it accessible?',      'answer' => '<p>Step-free throughout.</p><script>alert(1)</script>' ),
+        ),
+        'created' => 1,
+        'updated' => 1,
+    ),
+);
+
+/* --- Ordering, with both used. ---------------------------------------- */
+$both = SFAF_Request::faqs_for( 'parking', SFAF_Submit::clean_faqs( array(
+    array( 'question' => 'What should I bring?', 'answer' => '<p>Water.</p>' ),
+) ) );
+expect( 'a set and a question of their own make three rows', count( $both ), 3 );
+if ( 3 === count( $both ) ) {
+    expect( "the set's first question leads",  $both[0]['question'], 'Is there parking?' );
+    expect( "the set's second follows",        $both[1]['question'], 'Is it accessible?' );
+    expect( "the requester's own comes last",  $both[2]['question'], 'What should I bring?' );
+}
+
+/* --- Either alone. ----------------------------------------------------- */
+expect( 'a set alone gives the set', count( SFAF_Request::faqs_for( 'parking', array() ) ), 2 );
+expect( 'own questions alone need no set', count( SFAF_Request::faqs_for( '', SFAF_Submit::clean_faqs( array(
+    array( 'question' => 'Only mine', 'answer' => '<p>Yes.</p>' ),
+) ) ) ), 1 );
+expect( 'neither gives nothing', SFAF_Request::faqs_for( '', array() ), array() );
+expect( 'a set id naming nothing is dropped', SFAF_Request::faqs_for( 'no-such-set', array() ), array() );
+
+/* --- A duplicate question is sent once, by the same rule apply() uses. -- */
+$dupe = SFAF_Request::faqs_for( 'parking', SFAF_Submit::clean_faqs( array(
+    array( 'question' => '  is there PARKING? ', 'answer' => '<p>Mine.</p>' ),
+) ) );
+expect( 'a question already in the set is not asked twice', count( $dupe ), 2 );
+
+/* --- COPY, NOT REFERENCE, ASKED THE ONLY WAY IT CAN BE. ----------------
+ *
+ * NOT by editing the set afterwards and re-reading what came back. PHP arrays
+ * are values, so rows already returned could never change however this were
+ * written, and that check passed whatever the code did. The first draft of this
+ * file did exactly that and a planted reference walked straight through it.
+ *
+ * The decidable question is whether anything about the SET reaches storage. A
+ * copy stores text and forgets where it came from; a reference has to keep an
+ * id to resolve later. So: every stored row is a question and an answer and
+ * nothing else, and the event carries no set id anywhere in its meta.
+ */
+$out = SFAF_Request::validate( good_post( array(
+    'faq_set' => 'parking',
+    'faq'     => array( array( 'question' => 'Mine', 'answer' => '<p>Yes.</p>' ) ),
+) ) );
+foreach ( $out['clean']['faqs'] as $row ) {
+    if ( array_keys( $row ) !== array( 'question', 'answer' ) ) {
+        $fails[] = 'a stored FAQ row carries more than a question and an answer: ' . implode( ',', array_keys( $row ) );
+        break;
+    }
+}
+/* And nothing carries a set id onward into storage. faq_set is on $clean so
+ * the form can show the chosen set again when it re-renders after an error
+ * elsewhere; it must never become part of what is written to the event. */
+if ( isset( $out['clean']['faqs']['set'] ) ) {
+    $fails[] = 'the stored FAQ list names the set it came from, which is a reference rather than a copy';
+}
+
+/* The set's own markup is cleaned by the narrow rule too, not carried across
+ * on the strength of having been written by staff in caladmin. */
+$from_set = SFAF_Request::faqs_for( 'parking', array() );
+if ( false !== stripos( $from_set[1]['answer'], '<script' ) ) {
+    $fails[] = "a set's rows reach the event without the anonymous cleanup rule";
+}
+
+/* --- The cleanup rule is the narrow one, for rows from EITHER source. --- */
+$nasty = SFAF_Request::faqs_for( 'parking', SFAF_Submit::clean_faqs( array(
+    array( 'question' => 'Dangerous', 'answer' => '<p>ok</p><script>alert(1)</script><img src=x>' ),
+) ) );
+$last = end( $nasty );
+if ( false !== stripos( $last['answer'], '<script' ) || false !== stripos( $last['answer'], '<img' ) ) {
+    $fails[] = 'the staff form stores markup the anonymous rule forbids in a FAQ answer';
+}
+if ( false === strpos( $both[0]['answer'], '<strong>' ) ) {
+    $fails[] = "a set's formatting was stripped on the way through the request form";
+}
+
+/* --- The cap is FAQ Sets' cap, not a number invented here. ------------- */
+$many = array();
+for ( $i = 0; $i < SFAF_FAQ_Sets::MAX_ROWS + 20; $i++ ) {
+    $many[] = array( 'question' => 'Q' . $i, 'answer' => '<p>A</p>' );
+}
+expect(
+    'the combined list is capped where every other FAQ list is',
+    count( SFAF_Request::faqs_for( 'parking', SFAF_Submit::clean_faqs( $many ) ) ),
+    SFAF_FAQ_Sets::MAX_ROWS
+);
+
+/* --- And the community form still has no set picker. ------------------- */
+$submit_src = file_get_contents( $root . '/includes/class-sfaf-submit.php' );
+if ( false !== strpos( $submit_src, "name=\"faq_set\"" ) ) {
+    $fails[] = 'the community form has grown a FAQ set picker, which would list internal programming to a stranger';
+}
+
 /* ---------------------------------------------------------------------------
  * Result.
  * ------------------------------------------------------------------------ */

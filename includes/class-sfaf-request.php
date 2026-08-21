@@ -649,9 +649,85 @@ class SFAF_Request {
             }
         }
 
+        /* ---- FAQs: a set, questions of their own, or both. ----
+         *
+         * NEITHER IS REQUIRED AND NEITHER VALIDATES. A set id naming nothing is
+         * dropped by faqs_for(), and an untouched repeater row is dropped by
+         * clean_faqs(). There is no way for a requester to get this wrong, so
+         * there is no error to raise about it.
+         *
+         * The set id is kept on $clean as well, so a form that comes back with
+         * errors elsewhere still shows the set they picked. */
+        $clean['faq_set'] = isset( $post['faq_set'] ) ? sanitize_text_field( wp_unslash( $post['faq_set'] ) ) : '';
+        $clean['faq_own'] = SFAF_Submit::clean_faqs( isset( $post['faq'] ) ? $post['faq'] : array() );
+        $clean['faqs']    = self::faqs_for( $clean['faq_set'], $clean['faq_own'] );
+
         $clean['notes'] = $str( 'notes', 2000 );
 
         return array( 'clean' => $clean, 'errors' => $errors );
+    }
+
+    /**
+     * A set's questions, then the requester's own, as one list.
+     *
+     * A COPY OF THE SET, NOT A REFERENCE TO IT, and that is caladmin's rule
+     * followed rather than a new one invented. SFAF_FAQ_Sets documents why at
+     * the top of that file: a link would mean one edit rewriting every event
+     * that ever used the set, including past events whose answers were correct
+     * at the time. Copying fails safe, and it is also what makes deleting a set
+     * harmless. So nothing here stores the set id on the event; what is stored
+     * is the text, and the set is free to change or vanish afterwards.
+     *
+     * THE SET'S QUESTIONS COME FIRST AND THE REQUESTER'S ARE APPENDED. No
+     * interleaving. A manager reordering them at approval is one drag; a rule
+     * that guessed at an order would be a rule to explain.
+     *
+     * DUPLICATES ARE SKIPPED, by the same fingerprint apply() uses, so a
+     * requester who picks the parking set AND types "Is there parking?" sends
+     * one of it rather than two.
+     *
+     * THE SET'S ROWS ARE RE-CLEANED THROUGH THE ANONYMOUS RULE. They were
+     * written in caladmin under wp_kses_post(), which is wider than anything
+     * this form accepts. Running them through the narrow list keeps one answer
+     * to "what may arrive from this form" regardless of where the text came
+     * from, and costs nothing: the short toolbar cannot produce anything the
+     * narrow list rejects. NOTHING IS WIDENED to carry a set across.
+     *
+     * CAPPED WHERE EVERY OTHER FAQ LIST IS, at SFAF_FAQ_Sets::MAX_ROWS, read
+     * from that class rather than typed again.
+     *
+     * @param string $set_id
+     * @param array  $own Already through SFAF_Submit::clean_faqs().
+     * @return array<int,array{question:string,answer:string}>
+     */
+    public static function faqs_for( $set_id, $own ) {
+        $out  = array();
+        $seen = array();
+
+        $set = ( '' !== (string) $set_id ) ? SFAF_FAQ_Sets::get( $set_id ) : null;
+        if ( $set ) {
+            /* clean_faqs() takes the raw shape the form posts, which is what a
+             * set's rows already are: question and answer strings. */
+            foreach ( SFAF_Submit::clean_faqs( $set['rows'] ) as $row ) {
+                $print = SFAF_FAQ_Sets::fingerprint( $row['question'] );
+                if ( '' !== $print && isset( $seen[ $print ] ) ) {
+                    continue;
+                }
+                $seen[ $print ] = true;
+                $out[]          = $row;
+            }
+        }
+
+        foreach ( (array) $own as $row ) {
+            $print = SFAF_FAQ_Sets::fingerprint( isset( $row['question'] ) ? $row['question'] : '' );
+            if ( '' !== $print && isset( $seen[ $print ] ) ) {
+                continue;
+            }
+            $seen[ $print ] = true;
+            $out[]          = $row;
+        }
+
+        return array_slice( $out, 0, SFAF_FAQ_Sets::MAX_ROWS );
     }
 
     /**
@@ -872,6 +948,15 @@ class SFAF_Request {
         update_post_meta( $event_id, self::META_NAME, $c['name'] );
         update_post_meta( $event_id, self::META_EMAIL, $email );
         update_post_meta( $event_id, self::META_AT, current_time( 'mysql' ) );
+        /*
+         * ON THE EVENT'S OWN FAQ META, which is the key the editor writes, so
+         * these open for review as ordinary FAQs with no second path and no
+         * marker saying where they came from. Same as the community form.
+         */
+        if ( ! empty( $c['faqs'] ) ) {
+            update_post_meta( $event_id, sfaf_faq_meta_key(), $c['faqs'] );
+        }
+
         update_post_meta( $event_id, self::META_REPEAT, self::repeat_phrase( $c ) );
         if ( '' !== $c['notes'] ) {
             update_post_meta( $event_id, self::META_NOTES, $c['notes'] );
@@ -1334,6 +1419,79 @@ class SFAF_Request {
                     <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
                     <?php self::field_error( $err( 'capacity' ) ); ?>
                 </label>
+
+                <?php
+                /*
+                 * FAQs: A SET, QUESTIONS OF THEIR OWN, OR BOTH.
+                 *
+                 * THE PICKER IS OFFERED HERE AND NOT ON THE COMMUNITY FORM, and
+                 * that is a privacy decision rather than a simplicity one. This
+                 * form is behind an emailed token to an sfaf.org address, so
+                 * whoever is reading it already works here and the set names
+                 * tell them nothing they do not know. See the note where the
+                 * community form builds its own FAQ section.
+                 *
+                 * THE SET IS COPIED, NOT LINKED. faqs_for() does the combining,
+                 * and SFAF_FAQ_Sets explains at the top of that file why a copy
+                 * is the right answer. Nothing here records which set was used.
+                 *
+                 * THE SAME REPEATER AND THE SAME EDITOR THE COMMUNITY FORM HAS,
+                 * through SFAF_Rich_Text::deferred() and the one shared
+                 * toolbar. A second toolbar would be a second answer to what
+                 * somebody may type.
+                 */
+                $faq_sets = SFAF_FAQ_Sets::all();
+                $faq_rows = (array) $v( 'faq_own', array() );
+                if ( empty( $faq_rows ) ) {
+                    $faq_rows = array( array( 'question' => '', 'answer' => '' ) );
+                }
+                ?>
+                <div class="uc-field">
+                    <span class="uc-field-label">Questions people often ask</span>
+                    <span class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</span>
+
+                    <?php if ( ! empty( $faq_sets ) ) : ?>
+                        <label class="uc-field uc-faq-set-pick">
+                            <span class="uc-field-label">Use a saved set</span>
+                            <select name="faq_set">
+                                <option value="">None</option>
+                                <?php foreach ( $faq_sets as $set ) : ?>
+                                    <option value="<?php echo esc_attr( $set['id'] ); ?>"
+                                        <?php selected( (string) $v( 'faq_set' ), (string) $set['id'] ); ?>>
+                                        <?php echo esc_html( $set['name'] ); ?>
+                                        (<?php echo (int) count( $set['rows'] ); ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="uc-hint">Its questions are copied in, ahead of any you add below. Editing the set later does not change this event.</span>
+                        </label>
+                    <?php endif; ?>
+
+                    <div class="uc-repeater" data-repeater>
+                        <div class="uc-repeater-rows">
+                            <?php foreach ( $faq_rows as $i => $row ) : ?>
+                                <div class="uc-repeater-row uc-faq-row">
+                                    <input type="text" name="faq[<?php echo (int) $i; ?>][question]" maxlength="300"
+                                           value="<?php echo esc_attr( isset( $row['question'] ) ? $row['question'] : '' ); ?>" placeholder="Question" />
+                                    <?php SFAF_Rich_Text::deferred(
+                                        'faq[' . (int) $i . '][answer]',
+                                        isset( $row['answer'] ) ? $row['answer'] : '',
+                                        array( 'rows' => 3, 'placeholder' => 'Answer' )
+                                    ); ?>
+                                    <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add a question</button>
+                        <template class="uc-repeater-tpl">
+                            <div class="uc-repeater-row uc-faq-row">
+                                <input type="text" name="faq[__I__][question]" maxlength="300" placeholder="Question" />
+                                <?php SFAF_Rich_Text::deferred( 'faq[__I__][answer]', '', array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
+                                <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Anything else we should know</span>

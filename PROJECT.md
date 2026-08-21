@@ -203,6 +203,47 @@ Admin, and removing them means taking it away. A separate list of approvers
 would be a second answer to the same question, free to disagree with the first
 and certain to fall out of date.
 
+### FAQs on the staff request form, and why the community form has none
+
+**The staff form offers a FAQ set picker and a repeater, and they combine**
+(3.52.0). Either is optional. When both are used the **set's questions come
+first and the requester's are appended**, with no interleaving, and a question
+already in the set is not asked twice: `SFAF_FAQ_Sets::fingerprint()` decides
+that, the same comparison `apply()` uses, rather than a second rule on the form's
+side.
+
+**A SET IS COPIED, NOT LINKED.** That is `SFAF_FAQ_Sets`' existing decision
+followed rather than a new one, and it is the answer to the question people
+actually ask: **editing a set later changes nothing already submitted.** The
+answers drift year to year, so a link would mean one edit silently rewriting
+past events that were correct at the time. Nothing on a submitted event records
+which set it came from, which is also what makes deleting a set harmless.
+
+**The cap is `SFAF_FAQ_Sets::MAX_ROWS`, read from that class**, so the combined
+list is bounded where every other FAQ list is.
+
+**A set's rows are re-cleaned through the anonymous rule.** They were authored in
+caladmin under `wp_kses_post()`, which is wider than anything a public form
+accepts. Running them through `SFAF_Submissions::prose()` keeps one answer to
+"what may arrive from this form" whatever the text's origin, and costs nothing:
+the short toolbar cannot produce anything that list rejects. **Nothing was
+widened to carry a set across.**
+
+> **THE COMMUNITY FORM DELIBERATELY HAS NO SET PICKER, AND SIMPLICITY IS NOT THE
+> REASON.** Listing the sets would tell a stranger what programmes this calendar
+> runs. Set names are written by managers, for managers, about recurring
+> programming, and this calendar carries HIV, substance use and trans health
+> programming, so **the names are themselves the disclosure**.
+>
+> It is the same refusal that form already makes: an address naming an unknown
+> series says the link is not right and does not list the series that exist. A
+> picker would give away through one control what the other is careful not to.
+>
+> **The two forms differ because their readers do.** The staff form is behind an
+> emailed token to an sfaf.org address, so whoever reads it already works here.
+> Do not add the picker to the community form for consistency; the note in
+> `SFAF_Submit` says so where somebody would otherwise add it.
+
 ### Files from people with no account
 
 **The riskiest thing in the plugin, handled in one place both forms call.**

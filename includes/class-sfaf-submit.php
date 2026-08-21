@@ -1191,6 +1191,33 @@ class SFAF_Submit {
                  * leaves it and it is dropped on save; a submitter with one
                  * question does not have to find a button before they can type.
                  *
+                 * NO FAQ SET PICKER HERE, AND NOT FOR SIMPLICITY. The staff
+                 * request form offers one from 3.52.0 and this form
+                 * deliberately does not.
+                 *
+                 * LISTING THE SETS WOULD TELL A STRANGER WHAT PROGRAMMES THIS
+                 * CALENDAR RUNS. Set names are internal: they are written by
+                 * managers, for managers, about recurring programming, and a
+                 * dropdown of them is a directory of that programming handed to
+                 * anybody who opens the form. This calendar carries HIV,
+                 * substance use and trans health programming, so the names
+                 * themselves are the disclosure.
+                 *
+                 * IT IS THE SAME REFUSAL THIS FORM ALREADY MAKES. An address
+                 * naming an unknown series says the link is not right; it does
+                 * not list the series that do exist, for exactly this reason.
+                 * Adding a picker here would give away through one control what
+                 * the other one is careful not to.
+                 *
+                 * AND A STRANGER IS NOT SUBMITTING INTO AN INTERNAL SERIES.
+                 * They are submitting one event to one campaign whose link they
+                 * were given. The sets are not theirs to reach.
+                 *
+                 * DO NOT ADD IT FOR CONSISTENCY WITH THE STAFF FORM. That form
+                 * is behind an emailed token to an sfaf.org address, so whoever
+                 * reads it already works here. The two forms differ because
+                 * their readers do.
+                 *
                  * THE SAME RICH TEXT CONTROL THE EDITOR USES, through
                  * SFAF_Rich_Text::deferred(), with the one shared toolbar:
                  * bold, italic, bullets, numbers, link and unlink.

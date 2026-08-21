@@ -332,8 +332,16 @@ class SFAF_FAQ_Sets {
         );
     }
 
-    /** Case- and space-insensitive question identity, for the duplicate check. */
-    private static function fingerprint( $question ) {
+    /**
+     * Case- and space-insensitive question identity, for the duplicate check.
+     *
+     * PUBLIC BECAUSE TWO THINGS NOW COMBINE A SET WITH OTHER ROWS: apply(),
+     * against what an event already holds, and SFAF_Request::faqs_for(),
+     * against what a requester typed on the form. "Is this the same question"
+     * has one answer, here, rather than a second one written out on the form's
+     * side and free to drift from this.
+     */
+    public static function fingerprint( $question ) {
         return strtolower( trim( preg_replace( '/\s+/', ' ', (string) $question ) ) );
     }
 

@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
 working rules. Anything here that is still true in six months belongs in one of
 those instead.
 
-**Last updated:** 2026-08-21, at 3.51.0.
+**Last updated:** 2026-08-21, at 3.52.0.
 
 ---
 
 ## What shipped last
 
-**3.51.0**, built as `sfaf-calendar-3.51.0.zip` in the project root, committed
+**3.52.0**, built as `sfaf-calendar-3.52.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -20,13 +20,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.52.0** | The staff request form can send FAQs: a saved set, its own questions, or both. The set is COPIED, so editing it later does not change events already submitted. The community form deliberately gets no set picker. |
 | **3.51.0** | Get a form link is a primary button. FAQ answers on the community form are rich text, with the plumbing two public pages needed for a deferred editor to start at all. |
 | **3.50.0** | Filter bar split into three switches: category, organizer, series. The organizer filter runs a query for the first time. The series row no longer waits for a category. |
 | **3.49.1** | Fix: the publish warning named fields that were filled in. Two causes, multi-select control names and a TinyMCE textarea. |
-| **3.49.0** | Pending is one list with a filter. "Get a form link" on the dashboard. caladmin favicon. Thumbnails take a neutral hairline instead of a category ring. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.51.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.52.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -109,8 +109,12 @@ is a claim about code that has never run.
    this**: there is no WordPress, no browser and no logged-out page load here.
    If it is a plain box, the content is still safe and still saves; it is the
    editor that did not start.
-   The **staff form has no FAQ field at all**, so what to check there is that
-   its DESCRIPTION is still a toolbar.
+   The staff form has FAQs from 3.52.0, so check its answers too.
+
+   **Then, on the staff form: pick a saved set, add a question of your own, and
+   submit.** In Pending, the set's questions must appear FIRST with yours after
+   them, and a question you typed that is already in the set must appear once.
+   Editing that set afterwards must not change the event you just submitted.
 
 **Uploads, which are the part nothing here can touch:**
 

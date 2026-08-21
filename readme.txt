@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.51.0
+Stable tag: 3.52.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.52.0 =
+
+**The staff request form can send FAQs: a saved set, questions of its own, or both.**
+
+**TWO CONTROLS THAT COMBINE.** A picker offering the existing FAQ sets, and the same repeater the community form has. Both optional. A requester may pick a set, write their own questions, or do both, and when both are used **the set's questions come first with the requester's appended after**. No interleaving. Answers get the rich text editor with the short toolbar, from the one shared definition.
+
+**A SET IS COPIED, NOT LINKED, AND THAT IS THE EXISTING RULE RATHER THAN A NEW ONE.** The caladmin event editor has always worked this way and the reasoning is worth repeating, because it decides something people ask about: **editing a set later does not change events already using it.** The answers drift year to year, so a manager editing "the 2027 parking answer" would otherwise silently rewrite the 2025 and 2026 events still on the calendar as past events. Copying fails safe, and it is also what makes deleting a set harmless: no event refers to one. Nothing on a submitted event records which set it came from.
+
+**The row cap and the set size limit are the ones already in use**, read from the FAQ sets class rather than typed again: **50**, the same ceiling every other FAQ list has.
+
+**A question already in the set is not asked twice.** If a requester picks the parking set and also types "Is there parking?", one of it is sent, decided by the same case- and space-insensitive comparison caladmin uses when it applies a set.
+
+**A set's rows are cleaned by the same narrow rule everything else on that form gets.** They were written in caladmin under the wider WordPress rule, and nothing is widened to carry them across: the short toolbar cannot produce anything the narrow rule rejects, so a set arrives intact and the form keeps one answer to what may reach it.
+
+**THE COMMUNITY FORM GETS NO SET PICKER, AND NOT FOR SIMPLICITY.** Listing the sets would tell a stranger what programmes this calendar runs. Set names are written by managers, for managers, about recurring programming, and this calendar carries HIV, substance use and trans health programming, so **the names themselves are the disclosure**. It is the same refusal the form already makes when an unknown link says only that the link is not right rather than listing the campaigns that do exist. A stranger submitting one event to one campaign has no business reaching the internal sets. The reasoning is recorded in the code where somebody would otherwise add the picker for consistency.
+
+**Nothing about approval changed.** A submitted FAQ is a field a manager reads and may edit before publishing, like every other submitted field, on the same meta key the editor writes. The status is still named in the code and the author still stays 0 on both forms.
+
+**Recurrence is untouched.** The staff form still records repeating in words, and that is deliberate for this release.
+
+**It still degrades.** Every answer is a real text box with a real name. If the editor's scripts do not run, the row holds its content, posts and saves.
+
+**Not verified here, and it stays on the manual list.** Whether the editors start in a browser cannot be settled from the repository: there is no WordPress, no browser and no logged-out page load in the build environment. Open the staff form, pick a set, add a question of your own, submit, and confirm in Pending that the set's questions appear first with yours after them.
 
 = 3.51.0 =
 
