@@ -491,6 +491,13 @@
 .uc-embed-field-inline .uc-embed-label { margin-bottom: 0; }
 .uc-embed-field-inline .description { grid-column: 1 / -1; }
 
+/* The three filter toggles (3.50.0). A row of plain checkboxes rather than
+   three of the sliders above: sliders are for one decision, and three of them
+   stacked reads as three settings rather than one choice with three parts. */
+.uc-embed-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.uc-embed-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--uc-text); }
+.uc-embed-check input { margin: 0; }
+
 .uc-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .uc-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--uc-text); cursor: pointer; }
 .uc-check-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }

@@ -175,10 +175,133 @@ class SFAF_Shortcodes {
     }
 
     /**
+     * The three filter rows a block can offer, in the order they render.
+     *
+     * ONE LIST, READ BY THE ATTRIBUTE, THE RENDER, THE GENERATOR AND THE TEST.
+     * The order is the order a visitor asks the questions in: category is the
+     * broadest, then who is putting it on, then which of that programme's runs.
+     *
+     * @return string[]
+     */
+    public static function filter_rows_available() {
+        return array( 'category', 'organizer', 'series' );
+    }
+
+    /**
+     * Which rows this block offers, as key => bool.
+     *
+     * WHY THIS REPLACED A SINGLE ON/OFF SWITCH. `show_filters` was all or
+     * nothing, and neither answer fitted the two cases that actually come up: a
+     * block scoped to one series on that programme's own page wants NO filters,
+     * because the block is already the answer; a block scoped to an organizer
+     * wants the SERIES row only, so a visitor can move between that organizer's
+     * programmes. Many organizers run several.
+     *
+     * NOTHING HERE SECOND-GUESSES THE CHOICE. A block scoped to one organizer
+     * that asks for the organizer row gets the organizer row. Whoever generates
+     * the block decides what is useful on the page it is going on; a plugin
+     * deciding a control is redundant and hiding it is a plugin overruling
+     * somebody who can see the page and it cannot.
+     *
+     * THE OLD ATTRIBUTE STILL DECIDES WHEN THE NEW ONE IS ABSENT, which is what
+     * keeps every block already pasted on sfaf.org working: `show_filters="no"`
+     * still means none, and anything else still means all three.
+     *
+     * @param string $raw    Comma list, or '' to fall back.
+     * @param string $legacy The old show_filters attribute.
+     * @return array<string,bool>
+     */
+    public function filter_rows( $raw, $legacy = '' ) {
+        $rows = array();
+        foreach ( self::filter_rows_available() as $key ) {
+            $rows[ $key ] = false;
+        }
+
+        $raw = strtolower( trim( (string) $raw ) );
+
+        if ( '' === $raw ) {
+            $all = $this->show_filters( $legacy );
+            foreach ( $rows as $key => $unused ) {
+                $rows[ $key ] = $all;
+            }
+            return $rows;
+        }
+
+        /* "none" said out loud, because an empty attribute means "not stated"
+         * and has to keep meaning that. Without a word for it there would be no
+         * way to ask for no rows except by going back to show_filters="no". */
+        if ( in_array( $raw, array( 'none', 'no', 'false', '0', 'off' ), true ) ) {
+            return $rows;
+        }
+        if ( in_array( $raw, array( 'all', 'yes', 'true', '1', 'on' ), true ) ) {
+            foreach ( $rows as $key => $unused ) {
+                $rows[ $key ] = true;
+            }
+            return $rows;
+        }
+
+        foreach ( explode( ',', $raw ) as $part ) {
+            $part = sanitize_key( trim( $part ) );
+            if ( isset( $rows[ $part ] ) ) {
+                $rows[ $part ] = true;
+            }
+        }
+        return $rows;
+    }
+
+    /** The rows that are on, as the comma list the attribute carries. */
+    public function filter_rows_attr( $rows ) {
+        $on = array();
+        foreach ( self::filter_rows_available() as $key ) {
+            if ( ! empty( $rows[ $key ] ) ) {
+                $on[] = $key;
+            }
+        }
+        return empty( $on ) ? 'none' : implode( ',', $on );
+    }
+
+    /**
+     * The organizer actually queried: what the visitor chose, inside what the
+     * block was scoped to.
+     *
+     * THE SAME CLAMP THE CATEGORY GETS, and for the same reason. `organizer=`
+     * on a snippet is the author saying what this block IS; a choice in the
+     * dropdown is a visitor narrowing what is already there. A hand-written
+     * `uc_org` naming an organizer outside the scope is dropped, so the block
+     * shows its own events rather than somebody else's.
+     *
+     * @param string $scope
+     * @param string $active
+     * @return string
+     */
+    public function effective_organizer( $scope, $active ) {
+        $scope  = $this->slug_list( $scope );
+        $active = $this->slug_list( $active );
+
+        if ( '' === $active ) {
+            return $scope;
+        }
+        if ( '' === $scope ) {
+            return $active;
+        }
+        $inside = array_intersect( explode( ',', $active ), explode( ',', $scope ) );
+        return empty( $inside ) ? $scope : implode( ',', $inside );
+    }
+
+    /** What the visitor asked for in the organizer dropdown, if anything. */
+    private function requested_organizer() {
+        return isset( $_GET['uc_org'] ) ? $this->slug_list( wp_unslash( $_GET['uc_org'] ) ) : '';
+    }
+
+    /**
      * Whether the visitor-facing search and category buttons should render.
      *
-     * Accepts what a shortcode attribute or a data attribute might carry —
-     * yes/no, true/false, 1/0 — and defaults to showing them.
+     * Accepts what a shortcode attribute or a data attribute might carry,
+     * yes/no, true/false, 1/0, and defaults to showing them.
+     *
+     * SUPERSEDED BY `filters` AND KEPT AS ITS FALLBACK (3.50.0). Every block
+     * already pasted on sfaf.org carries this and no `filters`, so this is what
+     * decides for them. See filter_rows().
      */
     private function show_filters( $raw ) {
         $raw = strtolower( trim( (string) $raw ) );
@@ -392,11 +515,20 @@ class SFAF_Shortcodes {
         $filters           = $this->normalize_filters( $filters );
         $filters['groups'] = '';
 
-        // No category chosen means no second level, so there is nothing to
-        // derive and no query to pay for.
-        if ( '' === $filters['category'] ) {
-            return array();
-        }
+        /*
+         * NO CATEGORY GATE HERE ANY MORE (3.50.0), AND THAT IS A REAL CHANGE.
+         *
+         * 3.11.0 derived the second level only once a category had been chosen,
+         * so that nobody was looking at two taxonomies at once. That was the
+         * right default when the bar was all-or-nothing. It is wrong now: a
+         * block can offer the SERIES row and NOT the category row, which is
+         * exactly the organizer-scoped case this was built for, and under the
+         * old gate that block could never show a single pill.
+         *
+         * The row is offered when the block says to offer it, and the caller
+         * asks only then, so the query below is still not paid for by a block
+         * that has no series row.
+         */
 
         $args                   = $this->build_query_args( 0, 1, $filters );
         $args['posts_per_page'] = 300;
@@ -1987,6 +2119,9 @@ class SFAF_Shortcodes {
             's'            => '',
             'per_page'     => '',
             'show_filters' => 'yes',
+            // Which filter rows to offer: any of category, organizer, series,
+            // or 'none'. Empty falls back to show_filters. See filter_rows().
+            'filters'      => '',
             'layout'       => 'cards',
             // The same four display modes the embed offers, from the same
             // renderer. view="calendar" opens on the month grid,
@@ -2038,6 +2173,9 @@ class SFAF_Shortcodes {
             's'            => '',
             'per_page'     => '',
             'show_filters' => 'yes',
+            // Which filter rows to offer: any of category, organizer, series,
+            // or 'none'. Empty falls back to show_filters. See filter_rows().
+            'filters'      => '',
             'layout'       => 'cards',
             'page'         => 0,
             'view'         => 'list',
@@ -2047,8 +2185,9 @@ class SFAF_Shortcodes {
             'source_links' => '',
             // What the visitor picked, as distinct from what the block is
             // scoped to. See effective_category().
-            'active_category' => null,
-            'active_groups'   => null,
+            'active_category'  => null,
+            'active_organizer' => null,
+            'active_groups'    => null,
         ) );
 
         $filters = $this->normalize_filters( $args );
@@ -2088,6 +2227,11 @@ class SFAF_Shortcodes {
          * a category is chosen is the correct behaviour rather than a side
          * effect: it is now the number of events in that category.
          */
+        /* WHICH ROWS THIS BLOCK OFFERS. Resolved once, here, and read by the
+         * bar below, by the data attribute the snippet carries, and by whether
+         * the second level is derived at all. */
+        $rows = $this->filter_rows( $args['filters'], $args['show_filters'] );
+
         $scope_category  = $filters['category'];
         $active_category = ( null === $args['active_category'] )
             ? $this->requested_category()
@@ -2095,6 +2239,24 @@ class SFAF_Shortcodes {
 
         $requested           = $active_category;
         $filters['category'] = $this->effective_category( $scope_category, $requested );
+
+        /*
+         * THE ORGANIZER, THE SAME WAY (3.50.0).
+         *
+         * The dropdown was a client-side stub: it rendered on this site, was
+         * left out of embeds "rather than shipped dead", and had no handler in
+         * either script, so choosing an organizer did nothing anywhere. A
+         * toggle for a control that does nothing is furniture, so it runs a
+         * real query now, through the same clamp the category gets.
+         */
+        $scope_organizer  = $filters['organizer'];
+        $active_organizer = ( null === $args['active_organizer'] )
+            ? $this->requested_organizer()
+            : $this->slug_list( $args['active_organizer'] );
+        $filters['organizer'] = $this->effective_organizer( $scope_organizer, $active_organizer );
+        $active_organizer     = ( '' !== $active_organizer && $filters['organizer'] === $active_organizer )
+            ? $filters['organizer']
+            : '';
 
         /*
          * A BUTTON IS ONLY MARKED PRESSED WHEN IT IS WHAT IS BEING SHOWN. If the
@@ -2114,7 +2276,9 @@ class SFAF_Shortcodes {
          * can only ever contain the one thing the block already is, and a filter
          * whose only option is "what you are looking at" is furniture.
          */
-        $available_groups = ( $filters['series'] > 0 ) ? array() : $this->available_groups( $filters );
+        $available_groups = ( empty( $rows['series'] ) || $filters['series'] > 0 )
+            ? array()
+            : $this->available_groups( $filters );
         $requested_groups = ( null === $args['active_groups'] )
             ? $this->requested_groups()
             : $this->slug_list( $args['active_groups'] );
@@ -2210,6 +2374,11 @@ class SFAF_Shortcodes {
              data-scope-category="<?php echo esc_attr( $scope_category ); ?>"
              data-active-category="<?php echo esc_attr( $active_category ); ?>"
              data-active-groups="<?php echo esc_attr( $active_groups ); ?>"
+             <?php // Which filter rows this block offers, and which organizer the
+                   // visitor picked. Both travel with the pasted snippet. ?>
+             data-filters="<?php echo esc_attr( $this->filter_rows_attr( $rows ) ); ?>"
+             data-scope-organizer="<?php echo esc_attr( $scope_organizer ); ?>"
+             data-active-organizer="<?php echo esc_attr( $active_organizer ); ?>"
              data-filter-category="<?php echo esc_attr( $filters['category'] ); ?>"
              data-filter-organizer="<?php echo esc_attr( $filters['organizer'] ); ?>"
              data-filter-series="<?php echo (int) $filters['series']; ?>"
@@ -2238,7 +2407,15 @@ class SFAF_Shortcodes {
              data-month="<?php echo esc_attr( $month ); ?>"
              data-max-pages="<?php echo (int) $max; ?>">
 
-            <?php if ( $this->show_filters( $args['show_filters'] ) ) : ?>
+            <?php
+            /*
+             * THE BAR EXISTS WHEN ANY ROW DOES. Search rides with it: it is not
+             * one of the three toggles, and a block with no rows at all has no
+             * bar to put it in.
+             */
+            $any_row = ( ! empty( $rows['category'] ) || ! empty( $rows['organizer'] ) || ! empty( $rows['series'] ) );
+            ?>
+            <?php if ( $any_row ) : ?>
             <div class="uc-filters">
                 <div class="uc-search-wrap">
                     <?php
@@ -2251,6 +2428,7 @@ class SFAF_Shortcodes {
                     <input type="search" class="uc-search" value="<?php echo esc_attr( $filters['s'] ); ?>"
                            aria-label="Search events" placeholder="Search events..." />
                 </div>
+                <?php if ( ! empty( $rows['category'] ) ) : ?>
                 <div class="uc-filter-buttons">
                     <?php
                     /*
@@ -2291,26 +2469,44 @@ class SFAF_Shortcodes {
                         </button>
                     <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
+
                 <?php
                 /*
-                 * The organizer dropdown is a client-side stub on this site and
-                 * is left out of embeds rather than shipped dead: embed blocks
-                 * are normally already scoped to an organizer, and a control
-                 * that does nothing on someone else's page is worse than none.
+                 * THE ORGANIZER ROW, WHICH NOW WORKS EVERYWHERE (3.50.0).
+                 *
+                 * It used to be skipped in embeds because it did nothing: the
+                 * note here said so, and called it a client-side stub. It runs
+                 * the same server query the chips do, so there is no longer any
+                 * reason for an embed to be a special case, and a block that
+                 * asks for this row on somebody else's page gets a working one.
+                 *
+                 * The options are the block's OWN organizers when it is scoped,
+                 * exactly as the chips are: offering every organizer on the site
+                 * would list dozens that can only ever empty the block.
                  */
-                if ( ! $embed ) :
+                if ( ! empty( $rows['organizer'] ) ) :
+                    $organizers = get_terms( array(
+                        'taxonomy'   => 'uc_organizer',
+                        'hide_empty' => true,
+                    ) );
+                    if ( is_wp_error( $organizers ) ) {
+                        $organizers = array();
+                    }
+                    if ( '' !== $scope_organizer ) {
+                        $org_scope  = explode( ',', $scope_organizer );
+                        $organizers = array_values( array_filter( $organizers, function ( $o ) use ( $org_scope ) {
+                            return in_array( $o->slug, $org_scope, true );
+                        } ) );
+                    }
+                    $org_on = ( '' === $active_organizer ) ? array() : explode( ',', $active_organizer );
                 ?>
                 <div class="uc-organizer-filter">
-                    <select class="uc-organizer-select">
+                    <select class="uc-organizer-select" aria-label="Filter by organizer" data-uc-organizer>
                         <option value="all">All Organizers</option>
-                        <?php
-                        $organizers = get_terms( array(
-                            'taxonomy'   => 'uc_organizer',
-                            'hide_empty' => true,
-                        ) );
-                        foreach ( $organizers as $org ) :
-                        ?>
-                            <option value="<?php echo esc_attr( $org->slug ); ?>"><?php echo esc_html( $org->name ); ?></option>
+                        <?php foreach ( $organizers as $org ) :
+                            $picked = in_array( $org->slug, $org_on, true ); ?>
+                            <option value="<?php echo esc_attr( $org->slug ); ?>"<?php echo $picked ? ' selected' : ''; ?>><?php echo esc_html( $org->name ); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -2710,6 +2906,13 @@ class SFAF_Shortcodes {
             'active_category' => isset( $_POST['active_category'] ) ? sanitize_text_field( wp_unslash( $_POST['active_category'] ) ) : '',
             'active_groups'   => isset( $_POST['active_groups'] ) ? sanitize_text_field( wp_unslash( $_POST['active_groups'] ) ) : '',
             'organizer'       => isset( $_POST['organizer'] ) ? sanitize_text_field( wp_unslash( $_POST['organizer'] ) ) : '',
+            /* The organizer the visitor picked, kept apart from the block's own
+             * scope above for the same reason the category's two are. */
+            'active_organizer' => isset( $_POST['active_organizer'] ) ? sanitize_text_field( wp_unslash( $_POST['active_organizer'] ) ) : '',
+            /* Which rows the block offers. Without this a redraw would rebuild
+             * the bar from the shipped default and quietly hand back controls
+             * the block was generated without. */
+            'filters'         => isset( $_POST['filters'] ) ? sanitize_text_field( wp_unslash( $_POST['filters'] ) ) : '',
             'venue'           => isset( $_POST['venue'] ) ? sanitize_text_field( wp_unslash( $_POST['venue'] ) ) : '',
             'series'          => isset( $_POST['series'] ) ? absint( $_POST['series'] ) : 0,
             's'               => isset( $_POST['s'] ) ? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : '',

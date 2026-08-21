@@ -255,6 +255,19 @@ class SFAF_Embed {
                  * SFAF_Shortcodes::effective_groups().
                  */
                 'active_groups' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+
+                /*
+                 * 3.50.0: the organizer a visitor chose, and which filter rows
+                 * this snippet offers at all.
+                 *
+                 * ON THIS ROUTE, NOT A NEW ONE, for the reason given above:
+                 * is_embed_request() compares the route string exactly, so a
+                 * second route would match none of preflight, the response
+                 * headers or the rest_pre_serve_request fallback. Same route,
+                 * more parameters, same headers.
+                 */
+                'active_organizer' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+                'filters'          => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -346,6 +359,11 @@ class SFAF_Embed {
             'active_category'    => $active_category,
             'active_groups'      => (string) $request->get_param( 'active_groups' ),
             'organizer'    => (string) $request->get_param( 'organizer' ),
+            'active_organizer'   => (string) $request->get_param( 'active_organizer' ),
+            /* Which filter rows the snippet offers. Carried rather than
+             * defaulted, so a redraw cannot hand back a control the block was
+             * generated without. */
+            'filters'            => (string) $request->get_param( 'filters' ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
             /*
@@ -1015,6 +1033,11 @@ class SFAF_Embed {
             'active_category' => isset( $params['active_category'] ) ? $params['active_category'] : '',
             'active_groups'   => isset( $params['active_groups'] ) ? $params['active_groups'] : '',
             'organizer' => $params['organizer'],
+            /* The chosen organizer for the same reason the chosen category is
+             * here, and the row set because two snippets with the same filters
+             * but different toggles render different markup. */
+            'active_organizer' => isset( $params['active_organizer'] ) ? $params['active_organizer'] : '',
+            'filters'          => isset( $params['filters'] ) ? $params['filters'] : '',
             'venue'     => $params['venue'],
             'series'    => $params['series'],
             // Part of the identity even though searches are not cached below.

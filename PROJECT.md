@@ -407,6 +407,103 @@ because a past event reached by direct link is a URL rather than navigation and
 people arrive there from bookmarks and old reminder emails; and caladmin's
 Events list and Archived view, which are staff screens that need the past.
 
+### The filter bar is three rows, each on its own switch
+
+**One switch became three in 3.50.0.** `show_filters` was all or nothing, and
+neither answer fitted the cases that come up: a block scoped to one series on
+that programme's page wants none, because the block is already the answer; a
+block scoped to an organizer wants the SERIES row only, so a visitor can move
+between that organizer's programmes.
+
+`SFAF_Shortcodes::filter_rows_available()` is the one list, and it is also the
+render order: **category, then organizer, then series**, which is the order a
+visitor asks the questions in.
+
+| | Attribute | Means |
+|---|---|---|
+| new | `filters="category,series"` | exactly those rows |
+| new | `filters="none"` | no rows |
+| old | `show_filters="no"` | no rows |
+| old | absent | all three |
+
+**An absent `filters` falls back to `show_filters`, and that is what keeps every
+snippet already pasted on sfaf.org working.** `none` has to be a word for the
+same reason: an empty attribute already means "not stated".
+
+> **THE PLUGIN DOES NOT DECIDE A CONTROL IS REDUNDANT AND HIDE IT.** A block
+> scoped to one organizer that asks for the organizer row gets the organizer
+> row. Whoever generated the block can see the page it is going on and this code
+> cannot. The tempting "helpful" version of this was planted as a fault and is
+> asserted against, because the combination tests alone did not catch it: every
+> block in them is unscoped, so the condition never fired.
+
+**Everything filters through the query, never by hiding rows.** Client-side
+hiding only ever sees the page already downloaded, which is what made both the
+old search and the old category filter wrong past page one, and the count wrong
+with them.
+
+**The scope clamp is unchanged and now covers three parameters.**
+`effective_category()`, `effective_organizer()` and `effective_groups()` each
+keep a visitor's choice inside what the block was scoped to, so a hand-written
+`active_category`, `active_organizer` or `active_groups` reaches nothing the
+block does not already contain. It holds with the row switched off entirely,
+which is the case such a parameter is actually aimed at.
+
+**No new REST route.** The extra parameters ride the existing embed route,
+because `is_embed_request()` compares the route string exactly and a second
+route would match none of preflight, the response headers or the
+`rest_pre_serve_request` fallback. Same route, more parameters, same headers.
+
+**The sidebar has no filter bar in any configuration** and returns before one is
+built. That is not an exception to the toggles: it is a different shape, with a
+count rather than a page size and no pagination.
+
+### The organizer filter was a control that did nothing
+
+**Until 3.50.0 it rendered on this site, was left out of embeds deliberately,
+and had no handler in either script.** Its own note called it a client-side
+stub. Choosing an organizer changed neither the rows nor the count anywhere.
+
+It runs the same server query the category chips run now, through the same
+clamp, so there is no longer any reason for an embed to be a special case. Its
+options are the block's **own** organizers when the block is scoped, exactly as
+the chips are: offering every organizer on the calendar would list dozens that
+could only ever empty the block.
+
+> **A toggle for a control that does nothing is furniture.** Adding an
+> "Organizer" switch to the generator without this would have shipped a promise
+> the block could not keep.
+
+### The second-level series row, and the gate that was mistaken for a fault
+
+**3.11.0 built it and it was never removed.** Reported missing from the live
+calendar in 3.50.0, and checked in the SHIPPED zip rather than the working tree:
+`render_group_row()` is defined AND called, `available_groups()` derives the
+terms, `calendar.css` styles the pills, and both `calendar.js` and `embed.js`
+bind them. Nothing was unwired and nothing was broken by a later release.
+
+**Two conditions decide whether a pill appears, and both are data rather than
+code:**
+
+- **Until 3.50.0, a category had to be chosen first.** 3.11.0's reasoning was
+  that nobody should be looking at two taxonomies at once, which was right while
+  the bar was all or nothing. A bar showing categories only is exactly what that
+  looks like before the first click.
+- **The pills are the series carried by the events the block actually
+  contains**, derived through `object_ids`. A category whose events carry no
+  series offers none, correctly.
+
+**The category gate is gone**, because a block can now offer the series row and
+NOT the category row, and under the old gate that block could never show a
+single pill. The row is derived only when its toggle is on, so a block without
+it still pays for no query.
+
+> **The word "series" does not appear on the row; it says "Groups".** A visitor
+> should not have to know the calendar has a taxonomy called that. The code
+> still calls them groups throughout, which is why `available_groups()`,
+> `effective_groups()` and `uc_group` all read that way while querying
+> `SFAF_Series::TAXONOMY`.
+
 ### The combined view is one calendar
 
 The month grid and the sidebar sit in one container: one border, a divider

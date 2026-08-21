@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.49.1
+Stable tag: 3.50.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,35 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.50.0 =
+
+**Each filter is its own switch now, the organizer filter works for the first time, and the series row no longer waits for a category.**
+
+**THE SERIES PILLS FROM 3.11.0 WERE NEVER MISSING.** They were reported absent from the live calendar, so the shipped zip was checked rather than the working tree: the renderer is there, it is called, it has styles and it has a click handler in both scripts. What it had was a gate. It appeared only **after a category was chosen**, which is exactly what a bar showing categories only looks like before the first click, and it lists the series carried by **the events that category actually holds**, so a category whose events have no series offers no pills. Nothing was broken and nothing was unwired.
+
+That gate is gone in 3.50.0, because it stopped being right the moment a block could offer the series row **without** the category row.
+
+**THREE TOGGLES INSTEAD OF ONE SWITCH.** "Let visitors search and filter" was all or nothing. The embed generator now offers **Category**, **Organizer** and **Series** separately, in any combination including none, and the choice travels in the pasted snippet. Two cases it was built for:
+
+* A block scoped to one series, on that programme's own page, wants **no** filters. The block is already the answer.
+* A block scoped to an organizer wants the **series** filter only, so a visitor can move between that organizer's programmes. Many organizers run several.
+
+When more than one is on they render in the order **category, then organizer, then series**: the broadest question first.
+
+**NOTHING IS HIDDEN FOR BEING REDUNDANT.** A block scoped to one organizer that asks for the organizer filter gets it. Whoever generates the block can see the page it is going on, and the plugin cannot.
+
+**THE ORGANIZER FILTER RUNS A QUERY, WHICH IT NEVER DID BEFORE.** The dropdown existed, rendered on this site only, was deliberately left out of embeds as "a client-side stub", and had **no handler in either script**: choosing an organizer changed neither the rows nor the count. It runs the same server query the category chips run, so it works on this site and in an embed, and its options are the block's own organizers rather than every organizer on the calendar.
+
+**Every filter narrows through the query, never by hiding rows.** Client-side hiding only ever sees the page already downloaded, which is what made both the old search and the old category filter silently wrong past page one, and the count wrong with them.
+
+**A scoped block still cannot be widened.** A hand-written `active_category`, `active_organizer` or `active_groups` naming something outside the block's scope is dropped server-side, and the block shows its own events. That holds when the filter row is switched off entirely, which is the case such a parameter is actually aimed at.
+
+**No new endpoint.** The extra parameters ride the existing embed route, because its CORS gate compares the route string exactly and a second route would be blocked by the browser the moment sfaf.org asked for it.
+
+**Blocks already pasted on sfaf.org are unchanged.** They carry the old attribute and no new one, and an absent `filters` still means what `show_filters` meant: all three, or none.
+
+**Asserted by rendering.** `.claude/filter-toggles-test.php` renders a real block for **all eight toggle combinations in each of the four display modes**, reads the controls and the event rows back out of the markup, and checks the scope clamp against four hand-written parameters. Seven faults were planted, including a plugin that helpfully hides a redundant control; all seven were caught.
 
 = 3.49.1 =
 

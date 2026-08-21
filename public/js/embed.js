@@ -128,6 +128,8 @@
             // The second-level choice, clamped at the endpoint against what this
             // snippet's own scope actually contains. See effective_groups().
             active_groups: container.getAttribute('data-active-groups') || '',
+            active_organizer: container.getAttribute('data-active-organizer') || '',
+            filters: container.getAttribute('data-filters') || '',
             organizer: container.getAttribute('data-organizer') || '',
             series: container.getAttribute('data-series') || '',
             venue: container.getAttribute('data-venue') || '',
@@ -1183,6 +1185,28 @@
      *
      * Delegated from the container in init(), once, so it survives every render.
      */
+    /**
+     * The organizer dropdown, which now runs a query.
+     *
+     * DELEGATED, because the whole block is replaced on every filter change and
+     * a listener bound to the <select> itself would go with the old markup.
+     * bindFilters() binds the chips directly and is re-run after each render;
+     * this follows bindGroups() instead, which is bound once in init().
+     */
+    function bindOrganizer(container) {
+        container.addEventListener('change', function (e) {
+            var sel = e.target;
+            if (!sel || !sel.matches || !sel.matches('[data-uc-organizer]')) {
+                return;
+            }
+            var slug = String(sel.value || 'all');
+            container.setAttribute('data-active-organizer', slug === 'all' ? '' : slug);
+            // A different organizer holds different series.
+            container.setAttribute('data-active-groups', '');
+            loadBlock(container, 1, false);
+        });
+    }
+
     function bindGroups(container) {
         container.addEventListener('click', function (e) {
             var t = e.target;
@@ -1427,6 +1451,7 @@
         bindAddToCalendar(container);
         bindChips(container);
         bindGroups(container);
+        bindOrganizer(container);
 
         ensureStylesheet();
         setLoading(container);

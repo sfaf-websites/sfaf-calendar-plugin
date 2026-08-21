@@ -832,7 +832,14 @@
                 // sanitizes again on the way in; this is about the snippet
                 // being copy-pasteable.
                 heading: $.trim($('#uc-embed-heading').val() || '').replace(/["'<>]/g, ''),
-                showFilters: $('#uc-embed-filters').is(':checked')
+                /* THE ORDER IS THE ORDER THEY RENDER IN, and it is the order
+                 * a visitor asks the questions: category is the broadest, then
+                 * who is putting it on, then which run of that programme. Built
+                 * as a list rather than three booleans so the attribute and the
+                 * summary below cannot disagree about the order. */
+                filterRows: ['category', 'organizer', 'series'].filter(function (row) {
+                    return $('#uc-embed-filter-' + row).is(':checked');
+                })
             };
         }
 
@@ -882,7 +889,9 @@
 
             var summary = 'SFAF Calendar: ' + what + ', ' + how;
             if (choices.view !== 'sidebar') {
-                summary += (choices.showFilters ? ', with search and category filters' : ', without visitor filters');
+                summary += choices.filterRows.length
+                    ? ', filtered by ' + choices.filterRows.join(', ')
+                    : ', without visitor filters';
             }
             // Said in the comment above the snippet, because somebody reading a
             // page's source months from now needs to know why these links leave
@@ -916,7 +925,10 @@
                 attrs['data-heading'] = choices.heading;
             } else {
                 attrs['data-per-page'] = String(choices.perPage);
-                attrs['data-show-filters'] = choices.showFilters ? 'yes' : 'no';
+                /* 'none' said out loud, because an absent attribute means
+                 * "not stated" and falls back to the old show_filters default,
+                 * which is all three. See SFAF_Shortcodes::filter_rows(). */
+                attrs['data-filters'] = choices.filterRows.length ? choices.filterRows.join(',') : 'none';
                 attrs['data-toggle'] = choices.toggle ? 'yes' : 'no';
             }
 

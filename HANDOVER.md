@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-21, at 3.49.1.
+**Last updated:** 2026-08-21, at 3.50.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.49.1**, built as `sfaf-calendar-3.49.1.zip` in the project
+The plugin is at **3.50.0**, built as `sfaf-calendar-3.50.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.49.1, the deployment is stale or partial, and that
+screen: if it does not say 3.50.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -262,6 +262,22 @@ The fix is one line, adding `uc_imported` to `$keep_status`, and it was held bac
 because it changes which events stay in the queue after a save. That is a
 decision, not a bug fix. See PROJECT.md.
 
+## The series pills were never missing
+
+**Reported absent, investigated in the shipped zip, and found intact.** The
+second-level row 3.11.0 built is defined, called, styled and bound in both
+scripts. Two things decide whether a pill appears, and both are data:
+
+1. **Until 3.50.0 a category had to be chosen first.** A bar showing categories
+   only is exactly what that looks like before the first click.
+2. **The pills are the series carried by the events in view.** A category whose
+   events have no series offers none, correctly.
+
+**3.50.0 removed the first condition**, because a block can now offer the series
+row without the category row. **If a series row still looks empty on the live
+calendar, the question is now a data one:** open an event in that category and
+check it has a series. Nothing in the code path is waiting to be fixed.
+
 ## Mark's own testing list
 
 Not yet done, and each matters for a different reason.
@@ -294,6 +310,13 @@ Not yet done, and each matters for a different reason.
    and is caladmin only. If resources itself, an event page or either public
    form has changed icon, something reached further than it should have.
 
+8. **Regenerate an embed block and try the three filter toggles.** Category,
+   Organizer and Series are separate switches now. Paste a block with only
+   Series on and confirm the pills appear with no category row above them, and
+   that choosing one changes the count and not just the visible rows.
+9. **Use the organizer dropdown.** It never worked before 3.50.0: it rendered on
+   this site, was left out of embeds, and had no handler. Confirm choosing an
+   organizer narrows the list and the count, on this site AND in an embed.
 ## Open decisions
 
 - **Are ticketed events worth building at all?** GFMP already handles payment

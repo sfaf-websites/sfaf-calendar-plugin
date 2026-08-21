@@ -1559,13 +1559,31 @@ class SFAF_Admin {
                         <p class="description">Visitors load the next batch with a button. Applies to the list; the calendar shows a whole month.</p>
                     </div>
 
-                    <div class="uc-embed-field uc-embed-field-inline" data-when-view="list calendar">
-                        <label class="uc-embed-label" for="uc-embed-filters">Let visitors search and filter</label>
-                        <label class="uc-toggle">
-                            <input type="checkbox" id="uc-embed-filters" checked />
-                            <span class="uc-toggle-slider"></span>
-                        </label>
-                        <p class="description">Shows a search box and category buttons above the events.</p>
+                    <?php
+                    /*
+                     * THREE TOGGLES, NOT ONE SWITCH (3.50.0).
+                     *
+                     * "Let visitors search and filter" was all or nothing, and
+                     * neither answer fits the two cases that come up. A block
+                     * scoped to one series, on that programme's own page, wants
+                     * none: the block is already the answer. A block scoped to
+                     * an organizer wants the SERIES row only, so a visitor can
+                     * move between that organizer's programmes.
+                     *
+                     * NOTHING IS HIDDEN FOR BEING REDUNDANT. A block scoped to
+                     * one organizer that asks for the organizer row gets it.
+                     * Whoever generates the block can see the page it is going
+                     * on; this screen cannot.
+                     */
+                    ?>
+                    <div class="uc-embed-field" data-when-view="list calendar combined">
+                        <span class="uc-embed-label">Filters visitors can use</span>
+                        <div class="uc-embed-checks">
+                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-category" checked /> Category</label>
+                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-organizer" checked /> Organizer</label>
+                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-series" checked /> Series</label>
+                        </div>
+                        <p class="description">Any combination, including none. The search box appears whenever at least one is on.</p>
                     </div>
                 </div>
 

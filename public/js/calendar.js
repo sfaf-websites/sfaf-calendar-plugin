@@ -705,6 +705,33 @@
         });
 
         /*
+         * THE ORGANIZER, AS A REAL QUERY (3.50.0).
+         *
+         * This control existed and did nothing: it rendered on this site only,
+         * with no handler in either script, so choosing an organizer changed
+         * neither the rows nor the count. It runs the same server query the
+         * chips run now, for the same reason they do: hiding rows would only
+         * ever see the page already downloaded.
+         *
+         * The group choice is cleared with it. A different organizer holds
+         * different series, so a pill left selected would be a filter for
+         * something no longer on screen.
+         */
+        $(document).on('change', '[data-uc-organizer]', function () {
+            var $sel   = $(this);
+            var $block = $sel.closest('.uc-calendar, .uc-upcoming-widget');
+            var slug   = String($sel.val() || 'all');
+
+            if (!$block.length) {
+                return;
+            }
+
+            $block.attr('data-active-organizer', slug === 'all' ? '' : slug);
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+
+        /*
          * THE SECOND LEVEL. Multi-select, because asking for two groups means
          * "either of these", and a server query for the same reason the category
          * chips are one: hiding rows would only ever see the current page, and a
@@ -733,6 +760,33 @@
             reloadBlock($block);
         });
 
+        /*
+         * THE ORGANIZER, AS A REAL QUERY (3.50.0).
+         *
+         * This control existed and did nothing: it rendered on this site only,
+         * with no handler in either script, so choosing an organizer changed
+         * neither the rows nor the count. It runs the same server query the
+         * chips run now, for the same reason they do: hiding rows would only
+         * ever see the page already downloaded.
+         *
+         * The group choice is cleared with it. A different organizer holds
+         * different series, so a pill left selected would be a filter for
+         * something no longer on screen.
+         */
+        $(document).on('change', '[data-uc-organizer]', function () {
+            var $sel   = $(this);
+            var $block = $sel.closest('.uc-calendar, .uc-upcoming-widget');
+            var slug   = String($sel.val() || 'all');
+
+            if (!$block.length) {
+                return;
+            }
+
+            $block.attr('data-active-organizer', slug === 'all' ? '' : slug);
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+
         /* The breadcrumb steps back up a level. "All" clears both, the category
          * segment clears only the groups under it. */
         $(document).on('click', '[data-uc-crumb]', function (e) {
@@ -741,6 +795,33 @@
             if ($(this).attr('data-uc-crumb') === 'all') {
                 $block.attr('data-active-category', '');
             }
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+
+        /*
+         * THE ORGANIZER, AS A REAL QUERY (3.50.0).
+         *
+         * This control existed and did nothing: it rendered on this site only,
+         * with no handler in either script, so choosing an organizer changed
+         * neither the rows nor the count. It runs the same server query the
+         * chips run now, for the same reason they do: hiding rows would only
+         * ever see the page already downloaded.
+         *
+         * The group choice is cleared with it. A different organizer holds
+         * different series, so a pill left selected would be a filter for
+         * something no longer on screen.
+         */
+        $(document).on('change', '[data-uc-organizer]', function () {
+            var $sel   = $(this);
+            var $block = $sel.closest('.uc-calendar, .uc-upcoming-widget');
+            var slug   = String($sel.val() || 'all');
+
+            if (!$block.length) {
+                return;
+            }
+
+            $block.attr('data-active-organizer', slug === 'all' ? '' : slug);
             $block.attr('data-active-groups', '');
             reloadBlock($block);
         });
@@ -790,7 +871,9 @@
             category:        $block.attr('data-scope-category') || '',
             active_category: $block.attr('data-active-category') || '',
             active_groups:   activeGroups($block),
-            organizer:       $block.attr('data-filter-organizer') || '',
+            organizer:        $block.attr('data-scope-organizer') || $block.attr('data-filter-organizer') || '',
+            active_organizer: $block.attr('data-active-organizer') || '',
+            filters:          $block.attr('data-filters') || '',
             series:          $block.attr('data-filter-series') || '',
             venue:           $block.attr('data-filter-venue') || '',
             s:               $block.attr('data-filter-s') || '',
@@ -847,6 +930,33 @@
             // No button for it: the bar is switched off, or the block is scoped
             // elsewhere. Run the same query anyway; the server decides.
             $block.attr('data-active-category', slug);
+            $block.attr('data-active-groups', '');
+            reloadBlock($block);
+        });
+
+        /*
+         * THE ORGANIZER, AS A REAL QUERY (3.50.0).
+         *
+         * This control existed and did nothing: it rendered on this site only,
+         * with no handler in either script, so choosing an organizer changed
+         * neither the rows nor the count. It runs the same server query the
+         * chips run now, for the same reason they do: hiding rows would only
+         * ever see the page already downloaded.
+         *
+         * The group choice is cleared with it. A different organizer holds
+         * different series, so a pill left selected would be a filter for
+         * something no longer on screen.
+         */
+        $(document).on('change', '[data-uc-organizer]', function () {
+            var $sel   = $(this);
+            var $block = $sel.closest('.uc-calendar, .uc-upcoming-widget');
+            var slug   = String($sel.val() || 'all');
+
+            if (!$block.length) {
+                return;
+            }
+
+            $block.attr('data-active-organizer', slug === 'all' ? '' : slug);
             $block.attr('data-active-groups', '');
             reloadBlock($block);
         });
