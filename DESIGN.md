@@ -359,6 +359,54 @@ smaller box.
 > disclosure is how somebody edits a cancelled event without noticing it is
 > cancelled.
 
+### No color a reader cannot decode
+
+> "Too many colors create a kaleidoscope effect. A neutral base with one or two
+> accents is the rule."
+>
+> SFAF brand guide 2026 v3.0
+
+**If nothing on the page says what a hue means, the hue is decoration wearing
+the clothes of information.** A reader who can see that two things are colored
+differently, and cannot find out why, has been given a key with no legend. That
+is worse than no color, because it invites the belief that something has been
+communicated.
+
+**The test: can a visitor learn what this color means without leaving the
+screen?** If yes, it is carrying information and it must clear 3:1 as a non-text
+graphic. If no, it is decoration and it should be neutral.
+
+**3.49.0 removed the month grid's category ring under this rule, reversing half
+of 3.31.0, and the reasoning is recorded rather than deleted because it is the
+kind somebody restores from.** 3.31.0 was fixing a real defect: the accent bar
+it replaced was the raw category color, and six of the ten measure under 3:1 on
+white (Yellow 1.38, Light Gray 1.50, Green 2.02, Teal 2.26, Orange 2.31, Pink
+2.99). Its answer was a ring in `--cat-ink`, the darkened half of the pair, and
+**that answer was right about which color to use**. What it never established
+was that a color belonged there at all: ten inks around ten thumbnails in one
+cell, and no legend anywhere on the grid.
+
+The thumbnails now take a **neutral 1px hairline in `--uc-border` (#E2E5EA)**,
+measured **1.26:1 on a white cell and 1.17:1 on an out-of-month or hovered one**.
+Those numbers are not failures of the 3:1 floor: **the floor applies to a graphic
+that carries information, and a hairline that distinguishes nothing is not asked
+to distinguish anything.** Its job is to bound a photograph with pale edges, and
+it is the same token every other edge in the calendar uses.
+
+**What keeps its color, and why the rule does not sweep further:**
+
+- **The category chip.** It carries the category NAME immediately beside it, so
+  the color is labeled on the spot.
+- **The placeholder tile.** It needs a fill, and its icon is the category's own.
+
+Both are checked, in the same file that measures the ink, so a later sweep
+toward "make it neutral" cannot quietly take them.
+
+**Apply an edge to the CONTAINER, not to the picture.** One hairline and one
+radius then serve both the photograph and the placeholder, so the two cannot
+drift apart, and the declaration is not sitting on the one element in the row
+that every host stylesheet writes a rule for.
+
 ---
 
 ## 5. CSS discipline

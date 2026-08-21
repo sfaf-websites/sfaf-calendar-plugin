@@ -41,6 +41,7 @@ echo "=== JS ==="
 for f in .claude/*.js; do
   case "$(basename "$f")" in
     build-email-icons.js) continue ;;  # a generator, not a test
+    build-favicon.js) continue ;;      # likewise; its check is --preview
   esac
   run "$(basename "$f")" node "$f"
 done

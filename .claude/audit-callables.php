@@ -50,7 +50,7 @@ function ac_php_files( $root ) {
          * not the build; auditing them buried the live tree's findings under
          * fourteen from plugin versions nobody is going to edit.
          */
-        if ( preg_match( '#/(vendor|node_modules|\.git)/#', $path ) ) {
+        if ( preg_match( '#/(vendor|node_modules|\.git|\.build-stage)/#', $path ) ) {
             continue;
         }
         if ( false !== stripos( $path, '/Old Calendar Files/' ) ) {

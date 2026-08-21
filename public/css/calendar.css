@@ -1742,9 +1742,36 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    product was the one where the hues could not be told apart, so the bar was
    decoration standing in for information it could not carry.
 
-   THE RING IS --cat-ink, the darkened half of sfaf_category_shades() and the
-   same ink the chips use. Lowest of the ten on white is 5.84. Measured by
-   .claude/category-ring-contrast.php, which fails if that changes.
+   THE CATEGORY RING IS GONE TOO, AS OF 3.49.0, AND THIS REVERSES HALF OF WHAT
+   3.31.0 DECIDED. It was a 2px ring in --cat-ink, and the reasoning above is
+   why it was ink rather than the raw hue. That reasoning was sound and is kept
+   above so nobody re-derives it. What it never established is that the ring
+   should exist.
+
+   A VISITOR IS NEVER TOLD WHAT THE COLOUR MEANS. Nothing on the grid maps a hue
+   to a category name, so the ring was decoration presenting itself as
+   information: it looked like a key and there was no key. The brand guide is
+   explicit that too many colours make a kaleidoscope and that the rule is a
+   neutral base with one or two accents; ten inks around ten thumbnails in one
+   cell is the thing it warns about.
+
+   SO IT IS A NEUTRAL 1px HAIRLINE IN --uc-border (#E2E5EA), which measures
+   1.26:1 on a white cell and 1.17:1 on an out-of-month or hovered one. THAT IS
+   NOT A FAILURE OF THE 3:1 FLOOR: the floor applies to a graphic that carries
+   information, and this one carries none. Its whole job is to bound a
+   photograph whose own edges may be pale, and it is the SAME token every other
+   edge in this calendar uses, including the border on the row it sits in, so
+   the thumbnail is now edged like everything else rather than specially.
+
+   The accent bar's 3:1 problem is not reintroduced by this. That bar failed
+   because it was the only thing distinguishing one category from another; a
+   hairline distinguishes nothing and is not asked to.
+
+   WHAT KEEPS ITS CATEGORY COLOUR, deliberately: the chip, which carries the
+   category NAME right beside it, so the colour is labelled; and the placeholder
+   tile below, which needs a fill and whose icon is the category's own. Colour
+   earns its place in both. See .claude/category-ring-contrast.php, which still
+   measures the ink on those two surfaces.
 
    TWO LINES THEN TRUNCATE, never one. -webkit-line-clamp is the only thing
    that does this and it is supported everywhere that matters; the fallback
@@ -1761,15 +1788,20 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 /* The thumbnail. flex: 0 0 auto so it never gives up its width to a long
    title, which is what would turn a 32px mark into a 4px sliver. */
 .uc-calendar .uc-de-thumb { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 7px;
-    overflow: hidden; box-shadow: 0 0 0 2px var(--cat-ink, var(--uc-teal-text)); background: var(--uc-bg);
+    overflow: hidden; box-shadow: 0 0 0 1px var(--uc-border); background: var(--uc-bg);
     display: block; margin: 1px 1px 0 1px; }
 .uc-calendar .uc-de-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* box-shadow rather than border for the ring: a border would eat into the 32
-   and leave the picture at 28, and an inset ring on top of a photograph reads
-   as a frame rather than a category mark. The 1px margin is the room the ring
-   needs, since a box-shadow is drawn outside the box and is not part of the
-   layout. */
+/* box-shadow rather than border, and that reasoning survives the ring it was
+   written for: a border would eat into the 32 and leave the picture at 28.
+   A box-shadow is drawn outside the box and takes no part in layout, which is
+   what the 1px margin is room for.
+
+   ON THE CONTAINER, NOT ON THE PICTURE, so the photo and the placeholder are
+   edged identically: both sit inside this box, so there is one hairline and one
+   radius for the two of them and they cannot drift apart. It also puts the
+   hairline on a <div> rather than an <img>, which is the one element in the row
+   every host stylesheet writes a rule for. See the sidebar's note on that. */
 
 /* The placeholder: the category icon on the category's own tint, no words. A
    scaled-down version of the list card's tile would put unreadable text in a
@@ -2098,7 +2130,20 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    rather than with a stripe. The right side matches it as of 3.24.1: the
    stacked band spans the row's content box, and a band inset 10px on one side
    and flush on the other reads as a mistake. */
-.uc-sidebar-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+/* THE THUMBNAIL IS TOP-ALIGNED, NOT CENTRED (3.49.0). Several SFAF event
+   titles run to three and four lines in a 288px column, and centring left the
+   picture floating in the middle of a much taller block of text with air above
+   and below it that belonged to neither.
+
+   flex-start, NOT stretch. Stretching the band to the row's height would drag
+   a 16/9 crop into a tall thin slice of a landscape photograph, which is a
+   worse answer than the one being replaced. The title is not truncated either:
+   the row simply gets taller, which is the direction this design already goes.
+
+   THE MONTH GRID IS LEFT ALONE. Its rows are two lines by construction
+   (-webkit-line-clamp: 2 on the title), so there is no tall row for a 32px
+   thumbnail to float in the middle of. */
+.uc-sidebar-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;
     padding: 12px 10px; border-top: 1px solid var(--uc-border);
     text-decoration: none; color: inherit; background: none; }
 .uc-sidebar-row:first-child { border-top: 0; }
@@ -2201,9 +2246,23 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
    argument. This is a layout mechanism instead, which is better: it holds
    against rules we have not seen rather than against the ones we have.
    ------------------------------------------------------------------------- */
+/* THE SAME NEUTRAL HAIRLINE THE MONTH GRID NOW HAS (3.49.0), so the two
+   surfaces are edged alike: 1px of --uc-border, on the CONTAINER, so the
+   photograph and the placeholder inside it measure identically and neither can
+   drift from the other.
+
+   box-shadow rather than border for the reason given on the month grid, and
+   here it matters more: this band's height comes from aspect-ratio, and a
+   border would be added to that box and change the ratio it is holding.
+
+   IT SURVIVES A HOST STYLESHEET because it is not on the <img>. Every WordPress
+   theme writes an `img` rule and plenty write it with !important, which is the
+   whole subject of the note above; none of them has an opinion about
+   .uc-sidebar-thumb. */
 .uc-sidebar-thumb { flex: 1 1 60px; aspect-ratio: 16 / 9;
     min-height: 45px; max-height: 120px;
-    border-radius: 8px; overflow: hidden; background: var(--uc-bg); display: flex; }
+    border-radius: 8px; overflow: hidden; background: var(--uc-bg); display: flex;
+    box-shadow: 0 0 0 1px var(--uc-border); }
 .uc-sidebar .uc-thumb-img,
 .uc-calendar .uc-thumb-img {
     display: block; width: 100%; height: 100%; max-width: none;

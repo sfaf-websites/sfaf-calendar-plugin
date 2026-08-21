@@ -185,6 +185,12 @@ foreach ( $it as $f ) {
     $p = str_replace( '\\', '/', $f->getPathname() );
     if ( substr( $p, -4 ) !== '.php' ) { continue; }
     if ( false !== strpos( $p, '/Old Calendar Files/' ) ) { continue; }
+    /* .build-stage is a byte-identical COPY of the plugin that build-zip.sh
+     * leaves behind. Scanning it counts every call site twice, and the second
+     * copy sits at a path none of the exemptions above name, so the formatter
+     * gets reported for being the formatter. Not source; skipped like the
+     * archive above it. */
+    if ( false !== strpos( $p, '/.build-stage/' ) ) { continue; }
     $files[] = $p;
 }
 sort( $files );

@@ -3401,3 +3401,139 @@
         });
     });
 })();
+
+/* ---------------------------------------------------------------------------
+   THE FORM LINKS (3.49.0)
+
+   Nothing in caladmin linked to either public form, so sending somebody one
+   meant remembering the URL shape. The dashboard now carries a control that
+   hands them over.
+
+   THE PANEL IS A <details> IN THE PAGE AND THIS LIFTS IT INTO A <dialog>.
+   Same arrangement as the approval prompt and the recurrence scope question,
+   and the same reason: with this script missing, or in a browser with no
+   <dialog>, the disclosure opens in place and every link is already written
+   out. The enhancement can fail and leave a screen that works.
+
+   THE PICKER AND THE COPY BUTTONS ARE DELEGATED FROM `document`, deliberately.
+   The panel gets MOVED between the page and the dialog, and a listener bound to
+   a node inside it would have to survive that move. Delegation does not care
+   where the node currently lives.
+
+   WITHOUT THIS SCRIPT the picker cannot rewrite the box, which is why the
+   markup also prints every campaign's link inside a <noscript>: a select that
+   silently does nothing would leave the first campaign's link showing while a
+   different campaign was chosen, which is a wrong answer wearing the shape of a
+   right one.
+   --------------------------------------------------------------------------- */
+(function () {
+    var host = document.querySelector('[data-uc-form-links]');
+
+    /* ---- The picker rewrites the box ------------------------------------
+     * The option's value IS the URL, built by SFAF_Submit::url() in PHP, so
+     * nothing here assembles an address out of parts. A link this script had
+     * to construct would be a second copy of that format, in a second
+     * language, free to drift from the one the form actually answers to. */
+    document.addEventListener('change', function (e) {
+        var select = e.target.closest ? e.target.closest('[data-uc-form-link-series]') : null;
+        if (!select) { return; }
+        var scope = select.closest('.uc-form-link') || document;
+        var out = scope.querySelector('[data-uc-form-link-out]');
+        if (out) { out.value = select.value; }
+    });
+
+    /* ---- Copy -----------------------------------------------------------
+     * Two ways, because the modern one needs a secure context and caladmin is
+     * not guaranteed to be on one. If both fail the field is still readable
+     * and still selects itself on focus, so the link can always be taken by
+     * hand: the button is a convenience over a working control, never the
+     * only way to get the value out. */
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('[data-uc-copy]') : null;
+        if (!btn) { return; }
+        e.preventDefault();
+
+        var row = btn.closest('.uc-form-link-row');
+        var field = row ? row.querySelector('.uc-form-link-url') : null;
+        if (!field) { return; }
+
+        var said = function (word) {
+            var was = btn.getAttribute('data-uc-copy-was') || btn.textContent;
+            btn.setAttribute('data-uc-copy-was', was);
+            btn.textContent = word;
+            window.setTimeout(function () { btn.textContent = was; }, 1600);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(field.value).then(
+                function () { said('Copied'); },
+                function () { field.select(); said('Press Ctrl+C'); }
+            );
+            return;
+        }
+
+        field.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+        said(ok ? 'Copied' : 'Press Ctrl+C');
+    });
+
+    /* ---- The dialog ----------------------------------------------------- */
+    if (!host) { return; }
+
+    var supported = false;
+    try {
+        supported = typeof document.createElement('dialog').showModal === 'function';
+    } catch (err) {
+        supported = false;
+    }
+    if (!supported) { return; }
+
+    var body = host.querySelector('.uc-form-links-body');
+    var summary = host.querySelector('summary');
+    if (!body || !summary) { return; }
+
+    summary.addEventListener('click', function (e) {
+        /* The <details> never opens once we can show a dialog instead. Leaving
+           it to open as well would put the panel on the page BEHIND the modal
+           holding the same fields, with two of every id and two Copy buttons. */
+        e.preventDefault();
+
+        var home = document.createComment('uc-form-links');
+        body.parentNode.insertBefore(home, body);
+
+        var dialog = document.createElement('dialog');
+        dialog.className = 'uc-confirm-modal uc-form-links-modal';
+
+        var form = document.createElement('form');
+        form.method = 'dialog';
+
+        var actions = document.createElement('div');
+        actions.className = 'uc-confirm-actions';
+
+        var done = document.createElement('button');
+        done.type = 'submit';
+        done.value = 'done';
+        done.className = 'uc-btn uc-btn-sm uc-btn-primary';
+        done.textContent = 'Done';
+
+        actions.appendChild(done);
+        form.appendChild(body);
+        form.appendChild(actions);
+        dialog.appendChild(form);
+        document.body.appendChild(dialog);
+
+        dialog.addEventListener('close', function () {
+            document.body.classList.remove('uc-modal-open');
+            /* Home first, whatever closed it: a dialog that took the panel away
+               with it would leave the summary unable to open anything again. */
+            home.parentNode.insertBefore(body, home);
+            home.parentNode.removeChild(home);
+            dialog.remove();
+            host.open = false;
+        });
+
+        document.body.classList.add('uc-modal-open');
+        dialog.showModal();
+    });
+})();

@@ -1,11 +1,21 @@
 <?php
 /**
- * THE MONTH GRID THUMBNAIL RING, MEASURED.
+ * CATEGORY INK, MEASURED, WHEREVER IT STILL DRAWS A SHAPE.
  *
- * The ring around a day-event thumbnail is a 2px border in the category's INK,
- * which is the darkened half of the contrast-checked pair sfaf_category_shades()
- * returns and the same ink the chips use for their text. It is NOT the raw
- * category colour, and this file is why.
+ * THE THUMBNAIL RING IS GONE AS OF 3.49.0, and this file outlived it on
+ * purpose. The ring was removed because a visitor is never told what the colour
+ * means, so it was decoration presenting itself as information; the thumbnails
+ * now carry a neutral 1px hairline in --uc-border and section 2 below refuses
+ * to let a category colour back onto them.
+ *
+ * What did NOT change is that category ink still draws things on these two
+ * surfaces: the hover border on a day-event row, the chip, and the icon on a
+ * placeholder tile. Those carry meaning, the chip literally beside its own
+ * name, so the 3:1 floor still applies to them and is still measured here.
+ *
+ * The ink is the darkened half of the contrast-checked pair
+ * sfaf_category_shades() returns. It is NOT the raw category colour, and the
+ * rest of this file is why.
  *
  * The raw brand hues cannot carry a shape on white. This project's own audit
  * measured six of the ten below the 3:1 that WCAG 1.4.11 asks of a non-text
@@ -16,10 +26,14 @@
  *
  *     php .claude/category-ring-contrast.php
  *
- * Fails if any ink falls under 3:1 on either surface the ring sits on: white,
- * which is the cell, and --uc-bg #F5F6F7, which is an out-of-month cell and a
- * hovered one. Both, because a ring that passes on one and not the other passes
- * on whichever the reviewer happened to open.
+ * Fails if any ink falls under 3:1 on either surface it sits on: white, which
+ * is the cell, and --uc-bg #F5F6F7, which is an out-of-month cell and a hovered
+ * one. Both, because a mark that passes on one and not the other passes on
+ * whichever the reviewer happened to open.
+ *
+ * Section 2 then checks the thumbnails themselves, and it is a source check on
+ * calendar.css rather than a measurement: "this colour is absent" is not
+ * something a contrast ratio can express.
  */
 
 $root = dirname( __DIR__ );
@@ -104,8 +118,8 @@ if ( $raw_failures < 6 ) {
     );
 }
 
-printf( "Month grid thumbnail ring: category ink on the two cell surfaces\n\n" );
-printf( "%-11s %-8s %-8s %9s %9s %9s\n", 'Category', 'Brand', 'Ring ink', 'raw/white', 'ink/white', 'ink/#F5F6F7' );
+printf( "Category ink, on the two cell surfaces it still draws on\n\n" );
+printf( "%-11s %-8s %-8s %9s %9s %9s\n", 'Category', 'Brand', 'Ink', 'raw/white', 'ink/white', 'ink/#F5F6F7' );
 printf( "%s\n", str_repeat( '-', 62 ) );
 foreach ( $rows as $r ) {
     printf( "%-11s %-8s %-8s %8.2f%s %8.2f%s %8.2f%s\n",
@@ -118,10 +132,111 @@ foreach ( $rows as $r ) {
 printf( "\n* under %.1f:1. %d of the 10 RAW colours fail on white, which is why the ring is ink.\n", $FLOOR, $raw_failures );
 echo "Floor is WCAG 1.4.11 non-text contrast: a ring is a shape carrying meaning, not decoration.\n\n";
 
+/* =========================================================================
+ * 2. AND THE THUMBNAILS ARE NEUTRAL, IN BOTH PLACES (3.49.0).
+ *
+ * THIS SECTION EXISTS TO STOP THE REVERSAL BEING REVERSED. The reasoning that
+ * put a category ring on these thumbnails is still in calendar.css, because it
+ * was sound about WHICH colour to use and only wrong that a colour belonged
+ * there at all. Reasoning that good is exactly what somebody restores from. So
+ * the decision is enforced rather than merely written down.
+ *
+ * TWO SURFACES, ONE ANSWER. The month grid's 32px thumbnail and the sidebar's
+ * 16/9 band must carry the SAME neutral hairline: they are the same object on
+ * two screens, and in the combined mode they are on ONE screen, a few hundred
+ * pixels apart, where any difference between them is plainly a mistake.
+ *
+ * IT IS ON THE CONTAINER IN BOTH, which is what makes the photo and the
+ * placeholder measure identically: there is one hairline and one radius for the
+ * two of them, so they cannot drift.
+ * ====================================================================== */
+$css = file_get_contents( $root . '/public/css/calendar.css' );
+
+/** The declaration block for one selector, as written. */
+function block_for( $css, $selector ) {
+    $at = strpos( $css, $selector . ' {' );
+    if ( false === $at ) {
+        return null;
+    }
+    $end = strpos( $css, '}', $at );
+    return ( false === $end ) ? null : substr( $css, $at, $end - $at + 1 );
+}
+
+$NEUTRAL = '--uc-border';
+$thumbs  = array(
+    '.uc-calendar .uc-de-thumb' => 'the month grid thumbnail',
+    '.uc-sidebar-thumb'         => 'the sidebar thumbnail',
+);
+
+$weights = array();
+
+foreach ( $thumbs as $selector => $what ) {
+    $block = block_for( $css, $selector );
+    if ( null === $block ) {
+        $fails[] = sprintf( '%s (%s) is not in calendar.css at all', $selector, $what );
+        continue;
+    }
+
+    if ( ! preg_match( '/box-shadow:\s*0 0 0 (\d+)px\s+var\(\s*(--[a-z-]+)/', $block, $m ) ) {
+        $fails[] = sprintf( '%s has no hairline, so %s is unbounded against a pale photograph', $selector, $what );
+        continue;
+    }
+
+    $weights[ $selector ] = (int) $m[1];
+
+    if ( $m[2] !== $NEUTRAL ) {
+        $fails[] = sprintf(
+            '%s draws its edge in %s rather than %s. A colour nothing on the page explains is decoration claiming to be information; see the note in calendar.css',
+            $what, $m[2], $NEUTRAL
+        );
+    }
+
+    if ( (int) $m[1] < 1 || (int) $m[1] > 2 ) {
+        $fails[] = sprintf( '%s hairline is %dpx; it is meant to be 1 or 2', $what, (int) $m[1] );
+    }
+
+    /* The reversal, stated as the thing it forbids. */
+    if ( preg_match( '/box-shadow:[^;]*cat-ink/', $block ) ) {
+        $fails[] = sprintf( '%s is back to a category-coloured ring', $what );
+    }
+}
+
+if ( 2 === count( $weights ) && 1 !== count( array_unique( $weights ) ) ) {
+    $fails[] = sprintf(
+        'the two thumbnails are edged at different weights (%s), and in the combined mode they are on the same screen',
+        implode( ' and ', array_map( function ( $k, $v ) { return "$k at {$v}px"; }, array_keys( $weights ), $weights ) )
+    );
+}
+
+/*
+ * AND THE TWO THINGS THAT KEEP THEIR COLOUR, asserted so that "make it neutral"
+ * is not applied one sweep too far. The chip carries the category name right
+ * beside it and the placeholder tile needs a fill; colour is labelled in the
+ * first and load-bearing in the second.
+ */
+foreach ( array(
+    '.uc-calendar .uc-lc-chip'      => 'the category chip',
+    '.uc-calendar .uc-de-thumb-ph'  => 'the month grid placeholder tile',
+) as $selector => $what ) {
+    $block = block_for( $css, $selector );
+    if ( null === $block ) {
+        $fails[] = sprintf( '%s (%s) is not in calendar.css', $selector, $what );
+        continue;
+    }
+    if ( ! preg_match( '/cat-ink/', $block ) ) {
+        $fails[] = sprintf( '%s lost its category colour, which it is supposed to keep', $what );
+    }
+}
+
+printf( "Thumbnail edges: %s\n", $weights
+    ? implode( ', ', array_map( function ( $k, $v ) { return "$k {$v}px " . '--uc-border'; }, array_keys( $weights ), $weights ) )
+    : 'none found' );
+echo "The chip and the placeholder tile keep the category colour, and are checked for it.\n\n";
+
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "every ring colour clears 3:1 on both surfaces it is drawn on.\n";
+echo "category ink clears 3:1 everywhere it still draws, and both thumbnails are neutral.\n";
 exit( 0 );

@@ -41,6 +41,7 @@ while IFS= read -r f; do
     fi
 done < <(find "$ROOT" -type f -name '*.php' \
             -not -path '*/Old Calendar Files/*' \
+            -not -path '*/.build-stage/*' \
             -not -path '*/.git/*' | sort)
 
 echo

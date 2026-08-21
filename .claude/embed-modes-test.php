@@ -467,9 +467,22 @@ check(
     (bool) preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*width:\s*32px[^}]*height:\s*32px/', $css ),
     'the day event thumbnail is not 32 by 32'
 );
+/*
+ * THE EDGE IS NEUTRAL AS OF 3.49.0, and this assertion used to say the
+ * opposite: it required a 2px ring in --cat-ink. That was right about which
+ * colour to use if a colour was used at all, and 3.49.0 decided none should be,
+ * because nothing on the grid tells a visitor what the hue means. The check is
+ * kept rather than deleted, pointed the other way, so the reversal is enforced
+ * in the same place the old rule was. The weight and the ban on category colour
+ * are measured across BOTH thumbnails in .claude/category-ring-contrast.php.
+ */
 check(
-    (bool) preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*box-shadow:\s*0 0 0 2px var\(--cat-ink/', $css ),
-    'the ring is not a 2px --cat-ink; it must be the contrast-checked ink, never the raw category colour'
+    (bool) preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*box-shadow:\s*0 0 0 1px var\(--uc-border/', $css ),
+    'the day event thumbnail has no neutral hairline; it is a 1px var(--uc-border) edge'
+);
+check(
+    ! preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*box-shadow:[^;]*cat-ink/', $css ),
+    'the category ring is back on the day event thumbnail; it was removed deliberately in 3.49.0'
 );
 check(
     ! preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*var\(--cat-color/', $css ),
@@ -620,7 +633,7 @@ printf( "          panel capped at %spx where the sidebar itself caps, and its %
     isset( $pcap[1] ) ? $pcap[1] : '?', $basis_side );
 printf( "          %dpx where the row breaks in two\n", $rowstack );
 echo "          (whether it RENDERS like the sidebar is combined-panel-parity.php; run that too)\n";
-echo "grid card: no accent bar, a 32px thumbnail ringed in --cat-ink, the title clamped to two\n";
+echo "grid card: no accent bar, a 32px thumbnail on a neutral 1px hairline, the title clamped to two\n";
 echo "          lines, the thumbnail dropped below 930px, and nothing capping how many show\n";
 printf( "geometry: cap %dpx to %dpx. Column %.1fpx to %.1fpx outer, cell content %.1fpx to %.1fpx,\n",
     $cap_old, $cap_new, $col_o, $col_n, $cell_o, $cell_n );
@@ -634,5 +647,5 @@ if ( $fails ) {
     exit( 1 );
 }
 echo "the combined mode composes both renderers, source linking reaches every one of them,\n";
-echo "and the grid card carries a ring that can be seen rather than a bar that could not.\n";
+echo "and the grid card's thumbnail is edged in neutral, carrying no colour it cannot explain.\n";
 exit( 0 );

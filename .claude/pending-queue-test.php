@@ -22,6 +22,14 @@
  * exactly as the two forms build them, calls the real query_events() with the
  * arguments the real screens pass, and asks WHICH IDS CAME BACK. No assertion
  * in this file searches for a string in any source file.
+ *
+ * AND SINCE 3.49.0 IT RENDERS THE SCREEN. Section 6 calls render_pending()
+ * itself, through the real filter and the real sort, and reads the rows back
+ * out of the HTML by their `data-uc-id`. That is a third marking fault's worth
+ * of reason: the queue became ONE list with a filter over it, and "is my thing
+ * in the list, and is it under the right tab" is a question only the rendered
+ * list can answer. Six faults were planted to prove it can fail, including the
+ * two real ones above; all six were caught.
  */
 
 $root = dirname( __DIR__ );
@@ -163,6 +171,41 @@ function sfaf_source_links_flag() { return false; }
 function sfaf_set_source_links( $v ) {}
 function _prime_post_caches( $ids, $a = true, $b = true ) {}
 
+/* ---------------------------------------------------------------------------
+ * What section 6 needs in order to RENDER the screen rather than query it.
+ *
+ * Everything here is chrome. None of it decides which row lands in which list,
+ * which is the whole of what section 6 asserts, so each is the smallest thing
+ * that lets the page finish drawing.
+ * ------------------------------------------------------------------------ */
+function date_i18n( $fmt, $ts = null, $gmt = false ) { return date( $fmt, null === $ts ? time() : (int) $ts ); }
+function wp_timezone_string() { return 'America/Los_Angeles'; }
+function sfaf_event_location_short( $id ) { return ''; }
+function sanitize_hex_color( $c ) { return preg_match( '/^#[0-9a-f]{3,6}$/i', (string) $c ) ? $c : ''; }
+function language_attributes( $doctype = 'html' ) { echo 'lang="en-US"'; }
+function bloginfo( $show = '' ) { echo 'UTF-8'; }
+function human_time_diff( $from, $to = 0 ) { return '1 hour'; }
+function wp_get_attachment_image_src( $id, $size = 'thumbnail' ) { return false; }
+function get_edit_post_link( $id = 0, $ctx = 'display' ) { return ''; }
+function wp_upload_dir( $time = null, $create = true ) {
+    return array( 'basedir' => '/tmp/uploads', 'baseurl' => 'https://example.org/uploads', 'error' => false );
+}
+/* The portal builds its own document and prints by hand whatever the media
+ * library and the editor enqueued. Nothing here is enqueued, so these print
+ * nothing, which is the correct answer rather than a silenced one. */
+function wp_print_styles( $h = '' ) {}
+function wp_print_head_scripts() {}
+function wp_print_footer_scripts() {}
+function wp_print_media_templates() {}
+function wp_enqueue_script( $h, $s = '', $d = array(), $v = false, $f = false ) {}
+function wp_enqueue_style( $h, $s = '', $d = array(), $v = false, $m = 'all' ) {}
+function wp_localize_script( $h, $n, $d ) {}
+function wp_add_inline_script( $h, $d, $p = 'after' ) {}
+function did_action( $h ) { return 0; }
+function wp_logout_url( $r = '' ) { return 'https://example.org/logout'; }
+function get_avatar_url( $u, $a = array() ) { return ''; }
+function get_avatar( $u, $s = 96, $d = '', $alt = '', $a = array() ) { return ''; }
+
 /*
  * WHO MARK IS. He is a WordPress administrator, which SFAF_Portal turns into
  * the calendar Admin role without any `_uc_calendar_role` meta, exactly as
@@ -228,13 +271,66 @@ class SFAF_Reminders {
     const NOTIFY_EMAILS_META = '_uc_notify_emails';
     public static function new_token() { return bin2hex( random_bytes( 16 ) ); }
 }
+/**
+ * The import side, modelled rather than emptied.
+ *
+ * IT USED TO ANSWER "NOTHING" TO EVERYTHING, which was enough while this file
+ * only asked query_events() a question. Section 6 renders the screen, and an
+ * import queue that is always empty would render a list with no imports in it
+ * and then assert, truthfully and uselessly, that no import was in the wrong
+ * place. So queue_ids() reads the same $GLOBALS['posts'] the WP_Query stub
+ * reads, and provenance() reads meta, which is where the real one reads it.
+ */
 class SFAF_Sources {
-    const STATUS_PENDING  = 'uc_imported';
-    const META_REMOVED_AT = '_uc_removed_at';
+    const STATUS_PENDING   = 'uc_imported';
+    const STATUS_DISMISSED = 'uc_dismissed';
+    const META_REMOVED_AT  = '_uc_removed_at';
+    const META_SOURCE      = '_uc_source';
+
     public static function provenance( $id ) {
-        return array( 'source' => '', 'label' => '', 'external_id' => '', 'source_url' => '', 'image_url' => '', 'timezone' => '', 'imported_at' => 0 );
+        $source = (string) get_post_meta( $id, self::META_SOURCE, true );
+        return array(
+            'source'      => $source,
+            'label'       => ( '' !== $source ) ? ucfirst( $source ) : '',
+            'external_id' => '',
+            'source_url'  => ( '' !== $source ) ? 'https://example.org/campaign/' . (int) $id : '',
+            'image_url'   => '',
+            'timezone'    => '',
+            'imported_at' => (int) get_post_meta( $id, '_uc_imported_at', true ),
+        );
     }
-    public static function queue_ids( $s ) { return array(); }
+
+    public static function queue_ids( $status, $limit = 200 ) {
+        $ids = array();
+        foreach ( $GLOBALS['posts'] as $id => $p ) {
+            if ( $p['post_status'] === $status ) {
+                $ids[] = (int) $id;
+            }
+        }
+        return $ids;
+    }
+
+    public static function queue_count( $status ) { return count( self::queue_ids( $status ) ); }
+    public static function missing_manager_fields( $id ) { return array(); }
+    public static function field_phrase( $fields ) { return implode( ', ', (array) $fields ); }
+    public static function active_adapters() { return array(); }
+    public static function owned_fields_for( $source ) { return array(); }
+    public static function manager_fields_for( $source ) { return array(); }
+    public static function adapter( $s ) { return null; }
+    public static function is_queued( $id ) { return in_array( get_post_status( $id ), array( self::STATUS_PENDING, self::STATUS_DISMISSED ), true ); }
+    public static function adapters() { return array(); }
+}
+/* The editor is enqueued by the screen, not exercised by it. */
+class SFAF_Rich_Text {
+    public static function enqueue() {}
+    public static function sanitize( $t ) { return (string) $t; }
+    public static function settings_json() { return "{}"; }
+    public static function settings() { return array(); }
+}
+/* Privacy is a property of the event, not of the queue. The panel reads it. */
+class SFAF_Privacy {
+    public static function is_private( $id ) { return false; }
+    public static function set( $id, $on ) { return true; }
 }
 class SFAF_Search {
     public static function apply( &$q, $s ) {}
@@ -453,6 +549,254 @@ if ( SFAF_Submissions::add_to_notify_list( 106, $broken['email'] ) ) {
 /* ---------------------------------------------------------------------------
  * SELF TEST. Every case is a shape this file has NOT already seen pass.
  * ------------------------------------------------------------------------ */
+/* =========================================================================
+ * 6. ONE LIST, AND EVERY KIND IN EXACTLY THE RIGHT PART OF IT (3.49.0).
+ *
+ * WHY THIS SECTION RENDERS THE SCREEN INSTEAD OF ASKING IT A QUESTION.
+ *
+ * Three faults on this queue have now been marking or filtering problems, and
+ * not one of them could be seen by reading source:
+ *
+ *   3.46.0  community submissions badged as staff requests, because the badge
+ *           asked "does it have a request email" and both forms write one.
+ *   3.47.0  an authorless post matching no list, because the queue filtered by
+ *           authorship and both forms set post_author to 0 on purpose.
+ *   3.47.0  the same queue scoping itself to the current user.
+ *
+ * Every one of those shipped with checks in place that proved a string existed
+ * somewhere. So this asserts the OUTCOME: it builds one event of each kind,
+ * calls the real render_pending() through the real filter and sort, and reads
+ * the rows back OUT OF THE HTML. What it asks is the question a person asks:
+ * is my thing in this list, and is it under the right tab.
+ *
+ * `data-uc-kind="dismissed"` IS EXCLUDED and that is not a convenience. The
+ * dismissed card is a second list on the same screen, deliberately, and a row
+ * appearing there is not a row appearing in the work list. Counting both would
+ * make "nowhere else" impossible to state.
+ * ====================================================================== */
+
+/* One of each, in the four statuses and kinds this screen can hold. */
+$GLOBALS['posts'][201] = array( 'post_title' => 'Imported campaign',   'post_status' => 'uc_imported', 'post_author' => 0 );
+$GLOBALS['posts'][202] = array( 'post_title' => 'Dismissed campaign',  'post_status' => 'uc_dismissed', 'post_author' => 0 );
+$GLOBALS['meta'][201]  = array(
+    '_uc_event_date'         => date( 'Y-m-d', strtotime( '+20 days' ) ),
+    SFAF_Sources::META_SOURCE => 'eventbrite',
+    '_uc_imported_at'        => time() - 60,
+);
+$GLOBALS['meta'][202]  = array(
+    '_uc_event_date'         => date( 'Y-m-d', strtotime( '+21 days' ) ),
+    SFAF_Sources::META_SOURCE => 'eventbrite',
+);
+
+/*
+ * AND ONE IMPORT WITH NO DATE AT ALL, which is not an edge case: a GoFundMe Pro
+ * campaign arrives without one every time, by design, and filling it in is the
+ * job. Without a dateless row in this world the "dateless sorts last" assertion
+ * below has nothing to be true or false about, and planting that fault proved
+ * exactly that: it was the one planted fault this file did not catch.
+ */
+$GLOBALS['posts'][203] = array( 'post_title' => 'Campaign with no date', 'post_status' => 'uc_imported', 'post_author' => 0 );
+$GLOBALS['meta'][203]  = array(
+    SFAF_Sources::META_SOURCE => 'gfmp',
+    '_uc_imported_at'         => time() - 30,
+);
+
+/* The four rows this section is about, and what each one is. 103 is the
+ * control: an event an admin set to pending by hand. It is kind 'local', it
+ * matches no filter, and it must still be in the unfiltered list. */
+$WORLD = array(
+    201 => 'import',
+    101 => 'staff',
+    102 => 'community',
+    103 => 'local',
+);
+
+/** Render the pending screen with these query args, and give back its HTML. */
+function screen_html( $args ) {
+    global $portal, $admin;
+
+    $_GET = $args;
+    $method = new ReflectionMethod( 'SFAF_Portal', 'render_pending' );
+    $method->setAccessible( true );
+
+    ob_start();
+    try {
+        $method->invoke( $portal, $admin );
+    } catch ( Throwable $e ) {
+        ob_end_clean();
+        fail( 'render_pending() threw: ' . $e->getMessage() . ' at ' . basename( $e->getFile() ) . ':' . $e->getLine() );
+        return '';
+    }
+    $html = ob_get_clean();
+    $_GET = array();
+    return $html;
+}
+
+/**
+ * The ids of the rows a person can see in the WORK LIST, in the order drawn.
+ *
+ * Read out of the rendered markup, not out of any array this file built. The
+ * dismissed card is on the same page and is excluded by its kind.
+ */
+function rows_in( $html ) {
+    if ( ! preg_match_all( '/data-uc-id="(\d+)" data-uc-kind="([a-z]+)"/', $html, $m, PREG_SET_ORDER ) ) {
+        return array();
+    }
+    $ids = array();
+    foreach ( $m as $hit ) {
+        if ( 'dismissed' === $hit[2] ) {
+            continue;
+        }
+        $ids[] = (int) $hit[1];
+    }
+    return $ids;
+}
+
+/* --- The unfiltered list holds every one of them. ---------------------- */
+$all = rows_in( screen_html( array() ) );
+
+foreach ( $WORLD as $id => $kind ) {
+    if ( ! in_array( $id, $all, true ) ) {
+        fail( "a $kind event is not in the unfiltered pending list, so it is in no list a person opens" );
+    }
+}
+
+/* --- And each filter shows its own kind, and nothing else. ------------- */
+foreach ( array( 'import', 'staff', 'community' ) as $filter ) {
+    $shown = rows_in( screen_html( array( 'kind' => $filter ) ) );
+
+    foreach ( $WORLD as $id => $kind ) {
+        $belongs = ( $kind === $filter );
+        $there   = in_array( $id, $shown, true );
+
+        if ( $belongs && ! $there ) {
+            fail( "the $filter filter does not show the $kind event, which is the one thing it is for" );
+        }
+        if ( ! $belongs && $there ) {
+            fail( "the $filter filter shows the $kind event, so the badge and the filter disagree about what it is" );
+        }
+    }
+}
+
+/* --- A kind with no filter of its own is still reachable. -------------- */
+foreach ( array( 'import', 'staff', 'community' ) as $filter ) {
+    if ( in_array( 103, rows_in( screen_html( array( 'kind' => $filter ) ) ), true ) ) {
+        fail( "an event an admin made by hand appears under the $filter filter" );
+    }
+}
+
+/* --- Newest first, by default, because this is a work list. ------------
+ *
+ * THE PROPERTY, NOT THE PERMUTATION. Asserting an exact order here means
+ * writing the comparator out a second time, and then the test agrees with a
+ * copy of the code rather than with the requirement. "Newest first" means each
+ * row arrived no later than the one above it, and that is what is checked.
+ * How ties break is the implementation's business, as long as it is stable. */
+$default = rows_in( screen_html( array() ) );
+$prev = null;
+foreach ( $default as $id ) {
+    $at = $portal->pending_received( $id );
+    if ( null !== $prev && $at > $prev ) {
+        fail( "the queue does not open newest first: $id arrived after the row drawn above it" );
+        break;
+    }
+    $prev = $at;
+}
+
+/* And the same list, asked twice, is the same list. An unstable comparator
+ * reshuffles equal rows on every reload, which reads as things moving on their
+ * own while somebody is working through them. */
+if ( $default !== rows_in( screen_html( array() ) ) ) {
+    fail( 'the queue drew a different order the second time it was asked for the same view' );
+}
+
+/* --- The sort reverses, and reversing it does not drop or add a row. --- */
+$oldest = rows_in( screen_html( array( 'orderby' => 'received', 'order' => 'asc' ) ) );
+if ( count( $oldest ) !== count( $default ) ) {
+    fail( 'reversing the sort changed how many rows there are, from ' . count( $default ) . ' to ' . count( $oldest ) );
+} elseif ( $oldest === $default && count( $default ) > 1 ) {
+    fail( 'asking for the oldest first returned the same order as the newest first' );
+}
+
+/* --- Sorting by event date is offered and actually reorders. ----------- */
+$by_date = rows_in( screen_html( array( 'orderby' => 'date', 'order' => 'asc' ) ) );
+if ( count( $by_date ) !== count( $default ) ) {
+    fail( 'sorting by event date changed how many rows there are' );
+}
+/* Again the property: dates run forwards, and anything dateless is at the
+ * BOTTOM rather than sorted as the year zero. Plenty of imports arrive with no
+ * date by design, and a reversed sort that parks all of them at the top pushes
+ * every row with a real date off the screen. */
+$prev = '';
+$seen_dateless = false;
+foreach ( $by_date as $id ) {
+    $on = (string) get_post_meta( $id, '_uc_event_date', true );
+    if ( '' === $on ) {
+        $seen_dateless = true;
+        continue;
+    }
+    if ( $seen_dateless ) {
+        fail( "sorting by event date put a dateless row above $id, which has one" );
+        break;
+    }
+    if ( '' !== $prev && strcmp( $on, $prev ) < 0 ) {
+        fail( "sorting by event date ran backwards at $id" );
+        break;
+    }
+    $prev = $on;
+}
+
+/* --- A dismissed import is on the screen, and is NOT in the work list. - */
+$page = screen_html( array() );
+if ( in_array( 202, rows_in( $page ), true ) ) {
+    fail( 'a dismissed import is in the list of things waiting for a decision' );
+}
+if ( false === strpos( $page, 'data-uc-id="202" data-uc-kind="dismissed"' ) ) {
+    fail( 'a dismissed import is nowhere on the screen, so Restore cannot be reached' );
+}
+
+/* --- The things the brief said must keep working, on the rows they belong
+ *     to. Asserted on the RENDERED row rather than on the source, for the
+ *     reason this whole section exists. ----------------------------------- */
+$page = screen_html( array() );
+
+/* Publish and Dismiss reach the import; Approve and Reject reach the
+ * submissions. A row that lost its verb is a row nobody can act on. */
+foreach ( array(
+    'import_publish'  => 'Publish, on the imported event',
+    'import_dismiss'  => 'Dismiss, on the imported event',
+    'approve_event'   => 'Approve, on a submission',
+    'reject_event'    => 'Reject, on a submission',
+    'fetch_sources'   => 'Fetch updates',
+    'import_restore'  => 'Restore, on the dismissed event',
+) as $action => $what ) {
+    if ( false === strpos( $page, 'value="' . $action . '"' ) ) {
+        fail( "$what is gone from the queue" );
+    }
+}
+
+/* The approval prompt still hangs off the submission rows it was built for. */
+foreach ( array( 101, 102 ) as $id ) {
+    if ( false === strpos( $page, 'uc-approve-ask-' . $id ) ) {
+        fail( "the approval prompt is missing from submission $id" );
+    }
+}
+
+/* Every tab is drawn, and each carries its own count. */
+foreach ( array( 'Everything', 'Imported', 'Staff requests', 'Community submissions' ) as $tab ) {
+    if ( false === strpos( $page, $tab ) ) {
+        fail( "the '$tab' filter is not on the screen" );
+    }
+}
+
+/* The kind badges from 3.46.0 are still on the rows, because the filter
+ * narrows and the badge identifies: they are not alternatives. */
+foreach ( array( 'Staff request', 'Community submission' ) as $badge ) {
+    if ( false === strpos( $page, $badge ) ) {
+        fail( "the '$badge' badge is gone from the rows" );
+    }
+}
+
 if ( $self ) {
     echo "SELF TEST\n" . str_repeat( '=', 72 ) . "\n";
     $bad = 0;
@@ -519,10 +863,12 @@ echo str_repeat( '=', 72 ) . "\n";
 echo "world:   3 events waiting, 2 of them authored by nobody because a public\n";
 echo "         form made them, plus one approved submission still authored by nobody\n";
 printf( "queue:   %d returned for the arguments render_pending() passes\n", count( $queue ) );
+printf( "drawn:   %d rows in the rendered work list, from %d in the unfiltered set\n", count( $all ), count( $WORLD ) );
+echo "filters: everything, imported, staff requests, community submissions\n";
 echo "\n";
 
 if ( empty( $fails ) ) {
-    echo "a submission from either form reaches the queue somebody actually opens.\n";
+    echo "every kind reaches the one list, and each is under its own filter and no other.\n";
     exit( 0 );
 }
 echo count( $fails ) . " problem(s):\n";

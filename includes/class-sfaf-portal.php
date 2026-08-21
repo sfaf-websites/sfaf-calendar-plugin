@@ -2444,6 +2444,33 @@ class SFAF_Portal {
     <title><?php echo esc_html( $title ); ?> - SFAF Calendar</title>
     <?php
     /*
+     * THE FAVICON, AND WHY IT IS DECLARED HERE AND NOWHERE ELSE (3.49.0).
+     *
+     * caladmin builds its own document, so this <head> is the only one in the
+     * plugin, and a rel="icon" written here reaches caladmin and nothing else.
+     * resources.sfaf.org keeps its own favicon, and so do the event pages and
+     * both public submission forms, because every one of those is rendered by
+     * the theme through wp_head() and nothing below touches that.
+     *
+     * WHAT IT IS. The calendar glyph this plugin already draws, simplified for
+     * 16 pixels, in Dark Gray #373433 on brand Yellow #FFD900. It is bundled in
+     * the plugin rather than uploaded, exactly as the email banner is, so it
+     * travels with the code and cannot be deleted from the media library by
+     * somebody tidying up.
+     *
+     * SVG FIRST, PNG SECOND, AND THE ORDER IS THE FALLBACK. A browser that
+     * understands image/svg+xml takes the first and stops; one that does not
+     * ignores it and takes the PNG. Safari is the reason the PNG is not
+     * optional. The 180px one is what iOS uses when somebody adds the portal to
+     * a home screen, which is a real thing managers do with a tool they open
+     * every day.
+     */
+    ?>
+    <link rel="icon" type="image/svg+xml" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/images/favicon-caladmin.svg?ver=' . SFAF_VERSION ); ?>" />
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/images/favicon-caladmin.png?ver=' . SFAF_VERSION ); ?>" />
+    <link rel="apple-touch-icon" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/images/favicon-caladmin-180.png?ver=' . SFAF_VERSION ); ?>" />
+    <?php
+    /*
      * MONTSERRAT, THE BRAND'S WEB HEADLINE FACE (guide v3.0, p.10).
      *
      * preconnect first, because the font file is on a second host and the
@@ -3128,6 +3155,19 @@ class SFAF_Portal {
             <?php $this->render_scope_toggle( $scope, '' ); ?>
         </div>
 
+        <?php
+        /*
+         * THE FORM LINKS, ABOVE THE NUMBERS AND CLOSED.
+         *
+         * Here because this is the screen everybody with caladmin access lands
+         * on, and it is offered to all of them rather than to admins only: a
+         * contributor has as much reason to send somebody the community form.
+         * Closed, and one line tall, because it is opened when a campaign
+         * launches and not on the daily visit.
+         */
+        $this->render_form_links( $user );
+        ?>
+
         <div class="uc-stats">
             <?php
             /*
@@ -3231,6 +3271,118 @@ class SFAF_Portal {
         </div>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * The two public form links, on the screen everybody lands on.
+     *
+     * NOTHING IN CALADMIN LINKED TO EITHER FORM. Both are reached by a plain
+     * URL, neither is advertised anywhere in this portal on purpose, and the
+     * effect was that sending somebody a link meant remembering its shape. The
+     * staff form's is one query var; the community form's names a series, so it
+     * is a different link per campaign and exactly the thing nobody should be
+     * assembling by hand.
+     *
+     * ON THE DASHBOARD, NOT ON PENDING, AND VISIBLE TO EVERYONE WHO GETS HERE.
+     * Pending is admin-only, and a contributor has as much reason to send
+     * somebody the community form as Mark does. There is no capability check in
+     * this method for that reason: reaching caladmin at all is the gate, and
+     * neither link is a secret. The forms have their own protection, and it is
+     * not the obscurity of their addresses: the staff form emails a token to an
+     * sfaf.org address before it shows anything, and the community form is rate
+     * limited and produces a PENDING row that somebody has to approve.
+     *
+     * A DISCLOSURE, NOT A CARD. This is opened when a campaign launches or when
+     * somebody asks, which is not daily, so it must not take space from the
+     * things the dashboard is actually for. portal.js lifts the panel into a
+     * <dialog>; with no JavaScript the <details> opens in place and every link
+     * is already written out, which is the same fallback shape the approval
+     * prompt uses.
+     *
+     * @param WP_User $user
+     */
+    private function render_form_links( $user ) {
+        $series = SFAF_Series::all();
+        ?>
+        <details class="uc-form-links" id="uc-form-links" data-uc-form-links>
+            <summary class="uc-form-links-open">
+                <?php echo sfaf_icon( 'link', array( 'size' => '15px' ) ); ?>
+                <span>Get a form link</span>
+            </summary>
+
+            <div class="uc-form-links-body">
+                <h2 class="uc-form-links-title">Links to the event forms</h2>
+
+                <div class="uc-form-link">
+                    <h3>Staff form</h3>
+                    <p class="uc-hint">For anyone with an sfaf.org address. They enter it, and the form arrives by email.</p>
+                    <div class="uc-form-link-row">
+                        <input type="text" class="uc-form-link-url" readonly onfocus="this.select();"
+                               aria-label="Staff form link"
+                               value="<?php echo esc_attr( SFAF_Request::start_url() ); ?>" />
+                        <button type="button" class="uc-btn uc-btn-sm uc-copy-btn" data-uc-copy>Copy</button>
+                    </div>
+                </div>
+
+                <div class="uc-form-link">
+                    <h3>Community form</h3>
+                    <?php if ( empty( $series ) ) : ?>
+                        <?php
+                        /*
+                         * NO SERIES MEANS NO LINK, AND IT SAYS SO. The community
+                         * form takes a series slug and refuses an unknown one, so
+                         * offering an empty picker here would produce an address
+                         * that goes to the "that link is not right" page.
+                         */
+                        ?>
+                        <p class="uc-hint">This form opens a campaign by name, and there are no series yet.
+                            <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>">Create one</a> and its link appears here.</p>
+                    <?php else : ?>
+                        <p class="uc-hint">Choose the campaign. Each one has its own link, and a submission arrives against that campaign.</p>
+                        <div class="uc-form-link-pick">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Campaign</span>
+                                <select class="uc-form-link-series" data-uc-form-link-series>
+                                    <?php foreach ( $series as $term ) : ?>
+                                        <option value="<?php echo esc_attr( SFAF_Submit::url( $term->slug ) ); ?>">
+                                            <?php echo esc_html( $term->name ); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="uc-form-link-row">
+                            <input type="text" class="uc-form-link-url" readonly onfocus="this.select();"
+                                   aria-label="Community form link"
+                                   data-uc-form-link-out
+                                   value="<?php echo esc_attr( SFAF_Submit::url( $series[0]->slug ) ); ?>" />
+                            <button type="button" class="uc-btn uc-btn-sm uc-copy-btn" data-uc-copy>Copy</button>
+                        </div>
+                        <?php
+                        /*
+                         * WITHOUT JAVASCRIPT THE PICKER CANNOT REWRITE THE BOX,
+                         * so the box would keep showing the first campaign's link
+                         * whatever was chosen: a wrong answer presented as a right
+                         * one. Every link is written out instead, and the picker
+                         * above it is the thing that is missing rather than the
+                         * links.
+                         */
+                        ?>
+                        <noscript>
+                            <ul class="uc-form-link-all">
+                                <?php foreach ( $series as $term ) : ?>
+                                    <li>
+                                        <strong><?php echo esc_html( $term->name ); ?></strong>
+                                        <code><?php echo esc_html( SFAF_Submit::url( $term->slug ) ); ?></code>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </noscript>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </details>
+        <?php
     }
 
     /**
@@ -11282,6 +11434,285 @@ class SFAF_Portal {
         <?php
     }
 
+    /**
+     * The kinds a pending row can be, and what the filter calls each one.
+     *
+     * ONE LIST, READ BY THE TABS, THE COUNTS, THE FILTER AND THE TEST. A second
+     * copy of these keys is how this queue got three marking faults in a row:
+     * every one of them was a screen deciding what something was by a rule
+     * written somewhere the other screens could not see.
+     *
+     * 'all' IS FIRST AND IS NOT A KIND. It is the unfiltered list, and it is
+     * the default, because a work list that opens already narrowed hides work.
+     *
+     * @return array<string,string> key => label
+     */
+    private function pending_kinds() {
+        return array(
+            'all'       => 'Everything',
+            'import'    => 'Imported',
+            'staff'     => 'Staff requests',
+            'community' => 'Community submissions',
+        );
+    }
+
+    /**
+     * What the one list can be ordered by, and which way each starts.
+     *
+     * RECEIVED, NEWEST FIRST, IS THE DEFAULT, AND THAT IS THE DECISION.
+     *
+     * This is a WORK LIST, not a calendar. What arrived most recently is what
+     * nobody has looked at yet, and it matters more than what happens soonest:
+     * an event three months out that was submitted an hour ago is the thing
+     * needing a decision, and an event next week that was reviewed yesterday is
+     * not. The Events list sorts by when things HAPPEN because it answers a
+     * different question.
+     *
+     * Event date is offered as well, soonest first, because "what is nearly
+     * here and still not published" is a real second question.
+     *
+     * @return array<string,array{label:string,default:string}>
+     */
+    private function pending_sorts() {
+        return array(
+            'received' => array( 'label' => 'Received',   'default' => 'desc' ),
+            'date'     => array( 'label' => 'Event date', 'default' => 'asc' ),
+        );
+    }
+
+    /**
+     * When this arrived, as a timestamp.
+     *
+     * THREE SOURCES, IN THE ORDER THAT KNOWS BEST. An import records the moment
+     * it was fetched; a submission records its own moment, because the post
+     * date is when the insert ran and those differ once anything queues; and
+     * anything else falls back to the post date, which is always there.
+     *
+     * @param int $id
+     * @return int
+     */
+    public function pending_received( $id ) {
+        $id   = (int) $id;
+        $prov = SFAF_Sources::provenance( $id );
+        if ( ! empty( $prov['imported_at'] ) ) {
+            return (int) $prov['imported_at'];
+        }
+
+        $at = (string) get_post_meta( $id, SFAF_Request::META_AT, true );
+        if ( '' !== $at ) {
+            $ts = strtotime( $at );
+            if ( $ts ) {
+                return (int) $ts;
+            }
+        }
+
+        return (int) get_the_date( 'U', $id );
+    }
+
+    /**
+     * Everything waiting for a decision, as one set.
+     *
+     * TWO SOURCES, ONE LIST, AND THEY CANNOT OVERLAP. Imported events sit in
+     * the custom `uc_imported` status and submissions sit in WordPress's own
+     * `pending`, so the two queries are disjoint by construction. The id is
+     * still the array key, because "cannot overlap" is a fact about today's
+     * statuses and a row printed twice is a worse failure than one missing.
+     *
+     * KIND AND SHAPE ARE DIFFERENT QUESTIONS AND ARE ANSWERED SEPARATELY.
+     * `kind` is what it IS, and it drives the badge and the filter. `shape` is
+     * which set of actions it takes, and it is decided by which queue it came
+     * out of. An imported event that was published and then set back to pending
+     * is kind 'import' and shape 'submission': it is still an import, and
+     * Publish and Dismiss are no longer what it needs.
+     *
+     * A ROW WHOSE KIND MATCHES NO FILTER STILL APPEARS UNDER 'Everything'.
+     * That is not a leftover. An event a contributor set to pending by hand is
+     * kind 'local' and carries no badge, and the one thing that must never
+     * happen again here is a pending row that is in no list at all.
+     *
+     * @param WP_User $user
+     * @return array<int,array{kind:string,shape:string}> id => entry
+     */
+    private function pending_entries( $user ) {
+        $entries = array();
+
+        foreach ( SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING ) as $id ) {
+            $entries[ (int) $id ] = array( 'kind' => 'import', 'shape' => 'import' );
+        }
+
+        foreach ( $this->query_events( $user, $this->pending_query_args() ) as $id ) {
+            $id = (int) $id;
+            if ( isset( $entries[ $id ] ) ) {
+                continue;
+            }
+            $entries[ $id ] = array(
+                'kind'  => SFAF_Submissions::kind( $id ),
+                'shape' => 'submission',
+            );
+        }
+
+        return $entries;
+    }
+
+    /**
+     * The one list, narrowed and ordered as the controls above it say.
+     *
+     * THE FILTER NARROWS AND THE SORT ORDERS. Neither decides what is in the
+     * queue: that is pending_entries(), asked once, so a row can only ever be
+     * hidden by a filter somebody chose and is always found again by choosing
+     * 'Everything'.
+     *
+     * @param array  $entries From pending_entries().
+     * @param string $kind    A key of pending_kinds().
+     * @param string $orderby A key of pending_sorts().
+     * @param string $order   'asc' or 'desc'.
+     * @return int[] Ids, in display order.
+     */
+    private function pending_list( $entries, $kind, $orderby, $order ) {
+        $ids = array();
+        foreach ( $entries as $id => $entry ) {
+            if ( 'all' === $kind || $entry['kind'] === $kind ) {
+                $ids[] = (int) $id;
+            }
+        }
+
+        $portal = $this;
+        usort( $ids, function ( $a, $b ) use ( $portal, $orderby, $order ) {
+            if ( 'date' === $orderby ) {
+                $da = (string) get_post_meta( $a, '_uc_event_date', true );
+                $db = (string) get_post_meta( $b, '_uc_event_date', true );
+                /*
+                 * A DATELESS EVENT SORTS LAST IN BOTH DIRECTIONS, never first.
+                 * Plenty of imports arrive with no date at all, by design, and
+                 * reversing the sort must not park every one of them at the top
+                 * where they push the rows with real dates off the screen.
+                 */
+                if ( '' === $da && '' === $db ) {
+                    return $b - $a;
+                }
+                if ( '' === $da ) { return 1; }
+                if ( '' === $db ) { return -1; }
+                $cmp = strcmp( $da, $db );
+            } else {
+                $cmp = $portal->pending_received( $a ) - $portal->pending_received( $b );
+            }
+
+            if ( 0 === $cmp ) {
+                $cmp = $a - $b; // a stable order, so a reload cannot reshuffle
+            }
+            return ( 'desc' === $order ) ? -$cmp : $cmp;
+        } );
+
+        return $ids;
+    }
+
+    /**
+     * The filter tabs, each carrying the current sort and naming its own count.
+     *
+     * THE COUNT IS ON THE TAB, not only above the list, because the question a
+     * manager arrives with is "is there anything from the public waiting", and
+     * the tab answers it before anything is clicked.
+     *
+     * @param array  $entries From pending_entries().
+     * @param string $current
+     * @param string $orderby
+     * @param string $order
+     */
+    private function pending_tabs( $entries, $current, $orderby, $order ) {
+        $counts = array( 'all' => count( $entries ) );
+        foreach ( $this->pending_kinds() as $key => $unused ) {
+            if ( 'all' !== $key ) {
+                $counts[ $key ] = 0;
+            }
+        }
+        foreach ( $entries as $entry ) {
+            if ( isset( $counts[ $entry['kind'] ] ) ) {
+                $counts[ $entry['kind'] ]++;
+            }
+        }
+        ?>
+        <div class="uc-view-tabs" role="navigation" aria-label="Which pending events to show">
+            <?php foreach ( $this->pending_kinds() as $key => $label ) :
+                $active = ( $key === $current );
+                $args   = array_filter( array(
+                    'kind'    => ( 'all' === $key ) ? '' : $key,
+                    'orderby' => $orderby,
+                    'order'   => $order,
+                ), function ( $v ) { return '' !== $v && null !== $v; } );
+                $url = add_query_arg( $args, $this->url( 'pending' ) );
+                ?>
+                <a class="uc-view-tab<?php echo $active ? ' uc-view-tab-active' : ''; ?>"
+                   href="<?php echo esc_url( $url ); ?>"<?php echo $active ? ' aria-current="page"' : ''; ?>>
+                    <?php echo esc_html( $label ); ?>
+                    <span class="uc-tab-count"><?php echo (int) $counts[ $key ]; ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * The sort control: one link per column, the active one reversing.
+     *
+     * LINKS, AND THE ORDER LIVES IN THE URL, exactly as the Events list does
+     * it, so a view can be linked and survives a reload without a cookie
+     * holding state the address bar does not admit to.
+     *
+     * @param string $kind
+     * @param string $orderby
+     * @param string $order
+     */
+    private function pending_sort_control( $kind, $orderby, $order ) {
+        ?>
+        <div class="uc-queue-sort">
+            <span class="uc-queue-sort-label">Sort by</span>
+            <?php foreach ( $this->pending_sorts() as $key => $def ) :
+                $active = ( $key === $orderby );
+                $next   = $active ? ( 'asc' === $order ? 'desc' : 'asc' ) : $def['default'];
+                $args   = array_filter( array(
+                    'kind'    => ( 'all' === $kind ) ? '' : $kind,
+                    'orderby' => $key,
+                    'order'   => $next,
+                ), function ( $v ) { return '' !== $v && null !== $v; } );
+                $url  = add_query_arg( $args, $this->url( 'pending' ) );
+                $mark = $active ? ( 'asc' === $order ? ' &#9650;' : ' &#9660;' ) : '';
+                ?>
+                <a class="uc-queue-sort-link<?php echo $active ? ' uc-queue-sort-active' : ''; ?>"
+                   href="<?php echo esc_url( $url ); ?>"<?php echo $active ? ' aria-current="true"' : ''; ?>>
+                    <?php echo esc_html( $def['label'] ); ?>
+                    <span class="uc-sort-mark" aria-hidden="true"><?php echo $mark; ?></span>
+                    <span class="screen-reader-text"><?php
+                        echo esc_html( $active
+                            ? ( 'asc' === $order ? ', sorted oldest first. Activate to reverse.' : ', sorted newest first. Activate to reverse.' )
+                            : ', not sorted by this. Activate to sort.' );
+                    ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * The pending queue: one list, with controls above it.
+     *
+     * WHY THIS IS ONE LIST AND WAS THREE BLOCKS.
+     *
+     * It used to stack "Imported, pending review", then "Dismissed", then a
+     * table headed "Submitted for review". Three blocks meant a manager had to
+     * know which block a thing would be in before they could look for it, and
+     * the two that were pending work were sorted by different rules and drawn
+     * in two different ways: one an unordered list of rich rows, one a
+     * five-column table. Nothing about "this needs a decision" differs between
+     * an import and a submission, so nothing about the row does either.
+     *
+     * DISMISSED IS STILL ITS OWN CARD, BELOW, AND THAT IS NOT AN EXCEPTION TO
+     * THE RULE. Dismissed is a STATUS, not a kind: those rows have already had
+     * their decision taken and are kept only so the fetch never offers them
+     * again. Folding them into a work list would put items nobody has to act on
+     * among items somebody does.
+     *
+     * @param WP_User $user
+     */
     private function render_pending( $user ) {
         if ( ! $this->is_admin_role( $user ) ) {
             $this->render_dashboard( $user );
@@ -11299,7 +11730,27 @@ class SFAF_Portal {
         SFAF_Rich_Text::enqueue();
 
         $this->chrome_open( $user, 'pending' );
-        $ids = $this->query_events( $user, $this->pending_query_args() );
+
+        /* The controls, read from the URL and validated against the one list
+         * each of them has. An unknown value is not an error page: it is the
+         * default, because a mistyped query string should show the queue. */
+        $kind = isset( $_GET['kind'] ) ? sanitize_key( wp_unslash( $_GET['kind'] ) ) : 'all';
+        if ( ! isset( $this->pending_kinds()[ $kind ] ) ) {
+            $kind = 'all';
+        }
+
+        $sorts   = $this->pending_sorts();
+        $orderby = isset( $_GET['orderby'] ) ? sanitize_key( wp_unslash( $_GET['orderby'] ) ) : 'received';
+        if ( ! isset( $sorts[ $orderby ] ) ) {
+            $orderby = 'received';
+        }
+        $order = ( isset( $_GET['order'] ) && 'asc' === strtolower( sanitize_key( wp_unslash( $_GET['order'] ) ) ) ) ? 'asc' : 'desc';
+        if ( ! isset( $_GET['order'] ) ) {
+            $order = $sorts[ $orderby ]['default'];
+        }
+
+        $entries = $this->pending_entries( $user );
+        $ids     = $this->pending_list( $entries, $kind, $orderby, $order );
 
         // "Fetch updates" and its report moved here from the Dashboard in
         // 2.12.0. It is an import action, its result is an import queue, and
@@ -11350,137 +11801,340 @@ class SFAF_Portal {
 
         <?php $this->render_fetch_report( $user, $active_sources ); ?>
 
-        <?php
-        // Imported third-party events, in their own two sub-sections above the
-        // locally submitted queue. They are separate things: one is a
-        // colleague asking for review, the other is a platform's event
-        // awaiting a decision.
-        $this->render_import_queue( $user );
-        ?>
+        <?php $this->pending_tabs( $entries, $kind, $orderby, $order ); ?>
 
         <div class="uc-card">
             <div class="uc-card-head">
-                <h2>Submitted for review</h2>
+                <h2>Waiting for a decision</h2>
                 <?php if ( ! empty( $ids ) ) : ?><span class="uc-count-badge"><?php echo count( $ids ); ?></span><?php endif; ?>
             </div>
+            <?php $this->pending_sort_control( $kind, $orderby, $order ); ?>
             <?php if ( empty( $ids ) ) : ?>
-                <p class="uc-empty">Nothing waiting for review.</p>
+                <p class="uc-empty"><?php
+                    /* THE EMPTY MESSAGE SAYS WHICH LIST IS EMPTY. "Nothing
+                     * waiting" under a filter that is hiding four rows is a
+                     * screen telling somebody their work is done when it is
+                     * not. */
+                    echo ( 'all' === $kind )
+                        ? 'Nothing is waiting for a decision.'
+                        : esc_html( 'Nothing waiting under ' . $this->pending_kinds()[ $kind ] . '. Choose Everything to see the rest of the queue.' );
+                ?></p>
             <?php else : ?>
-                <table class="uc-table">
-                    <thead><tr><th>Event</th><th>Date</th><th>Submitted by</th><th>When</th><th class="uc-col-actions">Actions</th></tr></thead>
-                    <tbody>
-                    <?php foreach ( $ids as $id ) :
-                        $author = get_userdata( get_post_field( 'post_author', $id ) );
-                        $date   = get_post_meta( $id, '_uc_event_date', true );
-                        /*
-                         * A STAFF REQUEST IS NOT A CONTRIBUTOR'S DRAFT AND IS
-                         * NOT AN IMPORT (3.43.0).
-                         *
-                         * Pending has meant "arrived from GoFundMe Pro or
-                         * Eventbrite and needs an image and a description",
-                         * which is a different job from reading something a
-                         * colleague filled in properly. Imports already have
-                         * their own sections above this table; what this marks
-                         * is the difference between the two kinds of thing IN
-                         * this table, which is a badge and a name, not a second
-                         * queue for somebody to remember to look at.
-                         *
-                         * post_author is 0 on a request, because nobody was
-                         * logged in, so "Submitted by" reads the requester's
-                         * own name rather than "Unknown".
-                         */
-                        $req_name  = (string) get_post_meta( $id, SFAF_Request::META_NAME, true );
-                        $req_email = (string) get_post_meta( $id, SFAF_Request::META_EMAIL, true );
-                        $req_at    = (string) get_post_meta( $id, SFAF_Request::META_AT, true );
-                        /*
-                         * WHAT KIND IT IS, ASKED RATHER THAN INFERRED (3.46.0).
-                         *
-                         * This was $is_req = ( '' !== $req_email ), and that stopped
-                         * being an answer the moment a second form started writing an
-                         * address to the same key: every community submission would
-                         * have read as a staff request. SFAF_Submissions::kind() is
-                         * the one place that decides, and the badge, the panel and
-                         * the notification all ask it.
-                         */
-                        $kind      = SFAF_Submissions::kind( $id );
-                        $is_req    = ( '' !== $req_email );
-                        $badge     = SFAF_Submissions::kind_label( $kind );
-                        $shot      = SFAF_Uploads::url( (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true ), 'thumbnail' );
-                        /* Who sent it, for the two questions Approve asks. One
-                         * reader for both forms; see SFAF_Submissions::submitter(). */
-                        $who       = SFAF_Submissions::submitter( $id ); ?>
-                        <tr<?php echo $is_req ? ' class="uc-row-request"' : ''; ?>>
-                            <td>
-                                <?php
-                                /*
-                                 * THE SUBMITTED FILE, WHERE IT CAN BE SEEN.
-                                 *
-                                 * A working copy rather than the published image, so
-                                 * it is shown and never set as the thumbnail. The
-                                 * folder is meant to be emptied, and when it has been
-                                 * SFAF_Uploads::url() answers '' and this simply is
-                                 * not drawn.
-                                 */
-                                if ( '' !== $shot ) : ?>
-                                    <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true ), 'full' ) ); ?>" target="_blank" rel="noopener">
-                                        <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
-                                    </a>
-                                <?php endif; ?>
-                                <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
-                                <?php if ( '' !== $badge ) : ?>
-                                    <span class="uc-source-badge uc-badge-<?php echo esc_attr( $kind ); ?>"><?php echo esc_html( $badge ); ?></span>
-                                <?php endif; ?>
-                            </td>
-                            <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : 'Not set'; ?></td>
-                            <td>
-                                <?php if ( $is_req ) : ?>
-                                    <?php echo esc_html( '' !== $req_name ? $req_name : $req_email ); ?>
-                                    <span class="uc-muted"><?php echo esc_html( $req_email ); ?></span>
-                                <?php else : ?>
-                                    <?php echo esc_html( $author ? $author->display_name : 'Unknown' ); ?>
-                                <?php endif; ?>
-                            </td>
-                            <?php // The submission date, through the formatter as well. get_the_date()
-                                  // with a format string is the same call-site formatting as date_i18n(),
-                                  // and it is the one that hid from the first sweep. 'U' is a timestamp,
-                                  // not a display format, so it stays. ?>
-                            <td><?php
-                                // A request records its own moment, because the
-                                // post date is when the insert ran and those can
-                                // differ once anything queues.
-                                echo esc_html( ( $is_req && '' !== $req_at )
-                                    ? sfaf_ap_date( $req_at, 'short_year' )
-                                    : sfaf_ap_date( (int) get_the_date( 'U', $id ), 'short_year' ) );
-                            ?></td>
-                            <td class="uc-row-actions">
-                                <div class="uc-actions">
-                                    <a class="uc-action-link" href="<?php echo esc_url( get_permalink( $id ) ); ?>" target="_blank" rel="noopener">Preview</a>
-                                    <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
-                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>"
-                                          id="uc-approve-<?php echo (int) $id; ?>">
-                                        <input type="hidden" name="uc_action" value="approve_event" />
-                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                        <?php wp_nonce_field( 'uc_portal_approve_event', 'uc_nonce' ); ?>
-                                        <button class="uc-link-ok" type="submit"
-                                            <?php echo $who['is_submission'] ? ' data-uc-approve-ask="uc-approve-ask-' . (int) $id . '"' : ''; ?>>Approve</button>
-                                    </form>
-                                    <?php $this->render_approve_ask( $id, $who ); ?>
-                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" onsubmit="return confirm('Reject and remove this event?');">
-                                        <input type="hidden" name="uc_action" value="reject_event" />
-                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                        <?php wp_nonce_field( 'uc_portal_reject_event', 'uc_nonce' ); ?>
-                                        <button class="uc-link-danger" type="submit">Reject</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
+                <ul class="uc-queue-list">
+                    <?php foreach ( $ids as $id ) : ?>
+                        <?php $this->pending_row( $id, $entries[ $id ] ); ?>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
+                </ul>
             <?php endif; ?>
         </div>
+
+        <?php $this->render_dismissed_queue(); ?>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * One row of the pending queue, whatever kind it is.
+     *
+     * THE HEAD OF EVERY ROW IS THE SAME AND THE FOOT IS NOT. A manager scanning
+     * this list is asking "which event is this" first and "what do I do about
+     * it" second, and the first question has one answer for every kind: a
+     * title, a badge saying where it came from, and one quiet line of detail.
+     * What differs is the decision available, so that is what differs in the
+     * markup: an import takes Publish and Dismiss, a submission takes Approve
+     * and Reject and carries the two questions Approve asks.
+     *
+     * `data-uc-id` IS THE ROW'S IDENTITY AND IS READ BY THE TEST. Three faults
+     * on this screen were marking or filtering problems that source-string
+     * checks could not see, so .claude/pending-queue-test.php renders this
+     * screen and reads the ids back out of the HTML. It is a real attribute
+     * doing real work, not a test hook bolted on: an id is what every action
+     * on the row posts.
+     *
+     * @param int   $id
+     * @param array $entry From pending_entries(): kind and shape.
+     */
+    private function pending_row( $id, $entry ) {
+        $id    = (int) $id;
+        $kind  = $entry['kind'];
+        $shape = $entry['shape'];
+
+        $date = (string) get_post_meta( $id, '_uc_event_date', true );
+
+        /*
+         * WHAT TO CALL IT. An import is badged with the platform it came from,
+         * because "GoFundMe Pro" is more use than "Imported" when two platforms
+         * are connected. A submission is badged by kind, which is the one
+         * question the 3.46.0 fault got wrong, and it is asked of
+         * SFAF_Submissions::kind() rather than inferred from a field.
+         */
+        $prov  = SFAF_Sources::provenance( $id );
+        $badge = ( 'import' === $kind )
+            ? ( $prov['label'] ? $prov['label'] : 'Imported' )
+            : SFAF_Submissions::kind_label( $kind );
+
+        /* Fields the platform will never supply and nobody has filled in yet.
+         * Amber and a mark, never red: a campaign arrives needing these EVERY
+         * time by design, so it is a step in the job and not a fault. */
+        $needs   = ( 'import' === $shape ) ? SFAF_Sources::missing_manager_fields( $id ) : array();
+        $needs_t = ! empty( $needs ) ? 'Needs ' . SFAF_Sources::field_phrase( $needs ) : '';
+
+        /* The submitted file, where it can be seen. A working copy rather than
+         * the published image, so it is shown and never set as the thumbnail.
+         * The folder is meant to be emptied, and when it has been
+         * SFAF_Uploads::url() answers '' and this simply is not drawn. */
+        $shot_id = (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true );
+        $shot    = ( 'submission' === $shape ) ? SFAF_Uploads::url( $shot_id, 'thumbnail' ) : '';
+
+        /* Who sent it, for the two questions Approve asks. One reader for both
+         * forms; see SFAF_Submissions::submitter(). */
+        $who = ( 'submission' === $shape )
+            ? SFAF_Submissions::submitter( $id )
+            : array( 'name' => '', 'email' => '', 'usable' => false, 'is_submission' => false );
+        ?>
+        <li class="uc-queue-item<?php echo $needs_t ? ' uc-queue-item-needs' : ''; ?>"
+            data-uc-id="<?php echo $id; ?>" data-uc-kind="<?php echo esc_attr( $kind ); ?>">
+            <div class="uc-queue-row">
+                <?php if ( '' !== $shot ) : ?>
+                    <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
+                        <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
+                    </a>
+                <?php endif; ?>
+
+                <div class="uc-queue-id">
+                    <h3 class="uc-queue-title">
+                        <a href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
+                        <?php if ( '' !== $badge ) : ?>
+                            <span class="uc-source-badge uc-badge-<?php echo esc_attr( $kind ); ?>"><?php echo esc_html( $badge ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( $needs_t ) : ?>
+                            <?php // Reachable by hover AND by keyboard focus, so it works on
+                                  // a phone and for anyone not using a mouse. The aria-label
+                                  // names the fields rather than saying something is missing,
+                                  // so a screen reader user gets what a sighted one does. ?>
+                            <span class="uc-needs-flag" tabindex="0" role="img"
+                                  aria-label="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>"
+                                  title="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>">
+                                <?php echo $this->icon_needs(); ?>
+                                <span class="uc-needs-tip"><?php echo esc_html( $needs_t ); ?></span>
+                            </span>
+                        <?php endif; ?>
+                    </h3>
+
+                    <?php
+                    /*
+                     * ONE QUIET LINE, in the order somebody reads it: when it
+                     * is, then where, then who sent it, then when that was.
+                     * Every part is omitted when there is nothing to say rather
+                     * than printed as "not set", which on a queue of imports
+                     * would be the same three words on every row.
+                     */
+                    ?>
+                    <p class="uc-queue-meta">
+                        <span><?php echo esc_html( $this->pending_when( $id, $date, $prov ) ); ?></span>
+                        <?php $location = sfaf_event_location_short( $id ); ?>
+                        <?php if ( '' !== $location ) : ?>
+                            <span><?php echo esc_html( $location ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( 'submission' === $shape ) : ?>
+                            <span><?php
+                                /*
+                                 * post_author is 0 on both forms, because nobody
+                                 * was logged in, so "who sent it" reads the
+                                 * submitter's own name rather than "Unknown".
+                                 */
+                                if ( '' !== $who['name'] ) {
+                                    echo esc_html( 'From ' . $who['name'] );
+                                } else {
+                                    $author = get_userdata( get_post_field( 'post_author', $id ) );
+                                    echo esc_html( 'From ' . ( $author ? $author->display_name : 'somebody with no account' ) );
+                                }
+                            ?></span>
+                        <?php endif; ?>
+                        <span class="uc-muted"><?php
+                            echo esc_html( 'Received ' . sfaf_ap_date( $this->pending_received( $id ), 'short_year' ) );
+                        ?></span>
+                    </p>
+
+                    <?php if ( 'import' === $shape && $prov['source_url'] ) : ?>
+                        <p class="uc-queue-links">
+                            <a class="uc-source-link<?php echo $needs_t ? ' uc-source-link-strong' : ''; ?>" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php
+                                echo $needs_t ? 'Open campaign page to copy them &nearr;' : 'View on ' . esc_html( $prov['label'] ? $prov['label'] : 'source' ) . ' &nearr;';
+                            ?></a>
+                        </p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="uc-queue-actions">
+                    <div class="uc-actions">
+                        <?php if ( 'import' === $shape ) : ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                <input type="hidden" name="uc_action" value="import_publish" />
+                                <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_import_publish', 'uc_nonce' ); ?>
+                                <button class="uc-link-ok" type="submit">Publish</button>
+                            </form>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                <input type="hidden" name="uc_action" value="import_dismiss" />
+                                <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_import_dismiss', 'uc_nonce' ); ?>
+                                <button class="uc-action-link" type="submit">Dismiss</button>
+                            </form>
+                        <?php else : ?>
+                            <a class="uc-action-link" href="<?php echo esc_url( get_permalink( $id ) ); ?>" target="_blank" rel="noopener">Preview</a>
+                            <?php
+                            /*
+                             * EDIT IS WHERE THE SUBMITTER'S OWN WORDS ARE READ.
+                             * What they asked for that the event cannot hold,
+                             * the repeat answer and the notes to whoever
+                             * approves, is render_request_panel() at the top of
+                             * the editor. It is one panel, in one place, rather
+                             * than a second copy on this row that could fall
+                             * behind it.
+                             */
+                            ?>
+                            <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>"
+                                  id="uc-approve-<?php echo $id; ?>">
+                                <input type="hidden" name="uc_action" value="approve_event" />
+                                <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_approve_event', 'uc_nonce' ); ?>
+                                <button class="uc-link-ok" type="submit"
+                                    <?php echo $who['is_submission'] ? ' data-uc-approve-ask="uc-approve-ask-' . $id . '"' : ''; ?>>Approve</button>
+                            </form>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" onsubmit="return confirm('Reject and remove this event?');">
+                                <input type="hidden" name="uc_action" value="reject_event" />
+                                <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_reject_event', 'uc_nonce' ); ?>
+                                <button class="uc-link-danger" type="submit">Reject</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ( 'submission' === $shape ) : ?>
+                        <?php $this->render_approve_ask( $id, $who ); ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php if ( 'import' === $shape ) : ?>
+                <?php // Collapsed by default. A queue is for scanning, and a dozen
+                      // open panels would stop it being one; opening it is the
+                      // moment a manager has chosen this event. ?>
+                <details class="uc-queue-panel">
+                    <summary>
+                        <?php echo $needs_t ? esc_html( $needs_t ) : 'Set the fields this platform does not supply'; ?>
+                    </summary>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-form uc-queue-form">
+                        <input type="hidden" name="uc_action" value="save_manager_fields" />
+                        <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_save_manager_fields', 'uc_nonce' ); ?>
+                        <?php $this->render_manager_panel( $this->manager_panel_context( wp_get_current_user(), $id, 'queue' ) ); ?>
+                        <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                            <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Open the full editor</a>
+                        </div>
+                    </form>
+                </details>
+            <?php endif; ?>
+        </li>
+        <?php
+    }
+
+    /**
+     * When an event is, as one phrase, or what is missing instead.
+     *
+     * THE TIMEZONE ONLY WHEN IT IS NOT THE SITE'S. "(America/Los_Angeles)"
+     * appeared on every row of a queue run by people in America/Los_Angeles,
+     * which is a string that can never change anybody's decision and was
+     * competing with the title for attention. It is worth saying exactly when
+     * it is surprising: an imported event in another zone is a real trap,
+     * because the time shown is then not the time a local reader assumes.
+     *
+     * @param int    $id
+     * @param string $date
+     * @param array  $prov SFAF_Sources::provenance() for this event.
+     * @return string
+     */
+    private function pending_when( $id, $date, $prov ) {
+        $id = (int) $id;
+        if ( '' === $date ) {
+            return 'No date. Set it when publishing';
+        }
+
+        $when  = sfaf_ap_date( $date, 'short' ) . ', ' . date_i18n( 'Y', strtotime( $date . ' 12:00:00' ) );
+        $clock = sfaf_ap_time_range(
+            (string) get_post_meta( $id, '_uc_start_time', true ),
+            (string) get_post_meta( $id, '_uc_end_time', true )
+        );
+        if ( $clock ) {
+            $when .= ', ' . $clock;
+        }
+        if ( $prov['timezone'] && $prov['timezone'] !== wp_timezone_string() ) {
+            $when .= ' (' . $prov['timezone'] . ')';
+        }
+        return $when;
+    }
+
+    /**
+     * Imported events somebody has already said no to.
+     *
+     * ITS OWN CARD, BELOW THE WORK LIST, because a dismissed event has had its
+     * decision taken. They are kept so the fetch never offers them again, which
+     * is the whole reason the status exists, and nothing here is waiting on
+     * anybody. Drawn only when there are some: an empty "Dismissed" heading on
+     * every visit is a permanent reminder of nothing.
+     */
+    private function render_dismissed_queue() {
+        $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
+        if ( empty( $dismissed ) ) {
+            return;
+        }
+        ?>
+        <div class="uc-card">
+            <div class="uc-card-head">
+                <h2>Dismissed</h2>
+                <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
+            </div>
+            <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the list above.</p>
+            <ul class="uc-queue-list">
+                <?php foreach ( $dismissed as $id ) :
+                    $id   = (int) $id;
+                    $prov = SFAF_Sources::provenance( $id );
+                    $date = (string) get_post_meta( $id, '_uc_event_date', true );
+                    ?>
+                    <li class="uc-queue-item" data-uc-id="<?php echo $id; ?>" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                    <a href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
+                                    <span class="uc-source-badge uc-badge-import"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span><?php echo esc_html( $this->pending_when( $id, $date, $prov ) ); ?></span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_import_publish', 'uc_nonce' ); ?>
+                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_import_restore', 'uc_nonce' ); ?>
+                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php
     }
 
     /**
@@ -11929,227 +12583,6 @@ class SFAF_Portal {
         <?php endif; ?>
         <?php
         $this->chrome_close();
-    }
-
-    /**
-     * The imported-event queue: Pending and Dismissed, as two sub-sections.
-     *
-     * @param WP_User $user
-     */
-    private function render_import_queue( $user ) {
-        $pending   = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING );
-        $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
-        ?>
-        <?php
-        /*
-         * THE HEADING IS IN THE CARD, NOT FLOATING ABOVE IT. These were <h2
-         * class="uc-section-title"> siblings of the card they named, which is a
-         * second way of heading a card and the reason the treatment looked
-         * partly applied: on this one screen there were cards with a band,
-         * cards with a heading outside them and cards with neither. One
-         * pattern now, everywhere.
-         */
-        ?>
-        <div class="uc-card">
-            <div class="uc-card-head">
-                <h2>Imported, pending review</h2>
-                <?php if ( $pending ) : ?><span class="uc-count-badge"><?php echo count( $pending ); ?></span><?php endif; ?>
-            </div>
-            <?php if ( empty( $pending ) ) : ?>
-                <p class="uc-empty">Nothing new from connected sources. Use &ldquo;Fetch updates&rdquo; on the dashboard to check again.</p>
-            <?php else : ?>
-                <?php $this->import_queue_list( $pending, 'pending' ); ?>
-            <?php endif; ?>
-        </div>
-
-        <?php if ( ! empty( $dismissed ) ) : ?>
-            <div class="uc-card">
-                <div class="uc-card-head">
-                    <h2>Dismissed</h2>
-                    <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
-                </div>
-                <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the pending list.</p>
-                <?php $this->import_queue_list( $dismissed, 'dismissed' ); ?>
-            </div>
-        <?php endif;
-    }
-
-    /**
-     * The imported queue, as a list of events rather than a table of columns.
-     *
-     * WHY THIS IS NO LONGER A TABLE. It was five columns wide: Source, Event,
-     * Date and time, Location, Actions. A table gives every column the same
-     * weight, so the title, the platform badge, a timezone string, an address
-     * and two verbs all arrived at once and nothing said which was the thing.
-     * On a queue that is exactly wrong: a manager is scanning for WHICH EVENT
-     * this is and then deciding about it, which is one heading and one line of
-     * supporting detail, not five equal cells.
-     *
-     * So each row leads with the event's title as a real heading, with source,
-     * when and where beneath it in the quiet line, and the actions to the
-     * right. The disclosure that carries the fields the platform cannot supply
-     * is still there and is now plainly subordinate to the row it belongs to
-     * rather than a full-width cell of its own.
-     *
-     * THE PANEL ITSELF IS UNCHANGED, and deliberately: its markup comes from
-     * render_manager_panel(), which the editor also calls, so there is no
-     * second list of fields here that could fall behind. Its own form, because
-     * forms cannot nest and this one posts and redirects on its own, carrying
-     * only these fields so saving here cannot disturb anything else.
-     *
-     * @param int[]  $ids
-     * @param string $section 'pending' or 'dismissed', which decides the actions.
-     */
-    private function import_queue_list( $ids, $section ) {
-        ?>
-        <ul class="uc-queue-list">
-            <?php foreach ( $ids as $id ) :
-                $prov     = SFAF_Sources::provenance( $id );
-                $date     = get_post_meta( $id, '_uc_event_date', true );
-                $start    = get_post_meta( $id, '_uc_start_time', true );
-                $end      = get_post_meta( $id, '_uc_end_time', true );
-                /*
-                 * THE VENUE'S NAME, NOT THE POSTAL ADDRESS. Most of a queue is
-                 * the same handful of venues, so a full address on every row
-                 * was the longest thing on the row carrying the least new
-                 * information. See sfaf_event_location_short().
-                 */
-                $location = sfaf_event_location_short( $id );
-
-                /*
-                 * WHEN, AS ONE PHRASE. The times used to be printed as the raw
-                 * meta, so a 6pm event read "18:00-19:30" in a portal where
-                 * every other time is AP style. Through the one formatter now.
-                 * A campaign with no date is normal rather than broken, so it
-                 * says so instead of showing a dash somebody has to decode.
-                 */
-                $when = $date ? sfaf_ap_date( $date, 'short' ) . ', ' . date_i18n( 'Y', strtotime( $date . ' 12:00:00' ) ) : '';
-                $clock = sfaf_ap_time_range( $start, $end );
-                if ( $when && $clock ) {
-                    $when .= ', ' . $clock;
-                }
-
-                /*
-                 * THE TIMEZONE ONLY WHEN IT IS NOT THE SITE'S.
-                 *
-                 * "(America/Los_Angeles)" appeared on every row of a queue run
-                 * by people in America/Los_Angeles, which is a string that can
-                 * never change anybody's decision and was competing with the
-                 * title for attention. It is worth saying exactly when it is
-                 * surprising: an imported event in another zone is a real trap,
-                 * because the time shown is then not the time a local reader
-                 * assumes. So the comparison decides, not the presence.
-                 */
-                if ( $when && $date && $prov['timezone'] && $prov['timezone'] !== wp_timezone_string() ) {
-                    $when .= ' (' . $prov['timezone'] . ')';
-                }
-                if ( '' === $when ) {
-                    $when = 'No date. Set it when publishing';
-                }
-
-                /*
-                 * Fields this platform will never supply and a person has not
-                 * filled in yet. Amber and a mark, never red and never "!": a
-                 * GoFundMe Pro campaign arrives needing these EVERY time by
-                 * design, so it is a step in the job, not a fault. The mark
-                 * disappears once they are all filled, which makes a queue with
-                 * no marks mean "all of these are ready to publish".
-                 */
-                $needs   = SFAF_Sources::missing_manager_fields( $id );
-                $needs_t = ! empty( $needs ) ? 'Needs ' . SFAF_Sources::field_phrase( $needs ) : '';
-                $ctx     = $this->manager_panel_context( wp_get_current_user(), $id, 'queue' );
-                ?>
-                <li class="uc-queue-item<?php echo $needs_t ? ' uc-queue-item-needs' : ''; ?>">
-                    <div class="uc-queue-row">
-                        <div class="uc-queue-id">
-                            <h3 class="uc-queue-title">
-                                <a href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
-                                <?php if ( $needs_t ) : ?>
-                                    <?php // Reachable by hover AND by keyboard focus, so it works on
-                                          // a phone and for anyone not using a mouse. The aria-label
-                                          // names the fields rather than saying something is missing,
-                                          // so a screen reader user gets what a sighted one does. ?>
-                                    <span class="uc-needs-flag" tabindex="0" role="img"
-                                          aria-label="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>"
-                                          title="<?php echo esc_attr( $needs_t . ' before publishing' ); ?>">
-                                        <?php echo $this->icon_needs(); ?>
-                                        <span class="uc-needs-tip"><?php echo esc_html( $needs_t ); ?></span>
-                                    </span>
-                                <?php endif; ?>
-                            </h3>
-
-                            <?php // ONE quiet line, in the order somebody reads it: who it
-                                  // came from, when it is, where it is. ?>
-                            <p class="uc-queue-meta">
-                                <span class="uc-source-badge"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span>
-                                <span><?php echo esc_html( $when ); ?></span>
-                                <?php // Omitted entirely when there is none, rather than
-                                      // printing "Location not set" on every row of a
-                                      // platform that never supplies one. The disclosure
-                                      // below is where a missing field is reported. ?>
-                                <?php if ( '' !== $location ) : ?>
-                                    <span><?php echo esc_html( $location ); ?></span>
-                                <?php endif; ?>
-                            </p>
-
-                            <?php if ( $prov['source_url'] ) : ?>
-                                <p class="uc-queue-links">
-                                    <a class="uc-source-link<?php echo $needs_t ? ' uc-source-link-strong' : ''; ?>" href="<?php echo esc_url( $prov['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php
-                                        echo $needs_t ? 'Open campaign page to copy them &nearr;' : 'View on ' . esc_html( $prov['label'] ? $prov['label'] : 'source' ) . ' &nearr;';
-                                    ?></a>
-                                </p>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="uc-queue-actions">
-                            <div class="uc-actions">
-                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
-                                    <input type="hidden" name="uc_action" value="import_publish" />
-                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_import_publish', 'uc_nonce' ); ?>
-                                    <button class="uc-link-ok" type="submit">Publish</button>
-                                </form>
-                                <?php if ( 'dismissed' === $section ) : ?>
-                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
-                                        <input type="hidden" name="uc_action" value="import_restore" />
-                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                        <?php wp_nonce_field( 'uc_portal_import_restore', 'uc_nonce' ); ?>
-                                        <button class="uc-action-link" type="submit">Restore</button>
-                                    </form>
-                                <?php else : ?>
-                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
-                                        <input type="hidden" name="uc_action" value="import_dismiss" />
-                                        <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                        <?php wp_nonce_field( 'uc_portal_import_dismiss', 'uc_nonce' ); ?>
-                                        <button class="uc-action-link" type="submit">Dismiss</button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <?php // Collapsed by default. A queue is for scanning, and a dozen
-                          // open panels would stop it being one; opening it is the
-                          // moment a manager has chosen this event. ?>
-                    <details class="uc-queue-panel">
-                        <summary>
-                            <?php echo $needs_t ? esc_html( $needs_t ) : 'Set the fields this platform does not supply'; ?>
-                        </summary>
-                        <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-form uc-queue-form">
-                            <input type="hidden" name="uc_action" value="save_manager_fields" />
-                            <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                            <?php wp_nonce_field( 'uc_portal_save_manager_fields', 'uc_nonce' ); ?>
-                            <?php $this->render_manager_panel( $ctx ); ?>
-                            <div class="uc-form-actions">
-                                <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
-                                <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Open the full editor</a>
-                            </div>
-                        </form>
-                    </details>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-        <?php
     }
 
     /* =====================================================================

@@ -4,16 +4,16 @@
 to speed. This file only answers "what is true right now": `PROJECT.md` is what
 the plugin is, `DESIGN.md` is color and layout, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-08-20, at 3.48.0.
+**Last updated:** 2026-08-21, at 3.49.0.
 
 ---
 
 ## Where things stand
 
-The plugin is at **3.48.0**, built as `sfaf-calendar-3.48.0.zip` in the project
+The plugin is at **3.49.0**, built as `sfaf-calendar-3.49.0.zip` in the project
 root and pushed to `origin/production-2.0`. Whether it is installed on
 resources.sfaf.org is not recorded anywhere in the repo. The tell is the Plugins
-screen: if it does not say 3.48.0, the deployment is stale or partial, and that
+screen: if it does not say 3.49.0, the deployment is stale or partial, and that
 has explained a "fix that did not work" before.
 
 **INSTALL THIS ONE BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from
@@ -258,6 +258,20 @@ Not yet done, and each matters for a different reason.
    in Outlook on Windows, which is the client that breaks things. Are the Add to
    calendar buttons the same height with the glyph loaded (3.34.0), and does the
    changed-event message name the old value as well as the new one (3.36.0)?
+
+5. **Open Pending and look at the one list.** 3.49.0 replaced three stacked
+   blocks with a single list and a filter. Confirm the four tabs show the counts
+   you expect, that an imported event and a submission sit in the same list, and
+   that Dismissed is still its own card underneath. The build renders this
+   screen and asserts it, so what is left to check by eye is that it READS well
+   at real row counts rather than that the rows are correct.
+6. **Press "Get a form link" on the dashboard and copy both.** Paste each into a
+   private window. The staff one should ask for an sfaf.org address; the
+   community one should open the form for whichever campaign was picked. Every
+   caladmin user sees this control, not only admins.
+7. **Look at a caladmin tab beside a resources.sfaf.org tab.** The favicon is new
+   and is caladmin only. If resources itself, an event page or either public
+   form has changed icon, something reached further than it should have.
 
 ## Open decisions
 

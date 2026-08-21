@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.48.0
+Stable tag: 3.49.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,36 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.49.0 =
+
+**The pending queue is one list, the dashboard hands out the form links, caladmin has its own favicon, and the thumbnails stop wearing a color nobody can decode.**
+
+**THE QUEUE IS ONE LIST WITH CONTROLS OVER IT.** It used to stack three blocks: imports, dismissed imports, then a separate table of submissions. Three blocks meant knowing which block a thing would be in before you could look for it, and the two that were actual work were sorted by different rules and drawn two different ways. Now there is **one list**, with a filter across the top for **Everything, Imported, Staff requests and Community submissions**, each tab carrying its own count. Nothing about "this needs a decision" differs between an import and a submission, so nothing about the row does either.
+
+**IT OPENS NEWEST FIRST, AND THAT IS THE POINT.** This is a work list, not a calendar. What arrived most recently is what nobody has looked at yet, and it matters more than what happens soonest: an event three months out that was submitted an hour ago needs a decision, and an event next week that was reviewed yesterday does not. **Event date** is offered as a second sort, soonest first, for "what is nearly here and still not published". Anything with no date sorts to the bottom in both directions, because imports arrive dateless by design and reversing a sort must not park all of them on top of the rows that have real dates.
+
+**The kind badges stay on the rows.** The filter narrows and the badge identifies; they are not alternatives. Everything else on the screen still works exactly as it did: the fetch report, Publish and Dismiss, the disclosure carrying the fields a platform cannot supply, the submitted image thumbnail, the two questions Approve asks, and Preview, Edit, Approve and Reject on a submission.
+
+**DISMISSED IS STILL ITS OWN CARD, BELOW.** Dismissed is a status, not a kind. Those rows have already had their decision taken and are kept only so a fetch never offers them again, so folding them into a work list would put things nobody has to act on among things somebody does.
+
+**A ROW THAT MATCHES NO FILTER IS STILL IN "EVERYTHING".** An event set to pending by hand carries no badge and belongs to no kind. It is in the unfiltered list, because the one thing that must never happen on this screen again is a pending row that is in no list at all.
+
+**GET A FORM LINK, ON THE DASHBOARD.** Nothing in caladmin linked to either public form, so sending somebody one meant remembering the URL. One line on the dashboard now opens both: the **staff form**, which takes no parameters, and the **community form**, which is produced by **picking the campaign** from a list, so a second campaign is a dropdown rather than somebody assembling an address by hand. A Copy control on each. It is on the dashboard rather than Pending because Pending is admin-only and a contributor has as much reason to send somebody the community form, and it is **closed by default** so it takes one line from a screen it is not the subject of.
+
+**A FAVICON FOR CALADMIN, AND ONLY CALADMIN.** The portal builds its own document, so it can carry a mark of its own: the calendar glyph this plugin already draws, in Dark Gray on brand Yellow. A caladmin tab is now tellable from every other SFAF tab. It is bundled in the plugin rather than uploaded, so it travels with the code and cannot be deleted from the media library by accident. The glyph is **simplified for 16 pixels**, with the two hanging tabs dropped and the head rule drawn as a solid band, because at that size a hairline and a one-pixel nub smear into each other. Nothing else changed: resources.sfaf.org, the event pages and both submission forms keep the favicon they had.
+
+**THE THUMBNAIL RING IS NEUTRAL NOW, WHICH REVERSES HALF OF 3.31.0.** The month grid's 32px thumbnails carried a 2px ring in the category's color. **Nothing on the grid tells a visitor what a color means**, so it was decoration presenting itself as information: a key with no legend. The brand guide is explicit that too many colors make a kaleidoscope and that the rule is a neutral base with one or two accents, and ten inks around ten thumbnails in one cell is the thing it warns about.
+
+Both the month grid thumbnail and the **sidebar** thumbnail now take the same **neutral 1px hairline in --uc-border (#E2E5EA)**, so the two surfaces match, which matters most in the combined view where they are a few hundred pixels apart. Measured at **1.26:1 on a white cell and 1.17:1 on an out-of-month or hovered one**. Those are not failures of the 3:1 contrast floor: that floor applies to a graphic carrying information, and this one carries none. Its job is to bound a photograph with pale edges.
+
+**What 3.31.0 was fixing is not reintroduced.** The accent bar it replaced was the raw category color, and six of the ten measure under 3:1 on white. Its answer, a ring in the darkened ink, was right about which color to use if a color was used at all. What it never established was that a color belonged there. The old reasoning is kept in the stylesheet, in DESIGN.md and in the check that measures it, pointed the other way, because reasoning that good is exactly what somebody restores from.
+
+**The category chip and the placeholder tile keep their color, deliberately.** The chip carries the category name right beside it, so the color is labeled; the placeholder needs a fill and its icon is the category's own. Both are now checked for it, so a later sweep toward "make it neutral" cannot quietly take them.
+
+**THE SIDEBAR THUMBNAIL IS TOP-ALIGNED.** It was vertically centered, so a row whose title ran to three or four lines left the picture floating in the middle of a much taller block of text. It aligns to the top of the row now, in both the standalone sidebar and the sidebar half of the combined view. It is **not stretched** to the row height, which would drag a 16/9 crop into a tall thin slice of a landscape photograph, and the title is **not truncated**, since plenty of SFAF event titles are long: the row simply gets taller. The month grid is unchanged, because its titles are clamped to two lines and there is no tall row for a 32px thumbnail to float in.
+
+**Under the hood.** The queue's own check now renders the screen and reads the rows back out of the HTML, rather than searching source for a string. Three faults on this queue have been marking or filtering problems that no source check could see, so six were planted to prove the new one can fail, and all six were caught. Separately, the build's staging directory is now skipped by the linter, the callable audit and the date sweep: it is a byte-identical copy of the plugin, and scanning it counted every finding twice and reported the date formatter for being the date formatter.
 
 = 3.48.0 =
 

@@ -517,13 +517,24 @@ is not safe on a request that never loaded the media stack.
 > same way. `.claude/screen-assets-test.php` now requires each screen to declare
 > what it uses and to use only what it declared.
 
-**This is the third fatal here that lint could not see**, and the honest note is
-that the check which would catch it, rendering the screen and asserting a
-complete document, is not possible in the build environment: there is no
-WordPress, no database and no HTTP server. Stubbing enough of WordPress would
-mean the test deciding which functions exist, which is the question the bug
-turned on. The contract check is the closest achievable thing, and loading the
-screens stays a manual pass.
+**This is the third fatal here that lint could not see**, and the contract check
+is the closest achievable thing to catching it.
+
+> **A caladmin screen CAN now be rendered in the build environment, and it still
+> would not have caught this one.** 3.49.0 stubs enough of WordPress for
+> `.claude/pending-queue-test.php` to call `render_pending()` and read the rows
+> back out of the HTML, so the blanket claim that used to stand here, that
+> rendering a screen is not possible without WordPress, a database and an HTTP
+> server, is no longer true and has been removed.
+>
+> **The original objection survives narrowed, and it is the important half.**
+> A stub file DECIDES WHICH FUNCTIONS EXIST, and that is exactly the question
+> this bug turned on: `wp_print_media_templates()` is defined unconditionally in
+> the harness, so a screen calling it without the media stack renders perfectly
+> there and fatals in production. **A rendering test proves what came back; it
+> cannot prove that what it called was safe to call.** Those are different
+> questions, the contract check answers the second, and loading the screens for
+> real stays a manual pass.
 
 ### Rich text is a rule, and one control
 
@@ -694,6 +705,122 @@ plain text so this never bit, and it would have bitten every card on the public
 calendar and in every embed the day this shipped. `sfaf_flatten_html()` turns
 block tags into spaces **before** stripping, which is the only order that works.
 
+### The pending queue is one list, and the filter is not the badge
+
+**One list, with controls over it (3.49.0).** It used to stack three blocks:
+imported events, dismissed imports, then a separate table headed "Submitted for
+review". Three blocks meant knowing which block a thing would be in before you
+could look for it, and the two that held actual work were ordered by different
+rules and drawn two different ways, one a list of rich rows and one a
+five-column table. **Nothing about "this needs a decision" differs between an
+import and a submission**, so nothing about the row does either.
+
+**Kind and shape are different questions and are answered separately.**
+
+| | What it answers | What decides it |
+|---|---|---|
+| `kind` | what this IS | `SFAF_Submissions::kind()` |
+| `shape` | which actions it takes | which queue it came out of |
+
+An imported event that was published and then set back to pending is kind
+`import` and shape `submission`: it is still an import, and Publish and Dismiss
+are no longer what it needs. Conflating the two is the same mistake as the three
+faults below, one level up.
+
+**The two sources cannot overlap.** Imports sit in the custom `uc_imported`
+status and submissions in WordPress's own `pending`, so the queries are disjoint
+by construction. The id is still the array key, because "cannot overlap" is a
+fact about today's statuses and a row printed twice is a worse failure than one
+missing.
+
+> **A ROW WHOSE KIND MATCHES NO FILTER IS STILL UNDER "Everything".** An event a
+> contributor set to pending by hand is kind `local`, carries no badge, and
+> belongs to none of the three filters. It is in the unfiltered list, and that is
+> the whole point: **the one thing that must never happen on this screen again is
+> a pending row that is in no list at all.**
+
+**It opens newest first, and that is a decision about what this screen is.** A
+work list is not a calendar. What arrived most recently is what nobody has
+looked at yet, and it matters more than what happens soonest: an event three
+months out submitted an hour ago needs a decision, and an event next week
+reviewed yesterday does not. The Events list sorts by when things HAPPEN because
+it answers a different question. Event date is offered as a second sort, and
+**anything dateless sorts last in both directions**, because imports arrive
+without one by design and reversing a sort must not park all of them on top.
+
+**Dismissed is still its own card, below, and that is not an exception.**
+Dismissed is a STATUS, not a kind. Those rows have had their decision taken and
+are kept only so a fetch never offers them again, so folding them into a work
+list would put things nobody must act on among things somebody must.
+
+**The badge identifies and the filter narrows; they are not alternatives.** The
+kind badges from 3.46.0 stay on the rows.
+
+> **THIS QUEUE HAS HAD THREE MARKING OR FILTERING FAULTS AND NOT ONE WAS VISIBLE
+> IN SOURCE.** A badge that asked "does it have a request email" when both forms
+> write one; a query that asked "did you write it" of a post nobody wrote; and
+> the same queue scoping itself to the current user. Every one shipped with
+> checks in place that proved a string existed somewhere.
+>
+> So `.claude/pending-queue-test.php` **renders the screen** and reads the rows
+> back out of the HTML by their `data-uc-id`, asking the question a person asks:
+> is my thing in this list, and is it under the right tab. Six faults were
+> planted to prove it can fail, including the two real ones above. All six were
+> caught. See the note in §1 on what a rendering test can and cannot prove.
+
+### The form links are on the dashboard, and they are not a secret
+
+**Nothing in caladmin linked to either public form until 3.49.0**, so sending
+somebody one meant remembering the URL. The staff form's is a single query var;
+the community form's names a series, so it is a different link per campaign and
+exactly the thing nobody should be assembling by hand.
+
+**On the dashboard, not on Pending, and offered to everyone who gets there.**
+Pending is admin-only, and a contributor has as much reason to send somebody the
+community form. There is no capability check on the control for that reason:
+**reaching caladmin at all is the gate**, and neither link is a secret. The forms
+are not protected by the obscurity of their addresses. The staff form emails a
+token to an sfaf.org address before it shows anything, and the community form is
+rate limited and produces a pending row somebody has to approve.
+
+- **The option's value IS the URL**, built by `SFAF_Submit::url()` in PHP.
+  Nothing in JavaScript assembles an address out of parts, which would be a
+  second copy of that format, in a second language, free to drift from the one
+  the form answers to.
+- **A `<noscript>` prints every campaign's link.** Without JavaScript the picker
+  cannot rewrite the box, so the box would keep showing the first campaign's
+  link whatever was chosen: a wrong answer wearing the shape of a right one.
+- **No series means no link, and it says so.** The form refuses an unknown slug,
+  so an empty picker would produce an address that lands on the "that link is
+  not right" page.
+
+### caladmin has its own favicon, and only caladmin
+
+The portal builds its own document, so its `<head>` is the only one in the
+plugin and a `rel="icon"` written there reaches caladmin and nothing else.
+resources.sfaf.org, the event pages and both public submission forms are
+rendered by the theme through `wp_head()` and are untouched.
+
+**It is the calendar glyph this plugin already draws**, in Dark Gray `#373433` on
+brand Yellow `#FFD900`, measured 8.92:1, which is already the primary button
+treatment. **Bundled in the plugin rather than uploaded**, the same reasoning as
+the email banner: it travels with the code and cannot be deleted from the media
+library by somebody tidying up.
+
+**SIMPLIFIED FOR 16 PIXELS, AND THE SIMPLIFICATION IS THE POINT.** The sidebar
+glyph is a 2 unit stroke on a 24 unit grid with two hanging tabs above the body.
+At 16 device pixels the stroke is 1.33px and the tabs are two nubs three pixels
+long, and `node .claude/build-favicon.js --preview` shows them smearing into the
+head rule and into each other. So **the tabs are dropped and the head rule is
+drawn as a solid band**: a filled band survives downsampling that a hairline does
+not, and a rounded box with a dark cap is still unmistakably a calendar. The
+mark is the same mark; what changed is what it can afford to say at that size.
+
+SVG first and PNG second, in that order, because a browser that understands
+`image/svg+xml` takes the first and one that does not ignores it. The 180px PNG
+is the iOS home screen icon, which is a real thing managers do with a tool they
+open daily.
+
 ### Decoration that carries no information
 
 Until 3.38.0 every card in caladmin carried a 3px teal left border with an
@@ -708,10 +835,31 @@ beside it, the edge is decoration and goes. Two survive, and
 
 - **`.uc-single-header`**, the category colour on the event page. The category
   system is the one place in this plugin where colour is the signal: the same
-  colour is the card ring, the chip and the placeholder tile, and the event page
-  names the category nowhere in words.
+  colour is the chip and the placeholder tile, and the event page names the
+  category nowhere in words.
 - **`.uc-field-attention`**, which of roughly thirty fields is still empty. The
   publish banner names *what* is missing; only this says *where*.
+
+**AND THE SAME TEST TAKES A COLOUR OFF A SURFACE, NOT ONLY AN EDGE (3.49.0).**
+The month grid's thumbnails wore a 2px ring in the category's ink. It passed the
+edge audit above, because that audit matches thick coloured edges and a ring is
+not one, and it failed this test the moment it was asked: **nothing on the grid
+tells a visitor what the colour means.** A key with no legend is worse than no
+key, because it invites the belief that something was communicated.
+
+Both the month grid and the sidebar thumbnail now take a **neutral 1px hairline
+in `--uc-border`**, on the CONTAINER rather than on the picture, so the photo and
+the placeholder cannot drift apart and the declaration is not sitting on the one
+element every host stylesheet writes a rule for. Measured 1.26:1 on white, which
+is not a contrast failure: the 3:1 floor is for a graphic carrying information,
+and a hairline that distinguishes nothing is not asked to.
+
+This **reverses half of 3.31.0**, whose reasoning is kept in `calendar.css`,
+`DESIGN.md` §4 and `.claude/category-ring-contrast.php` rather than deleted.
+3.31.0 was right that the raw category hue cannot carry a shape, six of ten
+measuring under 3:1 on white; it was never established that a colour belonged
+there. Both files now enforce the reversal, so the old rule cannot be restored
+from its own surviving argument.
 
 ## 2. Data model
 
