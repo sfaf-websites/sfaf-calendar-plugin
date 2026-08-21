@@ -193,9 +193,12 @@ visual or CSS decisions (`DESIGN.md` does), and it does not carry working rules
   including the reasons an alternative was rejected, which is the part nobody
   can reconstruct. Move an entry into the body when it ships and delete it from
   that section.
-- The EveryAction arrangement (a JSON file written hourly by Val, fetched over
-  HTTPS, because an EveryAction API key cannot be scoped to events only) is the
-  first entry there.
+- The EveryAction arrangement is the first entry there. The source is a
+  **MangoApps Trackers endpoint**, and what is still being waited on from Val is
+  that endpoint plus a sample response. It is not an EveryAction API call
+  because an EveryAction key cannot be scoped to events only, which is the part
+  of that entry worth protecting. `PROJECT.md` §8 carries the detail, including
+  the file-based shape this superseded.
 
 `HANDOVER.md` is the current situation, and Mark opens a fresh chat with it, so
 it has to read cold. Keep it under 150 lines: if it grows past that, something
@@ -210,3 +213,30 @@ in it is durable and belongs in `PROJECT.md`.
   in `PROJECT.md` §7 instead, and the handover points at it.
 - A stale handover beside a current `PROJECT.md` is worse than no handover,
   because somebody reads the wrong one. The old one sat 26 releases behind.
+
+---
+
+## 9. Every piece of code goes in a code block
+
+**All code output is presented inside a code block. Always, in every response.**
+
+That includes the cases where it feels disproportionate, because those are the
+ones this rule exists for:
+
+- **a single line**, a one-word function name, a file path, a CSS selector, a
+  meta key, a shell command.
+- **an excerpt quoted back** from a file that is already in the repository,
+  including one being quoted only to point at it.
+- **a diff**, in any form, whole or partial.
+- **anything with a `$`, a tag, a brace or a backslash in it**, which is the
+  practical test when it is not obvious.
+
+**The reason is that prose mangles code and does it silently.** Markdown eats
+underscores and asterisks, a shell string loses its `$`, and an excerpt run into
+a sentence cannot be copied without picking the words out of it by hand. A
+fenced block is what makes the difference between something readable and
+something usable, and it costs nothing.
+
+**A code block is not the same as inline backticks.** Inline is right for naming
+a thing in the middle of a sentence, `SFAF_Reminders::recipients()`. Anything
+meant to be READ AS CODE, or copied, gets a fenced block of its own.

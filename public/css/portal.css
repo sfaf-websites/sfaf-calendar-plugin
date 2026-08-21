@@ -569,11 +569,16 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    decorates something, a yellow button stops meaning "this is the action".
    Dark Gray on yellow measures 8.92:1. The border is the strong gray so the
    control's own edge clears 3:1 rather than being a hairline. */
-.uc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
-.uc-btn:hover { border-color: var(--uc-accent-text); color: var(--uc-accent-text); text-decoration: none; }
-.uc-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
-.uc-btn-primary { background: var(--uc-primary); border-color: #E0BE00; color: var(--sfaf-darkgray); }
-.uc-btn-primary:hover { filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
+.uc-btn,
+.uc-form-links-open { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.uc-btn:hover,
+.uc-form-links-open:hover { border-color: var(--uc-accent-text); color: var(--uc-accent-text); text-decoration: none; }
+.uc-btn:focus-visible,
+.uc-form-links-open:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-btn-primary,
+.uc-form-links-open { background: var(--uc-primary); border-color: #E0BE00; color: var(--sfaf-darkgray); }
+.uc-btn-primary:hover,
+.uc-form-links-open:hover { filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
 /* ---------------------------------------------------------------------------
    THE UTILITY BUTTON: "go and get it again".
 
@@ -2907,11 +2912,24 @@ body.uc-modal-open { overflow: hidden; }
    hover and focus.
    --------------------------------------------------------------------------- */
 .uc-form-links { margin: 0 0 16px; }
-.uc-form-links-open { display: inline-flex; align-items: center; gap: 7px;
-    width: fit-content; cursor: pointer; padding: 4px 0;
-    font-size: 13px; font-weight: 600; color: var(--p-muted); list-style: revert; }
-.uc-form-links-open:hover { color: var(--uc-accent-text); }
-.uc-form-links-open:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+/* IT IS STILL A <summary> AND MUST STAY ONE. The no-JavaScript path works
+   because a disclosure opens by itself, and the noscript block listing every
+   campaign's link is what somebody gets then. A <button> with no script does
+   nothing at all, so this is styling and nothing else.
+
+   The primary treatment itself comes from .uc-btn and .uc-btn-primary above,
+   which this selector was added to. Only what a summary needs on top of a
+   button is here. */
+.uc-form-links-open {
+    /* The disclosure triangle goes, because the control now reads as a button
+       and, with the script running, it opens a dialog rather than expanding.
+       display:inline-flex drops the marker in most engines on its own; these
+       two are the ones that do not follow it. */
+    list-style: none;
+    width: fit-content;
+}
+.uc-form-links-open::-webkit-details-marker { display: none; }
+.uc-form-links-open::marker { content: ""; }
 .uc-form-links-open svg { flex: 0 0 auto; }
 
 /* Open in place, which is what happens with no JavaScript. Indented under one

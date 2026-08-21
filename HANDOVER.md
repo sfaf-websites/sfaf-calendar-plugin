@@ -6,27 +6,27 @@ the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
 working rules. Anything here that is still true in six months belongs in one of
 those instead.
 
-**Last updated:** 2026-08-21, at 3.50.0.
+**Last updated:** 2026-08-21, at 3.51.0.
 
 ---
 
 ## What shipped last
 
-**3.50.0**, built as `sfaf-calendar-3.50.0.zip` in the project root, committed
-and **pushed to `origin/production-2.0`** (commit `4133865`). The working tree is
-clean apart from one stray PNG that is not part of the plugin.
+**3.51.0**, built as `sfaf-calendar-3.51.0.zip` in the project root, committed
+and **pushed to `origin/production-2.0`**. The working tree is clean apart from
+one stray PNG that is not part of the plugin.
 
 The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.51.0** | Get a form link is a primary button. FAQ answers on the community form are rich text, with the plumbing two public pages needed for a deferred editor to start at all. |
 | **3.50.0** | Filter bar split into three switches: category, organizer, series. The organizer filter runs a query for the first time. The series row no longer waits for a category. |
 | **3.49.1** | Fix: the publish warning named fields that were filled in. Two causes, multi-select control names and a TinyMCE textarea. |
 | **3.49.0** | Pending is one list with a filter. "Get a form link" on the dashboard. caladmin favicon. Thumbnails take a neutral hairline instead of a category ring. |
-| **3.48.0** | Cost is required, submissions carry FAQs and a capacity, approving one asks two questions. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.50.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.51.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -99,22 +99,35 @@ is a claim about code that has never run.
 2. **One real removal at source**, so automated fetching can be turned on. Until
    a removal has been seen behaving correctly once, the fetch stays manual.
 
+**The editor on the public forms, which the build cannot see at all:**
+
+3. **Open both public forms and add a second FAQ question.** The answer box must
+   be an editor with a toolbar, not a plain box, on the FIRST row and on the one
+   the button adds. 3.51.0 wired the community form's answers to the shared
+   control and fixed two things that stopped any deferred editor starting on a
+   page that builds its own document. **Nothing in the repository can confirm
+   this**: there is no WordPress, no browser and no logged-out page load here.
+   If it is a plain box, the content is still safe and still saves; it is the
+   editor that did not start.
+   The **staff form has no FAQ field at all**, so what to check there is that
+   its DESCRIPTION is still a toolbar.
+
 **Uploads, which are the part nothing here can touch:**
 
-3. **Submit the community form with a photo.** It must land in
+4. **Submit the community form with a photo.** It must land in
    `uploads/calendar-submissions/` under a **generated** name rather than the
    one you sent, the pending row must show the thumbnail, and the event must NOT
    be visible until approved.
-4. **Rename a `.txt` to `.jpg` and submit it.** It must be refused.
-5. **Confirm `uploads/calendar-submissions/` is NOT offered by the caladmin
+5. **Rename a `.txt` to `.jpg` and submit it.** It must be refused.
+6. **Confirm `uploads/calendar-submissions/` is NOT offered by the caladmin
    picker.** Open Choose Image on any event. If a raw submission appears there,
    the two folders have collided and unapproved files are being shown.
-6. **Upload one picture from caladmin** and confirm it lands in
+7. **Upload one picture from caladmin** and confirm it lands in
    `uploads/calendar/` and is offered by the picker straight away.
 
 **After any release that touches a screen's assets:**
 
-7. **Open all four screens that carry a picker or an editor and confirm each
+8. **Open all four screens that carry a picker or an editor and confirm each
    returns a complete page**: **FAQ Sets**, **the event editor**, **Pending**,
    and **New or Edit Series**. FAQ Sets is the one that returned 500 on 3.44.0.
    Check the page reaches its footer, the sidebar is full width, and the FAQ
@@ -124,15 +137,15 @@ is a claim about code that has never run.
 
 | | What to do | Why it needs a person |
 |---|---|---|
-| 8 | Open the **WordPress post editor** and see whether it shows a **Series panel**. | If it is there, an event can be given two series as it could two organizers. `PROJECT.md` §7 has why nothing was changed on the guess. |
-| 9 | Watch for the **two-hour pre-event summary**, unattended. | The morning-of reminder is proved; this half has never been seen. |
-| 10 | Send yourself **every message type** from Events > Automation, read them in **Outlook on Windows**. | Are the Add to calendar buttons the same height with the glyph loaded, and does the changed-event message name the old value as well as the new? |
-| 11 | Load the **Yoast sitemap**, confirm a private event is absent. | The one privacy route that is a third party's code. |
-| 12 | Grep the sfaf.org theme for `sfaf_is_in_series` and `sfaf_get_series_name`. | Theme-facing, called nowhere here, so they cannot be deleted until the theme is known not to call them. |
-| 13 | The **combined view** in a browser, **on the embed**, not only sfaf.org. | Six releases shipped a fault the suite passed; four were embed-only. The five things to look at are in `PROJECT.md` §1. |
-| 14 | **3.50.0:** regenerate an embed block, try the three filter toggles. Then use the organizer dropdown, here and in an embed. | With only Series on, pills must appear with no category row above them, and choosing one must change the **count**, not just the visible rows. The organizer filter never worked before 3.50.0. |
-| 15 | **3.49.0:** open Pending, press **Get a form link**, then compare a caladmin tab against a resources tab. | Four tabs with the counts you expect, imports and submissions in one list; both links open in a private window; the favicon is caladmin only, so anything else changing icon reached too far. |
-| 16 | **Teams and cancellation**, both untested live. | Put somebody in a team on an event they did not create: they must see that event's registrations and nothing else. Cancel an event with a registration: deleting must be refused before and allowed after. |
+| 9 | Open the **WordPress post editor** and see whether it shows a **Series panel**. | If it is there, an event can be given two series as it could two organizers. `PROJECT.md` §7 has why nothing was changed on the guess. |
+| 10 | Watch for the **two-hour pre-event summary**, unattended. | The morning-of reminder is proved; this half has never been seen. |
+| 11 | Send yourself **every message type** from Events > Automation, read them in **Outlook on Windows**. | Are the Add to calendar buttons the same height with the glyph loaded, and does the changed-event message name the old value as well as the new? |
+| 12 | Load the **Yoast sitemap**, confirm a private event is absent. | The one privacy route that is a third party's code. |
+| 13 | Grep the sfaf.org theme for `sfaf_is_in_series` and `sfaf_get_series_name`. | Theme-facing, called nowhere here, so they cannot be deleted until the theme is known not to call them. |
+| 14 | The **combined view** in a browser, **on the embed**, not only sfaf.org. | Six releases shipped a fault the suite passed; four were embed-only. The five things to look at are in `PROJECT.md` §1. |
+| 15 | **3.50.0:** regenerate an embed block, try the three filter toggles. Then use the organizer dropdown, here and in an embed. | With only Series on, pills must appear with no category row above them, and choosing one must change the **count**, not just the visible rows. The organizer filter never worked before 3.50.0. |
+| 16 | **3.49.0:** open Pending, press **Get a form link**, then compare a caladmin tab against a resources tab. | Four tabs with the counts you expect, imports and submissions in one list; both links open in a private window; the favicon is caladmin only, so anything else changing icon reached too far. |
+| 17 | **Teams and cancellation**, both untested live. | Put somebody in a team on an event they did not create: they must see that event's registrations and nothing else. Cancel an event with a registration: deleting must be refused before and allowed after. |
 
 ## Open decisions
 

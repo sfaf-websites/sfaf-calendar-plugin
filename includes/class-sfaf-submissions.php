@@ -492,12 +492,36 @@ if ( $args['editor'] ) {
         $args = array_merge( array( 'editor' => false ), $args );
         ?>
 </div>
-<script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
 <?php
 if ( $args['editor'] ) {
+    /*
+     * BEFORE portal.js, AND THE ORDER IS THE WHOLE FIX.
+     *
+     * These two were the other way round until 3.51.0, and it cost nothing
+     * while the only editor on these pages was rendered by wp_editor(): that
+     * one prints its own initialiser into the footer scripts and starts itself
+     * whenever it runs. A DEFERRED editor does not. portal.js starts those, by
+     * calling wp.editor.initialize(), and wp.editor is one of the things
+     * wp_print_footer_scripts() prints. Loaded first, portal.js found no
+     * wp.editor, returned at its first guard, and every deferred row stayed the
+     * plain textarea it began as, silently and correctly.
+     */
     wp_print_footer_scripts();
+
+    /*
+     * THE TOOLBAR, FOR THE ROWS THE BROWSER BUILDS. Printed by caladmin's
+     * foot() and, until 3.51.0, nowhere else, so a public form had no settings
+     * block for portal.js to read even once wp.editor was there.
+     *
+     * SAME JSON, SAME METHOD, NO SECOND COPY. A toolbar written out again here
+     * would be a second answer to what a submitter may type.
+     */
+    ?><script type="application/json" id="uc-rich-settings"><?php
+        echo SFAF_Rich_Text::settings_json();
+    ?></script><?php
 }
 ?>
+<script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/portal.js?ver=' . SFAF_VERSION ); ?>"></script>
 </body></html><?php
     }
 

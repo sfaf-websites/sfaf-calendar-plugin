@@ -277,6 +277,54 @@ if ( false === strpos( $faqs[0]['answer'], '<strong>' ) ) {
 }
 expect( 'a half-filled row is kept', $faqs[1]['question'], 'Question only' );
 
+/*
+ * AND AN ANCHOR SURVIVES, WHICH IS WHAT 3.51.0'S TOOLBAR RESTS ON.
+ *
+ * The FAQ answer became the shared rich text control with the shared toolbar,
+ * and that toolbar carries link and unlink. A link button over a rule that
+ * strips anchors is a control that appears to work and silently discards what
+ * somebody typed, so the rule is asserted here rather than assumed: prose()
+ * already permitted `a href`, and NOTHING WAS WIDENED to add the toolbar.
+ *
+ * THE PROTOCOL HALF IS ASSERTED AS THE LIST, NOT AS AN OUTCOME, and that is
+ * forced by the harness rather than chosen. wp_kses() here is strip_tags(),
+ * which cannot filter a protocol at all, so feeding it `javascript:` and
+ * checking what came back would be a fact about this file and not about the
+ * plugin. The stub records its arguments for exactly this reason. The first
+ * draft of this assertion got that wrong and reported a fault that was the
+ * stub's.
+ */
+$GLOBALS['kses_calls'] = array();
+$linked = SFAF_Submit::clean_faqs( array(
+    array(
+        'question' => 'Where do I book?',
+        'answer'   => '<p>Book <a href="https://example.org/book" title="Booking">here</a>.</p>',
+    ),
+) );
+
+if ( empty( $linked ) ) {
+    fail( 'a FAQ answer containing a link was dropped entirely' );
+} elseif ( false === strpos( $linked[0]['answer'], '<a' ) ) {
+    fail( 'the link the FAQ toolbar can produce does not survive the sanitiser' );
+}
+
+$call = end( $GLOBALS['kses_calls'] );
+if ( ! $call ) {
+    fail( 'a submitted FAQ answer never reached wp_kses() at all' );
+} else {
+    if ( ! isset( $call['allowed']['a']['href'] ) ) {
+        fail( 'the FAQ answer allow-list has no anchor href, so the toolbar offers a link the rule discards' );
+    }
+    foreach ( array( 'http', 'https', 'mailto' ) as $scheme ) {
+        if ( ! in_array( $scheme, (array) $call['protocols'], true ) ) {
+            fail( "the FAQ answer allow-list does not permit the $scheme protocol" );
+        }
+    }
+    if ( in_array( 'javascript', (array) $call['protocols'], true ) ) {
+        fail( 'the FAQ answer allow-list permits the javascript protocol' );
+    }
+}
+
 $out = SFAF_Submit::validate( good( array( 'capacity' => '40' ) ) );
 expect( 'a capacity is kept', $out['clean']['capacity'], 40 );
 $out = SFAF_Submit::validate( good( array( 'capacity' => '' ) ) );

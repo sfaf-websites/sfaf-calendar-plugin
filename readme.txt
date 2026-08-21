@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.50.0
+Stable tag: 3.51.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,31 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.51.0 =
+
+**The form-link control reads as a button, and FAQ answers on the community form get the same editor the event editor has.**
+
+**GET A FORM LINK IS A PRIMARY BUTTON NOW.** It was a quiet one-line disclosure under the Welcome heading and was too easy to miss. It takes the existing primary treatment, Dark Gray on brand Yellow, measured 8.92:1. **It is still a disclosure and not a button element**, deliberately: with no JavaScript a disclosure opens by itself and shows every campaign's link, and a button with no script does nothing at all. Styling only. The markup, the script that lifts it into a dialog, and the link construction are untouched, and the no-JavaScript list is unaffected.
+
+**FAQ ANSWERS ON THE COMMUNITY FORM ARE RICH TEXT.** Bold, italic, bullets, numbers, link and unlink, from the same shared control and the same single toolbar the event editor uses. No second toolbar was defined.
+
+**Why they were plain, and why that reasoning did not survive.** The field was a plain textarea on the argument that a stranger answering "is there parking" wants no formatting. That argument also said "what survives is the same narrow list either way", **and that was not true of FAQ answers**: caladmin sanitises them with the wide WordPress rule, and this form with the narrow anonymous one. The sentence was true of the description field, which takes the narrow rule on both public forms, and it had been carried across to a field where it did not hold. The comment now names both paths.
+
+**Nothing was loosened to do this.** The narrow anonymous rule already permitted exactly what this toolbar produces, anchors included, restricted to http, https and mailto. The control and the rule now agree, where before the control was narrower than the rule for no stated reason.
+
+**Two things were stopping the editor from ever starting on these pages**, and neither was the field itself:
+
+* The **toolbar settings block** was printed by caladmin and nowhere else, so the script had nothing to read.
+* **The scripts were loaded in the wrong order.** The page script ran before WordPress printed the editor's own, so it found no editor and returned. That cost nothing while the only editor on these pages was the description, which starts itself; it is fatal to a row the browser has to build.
+
+**It still degrades.** Every answer is a real text box with a real name. If the editor's scripts do not run, the row still holds its content, still posts and still saves.
+
+**The staff request form has no FAQ field at all**, so there was nothing to convert there. It is not that its FAQ answers are plain; there are none. Reported rather than built, since adding one is a feature rather than a fix.
+
+**Also:** `CLAUDE.md` described the EveryAction integration as a JSON file written hourly, which `PROJECT.md` had already corrected to a MangoApps Trackers endpoint. The two no longer disagree about what is blocked.
+
+**Not verified here, and it goes on the manual list.** Whether the editor actually starts in a browser cannot be settled from the repository: there is no WordPress, no browser and no logged-out page load in the build environment. Open both public forms, add a second FAQ question, and confirm the answer box is an editor with a toolbar rather than a plain box.
 
 = 3.50.0 =
 

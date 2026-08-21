@@ -1191,13 +1191,34 @@ class SFAF_Submit {
                  * leaves it and it is dropped on save; a submitter with one
                  * question does not have to find a button before they can type.
                  *
-                 * A PLAIN TEXTAREA FOR THE ANSWER, not the rich text control.
-                 * The editor's rows use SFAF_Rich_Text::deferred() because a
-                 * manager writing an answer wants formatting. A stranger
-                 * answering "is there parking" does not, and every editor on a
-                 * public page is more script for a browser we know nothing
-                 * about. What survives is the same narrow list either way, so
-                 * nothing is lost by asking for text.
+                 * THE SAME RICH TEXT CONTROL THE EDITOR USES, through
+                 * SFAF_Rich_Text::deferred(), with the one shared toolbar:
+                 * bold, italic, bullets, numbers, link and unlink.
+                 *
+                 * IT WAS A PLAIN TEXTAREA UNTIL 3.51.0, on the reasoning that a
+                 * stranger answering "is there parking" wants no formatting.
+                 * What that argument also said was that "what survives is the
+                 * same narrow list either way", AND THAT WAS NOT TRUE OF FAQ
+                 * ANSWERS. The two paths genuinely differ:
+                 *
+                 *   caladmin   SFAF_Rich_Text::sanitize(), which is
+                 *              wp_kses_post(), the wide WordPress rule.
+                 *   this form  SFAF_Submissions::prose(), the narrow anonymous
+                 *              list. See clean_faqs() below.
+                 *
+                 * The sentence was true of the DESCRIPTION, which takes prose()
+                 * on this form and on the staff one, and it was carried across
+                 * to a field where it did not hold.
+                 *
+                 * NOTHING WAS LOOSENED TO DO THIS. prose() already permits
+                 * exactly what this toolbar can produce, anchors included, so
+                 * the control and the rule now agree instead of the control
+                 * being narrower than the rule for no stated reason.
+                 *
+                 * IT IS STILL A REAL TEXTAREA WITH A REAL NAME. deferred()
+                 * renders one and the browser upgrades it; if the editor's
+                 * scripts never run, the row still holds its content, still
+                 * posts and still saves.
                  */
                 $faq_rows = (array) $v( 'faqs', array() );
                 if ( empty( $faq_rows ) ) {
@@ -1213,9 +1234,11 @@ class SFAF_Submit {
                                 <div class="uc-repeater-row uc-faq-row">
                                     <input type="text" name="faq[<?php echo (int) $i; ?>][question]" maxlength="300"
                                            value="<?php echo esc_attr( isset( $row['question'] ) ? $row['question'] : '' ); ?>" placeholder="Question" />
-                                    <textarea name="faq[<?php echo (int) $i; ?>][answer]" rows="3" placeholder="Answer"><?php
-                                        echo esc_textarea( isset( $row['answer'] ) ? $row['answer'] : '' );
-                                    ?></textarea>
+                                    <?php SFAF_Rich_Text::deferred(
+                                        'faq[' . (int) $i . '][answer]',
+                                        isset( $row['answer'] ) ? $row['answer'] : '',
+                                        array( 'rows' => 3, 'placeholder' => 'Answer' )
+                                    ); ?>
                                     <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                                 </div>
                             <?php endforeach; ?>
@@ -1224,7 +1247,7 @@ class SFAF_Submit {
                         <template class="uc-repeater-tpl">
                             <div class="uc-repeater-row uc-faq-row">
                                 <input type="text" name="faq[__I__][question]" maxlength="300" placeholder="Question" />
-                                <textarea name="faq[__I__][answer]" rows="3" placeholder="Answer"></textarea>
+                                <?php SFAF_Rich_Text::deferred( 'faq[__I__][answer]', '', array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
                                 <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                             </div>
                         </template>
