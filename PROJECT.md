@@ -2095,3 +2095,32 @@ half hour. For hourly data that is fine, and no special handling is needed.
 2. **Does Val's job write atomically** (temp name, then rename), so a fetch
    cannot catch a half-written file? A partial JSON read on the hour is a
    plausible and silent failure mode.
+
+### The image picker stays one calendar folder, weighed 2026-08-21
+
+**LEFT AS IT IS, DELIBERATELY.** Both public forms offer the same folder, and a
+second campaign form would offer that same set rather than its own.
+
+`SFAF_Media_Folder::FOLDER` is the single string `calendar`, and the picker is
+narrowed to it by a flag on the request. Nothing in the arrangement reads the
+series, so "the campaign's own images" is not a setting somebody forgot to turn
+on. It is a folder per series, a picker that resolves which one it is standing
+in, and an upload path that follows: three changes to a filter that hangs on a
+global WordPress hook.
+
+**The reason to wait is what that hook is.** Too narrow fails silently and in
+the worst direction: this filter can narrow the WordPress media library itself,
+on every screen of the site, for every plugin and every editor, and somebody
+writing an unrelated page has no reason to suspect the calendar. That risk is
+worth taking to solve a problem somebody actually has. It is not worth taking to
+solve one nobody has yet.
+
+**There is one campaign form.** With one, "not series-specific" describes no
+observable behavior: the set it offers and the set it would offer are the same
+set. Build the split when a second campaign exists and the folders genuinely
+differ, because that is also the first moment the right shape is knowable rather
+than guessed.
+
+**What would change the answer:** a campaign whose images must NOT be visible to
+another campaign's submitters. That is a confidentiality requirement rather than
+a tidiness one, and it does not wait for a second form.
