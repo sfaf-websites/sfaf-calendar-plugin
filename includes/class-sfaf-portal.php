@@ -3484,7 +3484,7 @@ class SFAF_Portal {
                 'text' => sprintf(
                     '%s %s for %s',
                     '' !== $who ? $who : 'Someone',
-                    'subscribed' === $r->status ? 'asked for reminders' : ( 'cancelled' === $r->status ? 'canceled their place' : 'registered' ),
+                    'cancelled' === $r->status ? 'canceled their place' : 'registered',
                     $title ? $title : 'a deleted event'
                 ),
             );
@@ -8390,7 +8390,14 @@ class SFAF_Portal {
                 <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Display</h2>
                     <?php
-                    $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Reminders' );
+                    /*
+                     * 'show_reminders' STILL WRITES _uc_show_reminders. The
+                     * label is what changed in 3.53.0, because what the button
+                     * does changed; renaming the key would have read every
+                     * event's absent new value as "on" and switched the control
+                     * back on wherever somebody had turned it off.
+                     */
+                    $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Follow the series' );
                     foreach ( $feat as $f => $lbl ) :
                         $on = $event_id ? sfaf_show_feature( $event_id, str_replace( 'show_', '', $f ) ) : true; ?>
                         <label class="uc-check"><input type="checkbox" name="<?php echo esc_attr( $f ); ?>" value="1" <?php checked( $on ); ?> /> <?php echo esc_html( $lbl ); ?></label>

@@ -2849,7 +2849,7 @@
      *
      * SO THE QUESTION IS ASKED AT THE MOMENT OF SAVING, and only when there is
      * something to ask about: a date, start time, end time or location that
-     * actually changed, AND at least one person registered or subscribed. With
+     * actually changed, AND at least one person is registered for it. With
      * neither, this does nothing at all and the save goes straight through. A
      * click in the way of a save that cannot email anybody is a click that
      * teaches people to dismiss dialogs.

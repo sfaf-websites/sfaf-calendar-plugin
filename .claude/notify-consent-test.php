@@ -203,7 +203,7 @@ update_post_meta( 300, '_uc_location', 'Castro office' );
 foreach ( array(
     array( 'dana@example.org', 'Dana', 'confirmed' ),
     array( 'sam@example.org',  'Sam',  'confirmed' ),
-    array( 'jo@example.org',   'Jo',   'subscribed' ),
+    array( 'jo@example.org',   'Jo',   'confirmed' ),
 ) as $i => $p ) {
     $GLOBALS['wpdb']->rows[] = (object) array(
         'id' => $i + 1, 'event_id' => 300, 'email' => $p[0],
@@ -260,8 +260,8 @@ expect( 'SEND is lowercased and counts',      save_with( array( 'notify_choice' 
 /* ---------------------------------------------------------------------------
  * 2. MAIL IS WRITTEN WHEN THE CHOICE IS SEND.
  *
- * Three people, three messages: one each, however the diff is shaped. Somebody
- * who only pressed Get Reminders is in that three, which is the 3.39.0 rule.
+ * Three people, three messages: one each, however the diff is shaped. All three
+ * hold a place: since 3.53.0 that is the only kind of row this table has.
  * ------------------------------------------------------------------------ */
 expect( 'send writes one message per person', save_with( array( 'notify_choice' => 'send' ), $MOVED ), 3 );
 

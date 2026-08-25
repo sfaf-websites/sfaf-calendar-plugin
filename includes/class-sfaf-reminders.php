@@ -322,12 +322,16 @@ class SFAF_Reminders {
     /**
      * Everyone who should receive this event's reminder.
      *
-     * Two groups, per spec, plus the people who pressed "Get Reminders" — that
-     * button stores a row promising a reminder, and this is the thing that
-     * keeps the promise.
+     * TWO GROUPS, AND SINCE 3.53.0 ONLY TWO: everybody who holds a place, and
+     * the event's notification list. There used to be a third, the people who
+     * pressed "Get Reminders", stored in this same table at status
+     * 'subscribed'. They are gone from here entirely. Somebody who wants to
+     * hear about a programme's dates is following its series, which sends one
+     * message about new dates and never this one; putting them on the
+     * morning-of reminder for one occurrence was the button doing something
+     * nobody asked it for.
      *
-     * @return array<string,string> lowercased email => type
-     *   ('rsvp' | 'subscriber' | 'notify')
+     * @return array<string,string> lowercased email => type ('rsvp' | 'notify')
      */
     public static function recipients( $event_id ) {
         global $wpdb;
@@ -335,7 +339,7 @@ class SFAF_Reminders {
         $table = $wpdb->prefix . 'uc_rsvps';
 
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT email, status FROM $table WHERE event_id = %d AND status IN ('confirmed','subscribed')",
+            "SELECT email FROM $table WHERE event_id = %d AND status = 'confirmed'",
             $event_id
         ) );
         foreach ( (array) $rows as $row ) {
@@ -343,7 +347,7 @@ class SFAF_Reminders {
             if ( '' === $email || isset( $out[ $email ] ) ) {
                 continue;
             }
-            $out[ $email ] = ( 'subscribed' === $row->status ) ? 'subscriber' : 'rsvp';
+            $out[ $email ] = 'rsvp';
         }
 
         foreach ( self::notify_list( $event_id ) as $email => $label ) {
@@ -628,7 +632,7 @@ class SFAF_Reminders {
          * them there is no registration. is_staff also changes the opening line:
          * "your event is today" is wrong for somebody who is not attending.
          */
-        $holds_a_place = in_array( $type, array( 'rsvp', 'subscriber' ), true );
+        $holds_a_place = ( 'rsvp' === $type );
 
         $person = (object) array(
             'email'    => $email,
@@ -772,7 +776,7 @@ class SFAF_Reminders {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
         $rows  = $wpdb->query( $wpdb->prepare(
-            "UPDATE $table SET status = 'cancelled', cancelled_at = %s WHERE event_id = %d AND email = %s AND status IN ('confirmed','subscribed')",
+            "UPDATE $table SET status = 'cancelled', cancelled_at = %s WHERE event_id = %d AND email = %s AND status = 'confirmed'",
             current_time( 'mysql' ),
             $event_id,
             $email
@@ -783,10 +787,11 @@ class SFAF_Reminders {
              * THE PLACE IS FREE THE MOMENT THIS RETURNS, and nothing has to be
              * told about it. Capacity is counted with a COUNT of rows at status
              * 'confirmed' (sfaf_get_rsvp_count), the reminder recipients are
-             * selected on the same statuses, and the pre-event summary lists
-             * confirmed rows only. Moving the status out of 'confirmed' removes
-             * this person from all three at once. There is no counter to
-             * decrement and no cache to clear beyond the request-local one.
+             * selected on the same status, the announcement audience is the
+             * same one again, and the pre-event summary lists confirmed rows
+             * only. Moving the status out of 'confirmed' removes this person
+             * from all four at once. There is no counter to decrement and no
+             * cache to clear beyond the request-local one.
              */
             sfaf_clear_rsvp_count_cache( (int) $event_id );
             do_action( 'uc_rsvp_cancelled', (int) $event_id, (string) $email );

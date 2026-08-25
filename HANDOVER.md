@@ -6,27 +6,32 @@ the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
 working rules. Anything here that is still true in six months belongs in one of
 those instead.
 
-**Last updated:** 2026-08-21, at 3.52.0.
+**Last updated:** 2026-08-24, at 3.53.0.
 
 ---
 
 ## What shipped last
 
-**3.52.0**, built as `sfaf-calendar-3.52.0.zip` in the project root, committed
+**3.53.0**, built as `sfaf-calendar-3.53.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
+
+> **THIS RELEASE ADDS A TABLE**, `uc_series_followers`, and `SFAF_DB_VERSION` is
+> now `6`. It is created on load as well as on activation, so overwriting the
+> folder is enough; but if anything about following throws "table doesn't
+> exist", that is the check that did not run.
 
 The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.53.0** | Get Reminders becomes Follow this series, recorded against the series term in its own table, confirmed by email before it is active. **Part 1 of 2.** |
 | **3.52.0** | The staff request form can send FAQs: a saved set, its own questions, or both. The set is COPIED, so editing it later does not change events already submitted. The community form deliberately gets no set picker. |
 | **3.51.0** | Get a form link is a primary button. FAQ answers on the community form are rich text, with the plumbing two public pages needed for a deferred editor to start at all. |
 | **3.50.0** | Filter bar split into three switches: category, organizer, series. The organizer filter runs a query for the first time. The series row no longer waits for a category. |
-| **3.49.1** | Fix: the publish warning named fields that were filled in. Two causes, multi-select control names and a TinyMCE textarea. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.52.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.53.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -40,6 +45,22 @@ unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here,
 not a "does it work" question.
 
 ## In flight
+
+**Following a series is half built, and the half that is missing is the point of
+it.** 3.53.0 established who the followers are and how somebody becomes one.
+**Nothing sends a follower anything yet**, and nothing fires when a date is
+added to a series.
+
+**Part 2 is the organizer's announcement screen** and is not built: the list of
+events in a series that have been added and not yet announced, an envelope state
+per row, send and dismiss, and the email naming what was added.
+`SFAF_Follow::active_followers()` is the audience it will read, and it is
+uncalled on purpose. The reasoning, including why this is a person pressing a
+button rather than a hook on occurrence creation, is in `PROJECT.md` §8.
+
+**Somebody can follow a series today and will never hear anything until part 2
+ships.** That is the expected state, not a fault. The confirmation email is real
+and the unsubscribe link in it works.
 
 **Events cancelled by a save.** The bug is fixed; the damage is not. Nothing was
 deleted, so each affected event reinstates from its cancel card. Find them two
@@ -86,6 +107,21 @@ Four smaller things waiting on somebody here:
 **Nothing in the build can do any of these.** There is no WordPress, no
 database, no browser and no mail in the build environment, so every one of these
 is a claim about code that has never run.
+
+**The one this release added:**
+
+0. **Follow a series, end to end.** Open an event that **belongs to a series**
+   and press **Follow this series**. Enter your address and submit. **Confirm
+   the email arrives**, click the link, and press the button on the page it
+   opens; it must then say you are following. Check the record is **active**
+   rather than pending. Then use the **Stop these emails** link and confirm it
+   asks before it acts.
+
+   **Then open a one-off event and confirm there is no button at all.** That is
+   the gate this release added, and it is the half nothing here can see.
+
+   **Nothing will arrive after that**, because the announcement is part 2. The
+   confirmation email is the only thing following sends today.
 
 **The two that block other things:**
 

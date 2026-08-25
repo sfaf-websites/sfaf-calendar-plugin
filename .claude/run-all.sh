@@ -23,6 +23,7 @@ for f in .claude/*.php; do
   case "$(basename "$f")" in
     audit-callables.php) continue ;;   # run separately, with its self-test
     plant-one.php) continue ;;         # a fault planter, not a check
+    plant-follow.php) continue ;;      # likewise, for follow-test.php
   esac
   run "$(basename "$f" .php)" php "$f"
 done

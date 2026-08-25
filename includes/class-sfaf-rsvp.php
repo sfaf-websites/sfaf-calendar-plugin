@@ -6,8 +6,20 @@ class SFAF_RSVP {
     public function register() {
         add_action( 'wp_ajax_uc_submit_rsvp', array( $this, 'ajax_submit_rsvp' ) );
         add_action( 'wp_ajax_nopriv_uc_submit_rsvp', array( $this, 'ajax_submit_rsvp' ) );
-        add_action( 'wp_ajax_uc_subscribe_reminder', array( $this, 'ajax_subscribe_reminder' ) );
-        add_action( 'wp_ajax_nopriv_uc_subscribe_reminder', array( $this, 'ajax_subscribe_reminder' ) );
+        /*
+         * NO uc_subscribe_reminder ENDPOINT. It was the "Get Reminders" dialog
+         * on the event page, and it went in 3.53.0 with the row it wrote.
+         *
+         * It inserted into THIS table, at status 'subscribed', against a single
+         * event id, for somebody who held no place. That put them on the
+         * morning-of reminder list, on the announcement list, and into every
+         * query that asked who was registered; and the copy they received then
+         * had to branch on the difference to stop telling them they had
+         * released a place they never held. What the button was always meant to
+         * offer is knowing when a series gains new dates, which is a different
+         * subject with a different lifetime and now has its own table. See
+         * SFAF_Follow.
+         */
 
         /*
          * NO uc_export_rsvps ENDPOINT. It was the download link on the
@@ -133,8 +145,8 @@ class SFAF_RSVP {
      *
      * A LAST NAME IS ALLOWED TO BE MISSING and produces the first name alone,
      * with no trailing space. The `name` column is the fallback, which is what
-     * a reminder subscriber row (no name at all) and anything written outside
-     * submit() will have.
+     * a row written before the pair existed, or by anything outside submit(),
+     * will have.
      *
      * @param object|array $row A uc_rsvps row.
      * @return string
@@ -358,65 +370,6 @@ class SFAF_RSVP {
                 'gcal'       => sfaf_google_calendar_url( $data['event_id'] ),
                 'ics'        => sfaf_ics_url( $data['event_id'] ),
             );
-        }
-
-        return array( 'success' => false, 'message' => 'Something went wrong. Please try again.' );
-    }
-
-    /**
-     * Subscribe to event reminders via AJAX (separate from RSVP).
-     */
-    public function ajax_subscribe_reminder() {
-        check_ajax_referer( 'uc_nonce', 'nonce' );
-
-        $event_id = isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0;
-        $email    = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
-
-        wp_send_json( $this->subscribe_reminder( $event_id, $email ) );
-    }
-
-    /**
-     * Save a reminder subscriber to the RSVP table with status "subscribed".
-     */
-    public function subscribe_reminder( $event_id, $email ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'uc_rsvps';
-
-        if ( ! $email || ! is_email( $email ) ) {
-            return array( 'success' => false, 'message' => 'Please enter a valid email address.' );
-        }
-
-        $event = get_post( $event_id );
-        if ( ! $event || $event->post_type !== 'uc_event' || $event->post_status !== 'publish' ) {
-            return array( 'success' => false, 'message' => 'This event could not be found.' );
-        }
-
-        // Already subscribed? Treat as success (idempotent).
-        $existing = $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM $table WHERE event_id = %d AND email = %s AND status = 'subscribed'",
-            $event_id,
-            $email
-        ) );
-        if ( $existing > 0 ) {
-            return array( 'success' => true, 'message' => "You're already on the reminder list for this event." );
-        }
-
-        // A token here too, for the same reason the registration gets one: this
-        // row is a promise to email somebody, so it needs a way for them to
-        // stop it that works with no account.
-        $inserted = $wpdb->insert( $table, array(
-            'event_id'   => $event_id,
-            'name'       => '',
-            'email'      => $email,
-            'phone'      => '',
-            'status'     => 'subscribed',
-            'token'      => SFAF_Reminders::new_token(),
-            'created_at' => current_time( 'mysql' ),
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' ) );
-
-        if ( $inserted ) {
-            do_action( 'uc_reminder_subscribed', $wpdb->insert_id, $event_id, $email );
-            return array( 'success' => true, 'message' => "You're on the list! We'll send you a reminder." );
         }
 
         return array( 'success' => false, 'message' => 'Something went wrong. Please try again.' );

@@ -279,7 +279,7 @@
      .uc-filter-btn ....... border-radius: 99px -> 0   every filter pill square
      .uc-group-pill ....... border-radius: 99px -> 0   every group pill square
      .uc-addcal-toggle .... border-radius:  8px -> 0   Add to Calendar
-     .uc-reminder-btn ..... border-radius:  8px -> 0   Get Reminders
+     .uc-follow-btn ....... border-radius:  8px -> 0   Follow this series
      .uc-load-more ........ border-radius:  8px -> 0   the pagination button
 
    The two halves want opposite things, which is why one rule could not serve
@@ -985,6 +985,11 @@
 .uc-rsvp-modal-overlay .uc-rsvp-modal { background: #fff; border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); text-align: left; }
 .uc-rsvp-modal-overlay .uc-rsvp-modal h3 { font-family: var(--uc-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; margin: 0 0 4px; color: var(--uc-text); }
 .uc-rsvp-modal .uc-modal-subtitle { font-size: 14px; line-height: 1.45; color: var(--uc-secondary); margin: 0 0 20px; }
+/* What following sends, above the field rather than beside the button: it is
+   what somebody needs in order to decide whether to type an address at all.
+   Body ink, not the muted grey the subtitle uses, because it is the sentence
+   the dialog exists to carry. */
+.uc-rsvp-modal .uc-follow-what { font-size: 14px; line-height: 1.5; color: var(--uc-text); margin: -8px 0 20px; }
 
 .uc-rsvp-form { display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-form label { font-size: 13px; font-weight: 600; color: var(--uc-text); display: block; margin-bottom: 4px; }
@@ -1195,17 +1200,17 @@
 .uc-addcal .uc-addcal-menu a:hover { background: var(--uc-bg); color: var(--uc-teal-text); }
 .uc-addcal .uc-addcal-menu a:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -2px; }
 
-/* Reminder button */
-.uc-reminder-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.uc-reminder-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
+/* Follow-the-series button */
+.uc-follow-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.uc-follow-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
 /* IN AN EMBED THIS CONTROL IS AN ANCHOR, NOT A BUTTON, and `border-bottom: 0`
    in the link reset is (0,1,1) against the shorthand above at (0,1,0). So the
    anchor form would draw three sides of a box and no fourth. The type selector
    puts this at (0,1,1) and later in the file, which is enough. Nothing calls
-   the embed branch of sfaf_reminders_button() today; this is here so that the
+   the embed branch of sfaf_follow_series_button() today; this is here so that the
    day something does, the control is not missing an edge. */
-a.uc-reminder-btn { border-bottom: 1px solid var(--uc-border); }
-a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
+a.uc-follow-btn { border-bottom: 1px solid var(--uc-border); }
+a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 
 /* Card style variations (set via Branding). The minimal variant no longer
    nudges its left padding: it was aligning content with the 4px category
@@ -1256,8 +1261,8 @@ a.uc-reminder-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-single .uc-empty { margin: 0; font-size: 14px; line-height: 1.5; color: var(--uc-secondary); }
 .uc-single-card .uc-card-rsvp { margin-top: 0; }
 .uc-single-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-.uc-single-actions .uc-addcal, .uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-reminder-btn { width: 100%; }
-.uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-reminder-btn { text-align: center; }
+.uc-single-actions .uc-addcal, .uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-follow-btn { width: 100%; }
+.uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-follow-btn { text-align: center; }
 .uc-single-card .uc-share { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--uc-border); }
 .uc-single-card .uc-donate-block { margin-top: 16px; }
 

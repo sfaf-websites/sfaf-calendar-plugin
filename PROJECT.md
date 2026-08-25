@@ -1794,10 +1794,20 @@ call site: changing a recurrence pattern can move twelve dates at once, and
 somebody registered for six of them would get six near-identical emails from the
 obvious implementation. A run gathers every affected event, resolves every
 registrant across all of them, **groups by address**, and sends once.
-**Confirmed AND subscribed** since 3.39.0: somebody who only pressed Get
-Reminders holds no place but is still expecting to turn up, and there is one
-definition of "who is told about this event" rather than two. Somebody who
-released their place is `cancelled` and is not written to.
+
+**The audience is `status = 'confirmed'`, and the invariant is that three reads
+agree on it.** `SFAF_Announce::registrants()`, `SFAF_Announce::has_registrations()`
+and `SFAF_Reminders::recipients()` must ask the same question, because the
+second is the **delete guard** as well as the change prompt's trigger: if they
+part company, one direction refuses a deletion nobody would be told about and
+the other allows one that strands people. Between 3.39.0 and 3.53.0 the clause
+was `IN ('confirmed','subscribed')`, to catch somebody who had pressed Get
+Reminders; 3.53.0 removed that status from the table, so the three agree at the
+narrow end instead. Somebody who released their place is `cancelled` and is not
+written to.
+
+**Following a series is not in this audience and never was meant to be.** A
+follower hears about new dates and nothing else. See "Following a series".
 
 **Teams are not notified, and neither is the notification list.** They were
 presumably part of the decision.
@@ -1841,8 +1851,8 @@ unrecognised value, or a form posted with scripting off all mean silence.
 > everybody. This fails closed.
 
 **Asked only when there is something to ask about**: one of the four fields
-actually changed AND somebody is registered or subscribed. Otherwise the save
-goes straight through. A click in the way of a save that cannot email anybody
+actually changed AND somebody is registered for it. Otherwise the save goes
+straight through. A click in the way of a save that cannot email anybody
 teaches people to dismiss dialogs, which is how the next real question gets
 dismissed too. In the bulk case it asks **once**, naming the total across every
 affected date.
@@ -1915,6 +1925,92 @@ credential, which is what lets cancellation work with no account.
 previewers fetch the URLs in an email without a person ever clicking, so a
 one-request cancel would drop people's places for them. The link opens a page
 that asks; the POST from that page acts.
+
+### Following a series
+
+**Three lanes of mail exist and must not be conflated.** A **registration** is
+somebody holding a place: they get the confirmation, the morning-of reminder and
+the two announcements. **Following a series** is somebody who wants to know when
+new dates are added to it, and that is the only thing they ever receive. The
+**SFAF newsletter** is marketing consent, recorded in `uc_optins`, destined for
+Pardot and blocked on Salesforce credentials.
+
+`SFAF_Follow` is lane 2, and its table is `uc_series_followers`. Added 3.53.0,
+which is also when the button on the public event page stopped being lane 1
+wearing lane 2's label.
+
+**What it replaced.** "Get Reminders" wrote a row into `uc_rsvps` at status
+`subscribed`, against a single event id, for somebody who held no place. Three
+things followed from that one decision, and they are the argument for the
+separate table: they were mailed the morning-of reminder for one occurrence,
+every query asking "who is registered" had to remember a second status, and two
+pieces of email copy plus the whole cancel flow had to branch on
+`$is_subscriber` to stop telling them they had released a place they never took.
+The storage was making a claim the code then spent its time denying. There were
+no live rows, so nothing was migrated.
+
+**A follower is recorded against the term, never against an event.** Uniqueness
+is `(term_id, email_key)` where `email_key` is a sha256 of the **lowercased**
+address: following twice leaves one record and case is not a second person. The
+hash rather than the address itself is the reminder ledger's reason, an index
+limit, not secrecy. The same address may follow several series; each is its own
+standing instruction.
+
+**Pending until confirmed, and a pending record is in no audience.** Typing an
+address is not permission to mail it and anybody can type anybody's, so a
+submission writes a pending row and an email asks the address to confirm.
+`active_followers()` selects `status = 'active'` only, so no caller anywhere has
+to remember to filter.
+
+**Two tokens, and they are not interchangeable.** `confirm_token` activates the
+record and is **cleared the moment it is used**, so the link cannot be replayed.
+`token` unsubscribes, is issued at the same moment, **is in that very first
+email**, and never expires. The mechanism this replaced minted a token at
+subscribe time and delivered it to nobody; the only message carrying one arrived
+on the morning of the event, by which point stopping reminders stops nothing.
+
+**Lifetimes, and what each was matched to.** The unsubscribe token never
+expires, matching the RSVP cancel token: a credential whose only power is
+removing somebody from a list must still work the day they go looking for it.
+The confirmation link lives **30 days**, matching `SFAF_Request::COOKIE_DAYS`,
+which answers the same question with a different verb — how long after somebody
+typed their address into a public form is it still reasonable to act on. It is
+deliberately not `SFAF_Request::TOKEN_TTL`, which is 60 minutes because that
+link opens a form that can create an event and is priced as a login link. This
+one grants no capability and creates nothing.
+
+**Unconfirmed records are swept on write, not on a schedule.** They can only
+accumulate while submissions arrive, and a submission is when the sweep runs, so
+the pile is bounded by its own inflow. An out-of-time row is also rejected at
+resolution, so it is inert before anything deletes it. No entry in
+`SFAF_Cron::tasks()`, for the same reason `SFAF_Request` keeps its tokens in
+transients.
+
+**A GET never acts, in either direction.** The cancel link's rule, applied to
+both links here: a previewer following the unsubscribe URL would drop somebody
+off a list they wanted, and one following the confirm URL would activate a
+record the person never answered, which is exactly what confirming exists to
+prove. Both open a page that asks; the POST acts.
+
+**The same answer whatever happened.** Sent, already following, and rate limited
+all render one sentence, which is the staff request form's rule and its
+reasoning: a different screen for any of them answers "is that address known
+here", and on a calendar carrying HIV testing and trans health programmes that
+is not a question a public form should answer. A malformed address is the one
+thing said plainly, because it discloses nothing and somebody who mistyped their
+own needs telling. Rate limited on **address and client, both required**.
+
+**The button renders only on an event in a series**, because a one-off has no
+future dates to hear about. The lookup is `get_the_terms()`, which reads the
+object term cache the single template has already primed for the "Part of
+series" link, so the gate costs no query. Whether it renders at all is
+`_uc_show_reminders`, the Display tick it always was; the **key is deliberately
+unchanged**, because an absent value means on and a new key would have switched
+the control back on wherever somebody had turned it off.
+
+**Nothing writes to `uc_optins` and nothing feeds the newsletter.**
+`.claude/follow-test.php` asserts that structurally, along with the absence of
+any read of `uc_rsvps`, because those are the invariants the release exists for.
 
 ### The cron trigger, and why WordPress cron is not enough
 
@@ -2452,6 +2548,31 @@ and hunt the effect by any mechanism.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Announcing new dates to followers, agreed 2026-08-24
+
+**Part 2 of the work 3.53.0 began.** 3.53.0 established who the followers are
+and how somebody becomes one; **nothing yet sends them anything**, and
+`SFAF_Follow::active_followers()` is the audience it will read. That method is
+uncalled on purpose and is not dead code.
+
+What was agreed: an **organizer's screen** listing the events in a series that
+have been added and not yet announced, with an **envelope state** per row,
+**send** and **dismiss**, and an email **naming the dates that were added**.
+
+**It is a screen with a person pressing a button, not a hook on creation.**
+Nothing fires today when an occurrence is generated or a date is added to a
+series, and the six custom actions this plugin defines are all on the RSVP or
+opt-in path. That absence is deliberate rather than an oversight to be
+corrected: `SFAF_Recurrence::register()` hooks nothing, on purpose, because
+generating on `save_post` is what once made saving one event rewrite a term's
+worth of them. A schedule is usually built in one sitting — extend a group, add
+two one-offs, rename a date — and a trigger on creation would send one email per
+occurrence in the middle of somebody's editing. The unit people care about is
+"here are the new dates", which only a person can say is finished.
+
+**Dismiss exists because of that same editing session.** A date created and then
+removed, or created only to correct a typo, must be closable without mail.
 
 ### Self-clearing import queues, agreed 2026-07-29
 

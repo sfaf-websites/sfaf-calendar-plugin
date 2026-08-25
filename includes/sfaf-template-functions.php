@@ -438,10 +438,16 @@ function sfaf_status_label( $status ) {
  * @return string
  */
 function sfaf_rsvp_status_label( $status ) {
+    /*
+     * 'subscribed' IS NOT HERE ANY MORE, and the catch-all below is why nothing
+     * had to be migrated. That value went in 3.53.0 with the button that wrote
+     * it; the calendar has not launched, so there are no rows carrying it. A row
+     * that somehow did would render as "Subscribed" rather than as a blank cell,
+     * which is the catch-all doing the job it is last in the list for.
+     */
     $known = array(
-        'confirmed'  => 'Registered',
-        'subscribed' => 'Reminders only',
-        'cancelled'  => 'Canceled',
+        'confirmed' => 'Registered',
+        'cancelled' => 'Canceled',
     );
     $status = (string) $status;
     return isset( $known[ $status ] ) ? $known[ $status ] : ucfirst( str_replace( '_', ' ', $status ) );
@@ -757,16 +763,45 @@ function sfaf_add_to_calendar( $post_id ) {
 }
 
 /**
- * "Get Reminders" button (opens the reminder modal handled in calendar.js).
+ * "Follow this series" button (opens the dialog handled in calendar.js).
+ *
+ * ONLY ON AN EVENT THAT IS IN A SERIES, and the gate is the whole reason this
+ * function starts with a lookup. What following offers is hearing about dates
+ * that do not exist yet; a one-off has none coming, so on a one-off the control
+ * is an offer of nothing and is simply absent.
+ *
+ * THE LOOKUP IS FREE HERE. SFAF_Series::for_event() is get_the_terms(), which
+ * reads WordPress's object term cache, and this template has already resolved
+ * the same terms for the "Part of series" link above the title. So gating on
+ * series membership costs no query on the page this is drawn on.
+ *
+ * NOT CANCELLED-AWARE, AND THAT IS THE CHANGE. The button this replaces hid
+ * itself on a cancelled event, because it promised a morning-of reminder that
+ * the reminder job would skip. Following says nothing about this date: it is
+ * about the series' future ones, and one cancelled occurrence is no reason to
+ * stop somebody hearing about the rest.
+ *
+ * @param int $post_id
+ * @return string
  */
-function sfaf_reminders_button( $post_id ) {
-    // Nothing to be reminded about. The reminder job skips a cancelled event
-    // (see SFAF_Cancellation::skip_scheduled), so offering to subscribe would
-    // promise a message that is never going to arrive.
-    if ( SFAF_Cancellation::is_cancelled( $post_id ) ) {
+function sfaf_follow_series_button( $post_id ) {
+    $term_id = SFAF_Series::id_for_event( $post_id );
+    if ( ! $term_id ) {
         return '';
     }
 
+    /*
+     * THE PER-EVENT SWITCH IS THE ONE THAT ALREADY EXISTED, and its meta key is
+     * deliberately unchanged. `_uc_show_reminders` is the "Reminders" tick in
+     * the Display card of the caladmin event editor, one of five that decide
+     * which blocks the public page draws; it defaults to ON when it has never
+     * been saved, it is copied by the recurrence generator and by Duplicate,
+     * and it travels in the embed payload.
+     *
+     * A NEW KEY WOULD HAVE SILENTLY RE-ENABLED THE CONTROL on every event where
+     * somebody had turned it off, because an absent value means on. The label
+     * on the checkbox changes; what it governs does not.
+     */
     if ( ! sfaf_show_feature( $post_id, 'reminders' ) ) {
         return '';
     }
@@ -790,15 +825,15 @@ function sfaf_reminders_button( $post_id ) {
      * exactly this one reason, and all three become live together.
      */
     if ( sfaf_is_embed_context() ) {
-        return '<a class="uc-reminder-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">'
-            . sfaf_icon( 'bell' ) . ' Get Reminders</a>';
+        return '<a class="uc-follow-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">'
+            . sfaf_icon( 'bell' ) . ' Follow this series</a>';
     }
 
     ob_start();
     ?>
-    <button type="button" class="uc-reminder-btn"
-            data-event-id="<?php echo (int) $post_id; ?>"
-            data-event-title="<?php echo esc_attr( get_the_title( $post_id ) ); ?>"><?php echo sfaf_icon( 'bell' ); ?> Get Reminders</button>
+    <button type="button" class="uc-follow-btn"
+            data-series-id="<?php echo (int) $term_id; ?>"
+            data-series-name="<?php echo esc_attr( SFAF_Series::name_for_event( $post_id ) ); ?>"><?php echo sfaf_icon( 'bell' ); ?> Follow this series</button>
     <?php
     return ob_get_clean();
 }
@@ -836,7 +871,7 @@ function sfaf_rsvp_block( $post_id ) {
     // way: the difference is the element, never the appearance.
     //
     // UNREACHABLE TODAY AND KEPT ON PURPOSE, for the reason set out in full on
-    // sfaf_reminders_button() above. Do not delete in a cleanup.
+    // sfaf_follow_series_button() above. Do not delete in a cleanup.
     $button = sfaf_is_embed_context()
         ? sfaf_action_button( array(
             'label'   => 'RSVP',

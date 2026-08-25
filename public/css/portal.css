@@ -761,7 +761,6 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-pill-pending { background: #fef3c7; color: #92400e; }
 .uc-pill-draft { background: #e5e7eb; color: #374151; }
 .uc-pill-confirmed { background: #d1fae5; color: #065f46; }
-.uc-pill-subscribed { background: #e0e7ff; color: #3730a3; }
 
 /* Amber, and sitting beside the status rather than replacing it: the event IS
  * a draft, and this says who made it one and why. Never capitalized away from

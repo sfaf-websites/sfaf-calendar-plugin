@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.52.0
+ * Version: 3.53.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.52.0' );
+define( 'SFAF_VERSION', '3.53.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.52.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '5' );
+define( 'SFAF_DB_VERSION', '6' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -116,6 +116,9 @@ $sfaf_includes = array(
     'includes/class-sfaf-notifications.php',
     'includes/class-sfaf-announce.php',
     'includes/class-sfaf-reminders.php',
+    // Following a series. After SFAF_Email, which builds its confirmation, and
+    // after SFAF_Reminders, whose new_token() is the one token generator.
+    'includes/class-sfaf-follow.php',
     'includes/class-sfaf-cron.php',
     'includes/class-sfaf-recurrence.php',
     'includes/class-sfaf-list-columns.php',
@@ -218,6 +221,12 @@ function sfaf_init() {
     // Morning-of reminders, and the single hourly runner that drives them.
     $reminders = new SFAF_Reminders();
     $reminders->register();
+
+    // Following a series: the dialog's ajax route, and the confirm and
+    // unsubscribe links. A front-end query var, like the cancel link, for the
+    // reason given in the class.
+    $follow = new SFAF_Follow();
+    $follow->register();
 
     $cron = new SFAF_Cron();
     $cron->register();
@@ -633,10 +642,17 @@ function sfaf_install_tables() {
     $sql   = array();
 
     // RSVPs. `status` is a plain string, not an enum: 'confirmed' (a real
-    // registration, and the only value counted towards capacity),
-    // 'subscribed' (pressed "Get Reminders", holds no place) and, since
+    // registration, and the only value counted towards capacity) and, since
     // 2.11.0, 'cancelled' (released their place through a reminder's cancel
     // link — kept rather than deleted so the history survives).
+    //
+    // THERE IS NO THIRD VALUE. 'subscribed' was one until 3.53.0: the "Get
+    // Reminders" button wrote a row here against a single event id for somebody
+    // who held no place, which put them on the morning-of reminder list and
+    // made every query that asked who was registered have to remember to say
+    // IN ('confirmed','subscribed') or quietly disagree with the next one.
+    // Following a series lives in uc_series_followers now, and the whole of
+    // this table is registrations again.
     //
     // event_title is the SNAPSHOT taken when an event is permanently deleted
     // (SFAF_RSVP::snapshot_event_title). The rows deliberately outlive their
@@ -743,6 +759,52 @@ function sfaf_install_tables() {
         PRIMARY KEY (id),
         KEY email (email),
         KEY event_id (event_id)
+    ) $charset;";
+
+    // SERIES FOLLOWERS. Somebody who wants to hear when new dates are added to
+    // one programme, and who will never receive anything else.
+    //
+    // ITS OWN TABLE, AND THAT IS THE POINT OF 3.53.0. This used to be a row in
+    // uc_rsvps at status 'subscribed', which put a person who held no place
+    // into every query that asked who was registered, and made three pieces of
+    // email copy branch on the difference to undo what the storage claimed. A
+    // follower is not a registration and shares no query with one.
+    //
+    // NOT AN OPT-IN EITHER. Nothing here is written to uc_optins and nothing
+    // here reaches the newsletter. Following a programme's dates is a narrow
+    // operational subscription; the mailing list is a separate consent with its
+    // own table and its own evidence.
+    //
+    // email_key IS THE UNIQUENESS, and it is a sha256 of the LOWERCASED
+    // address. Case is not a second person, so the index cannot be on the
+    // readable column; and a composite key over varchar(200) in utf8mb4 can
+    // exceed the older 767-byte index limit, which is why the reminder ledger
+    // hashes for the same reason.
+    //
+    // TWO TOKENS, AND THEY ARE NOT INTERCHANGEABLE. `confirm_token` turns a
+    // pending row active and is CLEARED the moment it is used, so it cannot be
+    // replayed. `token` unsubscribes, is issued at the same moment, is sent in
+    // the very first email, and never expires: a credential whose only power is
+    // to take somebody off a list has to still work the day they go looking
+    // for it. Neither key is unique — every confirmed row holds confirm_token
+    // '' — so every lookup rejects an empty token before it queries, exactly as
+    // the RSVP cancel link does.
+    $followers = $wpdb->prefix . 'uc_series_followers';
+    $sql[] = "CREATE TABLE $followers (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        term_id bigint(20) unsigned NOT NULL,
+        email varchar(200) NOT NULL,
+        email_key char(64) NOT NULL,
+        status varchar(20) NOT NULL DEFAULT 'pending',
+        token char(32) NOT NULL DEFAULT '',
+        confirm_token char(32) NOT NULL DEFAULT '',
+        created_at datetime NULL,
+        confirmed_at datetime NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY term_email (term_id, email_key),
+        KEY token (token),
+        KEY confirm_token (confirm_token),
+        KEY term_status (term_id, status)
     ) $charset;";
 
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';

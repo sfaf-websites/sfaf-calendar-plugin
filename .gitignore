@@ -54,3 +54,7 @@ node_modules/
 
 # The staging tree build-zip.sh assembles. Rebuilt on every build.
 .build-stage/
+
+# What plant-follow.php saves before it breaks a file on purpose. It restores
+# from this, so a stray one means a planted fault is still in the working tree.
+.follow-original.bak

@@ -523,73 +523,86 @@ if ( $sam && false !== strpos( $sam['subject'], 'dates' ) ) {
 /* ===========================================================================
  * WHO COUNTS AS SOMEBODY TO TELL.
  *
- * THE ASSERTION THAT WOULD HAVE CAUGHT THE LIVE BUG. Until 3.39.0 SFAF_Announce
- * counted status = 'confirmed' only, so anybody who pressed "Get Reminders"
- * rather than registering was invisible: they are stored as 'subscribed', hold
- * no place, and had asked in as many words to be told about this event. On an
- * event whose only interest was subscribers, count_affected() answered 0, the
- * prompt above the Save buttons never rendered, and moving the date told
- * nobody.
+ * ONE STATUS SINCE 3.53.0, AND THE ASSERTION IS THAT THE THREE READS AGREE.
  *
- * The 3.36.0 tests seeded 'confirmed' and 'cancelled' rows and never a
- * 'subscribed' one, which is exactly why they passed while this was broken.
+ * The history is worth keeping because it is what these assertions are shaped
+ * around. Until 3.39.0 SFAF_Announce counted 'confirmed' only while
+ * SFAF_Reminders counted 'confirmed' and 'subscribed', so somebody who had
+ * pressed "Get Reminders" was invisible to the prompt: count_affected()
+ * answered 0, nothing rendered above the Save buttons, and moving a date told
+ * them nothing. 3.39.0 widened the announcement to match. 3.53.0 removed
+ * 'subscribed' from this table altogether, so the two agree at the narrow end
+ * instead.
  *
- * The audience is now the one SFAF_Reminders::recipients() has always used, and
- * that agreement is asserted from the source rather than assumed, because two
- * definitions of "who is told about this event" is how they drift apart again.
+ * THE BUG THAT MATTERS IS STILL DISAGREEMENT, not which value they settle on.
+ * has_registrations() is the delete guard as well as the prompt's trigger, so
+ * if it and registrants() ever part company, one direction refuses a deletion
+ * nobody would be told about and the other allows one that strands people.
+ * That agreement is asserted from the source, not assumed.
  * ======================================================================== */
 echo "Who counts as somebody to tell\n";
 
 $GLOBALS['wpdb']->rows = array();
 $GLOBALS['sent']       = array();
 
-make_event( 300, 'Reminder Only Session', $today );
-register_person( 300, 'sub@example.org', 'Sam', '', 'subscribed' );
+make_event( 300, 'Thursday Group', $today );
+register_person( 300, 'sam@example.org', 'Sam' );
 
-expect( 'a subscriber is somebody to tell', SFAF_Announce::has_registrations( 300 ), true );
+expect( 'a registrant is somebody to tell', SFAF_Announce::has_registrations( 300 ), true );
 
 $counts = SFAF_Announce::count_affected( array( 300 ) );
 expect( 'and is counted by the prompt', $counts['people'], 1 );
-if ( 0 === $counts['people'] ) {
-    $fails[] = 'the prompt would not render at all on this event, which is the live bug: nothing appeared.';
-}
 
 $result = SFAF_Announce::changed( array( 300 ), array( 300 => array( 'Time' => array( 'from' => '2:30 pm', 'to' => '2:31 pm' ) ) ) );
 expect( 'and is written to', $result['sent'], 1 );
 
 /*
- * AND THE MESSAGE DOES NOT TELL THEM ABOUT A PLACE THEY NEVER TOOK. A
- * subscriber has no registration to have kept and no place to release.
+ * THE MESSAGE OFFERS THEM THE THING THAT IS TRUE FOR THEM. Everybody reaching
+ * this path holds a place now, so there is one sentence and it is this one.
+ * Until 3.53.0 there were two, and the wrong one told somebody they had given
+ * up a place they never held.
  */
-$to_sub = $GLOBALS['sent'][0];
-if ( false !== strpos( $to_sub['text'], 'Release your place' ) ) {
-    $fails[] = 'a subscriber was offered to release a place they never held';
-}
-if ( false === strpos( $to_sub['text'], 'Stop reminders' ) ) {
-    $fails[] = 'a subscriber was not offered the thing that is true for them, which is stopping reminders';
+$to_reg = $GLOBALS['sent'][0];
+if ( false === strpos( $to_reg['text'], 'Release your place' ) ) {
+    $fails[] = 'a registrant was not offered the cancel link on a changed event';
 }
 
-// A released registration is still out, which is the half that was right.
+/*
+ * NOBODY WHO DOES NOT HOLD A PLACE IS IN THIS AUDIENCE. A row at any other
+ * status is not somebody to tell, which is what makes the follower table safe
+ * to add beside this one: it shares no query with it.
+ */
+$GLOBALS['wpdb']->rows = array();
+make_event( 302, 'Not A Registration', $today );
+register_person( 302, 'sub@example.org', 'Sam', '', 'subscribed' );
+expect( 'a non-registration row is not somebody to tell', SFAF_Announce::has_registrations( 302 ), false );
+$counts = SFAF_Announce::count_affected( array( 302 ) );
+expect( 'and is not counted by the prompt', $counts['people'], 0 );
+
+// A released registration is still out, which was always right.
 $GLOBALS['wpdb']->rows = array();
 make_event( 301, 'Everybody Left', $today );
 register_person( 301, 'gone@example.org', 'Gone', '', 'cancelled' );
 expect( 'somebody who already cancelled is not counted', SFAF_Announce::has_registrations( 301 ), false );
 
 /*
- * ONE DEFINITION OF THE AUDIENCE. Read out of both sources, because the bug was
- * that there were two and the newer one was narrower.
+ * ONE DEFINITION OF THE AUDIENCE, READ OUT OF BOTH SOURCES. The original bug
+ * was that there were two definitions and the newer one was narrower; the
+ * remedy is not a particular clause but that the same clause appears in all
+ * three places. Comments are stripped first, because the docblocks quote the
+ * clause and counting prose as a query is the sweep matching itself.
  */
-$ann_src = file_get_contents( $root . '/includes/class-sfaf-announce.php' );
-$rem_src = file_get_contents( $root . '/includes/class-sfaf-reminders.php' );
+$ann_code = preg_replace( '#/\*.*?\*/#s', '', file_get_contents( $root . '/includes/class-sfaf-announce.php' ) );
+$rem_code = preg_replace( '#/\*.*?\*/#s', '', file_get_contents( $root . '/includes/class-sfaf-reminders.php' ) );
 
-if ( ! preg_match( "#status IN \('confirmed','subscribed'\)#", $rem_src ) ) {
-    $fails[] = 'SFAF_Reminders no longer uses the confirmed+subscribed audience, so the agreement below proves nothing';
+if ( ! preg_match( "#status = 'confirmed'#", $rem_code ) ) {
+    $fails[] = 'SFAF_Reminders no longer selects its reminder audience on confirmed, so the agreement below proves nothing';
 }
-// Comments first: the docblock above registrants() quotes the clause, and
-// counting that as a query is the sweep matching its own prose again.
-$ann_code = preg_replace( '#/\*.*?\*/#s', '', $ann_src );
-if ( 2 !== preg_match_all( "#status IN \('confirmed','subscribed'\)#", $ann_code ) ) {
-    $fails[] = 'SFAF_Announce does not ask for confirmed AND subscribed in both of its queries, so a subscriber is invisible to one of them';
+if ( 2 !== preg_match_all( "#status = 'confirmed'#", $ann_code ) ) {
+    $fails[] = 'SFAF_Announce does not ask the same question in both of its queries, so the prompt and the delete guard can disagree';
+}
+if ( preg_match( "#'subscribed'#", $ann_code ) || preg_match( "#'subscribed'#", $rem_code ) ) {
+    $fails[] = "a 'subscribed' row is being selected again; that status was removed in 3.53.0 and following a series is its own table";
 }
 
 /* --- The same, for a change rather than a cancellation. -------------------- */

@@ -407,7 +407,7 @@ class SFAF_Email {
             . '</tr>';
         foreach ( $rows as $row ) {
             // First and last, joined by the one function that joins them. A row
-            // with no name at all is a reminder subscriber, and saying so is
+            // with no name at all was written outside submit(), and saying so is
             // better than an empty cell.
             $name = SFAF_RSVP::display_name( $row );
             $name = ( '' !== $name ) ? $name : 'No name given';

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.52.0
+Stable tag: 3.53.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.53.0 =
+
+**Get Reminders becomes Follow this series, and a follower is a record of their own.** This is the first of two pieces. The second is the organizer's screen for announcing new dates; **nothing in this release sends a follower anything.**
+
+**WHAT THE BUTTON DID, AND WHY IT IS GONE.** It wrote a row into the registrations table against ONE event, at status `subscribed`, for somebody who held no place. That put them on that occurrence's morning-of reminder, made every query that asked who was registered have to say `IN ('confirmed','subscribed')` or quietly disagree with the next one, and produced copy telling people they had released a place they never took. What it was always meant to offer is hearing when a series gains new dates, which is a different subject with a different lifetime.
+
+**Following is recorded against the SERIES TERM, in its own table.** Not the registrations table, and not with a different status: putting the two in one table is what produced the confusion this removes. Nothing about a follower is written to the marketing opt-in record and nothing reaches the newsletter list. Following a programme's dates and agreeing to be mailed by a foundation are two consents, and only one of them was given.
+
+**Nobody is a follower until they answer an email.** Typing an address is not permission to mail it, and anybody can type anybody's. A submission is PENDING and in no audience; a short email asks whoever holds the address to confirm, and confirming is what makes the record active. **That first email also carries the unsubscribe link**, so a follower is never without a route out. Unconfirmed records expire after 30 days and are swept away.
+
+**The button only appears on an event that belongs to a series**, because a one-off has no future dates to hear about. Whether it appears at all is the Display tick it always was, now labelled "Follow the series".
+
+**The dialog says what will arrive before it asks for anything.** The old one was headed "Get Event Reminders", asked for an email address and explained nothing, which is the defect that started this work.
+
+**The answer after submitting is the same sentence whatever happened** — sent, already following, or refused by a rate limit — because a different screen for any of them answers "is that address known here". Rate limited on two subjects, address and client, as the public forms already are.
+
+**What did not change: registration, and every message it produces.** The confirmation, the morning-of reminder, the pre-event summary, and the cancelled and changed announcements all reach exactly the people they reached before and read exactly as they read before.
 
 = 3.52.0 =
 

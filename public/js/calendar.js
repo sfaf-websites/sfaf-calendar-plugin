@@ -34,7 +34,7 @@
         run('filters', initFilters);
         run('search', initSearch);
         run('rsvp', initRSVP);
-        run('reminders', initReminders);
+        run('follow', initFollow);
         run('addToCalendar', initAddToCalendar);
         run('faq', initFAQ);
         run('pagination', initPagination);
@@ -1386,105 +1386,117 @@
     }
 
     /**
-     * "Get Reminders" modal — captures an email and saves it with
-     * status "subscribed" (separate from RSVP "confirmed").
+     * "Follow this series" dialog.
+     *
+     * IT SAYS WHAT ARRIVES BEFORE IT ASKS FOR ANYTHING. The dialog this
+     * replaces was headed "Get Event Reminders", asked for an address and
+     * explained nothing, so the one thing a person needed in order to decide —
+     * what will be sent, and when — was the one thing it did not say. Every
+     * line here is either that or an instruction.
+     *
+     * NOTHING IS ACTIVE UNTIL THE EMAIL IS ANSWERED, and the success panel says
+     * so rather than claiming they are on a list. It also says the same thing
+     * whatever the server did: sent, already following, or refused by a rate
+     * limit all render this panel, because a different one for any of them
+     * would answer "is that address known here".
      */
-    function initReminders() {
-        var modalHTML = '<div class="uc-rsvp-modal-overlay" id="uc-reminder-modal">' +
+    function initFollow() {
+        var modalHTML = '<div class="uc-rsvp-modal-overlay" id="uc-follow-modal">' +
             '<div class="uc-rsvp-modal">' +
-                '<div class="uc-reminder-form-view">' +
-                    '<h3>Get Event Reminders</h3>' +
-                    '<p class="uc-modal-subtitle" id="uc-reminder-event-title"></p>' +
+                '<div class="uc-follow-form-view">' +
+                    '<h3>Follow this series</h3>' +
+                    '<p class="uc-modal-subtitle" id="uc-follow-series-name"></p>' +
+                    '<p class="uc-follow-what">You will get an email when a new date is added to this series. Nothing else is sent.</p>' +
                     '<div class="uc-rsvp-form">' +
-                        '<div><label for="uc-reminder-email">Email *</label>' +
-                            '<input type="email" id="uc-reminder-email" placeholder="your@email.com" /></div>' +
-                        '<div class="uc-rsvp-error" id="uc-reminder-error" style="display:none;"></div>' +
-                        '<button class="uc-rsvp-submit" id="uc-reminder-submit-btn">Notify Me</button>' +
-                        '<button class="uc-rsvp-cancel" id="uc-reminder-cancel-btn">Cancel</button>' +
+                        '<div><label for="uc-follow-email">Email *</label>' +
+                            '<input type="email" id="uc-follow-email" placeholder="your@email.com" /></div>' +
+                        '<div class="uc-rsvp-error" id="uc-follow-error" style="display:none;"></div>' +
+                        '<button class="uc-rsvp-submit" id="uc-follow-submit-btn">Follow</button>' +
+                        '<button class="uc-rsvp-cancel" id="uc-follow-cancel-btn">Cancel</button>' +
                     '</div>' +
                 '</div>' +
-                '<div class="uc-rsvp-success" id="uc-reminder-success" style="display:none;">' +
+                '<div class="uc-rsvp-success" id="uc-follow-success" style="display:none;">' +
                     '<div class="uc-check">&#128276;</div>' +
-                    '<p id="uc-reminder-success-msg">You are on the list!</p>' +
-                    '<button class="uc-rsvp-cancel" id="uc-reminder-close-btn" style="margin-top: 16px;">Close</button>' +
+                    '<p id="uc-follow-success-msg"></p>' +
+                    '<button class="uc-rsvp-cancel" id="uc-follow-close-btn" style="margin-top: 16px;">Close</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
 
         $('body').append(modalHTML);
-        var rmodal = $('#uc-reminder-modal');
-        var reminderEventId = null;
+        var fmodal = $('#uc-follow-modal');
+        var followSeriesId = null;
 
-        $(document).on('click', '.uc-reminder-btn', function(e) {
+        $(document).on('click', '.uc-follow-btn', function(e) {
             e.preventDefault();
-            reminderEventId = $(this).data('event-id');
-            $('#uc-reminder-event-title').text($(this).data('event-title') || '');
-            $('#uc-reminder-email').val('');
-            $('#uc-reminder-error').hide();
-            if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-reminder-email')); }
-            $('#uc-reminder-submit-btn').prop('disabled', false).text('Notify Me');
-            $('.uc-reminder-form-view').show();
-            $('#uc-reminder-success').hide();
-            rmodal.addClass('active');
+            followSeriesId = $(this).data('series-id');
+            $('#uc-follow-series-name').text($(this).data('series-name') || '');
+            $('#uc-follow-email').val('');
+            $('#uc-follow-error').hide();
+            if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-follow-email')); }
+            $('#uc-follow-submit-btn').prop('disabled', false).text('Follow');
+            $('.uc-follow-form-view').show();
+            $('#uc-follow-success').hide();
+            fmodal.addClass('active');
         });
 
-        rmodal.on('click', function(e) {
-            if (e.target === this) rmodal.removeClass('active');
+        fmodal.on('click', function(e) {
+            if (e.target === this) fmodal.removeClass('active');
         });
-        $(document).on('click', '#uc-reminder-cancel-btn, #uc-reminder-close-btn', function() {
-            rmodal.removeClass('active');
+        $(document).on('click', '#uc-follow-cancel-btn, #uc-follow-close-btn', function() {
+            fmodal.removeClass('active');
         });
         $(document).on('keydown', function(e) {
-            if (e.key === 'Escape') rmodal.removeClass('active');
+            if (e.key === 'Escape') fmodal.removeClass('active');
         });
 
-        function submitReminder() {
-            var email = $('#uc-reminder-email').val().trim();
+        function submitFollow() {
+            var email = $('#uc-follow-email').val().trim();
             // Same shared validator as the RSVP form, so the two never disagree
             // about what counts as an address or how they say so.
-            if (window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-reminder-email'))) {
-                $('#uc-reminder-error').hide();
-                $('#uc-reminder-email').focus();
+            if (window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-follow-email'))) {
+                $('#uc-follow-error').hide();
+                $('#uc-follow-email').focus();
                 return;
             }
             if (!email) {
-                $('#uc-reminder-error').text('Please enter your email address.').show();
+                $('#uc-follow-error').text('Please enter your email address.').show();
                 return;
             }
 
-            var btn = $('#uc-reminder-submit-btn');
+            var btn = $('#uc-follow-submit-btn');
             btn.prop('disabled', true).text('Submitting...');
-            $('#uc-reminder-error').hide();
+            $('#uc-follow-error').hide();
 
             $.ajax({
                 url: ucData.ajaxUrl,
                 method: 'POST',
                 data: {
-                    action:   'uc_subscribe_reminder',
-                    nonce:    ucData.nonce,
-                    event_id: reminderEventId,
-                    email:    email
+                    action:    'uc_follow_series',
+                    nonce:     ucData.nonce,
+                    series_id: followSeriesId,
+                    email:     email
                 },
                 success: function(response) {
                     if (response.success) {
-                        $('.uc-reminder-form-view').hide();
-                        $('#uc-reminder-success-msg').text(response.message || 'You are on the list!');
-                        $('#uc-reminder-success').show();
+                        $('.uc-follow-form-view').hide();
+                        $('#uc-follow-success-msg').text(response.message || 'Check your email for a link to confirm.');
+                        $('#uc-follow-success').show();
                     } else {
-                        $('#uc-reminder-error').text(response.message || 'Something went wrong.').show();
-                        btn.prop('disabled', false).text('Notify Me');
+                        $('#uc-follow-error').text(response.message || 'Something went wrong.').show();
+                        btn.prop('disabled', false).text('Follow');
                     }
                 },
                 error: function() {
-                    $('#uc-reminder-error').text('Network error. Please try again.').show();
-                    btn.prop('disabled', false).text('Notify Me');
+                    $('#uc-follow-error').text('Network error. Please try again.').show();
+                    btn.prop('disabled', false).text('Follow');
                 }
             });
         }
 
-        $(document).on('click', '#uc-reminder-submit-btn', submitReminder);
-        rmodal.on('keydown', 'input', function(e) {
-            if (e.key === 'Enter') submitReminder();
+        $(document).on('click', '#uc-follow-submit-btn', submitFollow);
+        fmodal.on('keydown', 'input', function(e) {
+            if (e.key === 'Enter') submitFollow();
         });
     }
 

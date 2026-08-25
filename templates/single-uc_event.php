@@ -263,8 +263,8 @@ while ( have_posts() ) :
                         // RSVP block.
                         echo sfaf_rsvp_block( $post_id );
 
-                        // Add to calendar + reminders.
-                        $secondary = sfaf_add_to_calendar( $post_id ) . sfaf_reminders_button( $post_id );
+                        // Add to calendar + follow the series.
+                        $secondary = sfaf_add_to_calendar( $post_id ) . sfaf_follow_series_button( $post_id );
                         if ( trim( $secondary ) !== '' ) :
                         ?>
                             <div class="uc-single-actions"><?php echo $secondary; ?></div>
