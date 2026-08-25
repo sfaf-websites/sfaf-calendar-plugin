@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
 working rules. Anything here that is still true in six months belongs in one of
 those instead.
 
-**Last updated:** 2026-08-25, at 3.54.0.
+**Last updated:** 2026-08-25, at 3.55.0.
 
 ---
 
 ## What shipped last
 
-**3.54.0**, built as `sfaf-calendar-3.54.0.zip` in the project root, committed
+**3.55.0**, built as `sfaf-calendar-3.55.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -32,7 +32,7 @@ The last four releases, so a fresh chat knows what is recent:
 | **3.51.0** | Get a form link is a primary button. FAQ answers on the community form are rich text, with the plumbing two public pages needed for a deferred editor to start at all. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.54.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.55.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -68,13 +68,11 @@ the flow or the token lifetimes. The copy reads as an invitation rather than a
 settings description, and the page the confirm link opens is styled like a
 public event page instead of arriving with no stylesheet at all.
 
-> **THE CANCEL LINK'S PAGE HAS THE IDENTICAL FAULT AND WAS LEFT ALONE.**
-> `SFAF_Reminders::cancel_page()` still renders through `wp_die()`, so a
-> registrant who clicks "release your place" lands on the same unstyled page the
-> follow links used to open, complete with Weglot's language switcher. It was
-> out of scope here because it is the registration path, which this release was
-> told not to touch. It is a small change now that `SFAF_Follow::page()` shows
-> the shape.
+**3.55.0 closed the cancel page, which had the identical fault**, and both pages
+now go through one renderer, `sfaf_notice_page()`. That is the fix for the thing
+this section warned about for a release: two copies of a document shape meant
+the second was still unstyled three releases after the first was fixed. Nothing
+about what cancelling does changed.
 
 **Events cancelled by a save.** The bug is fixed; the damage is not. Nothing was
 deleted, so each affected event reinstates from its cancel card. Find them two
@@ -122,7 +120,7 @@ Four smaller things waiting on somebody here:
 database, no browser and no mail in the build environment, so every one of these
 is a claim about code that has never run.
 
-**The ones these two releases added:**
+**The ones these three releases added:**
 
 0. **Follow a series, end to end.** Open an event that **belongs to a series**
    and press **Follow this series**. Enter your address and submit. **Confirm
@@ -146,6 +144,27 @@ is a claim about code that has never run.
 
    If the page arrives unstyled, it is not a cascade problem: something has put
    it back through `wp_die()`, which prints no `wp_head`.
+
+0d. **Weglot is off every calendar surface, and only those.** 3.55.0's, and the
+   second half is the half that matters. Check the switcher is **gone** from: an
+   **event page**, the **series archive** (the "Part of series" badge), a page
+   with the **calendar shortcode** on it, the **confirm** and **cancel** pages,
+   **both public forms**, and **caladmin**.
+
+   **Then check it is still there on a page with no calendar on it** — the site
+   home page, any ordinary content page. If it has gone from those, the scope
+   escaped and that is a site-wide change made from inside this plugin. Nothing
+   about Weglot itself was touched, so nothing needs undoing there.
+
+0e. **The cancel page, which is registration and not following.** Register for an
+   event, then use the cancel link in the confirmation or the morning-of
+   reminder. The page must be **styled the same way the confirm page is**, ask
+   before it acts, and say **cancel your registration** rather than release your
+   place. Then check the registration really is cancelled.
+
+   **On an event with NO capacity set**, the page must NOT say "Places are
+   limited", and the success message must not claim the place went back to a
+   count. On an event **with** a capacity, both sentences belong.
 
 0c. **The FAQ editor rows.** On **FAQ Sets** in caladmin, and on the FAQ card in
    the event editor. The **question sits above the answer** and is full width.

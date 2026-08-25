@@ -549,58 +549,16 @@ class SFAF_Follow {
     /**
      * A public page, styled like the event pages somebody came from.
      *
-     * WHY THIS IS NOT wp_die() ANY MORE, AND WHY NO ENQUEUE WOULD HAVE FIXED IT.
+     * ONE RENDERER, SHARED WITH THE CANCEL LINK since 3.55.0. It used to be
+     * written out here, and the copy in SFAF_Reminders was still going out
+     * through wp_die() with no stylesheet three releases later, which is what
+     * two copies of a document shape buys. sfaf_notice_page() carries the whole
+     * explanation, including why no enqueue could ever have reached this page.
      *
-     * The page had no stylesheet at all, and it is worth being exact about
-     * which of the two possible faults that was, because they want opposite
-     * fixes and look identical on screen. It was NOT our stylesheet losing to
-     * something else. It never reached the page, for two independent reasons:
-     *
-     *   1. sfaf_enqueue_frontend_assets() is on `wp_enqueue_scripts`, which
-     *      fires from inside wp_head(). These links are handled on
-     *      `template_redirect`, which runs BEFORE the template, so the enqueue
-     *      never ran at all.
-     *   2. wp_die()'s front-end handler writes its own complete document with
-     *      an inline <style> and never calls wp_head(). So even a stylesheet
-     *      that had been enqueued would not have been printed.
-     *
-     * Raising specificity, reordering, or enqueueing harder would have changed
-     * nothing, because there was no cascade to win.
-     *
-     * SO THE PAGE EMITS ITS OWN DOCUMENT, which is what caladmin and both
-     * public forms already do (SFAF_Submissions::page_open). This one loads
-     * calendar.css rather than portal.css: the person reading it clicked a link
-     * in an email and is a visitor, not a manager, and the surface they came
-     * from is the public event page.
-     *
-     * $title is escaped here. $html is markup built by its caller, which has
-     * escaped anything variable inside it, so it is passed through.
+     * This does not return.
      */
     private static function page( $title, $html ) {
-        status_header( 200 );
-        header( 'Content-Type: text/html; charset=utf-8' );
-        /* Nothing here should ever be framed or indexed: the URL is a token. */
-        header( 'X-Frame-Options: SAMEORIGIN' );
-        ?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
-<head>
-<meta charset="<?php bloginfo( 'charset' ); ?>" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="robots" content="noindex, nofollow" />
-<title><?php echo esc_html( $title ); ?></title>
-<link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/calendar.css?ver=' . SFAF_VERSION ); ?>" />
-</head>
-<body class="uc-notice-page">
-<main class="uc-notice">
-    <div class="uc-notice-card">
-        <h1 class="uc-notice-title"><?php echo esc_html( $title ); ?></h1>
-        <?php echo $html; ?>
-    </div>
-</main>
-</body>
-</html>
-        <?php
-        exit;
+        sfaf_notice_page( $title, $html );
     }
 
     /**

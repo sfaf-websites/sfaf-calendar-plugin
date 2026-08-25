@@ -2365,11 +2365,21 @@ current situation and all four will still be true in six months.
   `SFAF_Cancellation` as well as the post status, and anything deciding who may
   edit one has to go through the single gate. §4 and §5 before touching a query
   or a route that reads one.
-- **The confirm and unsubscribe pages are documents this plugin writes itself.**
-  They are handled on `template_redirect`, so `wp_enqueue_scripts` has not run
-  and `wp_head()` is never called. A stylesheet cannot be enqueued onto them and
-  a theme cannot reach them. `SFAF_Follow::page()` is the shape;
-  `SFAF_Reminders::cancel_page()` is still on `wp_die()` and still unstyled.
+- **The confirm, unsubscribe and cancel pages are documents this plugin writes
+  itself.** They are handled on `template_redirect`, so `wp_enqueue_scripts` has
+  not run and `wp_head()` is never called. A stylesheet cannot be enqueued onto
+  them and a theme cannot reach them. `sfaf_notice_page()` is the one renderer
+  all three use, and it was two until 3.55.0: the cancel page was still going out
+  through `wp_die()` with no stylesheet three releases after the follow page was
+  fixed, which is what a second copy of a document shape costs.
+- **Weglot is a separate, site-wide plugin, and the calendar only hides its
+  switcher.** It appends the control after `</html>`, which every browser
+  reparents into `<body>`, so it floats over any document the site emits
+  including the ones this plugin writes. Suppression is scoped to
+  `body.uc-portal`, `body.uc-notice-page` and `body.uc-calendar-page`, and an
+  unscoped rule in either stylesheet would take the switcher off pages that have
+  nothing to do with the calendar. Nothing here detects, sets or translates a
+  locale, and 3.16.0 is why that sentence is written down.
 
 **A correct rule that never reached the screen. Six times.** A component rule
 written as one class, `(0,1,0)`, sitting under a host-proofing base rule written

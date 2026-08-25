@@ -1054,6 +1054,27 @@
 .uc-rsvp-modal .uc-rsvp-submit:hover { background: #13a8b8; border-color: #13a8b8; }
 .uc-rsvp-modal .uc-rsvp-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ---------------------------------------------------------------------------
+   THE FOLLOW DIALOG'S BUTTON IS YELLOW, AND THE RSVP MODAL'S IS NOT.
+
+   DESIGN.md: yellow means "this is the thing to act on", it appears once per
+   view, and Dark Gray #373433 is the ONLY ink allowed on it, at 8.92:1. White
+   on yellow is 1.38:1 and is never used, so the hover darkens the fill and
+   leaves the ink alone rather than inverting. The follow landing page's button
+   is already this, and the dialog and the page are two halves of one flow.
+
+   ITS OWN CLASS, NOT A CHANGE TO THE SHARED ONE. The button carries
+   `uc-rsvp-submit uc-follow-submit`, and only the second is styled here. The
+   RSVP modal keeps the teal it has always had; restyling `.uc-rsvp-submit`
+   would have reached the registration path, which this release is otherwise
+   leaving alone.
+
+   THE CASCADE: both selectors are (0,2,0), so this wins on order alone and has
+   to stay after the block above. It is not a raise and must not become one.
+   ------------------------------------------------------------------------- */
+.uc-rsvp-modal .uc-follow-submit { border-color: #E0BE00; background: var(--uc-yellow); color: var(--uc-dark); transition: filter 0.2s; }
+.uc-rsvp-modal .uc-follow-submit:hover { background: var(--uc-yellow); border-color: #E0BE00; color: var(--uc-dark); filter: brightness(0.94); }
+
 .uc-rsvp-modal .uc-rsvp-cancel { padding: 10px 0; border-radius: 8px; border: 1px solid var(--uc-border-strong); background: #fff; color: var(--uc-secondary); font-family: var(--uc-font-heading); font-size: 13px; line-height: 1.2; cursor: pointer; width: 100%; }
 .uc-rsvp-modal .uc-rsvp-cancel:hover { border-color: var(--uc-teal-text); color: var(--uc-teal-text); }
 
@@ -2874,4 +2895,29 @@ body.uc-notice-page .wgcurrent,
 body.uc-notice-page #weglot_here,
 body.uc-notice-page [class*="weglot"],
 body.uc-notice-page [id*="weglot"],
-body.uc-notice-page [data-wg-hidden] { display: none !important; }
+body.uc-notice-page [data-wg-hidden],
+/* ---------------------------------------------------------------------------
+   AND THE SAME ON THE CALENDAR SURFACES THE THEME RENDERS.
+
+   `uc-notice-page` above covers the two documents this plugin writes itself,
+   the confirm/unsubscribe page and the cancel page. `uc-calendar-page` covers
+   the ones that arrive inside sfaf.org's own template: the single event page,
+   the series archive, and any page carrying [sfaf_calendar] or
+   [upcoming_events]. sfaf_is_calendar_surface() decides which those are, and it
+   is the only thing that stamps the class.
+
+   THIS IS THE CALENDAR'S SCOPE AND IT STOPS THERE. Weglot stays a site-wide
+   plugin that the rest of resources.sfaf.org depends on; a page with no
+   calendar on it never gets the class and keeps its switcher. There is
+   deliberately no unscoped rule anywhere in this plugin's stylesheets, and
+   follow-test asserts it.
+   ------------------------------------------------------------------------- */
+body.uc-calendar-page aside.country-selector,
+body.uc-calendar-page .country-selector,
+body.uc-calendar-page .weglot-container,
+body.uc-calendar-page .wg-drop,
+body.uc-calendar-page .wgcurrent,
+body.uc-calendar-page #weglot_here,
+body.uc-calendar-page [class*="weglot"],
+body.uc-calendar-page [id*="weglot"],
+body.uc-calendar-page [data-wg-hidden] { display: none !important; }

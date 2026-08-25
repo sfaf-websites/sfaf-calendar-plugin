@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.54.0
+Stable tag: 3.55.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.55.0 =
+
+**Weglot's language switcher comes off every calendar surface, the registration cancel page gets a stylesheet, and "release your place" becomes "cancel your registration".**
+
+**THE SWITCHER IS SUPPRESSED ON SEVEN SURFACES AND NOWHERE ELSE.** 3.54.0 took it off the follow confirmation page only. It is now off that page, the registration cancel page, the single event page, the series archive, any page carrying `[sfaf_calendar]` or `[upcoming_events]`, both public submission forms, and caladmin. The last three needed nothing new: they emit their own documents with `uc-portal` on the body and have been covered since 3.17.0.
+
+**Weglot itself is untouched and stays a site-wide plugin.** It is a separate plugin the rest of resources.sfaf.org depends on. Nothing here changes how it runs, detects a locale, switches one, or translates anything; a page with no calendar on it never gets the class and keeps its switcher exactly as it is. The build asserts that no rule in either stylesheet is unscoped, that the class is actually stamped, and that nothing calls `switch_to_locale()`, `set_language()` or `get_available_languages()` — the calls the 3.16.0 fault used, when an instruction to tidy this control was read as licence to build a language feature the plugin never had.
+
+**THE REGISTRATION CANCEL PAGE HAD NO STYLING, for the reason the follow page had none.** It went out through `wp_die()`, whose handler writes its own document and never calls `wp_head()`, on a request handled before `wp_enqueue_scripts` runs. So no stylesheet reached it and no amount of enqueueing would have. Both pages now use one renderer, `sfaf_notice_page()`, which emits its own document and loads the public stylesheet. **Nothing about cancelling changed**: same token, same page that asks before it acts, same row moved to cancelled, same people mailed.
+
+**"RELEASE YOUR PLACE" IS GONE.** It was not the language people use about events. The reminder email, the changed announcement, the cancelled announcement, the cancel page's question, its button and its success message all say cancel-registration now.
+
+**AND THE PAGE NO LONGER CLAIMS PLACES ARE LIMITED WHEN THEY ARE NOT.** "Places are limited, so canceling puts yours back for someone else" was printed unconditionally, including on events with no capacity, where nothing is limited and nothing goes back. It is now shown only when the event actually has one, which is the test `sfaf_spots_left_line()` already applied. The success message drops the same claim on an uncapped event rather than rewording it, because there is nothing true to put in its place.
+
+**The follow dialog's button is yellow**, matching its own landing page and the rule that yellow is the primary action color with Dark Gray as the only ink on it. It has its own class; the RSVP modal's button is deliberately untouched.
 
 = 3.54.0 =
 

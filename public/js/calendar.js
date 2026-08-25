@@ -1414,7 +1414,7 @@
                         '<div><label for="uc-follow-email">Email *</label>' +
                             '<input type="email" id="uc-follow-email" placeholder="your@email.com" /></div>' +
                         '<div class="uc-rsvp-error" id="uc-follow-error" style="display:none;"></div>' +
-                        '<button class="uc-rsvp-submit" id="uc-follow-submit-btn">Yes, follow this series</button>' +
+                        '<button class="uc-rsvp-submit uc-follow-submit" id="uc-follow-submit-btn">Yes, follow this series</button>' +
                         /* WHAT ARRIVES AND HOW TO STOP IT, under the button
                            rather than above the field: it is the reassurance
                            somebody wants at the moment of pressing, not a

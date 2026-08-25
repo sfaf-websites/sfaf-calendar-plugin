@@ -563,7 +563,7 @@ expect( 'and is written to', $result['sent'], 1 );
  * up a place they never held.
  */
 $to_reg = $GLOBALS['sent'][0];
-if ( false === strpos( $to_reg['text'], 'Release your place' ) ) {
+if ( false === strpos( $to_reg['text'], 'Cancel your registration' ) ) {
     $fails[] = 'a registrant was not offered the cancel link on a changed event';
 }
 

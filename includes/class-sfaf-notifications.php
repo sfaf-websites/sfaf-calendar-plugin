@@ -299,7 +299,7 @@ class SFAF_Notifications {
         if ( $cancel ) {
             $html .= SFAF_Email::rule();
             $html .= SFAF_Email::small_para(
-                'Cannot make it? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
+                'Cannot make it? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
             );
         }
 
@@ -315,7 +315,7 @@ class SFAF_Notifications {
         if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
-            $text .= "\nCannot make it? Release your place so somebody else can take it. We will ask you to confirm: " . $cancel . "\n";
+            $text .= "\nCannot make it? Cancel your registration so somebody else can take your place. We will ask you to confirm: " . $cancel . "\n";
         }
         $text .= "\n" . SFAF_Email::POSTAL;
 
@@ -349,7 +349,7 @@ class SFAF_Notifications {
         if ( $cancel ) {
             $html .= SFAF_Email::rule();
             $html .= SFAF_Email::small_para(
-                'Cannot make it? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
+                'Cannot make it? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
             );
         }
 
@@ -362,7 +362,7 @@ class SFAF_Notifications {
         $text .= self::detail_text( $f ) . "\n\n";
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
-            $text .= "\nCannot make it? Release your place so somebody else can take it. We will ask you to confirm: " . $cancel . "\n";
+            $text .= "\nCannot make it? Cancel your registration so somebody else can take your place. We will ask you to confirm: " . $cancel . "\n";
         }
         $text .= "\n" . SFAF_Email::POSTAL;
 
@@ -459,7 +459,7 @@ class SFAF_Notifications {
      * (e) IT IS CANCELLED.
      *
      * NO CANCEL LINK, and that is not an oversight. Every other message to a
-     * registrant carries one so they can release a place they cannot use. There
+     * registrant carries one so they can cancel a registration they cannot use. There
      * is no place to release here: the event is not happening, and offering to
      * cancel a registration for it would read as though something were still
      * required of them.
@@ -598,7 +598,7 @@ class SFAF_Notifications {
         if ( $cancel ) {
             $html .= SFAF_Email::rule();
             $html .= SFAF_Email::small_para(
-                'Cannot make the new time? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
+                'Cannot make the new time? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
             );
         }
 
@@ -616,7 +616,7 @@ class SFAF_Notifications {
         if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
-            $text .= "\nCannot make the new time? Release your place so somebody else can take it. We will ask\nyou to confirm: " . $cancel . "\n";
+            $text .= "\nCannot make the new time? Cancel your registration so somebody else can take your place. We will ask\nyou to confirm: " . $cancel . "\n";
         }
         $text .= "\n" . SFAF_Email::POSTAL;
 

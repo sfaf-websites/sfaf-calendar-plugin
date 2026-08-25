@@ -523,14 +523,38 @@ foreach ( array( 'handle_confirm' => 'self::confirm(', 'handle_stop' => 'self::s
  * gives no hint why, so the check names the mechanism rather than the look.
  */
 echo "The page the links open\n";
+
+/*
+ * ONE RENDERER, TWO CALLERS, AND THAT IS WHY THIS READS A THIRD FILE.
+ *
+ * The document used to be written out inside SFAF_Follow. The copy in
+ * SFAF_Reminders was still going out through wp_die() with no stylesheet three
+ * releases after this one was fixed, which is exactly what two copies of a
+ * document shape buys. Since 3.55.0 both call sfaf_notice_page(), so the
+ * assertions below are about that function and both pages inherit them.
+ */
+$notice = (string) file_get_contents( $root . '/includes/sfaf-template-functions.php' );
+$reminders = (string) file_get_contents( $root . '/includes/class-sfaf-reminders.php' );
+
 expect(
-    'it does not go back to wp_die(), which prints no wp_head',
-    (bool) preg_match( '/wp_die\s*\(/', $code ),
+    'the follow page delegates rather than building its own document',
+    false !== strpos( $code, 'sfaf_notice_page(' ),
+    true
+);
+expect(
+    'and so does the registration cancel page',
+    false !== strpos( preg_replace( '#/\*.*?\*/#s', '', $reminders ), 'sfaf_notice_page(' ),
+    true
+);
+expect(
+    'neither goes back to wp_die(), which prints no wp_head',
+    (bool) preg_match( '/wp_die\s*\(/', $code )
+        || (bool) preg_match( '/wp_die\s*\(/', (string) preg_replace( '#/\*.*?\*/#s', '', $reminders ) ),
     false
 );
 expect(
-    'it loads the public stylesheet itself',
-    false !== strpos( $code, 'public/css/calendar.css' ),
+    'the renderer loads the public stylesheet itself',
+    false !== strpos( $notice, 'public/css/calendar.css' ),
     true
 );
 /*
@@ -543,7 +567,7 @@ expect(
  */
 expect(
     'the body class the styles and the Weglot rule both hang off is present',
-    false !== strpos( $code, 'uc-notice-page' ),
+    false !== strpos( $notice, 'uc-notice-page' ),
     true
 );
 
@@ -558,12 +582,42 @@ expect(
     false !== strpos( $css, 'body.uc-notice-page [class*="weglot"]' ),
     true
 );
-/*
- * SCOPED, AND ONLY SCOPED. An unscoped weglot rule in this stylesheet would
- * reach every public page on resources.sfaf.org, which is a site-wide change
- * made from inside a calendar plugin. Every line naming weglot here must carry
- * the body class.
- */
+
+/* ---------------------------------------------------------------------------
+ * WEGLOT IS OFF EVERY CALENDAR SURFACE, AND ONLY THOSE.
+ *
+ * Four surfaces emit their own document and carry their own body class:
+ * caladmin and both public forms are `uc-portal` (portal.css has suppressed it
+ * there since 3.17.0), and the follow and cancel pages are `uc-notice-page`.
+ * The rest arrive inside sfaf.org's own template and are marked
+ * `uc-calendar-page` by sfaf_is_calendar_surface().
+ *
+ * THE SCOPE IS THE WHOLE POINT. Weglot is a site-wide plugin the rest of
+ * resources.sfaf.org depends on, so a single unscoped rule in either stylesheet
+ * would take the switcher off pages that have nothing to do with the calendar.
+ * That is a site-wide change made from inside a calendar plugin, and it is the
+ * failure this check exists to catch.
+ *
+ * SUPPRESSION ONLY. Nothing in this plugin may detect a locale, switch one, or
+ * translate anything: 3.16.0 read an instruction about this control as licence
+ * to build a language feature that never existed and 3.17.0 removed all of it.
+ * ------------------------------------------------------------------------ */
+echo "Weglot, on calendar surfaces only\n";
+
+$portal_css = (string) file_get_contents( $root . '/public/css/portal.css' );
+$allowed    = array( 'body.uc-notice-page', 'body.uc-calendar-page', 'body.uc-portal' );
+
+expect(
+    'the theme-rendered surfaces are covered too',
+    false !== strpos( $css, 'body.uc-calendar-page [class*="weglot"]' ),
+    true
+);
+expect(
+    'caladmin and both public forms stay covered',
+    false !== strpos( $portal_css, 'body.uc-portal [class*="weglot"]' ),
+    true
+);
+
 /*
  * COMMENTS ARE STRIPPED FIRST, and the first version of this check did not do
  * that. It read the prose explaining the rule as three unscoped rules and
@@ -571,14 +625,60 @@ expect(
  * declaration from a sentence about one is the same class of fault as a checker
  * that finds nothing: both report something other than what they claim to.
  */
-$declarations = preg_replace( '#/\*.*?\*/#s', '', $css );
-$unscoped     = 0;
-foreach ( preg_split( '/[\r\n]+/', (string) $declarations ) as $line ) {
-    if ( false !== stripos( $line, 'weglot' ) && false === strpos( $line, 'body.uc-notice-page' ) ) {
-        $unscoped++;
+$unscoped = array();
+foreach ( array( 'calendar.css' => $css, 'portal.css' => $portal_css ) as $file => $sheet ) {
+    $declarations = (string) preg_replace( '#/\*.*?\*/#s', '', $sheet );
+    foreach ( preg_split( '/[\r\n]+/', $declarations ) as $n => $line ) {
+        if ( false === stripos( $line, 'weglot' ) ) {
+            continue;
+        }
+        $scoped = false;
+        foreach ( $allowed as $scope ) {
+            if ( false !== strpos( $line, $scope ) ) {
+                $scoped = true;
+                break;
+            }
+        }
+        if ( ! $scoped ) {
+            $unscoped[] = $file . ': ' . trim( $line );
+        }
     }
 }
-expect( 'no weglot rule reaches beyond this page', $unscoped, 0 );
+if ( $unscoped ) {
+    foreach ( $unscoped as $line ) {
+        echo '        unscoped: ' . $line . "\n";
+    }
+}
+expect( 'no weglot rule reaches a page the calendar does not own', count( $unscoped ), 0 );
+
+/*
+ * AND THE CLASS THE THEME-RENDERED RULE HANGS ON IS ACTUALLY STAMPED. A scoped
+ * selector whose class nothing ever sets is a rule that silently does nothing,
+ * which looks identical to a rule that works.
+ */
+$plugin = (string) file_get_contents( $root . '/sfaf-calendar.php' );
+expect(
+    'something stamps uc-calendar-page on the body',
+    false !== strpos( $plugin, "\$classes[] = 'uc-calendar-page';" ),
+    true
+);
+expect(
+    'and it is decided by sfaf_is_calendar_surface()',
+    false !== strpos( $plugin, 'function sfaf_is_calendar_surface(' )
+        && false !== strpos( $plugin, 'if ( sfaf_is_calendar_surface() ) {' ),
+    true
+);
+/*
+ * SUPPRESSION, NOT LANGUAGE HANDLING. The 3.16.0 fault was building a feature
+ * out of an instruction to tidy a control. These are the calls that fault used.
+ */
+foreach ( array( 'switch_to_locale', 'set_language', 'get_available_languages' ) as $forbidden ) {
+    expect(
+        'nothing calls ' . $forbidden . '()',
+        false !== strpos( $plugin, $forbidden . '(' ),
+        false
+    );
+}
 
 /* ------------------------------------------------------------------------ */
 echo "\n";

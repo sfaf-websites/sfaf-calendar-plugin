@@ -952,7 +952,7 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     // recipient who has no registration to cancel (staff on the notification
     // list), rather than offering them a link that would only confuse.
     $cancel_url  = isset( $data['cancel_url'] ) ? (string) $data['cancel_url'] : '';
-    $cancel_line = $cancel_url ? "Can't make it? Release your place: " . $cancel_url : '';
+    $cancel_line = $cancel_url ? "Can't make it? Cancel your registration: " . $cancel_url : '';
 
     $replacements = array(
         '{event_name}'       => get_the_title( $event_id ),
@@ -3020,4 +3020,73 @@ function sfaf_series_dates_link( $post_id ) {
         . '<span class="uc-lc-series-name">' . esc_html( $term->name ) . '</span>'
         . '<span class="uc-lc-series-all">see all dates</span>'
         . '</a>';
+}
+
+/**
+ * The page a link in an email opens: confirm, unsubscribe, cancel a place.
+ *
+ * ONE RENDERER FOR ALL OF THEM, AND THAT IS THE POINT. SFAF_Follow::page() and
+ * SFAF_Reminders::cancel_page() each had their own, and the second still went
+ * out through wp_die() three releases after the first was fixed, which is what
+ * two copies of a document shape buys. There is one now and both call it.
+ *
+ * WHY NOT wp_die(), AND WHY NO ENQUEUE WOULD HAVE FIXED IT. These pages had no
+ * stylesheet at all, and it is worth being exact about which of the two possible
+ * faults that was, because they want opposite fixes and look identical on
+ * screen. It was NOT a stylesheet losing to something else. None ever reached
+ * the page, for two independent reasons:
+ *
+ *   1. sfaf_enqueue_frontend_assets() is on `wp_enqueue_scripts`, which fires
+ *      from inside wp_head(). These links are handled on `template_redirect`,
+ *      which runs BEFORE the template, so the enqueue never ran at all.
+ *   2. wp_die()'s front-end handler writes its own complete document with an
+ *      inline <style> and never calls wp_head(). So even a stylesheet that had
+ *      been enqueued would not have been printed.
+ *
+ * Raising specificity, reordering, or enqueueing harder would have changed
+ * nothing, because there was no cascade to win. The page emits its own document
+ * instead, which is what caladmin and both public forms already do.
+ *
+ * IT IS THE PUBLIC LOOK, NOT caladmin's. Somebody reading this clicked a link in
+ * an email. They are a visitor, and the surface they came from is the event
+ * page, so it loads calendar.css.
+ *
+ * THE BODY CLASS IS LOAD-BEARING. calendar.css hangs both this page's styling
+ * and the Weglot suppression off `uc-notice-page`. Losing it puts an
+ * English/Espanol control the calendar never asked for back on the page.
+ *
+ * $title is escaped here. $html is markup built by its caller, which has escaped
+ * anything variable inside it, so it is passed through.
+ *
+ * This does not return.
+ *
+ * @param string $title
+ * @param string $html
+ */
+function sfaf_notice_page( $title, $html ) {
+    nocache_headers();
+    status_header( 200 );
+    header( 'Content-Type: text/html; charset=utf-8' );
+    /* Nothing here should ever be framed or indexed: the URL is a token. */
+    header( 'X-Frame-Options: SAMEORIGIN' );
+    ?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+<meta charset="<?php bloginfo( 'charset' ); ?>" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title><?php echo esc_html( $title ); ?></title>
+<link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/calendar.css?ver=' . SFAF_VERSION ); ?>" />
+</head>
+<body class="uc-notice-page">
+<main class="uc-notice">
+    <div class="uc-notice-card">
+        <h1 class="uc-notice-title"><?php echo esc_html( $title ); ?></h1>
+        <?php echo $html; ?>
+    </div>
+</main>
+</body>
+</html>
+    <?php
+    exit;
 }

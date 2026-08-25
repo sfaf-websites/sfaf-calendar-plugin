@@ -217,7 +217,7 @@ class SFAF_Announce {
             if ( $cancel ) {
                 $html .= SFAF_Email::rule();
                 $html .= SFAF_Email::small_para(
-                    'Cannot make the new times? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Release your place</a> so somebody else can take it. We will ask you to confirm.'
+                    'Cannot make the new times? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
                 );
             }
         }
@@ -228,7 +228,7 @@ class SFAF_Announce {
         } else {
             $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
             if ( $cancel ) {
-                $text .= "\nCannot make the new times? Release your place so somebody else can take it. We will ask\nyou to confirm: " . $cancel . "\n";
+                $text .= "\nCannot make the new times? Cancel your registration so somebody else can take your place. We will ask\nyou to confirm: " . $cancel . "\n";
             }
         }
         $text .= "\n" . SFAF_Email::POSTAL;

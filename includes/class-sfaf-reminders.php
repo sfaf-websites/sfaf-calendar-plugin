@@ -706,22 +706,46 @@ class SFAF_Reminders {
             && isset( $_POST['uc_cancel_token'] )
             && hash_equals( $token, sanitize_text_field( wp_unslash( $_POST['uc_cancel_token'] ) ) );
 
+        /*
+         * DOES THIS EVENT ACTUALLY HAVE A CAPACITY?
+         *
+         * "Places are limited, so canceling puts yours back for someone else"
+         * was printed unconditionally, and on an event with no cap it is a claim
+         * nobody made: nothing is limited, so nothing goes back. `_uc_capacity`
+         * at 0 or absent means unlimited everywhere else in the plugin, and
+         * sfaf_spots_left_line() already refuses to produce a sentence on that
+         * basis. Same test here, same reason.
+         */
+        $capped = (int) get_post_meta( (int) $row->event_id, '_uc_capacity', true ) > 0;
+
         if ( $confirmed ) {
             $freed = self::cancel_rsvp( (int) $row->event_id, (string) $row->email );
+            /*
+             * THE PLACE ONLY "GOES BACK" IF THERE WAS A COUNT TO GO BACK TO.
+             * The second sentence is the capacity one again, and it is dropped
+             * on an uncapped event rather than reworded, because there is
+             * nothing true to say in its place.
+             */
+            $done = sprintf( 'Your registration for %s has been canceled.', $event_title );
+            if ( $freed && $capped ) {
+                $done .= ' Your place has gone back to the count for someone else.';
+            }
             self::cancel_page(
-                $freed ? 'Your place has been released' : 'Nothing to cancel',
+                $freed ? 'Registration canceled' : 'Nothing to cancel',
                 $freed
-                    ? sprintf( 'You are no longer registered for %s. Your place has gone back to the count for someone else.', $event_title )
+                    ? $done
                     : sprintf( 'We could not find an active registration for %s against this address. It may already have been canceled.', $event_title )
             );
         }
 
         // The ask.
-        $html  = '<p>Cancel your place at <strong>' . esc_html( $event_title ) . '</strong>?</p>';
-        $html .= '<p>Places are limited, so canceling puts yours back for someone else.</p>';
-        $html .= '<form method="post">';
+        $html  = '<p>Cancel your registration for <strong>' . esc_html( $event_title ) . '</strong>?</p>';
+        if ( $capped ) {
+            $html .= '<p>Places are limited, so canceling puts yours back for someone else.</p>';
+        }
+        $html .= '<form method="post" class="uc-notice-form">';
         $html .= '<input type="hidden" name="uc_cancel_token" value="' . esc_attr( $token ) . '" />';
-        $html .= '<p><button type="submit">Yes, cancel my place</button></p>';
+        $html .= '<button type="submit" class="uc-notice-btn">Yes, cancel my registration</button>';
         $html .= '</form>';
         self::cancel_page( "Can't make it?", $html, false );
     }
@@ -767,7 +791,7 @@ class SFAF_Reminders {
     }
 
     /**
-     * Release a place. Sets the RSVP row to "cancelled" rather than deleting
+     * Cancel a registration. Sets the RSVP row to "cancelled" rather than deleting
      * it, so the count frees up while the history stays.
      *
      * @return bool Whether anything was actually released.
@@ -800,12 +824,27 @@ class SFAF_Reminders {
         return ( $rows > 0 );
     }
 
-    /** A minimal, themeless page for the cancel flow. */
+    /**
+     * The page the cancel link opens.
+     *
+     * STYLED SINCE 3.55.0, AND IT WAS NOT A CASCADE PROBLEM. This went out
+     * through wp_die(), whose handler writes its own document and never calls
+     * wp_head(), on a request handled at `template_redirect` before
+     * `wp_enqueue_scripts` has run. So a registrant cancelling a place landed on
+     * a page with no stylesheet, and no amount of enqueueing would have changed
+     * it. sfaf_notice_page() is the same renderer the follow links use and
+     * carries the full reasoning.
+     *
+     * NOTHING ABOUT CANCELLING CHANGED WITH IT. Same token, same POST gate, same
+     * row moved to 'cancelled', same people mailed. This is the document the
+     * words are printed into and nothing else.
+     *
+     * This does not return.
+     */
     private static function cancel_page( $title, $message, $escape = true ) {
-        wp_die(
-            '<h1>' . esc_html( $title ) . '</h1>' . ( $escape ? '<p>' . esc_html( $message ) . '</p>' : $message ),
-            esc_html( $title ),
-            array( 'response' => 200, 'back_link' => false )
+        sfaf_notice_page(
+            $title,
+            $escape ? '<p>' . esc_html( $message ) . '</p>' : $message
         );
     }
 

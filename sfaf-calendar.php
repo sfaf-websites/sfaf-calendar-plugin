@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.54.0
+ * Version: 3.55.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.54.0' );
+define( 'SFAF_VERSION', '3.55.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -546,6 +546,8 @@ add_action( 'wp_head', 'sfaf_output_branding_css' );
 
 /**
  * Add the chosen card style as a body class so the CSS can react to it.
+ *
+ * ALSO MARKS THE PAGE AS A CALENDAR SURFACE. See sfaf_is_calendar_surface().
  */
 function sfaf_body_class( $classes ) {
     $settings = get_option( 'uc_settings', array() );
@@ -553,9 +555,64 @@ function sfaf_body_class( $classes ) {
     if ( $style ) {
         $classes[] = 'sfaf-card-' . sanitize_html_class( $style );
     }
+    if ( sfaf_is_calendar_surface() ) {
+        $classes[] = 'uc-calendar-page';
+    }
     return $classes;
 }
 add_filter( 'body_class', 'sfaf_body_class' );
+
+/**
+ * Is the page being rendered one of the calendar's own surfaces?
+ *
+ * WHAT THIS IS FOR, AND THE ONLY THING IT IS FOR: it stamps `uc-calendar-page`
+ * on the body so calendar.css can suppress Weglot's language switcher on the
+ * pages this plugin owns, and on no others.
+ *
+ * THE SWITCHER IS NOT OURS AND IS NOT BEING CHANGED. It belongs to Weglot, a
+ * site-wide plugin the rest of resources.sfaf.org depends on. Weglot appends it
+ * after </html>, which every browser reparents into <body>, so it floats over
+ * whatever document is on screen. This marks which of those documents are ours.
+ * Nothing here detects a locale, switches one, or translates anything: 3.16.0
+ * read an instruction about this control as licence to build a language feature
+ * the plugin never had and 3.17.0 removed all of it, and the note at the deleted
+ * set_language case in SFAF_Portal::dispatch_post() is the long version.
+ *
+ * THE THREE SURFACES THAT ARE NOT HERE ARE NOT OMISSIONS. caladmin and both
+ * public forms emit their own documents with `uc-portal` on the body, and
+ * portal.css has suppressed the switcher on that class since 3.17.0. The follow
+ * and cancel pages emit their own documents too, with `uc-notice-page`. None of
+ * the four passes through `body_class` at all, because none of them is a theme
+ * template. This function is only for the pages that ARE rendered by the theme.
+ *
+ * A SHORTCODE IS FOUND IN THE CONTENT, not by watching it render. `body_class`
+ * fires in the theme's header, before the loop reaches the shortcode, so there
+ * is nothing to have seen yet. The cost is that a calendar placed by a widget or
+ * a page builder that stores content elsewhere is not detected; that is a page
+ * keeping its switcher, which is the safe direction to be wrong in.
+ *
+ * @return bool
+ */
+function sfaf_is_calendar_surface() {
+    // The event page, and the series archive the "Part of series" badge links
+    // to. Both are rendered by this plugin's own templates.
+    if ( is_singular( 'uc_event' ) || is_tax( SFAF_Series::TAXONOMY ) ) {
+        return true;
+    }
+
+    if ( ! is_singular() ) {
+        return false;
+    }
+
+    $post = get_post();
+    if ( ! $post || ! isset( $post->post_content ) ) {
+        return false;
+    }
+
+    // Both shortcodes, because either one makes the page a calendar.
+    return has_shortcode( $post->post_content, 'sfaf_calendar' )
+        || has_shortcode( $post->post_content, 'upcoming_events' );
+}
 
 /**
  * Activation hook.
