@@ -168,13 +168,14 @@ casually.
 
 ---
 
-## 8. Keeping `PROJECT.md` and `HANDOVER.md` current
+## 8. Keeping `PROJECT.md`, `HANDOVER.md` and `TESTING.md` current
 
-**`PROJECT.md` is what stays true. `HANDOVER.md` is what is true today.** That
-distinction is the whole of the rule, and it decides where anything new goes: if
-what you are writing would still be true in six months, it belongs in
-`PROJECT.md`, not the handover. Durable knowledge written into the handover is
-lost the next time the situation moves.
+**`PROJECT.md` is what stays true. `HANDOVER.md` is what is true today.
+`TESTING.md` is what nobody has checked yet.** That distinction is the whole of
+the rule, and it decides where anything new goes: if what you are writing would
+still be true in six months, it belongs in `PROJECT.md`, not the handover.
+Durable knowledge written into the handover is lost the next time the situation
+moves.
 
 `PROJECT.md` is the durable description of the software: what it is and how it
 fits together. It is not a changelog (`readme.txt` is), it does not carry
@@ -205,14 +206,38 @@ it has to read cold. Keep it under 150 lines: if it grows past that, something
 in it is durable and belongs in `PROJECT.md`.
 
 - **When the situation changes, update `HANDOVER.md` in the SAME commit.** A
-  build that ships moves something out of "in flight". An answer from Aaron or
-  Val moves something out of "blocked on other people". A settled decision moves
-  out of "open decisions". A finished item leaves the testing list.
+  build that ships moves something out of "in flight". A settled decision moves
+  out of "open decisions".
 - It is not a history. "Recent failures worth remembering" holds only what is
   still live or still likely to recur; anything with a lesson attached belongs
   in `PROJECT.md` §7 instead, and the handover points at it.
 - A stale handover beside a current `PROJECT.md` is worse than no handover,
   because somebody reads the wrong one. The old one sat 26 releases behind.
+- **The testing backlog is NOT in the handover.** It went to `TESTING.md` in
+  3.56.0 because it was the thing keeping the handover at twice its cap, and it
+  is live information that must not be trimmed to fit. The handover keeps a
+  pointer and the count, nothing more.
+
+`TESTING.md` is the manual testing backlog: everything that can only be settled
+by a person, because there is no WordPress, no database, no browser and no mail
+in the build environment. **A build that adds something nobody can verify here
+adds an item to it, in the SAME commit.**
+
+- **Three groups, by what each needs from Mark**, not by the release it came
+  from: **quick** (a few minutes at a desk, fastest first), **needs real
+  conditions** (an unattended job, a real removal at source, a real event with
+  real registrations), and **blocked on other people** (Aaron, Val, the
+  Salesforce admin).
+- **A completed test is DELETED, not marked done.** This is a backlog, not a
+  record of what has been checked. If what a test proved is worth keeping, it
+  belongs in `PROJECT.md`. A file of ticked boxes is a file nobody reads to the
+  bottom of.
+- **Never trim an item to make it shorter, and never delete one that has not
+  been reported back on.** An untested item quietly removed is worse than a long
+  file, because the next person believes it was covered. Vagueness is the same
+  failure more slowly: an item has to say what to do and why it needs a person.
+- Keep the count at the top of the file, and the one in `HANDOVER.md`, in step
+  with the items.
 
 ---
 

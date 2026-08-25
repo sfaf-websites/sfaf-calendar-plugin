@@ -2,9 +2,9 @@
 
 **Where things stand today.** Drag this into a new chat to bring an assistant up
 to speed. This file answers only "what is true right now". `PROJECT.md` is what
-the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
-working rules. Anything here that is still true in six months belongs in one of
-those instead.
+the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
+still needs a person to check, and `CLAUDE.md` is the working rules. Anything
+here that is still true in six months belongs in one of those instead.
 
 **Last updated:** 2026-08-25, at 3.56.0.
 
@@ -63,17 +63,6 @@ button rather than a hook on occurrence creation, is in `PROJECT.md` §8.
 ships.** That is the expected state, not a fault. The confirmation email is real
 and the unsubscribe link in it works.
 
-**3.54.0 finished the wording and the page**, and touched none of the storage,
-the flow or the token lifetimes. The copy reads as an invitation rather than a
-settings description, and the page the confirm link opens is styled like a
-public event page instead of arriving with no stylesheet at all.
-
-**3.55.0 closed the cancel page, which had the identical fault**, and both pages
-now go through one renderer, `sfaf_notice_page()`. That is the fix for the thing
-this section warned about for a release: two copies of a document shape meant
-the second was still unstyled three releases after the first was fixed. Nothing
-about what cancelling does changed.
-
 **A DECISION FOR MARK'S TEAM, from 3.56.0.** There is now a fifth email: the
 event's notification list is told when somebody cancels a registration, naming
 **who cancelled, their email address, and the resulting count**. That is exactly
@@ -87,8 +76,8 @@ contains.
 **Part D of that build was an investigation, and its answers are in `PROJECT.md`
 §3** under "What a shared event link produces": what Open Graph and Twitter tags
 an event page emits, what is in the JSON-LD, and at what size the image is
-actually served. **Two things there need a decision rather than a fix**, so they
-are recorded and nothing was changed.
+actually served. **Four of the findings are decisions rather than fixes** and are
+listed under "Open decisions" below. Nothing was changed.
 
 **Events cancelled by a save.** The bug is fixed; the damage is not. Nothing was
 deleted, so each affected event reinstates from its cancel card. Find them two
@@ -122,168 +111,35 @@ Four smaller things waiting on somebody here:
 - **One test event is live:** post 60379, `pending`, badged Community
   submission. Reject it once it has been seen.
 
-## Blocked on other people
+## Outstanding testing
 
-| Who | What is needed | Status |
-|---|---|---|
-| **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
-| **Val** | The EveryAction MangoApps Trackers endpoint, plus a **sample response with real events**, and confirmation his hourly job **writes atomically** | Asked. Field list in `PROJECT.md` §8. Do not build the adapter against a guessed shape. |
-| **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
-
-## Mark's own testing list
-
-**Nothing in the build can do any of these.** There is no WordPress, no
-database, no browser and no mail in the build environment, so every one of these
-is a claim about code that has never run.
-
-**The ones these three releases added:**
-
-0. **Follow a series, end to end.** Open an event that **belongs to a series**
-   and press **Follow this series**. Enter your address and submit. **Confirm
-   the email arrives**, click the link, and press the button on the page it
-   opens; it must then say you are following. Check the record is **active**
-   rather than pending. Then use the **Stop these emails** link and confirm it
-   asks before it acts.
-
-   **Then open a one-off event and confirm there is no button at all.** That is
-   the gate 3.53.0 added, and it is the half nothing here can see.
-
-   **Nothing will arrive after that**, because the announcement is part 2. The
-   confirmation email is the only thing following sends today.
-
-0b. **The page that link opens is styled, and has no language control.** This is
-   3.54.0's, and it is the same click as above, so do both at once. The page
-   must look like a public event page: brand fonts, the card on the grey ground,
-   one yellow button. **It must not show an "English" checkbox or an "Español"
-   link.** That control is Weglot's, not ours, and it is suppressed on this page
-   only. Check any other page on resources.sfaf.org still has its switcher.
-
-   If the page arrives unstyled, it is not a cascade problem: something has put
-   it back through `wp_die()`, which prints no `wp_head`.
-
-0d. **Weglot is off every calendar surface, and only those.** 3.55.0's, and the
-   second half is the half that matters. Check the switcher is **gone** from: an
-   **event page**, the **series archive** (the "Part of series" badge), a page
-   with the **calendar shortcode** on it, the **confirm** and **cancel** pages,
-   **both public forms**, and **caladmin**.
-
-   **Then check it is still there on a page with no calendar on it** — the site
-   home page, any ordinary content page. If it has gone from those, the scope
-   escaped and that is a site-wide change made from inside this plugin. Nothing
-   about Weglot itself was touched, so nothing needs undoing there.
-
-0e. **The cancel page, which is registration and not following.** Register for an
-   event, then use the cancel link in the confirmation or the morning-of
-   reminder. The page must be **styled the same way the confirm page is**, ask
-   before it acts, and say **cancel your registration** rather than release your
-   place. Then check the registration really is cancelled.
-
-   **On an event with NO capacity set**, the page must NOT say "Places are
-   limited", and the success message must not claim the place went back to a
-   count. On an event **with** a capacity, both sentences belong.
-
-   **3.56.0 adds the date.** Both the question and the confirmation must name
-   the **date and time** on their own line. Do this on **an event in a series**,
-   because that is the case it exists for: three Thursdays share one title, and
-   the page has to say which Thursday.
-
-0f. **The cancellation alert, which is the new email.** Same click as 0e. When
-   the cancellation goes through, **everybody on that event's notification list
-   should get an email** naming the event, its date and time, who cancelled, and
-   the count now. Check the count is the number AFTER the cancellation, not
-   before.
-
-   Then **untick "Alert to your notification list when somebody cancels"** on an
-   event and confirm cancelling sends nothing, while the other four still send.
-   Check an event created before this release still sends it, since absent means
-   on.
-
-0g. **FAQ rows: the ground and the remove button.** On **FAQ Sets**, the event
-   editor, both public forms and **wp-admin** on a series. Each row sits on a
-   light gray ground with its **fields white inside it**, and four rows read as
-   four rows.
-
-   **Remove is a labelled button under the row.** On an **empty** row it removes
-   with no dialog. On a row where **either** the question or the answer has
-   anything in it, it asks first. **Type a paragraph into the answer and press
-   remove without clicking away** — the dialog must still appear, which is the
-   case that depends on reading the editor rather than the textarea behind it.
-
-0c. **The FAQ editor rows.** On **FAQ Sets** in caladmin, and on the FAQ card in
-   the event editor. The **question sits above the answer** and is full width.
-   The answer box is **about a paragraph tall** and can be **dragged taller from
-   the grip at its bottom right**. The text inside it is **Merriweather**, the
-   serif, not the browser default. Add three or four rows and check they are
-   still readable as separate rows.
-
-   Check the same on the **staff request form** and the **community submission
-   form**, which draw the same repeater, and in **wp-admin** on a series.
-
-**The two that block other things:**
-
-1. **The staff form, end to end.** It is at `/?uc_event_request=1` and nothing
-   links to it on purpose, so its address has to be shared by hand. Enter your
-   own sfaf.org address, wait for the link, fill it in, submit. Check it appears
-   in Pending badged **Staff request**, that opening it shows the read-only
-   panel with your notes, and that you and the admins each got mail. Then try a
-   non-sfaf.org address and confirm it is refused. **Use a test event and reject
-   it afterwards.**
-2. **One real removal at source**, so automated fetching can be turned on. Until
-   a removal has been seen behaving correctly once, the fetch stays manual.
-
-**The editor on the public forms, which the build cannot see at all:**
-
-3. **Open both public forms and add a second FAQ question.** The answer box must
-   be an editor with a toolbar, not a plain box, on the FIRST row and on the one
-   the button adds. 3.51.0 wired the community form's answers to the shared
-   control and fixed two things that stopped any deferred editor starting on a
-   page that builds its own document. **Nothing in the repository can confirm
-   this**: there is no WordPress, no browser and no logged-out page load here.
-   If it is a plain box, the content is still safe and still saves; it is the
-   editor that did not start.
-   The staff form has FAQs from 3.52.0, so check its answers too.
-
-   **Then, on the staff form: pick a saved set, add a question of your own, and
-   submit.** In Pending, the set's questions must appear FIRST with yours after
-   them, and a question you typed that is already in the set must appear once.
-   Editing that set afterwards must not change the event you just submitted.
-
-**Uploads, which are the part nothing here can touch:**
-
-4. **Submit the community form with a photo.** It must land in
-   `uploads/calendar-submissions/` under a **generated** name rather than the
-   one you sent, the pending row must show the thumbnail, and the event must NOT
-   be visible until approved.
-5. **Rename a `.txt` to `.jpg` and submit it.** It must be refused.
-6. **Confirm `uploads/calendar-submissions/` is NOT offered by the caladmin
-   picker.** Open Choose Image on any event. If a raw submission appears there,
-   the two folders have collided and unapproved files are being shown.
-7. **Upload one picture from caladmin** and confirm it lands in
-   `uploads/calendar/` and is offered by the picker straight away.
-
-**After any release that touches a screen's assets:**
-
-8. **Open all four screens that carry a picker or an editor and confirm each
-   returns a complete page**: **FAQ Sets**, **the event editor**, **Pending**,
-   and **New or Edit Series**. FAQ Sets is the one that returned 500 on 3.44.0.
-   Check the page reaches its footer, the sidebar is full width, and the FAQ
-   answer is an editor with a toolbar rather than a small plain box.
-
-**The rest:**
-
-| | What to do | Why it needs a person |
-|---|---|---|
-| 9 | Open the **WordPress post editor** and see whether it shows a **Series panel**. | If it is there, an event can be given two series as it could two organizers. `PROJECT.md` §7 has why nothing was changed on the guess. |
-| 10 | Watch for the **two-hour pre-event summary**, unattended. | The morning-of reminder is proved; this half has never been seen. |
-| 11 | Send yourself **every message type** from Events > Automation, read them in **Outlook on Windows**. | Are the Add to calendar buttons the same height with the glyph loaded, and does the changed-event message name the old value as well as the new? |
-| 12 | Load the **Yoast sitemap**, confirm a private event is absent. | The one privacy route that is a third party's code. |
-| 13 | Grep the sfaf.org theme for `sfaf_is_in_series` and `sfaf_get_series_name`. | Theme-facing, called nowhere here, so they cannot be deleted until the theme is known not to call them. |
-| 14 | The **combined view** in a browser, **on the embed**, not only sfaf.org. | Six releases shipped a fault the suite passed; four were embed-only. The five things to look at are in `PROJECT.md` §1. |
-| 15 | **3.50.0:** regenerate an embed block, try the three filter toggles. Then use the organizer dropdown, here and in an embed. | With only Series on, pills must appear with no category row above them, and choosing one must change the **count**, not just the visible rows. The organizer filter never worked before 3.50.0. |
-| 16 | **3.49.0:** open Pending, press **Get a form link**, then compare a caladmin tab against a resources tab. | Four tabs with the counts you expect, imports and submissions in one list; both links open in a private window; the favicon is caladmin only, so anything else changing icon reached too far. |
-| 17 | **Teams and cancellation**, both untested live. | Put somebody in a team on an event they did not create: they must see that event's registrations and nothing else. Cancel an event with a registration: deleting must be refused before and allowed after. |
+**`TESTING.md` holds the manual testing backlog, 25 items.** Quick 11, needs
+real conditions 11, blocked on other people 3. Nothing in the build can settle
+any of them.
 
 ## Open decisions
+
+**Four things the calendar publicly asserts that are untrue or incomplete.**
+Found by reading `SFAF_Seo` during 3.56.0, and deliberately not changed: each is
+a decision rather than a defect with an obvious fix. The full detail, including
+exactly which tags and fields, is in `PROJECT.md` §3 under "What a shared event
+link produces".
+
+- **Shared images go out at 1024 wide, not 1200.** Only on the featured-image
+  path, which passes through WordPress's `large` size. That is under Facebook's
+  and LinkedIn's 1200 recommendation, and every other image source returns its
+  URL untouched, so the width an unfurl gets depends on where the picture came
+  from. **This is separate from the 16:9 question** and worth settling first.
+- **No image dimensions are declared in the sharing tags.** No `og:image:width`
+  or `og:image:height`, so Facebook and LinkedIn fetch the image to work them
+  out, which is why a first share sometimes unfurls with no picture.
+- **A cancelled event still says it is going ahead.** `eventStatus` is always
+  `EventScheduled` in the structured data, including on an event
+  `SFAF_Cancellation` has marked cancelled, where schema.org has
+  `EventCancelled`.
+- **The address falls back to San Francisco and CA**, by splitting the location
+  on commas, so an event elsewhere with a one-part location is asserted to be in
+  San Francisco. `postalCode` is hardcoded empty.
 
 **Should saving an imported event keep it in the queue? Mark has not made this
 call.** Today the left button on an imported event is **Save Draft**, which sets
@@ -322,7 +178,8 @@ none of them is about today.
 ---
 
 *When the situation changes, update this file in the same commit. A build that
-ships moves something out of "in flight". An answer from Aaron or Val moves
-something out of "blocked". A decision moves out of "open". A finished pass
-leaves the testing list. If what you are writing would still be true in six
-months, it belongs in `PROJECT.md` instead.*
+ships moves something out of "in flight". A decision moves out of "open". An
+answer from Aaron or Val, and a finished test, are both deletions from
+`TESTING.md`, and its count at the top of that file moves with them. If what you
+are writing would still be true in six months, it belongs in `PROJECT.md`
+instead.*
