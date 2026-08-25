@@ -73,6 +73,18 @@ class SFAF_Reminders {
         // The cancel link. Same pattern as the .ics endpoint: a front-end
         // query var handled before the theme gets involved.
         add_action( 'template_redirect', array( $this, 'maybe_handle_cancel' ) );
+
+        /*
+         * TELL THE NOTIFICATION LIST SOMEBODY CANCELLED.
+         *
+         * `uc_rsvp_cancelled` is fired by cancel_rsvp() below and had NO
+         * SUBSCRIBER AT ALL until 3.56.0: it was a hook firing into nothing,
+         * the same shape the follow subscription had before 3.53.0. This is
+         * where it is picked up, next to the flow that fires it, because this
+         * class owns cancelling; what to say and who to say it to stays
+         * SFAF_Notifications' job.
+         */
+        add_action( 'uc_rsvp_cancelled', array( 'SFAF_Notifications', 'send_cancel_alert' ), 10, 2 );
     }
 
     /** Whether reminders are switched on. On unless explicitly disabled. */
@@ -718,28 +730,62 @@ class SFAF_Reminders {
          */
         $capped = (int) get_post_meta( (int) $row->event_id, '_uc_capacity', true ) > 0;
 
+        /*
+         * WHICH DATE, AND THIS IS THE WHOLE OF PART B.
+         *
+         * Every occurrence in a series carries the SAME TITLE, so somebody
+         * registered for three Thursdays saw three identical pages and had no
+         * way to tell which one they were cancelling. The title alone does not
+         * identify the thing being cancelled on a repeating event, which is
+         * most of what this calendar carries.
+         *
+         * THE HOUSE FORMATTERS, NOT A NEW FORMAT. sfaf_ap_date( ..., 'full' )
+         * and sfaf_ap_time_range() are what every email already prints, so the
+         * date on this page reads exactly like the date in the message that
+         * linked here. See the date-callsite sweep for why there is one
+         * formatter rather than a call to date() per screen.
+         */
+        $when = trim(
+            sfaf_ap_date( (string) get_post_meta( (int) $row->event_id, '_uc_event_date', true ), 'full' )
+            . ' '
+            . sfaf_ap_time_range(
+                (string) get_post_meta( (int) $row->event_id, '_uc_start_time', true ),
+                (string) get_post_meta( (int) $row->event_id, '_uc_end_time', true )
+            )
+        );
+        $when_line = '' !== $when ? '<p class="uc-notice-when">' . esc_html( $when ) . '</p>' : '';
+
         if ( $confirmed ) {
             $freed = self::cancel_rsvp( (int) $row->event_id, (string) $row->email );
-            /*
-             * THE PLACE ONLY "GOES BACK" IF THERE WAS A COUNT TO GO BACK TO.
-             * The second sentence is the capacity one again, and it is dropped
-             * on an uncapped event rather than reworded, because there is
-             * nothing true to say in its place.
-             */
-            $done = sprintf( 'Your registration for %s has been canceled.', $event_title );
-            if ( $freed && $capped ) {
-                $done .= ' Your place has gone back to the count for someone else.';
+
+            if ( ! $freed ) {
+                self::cancel_page(
+                    'Nothing to cancel',
+                    sprintf( 'We could not find an active registration for %s against this address. It may already have been canceled.', $event_title )
+                );
             }
-            self::cancel_page(
-                $freed ? 'Registration canceled' : 'Nothing to cancel',
-                $freed
-                    ? $done
-                    : sprintf( 'We could not find an active registration for %s against this address. It may already have been canceled.', $event_title )
-            );
+
+            /*
+             * THE DATE IS ON THE SUCCESS PAGE TOO, and for a different reason
+             * than on the question. This is the confirmation somebody keeps;
+             * scanning an inbox three weeks later, "which Thursday did I drop?"
+             * is exactly the question the title cannot answer.
+             *
+             * THE PLACE ONLY "GOES BACK" IF THERE WAS A COUNT TO GO BACK TO.
+             * The capacity sentence is dropped on an uncapped event rather than
+             * reworded, because there is nothing true to say in its place.
+             */
+            $done  = '<p>Your registration for <strong>' . esc_html( $event_title ) . '</strong> has been canceled.</p>';
+            $done .= $when_line;
+            if ( $capped ) {
+                $done .= '<p>Your place has gone back to the count for someone else.</p>';
+            }
+            self::cancel_page( 'Registration canceled', $done, false );
         }
 
         // The ask.
         $html  = '<p>Cancel your registration for <strong>' . esc_html( $event_title ) . '</strong>?</p>';
+        $html .= $when_line;
         if ( $capped ) {
             $html .= '<p>Places are limited, so canceling puts yours back for someone else.</p>';
         }

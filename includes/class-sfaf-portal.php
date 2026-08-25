@@ -4742,20 +4742,17 @@ class SFAF_Portal {
         <div class="uc-repeater" data-repeater>
             <div class="uc-repeater-rows">
                 <?php foreach ( $manual as $i => $f ) : ?>
-                    <div class="uc-repeater-row uc-faq-row">
-                        <input type="text" name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][question]" value="<?php echo esc_attr( $f['question'] ); ?>" placeholder="Question" />
-                        <?php SFAF_Rich_Text::deferred( $name . '[' . (int) $i . '][answer]', $f['answer'], array( 'rows' => 8, 'placeholder' => 'Answer' ) ); ?>
-                        <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
-                    </div>
+                    <?php sfaf_faq_row( array(
+                        'name'     => $name,
+                        'index'    => (int) $i,
+                        'question' => $f['question'],
+                        'answer'   => $f['answer'],
+                    ) ); ?>
                 <?php endforeach; ?>
             </div>
             <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
             <template class="uc-repeater-tpl">
-                <div class="uc-repeater-row uc-faq-row">
-                    <input type="text" name="<?php echo esc_attr( $name ); ?>[__I__][question]" placeholder="Question" />
-                    <?php SFAF_Rich_Text::deferred( $name . '[__I__][answer]', '', array( 'rows' => 8, 'placeholder' => 'Answer' ) ); ?>
-                    <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
-                </div>
+                <?php sfaf_faq_row( array( 'name' => $name ) ); ?>
             </template>
             <?php if ( $locked ) : ?>
                 <input type="hidden" name="uc_faq_has_manual" value="1" />
@@ -12534,19 +12531,11 @@ class SFAF_Portal {
                     ?>
                     <div class="uc-repeater" data-repeater>
                         <div class="uc-repeater-rows">
-                            <div class="uc-repeater-row uc-faq-row">
-                                <input type="text" name="faq_set_rows[0][question]" placeholder="Question" />
-                                <?php SFAF_Rich_Text::deferred( 'faq_set_rows[0][answer]', '', array( 'rows' => 8, 'placeholder' => 'Answer' ) ); ?>
-                                <button type="button" class="uc-link-danger uc-repeater-remove" aria-label="Remove this question">&times;</button>
-                            </div>
+                            <?php sfaf_faq_row( array( 'name' => 'faq_set_rows', 'index' => 0 ) ); ?>
                         </div>
                         <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
                         <template class="uc-repeater-tpl">
-                            <div class="uc-repeater-row uc-faq-row">
-                                <input type="text" name="faq_set_rows[__I__][question]" placeholder="Question" />
-                                <?php SFAF_Rich_Text::deferred( 'faq_set_rows[__I__][answer]', '', array( 'rows' => 8, 'placeholder' => 'Answer' ) ); ?>
-                                <button type="button" class="uc-link-danger uc-repeater-remove" aria-label="Remove this question">&times;</button>
-                            </div>
+                            <?php sfaf_faq_row( array( 'name' => 'faq_set_rows' ) ); ?>
                         </template>
                     </div>
 

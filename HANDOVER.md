@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
 working rules. Anything here that is still true in six months belongs in one of
 those instead.
 
-**Last updated:** 2026-08-25, at 3.55.0.
+**Last updated:** 2026-08-25, at 3.56.0.
 
 ---
 
 ## What shipped last
 
-**3.55.0**, built as `sfaf-calendar-3.55.0.zip` in the project root, committed
+**3.56.0**, built as `sfaf-calendar-3.56.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.56.0** | A fifth email: somebody cancelled. The cancel page names which date. FAQ rows read as rows and removing one asks first, from one renderer where there were nine. |
+| **3.55.0** | Weglot off every calendar surface and only those. The cancel page gets a stylesheet, sharing one renderer with the follow pages. "Release your place" becomes "cancel your registration". |
 | **3.54.0** | Follow copy reads as an invitation. The confirm page is styled and loses Weglot's language switcher. FAQ rows put the question above the answer, in a taller resizable box in the brand font. |
 | **3.53.0** | Get Reminders becomes Follow this series, recorded against the series term in its own table, confirmed by email before it is active. **Part 1 of 2.** |
-| **3.52.0** | The staff request form can send FAQs: a saved set, its own questions, or both. The set is COPIED, so editing it later does not change events already submitted. The community form deliberately gets no set picker. |
-| **3.51.0** | Get a form link is a primary button. FAQ answers on the community form are rich text, with the plumbing two public pages needed for a deferred editor to start at all. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.55.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.56.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -73,6 +73,22 @@ now go through one renderer, `sfaf_notice_page()`. That is the fix for the thing
 this section warned about for a release: two copies of a document shape meant
 the second was still unstyled three releases after the first was fixed. Nothing
 about what cancelling does changed.
+
+**A DECISION FOR MARK'S TEAM, from 3.56.0.** There is now a fifth email: the
+event's notification list is told when somebody cancels a registration, naming
+**who cancelled, their email address, and the resulting count**. That is exactly
+what the registration alert already tells the same list about the same person,
+so it is consistent rather than a new disclosure, **but it is registrant data on
+a calendar carrying HIV, substance use and trans health programming and somebody
+should say out loud that it is wanted.** It is on by default like the other four
+and is switched off per event in the same card. `PROJECT.md` §4 has what it
+contains.
+
+**Part D of that build was an investigation, and its answers are in `PROJECT.md`
+§3** under "What a shared event link produces": what Open Graph and Twitter tags
+an event page emits, what is in the JSON-LD, and at what size the image is
+actually served. **Two things there need a decision rather than a fix**, so they
+are recorded and nothing was changed.
 
 **Events cancelled by a save.** The bug is fixed; the damage is not. Nothing was
 deleted, so each affected event reinstates from its cancel card. Find them two
@@ -165,6 +181,33 @@ is a claim about code that has never run.
    **On an event with NO capacity set**, the page must NOT say "Places are
    limited", and the success message must not claim the place went back to a
    count. On an event **with** a capacity, both sentences belong.
+
+   **3.56.0 adds the date.** Both the question and the confirmation must name
+   the **date and time** on their own line. Do this on **an event in a series**,
+   because that is the case it exists for: three Thursdays share one title, and
+   the page has to say which Thursday.
+
+0f. **The cancellation alert, which is the new email.** Same click as 0e. When
+   the cancellation goes through, **everybody on that event's notification list
+   should get an email** naming the event, its date and time, who cancelled, and
+   the count now. Check the count is the number AFTER the cancellation, not
+   before.
+
+   Then **untick "Alert to your notification list when somebody cancels"** on an
+   event and confirm cancelling sends nothing, while the other four still send.
+   Check an event created before this release still sends it, since absent means
+   on.
+
+0g. **FAQ rows: the ground and the remove button.** On **FAQ Sets**, the event
+   editor, both public forms and **wp-admin** on a series. Each row sits on a
+   light gray ground with its **fields white inside it**, and four rows read as
+   four rows.
+
+   **Remove is a labelled button under the row.** On an **empty** row it removes
+   with no dialog. On a row where **either** the question or the answer has
+   anything in it, it asks first. **Type a paragraph into the answer and press
+   remove without clicking away** — the dialog must still appear, which is the
+   case that depends on reading the editor rather than the textarea behind it.
 
 0c. **The FAQ editor rows.** On **FAQ Sets** in caladmin, and on the FAQ card in
    the event editor. The **question sits above the answer** and is full width.

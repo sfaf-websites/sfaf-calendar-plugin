@@ -1424,6 +1424,75 @@ needed its own gate.
 
 ## 3. Integrations
 
+### What a shared event link produces
+
+Established by reading `SFAF_Seo` in 3.56.0, as an investigation. **Nothing here
+was changed**, and the two open questions at the end are decisions rather than
+defects.
+
+**The tags are ours, and both families are emitted.** `SFAF_Seo::output()` runs
+on `wp_head` at priority 5 and only on `is_singular( 'uc_event' )`. Open Graph:
+`og:title`, `og:description`, `og:type` (the literal `event`), `og:url`,
+`og:site_name`, `og:image` when there is one, and `event:start_time` /
+`event:end_time`. Twitter: `twitter:card` as `summary_large_image`,
+`twitter:title`, `twitter:description`, `twitter:image` when there is one. **An
+image tag is emitted in both families**, conditionally on an image resolving.
+
+**Absent, and worth knowing before anybody debugs an unfurl:** `og:image:width`,
+`og:image:height`, `og:image:alt`, `twitter:image:alt`, `og:locale`, and
+`twitter:site`. Facebook and LinkedIn infer dimensions by fetching the image
+when width and height are not declared, which is slower and is why a first share
+sometimes unfurls without a picture.
+
+**Nothing at all on a private event**, by design: not the tags, not the JSON-LD.
+That is what stops a forwarded link unfurling into a titled preview card.
+
+**Three JSON-LD blocks**: `Event`, `FAQPage` when the event has FAQs, and
+`BreadcrumbList`. The Event carries `name`, `description`, `eventStatus`,
+`eventAttendanceMode`, `url`, `location` (a `Place` with a `PostalAddress`),
+`startDate` and `endDate` when the event has them, `organizer` and `performer`
+when it has one, `image` when one resolves, `offers` when RSVP is enabled, and
+`superEvent` when it is in a series.
+
+**Fields present but effectively always empty or wrong:**
+
+- **`postalCode` is hardcoded to `''`.** Nothing fills it.
+- **`addressLocality` and `addressRegion` fall back to `San Francisco` and `CA`**
+  by splitting the location string on commas. An event elsewhere with a
+  one-part location is asserted to be in San Francisco.
+- **`performer` is malformed.** It is built as
+  `array( '@type' => 'Organization', 'name' => $org )` where `$org` is already
+  an Organization array (or an array of them), so `name` holds an object rather
+  than a string. `organizer` beside it is correct.
+- **`eventStatus` is always `EventScheduled`**, including on an event
+  `SFAF_Cancellation` has marked cancelled, where schema.org has
+  `EventCancelled`.
+- **`eventAttendanceMode` is always `OfflineEventAttendanceMode`**, with nothing
+  asking whether the event is online.
+
+**The image, and what the tag points at.** `SFAF_Seo::image_url()` calls
+`sfaf_event_image_url()`, which resolves in order: featured image →
+`_uc_image_url` → `_uc_external_image` → the series image → `_uc_remote_image_url`.
+
+> **THE FIRST BRANCH IS THE ONE THAT RESIZES.** A featured image is returned as
+> `get_the_post_thumbnail_url( $id, 'large' )`, and `large` is a WordPress
+> built-in whose default is a **1024px bounding box**. So a 1200x675 upload is
+> shared at **1024x576**. Every other branch returns a stored URL untouched, at
+> whatever size it was, so the size an unfurl gets depends on where the image
+> came from. **The plugin registers no image sizes of its own** — there is no
+> `add_image_size()` anywhere in it — so this is entirely WordPress's `large`,
+> and a site whose Settings → Media has been changed will serve something else
+> again.
+
+**The 16:9 question, for a decision and not a fix.** Uploads are specified as
+**1200x675 (16:9)** in both editors' guidance. Facebook and LinkedIn want
+1200x630 (1.91:1) and Twitter's large card wants 2:1, so 16:9 matches neither
+and is cropped slightly by each rather than badly by any. **Every existing image
+is already 16:9**, so changing the target is a re-crop of the whole library, and
+the two things actually worth deciding are separate from it: whether the
+featured-image branch should stop passing through `large`, and whether
+`og:image:width` / `og:image:height` should be declared.
+
 ### The import framework
 
 Both platforms import through one framework (`SFAF_Sources`). Imported events
@@ -1876,9 +1945,9 @@ move sends nothing.
 morning-of reminder and the two-hour summary are the thing the person signed up
 for, are not caused by an edit, and are never gated on an answer.
 
-### The four message types
+### The five message types
 
-All four are **on** by default. `_uc_notify_off` records only what somebody has
+All five are **on** by default. `_uc_notify_off` records only what somebody has
 switched off, so a default costs no writes and an event created before any of
 this existed behaves like one created after.
 
@@ -1886,8 +1955,46 @@ this existed behaves like one created after.
 |---|---|---|
 | `confirmation` | the person registering | immediately |
 | `alert` | the event's notification list | one per registration, as it happens |
+| `cancel_alert` | the event's notification list | one per cancellation, as it happens |
 | `reminder` | everybody registered, list copied in | 6am on the day (midnight if the event starts earlier) |
 | `summary` | the notification list | two hours before; nothing sent if nobody registered |
+
+**`kinds()` is a shared field list**, so adding a key to it is the whole of the
+wiring: `on()` reads it, `set_off()` intersects against `array_keys( kinds() )`
+so the form saves it, `off_count()` counts it, and the caladmin card renders it
+by iterating. That is how `cancel_alert` was added in 3.56.0 without a new
+mechanism.
+
+> **`cancel_alert` IS NOT `cancelled`.** `cancelled` tells REGISTRANTS the EVENT
+> is off. `cancel_alert` tells STAFF that one REGISTRANT has dropped out. The
+> keys were deliberately not made near-identical words.
+
+**What `cancel_alert` discloses, and to whom.** The name and email address of
+the person who cancelled, plus the resulting count, to the event's notification
+list. That is the same information the registration `alert` already gives the
+same list about the same person, which is what makes it consistent rather than a
+new disclosure; it is written down here because the list is gated on nothing and
+this is registrant data. It carries no button and no caladmin link, so unlike
+`alert` and `summary` it is built once for the whole list.
+
+**Its Reply-To is the event's, not the person's.** The registration alert replies
+to the registrant because a staff member reading it may want to answer them.
+Somebody who has just cancelled is not waiting for a reply, and putting their
+address in Reply-To on a message to a whole list invites one they did not ask
+for.
+
+**The hook it listens to predates it by many releases.** `uc_rsvp_cancelled` has
+been fired by `SFAF_Reminders::cancel_rsvp()` since the cancel link was built and
+had **no subscriber at all** until 3.56.0. `cancel_rsvp()` clears the count cache
+immediately before firing, so the count read in the listener is the
+post-cancellation number; that ordering is load-bearing and is the same fault
+"the request count cache goes stale on write" records.
+
+**One legacy migration deliberately does not reach it.** The `_uc_notify_organizer`
+migration in `sfaf-calendar.php` translates an old "don't email the organizer
+about registrations" checkbox into `alert` being off. It does **not** also switch
+off `cancel_alert`, because that checkbox was ticked when this message did not
+exist and inferring an intention about it would be inventing one.
 
 ### The notification list, and why two messages ask different questions
 

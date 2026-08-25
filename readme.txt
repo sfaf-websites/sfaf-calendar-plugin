@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.55.0
+Stable tag: 3.56.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.56.0 =
+
+**A fifth email: somebody cancelled their registration. The cancel page names which date. FAQ rows read as rows, and removing one asks first.**
+
+**THE NOTIFICATION LIST HEARD ABOUT EVERY REGISTRATION AND NOTHING ABOUT A CANCELLATION**, so a count read off the last alert drifted from the truth and only opening the registrations screen corrected it. There is now an alert when somebody cancels, to the same list, naming the event, its date and time, who cancelled, and the resulting count.
+
+**It is a fifth kind, not a fifth mechanism.** Same per-event switch as the other four, in the same card, stored the same way: the meta records only what somebody has switched OFF, so it defaults on and an event created before this existed behaves like one created after. **The hook it listens to already existed and had never had a subscriber** — `uc_rsvp_cancelled` has been firing into nothing since the cancel link was built.
+
+**What it discloses:** the name and email address of the person who cancelled, plus the count, to the event's notification list. That is exactly what the registration alert already tells the same list about the same person, so it is consistent rather than a new disclosure. There is no button and no link into caladmin.
+
+**THE CANCEL PAGE NAMES THE DATE.** Every occurrence in a series carries the same title, so somebody registered for three Thursdays saw three identical pages and could not tell which one they were cancelling. The date and time are now on their own line, on the question and on the confirmation, in the same house format the emails use. The confirmation is what somebody keeps, and "which Thursday did I drop?" is exactly what a title cannot answer.
+
+**FAQ ROWS.** Each row now sits on a light neutral ground with its fields white inside it, so four rows read as four rows rather than one field of boxes. The background groups a row and carries nothing else: no accent, no left border, no tint, on the rule 3.38.0 established.
+
+**The remove control is a labelled button under the row**, not a small red x in the corner: findable, and deliberate to press. **It asks first only when there is something to lose.** An empty row goes silently, because adding four rows and removing three is ordinary editing and must not cost three dialogs; a row with anything in EITHER field asks, because somebody who typed a question and has not written the answer yet has still done work. Nothing in caladmin warns about unsaved work and there is no undo.
+
+**And there is one FAQ row renderer now, where there were nine.** The event editor, FAQ Sets, the wp-admin series box and both public forms each had their own copy, already drifted on three details, so every FAQ change had to be made nine times or be made incompletely.
 
 = 3.55.0 =
 

@@ -1,10 +1,10 @@
 <?php
 /**
- * The four emails, who gets them, and whether they are switched on.
+ * The five emails, who gets them, and whether they are switched on.
  *
  * NONE OF THIS HAS EVER RUN. See the note at the top of SFAF_Email.
  *
- * THE FOUR
+ * THE FIVE
  * ---------------------------------------------------------------------------
  *   confirmation  to the person, the moment they register
  *   reminder      to everybody registered on the morning of the event, with the
@@ -12,6 +12,8 @@
  *   alert         to the notification list, the moment somebody registers
  *   summary       to the notification list, two hours before the event, listing
  *                 who is coming
+ *   cancel_alert  to the notification list, the moment somebody cancels their
+ *                 registration
  *
  * ONE NOTIFICATION LIST, AND THIS REVERSES A DOCUMENTED DECISION.
  * ---------------------------------------------------------------------------
@@ -27,17 +29,17 @@
  * between them was that one had been upgraded and the other had not. A manager
  * had to name the same colleague twice, in two different shapes, and a team
  * could not be told about a registration at all. There is now one list, it is
- * the picker, and everybody on it gets all three staff emails.
+ * the picker, and everybody on it gets all four staff emails.
  *
  * ALL OR NOTHING PER PERSON, ON PURPOSE. Per-recipient control means a matrix
- * of four toggles times N people, on a screen a manager visits to set up an
+ * of five toggles times N people, on a screen a manager visits to set up an
  * event, and nobody has asked for it. The event-level switches below turn a
  * whole kind of email off for everybody, which is the case that actually comes
  * up.
  *
  * DEFAULT ON, AND STORED AS THE EXCEPTION.
  * ---------------------------------------------------------------------------
- * All four are on for an event that says nothing, so creating an event is
+ * All five are on for an event that says nothing, so creating an event is
  * title, date, time, place, category, image, save, and working email. The meta
  * records only what somebody has switched OFF, so a default costs no writes and
  * an event created before any of this existed behaves like one created after.
@@ -74,6 +76,25 @@ class SFAF_Notifications {
                 'label' => 'Who is coming, to your notification list, two hours before',
                 'note'  => 'Lists everybody registered. Nothing is sent when nobody has registered.',
             ),
+            /*
+             * THE FIFTH, ADDED 3.56.0. The alert's opposite number.
+             *
+             * The list heard about every registration and nothing about a
+             * cancellation, so a count read off the last alert drifted from the
+             * truth and only opening the registrations screen corrected it.
+             *
+             * IT IS A KIND, NOT A MECHANISM. Adding the key here is the whole
+             * of the wiring: on() reads it, set_off() intersects against
+             * array_keys( kinds() ) so the form saves it, off_count() counts
+             * it, and the caladmin card renders it by iterating this list. That
+             * is the shared-field-list rule, and it is why an event created
+             * before this existed behaves like one created after: the meta
+             * records only what is switched OFF, so absent means on.
+             */
+            'cancel_alert' => array(
+                'label' => 'Alert to your notification list when somebody cancels',
+                'note'  => 'One email per cancellation, as it happens. Names who cancelled and what the count is now.',
+            ),
         );
     }
 
@@ -81,7 +102,7 @@ class SFAF_Notifications {
      * Is this kind switched on for this event?
      *
      * Absent meta means on. That is what makes the common path free: an event
-     * nobody has configured gets all four.
+     * nobody has configured gets all five.
      */
     public static function on( $event_id, $kind ) {
         $off = get_post_meta( (int) $event_id, self::OFF_META, true );
@@ -100,7 +121,7 @@ class SFAF_Notifications {
         update_post_meta( (int) $event_id, self::OFF_META, $off );
     }
 
-    /** How many of the four are off, for the disclosure summary line. */
+    /** How many of the five are off, for the disclosure summary line. */
     public static function off_count( $event_id ) {
         $off = get_post_meta( (int) $event_id, self::OFF_META, true );
         return is_array( $off ) ? count( $off ) : 0;
@@ -172,6 +193,14 @@ class SFAF_Notifications {
                 return self::build_reminder( $event_id, $person );
             case 'alert':
                 return self::build_alert( $event_id, $person, $context );
+            /*
+             * NOT 'cancelled', WHICH IS A DIFFERENT MESSAGE TO A DIFFERENT
+             * AUDIENCE. 'cancelled' tells REGISTRANTS the EVENT is off.
+             * 'cancel_alert' tells STAFF that one REGISTRANT has dropped out.
+             * The keys are deliberately not near-identical words.
+             */
+            case 'cancel_alert':
+                return self::build_cancel_alert( $event_id, $person, $context );
             case 'summary':
                 return self::build_summary( $event_id, $context );
             case 'cancelled':
@@ -455,6 +484,68 @@ class SFAF_Notifications {
      *
      * @param array $context can_edit_event: bool.
      */
+    /**
+     * (d2) SOMEBODY CANCELLED THEIR REGISTRATION, to staff, as it happens.
+     *
+     * THE ALERT'S OPPOSITE NUMBER, and deliberately the same shape. The list
+     * heard about every registration and nothing about a cancellation, so a
+     * count read off the last alert drifted from the truth and only opening the
+     * registrations screen corrected it. Same audience, same switch mechanism,
+     * same detail block, so the two read as a pair in an inbox.
+     *
+     * WHAT IT DISCLOSES: the name and address of the person who cancelled, and
+     * the resulting count. That is exactly what the registration alert already
+     * discloses about the same person to the same list, which is what makes it
+     * consistent rather than a new disclosure. It is still registrant data on an
+     * HIV, substance use and trans health calendar, and it is written down here
+     * so nobody has to reconstruct it from the builder.
+     *
+     * SHORT, AND NO BUTTON. The alert offers "see who has registered" because
+     * somebody reading it may want to act. There is nothing to do about a
+     * cancellation, so the message states the fact and stops.
+     *
+     * @param array $context 'count' => the count AFTER the cancellation.
+     */
+    private static function build_cancel_alert( $event_id, $person, $context = array() ) {
+        $f     = self::facts( $event_id );
+        $who   = ( $person && ! empty( $person->name ) ) ? (string) $person->name : 'Somebody';
+        $email = ( $person && ! empty( $person->email ) ) ? (string) $person->email : '';
+
+        /*
+         * THE COUNT IS PASSED IN, NOT READ HERE. sfaf_get_rsvp_count() memoizes
+         * per request, and this message is built after the row has already been
+         * moved to 'cancelled'. The sender clears that cache and hands the fresh
+         * number over rather than letting each of these ask again, which is the
+         * fault "the request count cache goes stale on write" records: a
+         * memoized read before the insert once served "0 of 12" to the alert.
+         */
+        $count = isset( $context['count'] ) ? (int) $context['count'] : (int) sfaf_get_rsvp_count( $event_id );
+        $cap   = (int) get_post_meta( $event_id, '_uc_capacity', true );
+
+        $places = $cap > 0
+            ? sprintf( '%d of %d places taken', $count, $cap )
+            : sprintf( '%d still registered', $count );
+
+        $rows = array( 'Name' => $who, 'Email' => $email ) + self::detail_rows( $f );
+
+        $html  = SFAF_Email::heading( sprintf( 'Cancellation for %s', $f['title'] ) );
+        $html .= SFAF_Email::para( $places . '.' );
+        $html .= SFAF_Email::details( $rows );
+
+        $text  = sprintf( "Cancellation for %s\n\n", $f['title'] );
+        $text .= $places . ".\n\n";
+        $text .= 'Name: ' . $who . "\n";
+        if ( $email ) { $text .= 'Email: ' . $email . "\n"; }
+        $text .= self::detail_text( $f ) . "\n";
+        $text .= "\n" . SFAF_Email::POSTAL;
+
+        return array(
+            'subject' => sprintf( 'Cancellation: %s', $f['title'] ),
+            'html'    => SFAF_Email::shell( sprintf( '%s cancelled. %s.', $who, $places ), $html ),
+            'text'    => $text,
+        );
+    }
+
     /**
      * (e) IT IS CANCELLED.
      *
@@ -806,6 +897,79 @@ class SFAF_Notifications {
             }
 
             if ( SFAF_Email::send( $email, $built['subject'], $built['html'], $built['text'], $reply ) ) {
+                $sent++;
+            }
+        }
+        return $sent;
+    }
+
+    /**
+     * Tell the notification list that somebody cancelled.
+     *
+     * THE LISTENER ON uc_rsvp_cancelled, WHICH FIRED INTO NOTHING UNTIL 3.56.0.
+     * The hook has been in SFAF_Reminders::cancel_rsvp() since the cancel link
+     * was built and nothing had ever subscribed to it. Following a series had
+     * exactly this shape before 3.53.0, so it was checked rather than assumed.
+     *
+     * ONE MESSAGE FOR EVERYBODY, unlike the alert and the summary. Those build
+     * per recipient because each carries a button whose destination depends on
+     * what that person may open. This one has no button, so there is nothing to
+     * vary and one build serves the whole list.
+     *
+     * THE PERSON IS LOOKED UP HERE. The hook carries the event id and the
+     * address only, and the message names who cancelled, so the row is read
+     * back. It has already been moved to 'cancelled' by the time this runs,
+     * which is why the lookup does not filter on status.
+     *
+     * @param int    $event_id
+     * @param string $email
+     * @return int How many were sent.
+     */
+    public static function send_cancel_alert( $event_id, $email ) {
+        $event_id = (int) $event_id;
+
+        if ( ! self::on( $event_id, 'cancel_alert' ) ) {
+            return 0;
+        }
+
+        /*
+         * THE COUNT IS READ AFTER THE CACHE IS CLEARED. cancel_rsvp() clears it
+         * before firing this hook, so this read is the post-cancellation number.
+         * It is resolved once and handed to the builder rather than read inside
+         * it, for the reason the builder gives.
+         */
+        $count = (int) sfaf_get_rsvp_count( $event_id );
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'uc_rsvps';
+        $row   = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE event_id = %d AND email = %s ORDER BY id DESC LIMIT 1",
+            $event_id,
+            (string) $email
+        ) );
+
+        $person = (object) array(
+            'name'  => $row ? SFAF_RSVP::display_name( $row ) : '',
+            'email' => (string) $email,
+        );
+
+        $built = self::build( 'cancel_alert', $event_id, $person, array( 'count' => $count ) );
+        if ( ! $built ) {
+            return 0;
+        }
+
+        /*
+         * REPLY-TO IS THE EVENT'S, NOT THE PERSON'S. The registration alert
+         * replies to the registrant because a staff member reading it may want
+         * to answer them. Somebody who has just cancelled is not waiting for a
+         * reply, and putting their address in Reply-To on a message to a whole
+         * list invites one they did not ask for.
+         */
+        $reply = SFAF_Reminders::reply_to_for( $event_id );
+
+        $sent = 0;
+        foreach ( self::staff( $event_id ) as $to => $label ) {
+            if ( SFAF_Email::send( $to, $built['subject'], $built['html'], $built['text'], $reply ) ) {
                 $sent++;
             }
         }

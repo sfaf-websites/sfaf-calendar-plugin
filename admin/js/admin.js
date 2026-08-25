@@ -125,9 +125,31 @@
             $rep.data('index', idx + 1);
         });
 
+        /*
+         * AN EMPTY ROW GOES SILENTLY; A ROW WITH ANYTHING IN IT ASKS FIRST.
+         * The twin of confirmRemoval() in portal.js, and the reasoning is
+         * written out there. In short: adding four rows and removing three is
+         * ordinary editing and must not cost three dialogs, but somebody who
+         * typed a question and has not written the answer yet has still done
+         * work, and there is no undo.
+         *
+         * EITHER FIELD COUNTS. The test is "is there anything here", not "is
+         * this row finished". The answer in wp-admin is a plain textarea, so
+         * unlike the portal there is no editor to ask.
+         */
         $(document).on('click', '.uc-repeater-remove', function(e) {
             e.preventDefault();
-            $(this).closest('.uc-repeater-row').remove();
+            var $row = $(this).closest('.uc-repeater-row');
+            if ($row.hasClass('uc-faq-row')) {
+                var typed = false;
+                $row.find('input[type=text], textarea').each(function() {
+                    if ($.trim(this.value) !== '') { typed = true; }
+                });
+                if (typed && !window.confirm('Remove this question? What you have typed in it will be lost.')) {
+                    return;
+                }
+            }
+            $row.remove();
         });
     }
 

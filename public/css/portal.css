@@ -1690,34 +1690,58 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    the form rather than on the row. Absolutely positioned against the row's own
    corner, it stays attached to what it removes.
    ------------------------------------------------------------------------- */
+/* A LIGHT NEUTRAL GROUND, SO A ROW READS AS ONE UNIT.
+ *
+ * It was --p-panel, which is #ffffff, sitting on a white card behind a 1px
+ * outline, so four rows ran together into one field of boxes. The fields stay
+ * white inside it, which is what makes the grouping legible: the row is the
+ * ground and the controls sit on it.
+ *
+ * NEUTRAL, AND CARRYING NOTHING. 3.38.0 stripped the decorative teal edge off
+ * every caladmin card on the rule that colour or shape must not be the sole
+ * carrier of a fact. This background groups a row and means nothing else, so it
+ * is the same gray the page already uses and gets no accent, no left border and
+ * no tint. If it ever looks like it is saying something, it is wrong. */
 .uc-faq-row {
     position: relative;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    padding: 16px 16px 18px;
-    background: var(--p-panel);
+    padding: 16px 16px 14px;
+    background: var(--p-bg);
     border: 1px solid var(--p-border);
     border-radius: 10px;
 }
+.uc-faq-row input[type=text],
+.uc-faq-row textarea { background: var(--p-panel); }
+/* The editor is an iframe in a chrome of its own, so the white has to be asked
+   for on the wrapper rather than inherited through it. */
+.uc-faq-row .wp-editor-container { background: var(--p-panel); }
+
+/* THE REMOVE CONTROL, UNDER THE ROW.
+ *
+ * It was a small red x absolutely positioned in the corner: hard to hit, easy
+ * to hit by accident, and unlabelled. Removing somebody's typed work should be
+ * findable and deliberate, so it is a button with words on it, at the end of
+ * the row it acts on. Right-aligned, because it is not the thing to do here. */
+.uc-faq-row-actions { display: flex; justify-content: flex-end; margin-top: 2px; }
 
 /* The rows carry their own separation now, so the stack's own gap would be
    doubling it. Only the FAQ variant is boxed; every other repeater keeps the
    tight 8px list it was designed as. */
 .uc-repeater-rows:has(.uc-faq-row) { gap: 14px; }
 
-/* Full width, and room for the button's corner so a long question does not run
-   under it. */
-.uc-faq-row input[type=text] { flex: none; width: 100%; padding-right: 44px; font-size: 14px; }
+/* Full width. The 44px of right padding went with the corner button it was
+   keeping a long question out from under. */
+.uc-faq-row input[type=text] { flex: none; width: 100%; font-size: 14px; }
 
-.uc-faq-row .uc-repeater-remove {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    line-height: 1;
-    font-size: 18px;
-    padding: 4px 6px;
-}
+/* DANGER AS INK, NOT AS FILL. A solid red button on every row would be a wall
+   of red on a set of ten, and the row is not a dangerous place to be. The
+   neutral button carries a red word, and the confirmation carries the weight.
+   Declared as a pair, so the two never come apart: 3.39.0 split a fill from its
+   ink across two declarations and got red on red at 1.19:1. */
+.uc-faq-row .uc-faq-remove { color: var(--p-danger-text); background: var(--p-panel); }
+.uc-faq-row .uc-faq-remove:hover { color: #fff; background: var(--p-danger-text); border-color: var(--p-danger-text); }
 
 /* TALLER, AND DRAGGABLE. `resize: vertical` is the no-script fallback's grip;
    the editor's own is TinyMCE's, turned on in SFAF_Rich_Text::settings(), and

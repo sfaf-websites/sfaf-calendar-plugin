@@ -459,22 +459,30 @@
  * through type and id selectors that outrank anything one class can say. The
  * neighbouring rules in this file already carry the same marks for the same
  * reason. */
+/* A light neutral ground so a row reads as one unit, with the fields staying
+ * white inside it. It carries no information and gets no accent; see the longer
+ * note on the same rule in portal.css. #f6f7f7 is WP admin's own gray, so this
+ * borrows the surrounding chrome rather than introducing a shade. */
 .uc-faq-row {
     position: relative;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    padding: 16px 16px 18px;
-    background: #fff;
+    padding: 16px 16px 14px;
+    background: #f6f7f7;
     border: 1px solid var(--uc-border);
     border-radius: 8px;
 }
 .uc-repeater-rows:has(.uc-faq-row) { gap: 14px; }
-.uc-faq-row input[type=text] { flex: none !important; width: 100%; padding-right: 44px; }
-.uc-faq-row .uc-repeater-remove { position: absolute; top: 12px; right: 8px; }
+.uc-faq-row input[type=text] { flex: none !important; width: 100%; background: #fff; }
+/* The remove control is a labelled button under the row now, not an x in the
+ * corner. Right-aligned, because it is not the thing to do here. */
+.uc-faq-row-actions { display: flex; justify-content: flex-end; margin-top: 2px; }
+.uc-faq-row .uc-faq-remove { color: #b32d2e; }
+.uc-faq-row .uc-faq-remove:hover { color: #8a2424; border-color: #8a2424; }
 /* Taller, and draggable. This grip is the no-script fallback's; the editor's
  * own comes from TinyMCE, turned on in SFAF_Rich_Text::settings(). */
-.uc-faq-row textarea { flex: none !important; width: 100%; min-height: 180px; resize: vertical; line-height: 1.5; }
+.uc-faq-row textarea { flex: none !important; width: 100%; min-height: 180px; resize: vertical; line-height: 1.5; background: #fff; }
 .uc-faq-row .wp-editor-wrap { width: 100%; }
 .uc-faq-readonly { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
 .uc-faq-readonly li { margin-bottom: 8px; }

@@ -3090,3 +3090,79 @@ function sfaf_notice_page( $title, $html ) {
     <?php
     exit;
 }
+
+/**
+ * ONE FAQ REPEATER ROW, AND THERE IS ONLY THIS ONE.
+ *
+ * NINE COPIES BEFORE 3.56.0, across five files: the caladmin event editor and
+ * its template, the FAQ Sets screen and its template, the wp-admin series box
+ * and its template, and both public forms with theirs. They had already drifted
+ * on three axes, the index token, the maxlength and the remove button's
+ * classes, and each of the last three FAQ changes had to be made nine times or
+ * be made incompletely. This project has paid for the two-copies pattern more
+ * than once; nine was the record.
+ *
+ * WHAT LEGITIMATELY VARIES is passed in, and it is only this: the field name,
+ * the index (a real one for a stored row, a token for a <template>), the values,
+ * whether the answer is a rich editor or a plain textarea, the maxlength the
+ * public forms impose, and the button classes wp-admin needs.
+ *
+ * THE REMOVE CONTROL IS A BUTTON UNDER THE ROW, not a small red x in the
+ * corner. Removing somebody's typed work should be findable and deliberate,
+ * and the corner x was neither. Whether it asks first is decided in the
+ * browser, on whether the row holds anything: see the handler in portal.js.
+ * Nothing in caladmin warns about unsaved work and there is no undo, so a
+ * mis-pressed remove on a written row cannot be taken back.
+ *
+ * @param array $args
+ *   name        string  Field base, e.g. 'faq' or 'faq_set_rows'.
+ *   index       string  Real index, or the template token ('__I__', '__INDEX__').
+ *   question    string  Stored value.
+ *   answer      string  Stored value.
+ *   rich        bool    Rich editor (default) or a plain textarea.
+ *   maxlength   int     On the question. 0 for none.
+ *   remove_class string Classes for the remove button.
+ *   rows        int     Editor/textarea rows.
+ * @return void Echoes.
+ */
+function sfaf_faq_row( $args = array() ) {
+    $args = array_merge( array(
+        'name'         => 'faq',
+        'index'        => '__I__',
+        'question'     => '',
+        'answer'       => '',
+        'rich'         => true,
+        'maxlength'    => 0,
+        'remove_class' => 'uc-btn uc-btn-sm',
+        'rows'         => 8,
+    ), $args );
+
+    // The index is a real integer or a template token, and both go into a
+    // field name, so neither may be escaped as if it were prose.
+    $field = $args['name'] . '[' . $args['index'] . '][%s]';
+    $q     = sprintf( $field, 'question' );
+    $a     = sprintf( $field, 'answer' );
+    $max   = (int) $args['maxlength'] > 0 ? ' maxlength="' . (int) $args['maxlength'] . '"' : '';
+    ?>
+    <div class="uc-repeater-row uc-faq-row">
+        <input type="text" name="<?php echo esc_attr( $q ); ?>"<?php echo $max; ?>
+               value="<?php echo esc_attr( (string) $args['question'] ); ?>"
+               placeholder="Question" aria-label="Question" />
+        <?php
+        if ( $args['rich'] ) {
+            SFAF_Rich_Text::deferred( $a, (string) $args['answer'], array( 'rows' => (int) $args['rows'], 'placeholder' => 'Answer' ) );
+        } else {
+            printf(
+                '<textarea name="%s" rows="%d" placeholder="Answer" aria-label="Answer">%s</textarea>',
+                esc_attr( $a ),
+                (int) $args['rows'],
+                esc_textarea( (string) $args['answer'] )
+            );
+        }
+        ?>
+        <div class="uc-faq-row-actions">
+            <button type="button" class="<?php echo esc_attr( $args['remove_class'] ); ?> uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+    <?php
+}

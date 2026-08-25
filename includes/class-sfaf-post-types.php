@@ -596,20 +596,24 @@ class SFAF_Post_Types {
         <div class="uc-repeater" data-repeater="<?php echo esc_attr( $name ); ?>">
             <div class="uc-repeater-rows">
                 <?php foreach ( $faqs as $i => $f ) : ?>
-                    <div class="uc-repeater-row uc-faq-row">
-                        <input type="text" name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][question]" value="<?php echo esc_attr( $f['question'] ); ?>" placeholder="Question" />
-                        <textarea name="<?php echo esc_attr( $name ); ?>[<?php echo (int) $i; ?>][answer]" rows="2" placeholder="Answer"><?php echo esc_textarea( $f['answer'] ); ?></textarea>
-                        <button type="button" class="button uc-repeater-remove" aria-label="Remove">&times;</button>
-                    </div>
+                    <?php sfaf_faq_row( array(
+                        'name'         => $name,
+                        'index'        => (int) $i,
+                        'question'     => $f['question'],
+                        'answer'       => $f['answer'],
+                        'rich'         => false,
+                        'remove_class' => 'button',
+                    ) ); ?>
                 <?php endforeach; ?>
             </div>
             <button type="button" class="button uc-repeater-add">+ Add FAQ</button>
             <script type="text/html" class="uc-repeater-template">
-                <div class="uc-repeater-row uc-faq-row">
-                    <input type="text" name="<?php echo esc_attr( $name ); ?>[__INDEX__][question]" placeholder="Question" />
-                    <textarea name="<?php echo esc_attr( $name ); ?>[__INDEX__][answer]" rows="2" placeholder="Answer"></textarea>
-                    <button type="button" class="button uc-repeater-remove" aria-label="Remove">&times;</button>
-                </div>
+                <?php sfaf_faq_row( array(
+                    'name'         => $name,
+                    'index'        => '__INDEX__',
+                    'rich'         => false,
+                    'remove_class' => 'button',
+                ) ); ?>
             </script>
         </div>
         <?php

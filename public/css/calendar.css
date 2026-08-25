@@ -2921,3 +2921,17 @@ body.uc-calendar-page #weglot_here,
 body.uc-calendar-page [class*="weglot"],
 body.uc-calendar-page [id*="weglot"],
 body.uc-calendar-page [data-wg-hidden] { display: none !important; }
+
+/* WHICH DATE THIS PAGE IS ABOUT. On the cancel page, under the title, and on
+   the confirmation after it. Every occurrence in a series carries the same
+   title, so this is the line that says which one. Montserrat and slightly
+   heavier than the prose around it: it is a fact being identified, not a
+   sentence. */
+.uc-notice-card .uc-notice-when {
+    margin: -8px 0 16px;
+    font-family: var(--uc-font-heading);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--uc-text);
+}

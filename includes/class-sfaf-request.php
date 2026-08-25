@@ -1470,25 +1470,17 @@ class SFAF_Request {
                     <div class="uc-repeater" data-repeater>
                         <div class="uc-repeater-rows">
                             <?php foreach ( $faq_rows as $i => $row ) : ?>
-                                <div class="uc-repeater-row uc-faq-row">
-                                    <input type="text" name="faq[<?php echo (int) $i; ?>][question]" maxlength="300"
-                                           value="<?php echo esc_attr( isset( $row['question'] ) ? $row['question'] : '' ); ?>" placeholder="Question" />
-                                    <?php SFAF_Rich_Text::deferred(
-                                        'faq[' . (int) $i . '][answer]',
-                                        isset( $row['answer'] ) ? $row['answer'] : '',
-                                        array( 'rows' => 8, 'placeholder' => 'Answer' )
-                                    ); ?>
-                                    <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
-                                </div>
+                                <?php sfaf_faq_row( array(
+                                    'index'     => (int) $i,
+                                    'question'  => isset( $row['question'] ) ? $row['question'] : '',
+                                    'answer'    => isset( $row['answer'] ) ? $row['answer'] : '',
+                                    'maxlength' => 300,
+                                ) ); ?>
                             <?php endforeach; ?>
                         </div>
                         <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add a question</button>
                         <template class="uc-repeater-tpl">
-                            <div class="uc-repeater-row uc-faq-row">
-                                <input type="text" name="faq[__I__][question]" maxlength="300" placeholder="Question" />
-                                <?php SFAF_Rich_Text::deferred( 'faq[__I__][answer]', '', array( 'rows' => 8, 'placeholder' => 'Answer' ) ); ?>
-                                <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
-                            </div>
+                            <?php sfaf_faq_row( array( 'maxlength' => 300 ) ); ?>
                         </template>
                     </div>
                 </div>

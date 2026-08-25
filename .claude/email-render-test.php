@@ -170,6 +170,17 @@ $cases = array(
     'alert-viewer' => array( 'type' => 'alert', 'person' => $person, 'cancel' => false, 'context' => array( 'can_view_all' => true ) ),
     'summary'      => array( 'person' => null, 'cancel' => false ),
     'summary-editor' => array( 'type' => 'summary', 'person' => null, 'cancel' => false, 'context' => array( 'can_edit_event' => true ) ),
+    /*
+     * THE CANCELLATION ALERT, added 3.56.0 with the message itself.
+     *
+     * A new message type that is not in this list is a message nothing renders,
+     * and the suite still passes: every other case goes on building and the
+     * total says 47. So the case goes in with the builder, not after somebody
+     * notices. It carries no cancel link (there is nothing left to cancel) and
+     * no caladmin link, so it is absent from $MAY_LINK_TO_CALADMIN below and is
+     * held to that by the same check as the rest.
+     */
+    'cancel_alert' => array( 'person' => $person, 'cancel' => false, 'context' => array( 'count' => 11 ) ),
 );
 
 /*
@@ -480,7 +491,8 @@ foreach ( $built as $name => $out ) {
 
 echo "Email render test\n";
 echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, the alert and\n";
-echo "       the summary in both of their recipient versions)\n";
+echo "       the summary in both of their recipient versions, and the cancellation alert)
+";
 echo "checked per message: subject, text alternative, table layout, 600px, banner and its alt text,\n";
 echo "                     postal address in both parts, no modern CSS, closed palette, no em dash,\n";
 echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links\n";

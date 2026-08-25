@@ -708,15 +708,67 @@
             }
 
             rep.addEventListener('click', function (e) {
-                if (e.target.classList.contains('uc-repeater-remove')) {
-                    e.preventDefault();
-                    var row = e.target.closest('.uc-repeater-row');
-                    if (row) {
-                        row.remove();
-                    }
-                }
+                /* closest(), not classList on the target. The remove control is
+                   a labelled button now rather than a bare x, and a click can
+                   land on something inside it. */
+                var btn = e.target.closest ? e.target.closest('.uc-repeater-remove') : null;
+                if (!btn || !rep.contains(btn)) { return; }
+                e.preventDefault();
+                var row = btn.closest('.uc-repeater-row');
+                if (!row) { return; }
+                if (!confirmRemoval(row)) { return; }
+                row.remove();
             });
         });
+    }
+
+    /**
+     * May this row go without asking?
+     *
+     * AN EMPTY ROW GOES SILENTLY; A ROW WITH ANYTHING IN IT ASKS FIRST.
+     * Adding four rows and removing three is ordinary editing and must not cost
+     * three dialogs. But somebody who has typed a question and not yet written
+     * the answer has still done work, so EITHER field holding content is enough
+     * to make this ask: the test is "is there anything here", not "is this row
+     * finished".
+     *
+     * THERE IS NO UNDO AND NOTHING WARNS ABOUT UNSAVED WORK anywhere in
+     * caladmin, so a mis-pressed remove on a written row is gone for good. That
+     * is the whole reason this is not a silent delete.
+     *
+     * THE ANSWER IS READ FROM THE EDITOR, NOT THE TEXTAREA. TinyMCE keeps its
+     * content in an iframe and only writes it back to the textarea on save or
+     * on triggerSave(), so a textarea read alone reports an empty answer for a
+     * row somebody has just written a paragraph into: the confirmation would be
+     * skipped in exactly the case it exists for. The editor is asked first and
+     * the textarea is the fallback for a row whose editor never started.
+     *
+     * IT FAILS TOWARDS ASKING. Anything unexpected — no editor API, an id that
+     * resolves to nothing, a throw — returns true from the content check, so the
+     * worst case is a dialog on an empty row rather than a silent loss.
+     */
+    function rowHasContent(row) {
+        var q = row.querySelector('input[type=text]');
+        if (q && q.value.trim() !== '') { return true; }
+
+        var area = row.querySelector('textarea');
+        if (!area) { return false; }
+
+        if (area.id && window.tinymce && typeof tinymce.get === 'function') {
+            try {
+                var ed = tinymce.get(area.id);
+                if (ed) { return ed.getContent({ format: 'text' }).trim() !== ''; }
+            } catch (err) {
+                return true;   /* cannot tell: ask. */
+            }
+        }
+        return area.value.trim() !== '';
+    }
+
+    function confirmRemoval(row) {
+        if (!row.classList.contains('uc-faq-row')) { return true; }
+        if (!rowHasContent(row)) { return true; }
+        return window.confirm('Remove this question? What you have typed in it will be lost.');
     }
 
     /* ---------------------------------------------------------------------
