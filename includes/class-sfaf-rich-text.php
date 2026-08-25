@@ -67,6 +67,23 @@ class SFAF_Rich_Text {
     /**
      * The toolbar. ONE DEFINITION, and every editor is built from it.
      *
+     * THE BUTTONS ARE UNCHANGED since this class was written, and 3.54.0
+     * deliberately did not touch them. What it added is the frame's own
+     * stylesheet and the grip that resizes it.
+     *
+     * CONTENT_CSS IS THE ONLY WAY TO REACH INSIDE THE FRAME. TinyMCE draws into
+     * an iframe, which inherits nothing from the document around it, so the
+     * answer field rendered in the browser default while every surface that
+     * later displays that answer rendered it in Merriweather. Neither portal.css
+     * nor calendar.css can fix that from outside, and raising specificity on
+     * anything out here reaches nothing: the frame has its own document.
+     *
+     * STATUSBAR IS TRUE FOR ONE REASON, WHICH IS THE GRIP. In TinyMCE 4 the
+     * drag handle lives in the status bar and nowhere else, so `resize` does
+     * nothing while the bar is hidden, which is why the boxes could not be
+     * resized. `elementpath` is off so the bar carries the grip and nothing
+     * else; it is not a place to put information.
+     *
      * @return array TinyMCE settings for wp_editor().
      */
     public static function settings() {
@@ -76,7 +93,11 @@ class SFAF_Rich_Text {
             'toolbar3'      => '',
             'block_formats' => 'Paragraph=p;Heading=h3',
             'menubar'       => false,
-            'statusbar'     => false,
+            'statusbar'     => true,
+            'elementpath'   => false,
+            'resize'        => true,
+            'min_height'    => 220,
+            'content_css'   => SFAF_PLUGIN_URL . 'public/css/editor-content.css?ver=' . SFAF_VERSION,
         );
     }
 

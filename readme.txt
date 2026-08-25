@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.53.0
+Stable tag: 3.54.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,29 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.54.0 =
+
+**The follow copy reads as an invitation, the page its link opens is styled, and the FAQ editor puts the question above the answer.** Part 2, the organizer's screen for announcing new dates, is still not built and nothing here sends a follower anything.
+
+**THE WORDING.** The control and its dialog described a setting rather than made an offer. The dialog now leads with the series name in its heading, says "Be the first to know when new dates are added", and puts what arrives and how to stop it under the button: "One email when dates are added. Stop any time." After submitting, the answer is "Almost there! Check your email to confirm and you're all set."
+
+"Nothing else is sent" is gone from all of it. It defined the feature by what it is not, and the line above it already says what arrives. So is "You will not hear about new dates until you do", which stated the failure rather than the outcome.
+
+**THE CONFIRMATION EMAIL** says the series name once, in the heading, instead of twice in two consecutive lines, and no longer carries "no reminders, no newsletter", which was fine print defending a design decision. It stays plainer in tone than the page: this calendar carries HIV, substance use and trans health programming, and the subject line is the part that shows in a preview pane or a shared inbox. **The unsubscribe link is still in it**, which is the guarantee the whole feature was built around.
+
+**THE PAGE THE CONFIRM LINK OPENS HAD NO STYLING AT ALL, and it was not losing a fight with a theme.** It rendered through `wp_die()`, whose handler writes its own document and never calls `wp_head()`, and it is reached on `template_redirect`, before `wp_enqueue_scripts` has run. So there was no stylesheet on the page to lose a cascade: enqueueing harder or raising specificity would have changed nothing. It emits its own document now and loads the public stylesheet, which is what caladmin and both public forms already do. It is styled as a public event page rather than as caladmin, because somebody arriving from an email is a visitor and not a manager.
+
+**THE "English" AND "Español" CONTROL ON THAT PAGE IS NOT OURS AND IS NOW HIDDEN ON IT.** Nothing in this plugin renders those two words. The switcher belongs to Weglot, a separate plugin, which appends it after `</html>`; every browser reparents that into `<body>`, so it lands on any document the site emits, including one this plugin writes itself. It is hidden on this page and only on this page, exactly as caladmin already hides it on its own screens. Nothing changes how Weglot runs and every other page keeps its switcher.
+
+**THE FAQ EDITOR.** Four separate faults, with four different causes:
+
+* **The question sat beside the answer and now sits above it, full width.** It was truncating mid-word in a `flex: 1` box next to an answer at `flex: 2`. `git log -S` and `-G` over the rule return two commits, the 2.0 baseline and 2.8.0, and neither gave the row a direction: this change had been reported before and had never reached the file.
+* **The answer box was three lines with its own scrollbar inside a scrolling page.** It is about a paragraph tall now and can be dragged taller.
+* **The text inside it was not the brand font.** The editor draws into an iframe, which inherits nothing from the page around it, so it needed a stylesheet of its own rather than anything restyled outside it. It is Merriweather, which is what every surface that later displays that answer uses.
+* **The rows were cramped.** Each is a boxed row with room around its controls, which at a cap of 50 is the difference between a set of ten being usable and not.
+
+The row cap, the storage, the cleanup rules and the toolbar buttons are all unchanged.
 
 = 3.53.0 =
 

@@ -2341,6 +2341,36 @@ date sweep, the rendered parity tests, the embed width probe.
 
 These are recorded because each cost more than one build and each recurred.
 
+### Read these four before a first change
+
+Standing hazards rather than lessons from one defect, and they were in
+`HANDOVER.md` until 3.54.0, which is the wrong file: none of them is about the
+current situation and all four will still be true in six months.
+
+- **Approving a submission sends registrant data outside SFAF, ticked by
+  default.** The second tick puts the submitter's address on the event's
+  notification list, so they receive the **registration alert** naming whoever
+  just registered AND the **morning-of summary listing every registrant by name
+  and email address**. This is deliberate and is right for the person running
+  the event, but it means the name on that prompt decides who sees a list of
+  people who signed up for an HIV testing or trans health event. Read it before
+  pressing Approve. §1 carries the reasoning.
+- **Nothing in caladmin warns about unsaved work.** There is no `beforeunload`
+  handler anywhere in the portal: close a tab or follow a link mid-edit and
+  everything typed is gone, silently, on every screen. This is also why a
+  control that creates something is a field on the form and never a button that
+  posts; see "Create-from-the-editor is a field, never a button".
+- **A cancelled event is still `publish` with a date**, and teams are an access
+  model rather than a snapshot. Anything querying events has to ask
+  `SFAF_Cancellation` as well as the post status, and anything deciding who may
+  edit one has to go through the single gate. §4 and §5 before touching a query
+  or a route that reads one.
+- **The confirm and unsubscribe pages are documents this plugin writes itself.**
+  They are handled on `template_redirect`, so `wp_enqueue_scripts` has not run
+  and `wp_head()` is never called. A stylesheet cannot be enqueued onto them and
+  a theme cannot reach them. `SFAF_Follow::page()` is the shape;
+  `SFAF_Reminders::cancel_page()` is still on `wp_die()` and still unstyled.
+
 **A correct rule that never reached the screen. Six times.** A component rule
 written as one class, `(0,1,0)`, sitting under a host-proofing base rule written
 as class plus element, `(0,1,1)`. One class does not beat one class plus one

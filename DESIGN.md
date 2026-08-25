@@ -165,6 +165,15 @@ produces a false failure.
 - **Merriweather** for body prose on public surfaces only. It is not used in
   the portal.
 
+**The one place inside `/caladmin` that is Merriweather, and why it is not an
+exception.** The rich text editor's own frame, from 3.54.0. TinyMCE draws into
+an iframe with its own document, and what that document holds is not portal
+chrome: it is a draft of body prose that will render on the public event page in
+exactly this face. Showing somebody a sans-serif draft of something a visitor
+reads in a serif is the version of this rule that gets broken, not the version
+where the preview matches. The chrome around the frame stays Montserrat, and
+`public/css/editor-content.css` is the only thing that styles inside it.
+
 Fallbacks are stated, never assumed: `-apple-system, BlinkMacSystemFont,
 'Segoe UI', Roboto, Helvetica, Arial, sans-serif` for Montserrat and
 `Georgia, 'Times New Roman', serif` for Merriweather.
@@ -178,7 +187,9 @@ brand pass.
 
 The rule that follows: **this plugin loads its own webfonts and never assumes
 the host does.** `calendar.css` imports both faces; the portal head loads
-Montserrat only, because Merriweather has no role there. A comment claiming
+Montserrat only, because Merriweather has no role in the chrome; the editor
+frame asks for its own face in its own stylesheet, so that carve-out costs the
+portal document nothing. A comment claiming
 something is provided elsewhere is not evidence that it is.
 
 ### The scale, and every step is visibly different

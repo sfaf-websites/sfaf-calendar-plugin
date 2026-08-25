@@ -408,7 +408,7 @@ class SFAF_Follow {
 
         $said = array(
             'success' => true,
-            'message' => 'Check your email for a link to confirm. You will not hear about new dates until you do.',
+            'message' => "Almost there! Check your email to confirm and you're all set.",
         );
 
         // A malformed address is the one thing said plainly. It reveals nothing
@@ -496,16 +496,21 @@ class SFAF_Follow {
                 self::page( 'That link is not valid', '<p>This link has expired or was not recognized.</p>' );
             }
             self::page(
-                'You are following ' . $name,
-                '<p>You will get an email when a new date is added. Nothing else is sent.</p>'
-                . '<p><a href="' . esc_url( self::stop_url( (string) $done->token ) ) . '">Stop these emails</a></p>'
+                "You're following " . $name,
+                "<p>We'll email you when a new date is added.</p>"
+                . '<p class="uc-notice-fine"><a href="' . esc_url( self::stop_url( (string) $done->token ) ) . '">Stop these emails</a></p>'
             );
         }
 
+        /*
+         * THE SAME FOUR LINES THE DIALOG USES, because this is the same offer
+         * being made at the second half of one flow. Somebody arriving here
+         * from the email should recognize what they pressed on the event page.
+         */
         self::page(
             'Follow ' . $name . '?',
-            '<p>You will get an email when a new date is added to this series. Nothing else is sent.</p>'
-            . self::ask( $token, 'Yes, follow this series' )
+            '<p>Be the first to know when new dates are added.</p>'
+            . self::ask( $token, 'Yes, follow this series', 'One email when dates are added. Stop any time.' )
         );
     }
 
@@ -537,6 +542,67 @@ class SFAF_Follow {
         );
     }
 
+    /* =====================================================================
+     * The page these links open
+     * ================================================================== */
+
+    /**
+     * A public page, styled like the event pages somebody came from.
+     *
+     * WHY THIS IS NOT wp_die() ANY MORE, AND WHY NO ENQUEUE WOULD HAVE FIXED IT.
+     *
+     * The page had no stylesheet at all, and it is worth being exact about
+     * which of the two possible faults that was, because they want opposite
+     * fixes and look identical on screen. It was NOT our stylesheet losing to
+     * something else. It never reached the page, for two independent reasons:
+     *
+     *   1. sfaf_enqueue_frontend_assets() is on `wp_enqueue_scripts`, which
+     *      fires from inside wp_head(). These links are handled on
+     *      `template_redirect`, which runs BEFORE the template, so the enqueue
+     *      never ran at all.
+     *   2. wp_die()'s front-end handler writes its own complete document with
+     *      an inline <style> and never calls wp_head(). So even a stylesheet
+     *      that had been enqueued would not have been printed.
+     *
+     * Raising specificity, reordering, or enqueueing harder would have changed
+     * nothing, because there was no cascade to win.
+     *
+     * SO THE PAGE EMITS ITS OWN DOCUMENT, which is what caladmin and both
+     * public forms already do (SFAF_Submissions::page_open). This one loads
+     * calendar.css rather than portal.css: the person reading it clicked a link
+     * in an email and is a visitor, not a manager, and the surface they came
+     * from is the public event page.
+     *
+     * $title is escaped here. $html is markup built by its caller, which has
+     * escaped anything variable inside it, so it is passed through.
+     */
+    private static function page( $title, $html ) {
+        status_header( 200 );
+        header( 'Content-Type: text/html; charset=utf-8' );
+        /* Nothing here should ever be framed or indexed: the URL is a token. */
+        header( 'X-Frame-Options: SAMEORIGIN' );
+        ?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+<meta charset="<?php bloginfo( 'charset' ); ?>" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title><?php echo esc_html( $title ); ?></title>
+<link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/calendar.css?ver=' . SFAF_VERSION ); ?>" />
+</head>
+<body class="uc-notice-page">
+<main class="uc-notice">
+    <div class="uc-notice-card">
+        <h1 class="uc-notice-title"><?php echo esc_html( $title ); ?></h1>
+        <?php echo $html; ?>
+    </div>
+</main>
+</body>
+</html>
+        <?php
+        exit;
+    }
+
     /**
      * Was this page posted back with the token it was drawn with?
      *
@@ -553,26 +619,21 @@ class SFAF_Follow {
         return hash_equals( (string) $token, sanitize_text_field( wp_unslash( $_POST['uc_follow_token'] ) ) );
     }
 
-    /** The one-button form both pages draw. The POST is what acts. */
-    private static function ask( $token, $label ) {
-        return '<form method="post">'
-            . '<input type="hidden" name="uc_follow_token" value="' . esc_attr( $token ) . '" />'
-            . '<p><button type="submit">' . esc_html( $label ) . '</button></p>'
-            . '</form>';
-    }
-
     /**
-     * A minimal, themeless page, the same shape the cancel link uses.
+     * The one-button form both pages draw. The POST is what acts.
      *
-     * $title is escaped here. $html is markup built by its caller, which has
-     * escaped anything variable inside it, so it is passed through.
+     * @param string $token
+     * @param string $label
+     * @param string $fine  Optional line under the button.
      */
-    private static function page( $title, $html ) {
-        wp_die(
-            '<h1>' . esc_html( $title ) . '</h1>' . $html,
-            esc_html( $title ),
-            array( 'response' => 200, 'back_link' => false )
-        );
+    private static function ask( $token, $label, $fine = '' ) {
+        $out = '<form method="post" class="uc-notice-form">'
+            . '<input type="hidden" name="uc_follow_token" value="' . esc_attr( $token ) . '" />'
+            . '<button type="submit" class="uc-notice-btn">' . esc_html( $label ) . '</button>';
+        if ( '' !== $fine ) {
+            $out .= '<p class="uc-notice-fine">' . esc_html( $fine ) . '</p>';
+        }
+        return $out . '</form>';
     }
 
     /* =====================================================================
@@ -595,35 +656,53 @@ class SFAF_Follow {
         $stop    = self::stop_url( (string) $row->token );
         $days    = (int) self::CONFIRM_DAYS;
 
-        $html  = SFAF_Email::heading( 'Confirm you want dates for ' . $name );
+        /*
+         * THE SERIES NAME APPEARS ONCE, IN THE HEADING. The body used to say it
+         * again, which on a name like "Programa Latino: Grupo de Apoyo" is most
+         * of two consecutive lines. The heading has already answered "which
+         * one"; the body's job is what will arrive.
+         *
+         * PLAINER THAN THE PAGE, ON PURPOSE. This calendar carries HIV,
+         * substance use and trans health programming, and the subject line is
+         * the part that shows in a preview pane or a shared inbox. It states
+         * what the message is and stops. "Almost there!" is in the body, where
+         * somebody has already chosen to open it.
+         */
+        $subject = "Confirm you're following " . $name;
+
+        $html  = SFAF_Email::heading( $subject );
         // Raw, not escaped: SFAF_Email::para() escapes what it is given, and a
         // series called "Women & Trans Night" would otherwise arrive as
         // "Women &amp;amp; Trans Night".
         $html .= SFAF_Email::para(
-            'Confirm below and you will get an email whenever a new date is added to ' . $name
-            . '. Nothing else is sent: no reminders, no newsletter.'
+            "Almost there! Confirm below and we'll email you whenever a new date is added."
         );
         $html .= SFAF_Email::button_row( array( SFAF_Email::button( $confirm, 'Yes, follow this series' ) ) );
-        $html .= SFAF_Email::small_para( 'The link works for the next ' . $days . ' days.' );
+        $html .= SFAF_Email::small_para( 'This link works for the next ' . $days . ' days.' );
         $html .= SFAF_Email::rule();
+        /*
+         * THE UNSUBSCRIBE LINK STAYS IN THIS FIRST MESSAGE. It is the guarantee
+         * 3.53.0 was built around: a follower is never without a route out, and
+         * the mechanism this replaced minted a token and delivered it to nobody.
+         * The sentence around it got shorter; the link did not move.
+         */
         $html .= SFAF_Email::small_para(
-            'If you did not ask for this, ignore it and nothing happens. To stop these emails at any time, '
-            . '<a href="' . esc_url( $stop ) . '" style="color:' . SFAF_Email::C_TEAL . ';">use this link</a>.'
+            "Didn't ask for this? Ignore it and nothing happens. You can "
+            . '<a href="' . esc_url( $stop ) . '" style="color:' . SFAF_Email::C_TEAL . ';">stop these emails</a> any time.'
         );
 
-        $text  = 'Confirm you want dates for ' . $name . "\n\n";
-        $text .= 'Confirm below and you will get an email whenever a new date is added to ' . $name
-            . ". Nothing else is sent: no reminders, no newsletter.\n\n";
+        $text  = $subject . "\n\n";
+        $text .= "Almost there! Confirm below and we'll email you whenever a new date is added.\n\n";
         $text .= $confirm . "\n\n";
-        $text .= 'The link works for the next ' . $days . " days.\n\n";
-        $text .= "If you did not ask for this, ignore it and nothing happens.\n";
-        $text .= 'To stop these emails at any time: ' . $stop . "\n";
+        $text .= 'This link works for the next ' . $days . " days.\n\n";
+        $text .= "Didn't ask for this? Ignore it and nothing happens.\n";
+        $text .= 'You can stop these emails any time: ' . $stop . "\n";
         $text .= "\n" . SFAF_Email::POSTAL;
 
         return SFAF_Email::send(
             (string) $row->email,
-            'Confirm you want dates for ' . $name,
-            SFAF_Email::shell( 'Confirm to hear about new dates', $html ),
+            $subject,
+            SFAF_Email::shell( $subject, $html ),
             $text
         );
     }

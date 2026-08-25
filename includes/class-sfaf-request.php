@@ -1476,7 +1476,7 @@ class SFAF_Request {
                                     <?php SFAF_Rich_Text::deferred(
                                         'faq[' . (int) $i . '][answer]',
                                         isset( $row['answer'] ) ? $row['answer'] : '',
-                                        array( 'rows' => 3, 'placeholder' => 'Answer' )
+                                        array( 'rows' => 8, 'placeholder' => 'Answer' )
                                     ); ?>
                                     <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                                 </div>
@@ -1486,7 +1486,7 @@ class SFAF_Request {
                         <template class="uc-repeater-tpl">
                             <div class="uc-repeater-row uc-faq-row">
                                 <input type="text" name="faq[__I__][question]" maxlength="300" placeholder="Question" />
-                                <?php SFAF_Rich_Text::deferred( 'faq[__I__][answer]', '', array( 'rows' => 3, 'placeholder' => 'Answer' ) ); ?>
+                                <?php SFAF_Rich_Text::deferred( 'faq[__I__][answer]', '', array( 'rows' => 8, 'placeholder' => 'Answer' ) ); ?>
                                 <button type="button" class="uc-link-danger uc-repeater-remove">&times;</button>
                             </div>
                         </template>

@@ -989,7 +989,15 @@
    what somebody needs in order to decide whether to type an address at all.
    Body ink, not the muted grey the subtitle uses, because it is the sentence
    the dialog exists to carry. */
-.uc-rsvp-modal .uc-follow-what { font-size: 14px; line-height: 1.5; color: var(--uc-text); margin: -8px 0 20px; }
+/* The invitation, directly under the heading. Body ink and full size: it is the
+   sentence the dialog exists to carry, not a caption on the one above it. The
+   negative top margin is gone with the subtitle it was closing a gap against. */
+.uc-rsvp-modal .uc-follow-what { font-size: 15px; line-height: 1.5; color: var(--uc-text); margin: 8px 0 20px; }
+
+/* What arrives and how to stop it, under the submit button. Muted and small,
+   because somebody has already decided by the time they reach it; it is there
+   to be found, not to be weighed. */
+.uc-rsvp-modal .uc-follow-terms { font-size: 12px; line-height: 1.5; color: var(--uc-secondary); text-align: center; margin: 2px 0 0; }
 
 .uc-rsvp-form { display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-form label { font-size: 13px; font-weight: 600; color: var(--uc-text); display: block; margin-bottom: 4px; }
@@ -2741,3 +2749,129 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
     .uc-day-closed-mark { font-size: 0; }
     .uc-day-closed-mark::after { content: "Closed"; font-size: 9px; }
 }
+
+/* ===========================================================================
+   THE PAGE A CONFIRM OR UNSUBSCRIBE LINK OPENS.
+
+   SFAF_Follow::page() emits its own document and loads this stylesheet, for the
+   reason set out in full on that method: the page is handled on
+   `template_redirect`, so `wp_enqueue_scripts` has not run and wp_head() is
+   never called. Nothing was losing a cascade here; there was no stylesheet on
+   the page at all, and enqueueing harder would have changed nothing.
+
+   IT IS THE PUBLIC LOOK, NOT THE PORTAL'S. Somebody reaching this page clicked
+   a link in an email about a programme they want to hear about. They are a
+   visitor, and the surface they came from is the event page.
+   ======================================================================== */
+
+body.uc-notice-page {
+    margin: 0;
+    background: var(--uc-bg, #F7F8FA);
+    font-family: var(--uc-font-heading);
+    color: var(--uc-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+.uc-notice { display: flex; justify-content: center; padding: 48px 16px 64px; }
+
+.uc-notice-card {
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border: 1px solid var(--uc-border);
+    border-radius: 16px;
+    padding: 36px 32px 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.uc-notice-title {
+    margin: 0 0 12px;
+    font-family: var(--uc-font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--uc-text);
+}
+
+/* Merriweather, because this is body prose on a public surface and that is
+   what the rule says. */
+.uc-notice-card p {
+    margin: 0 0 16px;
+    font-family: var(--uc-font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--uc-secondary);
+}
+.uc-notice-card p:last-child { margin-bottom: 0; }
+
+.uc-notice-form { margin: 24px 0 0; }
+
+/* THE ONE ACTION ON THE PAGE, SO IT IS THE ONE YELLOW. DESIGN.md: yellow means
+   "this is the thing to act on", it appears once per view, and Dark Gray
+   #373433 is the ONLY text color allowed on it at 8.92:1. White on yellow is
+   1.38:1 and is never used, which is why the hover darkens the fill and leaves
+   the ink alone rather than inverting. The border and the brightness step are
+   the values .uc-btn-primary already uses in portal.css, so the two yellows
+   behave identically. */
+.uc-notice-btn {
+    display: block;
+    width: 100%;
+    padding: 13px 20px;
+    border: 1px solid #E0BE00;
+    border-radius: 10px;
+    background: var(--uc-yellow);
+    color: var(--uc-dark);
+    font-family: var(--uc-font-heading);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+.uc-notice-btn:hover { filter: brightness(0.94); color: var(--uc-dark); border-color: #E0BE00; }
+.uc-notice-btn:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+
+/* The line under the button, and the stop link on the done page. Muted and
+   small; it is there to be found, not to be weighed. */
+.uc-notice-card .uc-notice-fine {
+    margin: 12px 0 0;
+    font-family: var(--uc-font-heading);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--uc-secondary);
+    text-align: center;
+}
+.uc-notice-card .uc-notice-fine a { color: var(--uc-teal-text); }
+
+/* ---------------------------------------------------------------------------
+   WEGLOT'S LANGUAGE SWITCHER, HIDDEN ON THIS PAGE AND ONLY ON THIS PAGE.
+
+   THE "English" CHECKBOX AND "Español" LINK ARE NOT OURS. Nothing in this
+   plugin renders those two words; the control belongs to Weglot 5.4, a separate
+   plugin on resources.sfaf.org, which appends its switcher after </html>. Every
+   browser reparents that into <body>, so it lands on any document the site
+   emits, including one this plugin writes itself. That is why it appeared on a
+   page that loads no theme and calls no wp_head().
+
+   HIDING, NOT DISABLING, and scoped to body.uc-notice-page so it reaches this
+   page and nothing else. Nothing here changes how Weglot runs and every other
+   page on the site keeps its switcher exactly as it is. This is the same remedy
+   portal.css applies on the caladmin screens, and the note there carries the
+   history: 3.16.0 read a request to tidy this control as licence to build a
+   language feature the plugin never had, and 3.17.0 removed all of it.
+
+   The [class*="weglot"] catch is deliberate and safe: no class in this plugin
+   contains that string, so it can only ever match theirs, and it survives them
+   renaming a wrapper.
+   ------------------------------------------------------------------------- */
+body.uc-notice-page aside.country-selector,
+body.uc-notice-page .country-selector,
+body.uc-notice-page .weglot-container,
+body.uc-notice-page .wg-drop,
+body.uc-notice-page .wgcurrent,
+body.uc-notice-page #weglot_here,
+body.uc-notice-page [class*="weglot"],
+body.uc-notice-page [id*="weglot"],
+body.uc-notice-page [data-wg-hidden] { display: none !important; }

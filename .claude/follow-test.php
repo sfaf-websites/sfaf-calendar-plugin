@@ -310,10 +310,39 @@ expect(
     true
 );
 expect( 'the two tokens are different', $pending->confirm_token !== $pending->token, true );
+/*
+ * WHAT THIS ASSERTION BECAME, AND WHY.
+ *
+ * It used to require the sentence "Nothing else is sent". 3.54.0 removed that
+ * line from the email deliberately: it defined the feature by what it is not,
+ * and the line above it already says what arrives. So the assertion cannot ask
+ * for those words any more.
+ *
+ * IT ASKS FOR THE GUARANTEE INSTEAD, which is the part that was ever worth
+ * protecting: the message says what will arrive, and it carries a way out. A
+ * test that pins an exact sentence breaks on every rewording and proves only
+ * that nobody changed the copy.
+ */
 expect(
-    'the text part says nothing else is sent',
-    false !== strpos( $first['text'], 'Nothing else is sent' ),
+    'the text part says what will arrive',
+    false !== stripos( $first['text'], 'new date is added' ),
     true
+);
+expect(
+    'and offers a way to stop it in words as well as a link',
+    false !== stripos( $first['text'], 'stop these emails' ),
+    true
+);
+
+/*
+ * THE SERIES NAME APPEARS ONCE. It is in the heading and deliberately not
+ * repeated in the body, which on a name like "Programa Latino: Grupo de Apoyo"
+ * was most of two consecutive lines.
+ */
+expect(
+    'the series name is said once, not twice',
+    substr_count( $first['text'], 'Wednesday Support Group' ),
+    1
 );
 
 /* ---------------------------------------------------------------------------
@@ -480,6 +509,76 @@ foreach ( array( 'handle_confirm' => 'self::confirm(', 'handle_stop' => 'self::s
     $acts  = strpos( $body, $mutation );
     expect( $fn . '() gates its write on a POST', ( false !== $gate && false !== $acts && $gate < $acts ), true );
 }
+
+/*
+ * THE PAGE THESE LINKS OPEN CARRIES A STYLESHEET.
+ *
+ * Structural, because page() ends in exit() and cannot be called from a test
+ * process. It is worth asserting anyway: until 3.54.0 this page had no styling
+ * at all, and the reason is the kind that comes back. It rendered through
+ * wp_die(), whose handler writes its own document and never calls wp_head(),
+ * and it is reached on template_redirect, before wp_enqueue_scripts has run.
+ * Nothing was losing a cascade; there was no stylesheet on the page. Anybody
+ * "simplifying" this back to wp_die() takes the styling with it and the screen
+ * gives no hint why, so the check names the mechanism rather than the look.
+ */
+echo "The page the links open\n";
+expect(
+    'it does not go back to wp_die(), which prints no wp_head',
+    (bool) preg_match( '/wp_die\s*\(/', $code ),
+    false
+);
+expect(
+    'it loads the public stylesheet itself',
+    false !== strpos( $code, 'public/css/calendar.css' ),
+    true
+);
+/*
+ * THE BODY CLASS IS LOAD-BEARING, not decoration: calendar.css hangs both the
+ * page's own styling and the Weglot suppression off body.uc-notice-page. Weglot
+ * appends its language switcher after </html> and every browser reparents that
+ * into <body>, so it lands on any document this site emits, including one this
+ * plugin writes itself. Losing the class puts an English/Espanol control back
+ * on a page that never asked for one.
+ */
+expect(
+    'the body class the styles and the Weglot rule both hang off is present',
+    false !== strpos( $code, 'uc-notice-page' ),
+    true
+);
+
+$css = (string) file_get_contents( $root . '/public/css/calendar.css' );
+expect(
+    'and calendar.css actually scopes a rule to it',
+    false !== strpos( $css, 'body.uc-notice-page' ),
+    true
+);
+expect(
+    "and suppresses Weglot's switcher there",
+    false !== strpos( $css, 'body.uc-notice-page [class*="weglot"]' ),
+    true
+);
+/*
+ * SCOPED, AND ONLY SCOPED. An unscoped weglot rule in this stylesheet would
+ * reach every public page on resources.sfaf.org, which is a site-wide change
+ * made from inside a calendar plugin. Every line naming weglot here must carry
+ * the body class.
+ */
+/*
+ * COMMENTS ARE STRIPPED FIRST, and the first version of this check did not do
+ * that. It read the prose explaining the rule as three unscoped rules and
+ * reported a failure that was not there. A checker that cannot tell a
+ * declaration from a sentence about one is the same class of fault as a checker
+ * that finds nothing: both report something other than what they claim to.
+ */
+$declarations = preg_replace( '#/\*.*?\*/#s', '', $css );
+$unscoped     = 0;
+foreach ( preg_split( '/[\r\n]+/', (string) $declarations ) as $line ) {
+    if ( false !== stripos( $line, 'weglot' ) && false === strpos( $line, 'body.uc-notice-page' ) ) {
+        $unscoped++;
+    }
+}
+expect( 'no weglot rule reaches beyond this page', $unscoped, 0 );
 
 /* ------------------------------------------------------------------------ */
 echo "\n";

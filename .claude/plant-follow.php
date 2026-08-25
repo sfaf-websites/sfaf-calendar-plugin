@@ -53,7 +53,7 @@ $faults = array(
     ),
     'no-way-out' => array(
         'what' => 'the unsubscribe link is left out of the confirmation email',
-        'from' => "        \$text .= 'To stop these emails at any time: ' . \$stop . \"\\n\";",
+        'from' => "        \$text .= 'You can stop these emails any time: ' . \$stop . \"\\n\";",
         'to'   => "        \$text .= \"Reply to this message to stop.\\n\";",
     ),
     'never-expires' => array(

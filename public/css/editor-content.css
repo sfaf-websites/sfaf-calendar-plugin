@@ -1,0 +1,71 @@
+/* ---------------------------------------------------------------------------
+   WHAT THE RICH TEXT EDITOR RENDERS INSIDE ITS OWN FRAME.
+
+   TinyMCE draws into an <iframe>, which inherits nothing from the page around
+   it: not portal.css, not calendar.css, not the webfonts either stylesheet
+   imports. A frame with no stylesheet of its own falls back to the browser
+   default, which is how an answer destined for Merriweather came to be typed
+   in Times New Roman. This file is handed to TinyMCE as `content_css` by
+   SFAF_Rich_Text::settings(), and it is the only thing that styles that frame.
+
+   MERRIWEATHER HERE IS NOT A PORTAL EXCEPTION. DESIGN.md says Merriweather is
+   for body prose on public surfaces only and has no role in /caladmin, and
+   that still holds: what this frame contains is not portal chrome, it is a
+   preview of body prose that will render on the public event page in exactly
+   this face. The chrome around the frame stays Montserrat. The rule that would
+   be broken is the opposite one, showing somebody a sans-serif draft of
+   something a visitor reads in a serif.
+
+   IT LOADS THE FACE ITSELF, for the reason DESIGN.md gives after neither face
+   was loaded at all until 3.17.0: this plugin loads its own webfonts and never
+   assumes something else did. The portal head still loads Montserrat only, so
+   nothing here changes what that document asks for.
+   ------------------------------------------------------------------------- */
+
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap');
+
+html, body {
+    background: #fff;
+}
+
+/* The stack is stated, never assumed, and it is DESIGN.md's own fallback for
+   this face. */
+body#tinymce {
+    margin: 12px 14px;
+    font-family: Merriweather, Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    line-height: 1.65;
+    color: #262626;
+}
+
+body#tinymce p { margin: 0 0 0.9em; }
+body#tinymce p:last-child { margin-bottom: 0; }
+
+/* Heading is the one block format the toolbar offers besides Paragraph, and it
+   is Montserrat because every heading on every surface is. */
+body#tinymce h3 {
+    margin: 1.4em 0 0.5em;
+    font-family: Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #262626;
+}
+body#tinymce h3:first-child { margin-top: 0; }
+
+body#tinymce ul, body#tinymce ol { margin: 0 0 0.9em; padding-left: 1.5em; }
+body#tinymce li { margin: 0 0 0.3em; }
+
+/* Teal is the one accent, and #0C666F is the darkened value DESIGN.md carries
+   rather than the brand guide's own lighter teal, which does not clear AA on
+   white. */
+body#tinymce a { color: #0C666F; text-decoration: underline; }
+
+body#tinymce strong { font-weight: 700; }
+
+/* The placeholder TinyMCE shows on an empty editor. Muted, and never mistaken
+   for typed text. */
+body#tinymce.mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before {
+    color: #6B6B6B;
+    font-style: italic;
+}

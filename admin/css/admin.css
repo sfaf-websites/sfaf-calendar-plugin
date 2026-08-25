@@ -447,9 +447,35 @@
 /* Source column */
 .uc-col-source { font-size: 12px; }
 
-/* Series FAQ repeater */
-.uc-faq-row { align-items: flex-start; }
-.uc-faq-row textarea { flex: 2; min-height: 40px; } /* box defers to the control block */
+/* Series FAQ repeater.
+ *
+ * QUESTION ABOVE ANSWER, the same shape portal.css gives it and for the same
+ * reasons, which are written out in full there. A question in a `flex: 1` box
+ * beside an answer at `flex: 2` truncates mid-word, and no width fixes the
+ * shape of a one-line field sitting next to a paragraph.
+ *
+ * THE !important RUN IS THE OPPOSITE RULE TO THE PORTAL'S. In WP admin our
+ * single classes are competing with forms.css, which reaches these controls
+ * through type and id selectors that outrank anything one class can say. The
+ * neighbouring rules in this file already carry the same marks for the same
+ * reason. */
+.uc-faq-row {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 16px 16px 18px;
+    background: #fff;
+    border: 1px solid var(--uc-border);
+    border-radius: 8px;
+}
+.uc-repeater-rows:has(.uc-faq-row) { gap: 14px; }
+.uc-faq-row input[type=text] { flex: none !important; width: 100%; padding-right: 44px; }
+.uc-faq-row .uc-repeater-remove { position: absolute; top: 12px; right: 8px; }
+/* Taller, and draggable. This grip is the no-script fallback's; the editor's
+ * own comes from TinyMCE, turned on in SFAF_Rich_Text::settings(). */
+.uc-faq-row textarea { flex: none !important; width: 100%; min-height: 180px; resize: vertical; line-height: 1.5; }
+.uc-faq-row .wp-editor-wrap { width: 100%; }
 .uc-faq-readonly { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
 .uc-faq-readonly li { margin-bottom: 8px; }
 

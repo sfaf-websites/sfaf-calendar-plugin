@@ -1404,14 +1404,22 @@
         var modalHTML = '<div class="uc-rsvp-modal-overlay" id="uc-follow-modal">' +
             '<div class="uc-rsvp-modal">' +
                 '<div class="uc-follow-form-view">' +
-                    '<h3>Follow this series</h3>' +
-                    '<p class="uc-modal-subtitle" id="uc-follow-series-name"></p>' +
-                    '<p class="uc-follow-what">You will get an email when a new date is added to this series. Nothing else is sent.</p>' +
+                    /* THE SERIES NAME GOES IN THE HEADING AND NOWHERE ELSE. It
+                       used to be a subtitle under a generic "Follow this
+                       series", which said the name twice over and led with the
+                       half that carries no information. */
+                    '<h3 id="uc-follow-heading"></h3>' +
+                    '<p class="uc-follow-what">Be the first to know when new dates are added.</p>' +
                     '<div class="uc-rsvp-form">' +
                         '<div><label for="uc-follow-email">Email *</label>' +
                             '<input type="email" id="uc-follow-email" placeholder="your@email.com" /></div>' +
                         '<div class="uc-rsvp-error" id="uc-follow-error" style="display:none;"></div>' +
-                        '<button class="uc-rsvp-submit" id="uc-follow-submit-btn">Follow</button>' +
+                        '<button class="uc-rsvp-submit" id="uc-follow-submit-btn">Yes, follow this series</button>' +
+                        /* WHAT ARRIVES AND HOW TO STOP IT, under the button
+                           rather than above the field: it is the reassurance
+                           somebody wants at the moment of pressing, not a
+                           condition they have to read before typing. */
+                        '<p class="uc-follow-terms">One email when dates are added. Stop any time.</p>' +
                         '<button class="uc-rsvp-cancel" id="uc-follow-cancel-btn">Cancel</button>' +
                     '</div>' +
                 '</div>' +
@@ -1430,11 +1438,14 @@
         $(document).on('click', '.uc-follow-btn', function(e) {
             e.preventDefault();
             followSeriesId = $(this).data('series-id');
-            $('#uc-follow-series-name').text($(this).data('series-name') || '');
+            /* .text(), so a series called "Women & Trans Night" arrives as
+               itself and a name is never markup. */
+            var seriesName = $(this).data('series-name') || '';
+            $('#uc-follow-heading').text(seriesName ? 'Follow ' + seriesName + '?' : 'Follow this series?');
             $('#uc-follow-email').val('');
             $('#uc-follow-error').hide();
             if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-follow-email')); }
-            $('#uc-follow-submit-btn').prop('disabled', false).text('Follow');
+            $('#uc-follow-submit-btn').prop('disabled', false).text('Yes, follow this series');
             $('.uc-follow-form-view').show();
             $('#uc-follow-success').hide();
             fmodal.addClass('active');
@@ -1480,16 +1491,16 @@
                 success: function(response) {
                     if (response.success) {
                         $('.uc-follow-form-view').hide();
-                        $('#uc-follow-success-msg').text(response.message || 'Check your email for a link to confirm.');
+                        $('#uc-follow-success-msg').text(response.message || "Almost there! Check your email to confirm and you're all set.");
                         $('#uc-follow-success').show();
                     } else {
                         $('#uc-follow-error').text(response.message || 'Something went wrong.').show();
-                        btn.prop('disabled', false).text('Follow');
+                        btn.prop('disabled', false).text('Yes, follow this series');
                     }
                 },
                 error: function() {
                     $('#uc-follow-error').text('Network error. Please try again.').show();
-                    btn.prop('disabled', false).text('Follow');
+                    btn.prop('disabled', false).text('Yes, follow this series');
                 }
             });
         }

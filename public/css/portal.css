@@ -1670,8 +1670,77 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-series-thumb img { width: 60px; height: 40px; object-fit: cover; border-radius: 4px; display: block; }
 .uc-series-thumb-none { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 40px; border-radius: 4px; background: var(--p-bg); font-size: 18px; }
 .uc-img-source-tag { font-size: 11px; font-weight: 600; color: var(--p-muted); background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 99px; padding: 1px 8px; margin-left: 6px; }
-.uc-faq-row { align-items: flex-start; }
-.uc-faq-row textarea { flex: 2; min-height: 44px; font-family: inherit; padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 7px; font-size: 13px; }
+/* ---------------------------------------------------------------------------
+   THE FAQ REPEATER ROW: QUESTION ABOVE ANSWER, NOT BESIDE IT.
+
+   THIS WAS NEVER WRITTEN BEFORE 3.54.0. `git log -S` over this rule returns two
+   commits, the 2.0 baseline and 2.8.0, and neither gave the row a direction; the
+   `-G` form returns the same two. So the change was not written and reverted and
+   not written and overridden. It simply never reached the file, which is the
+   third possibility and the one worth checking first.
+
+   WHAT THE FLEX ROW COST. `.uc-repeater-row` is `display: flex` with a default
+   `row` direction, so a question sat in a `flex: 1` box beside an answer at
+   `flex: 2` and truncated mid-word at any realistic length. Overriding the
+   direction here rather than widening the input is the fix, because no width
+   makes a one-line field the right shape for the thing above a paragraph.
+
+   THE REMOVE BUTTON COMES OUT OF THE FLOW. In a column it would otherwise
+   become a third full-width band under the answer, which reads as an action on
+   the form rather than on the row. Absolutely positioned against the row's own
+   corner, it stays attached to what it removes.
+   ------------------------------------------------------------------------- */
+.uc-faq-row {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 16px 16px 18px;
+    background: var(--p-panel);
+    border: 1px solid var(--p-border);
+    border-radius: 10px;
+}
+
+/* The rows carry their own separation now, so the stack's own gap would be
+   doubling it. Only the FAQ variant is boxed; every other repeater keeps the
+   tight 8px list it was designed as. */
+.uc-repeater-rows:has(.uc-faq-row) { gap: 14px; }
+
+/* Full width, and room for the button's corner so a long question does not run
+   under it. */
+.uc-faq-row input[type=text] { flex: none; width: 100%; padding-right: 44px; font-size: 14px; }
+
+.uc-faq-row .uc-repeater-remove {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    line-height: 1;
+    font-size: 18px;
+    padding: 4px 6px;
+}
+
+/* TALLER, AND DRAGGABLE. `resize: vertical` is the no-script fallback's grip;
+   the editor's own is TinyMCE's, turned on in SFAF_Rich_Text::settings(), and
+   the two are separate mechanisms for the same gesture. A box that scrolls
+   inside a page that scrolls is the thing being fixed, so the floor is a real
+   paragraph rather than three lines. */
+.uc-faq-row textarea {
+    flex: none;
+    width: 100%;
+    min-height: 180px;
+    resize: vertical;
+    font-family: inherit;
+    padding: 8px 10px;
+    border: 1px solid var(--p-border);
+    border-radius: 7px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* The editor replaces the textarea rather than wrapping it, so the breathing
+   room has to be asked for on the wrapper it puts there instead. */
+.uc-faq-row .wp-editor-wrap { width: 100%; }
+.uc-faq-row .wp-editor-container { border-radius: 7px; overflow: hidden; }
 
 /* Event form: featured image picker */
 .uc-image-field .uc-field-label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; }

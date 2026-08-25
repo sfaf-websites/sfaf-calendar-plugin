@@ -6,32 +6,33 @@ the plugin IS and why, `DESIGN.md` is color and layout, `CLAUDE.md` is the
 working rules. Anything here that is still true in six months belongs in one of
 those instead.
 
-**Last updated:** 2026-08-24, at 3.53.0.
+**Last updated:** 2026-08-25, at 3.54.0.
 
 ---
 
 ## What shipped last
 
-**3.53.0**, built as `sfaf-calendar-3.53.0.zip` in the project root, committed
+**3.54.0**, built as `sfaf-calendar-3.54.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
-> **THIS RELEASE ADDS A TABLE**, `uc_series_followers`, and `SFAF_DB_VERSION` is
-> now `6`. It is created on load as well as on activation, so overwriting the
-> folder is enough; but if anything about following throws "table doesn't
+> **3.53.0 ADDED A TABLE**, `uc_series_followers`, and took `SFAF_DB_VERSION` to
+> `6`. 3.54.0 adds nothing, but if the site is still on 3.52.0 this still
+> applies. The table is created on load as well as on activation, so overwriting
+> the folder is enough; if anything about following throws "table doesn't
 > exist", that is the check that did not run.
 
 The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.54.0** | Follow copy reads as an invitation. The confirm page is styled and loses Weglot's language switcher. FAQ rows put the question above the answer, in a taller resizable box in the brand font. |
 | **3.53.0** | Get Reminders becomes Follow this series, recorded against the series term in its own table, confirmed by email before it is active. **Part 1 of 2.** |
 | **3.52.0** | The staff request form can send FAQs: a saved set, its own questions, or both. The set is COPIED, so editing it later does not change events already submitted. The community form deliberately gets no set picker. |
 | **3.51.0** | Get a form link is a primary button. FAQ answers on the community form are rich text, with the plumbing two public pages needed for a deferred editor to start at all. |
-| **3.50.0** | Filter bar split into three switches: category, organizer, series. The organizer filter runs a query for the first time. The series row no longer waits for a category. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.53.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.54.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -61,6 +62,19 @@ button rather than a hook on occurrence creation, is in `PROJECT.md` §8.
 **Somebody can follow a series today and will never hear anything until part 2
 ships.** That is the expected state, not a fault. The confirmation email is real
 and the unsubscribe link in it works.
+
+**3.54.0 finished the wording and the page**, and touched none of the storage,
+the flow or the token lifetimes. The copy reads as an invitation rather than a
+settings description, and the page the confirm link opens is styled like a
+public event page instead of arriving with no stylesheet at all.
+
+> **THE CANCEL LINK'S PAGE HAS THE IDENTICAL FAULT AND WAS LEFT ALONE.**
+> `SFAF_Reminders::cancel_page()` still renders through `wp_die()`, so a
+> registrant who clicks "release your place" lands on the same unstyled page the
+> follow links used to open, complete with Weglot's language switcher. It was
+> out of scope here because it is the registration path, which this release was
+> told not to touch. It is a small change now that `SFAF_Follow::page()` shows
+> the shape.
 
 **Events cancelled by a save.** The bug is fixed; the damage is not. Nothing was
 deleted, so each affected event reinstates from its cancel card. Find them two
@@ -108,7 +122,7 @@ Four smaller things waiting on somebody here:
 database, no browser and no mail in the build environment, so every one of these
 is a claim about code that has never run.
 
-**The one this release added:**
+**The ones these two releases added:**
 
 0. **Follow a series, end to end.** Open an event that **belongs to a series**
    and press **Follow this series**. Enter your address and submit. **Confirm
@@ -118,10 +132,30 @@ is a claim about code that has never run.
    asks before it acts.
 
    **Then open a one-off event and confirm there is no button at all.** That is
-   the gate this release added, and it is the half nothing here can see.
+   the gate 3.53.0 added, and it is the half nothing here can see.
 
    **Nothing will arrive after that**, because the announcement is part 2. The
    confirmation email is the only thing following sends today.
+
+0b. **The page that link opens is styled, and has no language control.** This is
+   3.54.0's, and it is the same click as above, so do both at once. The page
+   must look like a public event page: brand fonts, the card on the grey ground,
+   one yellow button. **It must not show an "English" checkbox or an "Español"
+   link.** That control is Weglot's, not ours, and it is suppressed on this page
+   only. Check any other page on resources.sfaf.org still has its switcher.
+
+   If the page arrives unstyled, it is not a cascade problem: something has put
+   it back through `wp_die()`, which prints no `wp_head`.
+
+0c. **The FAQ editor rows.** On **FAQ Sets** in caladmin, and on the FAQ card in
+   the event editor. The **question sits above the answer** and is full width.
+   The answer box is **about a paragraph tall** and can be **dragged taller from
+   the grip at its bottom right**. The text inside it is **Merriweather**, the
+   serif, not the browser default. Add three or four rows and check they are
+   still readable as separate rows.
+
+   Check the same on the **staff request form** and the **community submission
+   form**, which draw the same repeater, and in **wp-admin** on a series.
 
 **The two that block other things:**
 
@@ -216,21 +250,12 @@ existing embed, which is why it has not simply been done.
 
 ## Before touching anything
 
-- **Approving a submission sends registrant data outside SFAF, ticked by
-  default.** The second tick puts the submitter's address on the event's
-  notification list, so they get the **registration alert** naming whoever just
-  registered AND the **morning-of summary listing every registrant by name and
-  email address**. Deliberate, and right for the person running the event.
-  **Read the name on the prompt before pressing Approve.** Reasoning in
-  `PROJECT.md` §1.
-- **Nothing in caladmin warns about unsaved work.** No `beforeunload` handler
-  anywhere: close a tab or follow a link mid-edit and everything typed is gone,
-  silently, on every screen.
-- **A cancelled event is still `publish` with a date**, and teams are an access
-  model. Anything querying events must ask `SFAF_Cancellation` too. `PROJECT.md`
-  §4 and §5 before touching a query or a route that reads one.
-- **`PROJECT.md` §7 is the lessons that cost time**, with their mechanisms.
-  Worth reading once before a first change rather than after.
+**Read `PROJECT.md` §7.** It opens with the four standing hazards that used to
+be listed here (what Approve sends and to whom, no unsaved-work warning anywhere
+in caladmin, a cancelled event still being `publish`, and why the confirm and
+unsubscribe pages can have no stylesheet enqueued onto them), and continues with
+the lessons that each cost more than one build. They moved in 3.54.0 because
+none of them is about today.
 
 ---
 
