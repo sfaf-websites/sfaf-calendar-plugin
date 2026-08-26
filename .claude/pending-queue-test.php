@@ -162,6 +162,11 @@ function sfaf_prime_rsvp_counts( $ids ) {}
 function sfaf_get_rsvp_count( $id ) { return 0; }
 function sfaf_event_categories( $id ) { return array(); }
 function sfaf_ap_date( $d, $f = 'full' ) { return (string) $d; }
+/* The real SFAF_Cron::local_time() formats through this and nothing else, so
+   the stub does too. Formatting a date inline here instead put a human format
+   outside the one formatter, which is exactly what date-callsite-sweep exists
+   to forbid; it caught it, and 3.57.0 misread the catch. */
+function sfaf_ap_datetime( $ts ) { return 'a stamped time'; }
 function sfaf_ap_time_range( $a, $b ) { return $a . ' to ' . $b; }
 function sfaf_icon( $n, $a = array() ) { return ''; }
 function sfaf_event_image_url( $id, $s = 'large' ) { return ''; }
@@ -339,7 +344,7 @@ class SFAF_Cron {
     public static $fetch = null;
     public static function task_last( $key ) { return ( 'fetch' === $key ) ? self::$fetch : null; }
     public static function ago( $ts ) { return $ts ? ( round( ( time() - $ts ) / 60 ) . ' mins ago' ) : 'never'; }
-    public static function local_time( $ts ) { return $ts ? gmdate( 'M j, Y g:i a', $ts ) : 'never'; }
+    public static function local_time( $ts ) { return $ts ? sfaf_ap_datetime( $ts ) : 'never'; }
 }
 /* The editor is enqueued by the screen, not exercised by it. */
 class SFAF_Rich_Text {

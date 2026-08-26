@@ -13,7 +13,20 @@ run() { # label, command...
     pass=$((pass+1))
   else
     printf 'FAIL  %-32s rc=%s\n' "$label" "$rc"
-    printf '%s\n' "$out" | tail -15 | sed 's/^/        /'
+    # HEAD AND TAIL, BECAUSE NEITHER ALONE IS THE FAILURE. This showed only the
+    # tail, and the checks here disagree about where they put the bad news: the
+    # test harnesses print their problems last, date-callsite-sweep prints its
+    # count FIRST and then two long benign listings. So a tail of that sweep is
+    # a page of things that are fine, which is how 3.57.0 came to report its own
+    # regression as a pre-existing failure in files it had never touched.
+    lines=$( printf '%s\n' "$out" | wc -l )
+    if [ "$lines" -le 26 ]; then
+      printf '%s\n' "$out" | sed 's/^/        /'
+    else
+      printf '%s\n' "$out" | head -10 | sed 's/^/        /'
+      printf '        ... %s more lines ...\n' "$(( lines - 24 ))"
+      printf '%s\n' "$out" | tail -14 | sed 's/^/        /'
+    fi
     fails=$((fails+1))
   fi
 }

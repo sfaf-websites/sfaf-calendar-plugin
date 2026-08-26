@@ -616,6 +616,8 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             // that something was. See image().
             'image_field'     => $image['field'],
             'meta'            => $meta,
+            // Whether this campaign is an event at all. See not_an_event().
+            'not_an_event'    => $this->not_an_event( $item ),
         );
 
         if ( null !== $faqs ) {
@@ -770,6 +772,79 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
     /* ---------------------------------------------------------------------
      * Mapping helpers
      * ------------------------------------------------------------------- */
+
+    /**
+     * Campaign types that are events. Everything else is a way of collecting
+     * money and does not belong on an events calendar.
+     *
+     * FROM THE PLATFORM'S OWN ENUM, not from a guess. `type` is documented in
+     * apiv2-public-gfmp.json on the Campaign schema and describes exactly what
+     * each value is for:
+     *
+     *   ticketed        Ticketed Event campaign            <- an event
+     *   registration    Registration                       <- an event
+     *   reg_w_fund      Registration with Fundraising      <- an event
+     *   fund_for_entry  Fundraise for entry                <- an event
+     *   donation        Classic standard donation page (retired)
+     *   crowdfunding    Classic Crowdfunding (retired)
+     *   peer_to_peer    Classic Peer-to-Peer
+     *   dynamic         Campaign Studio donation page / embedded form
+     *   gfm_npo         GoFundMe Nonprofit Page transactions
+     *   gfm_p2p         GoFundMe Peer-to-Peer
+     */
+    const EVENT_TYPES = array( 'ticketed', 'registration', 'reg_w_fund', 'fund_for_entry' );
+
+    /**
+     * Why this campaign is not an event, or '' when it is one.
+     *
+     * WHY A DATE TEST ALONE WAS NOT ENOUGH. The queue filled with rows like
+     * "SFAF Website Donations, Feb 23 2026 11:29 pm", which read as an event at
+     * a strange hour and are nothing of the kind. The adapter maps `started_at`
+     * into the event date, and on the Campaign schema that field is "Date/time
+     * the campaign begins" — the fundraising window, not an occasion. On a
+     * ticketed event the window IS the event, which is why the mapping is
+     * right and stays; on a donation page the window opens the moment somebody
+     * creates the campaign, which is why those timestamps look like creation
+     * stamps. They very nearly are.
+     *
+     * So a past-date rule would have cleared the four rows that prompted this
+     * and none of the ones arriving next week: a donation page made on Monday
+     * carries Monday, which is not past, and it is still not an event. The
+     * thing that tells them apart is `type`, and nothing here had ever read it.
+     *
+     * `is_general` IS ASKED AS WELL because it is the platform's own word for
+     * a campaign that is not about any particular occasion, and a general
+     * fundraiser given an event-shaped type would otherwise walk straight
+     * through. Two questions, because the platform offers two answers.
+     *
+     * AN UNKNOWN TYPE IS IMPORTED. A value not in the enum is more likely a
+     * type added since this was written than a donation page in disguise, and
+     * the failure to prefer is the one a person can see and undo: a stray row
+     * in a queue is a click to dismiss, while an event silently refused is
+     * invisible until somebody asks why it never arrived. A blank type is the
+     * same case and is treated the same way.
+     *
+     * @param array $item One campaign row.
+     * @return string Reason, or ''.
+     */
+    private function not_an_event( $item ) {
+        if ( ! empty( $item['is_general'] ) ) {
+            return 'it is a general fundraiser at GoFundMe Pro, not an event';
+        }
+
+        $type = isset( $item['type'] ) && is_string( $item['type'] ) ? strtolower( trim( $item['type'] ) ) : '';
+        if ( '' === $type ) {
+            return '';
+        }
+
+        if ( in_array( $type, self::EVENT_TYPES, true ) ) {
+            return '';
+        }
+
+        // Named, because "not an event" on its own leaves somebody wondering
+        // which campaign the calendar disagreed with them about.
+        return sprintf( 'it is a %s campaign at GoFundMe Pro, not an event', $type );
+    }
 
     /**
      * Split an ISO-8601 campaign timestamp into date and time.

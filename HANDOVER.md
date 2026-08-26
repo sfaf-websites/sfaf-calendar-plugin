@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-08-26, at 3.57.0.
+**Last updated:** 2026-08-26, at 3.58.0.
 
 ---
 
 ## What shipped last
 
-**3.57.0**, built as `sfaf-calendar-3.57.0.zip` in the project root, committed
+**3.58.0**, built as `sfaf-calendar-3.58.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.58.0** | Only events are imported: GoFundMe Pro donation pages are refused by campaign type, and anything dateless or already past is refused everywhere. Expired rows leave the Pending and Dismissed queues on their own. Published events untouched. |
 | **3.57.0** | The Pending screen says what the automatic fetch just did, per source, names a source that failed, and says when nothing has worked for an hour. Read from the run log the Automation screen already keeps. |
 | **3.56.0** | A fifth email: somebody cancelled. The cancel page names which date. FAQ rows read as rows and removing one asks first, from one renderer where there were nine. |
 | **3.55.0** | Weglot off every calendar surface and only those. The cancel page gets a stylesheet, sharing one renderer with the follow pages. "Release your place" becomes "cancel your registration". |
-| **3.54.0** | Follow copy reads as an invitation. The confirm page is styled and loses Weglot's language switcher. FAQ rows put the question above the answer, in a taller resizable box in the brand font. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.57.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.58.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -109,6 +109,14 @@ wording is about is real and unchanged: a fetch can unpublish a live event when
 its source stops returning it, and now it can do so unattended, four times an
 hour.
 
+**WHAT 3.58.0 REFUSES HAS NEVER BEEN SEEN AGAINST THE REAL CAMPAIGN LIST.** The
+rules and the safeguard are proved in the suite, but which campaigns GoFundMe
+Pro actually returns for this organization is not knowable here. Press **Fetch
+updates** once: the report names every refusal and its reason, and a real event
+refused as "past" would mean `started_at` on a ticketed campaign is the
+ticket-sales opening rather than the event, which is the one thing the
+platform's spec does not settle. `TESTING.md` 2.13.
+
 Four smaller things waiting on somebody here:
 
 - **The GFMP campaign image is deliberately unmapped**, so campaigns show the
@@ -124,8 +132,8 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 26 items.** Quick 11, needs
-real conditions 12, blocked on other people 3. Nothing in the build can settle
+**`TESTING.md` holds the manual testing backlog, 27 items.** Quick 11, needs
+real conditions 13, blocked on other people 3. Nothing in the build can settle
 any of them.
 
 ## Open decisions

@@ -1541,12 +1541,74 @@ future, private, trash, uc_imported, uc_dismissed`. Do not "simplify" that to
 entire queue and re-import everything on every run. Trash is in the list
 deliberately, so a trashed import does not come back either.
 
-**Dateless imports, and the trap in those.** Many GFMP campaigns have no date at
-all; a general fundraiser has no start or end. They are imported anyway with an
-empty date and the manager sets it at approval. So `queue_ids()` **must not
-order by the `_uc_event_date` meta**: setting `meta_key` in `WP_Query` implies
-that meta must exist, which silently hides every dateless import. It sorts in
-PHP instead, dateless last.
+**What is allowed to become an event, since 3.58.0.** Two rules, applied at the
+one moment a row would be created, in `SFAF_Sources::import_refusal()`.
+
+**One: the adapter's own verdict, which outranks any date.** GoFundMe Pro
+returns far more than events, and its `type` field says which is which:
+`ticketed`, `registration`, `reg_w_fund` and `fund_for_entry` are events;
+`donation`, `crowdfunding`, `peer_to_peer`, `dynamic`, `gfm_npo` and `gfm_p2p`
+are ways of collecting money. `is_general` is asked as well, because that is the
+platform's own word for a campaign about no particular occasion. **A type not in
+that list is imported**, on the reasoning that a stray row is one click to
+dismiss while an event silently refused is invisible until somebody asks why it
+never arrived.
+
+**Two: no event date, or a date that has gone, means no import.** Today is not
+past, and a multi-day event is judged by its end date so a conference is not
+refused in the middle of itself. `date_has_passed()` is the single definition
+and the queue sweep below reads the same one.
+
+**WHY THE TYPE TEST EXISTS AND A DATE TEST WAS NOT ENOUGH.** The adapter maps
+GFMP's `started_at` into `_uc_event_date`. On the Campaign schema that field is
+"Date/time the campaign begins" — the fundraising window, not an occasion. On a
+ticketed campaign the window *is* the event, which is why the mapping is correct
+and stays. On a donation page the window opens when somebody creates the
+campaign, which is why the queue filled with rows like "SFAF Website Donations,
+Feb 23 2026 11:29 pm": not a creation timestamp, but very nearly one. A past-date
+rule alone would have cleared those and none of next week's.
+
+**WHERE THE RULE LIVES IS THE SAFETY OF IT.** It runs in the branch of
+`run_adapter()` that has established there is no existing event, *after* the
+item's id has gone into `$seen_ids`. Refusing in `normalize()` instead would drop
+the id out of that set, and `handle_removals()` reads an id missing from it as
+deleted at the source — so every refusal would have unpublished the live event
+that came from that campaign. Nothing already imported is re-judged either: a
+published, queued or dismissed event is a decision somebody made.
+`.claude/import-gate-test.php` asserts both, and the published-event case was
+found by planting the mistake and watching a live event become a draft.
+
+**Dateless imports, and the trap in those.** New dateless campaigns are refused
+by the rule above, but rows imported before 3.58.0 still have empty dates and a
+manager still sets the date at approval. So `queue_ids()` **must not order by the
+`_uc_event_date` meta**: setting `meta_key` in `WP_Query` implies that meta must
+exist, which silently hides every dateless import. It sorts in PHP instead,
+dateless last. The queue sweep leaves dateless rows alone for the same reason —
+a row with no date has no date to have passed, and filling it in is the job.
+
+**The queues clear themselves, since 3.58.0.** The last piece of the original
+import design, agreed 2026-07-29. `SFAF_Sources::sweep_queues()` runs on the
+15-minute runner as a task of its own — not inside the fetch, because a row
+expires when a day passes rather than when a source says anything, and automated
+fetching is not always on.
+
+An expired **pending** row is moved to **dismissed**. Not deleted, which would
+let the very next fetch import it again, and not trashed, which would work for
+thirty days until WordPress emptied the trash and the fetch imported it again.
+`uc_dismissed` is in `all_statuses()`, which is what `find_existing()` searches,
+so a swept row is matched on the next pass and takes the not-updatable branch.
+`queue_ids()` additionally **hides** spent rows from both lists, which is the
+half a status move cannot do: it is what makes an already-dismissed expired row
+disappear from the Dismissed list, and what makes a row that expired an hour ago
+gone the moment somebody looks rather than whenever the runner next fires.
+`queue_count()` counts the list rather than the database, or the badge and the
+list disagree.
+
+**THE BOUNDARY: THE SWEEP REACHES THE QUEUES AND NOTHING ELSE.** Its query names
+the two queue statuses. A **published** event that expires simply becomes a past
+event and stays exactly where it is; a published event removed at the source is
+unpublished and kept as a record, which is `handle_removals()`'s job and is
+unchanged.
 
 **Publish is deliberately not one-click.** The platform owns title, description,
 times, location and image; category, organizer and series are local decisions
@@ -2123,7 +2185,8 @@ any read of `uc_rsvps`, because those are the invariants the release exists for.
 
 There is **one** runner, `SFAF_Cron`, on a **15-minute** recurrence, for every
 unattended job. `SFAF_Cron::tasks()` is the single list of them: the reminder
-pass, the pre-event summary and the third-party fetch. `run()` iterates it and
+pass, the pre-event summary, the third-party fetch, the queue sweep and the
+orphan check. `run()` iterates it and
 the Automation screen iterates it, so a job cannot be run without appearing on
 the screen and cannot appear without being run. Anything added later joins that
 list rather than scheduling its own event, so there is one lock and one log.
@@ -2743,23 +2806,6 @@ occurrence in the middle of somebody's editing. The unit people care about is
 
 **Dismiss exists because of that same editing session.** A date created and then
 removed, or created only to correct a typo, must be closable without mail.
-
-### Self-clearing import queues, agreed 2026-07-29
-
-The last unbuilt piece of the original import design. Everything else from that
-conversation shipped: the pending and dismissed sub-sections, publish, dismiss,
-restore, dismissed-stays-dismissed even when the source updates it,
-update-on-refetch, and unpublish-on-removal.
-
-**What was agreed and is still missing:** an event that has expired (its date has
-passed) or has been unpublished at the source should **disappear from the Pending
-and Dismissed queues by itself**. Those are decision queues, so once there is no
-decision left to make, the row is clutter. No manual cleanup.
-
-**The distinction that must survive into the build:** this applies to the queues
-only. A *published* event that expires simply becomes a past event and stays;
-a published event removed at the source is unpublished and kept as a record,
-which is already built. Do not let the queue rule reach published events.
 
 ### EveryAction event import, agreed 2026-08-17
 

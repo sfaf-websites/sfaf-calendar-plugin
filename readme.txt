@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.57.0
+Stable tag: 3.58.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.58.0 =
+
+**Only events are imported, and the queues clear themselves.**
+
+**THE PENDING QUEUE HAD FILLED WITH THINGS THAT ARE NOT EVENTS** — "SFAF Website Donations", "Migrated Recurring Donations" — each carrying a date at an odd hour that looked like a timestamp because very nearly is one. The adapter maps GoFundMe Pro's `started_at` into the event date. On a ticketed event that field is the event; on a donation page it is when fundraising opened, which is the moment somebody created the campaign.
+
+**So the fix is not a date test.** A date test would have cleared those four rows and none of the ones arriving next week: a donation page made on Monday carries Monday, which is not past, and it is still not an event. GoFundMe Pro says which is which in its `type` field, and nothing here had ever read it. **Ticketed, registration, registration-with-fundraising and fundraise-for-entry campaigns are events; donation pages, crowdfunding, peer-to-peer and the GoFundMe Nonprofit Page feeds are not**, and neither is anything the platform flags as a general fundraiser. A type this build has not heard of is imported rather than refused, because a stray row is one click to dismiss and an event silently refused is invisible.
+
+**On top of that, and for every source: no event date means no import, and a date that has already passed means no import.** Today does not count as past, and a conference running Thursday to Sunday is not past on Friday. Eventbrite already refused dateless events and already asks its API for upcoming ones only.
+
+**Refusals are counted and named in the fetch report**, with the campaign and the reason, because an event that never arrived is otherwise indistinguishable from one that was never offered.
+
+**NOTHING ALREADY IMPORTED IS RE-JUDGED.** The rule is applied at the one moment a row would be created. An event already published, queued or dismissed is a decision somebody made and is left alone.
+
+**Expired rows now leave the Pending and Dismissed queues on their own**, which is the last unbuilt piece of the original import design, agreed 2026-07-29. A queue is a list of decisions; once there is no decision left, the row is clutter hiding the rows that do need somebody. An expired pending row becomes **dismissed** — not deleted and not trashed, so the next fetch recognises it and cannot import it again — and expired rows are hidden from both lists. Queue badges now count what the list actually shows.
+
+**A PUBLISHED EVENT THAT EXPIRES IS UNTOUCHED.** It simply becomes a past event and stays exactly where it is. The sweep names the two queue statuses and can reach nothing else. A dateless queue row also stays, because filling that date in is the job.
+
+**The removal safeguard is unchanged**, and keeping it that way decided where the new rule lives. A refused campaign is still counted as present at the source, so a refusal can never be mistaken for a deletion — which would have unpublished live events. `.claude/import-gate-test.php` asserts exactly that, and the case was found by planting the mistake.
 
 = 3.57.0 =
 

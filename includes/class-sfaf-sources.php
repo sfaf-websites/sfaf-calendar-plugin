@@ -1297,6 +1297,7 @@ class SFAF_Sources {
             'untouched'    => 0,
             'invalid'      => 0,
             'failed'       => 0,
+            'refused'      => 0,
             'unpublished'  => 0,
             'ended'        => 0,
             'vanished'     => 0,
@@ -1325,6 +1326,13 @@ class SFAF_Sources {
             'untouched'     => 0,
             'invalid'       => 0,
             'failed'        => 0,
+            /*
+             * NOT AN EVENT, AND NOT A FAULT. Counted apart from 'invalid',
+             * which means the source sent something this code could not read.
+             * A refused item was read perfectly well and is simply not an
+             * event: a general fundraiser, or something whose date has gone.
+             */
+            'refused'       => 0,
             'unpublished'   => 0,
             'ended'         => 0,
             'vanished'      => 0,
@@ -1453,6 +1461,24 @@ class SFAF_Sources {
                         'fields' => array_keys( $update['changed'] ),
                     );
                 }
+                continue;
+            }
+
+            /*
+             * NOTHING EXISTS FOR THIS ITEM YET, so this is the one moment a
+             * row would be created and the only place the rule is applied.
+             * Everything above this line has already happened: the id is in
+             * $seen_ids, so the campaign still counts as present at the source
+             * and nothing already imported is disturbed. See import_refusal().
+             */
+            $refusal = self::import_refusal( $event );
+            if ( '' !== $refusal ) {
+                $result['refused']++;
+                $result['notes'][] = sprintf(
+                    'Not imported: "%s", because %s.',
+                    isset( $event['title'] ) && '' !== $event['title'] ? $event['title'] : $event['external_id'],
+                    $refusal
+                );
                 continue;
             }
 
@@ -1657,6 +1683,19 @@ class SFAF_Sources {
         if ( $result['invalid'] ) {
             $moved[] = sprintf( '%d could not be read', (int) $result['invalid'] );
         }
+        /*
+         * SAID OUT LOUD, because a refusal is invisible otherwise: no row
+         * appears and the count of new events simply stays where it was. On a
+         * source where most campaigns are not events that is most of the run,
+         * and somebody watching for an event that never arrived needs the
+         * number here before they go looking in the notes for the reason.
+         *
+         * Not folded in with "could not be read". Nothing went wrong with
+         * these; they were read correctly and are not events.
+         */
+        if ( isset( $result['refused'] ) && $result['refused'] ) {
+            $moved[] = sprintf( '%d not an event or already past', (int) $result['refused'] );
+        }
 
         $checked = sprintf( '%d checked.', (int) $result['fetched'] );
 
@@ -1760,6 +1799,28 @@ class SFAF_Sources {
 
         $ids = wp_list_pluck( $query->posts, 'ID' );
 
+        /*
+         * SPENT ROWS ARE NOT SHOWN, in either queue.
+         *
+         * The sweep moves an expired PENDING row to dismissed, but it runs on
+         * the scheduled runner and this screen may be opened between two runs.
+         * Filtering here as well means a row that expired an hour ago is gone
+         * the moment somebody looks, rather than gone whenever the runner next
+         * fires, and it is what makes an already-dismissed expired row vanish
+         * from the Dismissed list, which no status move could do.
+         *
+         * BOTH ARMS ARE NEEDED and they are not redundant. This one decides
+         * what is SHOWN; the sweep decides what is STORED, which is what stops
+         * the next fetch treating the row as new. Either alone leaves one of
+         * the two problems standing.
+         *
+         * The meta cache is primed by the query above, so this costs no
+         * queries. Queue statuses only, so it cannot reach a published event.
+         */
+        $ids = array_values( array_filter( $ids, function ( $id ) {
+            return ! self::queue_row_is_spent( $id );
+        } ) );
+
         // Soonest first, with the dateless ones last rather than missing. The
         // meta cache is primed by the query above, so this costs no queries.
         usort( $ids, function ( $a, $b ) {
@@ -1780,18 +1841,242 @@ class SFAF_Sources {
         return $ids;
     }
 
-    /** How many events sit in a queue status. */
-    public static function queue_count( $status ) {
+    /* ---------------------------------------------------------------------
+     * What belongs on an events calendar
+     *
+     * MARK'S RULE, IN ONE PLACE: the only date that matters is when the event
+     * takes place. Something with no event date is not an event, and something
+     * whose date has gone is not a decision anybody still has to make.
+     *
+     * There is ONE definition of "past" here and both users of it read this,
+     * so the import gate and the queue sweep cannot come to disagree about
+     * which day an event stops counting.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * The last day an event is on.
+     *
+     * THE END DATE WHEN THERE IS ONE. A conference running Thursday to Sunday
+     * is not over on Friday, and judging a multi-day event by its start would
+     * refuse it, or sweep it out of the queue, in the middle of itself.
+     *
+     * @param string $date     Y-m-d start.
+     * @param string $end_date Y-m-d end, or ''.
+     * @return string Y-m-d, or '' when there is no date at all.
+     */
+    public static function last_day( $date, $end_date = '' ) {
+        $date     = trim( (string) $date );
+        $end_date = trim( (string) $end_date );
+
+        if ( '' === $date ) {
+            return '';
+        }
+        // A nonsense end date earlier than the start is ignored rather than
+        // trusted; the start is the one the calendar actually shows.
+        return ( '' !== $end_date && $end_date >= $date ) ? $end_date : $date;
+    }
+
+    /** Today, in the site's timezone. Never the server's. */
+    public static function today() {
+        $now = new DateTime( 'now', wp_timezone() );
+        return $now->format( 'Y-m-d' );
+    }
+
+    /**
+     * Has this event's date gone by?
+     *
+     * TODAY IS NOT PAST. An event happening this afternoon is still an event,
+     * and a queue row for it is still a decision. Only strictly earlier dates
+     * count, which is why this compares Y-m-d strings rather than timestamps:
+     * there is no time of day at which today becomes yesterday.
+     *
+     * A dateless event is NOT past. It has no date to have gone by, and the
+     * two cases are refused for different reasons and say different things.
+     *
+     * @param string $date
+     * @param string $end_date
+     * @return bool
+     */
+    public static function date_has_passed( $date, $end_date = '' ) {
+        $last = self::last_day( $date, $end_date );
+        if ( '' === $last ) {
+            return false;
+        }
+        return $last < self::today();
+    }
+
+    /**
+     * Why this item must not become a new event, or '' when it may.
+     *
+     * APPLIED ONLY WHERE A ROW WOULD BE CREATED, and that placement is the
+     * whole safety of it. Called from the branch in run_adapter() that has
+     * already established there is no existing event, so:
+     *
+     *   - NOTHING ALREADY IMPORTED IS RE-JUDGED. An event that is published,
+     *     or sitting in a queue, or dismissed, is a decision somebody already
+     *     made and is not revisited because a rule arrived later.
+     *   - THE REMOVAL SAFEGUARD IS UNTOUCHED. The item's id is added to
+     *     $seen_ids before this is asked, so a campaign refused here is still
+     *     "present at the source" as far as handle_removals() is concerned.
+     *     Refusing in normalize() instead would drop the id out of that set
+     *     and make a live campaign look deleted, which would unpublish the
+     *     very published events this must not reach.
+     *
+     * THE ADAPTER'S OWN VERDICT COMES FIRST because it is the more specific
+     * fact. A GoFundMe Pro donation page is not an event whatever date it
+     * carries, and saying "its date has passed" about one would be true and
+     * beside the point.
+     *
+     * @param array $event Normalized event.
+     * @return string Reason, or '' to import.
+     */
+    public static function import_refusal( $event ) {
+        if ( ! is_array( $event ) ) {
+            return 'it could not be read';
+        }
+
+        // Set by an adapter that can tell an event from something else its
+        // platform also calls a campaign. Absent means the adapter has no
+        // opinion, which is the right default for a source that only ever
+        // returns events.
+        if ( ! empty( $event['not_an_event'] ) ) {
+            return (string) $event['not_an_event'];
+        }
+
+        $date = isset( $event['start_date'] ) ? (string) $event['start_date'] : '';
+        $end  = isset( $event['end_date'] ) ? (string) $event['end_date'] : '';
+
+        if ( '' === trim( $date ) ) {
+            return 'it has no event date';
+        }
+
+        if ( self::date_has_passed( $date, $end ) ) {
+            return sprintf( 'its date (%s) has already passed', self::last_day( $date, $end ) );
+        }
+
+        return '';
+    }
+
+    /**
+     * Is this queue row finished with?
+     *
+     * QUEUES ONLY. Every caller is a queue query, and the two queue statuses
+     * are the only ones any of them ask for, so this cannot reach a published
+     * event by any route. That boundary is the one thing about the 2026-07-29
+     * agreement that must survive: a PUBLISHED event that expires is simply a
+     * past event and stays exactly where it is.
+     *
+     * @param int $post_id
+     * @return bool
+     */
+    public static function queue_row_is_spent( $post_id ) {
+        $post_id = (int) $post_id;
+
+        // Gone from the source. Defensive rather than load-bearing: a PENDING
+        // row that vanishes is already made a draft by handle_removals(), so
+        // it has left the queue by another door. A dismissed row is never
+        // marked, because removal does not look at dismissed events and this
+        // build does not change what it looks at.
+        if ( get_post_meta( $post_id, self::META_REMOVED_AT, true ) ) {
+            return true;
+        }
+
+        return self::date_has_passed(
+            (string) get_post_meta( $post_id, '_uc_event_date', true ),
+            (string) get_post_meta( $post_id, '_uc_end_date', true )
+        );
+    }
+
+    /**
+     * Clear spent rows out of the decision queues.
+     *
+     * THE LAST PIECE OF THE ORIGINAL IMPORT DESIGN, agreed 2026-07-29 and
+     * recorded in PROJECT.md §8. Pending and Dismissed are queues of decisions.
+     * An event whose date has gone is not a decision anybody still has to make,
+     * so leaving it there is clutter that hides the rows that do need somebody.
+     *
+     * WHAT "DISAPPEARS" MEANS IN STORAGE: a spent PENDING row is moved to
+     * dismissed. Nothing is deleted and nothing is trashed.
+     *
+     *   - IT CANNOT COME BACK. `uc_dismissed` is in all_statuses(), which is
+     *     what find_existing() searches, so the next fetch matches this row
+     *     and takes the "not updatable" branch instead of creating a new one.
+     *     Deleting it would have let the very next fetch import it again, and
+     *     trashing it would have worked for thirty days and then let WordPress
+     *     empty the trash and the fetch re-import it.
+     *   - IT IS STILL THERE. Dismissed is an existing, visible, reversible
+     *     state with a Restore button already on it.
+     *
+     * A row that is ALREADY dismissed is left exactly as it is: it is in the
+     * right status, and queue_ids() stops showing it. There is nowhere better
+     * for it to go and moving it would only churn post_modified.
+     *
+     * PUBLISHED EVENTS ARE NOT REACHABLE FROM HERE. The query names the two
+     * queue statuses and nothing else, so a published event that expires stays
+     * published and simply becomes a past event, which is the distinction the
+     * agreement is most explicit about.
+     *
+     * @return array{status:string,summary:string,counts:array}
+     */
+    public static function sweep_queues() {
         $query = new WP_Query( array(
             'post_type'              => 'uc_event',
-            'post_status'            => $status,
-            'posts_per_page'         => 1,
+            // The two decision queues, named. This list is the boundary.
+            'post_status'            => array( self::STATUS_PENDING, self::STATUS_DISMISSED ),
+            'posts_per_page'         => 500,
             'fields'                 => 'ids',
-            'no_found_rows'          => false,
-            'update_post_meta_cache' => false,
+            'no_found_rows'          => true,
+            'ignore_sticky_posts'    => true,
+            'update_post_meta_cache' => true,
             'update_post_term_cache' => false,
         ) );
-        return (int) $query->found_posts;
+
+        $dismissed = 0;
+        $hidden    = 0;
+
+        foreach ( $query->posts as $post_id ) {
+            $post_id = (int) $post_id;
+            if ( ! self::queue_row_is_spent( $post_id ) ) {
+                continue;
+            }
+
+            if ( self::STATUS_DISMISSED === get_post_status( $post_id ) ) {
+                $hidden++;   // already where it belongs
+                continue;
+            }
+
+            wp_update_post( array( 'ID' => $post_id, 'post_status' => self::STATUS_DISMISSED ) );
+            $dismissed++;
+        }
+
+        if ( 0 === $dismissed && 0 === $hidden ) {
+            $summary = 'Queues: nothing to clear.';
+        } else {
+            $summary = sprintf(
+                'Queues: %d moved to dismissed, %d already dismissed and now hidden.',
+                $dismissed,
+                $hidden
+            );
+        }
+
+        return array(
+            'status'  => 'ok',
+            'summary' => $summary,
+            'counts'  => array( 'dismissed' => $dismissed, 'hidden' => $hidden ),
+        );
+    }
+
+    /**
+     * How many events sit in a queue status.
+     *
+     * COUNTED THE SAME WAY THE LIST IS DRAWN. This used to ask the database
+     * for found_posts, which was cheaper and, once queue_ids() started hiding
+     * spent rows, wrong: the badge said four and the list showed two. A count
+     * beside a list must be a count OF that list, or somebody goes looking for
+     * rows that are not there. Same reasoning as the scoped counts elsewhere.
+     */
+    public static function queue_count( $status ) {
+        return count( self::queue_ids( $status ) );
     }
 
     /** True when this post is an imported event sitting in the queue. */

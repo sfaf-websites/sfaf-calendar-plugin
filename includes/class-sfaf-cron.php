@@ -421,6 +421,21 @@ class SFAF_Cron {
                 'on'       => array( __CLASS__, 'auto_fetch_enabled' ),
                 'off'      => 'Automated fetching is switched off. Use "Fetch updates" on the calendar portal\'s Pending screen to run it by hand.',
             ),
+            /*
+             * ON ITS OWN, NOT INSIDE THE FETCH. A row expires because a day
+             * passed, not because a source said anything, so this has to run
+             * whether or not automated fetching is switched on — and it is
+             * switched off on plenty of installs. Hanging it off run_fetch()
+             * would have tied "the queue tidies itself" to a setting that has
+             * nothing to do with it.
+             */
+            'queues'    => array(
+                'label'    => 'Clear spent queue rows',
+                'plain'    => 'Takes events whose date has passed out of the Pending and Dismissed queues. Published events are never touched.',
+                'callback' => array( 'SFAF_Sources', 'sweep_queues' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
             'orphans'   => array(
                 'label'    => 'Events with no organizer',
                 'plain'    => 'Checks once a day for events whose organizer no longer has calendar access, and emails the calendar admins when the list changes.',

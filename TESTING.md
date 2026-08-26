@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 26 items.** Quick 11, needs real conditions 12, blocked on other
+**Outstanding: 27 items.** Quick 11, needs real conditions 13, blocked on other
 people 3.
 
 ---
@@ -193,6 +193,26 @@ well as the new?
 Put somebody in a team on an event they did not create: they must see that
 event's registrations and nothing else. Cancel an event with a registration:
 deleting must be refused before and allowed after.
+
+### 2.13 What the import gate actually refuses, on the real campaign list (3.58.0)
+
+**The one number nobody in the build can produce.** There is no database here,
+so which of the live queue rows the new rules would have excluded can only be
+read off a real run. The four rows that prompted the build — SFAF Website
+Donations, SFAF Giving Status, Migrated Recurring Donations, SFAF Giving Appeal
+June 2026 — all carry past dates and would go on the date rule alone; what has
+never been seen is **which campaign types GoFundMe Pro actually returns for this
+organization**.
+
+Press **Fetch updates** on Pending and read the report. It now names every
+refusal and its reason. Check two things:
+
+- **Nothing that is a real event was refused.** A refusal reading "it is a
+  ticketed campaign" would mean the type list is wrong. A refusal reading "its
+  date has already passed" on an event that has not happened would mean
+  `started_at` on a ticketed campaign is the ticket-sales opening rather than
+  the event, which is the one thing the platform's spec does not settle.
+- **The count is plausible.** Most GFMP campaigns are expected to be refused.
 
 ### 2.12 The fetch box on Pending, against a real scheduled run (3.57.0)
 

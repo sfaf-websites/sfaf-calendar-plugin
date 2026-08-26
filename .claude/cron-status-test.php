@@ -112,6 +112,16 @@ class SFAF_Sources {
     public static function run_all() { return self::$results; }
     public static function adapters() { return self::$results; }
 
+    /* The queue sweep is a task in its own right, so the runner calls it on
+       every pass. Without it here run_task() caught the "undefined method"
+       and recorded the task as failed, which is a passing test reporting a
+       broken job — the same stale-stub trap this file was bitten by once. */
+    public static $swept = 0;
+    public static function sweep_queues() {
+        self::$swept++;
+        return array( 'status' => 'ok', 'summary' => 'Queues: nothing to clear.', 'counts' => array() );
+    }
+
     /* The real summarize()'s three shapes, short. run_fetch() stores whatever
        comes back verbatim, so the exact words do not matter here; which of the
        three branches produced them does. */
@@ -283,6 +293,17 @@ SFAF_Cron::run( 'manual' );
 $report = array_column( SFAF_Cron::task_report(), null, 'key' );
 
 is( 'reminders ran', $report['reminders']['status'], 'ok' );
+
+/*
+ * THE QUEUE SWEEP RUNS, AND RUNS WHATEVER ELSE IS SWITCHED OFF. A row expires
+ * because a day passed, not because a source said anything, so it must not be
+ * conditional on fetching being on — and fetching is off in this case.
+ */
+is( 'the queue sweep ran', $report['queues']['status'], 'ok' );
+is( 'the queue sweep is not gated on anything', $report['queues']['on'], true );
+if ( SFAF_Sources::$swept < 1 ) {
+    $fails[] = 'the queue sweep was reported ok without the callback being reached';
+}
 if ( ! $report['reminders']['last'] ) {
     $fails[] = 'reminders: ran but the table still says it never has';
 }
