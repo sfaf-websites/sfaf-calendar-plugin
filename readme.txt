@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.58.0
+Stable tag: 3.59.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,28 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.59.0 =
+
+**The expired-row sweep was judging the wrong date, so four rows never cleared.**
+
+3.58.0 gave the queues a sweep and it worked: Pending went from 12 rows to 6. Four rows stayed, three in Pending and one in Dismissed, all with start dates months past.
+
+**The sweep preferred the end date whenever a row had one.** On a GoFundMe Pro row that field holds `ended_at`, which the platform documents as "Date/time of when the campaign ends" — the close of the **fundraising window**, not the end of an event. A donation page collecting until December reported a December last day and never cleared, while the screen showed a start date from April.
+
+**This is the same finding as 3.58.0, one field over.** `started_at` was established there as a fundraising-window boundary rather than an event date, and the multi-day rule was then built on `ended_at` without applying that finding to it. The comment above that rule asserted an event meaning the data does not carry, which is the more expensive half: code can be read, but a comment claiming a meaning is believed. The comment is corrected along with the code.
+
+**The end date is now believed only where the item's type says it means an event's end.** The type is stored on the row at import, which nothing did before, and it is refreshed on any later fetch that still returns the campaign — so a row imported before this release learns its type the next time its source mentions it.
+
+**Event-shaped types are `event` (everything Eventbrite returns), and GoFundMe Pro's `ticketed`, `registration`, `reg_w_fund` and `fund_for_entry`.** Anything else, **and any type this release has not heard of**, is judged on its start date. A type the platform adds later will not default into being treated as an event.
+
+**A row whose type is unknown is judged on its start date.** That is every row imported before this release, and every campaign the source has stopped returning — those can never have a type learned, and are judged on their start date permanently. That is correct and is not worked around.
+
+**Eventbrite is unchanged.** It maps a genuine event start and end, it now declares itself as such, and a real multi-day Eventbrite event still waits for its last day.
+
+**A row clears once the event's DAY has passed, not when the day begins.** An event happening today stays in the queue all day whatever time it runs, and goes at the first sweep after midnight — within a quarter of an hour of it, since the runner is on fifteen minutes. **A dateless row stays**, because it has no date to have passed and filling that date in is the job.
+
+**Published events are untouched, as before.** The sweep names the two queue statuses and reaches nothing else. A published event that expires becomes a past event and stays.
 
 = 3.58.0 =
 

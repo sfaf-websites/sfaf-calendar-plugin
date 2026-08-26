@@ -618,6 +618,11 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             'meta'            => $meta,
             // Whether this campaign is an event at all. See not_an_event().
             'not_an_event'    => $this->not_an_event( $item ),
+            // The platform's own word for what this is, stored on the row so
+            // it can be re-judged later without another fetch, and so
+            // SFAF_Sources::last_day() knows whether ended_at means an event's
+            // end or the close of a fundraising window.
+            'source_type'     => $this->campaign_type( $item ),
         );
 
         if ( null !== $faqs ) {
@@ -791,8 +796,19 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
      *   dynamic         Campaign Studio donation page / embedded form
      *   gfm_npo         GoFundMe Nonprofit Page transactions
      *   gfm_p2p         GoFundMe Peer-to-Peer
+     *
+     * THE LIST ITSELF LIVES IN SFAF_Sources, since 3.59.0, because a second
+     * thing now asks it: last_day() has to know whether this campaign's
+     * `ended_at` is an event's end or the close of a fundraising window. One
+     * list, so the two cannot come to disagree about a type.
+     *
+     * @param array $item One campaign row.
+     * @return string The campaign's own type, lowercased, or '' when it did
+     *                not say.
      */
-    const EVENT_TYPES = array( 'ticketed', 'registration', 'reg_w_fund', 'fund_for_entry' );
+    private function campaign_type( $item ) {
+        return isset( $item['type'] ) && is_string( $item['type'] ) ? strtolower( trim( $item['type'] ) ) : '';
+    }
 
     /**
      * Why this campaign is not an event, or '' when it is one.
@@ -832,12 +848,12 @@ class SFAF_Source_GFMP extends SFAF_Source_Adapter {
             return 'it is a general fundraiser at GoFundMe Pro, not an event';
         }
 
-        $type = isset( $item['type'] ) && is_string( $item['type'] ) ? strtolower( trim( $item['type'] ) ) : '';
+        $type = $this->campaign_type( $item );
         if ( '' === $type ) {
             return '';
         }
 
-        if ( in_array( $type, self::EVENT_TYPES, true ) ) {
+        if ( SFAF_Sources::type_is_event_shaped( $type ) ) {
             return '';
         }
 

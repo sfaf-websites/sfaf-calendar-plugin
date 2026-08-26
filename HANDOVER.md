@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-08-26, at 3.58.0.
+**Last updated:** 2026-08-26, at 3.59.0.
 
 ---
 
 ## What shipped last
 
-**3.58.0**, built as `sfaf-calendar-3.58.0.zip` in the project root, committed
+**3.59.0**, built as `sfaf-calendar-3.59.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,14 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.59.0** | The sweep was judging a GoFundMe Pro fundraising window as an event's end, so four rows never cleared. The end date is now believed only where the item's type says it means an event's end, and the type is stored on the row. |
 | **3.58.0** | Only events are imported: GoFundMe Pro donation pages are refused by campaign type, and anything dateless or already past is refused everywhere. Expired rows leave the Pending and Dismissed queues on their own. Published events untouched. |
 | **3.57.0** | The Pending screen says what the automatic fetch just did, per source, names a source that failed, and says when nothing has worked for an hour. Read from the run log the Automation screen already keeps. |
 | **3.56.0** | A fifth email: somebody cancelled. The cancel page names which date. FAQ rows read as rows and removing one asks first, from one renderer where there were nine. |
 | **3.55.0** | Weglot off every calendar surface and only those. The cancel page gets a stylesheet, sharing one renderer with the follow pages. "Release your place" becomes "cancel your registration". |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.58.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.59.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -116,6 +117,20 @@ updates** once: the report names every refusal and its reason, and a real event
 refused as "past" would mean `started_at` on a ticketed campaign is the
 ticket-sales opening rather than the event, which is the one thing the
 platform's spec does not settle. `TESTING.md` 2.13.
+
+**CHECK THE QUEUES AGAINST THIS PREDICTION AFTER 3.59.0 INSTALLS.** The sweep
+runs within 15 minutes. **Pending should lose the three rows** The Agenda Event
+2026, SFAF Giving Appeal – June 2026 Multi-Channel and SFAF Giving Appeal – June
+2026, going from 6 to 3. **Dismissed should stop showing SFAF Board Impact.**
+Anything with a future or missing date stays exactly where it is.
+
+**If a row with a past start date is still there afterwards, the diagnosis was
+wrong** and the cause is something other than the end date — say so rather than
+assuming it needs another pass. The diagnosis was never confirmed against the
+database: the probe cannot run from the build environment and the query was not
+available, so this fix rests on a deduction from the code. It is a safe deduction
+— nothing but a source writes that field, and no other branch of the predicate
+can produce the observed result — but it is a deduction.
 
 Four smaller things waiting on somebody here:
 

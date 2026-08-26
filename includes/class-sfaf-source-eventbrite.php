@@ -252,6 +252,16 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
             'end_time'        => $end['time'],
             'timezone'        => isset( $item['start_timezone'] ) ? (string) $item['start_timezone'] : '',
             'location'        => $this->location( $item ),
+            /*
+             * EVERYTHING EVENTBRITE RETURNS IS AN EVENT, and it is declared
+             * rather than assumed. SFAF_Sources::last_day() believes an end
+             * date only where the type says it can, so without this an
+             * Eventbrite event would be judged on its start alone and a
+             * genuine multi-day event would clear from the queue on its first
+             * day. `end_local` here really is the event's end, unlike the
+             * fundraising windows GoFundMe Pro returns.
+             */
+            'source_type'     => 'event',
             'source_url'      => isset( $item['url'] ) ? (string) $item['url'] : '',
             // The full-resolution original, not the cropped display version.
             // logo.url is Eventbrite's sized crop; logo.original.url is the

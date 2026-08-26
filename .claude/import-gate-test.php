@@ -195,19 +195,46 @@ function reset_world() {
  * ======================================================================== */
 echo "The last day\n";
 
-is_( 'a one-day event ends on its date', SFAF_Sources::last_day( '2026-03-04' ), '2026-03-04' );
-is_( 'a multi-day event ends on its end date', SFAF_Sources::last_day( '2026-03-04', '2026-03-08' ), '2026-03-08' );
-is_( 'an end before the start is ignored', SFAF_Sources::last_day( '2026-03-04', '2026-03-01' ), '2026-03-04' );
+is_( 'a one-day event ends on its date', SFAF_Sources::last_day( '2026-03-04', '', 'ticketed' ), '2026-03-04' );
+is_( 'a multi-day event ends on its end date', SFAF_Sources::last_day( '2026-03-04', '2026-03-08', 'ticketed' ), '2026-03-08' );
+is_( 'an end before the start is ignored', SFAF_Sources::last_day( '2026-03-04', '2026-03-01', 'ticketed' ), '2026-03-04' );
 is_( 'no date has no last day', SFAF_Sources::last_day( '' ), '' );
+
+/*
+ * THE FIX IN 3.59.0, AND THE WHOLE POINT OF THE TYPE.
+ *
+ * `_uc_end_date` is written only by a source, and on a GoFundMe Pro campaign it
+ * holds `ended_at` — the close of the FUNDRAISING WINDOW. A donation page
+ * collecting until December reported a December last day and never cleared,
+ * while the screen showed a start date months past. Four rows sat in the queues
+ * on exactly that. The end date is believed only where the type says it means
+ * an event's end.
+ */
+is_( 'a donation page ignores its fundraising window', SFAF_Sources::last_day( day( -120 ), day( 120 ), 'donation' ), day( -120 ) );
+is_( 'AND AN UNKNOWN TYPE IGNORES IT TOO', SFAF_Sources::last_day( day( -120 ), day( 120 ), '' ), day( -120 ) );
+is_( 'a ticketed event still believes its end date', SFAF_Sources::last_day( day( -2 ), day( 2 ), 'ticketed' ), day( 2 ) );
+is_( 'an Eventbrite event believes its end date', SFAF_Sources::last_day( day( -2 ), day( 2 ), 'event' ), day( 2 ) );
+
+/* An unrecognised type must NOT default into being treated as an event. */
+is_( 'a type the platform adds later is not event-shaped', SFAF_Sources::type_is_event_shaped( 'some_new_thing' ), false );
+is_( 'a blank type is not event-shaped', SFAF_Sources::type_is_event_shaped( '' ), false );
+foreach ( array( 'event', 'ticketed', 'registration', 'reg_w_fund', 'fund_for_entry' ) as $t ) {
+    is_( "$t is event-shaped", SFAF_Sources::type_is_event_shaped( $t ), true );
+}
+foreach ( array( 'donation', 'crowdfunding', 'peer_to_peer', 'dynamic', 'gfm_npo', 'gfm_p2p' ) as $t ) {
+    is_( "$t is not event-shaped", SFAF_Sources::type_is_event_shaped( $t ), false );
+}
 
 is_( 'yesterday has passed', SFAF_Sources::date_has_passed( day( -1 ) ), true );
 is_( 'TODAY HAS NOT PASSED', SFAF_Sources::date_has_passed( day( 0 ) ), false );
 is_( 'tomorrow has not passed', SFAF_Sources::date_has_passed( day( 1 ) ), false );
 // A conference that started Thursday and runs to Sunday is not over on Friday.
-is_( 'a multi-day event running through today has not passed', SFAF_Sources::date_has_passed( day( -2 ), day( 2 ) ), false );
-is_( 'a multi-day event that finished has passed', SFAF_Sources::date_has_passed( day( -5 ), day( -2 ) ), true );
+is_( 'a multi-day event running through today has not passed', SFAF_Sources::date_has_passed( day( -2 ), day( 2 ), 'ticketed' ), false );
+is_( 'a multi-day event that finished has passed', SFAF_Sources::date_has_passed( day( -5 ), day( -2 ), 'ticketed' ), true );
 // Dateless is refused for its own reason and must not be called "past".
 is_( 'a dateless event has not "passed"', SFAF_Sources::date_has_passed( '' ), false );
+// The window does not keep a donation page alive.
+is_( 'a past donation page HAS passed despite an open window', SFAF_Sources::date_has_passed( day( -120 ), day( 120 ), 'donation' ), true );
 
 /* ===========================================================================
  * 2. WHAT MAY BECOME AN EVENT.
@@ -429,6 +456,99 @@ $GLOBALS['posts'][801] = array( 'post_title' => 'Expired, unswept', 'post_status
 $GLOBALS['meta'][801]  = array( '_uc_event_date' => day( -1 ) );
 is_( 'an expired row is hidden before the sweep runs', SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING ), array() );
 is_( 'and it is still stored, not deleted', get_post_status( 801 ), SFAF_Sources::STATUS_PENDING );
+
+/* ===========================================================================
+ * 6. THE FOUR ROWS THAT SURVIVED 3.58.0.
+ *
+ * Rebuilt from what the screen showed on Aug 26 2026: past start dates, and a
+ * fundraising window still open behind them. Every one of these is a row the
+ * previous sweep looked at on every pass and judged not spent.
+ * ======================================================================== */
+echo "The rows 3.58.0 could not clear\n";
+
+reset_world();
+
+/* Pending. Types unknown, because nothing stored a type before 3.59.0. */
+$GLOBALS['posts'][901] = array( 'post_title' => 'The Agenda Event 2026', 'post_status' => SFAF_Sources::STATUS_PENDING, 'post_type' => 'uc_event' );
+$GLOBALS['meta'][901]  = array( '_uc_event_date' => '2026-07-29', '_uc_end_date' => '2026-12-31' );
+
+$GLOBALS['posts'][902] = array( 'post_title' => 'SFAF Giving Appeal - June 2026 Multi-Channel', 'post_status' => SFAF_Sources::STATUS_PENDING, 'post_type' => 'uc_event' );
+$GLOBALS['meta'][902]  = array( '_uc_event_date' => '2026-05-26', '_uc_end_date' => '2026-12-31' );
+
+$GLOBALS['posts'][903] = array( 'post_title' => 'SFAF Giving Appeal - June 2026', 'post_status' => SFAF_Sources::STATUS_PENDING, 'post_type' => 'uc_event' );
+$GLOBALS['meta'][903]  = array( '_uc_event_date' => '2026-04-21', '_uc_end_date' => '2026-12-31' );
+
+/* Dismissed, and visible, which is what proved the predicate was the fault. */
+$GLOBALS['posts'][904] = array( 'post_title' => 'SFAF Board Impact', 'post_status' => SFAF_Sources::STATUS_DISMISSED, 'post_type' => 'uc_event' );
+$GLOBALS['meta'][904]  = array( '_uc_event_date' => '2026-02-20', '_uc_end_date' => '2026-12-31' );
+
+/* The two that must NOT move, alongside them. */
+$GLOBALS['posts'][905] = array( 'post_title' => 'A real conference, running now', 'post_status' => SFAF_Sources::STATUS_PENDING, 'post_type' => 'uc_event' );
+$GLOBALS['meta'][905]  = array( '_uc_event_date' => day( -1 ), '_uc_end_date' => day( 2 ), SFAF_Sources::META_SOURCE_TYPE => 'ticketed' );
+$GLOBALS['posts'][906] = array( 'post_title' => 'A past published campaign', 'post_status' => 'publish', 'post_type' => 'uc_event' );
+$GLOBALS['meta'][906]  = array( '_uc_event_date' => '2026-02-20', '_uc_end_date' => '2026-12-31' );
+
+foreach ( array( 901, 902, 903, 904 ) as $id ) {
+    is_( "row $id is spent", SFAF_Sources::queue_row_is_spent( $id ), true );
+}
+is_( 'the conference in progress is NOT spent', SFAF_Sources::queue_row_is_spent( 905 ), false );
+
+$out = SFAF_Sources::sweep_queues();
+
+is_( 'the three pending rows are dismissed', array(
+    get_post_status( 901 ), get_post_status( 902 ), get_post_status( 903 )
+), array( SFAF_Sources::STATUS_DISMISSED, SFAF_Sources::STATUS_DISMISSED, SFAF_Sources::STATUS_DISMISSED ) );
+is_( 'the dismissed row stays dismissed', get_post_status( 904 ), SFAF_Sources::STATUS_DISMISSED );
+is_( 'the conference stays in Pending', get_post_status( 905 ), SFAF_Sources::STATUS_PENDING );
+is_( 'THE PUBLISHED ROW IS UNTOUCHED', get_post_status( 906 ), 'publish' );
+
+/* And what a person then sees: one row waiting, nothing under Dismissed. */
+is_( 'only the conference is left in Pending', SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING ), array( 905 ) );
+is_( 'the Dismissed card is empty', SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED ), array() );
+
+/* ===========================================================================
+ * 7. THE TYPE IS STORED, AND FILLS IN ON A ROW THAT NEVER HAD ONE.
+ * ======================================================================== */
+echo "The stored type\n";
+
+reset_world();
+Fake_Adapter::$items = array( ev( array( 'external_id' => 'c9', 'source_type' => 'ticketed' ) ) );
+SFAF_Sources::run_adapter( new Fake_Adapter() );
+$new_id = array_key_last( $GLOBALS['posts'] );
+is_( 'a new import records its type', (string) get_post_meta( $new_id, SFAF_Sources::META_SOURCE_TYPE, true ), 'ticketed' );
+
+/*
+ * A ROW FROM BEFORE 3.59.0 LEARNS ITS TYPE on the next fetch that still returns
+ * its campaign. This is what makes a genuine multi-day event stop being judged
+ * on its start date. A campaign the source no longer returns never gets here,
+ * and is judged on its start forever, which is accepted rather than solved.
+ */
+reset_world();
+/*
+ * EVERY OTHER FIELD ALREADY MATCHES WHAT THE FETCH RETURNS. That is the point:
+ * the only thing this run can change is the type, so "was anything reported as
+ * changed?" is a question about the type alone. Left mismatched, the title
+ * moved and the assertion passed or failed on that instead.
+ */
+$GLOBALS['posts'][910] = array( 'post_title' => 'A real event', 'post_status' => SFAF_Sources::STATUS_PENDING, 'post_type' => 'uc_event' );
+$GLOBALS['meta'][910]  = array(
+    SFAF_Sources::META_SOURCE      => 'gofundme_pro',
+    SFAF_Sources::META_EXTERNAL_ID => 'c10',
+    '_uc_event_date'               => day( 5 ),
+    '_uc_start_time'               => '18:00',
+);
+is_( 'it starts with no type', (string) get_post_meta( 910, SFAF_Sources::META_SOURCE_TYPE, true ), '' );
+
+Fake_Adapter::$items = array( ev( array( 'external_id' => 'c10', 'start_date' => day( 5 ), 'source_type' => 'ticketed' ) ) );
+$res = SFAF_Sources::run_adapter( new Fake_Adapter() );
+is_( 'the refresh filled the type in', (string) get_post_meta( 910, SFAF_Sources::META_SOURCE_TYPE, true ), 'ticketed' );
+
+/*
+ * AND IT IS NOT REPORTED AS A CHANGE. The first run after 3.59.0 would
+ * otherwise tell a manager every still-returned event had changed, which is
+ * this build catching up rather than anything the source did.
+ */
+is_( 'filling the type in is not reported as an event change', (int) $res['updated'], 0 );
 
 /* A row removed at source is spent too, whatever its date says. */
 reset_world();

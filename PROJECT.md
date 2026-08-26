@@ -1559,6 +1559,43 @@ past, and a multi-day event is judged by its end date so a conference is not
 refused in the middle of itself. `date_has_passed()` is the single definition
 and the queue sweep below reads the same one.
 
+**WHICH DATE COUNTS, AND WHY THE TYPE DECIDES IT (3.59.0).** `last_day()`
+believes an end date only when the item's type says the end date means an
+event's end. `SFAF_Sources::EVENT_TYPES` is the one list: `event`, which is
+everything Eventbrite returns, and GFMP's `ticketed`, `registration`,
+`reg_w_fund` and `fund_for_entry`. Anything else, **and any unrecognised type**,
+is judged on its start date, so a type the platform adds later cannot default
+into being treated as an event.
+
+3.58.0 had this rule prefer the end date whenever one was present, and four rows
+never cleared as a result. `_uc_end_date` is written only by a source, and on a
+GFMP campaign it holds `ended_at` — the close of the **fundraising window**. A
+donation page collecting until December reported a December last day while the
+screen showed a start date from April. **It was the same finding as the type gate
+above, one field over**: `started_at` had been established as a window boundary
+rather than an event date and the multi-day rule was then built on `ended_at`
+without applying that. The comment above the rule asserted an event meaning the
+data does not carry, which is the half that does the damage, because a comment
+claiming a meaning is believed rather than checked.
+
+**The type is stored on the row** as `_uc_source_type`, at import and refreshed
+on any later fetch that still returns the campaign — quietly, outside the
+changed-fields report, or the first run after 3.59.0 would tell a manager every
+still-returned event had changed. It is provenance: no screen shows it, no form
+writes it, and it has no manager-owned gate for the same reason the source slug
+has none.
+
+**An unknown type judges on the start date**, which covers every row imported
+before 3.59.0 and every campaign the source has stopped returning. Those can
+never have a type learned, and are judged on their start date permanently. That
+is accepted rather than worked around.
+
+**Unknown resolving to the start date here is the opposite of what the import
+gate does with an unknown type, and both are deliberate.** Each errs towards the
+outcome a person can see and undo: a stray row in a queue is one click to
+dismiss, an event silently refused is invisible, and a row cleared a little early
+sits in Dismissed with a Restore button.
+
 **WHY THE TYPE TEST EXISTS AND A DATE TEST WAS NOT ENOUGH.** The adapter maps
 GFMP's `started_at` into `_uc_event_date`. On the Campaign schema that field is
 "Date/time the campaign begins" — the fundraising window, not an occasion. On a

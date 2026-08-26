@@ -206,6 +206,12 @@ class SFAF_Sources {
     /* Part B: refresh and removal bookkeeping. */
     const META_UPDATED_AT  = '_uc_source_updated_at';
     const META_REMOVED_AT  = '_uc_source_removed_at';
+
+    /**
+     * What the source calls this item's kind. Empty on every row imported
+     * before 3.59.0, and that emptiness is load-bearing: see last_day().
+     */
+    const META_SOURCE_TYPE = '_uc_source_type';
     const META_REMOVED_WHY = '_uc_source_removed_reason';
 
     /**
@@ -503,6 +509,17 @@ class SFAF_Sources {
         // click-out / edit-on-source links use.
         update_post_meta( $post_id, self::META_SOURCE, (string) $event['external_source'] );
         update_post_meta( $post_id, self::META_EXTERNAL_ID, (string) $event['external_id'] );
+
+        /*
+         * WHAT THE SOURCE CALLS THIS THING. Stored because nothing stored it
+         * before 3.59.0, which is why no existing row could be re-judged and
+         * why four of them sat in the queues on a fundraising window read as an
+         * event's end. It is provenance, not a field anybody edits: no screen
+         * shows it and no form writes it.
+         */
+        if ( ! empty( $event['source_type'] ) ) {
+            update_post_meta( $post_id, self::META_SOURCE_TYPE, sanitize_key( $event['source_type'] ) );
+        }
         update_post_meta( $post_id, self::META_IMPORTED_AT, time() );
 
         if ( ! empty( $event['source_url'] ) ) {
@@ -951,6 +968,33 @@ class SFAF_Sources {
             }
             update_post_meta( $post_id, $meta_key, sanitize_text_field( $value ) );
             $changed[ $spec['label'] ] = array( 'from' => $current, 'to' => $value );
+        }
+
+        /*
+         * ---- The item's type, refreshed quietly. ----
+         *
+         * NOT IN THE MAP ABOVE, on purpose. That map records every change into
+         * $changed, which is what the fetch report prints as "which events
+         * moved, and what changed on them". The type filling in on an existing
+         * row is not news to a manager — it is this build catching up on
+         * something that was never stored — and the first run after 3.59.0
+         * would otherwise report every still-returned event as changed.
+         *
+         * IT IS ALSO NOT MANAGER-OWNED and has no $may_write() gate for the
+         * same reason the source slug and external id have none: nothing in any
+         * editor writes it, so there is no edit here to overwrite.
+         *
+         * This is what lets a row imported before 3.59.0 learn its type: the
+         * next fetch that still returns its campaign fills it in, and the sweep
+         * judges it properly from then on. A campaign the source has stopped
+         * returning never gets one, and is judged on its start date forever.
+         * That is correct and is not worked around.
+         */
+        if ( ! empty( $event['source_type'] ) ) {
+            $type_now = sanitize_key( $event['source_type'] );
+            if ( (string) get_post_meta( $post_id, self::META_SOURCE_TYPE, true ) !== $type_now ) {
+                update_post_meta( $post_id, self::META_SOURCE_TYPE, $type_now );
+            }
         }
 
         /* ---- URLs. ---- */
@@ -1854,23 +1898,91 @@ class SFAF_Sources {
      * ------------------------------------------------------------------- */
 
     /**
-     * The last day an event is on.
+     * Item kinds whose end date really is the end of an event.
      *
-     * THE END DATE WHEN THERE IS ONE. A conference running Thursday to Sunday
-     * is not over on Friday, and judging a multi-day event by its start would
-     * refuse it, or sweep it out of the queue, in the middle of itself.
+     * ONE LIST, READ BY BOTH THINGS THAT ASK. The import gate asks it to decide
+     * what may become an event; last_day() asks it to decide whether an end
+     * date can be believed. Two lists would eventually disagree about a type
+     * and the disagreement would be invisible.
+     *
+     *   event                                 Eventbrite. Everything it
+     *                                         returns is an event, and its
+     *                                         end really is the event's end.
+     *   ticketed, registration,
+     *   reg_w_fund, fund_for_entry            GoFundMe Pro's four event-shaped
+     *                                         campaign types, from the `type`
+     *                                         enum on its Campaign schema.
+     *
+     * AN UNRECOGNISED TYPE IS NOT ON THIS LIST, and a type the platform adds
+     * later will not default into being treated as an event.
+     */
+    const EVENT_TYPES = array( 'event', 'ticketed', 'registration', 'reg_w_fund', 'fund_for_entry' );
+
+    /** Does this source's own word for an item's kind mean "an event"? */
+    public static function type_is_event_shaped( $type ) {
+        $type = strtolower( trim( (string) $type ) );
+        return ( '' !== $type && in_array( $type, self::EVENT_TYPES, true ) );
+    }
+
+    /**
+     * The last day an item occupies the calendar.
+     *
+     * THE END DATE ONLY WHEN THE END DATE MEANS THAT. This is the correction
+     * 3.58.0 should have made and did not.
+     *
+     * What the previous comment here said was that a conference running
+     * Thursday to Sunday is not over on Friday, so the end date wins when there
+     * is one. That is true of a conference and false of most of what arrives.
+     * `_uc_end_date` is written only by a source, and on a GoFundMe Pro
+     * campaign it holds `ended_at`, which the platform documents as "Date/time
+     * of when the campaign ends" — the close of the FUNDRAISING WINDOW. A
+     * donation page collecting until December therefore reported a December
+     * last day and never cleared, while the screen showed a start date months
+     * past. Four rows sat in the queues on exactly that.
+     *
+     * It is the same finding as 3.58.0 one field over: `started_at` was
+     * established there as a fundraising-window boundary rather than an event
+     * date, and this rule was then built on `ended_at` without applying it. The
+     * comment claimed an event semantics the data does not carry, which is the
+     * more expensive half of the mistake — code can be read, but a comment
+     * asserting a meaning is believed.
+     *
+     * SO THE END DATE IS BELIEVED ONLY WHERE THE TYPE SAYS IT CAN BE:
+     *
+     *   type is event-shaped   the end date when there is one, else the start.
+     *                          A real multi-day event still waits for its last
+     *                          day, which is what the old comment wanted.
+     *   type is anything else  the start date.
+     *   TYPE IS UNKNOWN        the start date. Every row imported before
+     *                          3.59.0 is in this case, because nothing stored
+     *                          the type until then, and the start is the only
+     *                          field whose meaning is reliable on those rows.
+     *
+     * Unknown resolving to the start date is deliberate and is the opposite of
+     * what the IMPORT gate does with an unknown type, which imports it. The two
+     * are not inconsistent: each errs towards the outcome a person can see and
+     * undo. A stray row in a queue is one click to dismiss; an event silently
+     * refused is invisible. Here, a row cleared a little early is visible in
+     * Dismissed and restorable, while a row that never clears is the fault
+     * being fixed.
      *
      * @param string $date     Y-m-d start.
      * @param string $end_date Y-m-d end, or ''.
+     * @param string $type     The source's word for the kind, or '' if unknown.
      * @return string Y-m-d, or '' when there is no date at all.
      */
-    public static function last_day( $date, $end_date = '' ) {
+    public static function last_day( $date, $end_date = '', $type = '' ) {
         $date     = trim( (string) $date );
         $end_date = trim( (string) $end_date );
 
         if ( '' === $date ) {
             return '';
         }
+
+        if ( ! self::type_is_event_shaped( $type ) ) {
+            return $date;
+        }
+
         // A nonsense end date earlier than the start is ignored rather than
         // trusted; the start is the one the calendar actually shows.
         return ( '' !== $end_date && $end_date >= $date ) ? $end_date : $date;
@@ -1892,16 +2004,29 @@ class SFAF_Sources {
      *
      * A dateless event is NOT past. It has no date to have gone by, and the
      * two cases are refused for different reasons and say different things.
+     * In the queue that means a dateless row STAYS: filling the date in is the
+     * job somebody is there to do, and sweeping it out would remove the work
+     * item for being the thing they were about to do.
      *
      * @param string $date
      * @param string $end_date
+     * @param string $type     The source's word for the kind, or '' if unknown.
      * @return bool
      */
-    public static function date_has_passed( $date, $end_date = '' ) {
-        $last = self::last_day( $date, $end_date );
+    public static function date_has_passed( $date, $end_date = '', $type = '' ) {
+        $last = self::last_day( $date, $end_date, $type );
         if ( '' === $last ) {
             return false;
         }
+        /*
+         * THE DAY HAS TO BE OVER, NOT STARTED. Both sides are Y-m-d and the
+         * test is strictly earlier, so an event happening today is never past:
+         * today == today is not "<". A Thursday event stays all Thursday
+         * whatever time it runs, and goes at the first sweep after midnight —
+         * within a quarter of an hour of it, since the runner is on fifteen
+         * minutes. Comparing timestamps instead would have cleared an evening
+         * event at breakfast.
+         */
         return $last < self::today();
     }
 
@@ -1945,13 +2070,16 @@ class SFAF_Sources {
 
         $date = isset( $event['start_date'] ) ? (string) $event['start_date'] : '';
         $end  = isset( $event['end_date'] ) ? (string) $event['end_date'] : '';
+        // The item's own type, straight from the adapter. At import it is
+        // always known, so a genuine multi-day event is judged by its end.
+        $type = isset( $event['source_type'] ) ? (string) $event['source_type'] : '';
 
         if ( '' === trim( $date ) ) {
             return 'it has no event date';
         }
 
-        if ( self::date_has_passed( $date, $end ) ) {
-            return sprintf( 'its date (%s) has already passed', self::last_day( $date, $end ) );
+        if ( self::date_has_passed( $date, $end, $type ) ) {
+            return sprintf( 'its date (%s) has already passed', self::last_day( $date, $end, $type ) );
         }
 
         return '';
@@ -1981,9 +2109,15 @@ class SFAF_Sources {
             return true;
         }
 
+        /*
+         * THE TYPE DECIDES WHETHER THE END DATE COUNTS. Empty on every row
+         * imported before 3.59.0 and on every campaign the source has stopped
+         * returning, and empty means "judge on the start date". See last_day().
+         */
         return self::date_has_passed(
             (string) get_post_meta( $post_id, '_uc_event_date', true ),
-            (string) get_post_meta( $post_id, '_uc_end_date', true )
+            (string) get_post_meta( $post_id, '_uc_end_date', true ),
+            (string) get_post_meta( $post_id, self::META_SOURCE_TYPE, true )
         );
     }
 
