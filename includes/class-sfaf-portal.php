@@ -3668,6 +3668,152 @@ class SFAF_Portal {
         <?php
     }
 
+    /**
+     * What the UNATTENDED fetch did last time, on the screen it fills.
+     *
+     * THE GAP THIS CLOSES. Automated fetching runs every 15 minutes and the
+     * only account of it is the Automation screen in wp-admin, which is a
+     * different admin area from the one somebody reviewing imports is standing
+     * in. A person working the Pending queue could not tell whether the queue
+     * was empty because nothing had come in or because nothing had run for a
+     * day.
+     *
+     * IT IS THE SCHEDULED RUN, NOT THE BUTTON. "Fetch updates" at the top of
+     * this screen calls SFAF_Sources::run_all() straight and reports through
+     * its own transient in render_fetch_report(); it never touches the run log.
+     * So this box does not move when that button is pressed, and it says
+     * "automatic" in as many words so that reads as correct rather than
+     * broken.
+     *
+     * NO SECOND STORE. Every figure here comes from SFAF_Cron::task_last(),
+     * which reads the same run log the Automation screen reads. Nothing about a
+     * fetch is written down twice, and the two screens cannot come to disagree
+     * about a run because there is only one record of it.
+     *
+     * ONE RUN, NOT A HISTORY. At 96 runs a day a list is a thing nobody reads
+     * to the bottom of, and the bottom is where the old ones are. The question
+     * this box answers is "is this working and what did it just do", which is
+     * one entry, plus the one thing a single entry cannot say: how long it has
+     * been since anything worked.
+     */
+    private function render_fetch_last_run() {
+        // Nothing is built into this install to fetch FROM, so there is no such
+        // thing as a fetch that should have happened. render_fetch_report()
+        // covers the "built but not connected" case with what each one wants.
+        if ( empty( SFAF_Sources::adapters() ) ) {
+            return;
+        }
+
+        $fetch = SFAF_Cron::task_last( 'fetch' );
+        if ( ! $fetch ) {
+            return;
+        }
+
+        /*
+         * STALE AFTER AN HOUR. The runner fires every 15 minutes, so four
+         * chances have been missed by then and a hiccup has become a fault.
+         * It is measured from the last run that did not FAIL, not the last that
+         * ran: a fetch erroring every quarter hour is the case this line exists
+         * to catch, and that one has a fresh 'last' and a stale 'last_ok'.
+         */
+        $stale_after = HOUR_IN_SECONDS;
+        $stale       = $fetch['on'] && ( ! $fetch['last_ok'] || ( time() - (int) $fetch['last_ok'] ) > $stale_after );
+
+        // A source that errored, by name. The whole task is only 'failed' when
+        // EVERY active source errored, so asking the task alone would report a
+        // fetch in which Eventbrite died and GoFundMe worked as a clean run.
+        $failed = array();
+        foreach ( (array) $fetch['sources'] as $s ) {
+            if ( isset( $s['state'] ) && 'failed' === $s['state'] ) {
+                $failed[] = isset( $s['label'] ) && '' !== $s['label'] ? (string) $s['label'] : 'A source';
+            }
+        }
+        if ( empty( $failed ) && 'failed' === $fetch['status'] ) {
+            $failed[] = 'The fetch';
+        }
+        ?>
+        <div class="uc-card uc-card-lastrun">
+            <div class="uc-card-head">
+                <h2>Automatic fetching</h2>
+                <span class="uc-lastrun-when"><?php
+                    echo esc_html( $fetch['last'] ? 'Last run ' . SFAF_Cron::ago( $fetch['last'] ) : 'Not run yet' );
+                ?></span>
+            </div>
+
+            <?php if ( ! $fetch['on'] ) : ?>
+                <?php // Switched off is not a fault and must not be dressed as
+                      // one. It is also the only state on this screen with
+                      // something to do about it, so that is what it says. ?>
+                <p class="uc-empty">Automatic fetching is switched off. Use &ldquo;Fetch updates&rdquo; above to run it by
+                hand. It is switched on under <strong>Settings &rsaquo; Scheduled Tasks</strong> in the WordPress admin.</p>
+
+            <?php else : ?>
+
+                <?php if ( ! empty( $failed ) ) : ?>
+                    <?php /* LOUDEST, AND FIRST. A failure listed fourth among
+                             four sources is a failure nobody sees. It is named,
+                             it is above the per-source lines, and it says the
+                             word "failed" as well as being red, because colour
+                             is never the only thing carrying a fact here. */ ?>
+                    <p class="uc-lastrun-alarm"><strong><?php
+                        echo esc_html( sprintf(
+                            '%s failed on the last run.',
+                            implode( ' and ', array_map( 'strval', $failed ) )
+                        ) );
+                    ?></strong> The line below says what came back. Events from a source that
+                    failed were not touched, and nothing it would have sent is in the queue.</p>
+                <?php endif; ?>
+
+                <?php if ( $stale ) : ?>
+                    <p class="uc-lastrun-alarm"><strong><?php
+                        echo esc_html( $fetch['last_ok']
+                            ? sprintf( 'Nothing has fetched successfully since %s.', SFAF_Cron::local_time( $fetch['last_ok'] ) )
+                            : 'No fetch has ever completed.' );
+                    ?></strong> A run is due every 15 minutes, so this queue may be missing events that
+                    are already live at the source. The Automation screen in the WordPress admin says why.</p>
+                <?php endif; ?>
+
+                <?php if ( ! $fetch['last'] ) : ?>
+                    <p class="uc-empty">Automatic fetching is switched on and has not run yet. The first run is due
+                    within 15 minutes.</p>
+
+                <?php elseif ( ! empty( $fetch['sources'] ) ) : ?>
+                    <?php /* The source's own sentence, whole. summarize() is
+                             already the words a manager would use and it draws
+                             the distinction that matters most here: "nothing
+                             new" and "returned nothing at all" are different
+                             facts and neither reads as a failure. */ ?>
+                    <ul class="uc-fetch-report">
+                        <?php foreach ( $fetch['sources'] as $s ) :
+                            $state = isset( $s['state'] ) ? (string) $s['state'] : 'ok';
+                            $class = ( 'failed' === $state ) ? 'uc-fetch-fail' : ( ( 'skipped' === $state ) ? 'uc-fetch-skip' : 'uc-fetch-ok' );
+                            ?>
+                            <li class="<?php echo esc_attr( $class ); ?>">
+                                <span class="uc-fetch-line"><?php echo esc_html( isset( $s['line'] ) ? $s['line'] : '' ); ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+
+                <?php else : ?>
+                    <?php /* A run recorded before 3.57.0, which stored the
+                             joined sentence and no breakdown. It is shown as it
+                             was stored rather than split back apart: an error
+                             string may contain the separator, so splitting it
+                             would invent sources that never ran. One run
+                             replaces this. */ ?>
+                    <p class="uc-lastrun-summary"><?php echo esc_html( $fetch['summary'] ); ?></p>
+                <?php endif; ?>
+
+                <p class="uc-lastrun-foot">Runs every 15 minutes on its own.
+                    <?php if ( $fetch['last'] ) : ?>
+                        Last run <?php echo esc_html( SFAF_Cron::local_time( $fetch['last'] ) ); ?>.
+                    <?php endif; ?>
+                    The full run log is on the Automation screen in the WordPress admin.</p>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
     /* =====================================================================
      * Rendering — events list
      * ================================================================== */
@@ -11811,7 +11957,19 @@ class SFAF_Portal {
             </div>
         </div>
 
+        <?php
+        /*
+         * THE FLASH FIRST, THEN THE STANDING BOX. render_fetch_report() is the
+         * answer to a button somebody just pressed and is gone on the next
+         * load; render_fetch_last_run() is always there and is about the job
+         * that runs on its own. Putting the reply to the action above the
+         * standing state is the order the person is thinking in, and the two
+         * are separately headed so a manual run and a scheduled one are never
+         * read as the same event.
+         */
+        ?>
         <?php $this->render_fetch_report( $user, $active_sources ); ?>
+        <?php $this->render_fetch_last_run(); ?>
 
         <?php $this->pending_tabs( $entries, $kind, $orderby, $order ); ?>
 

@@ -95,9 +95,44 @@ class SFAF_Reminders {
 class SFAF_Notifications {
     public static function run_summaries() { return array( 'status' => 'ok', 'summary' => 'Nothing due.', 'counts' => array() ); }
 }
+/*
+ * THE STUB MODELS THE REAL API, AND DID NOT.
+ *
+ * It carried fetch_all(), which SFAF_Sources has not had for a long time, and
+ * no run_all(), which is what SFAF_Cron::run_fetch() actually calls. Nothing
+ * caught it because the fetch task is switched off in every case this file had,
+ * so run_fetch() was never reached. A stub that answers a method the real class
+ * does not have is the "a stub removes the hooks it replaced" fault in another
+ * costume: the test passes and proves nothing about the code that ships.
+ *
+ * $results is what the next run_all() returns, in the shape run_fetch() reads.
+ */
 class SFAF_Sources {
-    public static function fetch_all() { return array(); }
-    public static function summarize( $r ) { return ''; }
+    public static $results = array();
+    public static function run_all() { return self::$results; }
+    public static function adapters() { return self::$results; }
+
+    /* The real summarize()'s three shapes, short. run_fetch() stores whatever
+       comes back verbatim, so the exact words do not matter here; which of the
+       three branches produced them does. */
+    public static function summarize( $r ) {
+        if ( ! empty( $r['skipped'] ) ) { return $r['label'] . ': not connected. ' . $r['reason']; }
+        if ( '' !== $r['error'] ) { return $r['label'] . ': failed. ' . $r['error']; }
+        if ( 0 === (int) $r['fetched'] ) { return $r['label'] . ': connected, but the source returned nothing at all.'; }
+        return $r['label'] . ': nothing new. ' . (int) $r['fetched'] . ' checked.';
+    }
+}
+
+/** One result row in the shape run_fetch() reads. */
+function src( $label, $state = 'ok', $fetched = 4 ) {
+    return array(
+        'label'   => $label,
+        'skipped' => ( 'skipped' === $state ),
+        'reason'  => ( 'skipped' === $state ) ? 'no API key' : '',
+        'error'   => ( 'failed' === $state ) ? 'the platform returned 503' : '',
+        'fetched' => ( 'ok' === $state ) ? $fetched : 0,
+        'new'     => 0, 'updated' => 0, 'unchanged' => 0, 'unpublished' => 0,
+    );
 }
 
 require_once $root . '/includes/class-sfaf-cron.php';
@@ -296,6 +331,105 @@ if ( count( SFAF_Cron::log() ) !== count( $log ) + 1 ) {
 }
 
 /* ---------------------------------------------------------------------------
+ * 3b. WHAT THE FETCH RECORDS, WHICH THE PENDING SCREEN READS.
+ *
+ * The caladmin Pending queue shows the last automatic fetch, and it has to name
+ * the source that failed and say when anything last WORKED. Both answers come
+ * out of task_report(), so both are proved here rather than on the screen: the
+ * screen is a renderer, and a renderer cannot be more right than what it reads.
+ * ------------------------------------------------------------------------ */
+echo "What the fetch records\n";
+
+reset_site();
+$GLOBALS['opt']['uc_settings'] = array( 'auto_fetch_enabled' => '1' );
+SFAF_Sources::$results = array( src( 'Eventbrite' ), src( 'GoFundMe Pro', 'failed' ), src( 'Meetup', 'skipped' ) );
+SFAF_Cron::run( 'manual' );
+
+$fetch = SFAF_Cron::task_last( 'fetch' );
+is( 'task_last() finds the fetch', is_array( $fetch ), true );
+is( 'the fetch is on', $fetch['on'], true );
+is( 'every source is recorded separately', count( $fetch['sources'] ), 3 );
+is( 'the working source is ok', $fetch['sources'][0]['state'], 'ok' );
+is( 'the erroring source is failed', $fetch['sources'][1]['state'], 'failed' );
+is( 'the unconnected source is skipped', $fetch['sources'][2]['state'], 'skipped' );
+is( 'the failed source is named', $fetch['sources'][1]['label'], 'GoFundMe Pro' );
+
+/*
+ * ONE SOURCE DOWN IS NOT A FAILED FETCH, and the screen must not report it as
+ * one: the other platforms ran and their events are in the queue. This is why
+ * the Pending box asks each source's state rather than the task's.
+ */
+is( 'one failed source does not fail the whole task', $fetch['status'], 'ok' );
+if ( ! $fetch['last_ok'] ) {
+    $fails[] = 'a run that mostly worked did not set last_ok, so the screen would call it stale';
+}
+
+/*
+ * THE LINE IS KEPT WHOLE. run_fetch() also joins these with ' | ' for the
+ * Automation screen, and a reader could be tempted to split that back apart.
+ * A platform's own error text is inside it, so this proves the separator can
+ * appear in the data and that the stored breakdown does not care.
+ */
+reset_site();
+$GLOBALS['opt']['uc_settings'] = array( 'auto_fetch_enabled' => '1' );
+$piped = src( 'Eventbrite', 'failed' );
+$piped['error'] = 'upstream said: 503 | retry later';
+SFAF_Sources::$results = array( $piped, src( 'GoFundMe Pro' ) );
+SFAF_Cron::run( 'manual' );
+
+$fetch = SFAF_Cron::task_last( 'fetch' );
+is( 'a pipe in an error message does not invent a source', count( $fetch['sources'] ), 2 );
+contains( 'the error survives whole', $fetch['sources'][0]['line'], '503 | retry later' );
+if ( count( explode( ' | ', $fetch['summary'] ) ) === count( $fetch['sources'] ) ) {
+    $fails[] = 'the joined summary happens to split correctly here, so this case proves nothing';
+}
+
+/*
+ * 'last' AND 'last_ok' PART COMPANY WHEN A FETCH BREAKS, and that is the whole
+ * reason for the second field. Every source fails, so the task fails; the run
+ * still happened, so 'last' moves; nothing worked, so 'last_ok' must not.
+ */
+$worked_at = $fetch['last_ok'];
+if ( ! $worked_at ) {
+    $fails[] = 'the mostly-working run did not set last_ok, so the next assertion proves nothing';
+}
+
+/*
+ * Back-dated for the same reason the reminders case is: two runs in one second
+ * cannot tell a moving timestamp from a stuck one.
+ *
+ * PAST THE HOUR, NOT ONTO IT. Exactly $HOUR put the last working run on the
+ * boundary the box tests, where "more than an hour ago" is false by a second
+ * and the staleness assertion fails on arithmetic rather than on behaviour.
+ * Five minutes clear of it is the same test without the coin toss.
+ */
+$BACK = $HOUR + 5 * $MIN;
+$log  = get_option( 'sfaf_cron_log', array() );
+foreach ( $log as $i => $entry ) {
+    $log[ $i ]['started_ts'] = $entry['started_ts'] - $BACK;
+}
+update_option( 'sfaf_cron_log', $log );
+$worked_at -= $BACK;
+
+SFAF_Sources::$results = array( src( 'Eventbrite', 'failed' ), src( 'GoFundMe Pro', 'failed' ) );
+SFAF_Cron::run( 'manual' );
+
+$broken = SFAF_Cron::task_last( 'fetch' );
+is( 'every source failing fails the task', $broken['status'], 'failed' );
+is( 'a failed run still moves "last ran"', ( $broken['last'] > $worked_at ), true );
+is( 'a failed run does not move "last worked"', $broken['last_ok'], $worked_at );
+
+/*
+ * AND THAT IS THE STALENESS CASE. The Pending box calls the fetch stale when
+ * nothing has worked for an hour. Read off 'last' this fetch looks fresh, which
+ * is exactly the reading that would show a manager a healthy box over a queue
+ * that has not taken an event in a day.
+ */
+if ( ( time() - $broken['last_ok'] ) <= $HOUR ) {
+    $fails[] = 'an hour of nothing but failures does not read as stale, so the box would not fire';
+}
+
+/* ---------------------------------------------------------------------------
  * 4. THE RELATIVE CLOCK.
  * ------------------------------------------------------------------------ */
 echo "The relative clock\n";
@@ -381,7 +515,11 @@ echo "\nCron status test\n";
 echo "checked: the four states and both threshold boundaries, that the screen and the alert email\n";
 echo "         can never disagree, that every task carries a plain sentence, that a real run moves\n";
 echo "         'last ran' and a skipped one does not, the relative clock in both directions, the\n";
-echo "         15-minute recurrence and the migration off hourly, and the run lock\n\n";
+echo "         15-minute recurrence and the migration off hourly, and the run lock;\n";
+echo "         and, for the Pending screen's fetch box, that each source is recorded with its own\n";
+echo "         state, that one source failing does not fail the task, that a pipe inside a\n";
+echo "         platform's error message cannot invent a source, and that a failed run moves\n";
+echo "         'last ran' without moving 'last worked', which is what makes staleness detectable\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

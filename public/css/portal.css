@@ -1937,6 +1937,38 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-fetch-what::before { content: "changed: "; }
 .uc-break { word-break: break-all; }
 
+/* THE LAST AUTOMATIC FETCH, on the queue it fills.
+ *
+ * It borrows .uc-fetch-report and its three row states rather than growing a
+ * second set: the manual report and this one are two accounts of the same job
+ * and must not look like two different features. Only the box's own furniture
+ * is here. */
+/* 13/600 is the ladder's caption step. 12px is a step too, but only at 400, and
+   this sits beside a 14px heading where 400 stops reading as a pair with it. */
+.uc-lastrun-when { font-size: 13px; color: var(--p-muted); font-weight: 600; }
+.uc-lastrun-summary { margin: 0; padding: 8px 0; font-size: 14px; }
+
+/* ONE ALARM STYLE FOR BOTH FAULTS. A source that failed and a fetch that has
+   not worked for an hour are the same news to somebody standing here — this
+   queue is not what is live at the source — so they get one treatment and are
+   told apart by what they say, not by which red they are. THE WORD IS IN THE
+   TEXT: "failed", "nothing has fetched". Colour is never the only carrier, and
+   this box is read by people who are looking for a reason to trust the queue. */
+.uc-lastrun-alarm {
+    margin: 0 0 10px;
+    padding: 9px 12px;
+    border-radius: 7px;
+    background: #fef2f2;
+    color: #991b1b;          /* 8.2:1 on that ground */
+    font-size: 13px;
+    line-height: 1.5;
+}
+.uc-lastrun-alarm + .uc-lastrun-alarm { margin-top: -2px; }
+
+/* The cadence and where the rest of it lives. Quiet on purpose: it is the
+   same two sentences on every load and must not compete with the run. */
+.uc-lastrun-foot { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--p-muted); }
+
 /* ---------------------------------------------------------------------------
  * Field ownership states — locked, needs-attention, normal.
  *

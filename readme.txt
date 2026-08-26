@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.56.0
+Stable tag: 3.57.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.57.0 =
+
+**The Pending screen says what the automatic fetch just did, and whether it is still working.**
+
+**AUTOMATED FETCHING RUNS EVERY 15 MINUTES AND ONLY THE WORDPRESS ADMIN KNEW.** The Automation screen has the full account of it, and that is a different admin area from the one somebody reviewing imports is standing in. A person working the Pending queue could not tell whether it was empty because nothing had come in or because nothing had run since yesterday.
+
+**The last run is now on the Pending screen**, above the queue it fills: when it ran, what each source found in that source's own words, and the cadence. **A run that found nothing is a run that worked** and is worded that way; "nothing new" and "the source returned nothing at all" stay separate facts, because a platform that has stopped answering must not read as a quiet week.
+
+**A source that failed is named at the top of the box**, not left as one item among several, and it says the word rather than only being red. One source erroring does not mark the whole fetch failed: the others ran and their events are in the queue.
+
+**And it says when nothing has worked for over an hour**, which is the case the box exists to catch. A fetch failing on every pass has a very recent "last run" and a stale "last succeeded", so the two are now recorded separately; reading the first as the second would draw a healthy box over a queue a day behind the source.
+
+**Nothing about a fetch is stored twice.** Every figure comes from the same run log the Automation screen reads. What the log gained is the per-source breakdown it was already carrying as one joined sentence.
+
+**"Fetch updates" is unchanged and reports as it always has.** That button runs the sources directly and never touched the run log, so the new box does not move when it is pressed; it is headed "Automatic fetching" so that reads as correct rather than broken.
 
 = 3.56.0 =
 

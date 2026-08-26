@@ -533,6 +533,14 @@ class SFAF_Cron {
                 'status'  => isset( $result['status'] ) ? $result['status'] : 'ok',
                 'summary' => isset( $result['summary'] ) ? (string) $result['summary'] : '',
                 'counts'  => isset( $result['counts'] ) && is_array( $result['counts'] ) ? $result['counts'] : array(),
+                /*
+                 * OPTIONAL, AND ONLY THE FETCH SUPPLIES IT. A task that returns
+                 * no per-item breakdown stores an empty array rather than
+                 * nothing, so every entry has the same shape and no reader has
+                 * to test whether the key is there. Entries written before
+                 * 3.57.0 do not have it, which is why the readers still default.
+                 */
+                'sources' => isset( $result['sources'] ) && is_array( $result['sources'] ) ? $result['sources'] : array(),
             );
         } catch ( \Throwable $e ) {
             return array(
@@ -549,16 +557,51 @@ class SFAF_Cron {
      * The fetch task. Wraps SFAF_Sources::run_all() into the shape the log
      * wants, and calls the whole task failed only when every source that was
      * asked to run errored — one platform being down is reported, not fatal.
+     *
+     * IT ALSO RECORDS EACH SOURCE SEPARATELY, ADDED 3.57.0, because the Pending
+     * screen in caladmin now shows the last run and has to say which source
+     * failed rather than that something did.
+     *
+     * WHY NOT SPLIT THE SUMMARY BACK APART. 'summary' is these same lines
+     * joined with ' | ', so the per-source breakdown looks recoverable by
+     * splitting on that. It is not: a failed source puts $result['error']
+     * into its line verbatim, and that string comes from a remote platform or
+     * an exception message, either of which may contain a pipe. Recovering
+     * structure from prose that a third party can write is the same mistake as
+     * auditing PHP with grep. The lines are kept whole instead.
+     *
+     * THE THREE STATES ARE THE MANUAL REPORT'S THREE STATES, deliberately:
+     * SFAF_Portal::render_fetch_report() classifies a result skipped / failed /
+     * ok on exactly these two tests, and the same words mean the same thing in
+     * both places. Two screens describing one fetch must not have two
+     * vocabularies for it.
      */
     public static function run_fetch() {
         $results = SFAF_Sources::run_all();
         $lines   = array();
+        $sources = array();
         $active  = 0;
         $errored = 0;
         $counts  = array( 'new' => 0, 'updated' => 0, 'unchanged' => 0, 'unpublished' => 0 );
 
         foreach ( (array) $results as $r ) {
-            $lines[] = SFAF_Sources::summarize( $r );
+            $line    = SFAF_Sources::summarize( $r );
+            $lines[] = $line;
+
+            if ( ! empty( $r['skipped'] ) ) {
+                $state = 'skipped';
+            } elseif ( '' !== $r['error'] ) {
+                $state = 'failed';
+            } else {
+                $state = 'ok';
+            }
+
+            $sources[] = array(
+                'label' => isset( $r['label'] ) ? (string) $r['label'] : '',
+                'state' => $state,
+                'line'  => $line,
+            );
+
             if ( ! empty( $r['skipped'] ) ) {
                 continue;
             }
@@ -576,6 +619,7 @@ class SFAF_Cron {
             'status'  => ( $active > 0 && $errored === $active ) ? 'failed' : 'ok',
             'summary' => $lines ? implode( ' | ', $lines ) : 'No sources are registered.',
             'counts'  => $counts,
+            'sources' => $sources,
         );
     }
 
@@ -788,6 +832,19 @@ class SFAF_Cron {
      * last time it really ran rather than the last time it was passed over. A
      * job that is switched off has no next due date, because it has none.
      *
+     * 'last' AND 'last_ok' ARE DIFFERENT QUESTIONS AND THE SCREENS ASK
+     * DIFFERENT ONES. 'last' is the newest run that did something, whatever
+     * came of it, which is what the Automation table shows beside its own
+     * status word. 'last_ok' is the newest run that did something and did not
+     * fail, which is the only one that answers "is this still working?" — a job
+     * failing every quarter of an hour has a very recent 'last' and a stale
+     * 'last_ok', and reading the first as the second would report a broken
+     * fetch as a healthy one. Added 3.57.0 for the Pending screen's staleness
+     * line. Both are 0 when there is no such run.
+     *
+     * 'sources' is the per-source breakdown for jobs that record one, and an
+     * empty array for those that do not and for entries written before 3.57.0.
+     *
      * @return array<int,array>
      */
     public static function task_report() {
@@ -804,27 +861,45 @@ class SFAF_Cron {
                 'on'      => $on,
                 'off'     => $spec['off'],
                 'last'    => 0,
+                'last_ok' => 0,
                 'status'  => '',
                 'summary' => '',
+                'sources' => array(),
                 'next'    => $on ? $next : 0,
             );
 
+            /*
+             * ONE PASS, TWO ANSWERS. The newest non-skipped run fills 'last'
+             * and everything that describes it; the newest non-skipped run that
+             * did not fail fills 'last_ok'. They are usually the same entry, so
+             * the scan stops as soon as both are settled rather than reading
+             * all sixty every time.
+             */
+            $have_last = false;
             foreach ( $log as $entry ) {
-                $found = false;
                 foreach ( (array) ( isset( $entry['tasks'] ) ? $entry['tasks'] : array() ) as $t ) {
                     if ( ! isset( $t['task'] ) || $key !== $t['task'] ) {
                         continue;
                     }
-                    if ( isset( $t['status'] ) && 'skipped' === $t['status'] ) {
+                    $status = isset( $t['status'] ) ? (string) $t['status'] : '';
+                    if ( 'skipped' === $status ) {
                         continue;
                     }
-                    $row['last']    = isset( $entry['started_ts'] ) ? (int) $entry['started_ts'] : 0;
-                    $row['status']  = isset( $t['status'] ) ? (string) $t['status'] : '';
-                    $row['summary'] = isset( $t['summary'] ) ? (string) $t['summary'] : '';
-                    $found          = true;
+                    $when = isset( $entry['started_ts'] ) ? (int) $entry['started_ts'] : 0;
+
+                    if ( ! $have_last ) {
+                        $row['last']    = $when;
+                        $row['status']  = $status;
+                        $row['summary'] = isset( $t['summary'] ) ? (string) $t['summary'] : '';
+                        $row['sources'] = ( isset( $t['sources'] ) && is_array( $t['sources'] ) ) ? $t['sources'] : array();
+                        $have_last      = true;
+                    }
+                    if ( ! $row['last_ok'] && 'failed' !== $status ) {
+                        $row['last_ok'] = $when;
+                    }
                     break;
                 }
-                if ( $found ) {
+                if ( $have_last && $row['last_ok'] ) {
                     break;
                 }
             }
@@ -833,6 +908,25 @@ class SFAF_Cron {
         }
 
         return $out;
+    }
+
+    /**
+     * One job's row from task_report(), or null when there is no such job.
+     *
+     * A caller wanting a single job should not have to know that the report is
+     * a list keyed by position. Added 3.57.0 with the Pending screen's fetch
+     * box, which wants exactly one of the five.
+     *
+     * @param string $key
+     * @return array|null
+     */
+    public static function task_last( $key ) {
+        foreach ( self::task_report() as $row ) {
+            if ( isset( $row['key'] ) && $key === $row['key'] ) {
+                return $row;
+            }
+        }
+        return null;
     }
 
     /* ---------------------------------------------------------------------

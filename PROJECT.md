@@ -2126,8 +2126,31 @@ unattended job. `SFAF_Cron::tasks()` is the single list of them: the reminder
 pass, the pre-event summary and the third-party fetch. `run()` iterates it and
 the Automation screen iterates it, so a job cannot be run without appearing on
 the screen and cannot appear without being run. Anything added later joins that
-list rather than scheduling its own event, so there is one lock, one log, and
-one place to look when something happened overnight.
+list rather than scheduling its own event, so there is one lock and one log.
+
+**The fetch is reported in two places and recorded in one.** Since 3.57.0 the
+caladmin Pending queue carries a box for the last automatic fetch: when it ran,
+what each source found in that source's own words, which source failed, and
+whether anything has succeeded within the hour. It exists because the person
+reviewing imports stands in caladmin and the run log is rendered in wp-admin,
+so the queue could be empty for two entirely different reasons and look the
+same either way. **Both screens read `SFAF_Cron::task_report()`**; there is no
+second store, and the two cannot come to disagree about a run because there is
+only one record of it.
+
+What the log entry gained for this is the per-source breakdown it was already
+carrying as one joined sentence: `run_fetch()` now records each source's label,
+state and line separately as well. **That breakdown is not recoverable from the
+joined summary** and must not be reconstructed by splitting it — a failed
+source's line contains the platform's own error text, which may hold the
+separator. `'last'` and `'last_ok'` are likewise kept apart, because a fetch
+failing on every pass has a fresh `'last'` and a stale `'last_ok'`, and reading
+the first as the second reports a broken fetch as a healthy one.
+
+**"Fetch updates" in caladmin is a different path and always was.** It calls
+`SFAF_Sources::run_all()` directly and reports through a per-user transient, and
+it never touches the run log. So the Pending box does not move when that button
+is pressed, which is why it is headed "Automatic fetching".
 
 **The 15-minute interval exists for the pre-event summary**, which is due two
 hours before an event starts; an hourly run can be up to an hour late for it.

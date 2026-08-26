@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-08-25, at 3.56.0.
+**Last updated:** 2026-08-26, at 3.57.0.
 
 ---
 
 ## What shipped last
 
-**3.56.0**, built as `sfaf-calendar-3.56.0.zip` in the project root, committed
+**3.57.0**, built as `sfaf-calendar-3.57.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.57.0** | The Pending screen says what the automatic fetch just did, per source, names a source that failed, and says when nothing has worked for an hour. Read from the run log the Automation screen already keeps. |
 | **3.56.0** | A fifth email: somebody cancelled. The cancel page names which date. FAQ rows read as rows and removing one asks first, from one renderer where there were nine. |
 | **3.55.0** | Weglot off every calendar surface and only those. The cancel page gets a stylesheet, sharing one renderer with the follow pages. "Release your place" becomes "cancel your registration". |
 | **3.54.0** | Follow copy reads as an invitation. The confirm page is styled and loses Weglot's language switcher. FAQ rows put the question above the answer, in a taller resizable box in the brand font. |
-| **3.53.0** | Get Reminders becomes Follow this series, recorded against the series term in its own table, confirmed by email before it is active. **Part 1 of 2.** |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.56.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.57.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -98,6 +98,17 @@ driving the runner is visitor traffic and the page-view nudge from sfaf.org.
 `PROJECT.md` §4 has the order it has to be switched on in; getting that order
 wrong leaves the site with no scheduler at all.
 
+**AUTOMATED FETCHING IS ON, AND TWO PLACES STILL SAY IT SHOULD NOT BE.** That
+it is on is what 3.57.0 was built for, and the Pending screen now reports it.
+But the toggle's own copy under **Settings > Scheduled Tasks** reads "Leave this
+off for now ... switch it on by hand once one removal has been seen go through
+correctly", and `TESTING.md` 2.8 says the same thing. **Either that removal has
+been watched and both should be updated, or the switch is ahead of its
+safeguard.** Only Mark can say which, so neither was changed. The risk the
+wording is about is real and unchanged: a fetch can unpublish a live event when
+its source stops returning it, and now it can do so unattended, four times an
+hour.
+
 Four smaller things waiting on somebody here:
 
 - **The GFMP campaign image is deliberately unmapped**, so campaigns show the
@@ -113,8 +124,8 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 25 items.** Quick 11, needs
-real conditions 11, blocked on other people 3. Nothing in the build can settle
+**`TESTING.md` holds the manual testing backlog, 26 items.** Quick 11, needs
+real conditions 12, blocked on other people 3. Nothing in the build can settle
 any of them.
 
 ## Open decisions

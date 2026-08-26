@@ -318,7 +318,28 @@ class SFAF_Sources {
     public static function manager_fields_for( $source ) { return array(); }
     public static function adapter( $s ) { return null; }
     public static function is_queued( $id ) { return in_array( get_post_status( $id ), array( self::STATUS_PENDING, self::STATUS_DISMISSED ), true ); }
-    public static function adapters() { return array(); }
+
+    /* SETTABLE, AND EMPTY BY DEFAULT. Section 7 needs a build that has sources
+       compiled in, because the last-run box does not render on one that has
+       none. Every earlier section wants the empty answer it always had. */
+    public static $built = array();
+    public static function adapters() { return self::$built; }
+}
+
+/*
+ * THE RUN LOG, AS THE PENDING SCREEN SEES IT.
+ *
+ * Only what render_fetch_last_run() asks of SFAF_Cron. The real class is a
+ * thousand lines about scheduling and alerting and none of it is this screen's
+ * business: what the screen needs is one task row and two ways of saying a
+ * time, and $fetch is that row set by hand so a state that takes a day of real
+ * failures to reach can be rendered in a millisecond.
+ */
+class SFAF_Cron {
+    public static $fetch = null;
+    public static function task_last( $key ) { return ( 'fetch' === $key ) ? self::$fetch : null; }
+    public static function ago( $ts ) { return $ts ? ( round( ( time() - $ts ) / 60 ) . ' mins ago' ) : 'never'; }
+    public static function local_time( $ts ) { return $ts ? gmdate( 'M j, Y g:i a', $ts ) : 'never'; }
 }
 /* The editor is enqueued by the screen, not exercised by it. */
 class SFAF_Rich_Text {
@@ -796,6 +817,155 @@ foreach ( array( 'Staff request', 'Community submission' ) as $badge ) {
         fail( "the '$badge' badge is gone from the rows" );
     }
 }
+
+/* =========================================================================
+ * 7. THE LAST AUTOMATIC FETCH, AS RENDERED.
+ *
+ * The box exists to answer one question for somebody standing at this queue:
+ * can I trust that what is in front of me is what is live at the source. Its
+ * whole value is in the states nobody sees by looking — a source erroring every
+ * quarter of an hour, or nothing having run since yesterday — and those states
+ * cannot be reached by using the software, only by waiting for them. So they
+ * are set here and the screen is asked what it drew.
+ *
+ * READ OUT OF THE HTML, for the reason section 6 gives at length: this project
+ * has shipped several defects that every source-string check passed. A phrase
+ * being in the file is not the phrase being on the page.
+ * ====================================================================== */
+
+/*
+ * Adapter objects, not names. render_fetch_report() asks an adapter what it is
+ * called and what it is waiting for, and a build with sources compiled in but
+ * none connected is exactly the state it draws that in. Handing it strings made
+ * every case in this section fail on a fatal instead of on its assertion, which
+ * is how this stub came to be written properly.
+ */
+class Stub_Adapter {
+    public $name;
+    public function __construct( $name ) { $this->name = $name; }
+    public function label() { return $this->name; }
+    public function inactive_reason() { return 'no API key yet'; }
+    public function is_active() { return false; }
+}
+$BUILT = array( new Stub_Adapter( 'Eventbrite' ), new Stub_Adapter( 'GoFundMe Pro' ) );
+
+SFAF_Sources::$built = $BUILT;
+
+/** The screen, with the fetch task in a given state. */
+function fetch_box( $fetch ) {
+    SFAF_Cron::$fetch = $fetch;
+    return screen_html( array() );
+}
+
+/** A task_report() row, defaulted to a healthy run. */
+function fetch_row( $over = array() ) {
+    return array_merge( array(
+        'key'     => 'fetch',
+        'on'      => true,
+        'off'     => 'Automated fetching is switched off.',
+        'last'    => time() - 300,
+        'last_ok' => time() - 300,
+        'status'  => 'ok',
+        'summary' => 'Eventbrite: nothing new. 12 checked.',
+        'sources' => array(
+            array( 'label' => 'Eventbrite',   'state' => 'ok', 'line' => 'Eventbrite: nothing new. 12 checked.' ),
+            array( 'label' => 'GoFundMe Pro', 'state' => 'ok', 'line' => 'GoFundMe Pro: 2 events added. 9 checked.' ),
+        ),
+    ), $over );
+}
+
+/*
+ * A QUIET RUN THAT WORKED. The wording rule for this one is explicit in the
+ * brief and is the easiest to get wrong: a fetch that found nothing is a fetch
+ * that worked, and must not read as a failure.
+ */
+$page = fetch_box( fetch_row() );
+foreach ( array( 'Automatic fetching', 'Eventbrite: nothing new.', 'GoFundMe Pro: 2 events added.' ) as $want ) {
+    if ( false === strpos( $page, $want ) ) {
+        fail( "a healthy fetch does not show '$want'" );
+    }
+}
+if ( false !== strpos( $page, 'uc-lastrun-alarm' ) ) {
+    fail( 'a fetch that ran cleanly is drawn with an alarm on it' );
+}
+
+/*
+ * ONE SOURCE DOWN. The failure has to be named and it has to be ABOVE the
+ * per-source lines: a failure listed fourth among four sources is a failure
+ * nobody reads. Position is asserted, not just presence.
+ */
+$page = fetch_box( fetch_row( array(
+    'sources' => array(
+        array( 'label' => 'Eventbrite',   'state' => 'ok',     'line' => 'Eventbrite: nothing new. 12 checked.' ),
+        array( 'label' => 'GoFundMe Pro', 'state' => 'failed', 'line' => 'GoFundMe Pro: failed. the platform returned 503' ),
+    ),
+) ) );
+if ( false === strpos( $page, 'GoFundMe Pro failed on the last run.' ) ) {
+    fail( 'a source that failed is not named at the top of the box' );
+}
+if ( strpos( $page, 'GoFundMe Pro failed on the last run.' ) > strpos( $page, 'Eventbrite: nothing new.' ) ) {
+    fail( 'the failure is below the per-source lines, which is where nobody reads it' );
+}
+if ( false === strpos( $page, 'uc-fetch-fail' ) ) {
+    fail( 'the failed source row is not marked as failed' );
+}
+
+/*
+ * NOTHING HAS WORKED FOR HOURS. 'last' is fresh and 'last_ok' is old, which is
+ * the shape a fetch failing on every pass actually has. Reading the first as
+ * the second would draw a healthy box over a queue a day behind the source.
+ */
+$page = fetch_box( fetch_row( array(
+    'last'    => time() - 120,
+    'last_ok' => time() - ( 5 * 3600 ),
+    'status'  => 'failed',
+    'sources' => array(
+        array( 'label' => 'Eventbrite', 'state' => 'failed', 'line' => 'Eventbrite: failed. the platform returned 503' ),
+    ),
+) ) );
+if ( false === strpos( $page, 'Nothing has fetched successfully since' ) ) {
+    fail( 'a fetch that has not worked for five hours does not say so' );
+}
+
+/* An hour has not passed: a recent success must NOT be called stale. The
+ * boundary is the whole point of the line, so it is tested from both sides. */
+$page = fetch_box( fetch_row( array( 'last_ok' => time() - ( 20 * 60 ) ) ) );
+if ( false !== strpos( $page, 'Nothing has fetched successfully since' ) ) {
+    fail( 'a fetch that worked twenty minutes ago is reported as stale' );
+}
+
+/*
+ * SWITCHED OFF IS NOT A FAULT. It is the one state with something to do about
+ * it, so it says what to do and carries no alarm.
+ */
+$page = fetch_box( fetch_row( array( 'on' => false ) ) );
+if ( false === strpos( $page, 'Automatic fetching is switched off.' ) ) {
+    fail( 'a switched-off fetch does not say so on the queue it would fill' );
+}
+if ( false !== strpos( $page, 'uc-lastrun-alarm' ) ) {
+    fail( 'a fetch that is switched off on purpose is dressed as a fault' );
+}
+
+/*
+ * A RUN FROM BEFORE 3.57.0 has a summary and no breakdown. It must still show
+ * the sentence rather than an empty box, and must not be split on ' | ' — an
+ * error string from a platform can contain one.
+ */
+$page = fetch_box( fetch_row( array(
+    'sources' => array(),
+    'summary' => 'Eventbrite: failed. upstream said: 503 | retry later',
+) ) );
+if ( false === strpos( $page, 'upstream said: 503 | retry later' ) ) {
+    fail( 'a run logged before the breakdown existed shows nothing at all' );
+}
+
+/* And on a build with no sources compiled in there is nothing to report on. */
+SFAF_Sources::$built = array();
+$page = fetch_box( fetch_row() );
+if ( false !== strpos( $page, 'Automatic fetching' ) ) {
+    fail( 'a build with no sources still draws a fetch box' );
+}
+SFAF_Sources::$built = $BUILT;
 
 if ( $self ) {
     echo "SELF TEST\n" . str_repeat( '=', 72 ) . "\n";

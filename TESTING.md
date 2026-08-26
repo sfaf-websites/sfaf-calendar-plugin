@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 25 items.** Quick 11, needs real conditions 11, blocked on other
+**Outstanding: 26 items.** Quick 11, needs real conditions 12, blocked on other
 people 3.
 
 ---
@@ -171,6 +171,13 @@ It must be refused.
 **This blocks other things.** Until a removal has been seen behaving correctly
 once, automated fetching stays manual.
 
+**AND AUTOMATED FETCHING IS REPORTED TO BE ON ALREADY**, which is the opposite
+of what this item and the Settings panel both say should happen. Either this
+test was done and can be deleted, or the safeguard it covers has not been
+watched and the switch is ahead of it. **Only Mark can say which**, and until he
+does, neither this item nor that copy should be changed.
+
+
 ### 2.9 Watch for the two-hour pre-event summary, unattended
 
 The morning-of reminder is proved; this half has never been seen.
@@ -186,6 +193,22 @@ well as the new?
 Put somebody in a team on an event they did not create: they must see that
 event's registrations and nothing else. Cancel an event with a registration:
 deleting must be refused before and allowed after.
+
+### 2.12 The fetch box on Pending, against a real scheduled run (3.57.0)
+
+Every state of this box was proved against a stubbed run log, which leaves the
+one thing a stub cannot vouch for: that a REAL fetch writes the per-source
+breakdown the box reads. Open `/caladmin/pending` after the runner has fired and
+confirm the box names each source and says the same thing about that run as the
+Automation screen in wp-admin does.
+
+**Then break one source on purpose**, by clearing the Eventbrite token, and
+confirm the failure is named at the top of the box rather than left as one line
+among several. Put the token back afterwards.
+
+**The staleness line needs an hour of nothing working**, so it is the one state
+not worth manufacturing by hand. It is proved in the suite; what a person is
+confirming here is that a real log reaches it.
 
 ---
 
