@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 28 items.** Quick 12, needs real conditions 13, blocked on other
+**Outstanding: 29 items.** Quick 13, needs real conditions 13, blocked on other
 people 3.
 
 ---
@@ -111,6 +111,41 @@ like the same thing.**
 
 **Check the embed too**, not only sfaf.org. It gets this by calling the same
 renderers, and that is exactly the kind of assumption that has broken before.
+
+### 1.13 The rebuilt filter bar, on the EMBED first (3.61.0)
+
+Everything here is a rendered outcome, and the build can see none of it. **Look
+at the embed on sfaf.org before looking at the calendar site**, because four of
+the six past faults in this area were embed-only and looked correct here.
+
+- **The dropdown against the search field.** They must not be the same object.
+  The dropdown has a chevron and a hairline end-cap; the field has a magnifier
+  and neither. Open the dropdown: the chevron must turn over and stay turned
+  while the menu is open.
+- **The chevron and the magnifier are there at all.** Both are elements now, so
+  a theme cannot reset them away, but that is the claim being tested. **Two
+  arrows on the dropdown means `appearance: none` lost to a host rule** and
+  wants a third class; report it rather than working around it.
+- **The panel has a ground.** The bar and the groups row are one tinted panel
+  with a hairline seam, not two floating rows. If they are two rounded boxes
+  with a gap between them, the browser has no `:has()` and that is the
+  documented fallback, not a fault.
+- **The two pill rows read as different kinds of filter.** Categories are
+  rounded and carry a colour dot; groups are square-cornered and carry none. A
+  chosen category fills solid; a chosen group gets a tick. Choosing two groups
+  must still show two ticks.
+- **The category dots match the cards.** The dot on Fundraising must be the
+  colour Fundraising events already carry below.
+- **The narrow embed, which is the one that has never worked.** Put the block
+  in a sidebar column of about 280px on a wide desktop. The search field and
+  the dropdown must **stack full width**. If they sit side by side and overflow,
+  the container query is not reaching, and that is the exact fault this release
+  claims to have fixed.
+- **A phone or tablet.** Every chip, pill and field must be at least 44px tall
+  there and unchanged on a desktop.
+- **Nothing about behaviour changed, so confirm nothing did.** Searching,
+  choosing a category and choosing an organizer must each change the **count**,
+  not just the visible rows, and must still work past page one.
 
 ---
 

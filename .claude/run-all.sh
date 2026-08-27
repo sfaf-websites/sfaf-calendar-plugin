@@ -47,6 +47,13 @@ run "audit-callables --self-test" php .claude/audit-callables.php --self-test
 run "audit-callables ."          php .claude/audit-callables.php .
 
 echo
+# The glob above already ran this one against the real sources. This is its
+# self-test, which is the half that proves the specificity arithmetic under it,
+# and it caught a wrong expectation of mine the first time it ran.
+echo "=== cascade arithmetic ==="
+run "filter-bar-test --self-test" php .claude/filter-bar-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

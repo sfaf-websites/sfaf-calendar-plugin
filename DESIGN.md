@@ -325,6 +325,37 @@ A card inside a card inside a bordered list is three borders saying one thing.
 If content needs separating inside a card, use space, then a hairline, then a
 tint, in that order. Reach for a border last and usually not at all.
 
+### White has to mean something, or it means nothing
+
+A row of controls on a white page, each of them a white box with a thin
+outline, tells a visitor nothing about which is which. That was the public
+filter bar until 3.61.0: a search field, a dropdown, category chips and group
+pills, four different kinds of control and one appearance between them.
+
+The fix is not more outlines. **Put a tint under the group and let white become
+a statement:**
+
+- **white fill and a boundary** — you type in this, or it opens
+- **no fill and a boundary** — you press this
+
+That is the tint step of the escalation above, used at the level of a whole
+control group rather than inside one card, and it does more work than any
+amount of bordering because it makes white *informative* instead of default.
+
+Two things follow from it and are worth keeping:
+
+- **Differentiate by shape and mark before colour.** A pick-one row is
+  round-cornered and its chosen item fills; a pick-any row is square-cornered
+  and its chosen items get ticks. Those read at a glance, survive a
+  colour-blind viewer and do not spend a hue. Contrast made of weight and
+  shape is what the brand guide asks for; colour is the last instrument, not
+  the first.
+- **An affordance belongs in the markup, not in a background.** A chevron or a
+  magnifier drawn as `background-image` is deleted by any host rule that says
+  `background:` anything, which is how WordPress's select arrow was lost in
+  3.18.0. Drawn as an element, and placed on the wrapper rather than on the
+  control, no rule about `select` or `input` can reach it at all.
+
 ### No diagnostic or developer output on a manager's screen
 
 Raw ids, stored meta, timezone strings that never differ, serialized values,

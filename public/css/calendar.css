@@ -552,32 +552,221 @@
 /* Icon set — inherits currentColor, sits on the text baseline. */
 .sfaf-icon { display: inline-block; vertical-align: -0.135em; flex-shrink: 0; }
 
-/* Filters */
-.uc-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--uc-border); margin-bottom: 16px; }
+/* ===========================================================================
+ * THE FILTER BAR (rebuilt 3.61.0)
+ *
+ * WHAT WAS WRONG. Four different KINDS of control were four white boxes with
+ * thin outlines on a white page: a search field, a dropdown, a row of category
+ * chips and a row of group pills. The search box and the dropdown were very
+ * nearly the same object, and nothing said which of them opened a list. A
+ * visitor could not tell what any of it did before clicking it.
+ *
+ * ONE GROUND, AND THE CONTROLS READ AGAINST IT. The bar is a tinted panel,
+ * --uc-bg, and everything on it takes its meaning from that:
+ *
+ *     white fill + boundary  ->  you type in this, or it opens
+ *     no fill  + boundary    ->  you press this
+ *
+ * That single inversion does most of the work, because white now MEANS
+ * something instead of being the absence of a decision. It is also the
+ * treatment DESIGN.md §4 asks for: space, then a hairline, then a tint, with a
+ * border last and usually not at all. There is no box around the bar; there is
+ * a ground under it.
+ *
+ * NO NEW COLOUR. The panel is --uc-bg, the hairlines are --uc-border and
+ * --uc-border-strong, the chosen state is --uc-teal-text, the resting ink is
+ * --uc-secondary. The category dots are the same --cat-color the cards below
+ * already carry. Every one of those is a token this file already had.
+ *
+ * ---------------------------------------------------------------------------
+ * THE CASCADE, COMPUTED BEFORE ANY OF THIS WAS WRITTEN.
+ *
+ * Two rules in this file and one shape of rule on the host outrank a bare
+ * component class, and all three land on this bar:
+ *
+ *   .uc-calendar button          (0,1,1)  our own button reset, which declares
+ *                                         min-height: 0 and box-shadow: none.
+ *                                         A pill asking for a touch height or
+ *                                         a ring at (0,1,0) gets neither, and
+ *                                         it is the same fault that squared
+ *                                         these very pills in 3.21.0.
+ *   .uc-calendar select          (0,1,1)  ours, font-family only.
+ *   input[type="search"] {}      (0,1,1)  A HOST rule, and the one that made
+ *                                         this urgent: an attribute selector
+ *                                         counts as a class, so a theme's bare
+ *                                         `input[type="search"]` beat every
+ *                                         property .uc-search declared. The
+ *                                         field could be repainted on sfaf.org
+ *                                         and look untouched here. Same for
+ *                                         `.entry-content select`.
+ *
+ * THE REMEDY IS TO RAISE THE COMPONENT, not to lower the resets. The button
+ * reset's defence half is deliberately at (0,1,1) so it keeps outranking a
+ * themed `.entry-content button`, and dropping it would give the theme back
+ * the uppercase and the drop shadows. So every control on this bar is written
+ * at two classes, `.uc-calendar .uc-thing`, which is (0,2,0) and beats all
+ * three. Where a rule here is a FLOOR rather than a claim it stays at one
+ * class and says so.
+ *
+ * THE TWO GLYPHS ARE ELEMENTS, NOT BACKGROUNDS, and they are on the WRAPPERS
+ * rather than on the controls. `background: #fff` in a theme resets
+ * background-image to none, which is exactly how the select arrow was lost in
+ * 3.18.0; a glyph that is not a background cannot be lost that way, and one
+ * that is not on the <select> is not reachable by a rule about selects at all.
+ * See the renderer.
+ * ======================================================================== */
+.uc-calendar .uc-filters {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 16px; margin-bottom: 16px;
+    background: var(--uc-bg); border-radius: 12px;
+}
+/* THE TWO BANDS ARE ONE PANEL. The groups row is a sibling of the bar, not a
+   child of it, because the renderer builds them separately and the three
+   filter-row switches decide independently whether each exists. `:has()` is
+   what lets the stylesheet notice they are adjacent and close the seam, so the
+   markup keeps its shape. A browser without `:has()` gets two rounded panels
+   with a gap, which is a weaker grouping and not a broken one. */
+.uc-calendar .uc-filters:has(+ .uc-groups) { border-radius: 12px 12px 0 0; margin-bottom: 0; }
 /* THE ONE CONTROL THAT ACTUALLY OVERFLOWED. `flex-shrink: 0` around a field
    declaring `width: 200px` is a 230px reservation once its padding and border
    are counted, and in a 200px column that is 30px of the host's page it walked
-   into. `flex: 0 1 200px` keeps the desktop size exactly (basis 200, no grow)
-   and lets it give way when there is not 200px to give; the field takes its
-   width from the wrapper instead of restating it, so the two cannot disagree.
+   into. A basis with no grow keeps the desktop size exactly and lets the field
+   give way when there is not that much to give; the field takes its width from
+   the wrapper instead of restating it, so the two cannot disagree.
    min-width: 0 because a flex item's automatic minimum size is its content,
-   which would have made "may shrink" untrue. */
-.uc-search-wrap { flex: 0 1 200px; min-width: 0; }
-.uc-search { padding: 8px 14px; border: 1px solid var(--uc-border-strong); border-radius: 8px; font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4; color: var(--uc-text); background: #fff; width: 100%; transition: border-color 0.2s; }
+   which would have made "may shrink" untrue.
+
+   220 rather than the 200 this shipped with, and the extra 20 is the glyph:
+   the field's left padding went from 14px to 36px to clear it, so a basis of
+   200 would have taken 22px off the typing area rather than off the padding.
+   Same rendered field, same reasoning, one term of the arithmetic changed. */
+.uc-search-wrap { flex: 0 1 220px; min-width: 0; position: relative; display: flex; align-items: center; }
+/* The glyph sits in the field's left padding and is not a target: every click
+   in that area belongs to the input underneath. --uc-secondary rather than the
+   text colour, because it is a label for the field and not a thing to read.
+   Positioned against .uc-search-wrap, which is the nearest positioned
+   ancestor; the containment on .uc-calendar makes that root a containing block
+   too and this one is closer, which is the check that rule asks for. */
+.uc-calendar .uc-search-icon {
+    position: absolute; left: 12px; width: 16px; height: 16px;
+    color: var(--uc-secondary); pointer-events: none;
+}
+/* Left padding clears the glyph. NO `appearance: none` HERE, AND THAT IS A
+   DECISION RATHER THAN AN OMISSION: it would take the clear button off the
+   field in Chrome and Safari, and losing an affordance while fully styling a
+   control is the 3.18.0 fault in its other direction. Border, radius, fill and
+   padding are honoured on a search input by every current engine without it. */
+.uc-calendar .uc-search {
+    padding: 9px 14px 9px 36px; border: 1px solid var(--uc-border-strong); border-radius: 8px;
+    font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4;
+    color: var(--uc-text); background: #fff; width: 100%; min-width: 0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.uc-calendar .uc-search::placeholder { color: var(--uc-secondary); opacity: 1; }
+.uc-calendar .uc-search:hover { border-color: #C6CBD3; }
 /* A6, and the same fault as the modal's fields: this said `outline: none` and
    put brand teal on the border in its place, which is 2.26:1 against the white
    field and under the 3:1 floor for a focus indicator, with a 10% alpha shadow
    contributing nothing measurable behind it. --uc-teal-text #0E7680 is 5.35:1
    on white and 5.04:1 on --uc-bg. See the modal's field rules for the full
-   reasoning and for why this is :focus-visible rather than :focus. */
-.uc-search:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-color: var(--uc-teal-text); }
+   reasoning and for why this is :focus-visible rather than :focus.
 
-.uc-filter-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
-.uc-filter-btn { padding: 6px 14px; border-radius: 99px; border: 1px solid var(--uc-border); background: #fff; color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.uc-filter-btn:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
-.uc-filter-btn.active { border-color: var(--uc-teal); background: rgba(22,190,207,0.08); color: var(--uc-teal-text); }
+   RAISED TO THREE IN 3.61.0, AND HOVER IS WHY. This was (0,2,0), which was
+   enough against a host and is no longer enough against `.uc-calendar
+   .uc-search:hover` above it at (0,3,0): a field both hovered and focused took
+   hover's grey border, and the focused border was dead at exactly the moment
+   somebody was using it. The outline carried the indicator throughout, so this
+   was never a contrast failure, which is precisely why nothing would have
+   caught it. */
+.uc-calendar .uc-search:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-color: var(--uc-teal-text); }
 
-.uc-organizer-select { padding: 8px 12px; border: 1px solid var(--uc-border); border-radius: 8px; font-size: 13px; color: var(--uc-secondary); background: #fff; }
+/* THE CHIPS TAKE THE WHOLE OF THE SECOND LINE, deliberately. Three kinds of
+   control on one line at 770px is a line nobody parses; the two things you
+   type in or open sit together above, and the things you press sit together
+   below. `flex-basis: 100%` in a wrapping flex row is the break.
+   8px rather than 6px between targets, which is the documented floor for two
+   adjacent things a finger has to choose between. */
+.uc-filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 100%; }
+/* NO FILL. On the tinted panel a chip with no fill reads as a thing to press,
+   against the two white-filled things above it that you type in or open.
+   min-height at two classes because the button reset declares `min-height: 0`
+   at (0,1,1) and would otherwise take it straight back off. */
+.uc-calendar .uc-filter-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px; min-height: 34px;
+    border-radius: 99px; border: 1px solid var(--uc-border-strong); background: none;
+    color: var(--uc-secondary); font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+/* The dot is the same colour the card for that event already carries, so the
+   row names the categories rather than listing eight identical buttons. It has
+   its own size and does not scale with the label, because a colour sample is
+   not text. No dot on "All Events": the renderer gives that button no span. */
+.uc-calendar .uc-filter-dot {
+    width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+    background: var(--cat-color, var(--uc-teal));
+}
+.uc-calendar .uc-filter-btn:hover { border-color: var(--uc-teal-text); color: var(--uc-teal-text); }
+/* CHOSEN IS FILLED, AND THE ROW IS PICK-ONE. A single-select row's chosen item
+   is "the one you are looking at", which is a stronger statement than the
+   groups row's "and this one too", so it gets the stronger mark. The pair is
+   declared once, together: fill --uc-teal-text, ink white, 5.35:1. The dot goes
+   white so it stays visible on the fill and stops claiming a category colour
+   that is no longer legible there. */
+.uc-calendar .uc-filter-btn.active {
+    background: var(--uc-teal-text); border-color: var(--uc-teal-text); color: #fff;
+}
+.uc-calendar .uc-filter-btn.active .uc-filter-dot { background: #fff; }
+.uc-calendar .uc-filter-btn:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   THE DROPDOWN, WHICH NOW LOOKS LIKE ONE.
+
+   STILL A NATIVE <select>, and that is the whole answer to the accessibility
+   question: keyboard, screen reader, the platform's own phone picker and the
+   no-JavaScript case all arrive with the element and nothing custom reproduces
+   the last three. Only the appearance changed.
+
+   THREE THINGS SEPARATE IT FROM THE SEARCH FIELD BESIDE IT, and no one of them
+   is doing all the work: a chevron where the field has a magnifier, a hairline
+   end-cap the field does not have, and the chevron turning over when it opens.
+   Somebody knows it opens a list without clicking it.
+
+   `appearance: none` is at (0,2,0) so a host cannot hand the native arrow back
+   and leave two of them. If it ever loses anyway, the failure is two arrows,
+   which is visible; the arrangement where our own arrow was the background of
+   the select would have failed to none, which is not.
+   ------------------------------------------------------------------------ */
+.uc-organizer-filter { position: relative; display: flex; align-items: center; min-width: 0; }
+.uc-calendar .uc-organizer-select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    padding: 9px 46px 9px 14px; min-width: 0; max-width: 100%;
+    border: 1px solid var(--uc-border-strong); border-radius: 8px;
+    font-family: var(--uc-font-heading); font-size: 14px; line-height: 1.4;
+    color: var(--uc-text); background: #fff; cursor: pointer;
+    transition: border-color 0.2s;
+}
+.uc-calendar .uc-organizer-select:hover { border-color: #C6CBD3; }
+/* THE END-CAP. One hairline, which is the second step of DESIGN.md's
+   escalation and as far as it needs to go: it turns the right-hand end into a
+   part of the control rather than more of the field, which is what a text box
+   does not have. Inset by 1px top and bottom so it stops inside the border
+   radius rather than crossing it. pointer-events off, because the whole
+   control is one target. */
+.uc-organizer-filter::before {
+    content: ""; position: absolute; right: 37px; top: 1px; bottom: 1px;
+    width: 1px; background: var(--uc-border); pointer-events: none;
+}
+/* Points down at rest and up while the menu is open. `:focus-within` is true
+   for exactly as long as the popup is, in every engine, so this is the open
+   state rather than an approximation of it. */
+.uc-calendar .uc-select-chevron {
+    position: absolute; right: 12px; width: 15px; height: 15px;
+    color: var(--uc-teal-text); pointer-events: none;
+    transform: rotate(90deg); transition: transform 0.18s ease;
+}
+.uc-organizer-filter:focus-within .uc-select-chevron { transform: rotate(-90deg); }
+.uc-calendar .uc-organizer-select:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-color: var(--uc-teal-text); }
 
 /* ---------------------------------------------------------------------------
    THE SECOND LEVEL: GROUPS
@@ -588,27 +777,115 @@
    which is the thing the whole design avoids. Smaller type, a quieter chosen
    state, and it sits indented under the bar it belongs to.
    ------------------------------------------------------------------------ */
-.uc-groups { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 10px 0 0; border-top: 1px solid var(--uc-border); }
-.uc-groups-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--uc-secondary); flex-shrink: 0; }
-.uc-groups-pills { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
-.uc-group-pill { padding: 4px 12px; border-radius: 99px; border: 1px solid var(--uc-border); background: #fff;
-    color: var(--uc-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.uc-group-pill:hover { border-color: var(--uc-teal); color: var(--uc-teal-text); }
-/* Multi-select, so the chosen state has to read as "on" rather than as "the one
-   selected": filled, not merely outlined. */
-.uc-group-pill.active { border-color: var(--uc-teal-text); background: var(--uc-teal-text); color: #fff; }
-.uc-group-pill:focus-visible, .uc-group-clear:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
-.uc-group-clear { border: 0; background: none; padding: 4px 6px; font-size: 12px; font-weight: 600; color: var(--uc-secondary); cursor: pointer; text-decoration: underline; }
+/* THE SECOND BAND OF THE SAME PANEL. It keeps the ground and loses the gap, so
+   the two rows read as one apparatus with a seam rather than as two things
+   that happen to be near each other, and the hairline is the seam. */
+.uc-calendar .uc-groups {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: 0 0 16px; padding: 12px 16px;
+    background: var(--uc-bg); border-radius: 0 0 12px 12px;
+    border-top: 1px solid var(--uc-border);
+}
+.uc-groups-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--uc-secondary); flex-shrink: 0; }
+.uc-groups-pills { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
+/* ---------------------------------------------------------------------------
+   HOW THIS ROW DIFFERS FROM THE CATEGORY ROW, WHICH IS THE POINT OF IT.
+
+   The two rows filter different taxonomies and used to be the same object
+   twice, separated by a heading and nothing else. Four differences now, none
+   of them colour on its own, which is what DESIGN.md asks contrast to be made
+   of:
+
+     SHAPE     a category is a 99px pill, pick-one. A group is a 6px rounded
+               rectangle, pick-any. Round means one of these; square-cornered
+               means check as many as you like, and beyond six this row folds
+               into literal checkboxes, so the shape is telling the truth.
+     MARK      a category chip carries its own colour dot. A group has none,
+               because a group has no colour anywhere else on the calendar and
+               a dot would invent one.
+     CHOSEN    a chosen category FILLS. A chosen group gets a TICK and a tint.
+               Filled says "this is the one"; a tick says "and this one too".
+     WEIGHT    smaller type and tighter padding, sitting under the row it
+               depends on. This was already true and is kept.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-group-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; min-height: 30px;
+    border-radius: 6px; border: 1px solid var(--uc-border-strong); background: none;
+    color: var(--uc-secondary); font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+/* Rendered on every pill and revealed on a chosen one. The row is rebuilt from
+   the server on every toggle, so there is no in-place reflow to avoid here. */
+.uc-calendar .uc-group-tick { display: none; width: 13px; height: 13px; }
+.uc-calendar .uc-group-pill.active .uc-group-tick { display: block; }
+.uc-calendar .uc-group-pill:hover { border-color: var(--uc-teal-text); color: var(--uc-teal-text); }
+/* The pair, declared once: an 8% teal tint over --uc-bg with --uc-teal-text on
+   it measures 5.0:1, the same stop this file records for the heading band. */
+.uc-calendar .uc-group-pill.active {
+    border-color: var(--uc-teal-text); background: rgba(22,190,207,0.08); color: var(--uc-teal-text);
+}
+.uc-calendar .uc-group-pill:focus-visible, .uc-calendar .uc-group-clear:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+.uc-calendar .uc-group-clear { border: 0; background: none; padding: 4px 6px; min-height: 30px; font-size: 12px; font-weight: 600; color: var(--uc-secondary); cursor: pointer; text-decoration: underline; }
 
 /* Beyond six, the row wraps to three lines and stops being scannable, so the
    same checkboxes fold away behind a summary. Still multi-select. */
 .uc-groups-list { min-width: 0; }
-.uc-groups-list > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); list-style: none; padding: 4px 12px; border: 1px solid var(--uc-border); border-radius: 99px; display: inline-block; }
+/* SQUARE-CORNERED LIKE THE PILLS IT STANDS IN FOR, not a 99px pill: it is the
+   same pick-any row folded away, and it should not change shape on the count.
+   The chevron is what says it opens, and it was missing entirely, so this read
+   as a pill that surprised you. Same glyph and same rotation as the organizer
+   control, so both things on this bar that open say so the same way. */
+.uc-groups-list > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--uc-teal-text); list-style: none; padding: 5px 11px; min-height: 30px; border: 1px solid var(--uc-border-strong); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background: #fff; }
 .uc-groups-list > summary::-webkit-details-marker { display: none; }
+.uc-calendar .uc-groups-chevron { width: 13px; height: 13px; transform: rotate(90deg); transition: transform 0.18s ease; }
 .uc-groups-list[open] > summary { border-color: var(--uc-teal-text); }
+.uc-groups-list[open] > summary .uc-groups-chevron { transform: rotate(-90deg); }
+.uc-groups-list > summary:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 .uc-groups-options { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding: 10px 12px;
     border: 1px solid var(--uc-border); border-radius: 10px; background: #fff; max-height: 260px; overflow-y: auto; }
 .uc-group-option { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0; cursor: pointer; }
+
+/* ---------------------------------------------------------------------------
+   THE BAR MEASURES ITS OWN COLUMN, AND UNTIL NOW IT MEASURED THE WINDOW.
+
+   This was `@media (max-width: 600px)`, which asks how wide the BROWSER is. An
+   embed in a 280px sidebar of a 1440px page is 280px wide and that query never
+   fires, so the stacked layout the bar needs at that width could not happen
+   and the search field, the dropdown and the chips fought over 280px on a
+   desktop that looked fine. It is the fault this file has recorded twice, once
+   for the month grid and once for the card, and the filter bar still had it.
+
+   .uc-calendar is the query container, so this resolves against the block's own
+   column. In combined mode the panels are containers of the same name, but the
+   bar sits ABOVE them and outside both, so the nearest named ancestor is the
+   root either way and there is nothing to disambiguate.
+   ------------------------------------------------------------------------ */
+@container uc-calendar (max-width: 600px) {
+    .uc-calendar .uc-filters { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+    .uc-search-wrap { flex: 1 1 auto; }
+    /* Both input controls go full width. The select needs `width: 100%` said
+       out loud: a <select> sizes from its longest option, not from its parent,
+       so `align-items: stretch` on the column does nothing for it. */
+    .uc-organizer-filter { flex: 1 1 auto; }
+    .uc-calendar .uc-organizer-select { width: 100%; }
+    .uc-calendar .uc-groups { padding: 12px; }
+}
+
+/* A FINGER, NOT A NARROW COLUMN, IS WHAT DECIDES THIS. `pointer: coarse` asks
+   about the input device and is true on a phone and on a tablet holding the
+   embed at full width, which a width query is not. 44px is the documented
+   floor for a target somebody taps; the desktop heights above stay where they
+   are, because a mouse does not need them and the density is the reason this
+   bar fits at all. Two classes throughout: the button reset's `min-height: 0`
+   is at (0,1,1) and a media or container query changes WHEN a rule applies,
+   never how strongly. */
+@media (pointer: coarse) {
+    .uc-calendar .uc-filter-btn, .uc-calendar .uc-group-pill,
+    .uc-calendar .uc-group-clear, .uc-calendar .uc-search,
+    .uc-calendar .uc-organizer-select { min-height: 44px; }
+    .uc-groups-list > summary { min-height: 44px; }
+}
 
 /* ---------- Breadcrumb ----------
    Where the visitor is, and one press back up a level. Every segment left of
@@ -1343,8 +1620,6 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 
 /* Responsive */
 @media (max-width: 600px) {
-    .uc-filters { flex-direction: column; align-items: stretch; }
-    .uc-search { width: 100%; }
     .uc-calendar .uc-lc-md { font-size: 22px; }
     /* No media override here any more. The box is a ratio now, so it shrinks
        with the card on its own; a height here would only put the old

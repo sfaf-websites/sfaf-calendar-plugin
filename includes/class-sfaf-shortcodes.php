@@ -1762,7 +1762,20 @@ class SFAF_Shortcodes {
                         <button type="button" class="uc-group-pill<?php echo $picked ? ' active' : ''; ?>"
                                 data-uc-group="<?php echo esc_attr( $term->slug ); ?>"
                                 aria-pressed="<?php echo $picked ? 'true' : 'false'; ?>">
-                            <?php echo esc_html( $term->name ); ?>
+                            <?php
+                            /*
+                             * THE TICK IS WHAT SAYS "AND", and it is the one
+                             * difference from the category row above that is
+                             * not shape or size. Categories are pick-one and
+                             * their chosen chip fills; groups are pick-any and
+                             * a chosen pill gets this. Rendered on every pill
+                             * and shown only on a chosen one, so the markup
+                             * the row folds into beyond six, which is literally
+                             * checkboxes, is saying the same thing.
+                             */
+                            echo sfaf_icon( 'check', array( 'class' => 'uc-group-tick' ) );
+                            echo esc_html( $term->name );
+                            ?>
                         </button>
                     <?php endforeach; ?>
                     <?php if ( ! empty( $on ) ) : ?>
@@ -1772,11 +1785,21 @@ class SFAF_Shortcodes {
             <?php else : ?>
                 <details class="uc-groups-list"<?php echo ! empty( $on ) ? ' open' : ''; ?>>
                     <summary>
-                        <?php echo esc_html(
+                        <?php
+                        echo esc_html(
                             empty( $on )
                                 ? 'Choose a group (' . count( $available ) . ')'
                                 : count( $on ) . ' of ' . count( $available ) . ' chosen'
-                        ); ?>
+                        );
+                        /*
+                         * The native marker is off, so this had no marker at
+                         * all and read as a pill that happened to open. Same
+                         * glyph as the organizer control, rotated by the same
+                         * rule, so both things on this bar that open say so
+                         * the same way.
+                         */
+                        echo sfaf_icon( 'chevron', array( 'class' => 'uc-groups-chevron' ) );
+                        ?>
                     </summary>
                     <div class="uc-groups-options" role="group" aria-labelledby="uc-groups-label">
                         <?php foreach ( $available as $term ) :
@@ -2463,6 +2486,22 @@ class SFAF_Shortcodes {
                 <div class="uc-search-wrap">
                     <?php
                     /*
+                     * THE GLYPH IS AN ELEMENT, NOT A BACKGROUND, AND THAT IS
+                     * THE WHOLE REASON IT IS HERE RATHER THAN IN THE
+                     * STYLESHEET. The recorded way an affordance disappears on
+                     * a host page is a `background:` shorthand somewhere in
+                     * the theme resetting `background-image` to none; that is
+                     * how the select arrow was lost in 3.18.0. A glyph with no
+                     * background to reset cannot be lost that way. It is also
+                     * on the WRAPPER rather than the field, so a host rule
+                     * shaped `input[type="search"]` reaches the input and
+                     * never reaches this.
+                     *
+                     * aria-hidden, because the field already says "Search
+                     * events" and a second voice for the same thing is noise.
+                     */
+                    echo sfaf_icon( 'search', array( 'class' => 'uc-search-icon' ) );
+                    /*
                      * The value is rendered back in so a search survives a
                      * page load: the shortcode accepts s="…", and the embed
                      * re-renders the whole block on every search.
@@ -2508,6 +2547,21 @@ class SFAF_Shortcodes {
                                 data-category="<?php echo esc_attr( $cat->slug ); ?>"
                                 aria-pressed="<?php echo $on ? 'true' : 'false'; ?>"
                                 style="--cat-color: <?php echo esc_attr( $color ); ?>">
+                            <?php
+                            /*
+                             * `--cat-color` HAS BEEN EMITTED HERE AND READ BY
+                             * NOTHING SINCE 3.31.0, which removed the accent
+                             * bar that was the only rule using it. The dot is
+                             * what reads it now, and it is the same colour the
+                             * cards below already carry for that category, so
+                             * the row is legible as "the categories you can
+                             * see" rather than as eight anonymous buttons.
+                             *
+                             * "All Events" gets none, because it is not a
+                             * category and a dot there would claim it is.
+                             */
+                            ?>
+                            <span class="uc-filter-dot" aria-hidden="true"></span>
                             <?php echo esc_html( $cat->name ); ?>
                         </button>
                     <?php endforeach; ?>
@@ -2552,6 +2606,26 @@ class SFAF_Shortcodes {
                             <option value="<?php echo esc_attr( $org->slug ); ?>"<?php echo $picked ? ' selected' : ''; ?>><?php echo esc_html( $org->name ); ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <?php
+                    /*
+                     * STILL A NATIVE <select>. Keyboard, screen reader, the
+                     * platform's own phone picker and the no-JavaScript case
+                     * all come free with the element, and nothing custom
+                     * reproduces the last three. What changes is only what it
+                     * looks like.
+                     *
+                     * The chevron is a sibling of the select rather than the
+                     * select's own background, for the reason given at the
+                     * search glyph: a host rule shaped `.entry-content select`
+                     * or `select` can repaint the control and cannot touch
+                     * this. The stylesheet turns the native arrow off and
+                     * points this one down; if `appearance` is ever lost to a
+                     * host, the rule that hides the native arrow is at two
+                     * classes and the one drawing this is on a div, so the
+                     * failure is two arrows rather than none.
+                     */
+                    echo sfaf_icon( 'chevron', array( 'class' => 'uc-select-chevron' ) );
+                    ?>
                 </div>
                 <?php endif; ?>
             </div>

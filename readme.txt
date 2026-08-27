@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.60.0
+Stable tag: 3.61.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.61.0 =
+
+**The filter bar said what each control was, and now it looks it.**
+
+Four different kinds of control were four white boxes with thin outlines on a white page. The search box and the organizer dropdown were very nearly the same object, and nothing said which of them opened a list.
+
+**One ground, and the controls read against it.** The bar is a tinted panel, and everything on it takes its meaning from that: white fill means you type in this or it opens, no fill means you press this. White now means something instead of being what was left when nothing was decided. There is no box around the bar; there is a ground under it.
+
+**The dropdown is still a native `<select>`.** Keyboard, screen reader, the phone's own picker and the no-JavaScript case all arrive with the element, and nothing custom reproduces the last three. Only its appearance changed: a chevron where the search field has a magnifier, a hairline end-cap the field does not have, and the chevron turning over while the menu is open. Somebody knows it opens a list without clicking it.
+
+**The two glyphs are elements, not backgrounds, and they sit on the wrappers rather than on the controls.** `background: #fff` in a theme resets `background-image` to none, which is how WordPress's select arrow was lost in 3.18.0, and an affordance a rule nobody wrote about us can delete is not an affordance.
+
+**The two pill rows are different kinds of filter and now look it,** in four ways and not one of them color on its own. A category is a rounded pill, pick-one; a group is a square-cornered rectangle, pick-any, and beyond six that row folds into literal checkboxes, so the shape is telling the truth. A category carries its own color dot and a group carries none, because a group has no color anywhere else on the calendar. A chosen category fills; a chosen group gets a tick. The groups row keeps its smaller type and sits under the row it depends on.
+
+**The dot reads a value that had been emitted and read by nothing since 3.31.0,** when the accent bar that used it was removed. It is the same color the cards below already carry for that category.
+
+**The folded groups list had no marker at all** and read as a pill that surprised you. It gets the same chevron as the dropdown, rotated by the same rule.
+
+**Every control on this bar now outranks the resets under it.** Our own button reset is one class plus one element and declares `min-height: 0` and `box-shadow: none`; a host's bare `input[type="search"]` is the same strength and beat every property the search field declared. That last one was live: the field could be repainted on sfaf.org and look untouched here. Each control is written at two classes, which outranks all of it, and the resets keep the strength they need against a theme.
+
+**The bar was asking the browser how wide it was.** An embed in a 280px sidebar of a 1440px page is 280px wide, so the stacked layout it needs there could never fire and three controls fought over 280px on a desktop that looked fine. It measures its own column now, which is what every other part of this block already did.
+
+**Touch targets are keyed to the finger, not to the column.** A 44px floor applies where the device is a touchscreen, which is true of a tablet holding the bar at full width and false of a narrow window on a desktop. The desktop density is unchanged.
+
+**What the controls do is untouched.** Everything still filters through the query rather than by hiding rows, the three filter-row switches and their fallback still decide which rows exist, a visitor still cannot widen past what the block was scoped to, there is no new route, and the organizer filter runs the same server query it has run since 3.50.0.
 
 = 3.60.0 =
 

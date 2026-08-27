@@ -255,6 +255,11 @@ function sfaf_icon_paths() {
         // what says "this opened".
         'chevron'   => '<path d="m9 5 7 7-7 7"/>',
 
+        // The field marker, and the counterpart to the one above: a search box
+        // carries this and a dropdown carries the chevron, which is what tells
+        // the two apart before either is clicked. Drawn on the same 24 grid.
+        'search'    => '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.4 15.4 4.6 4.6"/>',
+
         // Platform marks — solid, see note above.
         'facebook'  => '<path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/>',
         'linkedin'  => '<path d="M7.1 20H4.2V9.5h2.9zM5.65 8.2A1.7 1.7 0 1 1 5.65 4.8a1.7 1.7 0 0 1 0 3.4zM20 20h-2.9v-5.1c0-1.2 0-2.8-1.7-2.8s-2 1.35-2 2.7V20H10.5V9.5h2.8v1.45h.05A3.05 3.05 0 0 1 16.1 9.3c3 0 3.9 2 3.9 4.5z"/>',
