@@ -1323,9 +1323,32 @@ class SFAF_Shortcodes {
                                      * already reads it.
                                      */
                                     ?>
-                                    <span class="uc-day-closed-mark" aria-hidden="true"><?php
-                                        echo esc_html( SFAF_Closures::text( $closed_row ) );
-                                    ?></span>
+                                    <?php
+                                    /*
+                                     * TWO LINES, AND THE WORD IS THE LARGER.
+                                     * "CLOSED" is what somebody scanning the
+                                     * grid needs; the closure's own name is
+                                     * the detail under it. The uppercase is
+                                     * CSS, not markup, so a screen reader
+                                     * reading this would say the word rather
+                                     * than spell it — though none does, since
+                                     * the cell's own aria-label already
+                                     * carries the whole sentence.
+                                     *
+                                     * The name line is dropped by CSS below
+                                     * 560px, where the cell has no room for
+                                     * it. Nothing is lost: the aria-label
+                                     * still has it and the day panel names it
+                                     * in full.
+                                     */
+                                    $closed_name = SFAF_Closures::name( $closed_row );
+                                    ?>
+                                    <span class="uc-day-closed-mark" aria-hidden="true">
+                                        <span class="uc-closed-word">Closed</span>
+                                        <?php if ( '' !== $closed_name ) : ?>
+                                            <span class="uc-closed-name"><?php echo esc_html( $closed_name ); ?></span>
+                                        <?php endif; ?>
+                                    </span>
                                 <?php endif; ?>
                                 <?php if ( ! empty( $ids ) ) : ?>
                                     <?php
@@ -1998,9 +2021,29 @@ class SFAF_Shortcodes {
     public function render_closure_card( $row ) {
         ob_start();
         ?>
-        <div class="uc-closure-card" role="note">
-            <span class="uc-closure-when"><?php echo esc_html( SFAF_Closures::when( $row ) ); ?></span>
-            <span class="uc-closure-what"><?php echo esc_html( SFAF_Closures::text( $row ) ); ?></span>
+        <?php
+        /*
+         * THE SAME LABEL THE GRID DRAWS, in the same two lines and the same
+         * classes, so the two renderers cannot come to disagree about what a
+         * closure looks like. They still answer different questions — this one
+         * is a span, the grid is a day — but a reader moving between them sees
+         * one treatment.
+         *
+         * The hatch is on the card and the text is on a solid panel inside it,
+         * which is the grid cell's arrangement at a larger size.
+         */
+        $name = SFAF_Closures::name( $row );
+        ?>
+        <div class="uc-closure-card uc-closed-hatch" role="note">
+            <span class="uc-closure-panel">
+                <span class="uc-closure-label">
+                    <span class="uc-closed-word">Closed</span>
+                    <?php if ( '' !== $name ) : ?>
+                        <span class="uc-closed-name"><?php echo esc_html( $name ); ?></span>
+                    <?php endif; ?>
+                </span>
+                <span class="uc-closure-when"><?php echo esc_html( SFAF_Closures::when( $row ) ); ?></span>
+            </span>
         </div>
         <?php
         return ob_get_clean();

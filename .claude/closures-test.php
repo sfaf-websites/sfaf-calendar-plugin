@@ -279,6 +279,32 @@ if ( preg_match( '#uc-day-closed-mark.*?</span>#s', $short_src, $m ) ) {
     $fails[] = 'the month grid closure mark was not found';
 }
 
+/* ---------------------------------------------------------------------------
+ * THE TWO RENDERERS AGREE ABOUT WHAT A CLOSURE LOOKS LIKE (3.60.0).
+ *
+ * They answer different questions on purpose — the grid marks a square per DAY,
+ * the list draws one card per SPAN — and that difference is asserted above. What
+ * must NOT differ is the treatment: both draw the same two-line label from the
+ * same classes, so a reader moving between them sees one thing. Two renderers
+ * with two vocabularies for one fact is how the yellow-on-yellow chip happened.
+ * ------------------------------------------------------------------------ */
+foreach ( array( 'uc-closed-word', 'uc-closed-name' ) as $shared ) {
+    if ( ! preg_match( '#uc-day-closed-mark.*?' . preg_quote( $shared, '#' ) . '#s', $short_src ) ) {
+        $fails[] = "the month grid's closure mark does not use $shared, so the two renderers have drifted";
+    }
+    if ( ! preg_match( '#uc-closure-card.*?' . preg_quote( $shared, '#' ) . '#s', $short_src ) ) {
+        $fails[] = "the closure card does not use $shared, so the two renderers have drifted";
+    }
+}
+
+// And the hatch is declared once, not copied. The grid cell needs its own rule
+// to out-specify the white td background, which is exactly how a second copy of
+// the pattern would get in.
+$css_src = file_get_contents( $root . '/public/css/calendar.css' );
+if ( substr_count( $css_src, 'repeating-linear-gradient' ) !== substr_count( $css_src, '--uc-closed-hatch-image: repeating-linear-gradient' ) ) {
+    $fails[] = 'calendar.css declares a repeating gradient outside --uc-closed-hatch-image; the closure hatch must be defined once and referenced';
+}
+
 /* ===========================================================================
  * 5. IT REACHES THE EMBED.
  *

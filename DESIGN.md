@@ -387,6 +387,18 @@ communicated.
 screen?** If yes, it is carrying information and it must clear 3:1 as a non-text
 graphic. If no, it is decoration and it should be neutral.
 
+**The closure hatch (3.60.0) passes that test rather than being exempt from
+it.** A closed day is striped in Red — tint `#FDE9E7`, ink `#AD1C0D`, stripe
+`#F04937` at 14% — and every closure also says the word "Closed" in text, in
+both renderers, with the grid cell's `aria-label` carrying the whole sentence
+before its event count. The stripes agree with something already legible instead
+of encoding it, so a reader who cannot see the color loses nothing. **Red is the
+palette's own "destructive state" role**, which is what a closure is: the
+message is do not come. Grey was not available, because the month grid already
+spends grey on out-of-month days and two greys meaning two things is worse than
+one highlight. The reasoning is repeated in `calendar.css` at the tokens
+themselves, so a decoration audit finds it where it would do the removing.
+
 **3.49.0 removed the month grid's category ring under this rule, reversing half
 of 3.31.0, and the reasoning is recorded rather than deleted because it is the
 kind somebody restores from.** 3.31.0 was fixing a real defect: the accent bar

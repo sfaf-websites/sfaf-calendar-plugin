@@ -84,6 +84,52 @@
     --uc-secondary: #6B7280;
 
     /* -----------------------------------------------------------------------
+       CLOSURES: ONE SET OF TOKENS, TWO RENDERERS (3.60.0).
+
+       The month grid asks per DAY and marks a square for each day of a
+       closure; a list asks per SPAN and shows one card for the range. They
+       answer different questions and must not answer them in different
+       clothes, so both read these and neither carries a colour of its own.
+
+       WHY RED, AND WHERE IT COMES FROM. The palette gives Red exactly two
+       roles, "category, and destructive state", and a closure is the second:
+       the message is do not come. The two values are the measured stops from
+       the category ramp in DESIGN.md — tint #FDE9E7, ink #AD1C0D, 6.10:1 — so
+       nothing here is a new colour. The stripe is the brand Red itself at 14%,
+       which over the tint resolves to about #FBD3CE and keeps the ink at
+       5.19:1, still past the 4.5:1 floor even where a stripe falls behind text.
+       Text does not sit on the pattern anyway: both renderers put it on a
+       solid panel.
+
+       WHY NOT GREY, WHICH IS WHAT THIS WAS. The month grid already spends grey
+       on days belonging to the previous and next month, and a grid where two
+       greys mean two different things is worse than a grid with one highlight.
+
+       THIS IS NOT DECORATION STANDING IN FOR INFORMATION, and the 3.38.0 audit
+       rule that strips such things does not apply. Every closure says the word
+       "Closed" in text, in both renderers, and the cell's aria-label carries
+       the full sentence before its event count. The stripes agree with a
+       sentence that is already legible rather than encoding one. Recorded here
+       so the next decoration audit does not remove it as unexplained.
+       -------------------------------------------------------------------- */
+    --uc-closed-tint: #FDE9E7;
+    --uc-closed-ink: #AD1C0D;
+    --uc-closed-stripe: rgba( 240, 73, 55, 0.14 );
+    --uc-closed-edge: rgba( 240, 73, 55, 0.35 );
+
+    /* THE HATCH ITSELF, ONCE. The grid cell cannot use the shared class — it
+       has to out-specify `.uc-calendar .uc-month-grid td`, which sets the white
+       background at two classes and a type — so it writes its own rule. It
+       must not therefore write its own STRIPES: this is the one declaration,
+       and both rules reference it. 135deg at a 9px pitch reads as a hatch
+       rather than a texture and survives a 40px cell without collapsing into
+       two fat bands. */
+    --uc-closed-hatch-image: repeating-linear-gradient(
+        135deg,
+        transparent 0 9px,
+        var( --uc-closed-stripe ) 9px 18px );
+
+    /* -----------------------------------------------------------------------
        LIFT: THE CARD SEPARATES ITSELF, BECAUSE IT CANNOT SEPARATE THE PAGE.
 
        A white card on the near-white section sfaf.org puts it in, divided from
@@ -1934,6 +1980,12 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     .uc-calendar .uc-day-events { display: none; }
     .uc-day-num { margin-bottom: 2px; }
 
+    /* THE NAME GOES, THE WORD STAYS. See the note in the 640px copy below.
+       Kept in step with it. */
+    .uc-day-closed-mark { margin-top: 1px; padding: 2px 3px; text-align: center; }
+    .uc-day-closed-mark .uc-closed-word { font-size: 9px; letter-spacing: .02em; }
+    .uc-day-closed-mark .uc-closed-name { display: none; }
+
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
     .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
 
@@ -1998,6 +2050,13 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     /* Seven columns of day numbers, and nothing else in the cell. */
     .uc-calendar .uc-month-grid td { padding: 3px 1px; }
     .uc-day-num { min-width: 19px; height: 19px; padding: 0 3px; font-size: 10px; }
+    /* 300px over seven columns is 42px a cell. The chip drops its border and
+       most of its padding to buy back the width, but KEEPS ITS SOLID GROUND:
+       the word must not end up read over the hatch, which is the one thing
+       this treatment promises everywhere else. CLOSED at 8px is about 31px and
+       fits what is left, and may break rather than widen the column. */
+    .uc-day-closed-mark { padding: 1px 2px; border: 0; border-radius: 3px; }
+    .uc-day-closed-mark .uc-closed-word { font-size: 8px; letter-spacing: 0; overflow-wrap: anywhere; }
     .uc-calendar .uc-event-card { padding: 12px; }
 }
 
@@ -2530,6 +2589,19 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     .uc-calendar .uc-day-events { display: none; }
     .uc-day-num { margin-bottom: 2px; }
 
+    /* THE NAME GOES, THE WORD STAYS.
+       Cells collapse to a 44px minimum here and the event entries are already
+       dropped for dots, so two lines of text is not a thing that fits. The
+       word carries the fact and is kept; the closure's own name is still in
+       the cell's aria-label, and the day panel below the grid gives it in full
+       when the day is tapped. Sized against the real grid rather than assumed:
+       seven columns of a 560px container are 80px each, and CLOSED at 9px sits
+       inside that with the chip's padding to spare. Kept in step with the
+       container-query copy above. */
+    .uc-day-closed-mark { margin-top: 1px; padding: 2px 3px; text-align: center; }
+    .uc-day-closed-mark .uc-closed-word { font-size: 9px; letter-spacing: .02em; }
+    .uc-day-closed-mark .uc-closed-name { display: none; }
+
     /* Dots replace the event blocks at this width, one per event. */
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
     .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
@@ -2735,28 +2807,76 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
    same rule the run log and the status pills follow, and it is why this passes
    the decoration audit while looking distinct.
    ------------------------------------------------------------------------- */
+/* The hatched ground, for anything that can take a class. The grid cell cannot
+   and declares its own rule below, but both draw --uc-closed-hatch-image, so
+   the pattern is defined in exactly one place. */
+.uc-closed-hatch {
+    background-image: var( --uc-closed-hatch-image );
+    background-color: var( --uc-closed-tint );
+}
+
+/* THE LABEL, ONCE, AND IT IS TWO LINES. "CLOSED" does the work and is the
+   larger; the closure's own name sits under it. Uppercase comes from CSS
+   rather than the markup so a screen reader says "Closed" instead of spelling
+   it, which is also why the source keeps sentence case. */
+.uc-closed-word {
+    display: block;
+    font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    color: var( --uc-closed-ink );
+}
+.uc-closed-name {
+    display: block;
+    font-weight: 600; color: var( --uc-text );
+    overflow-wrap: anywhere;
+}
+
+/* ---- The list card: one card for the whole span. ---- */
 .uc-closure-card {
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
-    margin: 0 0 12px; padding: 12px 16px;
-    border: 1px dashed #B9BCC0;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    margin: 0 0 12px; padding: 10px;
+    border: 1px dashed var( --uc-closed-edge );
     border-radius: 10px;
-    background: repeating-linear-gradient(
-        135deg, #F3F4F6 0 10px, #EDEFF2 10px 20px );
-    color: #4B5563;
     font-family: var(--uc-font-body, inherit);
     cursor: default;
 }
+/* THE TEXT SITS ON SOLID, NOT ON THE PATTERN. The stripes stay visible as an
+   inset frame around this panel, which is the same arrangement the grid cell
+   uses: hatched ground, solid panel, text on the panel. */
+.uc-closure-panel {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px;
+    flex: 1 1 auto; padding: 8px 12px;
+    background: #fff; border: 1px solid var( --uc-closed-edge ); border-radius: 7px;
+}
+.uc-closure-label { flex: 0 0 auto; }
+.uc-closure-label .uc-closed-word { font-size: 15px; line-height: 1.2; }
+.uc-closure-label .uc-closed-name { font-size: 14px; line-height: 1.3; }
 .uc-closure-when { font-size: 14px; font-weight: 700; color: #374151; }
-.uc-closure-what { font-size: 14px; }
 
-/* The month grid mark. The cell keeps its number and gains a line under it. */
-.uc-day-closed { background: #F3F4F6; }
-.uc-day-closed .uc-day-num { color: #6B7280; }
+/* ---- The month grid: one marked square per day of the closure. ---- */
+
+/* SPECIFICITY, DELIBERATELY MATCHED. `.uc-calendar .uc-month-grid td` sets the
+   white cell background at two classes and a type, so a single class loses to
+   it — the recurring cascade fault in this project. Written at the same weight
+   as the .uc-day-out rule above and placed after it, so a closure on an
+   out-of-month day reads as closed rather than as merely elsewhere. */
+.uc-calendar .uc-month-grid td.uc-day-closed {
+    background-image: var( --uc-closed-hatch-image );
+    background-color: var( --uc-closed-tint );
+}
+
+/* THE CHIP. Solid, so the two lines are never read over the hatch, and edged
+   in the closure's own colour so it is not mistaken for the white event
+   entries below it. It has no hover and nothing to open, which is what keeps
+   it from looking like one of them. */
 .uc-day-closed-mark {
-    display: block; margin-top: 2px;
-    font-size: 10.5px; line-height: 1.25; font-weight: 700;
-    color: #4B5563; text-transform: none; letter-spacing: 0;
-    overflow-wrap: anywhere;
+    display: block; margin-top: 2px; padding: 3px 5px;
+    background: #fff;
+    border: 1px solid var( --uc-closed-edge );
+    border-radius: 5px;
+}
+.uc-day-closed-mark .uc-closed-word { font-size: 10px; line-height: 1.2; }
+.uc-day-closed-mark .uc-closed-name {
+    font-size: 9.5px; line-height: 1.2; font-weight: 500; color: var( --uc-secondary );
 }
 /* A closed day is not clickable and must not offer to be. The grid gives
    every cell a pointer and a hover; a closed one with no events takes

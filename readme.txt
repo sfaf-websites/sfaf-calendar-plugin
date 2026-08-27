@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.59.0
+Stable tag: 3.60.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.60.0 =
+
+**A closure now stands out on a busy month, and says CLOSED in two lines.**
+
+A closure worked but blended in. On a month with plenty of events, somebody scanning the grid did not notice the office was shut.
+
+**Diagonal stripes, in the brand's Red.** The palette gives Red two roles, "category, and destructive state", and a closure is the second: the message is do not come. The values are the measured stops from the category ramp — tint `#FDE9E7` and ink `#AD1C0D`, 6.10:1 — with the stripe being the brand Red itself at 14%. Nothing here is a new colour.
+
+**Grey was not available.** The month grid already spends grey on days belonging to the previous and next month, and a grid where two greys mean two different things is worse than a grid with one highlight.
+
+**The label is two lines, CLOSED over the closure's own name**, with the word the larger of the two. Uppercase comes from the stylesheet rather than the markup, so the word is read rather than spelled.
+
+**Text never sits on the pattern.** In both renderers the hatch is the ground and the words sit on a solid panel over it.
+
+**Both renderers, one treatment.** The month grid still asks per day and marks a square for each day of a closure; a list still asks per span and shows one card reading the range. That difference is the point and is unchanged. What is now shared is the look: the same two-line label, the same classes, the same hatch, declared once and referenced by both. The test asserts they cannot drift.
+
+**Sized against the real grid.** At full width the chip carries both lines above whatever events fall that day. **Below 560px the name line is dropped and CLOSED is kept** — cells collapse to a 44px minimum there and the event entries are already replaced by dots. Nothing is lost: the cell's screen-reader label still carries the whole sentence, and the day panel below the grid names the closure in full. Below 300px the chip sheds its border and most of its padding but keeps its solid ground.
+
+**A closure and an event on the same day are both readable.** Event entries already sit on their own solid white panel, so they are neither tinted by the hatch nor hidden by the chip, and the cell grows to fit both.
+
+**This is not decoration standing in for information.** Every closure says the word "Closed" in text in both renderers, and the grid cell's label reads the full sentence before its event count. The stripes agree with something already legible rather than encoding it, and the reasoning is recorded in the stylesheet so the next decoration audit does not remove it as unexplained.
+
+**Nothing about closures changed underneath.** Still one option rather than a post type, still one entry spanning dates rather than one row per day, still no page, no permalink and nothing to register for, and still invisible to every query over events. The embed gets this by not being special: it calls the same renderers.
 
 = 3.59.0 =
 

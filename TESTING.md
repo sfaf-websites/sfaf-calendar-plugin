@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 27 items.** Quick 11, needs real conditions 13, blocked on other
+**Outstanding: 28 items.** Quick 12, needs real conditions 13, blocked on other
 people 3.
 
 ---
@@ -91,6 +91,26 @@ just the visible rows. The organizer filter never worked before 3.50.0.
 
 Not only on sfaf.org. Six releases shipped a fault the suite passed, and four of
 them were embed-only. The five things to look at are in `PROJECT.md` §1.
+
+### 1.12 The closure treatment, in a browser, at three widths (3.60.0)
+
+Nothing in the build can see a rendered stripe. Put a closure on a day that
+**already has two or three events**, then look at the month grid:
+
+- **Full width.** Red diagonal stripes on the cell, a CLOSED chip with the
+  closure's name under it, and **the events still legible on their own white
+  panels below it**. The cell should have grown rather than crowded.
+- **Narrow the window until the grid collapses to dots** (560px of the
+  calendar's own column). The name line goes, CLOSED stays.
+- **Narrower still.** CLOSED should still be on a solid patch, never read
+  directly over the stripes.
+
+Then the **list** view: one card for the whole span, the same two-line label,
+the same stripes, the date range beside it. **The grid and the list must look
+like the same thing.**
+
+**Check the embed too**, not only sfaf.org. It gets this by calling the same
+renderers, and that is exactly the kind of assumption that has broken before.
 
 ---
 

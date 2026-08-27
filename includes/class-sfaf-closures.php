@@ -175,8 +175,26 @@ class SFAF_Closures {
      * is not, rather than "Closed for" trailing off.
      */
     public static function text( $row ) {
-        $label = isset( $row['label'] ) ? trim( (string) $row['label'] ) : '';
-        return ( '' !== $label ) ? 'Closed for ' . $label : 'Closed';
+        return ( '' !== self::name( $row ) ) ? 'Closed for ' . self::name( $row ) : 'Closed';
+    }
+
+    /**
+     * Just the closure's own name, with no sentence around it.
+     *
+     * THE SECOND LINE OF THE LABEL, in both renderers. text() is the sentence
+     * form and is what a screen reader gets, because "Closed for Labor Day"
+     * before an event count is a fact read in one breath. This is the same
+     * name for the two-line label a sighted reader sees, where "CLOSED" is
+     * already its own line and repeating the word under it would be noise.
+     *
+     * One accessor rather than two renderers each reaching into $row['label'],
+     * so a closure with no name behaves the same way in both.
+     *
+     * @param array $row
+     * @return string '' when the closure was never given a name.
+     */
+    public static function name( $row ) {
+        return isset( $row['label'] ) ? trim( (string) $row['label'] ) : '';
     }
 
     /**
