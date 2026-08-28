@@ -340,7 +340,6 @@ $ALLOWED = array(
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),
     'POST:refresh_source_event'   => array( 'event' ),
     'POST:faq_set_apply'          => array( 'event' ),
-    'POST:faq_set_create'         => array( 'event' ),
     'GET:events/edit'             => array( 'event' ),
     'GET:rsvps'                   => array( 'event', 'viewall' ),
     'GET:rsvps/export'            => array( 'event', 'viewall' ),
@@ -359,6 +358,12 @@ $ALLOWED = array(
     'POST:save_organizer'         => array( 'viewall' ),
     'POST:delete_organizer'       => array( 'viewall' ),
     'POST:faq_set_save'           => array( 'viewall' ),
+    // Duplicating adds a row to the list every event picks from, so it takes the
+    // same gate as editing and deleting one. 'faq_set_create' used to sit in the
+    // per-event block above on the 'event' gate, which let a contributor add to a
+    // shared list they could not then correct; the control and the route are gone
+    // in 3.63.0 and every set operation is calendar-wide now.
+    'POST:faq_set_duplicate'      => array( 'viewall' ),
     'POST:faq_set_delete'         => array( 'viewall' ),
     'GET:faq-sets'                => array( 'viewall' ),
     'GET:optins'                  => array( 'viewall' ),

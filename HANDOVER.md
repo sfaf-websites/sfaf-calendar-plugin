@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-08-28, at 3.62.2.
+**Last updated:** 2026-08-28, at 3.63.0.
 
 ---
 
 ## What shipped last
 
-**3.62.2**, built as `sfaf-calendar-3.62.2.zip` in the project root, committed
+**3.63.0**, built as `sfaf-calendar-3.63.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.63.0** | FAQ sets are made and maintained on one screen. "Save these as a set" is gone from the event editor, with its two reported defects disposed of rather than repaired. Sets can be duplicated, and the list is collapsed instead of showing every question of every set at once. |
 | **3.62.0** to **3.62.2** | Online events. One tick, "Online Event" everywhere a location renders, a meeting link that goes out only with the messages the manager ticks, and a whitelist that fails the build if anything else reads it. **3.62.1 and 3.62.2 are copy only**: the hints under the tick described the implementation rather than what happens to the event, and the link messaging was spread over three places with one case missing from all of them. `CLAUDE.md` §6 is the standing fault behind both. |
 | **3.61.0** | The public filter bar: a tinted ground under it, a dropdown that looks like one, a search field that does not, and two pill rows that read as different kinds of filter. Every control raised above the resets, and the bar measures its own column instead of the window. |
 | **3.60.0** | Closures stand out: red diagonal stripes and a two-line CLOSED label, in the grid and the list alike. Text sits on a solid panel, the name line drops below 560px, and an event on a closed day is untouched. |
-| **3.59.0** | The sweep was judging a GoFundMe Pro fundraising window as an event's end, so four rows never cleared. The end date is now believed only where the item's type says it means an event's end, and the type is stored on the row. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.62.2, the
+repo.** The tell is the Plugins screen: if it does not say 3.63.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -164,7 +164,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 32 items.** Quick 15, needs
+**`TESTING.md` holds the manual testing backlog, 34 items.** Quick 17, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 

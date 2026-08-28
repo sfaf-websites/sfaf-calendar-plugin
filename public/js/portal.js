@@ -45,7 +45,6 @@
         run('recurrence', initRecurrence);
         run('emailPills', initEmailPills);
         run('locationPicker', initLocationPicker);
-        run('faqSaveAsSet', initFaqSaveAsSet);
         run('liveSearch', initLiveSearch);
         run('editScope', initEditScope);
         run('confirmButtons', initConfirmButtons);
@@ -348,60 +347,6 @@
             root.classList.add('uc-location-on');
             apply();
         });
-    }
-
-    /* ---------------------------------------------------------------------
-     * "Save these as a set", from inside the FAQ card.
-     *
-     * The control belongs to a form declared outside the editor's form, by the
-     * `form` attribute, because HTML forms cannot nest. That association is
-     * plain HTML and works with scripting off, in which case the server saves
-     * the questions as they are STORED on the event.
-     *
-     * What this adds is copying the rows currently ON SCREEN into that form
-     * first, so a set can be saved from questions just typed without saving the
-     * event. Same server action either way.
-     * ------------------------------------------------------------------- */
-    function initFaqSaveAsSet() {
-        var form = document.getElementById('uc-faq-set-create');
-        var holder = form ? form.querySelector('[data-uc-faq-set-rows]') : null;
-        if (!form || !holder) {
-            return;
-        }
-
-        var name = document.querySelector('[data-uc-faq-saveset] input[name="faq_set_name"]');
-
-        form.addEventListener('submit', function (e) {
-            if (name && !name.value.trim()) {
-                e.preventDefault();
-                name.focus();
-                return;
-            }
-
-            holder.innerHTML = '';
-            var i = 0;
-            document.querySelectorAll('.uc-faq-card .uc-repeater-row.uc-faq-row').forEach(function (row) {
-                var q = row.querySelector('input[type="text"]');
-                var a = row.querySelector('textarea');
-                if (!q || !a || q.disabled) {
-                    return; // an imported row: not ours to copy into a set
-                }
-                if (!q.value.trim() && !a.value.trim()) {
-                    return;
-                }
-                holder.appendChild(hidden('faq_set_rows[' + i + '][question]', q.value));
-                holder.appendChild(hidden('faq_set_rows[' + i + '][answer]', a.value));
-                i++;
-            });
-        });
-
-        function hidden(n, v) {
-            var el = document.createElement('input');
-            el.type = 'hidden';
-            el.name = n;
-            el.value = v;
-            return el;
-        }
     }
 
     /* ---------------------------------------------------------------------

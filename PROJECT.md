@@ -1325,6 +1325,53 @@ It reaches the embed by not being special: the embed payload is built by calling
 the same shortcode renderers, so a closure the shortcode draws is a closure the
 embed serves.
 
+### FAQ sets are made in one place and copied, never linked
+
+An option (`sfaf_faq_sets`), not a taxonomy and not a post type. `SFAF_FAQ_Sets`
+owns it.
+
+**THE MODEL, AND IT IS THE WHOLE OF IT (3.63.0).** On an **event** you apply a
+set and write questions specific to that event. On the **FAQ Sets** screen you
+create, edit, duplicate and delete sets. Nothing on an event adds to the shared
+list.
+
+"Save these as a set" lived on the event editor until 3.63.0 and is gone, with
+`create_from_event()`, its hidden form, its route and its script. Three things
+were wrong with it and removing it disposed of all three rather than repairing
+them: the browser collected the rows on screen and the server built the set from
+the last **saved** state, a refusal redirected with the success message key, and
+it was gated on `can_edit_event` while editing and deleting a set were
+`can_view_all`. **Every operation on the shared list takes `can_view_all` now**,
+duplication included, because a contributor should not be able to add a row to a
+list they cannot then correct.
+
+**APPLYING COPIES AND NEVER LINKS**, which is the decision everything else here
+follows from. Answers drift year to year, so a link would mean a manager
+correcting a 2027 answer silently rewriting the 2025 and 2026 events sitting on
+the calendar as past events. `apply()` writes one key, `sfaf_faq_meta_key()`, and
+**nothing on an event records which set its questions came from**. That is what
+makes deleting a set harmless and what makes the deletion notice true.
+
+**DUPLICATION EXISTS BECAUSE OF THAT SAME ARGUMENT, ONE LEVEL UP.** "Next year's
+version of this set" has to be a new set that starts from this one's text, never
+a live reference. `duplicate()` reads the set through `all()` and writes it back
+through `save()` with `' - copy'` appended, so a copy passes through the same
+cleaner, the same row cap and the same id-collision handling as a set typed from
+scratch, and after the call there is nothing joining the two.
+
+**Duplicate NAMES are allowed and are not a collision.** `save()` resolves
+collisions on the **id**, walking `name`, `name-2`, `name-3` until one is free,
+and never on the name. Refusing would put a failure state in front of something
+that is about to be renamed anyway: the copy opens with its name field focused,
+which is what stops the list filling with sets called "copy".
+
+**The list is collapsed** (3.63.0). Each set is a native `<details>`, showing its
+name and question count in the apply dropdown's format. **No `name` attribute on
+them**, so two can be open at once: somebody comparing two sets needs both, and a
+named group is exclusive. `<details>` rather than script for the reason the
+dashboard's form-link control uses it: it opens with scripting off and the
+browser supplies the keyboard and screen-reader behaviour.
+
 ### Venues are stored by reference and resolved at display
 
 `uc_venue` is a taxonomy. The address is **term meta on the venue**, read at

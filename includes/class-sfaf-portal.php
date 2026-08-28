@@ -1132,25 +1132,23 @@ class SFAF_Portal {
                 $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'faq_set_applied' ) );
                 break;
 
-            case 'faq_set_create':
-                $event_id = intval( $_POST['event_id'] );
-                $post     = get_post( $event_id );
-                if ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) {
-                    wp_die( 'Denied' );
-                }
-                $created = SFAF_FAQ_Sets::create_from_event(
-                    $event_id,
-                    isset( $_POST['faq_set_name'] ) ? wp_unslash( $_POST['faq_set_name'] ) : ''
-                );
-                set_transient(
-                    'sfaf_faq_set_result_' . $user->ID . '_' . $event_id,
-                    is_wp_error( $created )
-                        ? array( 'error' => $created->get_error_message() )
-                        : array( 'created' => (string) $created ),
-                    5 * MINUTE_IN_SECONDS
-                );
-                $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'faq_set_saved' ) );
-                break;
+            /*
+             * 'faq_set_create' IS GONE, AND IT WAS AN EVENT-SIDE CONTROL.
+             *
+             * An event is where a set is APPLIED and where questions specific
+             * to that event are written. Creating, editing, duplicating and
+             * deleting sets all happen on the FAQ Sets screen. Two of the three
+             * reported defects on the old control were disposed of by removing
+             * it rather than repaired: it collected the on-screen rows in the
+             * browser and then built the set from the last SAVED state, and it
+             * redirected a refusal with the success message key.
+             *
+             * The gate it carried was the third thing wrong with it. Creating a
+             * set was can_edit_event, so a contributor could add to a list every
+             * event picks from, while editing and deleting one were can_view_all.
+             * Every operation on the shared list is the editor gate now,
+             * duplication included.
+             */
 
             case 'faq_set_save':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
@@ -1173,6 +1171,30 @@ class SFAF_Portal {
                     $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_failed' ) );
                 }
                 $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_saved' ) );
+                break;
+
+            /*
+             * DUPLICATE, ON THE SAME GATE AS ITS TWO NEIGHBOURS.
+             *
+             * can_view_all, which is what editing and deleting a set already
+             * take. Duplication adds a row to a list every event picks from, so
+             * it is an operation on the shared list and not on any one event.
+             *
+             * THE REDIRECT CARRIES THE NEW ID so the copy opens expanded with
+             * its name field focused. Renaming is then the first thing that
+             * happens rather than a step somebody skips, which is what stops
+             * the list filling with sets called "copy". See render_faq_sets().
+             */
+            case 'faq_set_duplicate':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $copy = SFAF_FAQ_Sets::duplicate(
+                    isset( $_POST['faq_set_id'] ) ? sanitize_text_field( wp_unslash( $_POST['faq_set_id'] ) ) : ''
+                );
+                if ( is_wp_error( $copy ) ) {
+                    set_transient( 'sfaf_faq_set_error_' . $user->ID, $copy->get_error_message(), 60 );
+                    $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_failed' ) );
+                }
+                $this->redirect( 'faq-sets', array( 'msg' => 'faq_set_duplicated', 'edit' => $copy ) );
                 break;
 
             case 'faq_set_delete':
@@ -2830,6 +2852,7 @@ class SFAF_Portal {
             'refreshed'        => 'Refreshed from the source. See below for what changed.',
             'faq_set_applied'  => 'FAQ set applied.',
             'faq_set_saved'    => 'FAQ set saved.',
+            'faq_set_duplicated' => 'Copy made. Give it a name. Nothing about the original changed, and the two are separate from here on.',
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
             'manager_saved'    => 'Saved. Those are the same fields the event editor shows, so the event now reads the same in both places.',
             'rsvp_settings_saved' => 'Registration settings saved. These are the same controls the event editor shows, on the same event, so it now reads the same in both places.',
@@ -8419,10 +8442,6 @@ class SFAF_Portal {
         // are no stored FAQs to save or apply to before that.
         if ( $event_id ) {
             $this->render_faq_set_panel( $user, $event_id );
-            // The form the FAQ card's "Save these as a set" control belongs to.
-            // Out here because forms cannot nest; referenced from in there by
-            // id. See render_faq_save_as_set().
-            $this->render_faq_set_create_form( $event_id );
         }
         ?>
 
@@ -8660,20 +8679,20 @@ class SFAF_Portal {
                 );
                 ?>
                 <section class="uc-bento-card uc-faq-card">
+                    <?php
+                    /*
+                     * ONE SET CONTROL HERE, AND IT IS THE ONE THAT APPLIES.
+                     *
+                     * "Save these as a set" used to sit in this head. An event
+                     * is where a set is applied and where this event's own
+                     * questions are written; making, editing, duplicating and
+                     * deleting sets is the FAQ Sets screen's job, and a shared
+                     * list is not something to add to from inside one event.
+                     * See the note beside 'faq_set_save' in handle().
+                     */
+                    ?>
                     <div class="uc-bento-head">
                         <h2 class="uc-bento-title">FAQs</h2>
-                        <?php
-                        /*
-                         * BOTH SET CONTROLS, HERE, WHERE THE QUESTIONS ARE.
-                         *
-                         * 3.3.0 moved "apply a set" into this block and left
-                         * "save these as a set" on a panel above the form, so
-                         * the manager writing FAQs had no way to save them from
-                         * where they were working. A control that exists
-                         * somewhere else is missing.
-                         */
-                        $this->render_faq_save_as_set( $event_id );
-                        ?>
                     </div>
                     <p class="uc-hint">
                         Frequently asked questions for this event. These are its own: there is no series block above
@@ -9689,66 +9708,6 @@ class SFAF_Portal {
             </div>
             </div><?php // uc-location-place: everything the online tick replaces. ?>
         </div>
-        <?php
-    }
-
-    /**
-     * "Save these as a set", in the FAQ card, posting to its own form.
-     *
-     * HTML FORMS CANNOT NEST, and this control has to sit inside the event
-     * editor's form, visually, next to the questions it saves. The `form`
-     * attribute is exactly the tool for that: the input and the button live
-     * here in the markup and belong to a form declared outside the editor's
-     * one. No JavaScript is involved in that association, so this works with
-     * scripting switched off, which the old panel above the form also did.
-     *
-     * WHAT GETS SAVED. Without script, the questions as they are STORED on the
-     * event, which is what the old control did and what the hint says. With
-     * script, portal.js copies the rows currently on screen into the hidden
-     * form first, so a set can be saved from questions just typed. Both routes
-     * end at the same server action.
-     *
-     * @param int $event_id
-     */
-    private function render_faq_save_as_set( $event_id ) {
-        if ( ! $event_id ) {
-            // Nothing to save yet: the event has no stored rows and no id to
-            // post against. Saying so beats a control that cannot work.
-            echo '<span class="uc-muted uc-faq-saveset-note">Save the event to reuse these questions as a set.</span>';
-            return;
-        }
-        ?>
-        <div class="uc-faq-saveset" data-uc-faq-saveset>
-            <label class="uc-visually-hidden" for="uc-faq-set-name-<?php echo (int) $event_id; ?>">Name for the saved set</label>
-            <input type="text" id="uc-faq-set-name-<?php echo (int) $event_id; ?>"
-                   form="uc-faq-set-create" name="faq_set_name"
-                   placeholder="Name a set, e.g. Cycle to Zero questions" />
-            <button type="submit" form="uc-faq-set-create" class="uc-btn uc-btn-sm">Save these as a set</button>
-        </div>
-        <?php
-    }
-
-    /**
-     * The form the FAQ card's save-as-set control belongs to.
-     *
-     * Rendered OUTSIDE the editor's form, because forms cannot nest, and
-     * referenced from inside it by id. See render_faq_save_as_set().
-     *
-     * @param int $event_id
-     */
-    private function render_faq_set_create_form( $event_id ) {
-        if ( ! $event_id ) {
-            return;
-        }
-        ?>
-        <form method="post" id="uc-faq-set-create" class="uc-offscreen-form"
-              action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>">
-            <input type="hidden" name="uc_action" value="faq_set_create" />
-            <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
-            <?php wp_nonce_field( 'uc_portal_faq_set_create', 'uc_nonce' ); ?>
-            <?php // portal.js writes the on-screen rows in here before submit. ?>
-            <div data-uc-faq-set-rows></div>
-        </form>
         <?php
     }
 
@@ -12688,8 +12647,9 @@ class SFAF_Portal {
             <?php if ( is_array( $result ) ) : ?>
                 <?php if ( ! empty( $result['error'] ) ) : ?>
                     <div class="uc-flash uc-flash-error"><?php echo esc_html( $result['error'] ); ?></div>
-                <?php elseif ( ! empty( $result['created'] ) ) : ?>
-                    <div class="uc-flash">Saved as a set. It is now available on every event.</div>
+                <?php // The 'created' branch that used to be here is gone with
+                      // the control that set it. Only applying a set writes this
+                      // transient now, so it is either an error or a result. ?>
                 <?php else : ?>
                     <div class="uc-flash">
                         Applied &ldquo;<?php echo esc_html( $result['name'] ); ?>&rdquo;:
@@ -12703,7 +12663,7 @@ class SFAF_Portal {
 
             <div class="uc-faq-set-actions">
                 <?php if ( empty( $sets ) ) : ?>
-                    <p class="uc-muted">No saved sets yet. Write this event&rsquo;s FAQs below, save the event, then use &ldquo;Save these as a set&rdquo; to reuse them on the next one.</p>
+                    <p class="uc-muted">No saved sets yet. Make one on <a href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">FAQ Sets</a> to reuse the same questions across events.</p>
                 <?php else : ?>
                     <?php
                     /*
@@ -12742,12 +12702,12 @@ class SFAF_Portal {
 
                 <?php
                 /*
-                 * "SAVE THESE AS A SET" IS NOT HERE ANY MORE. It moved into the
-                 * FAQ card's header, next to the questions it saves, which is
-                 * where somebody writing FAQs actually is. 3.3.0 moved applying
-                 * a set down there and left saving one up here, so the block a
-                 * manager was working in offered no way to keep what they had
-                 * just written. See render_faq_save_as_set().
+                 * THERE IS NO "SAVE THESE AS A SET" ANYWHERE ON AN EVENT NOW.
+                 *
+                 * It sat here until 3.38.0, moved into the FAQ card, and is
+                 * gone entirely from 3.63.0. An event applies a set and holds
+                 * its own questions; the shared list is made and maintained on
+                 * the FAQ Sets screen, which is the only screen gated for it.
                  */
                 ?>
             </div>
@@ -12756,11 +12716,21 @@ class SFAF_Portal {
     }
 
     /**
-     * Manage saved sets: rename, edit rows, delete.
+     * The only screen that makes and maintains sets: create, edit, duplicate,
+     * delete.
      *
-     * There is no "new set" form here on purpose. Sets are born from a real
-     * event that already has the questions on it, which is both less typing
-     * and less of a blank page to face.
+     * THE WHOLE OF IT IS HERE FROM 3.63.0, and that is the point of the
+     * release. An event applies a set and writes questions of its own; nothing
+     * on an event adds to the shared list. The old note here said sets were
+     * born from a real event, which stopped being true when 3.38.0 added the
+     * create form above and stopped being possible when 3.63.0 removed the
+     * event-side control.
+     *
+     * EVERY OPERATION TAKES THE SAME GATE, can_view_all. Creating used to be
+     * can_edit_event from an event while editing and deleting were
+     * can_view_all, so a contributor could add to a list they could not then
+     * correct. Duplication is an operation on the shared list and takes the
+     * same gate as its neighbours.
      *
      * @param WP_User $user
      */
@@ -12877,36 +12847,102 @@ class SFAF_Portal {
         <?php if ( empty( $sets ) ) : ?>
             <div class="uc-card">
                 <div class="uc-card-head"><h2>0 sets</h2></div>
-                <p class="uc-empty">No sets yet. Open an event with FAQs you would reuse, and press &ldquo;Save these FAQs as a set&rdquo;.</p>
+                <p class="uc-empty">No sets yet. Use &ldquo;Create a set&rdquo; above.</p>
             </div>
         <?php else : ?>
+            <?php
+            /*
+             * COLLAPSED BY DEFAULT, AND A NATIVE DISCLOSURE RATHER THAN SCRIPT.
+             *
+             * Every set used to render fully expanded, so this screen was every
+             * question of every set at once and finding one meant scrolling
+             * past all the others.
+             *
+             * <details> IS THE ELEMENT, for the reason the dashboard's form-link
+             * control uses it: it opens with scripting off, the browser gives it
+             * keyboard and screen-reader behaviour nothing here has to
+             * reproduce, and in-page find still reaches the closed content in
+             * browsers that support it. Nothing about this is an initialiser
+             * that can fail.
+             *
+             * EACH ONE IS ITS OWN <details> WITH NO name ATTRIBUTE, which is
+             * what lets two be open at once. Giving them a shared name would
+             * make the group exclusive and close one when another opens, and
+             * somebody comparing two sets needs both.
+             *
+             * THE COUNT IS THE APPLY DROPDOWN'S FORMAT, "Name (3)", so the same
+             * set reads the same in both places.
+             */
+            $open_id = isset( $_GET['edit'] ) ? sanitize_text_field( wp_unslash( $_GET['edit'] ) ) : '';
+            ?>
             <?php foreach ( $sets as $set ) : ?>
-                <div class="uc-card">
-                    <div class="uc-card-head">
-                        <h2><?php echo esc_html( $set['name'] ); ?></h2>
-                        <span class="uc-muted"><?php echo (int) count( $set['rows'] ); ?> <?php echo esc_html( 1 === count( $set['rows'] ) ? 'question' : 'questions' ); ?></span>
-                    </div>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>" class="uc-form">
-                        <input type="hidden" name="uc_action" value="faq_set_save" />
-                        <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
-                        <?php wp_nonce_field( 'uc_portal_faq_set_save', 'uc_nonce' ); ?>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Set name</span>
-                            <input type="text" name="faq_set_name" value="<?php echo esc_attr( $set['name'] ); ?>" required />
-                        </label>
-                        <?php $this->faq_repeater( 'faq_set_rows', $set['rows'] ); ?>
-                        <div class="uc-form-actions">
-                            <button type="submit" class="uc-btn uc-btn-primary">Save set</button>
+                <?php $is_open = ( '' !== $open_id && $open_id === $set['id'] ); ?>
+                <details class="uc-card uc-faq-set" data-uc-disclosure <?php echo $is_open ? 'open' : ''; ?>>
+                    <summary class="uc-faq-set-toggle">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                        <span class="uc-faq-set-name"><?php echo esc_html( $set['name'] ); ?></span>
+                        <span class="uc-muted">(<?php echo (int) count( $set['rows'] ); ?>)</span>
+                    </summary>
+
+                    <div class="uc-faq-set-body">
+                        <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>" class="uc-form">
+                            <input type="hidden" name="uc_action" value="faq_set_save" />
+                            <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
+                            <?php wp_nonce_field( 'uc_portal_faq_set_save', 'uc_nonce' ); ?>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Set name</span>
+                                <?php
+                                /*
+                                 * autofocus ON THE COPY, AND ON NOTHING ELSE.
+                                 *
+                                 * A duplicate lands here named "<original> -
+                                 * copy" with this set open, and the caret is
+                                 * already in the field that needs changing. The
+                                 * attribute is the browser's own, so it needs no
+                                 * script; it is printed for at most one set on
+                                 * the page, because two autofocus attributes is
+                                 * undefined behaviour and the browser picks.
+                                 */
+                                ?>
+                                <input type="text" name="faq_set_name" value="<?php echo esc_attr( $set['name'] ); ?>" required <?php echo $is_open ? 'autofocus' : ''; ?> />
+                            </label>
+                            <?php $this->faq_repeater( 'faq_set_rows', $set['rows'] ); ?>
+                            <div class="uc-form-actions">
+                                <button type="submit" class="uc-btn uc-btn-primary">Save set</button>
+                            </div>
+                        </form>
+
+                        <div class="uc-faq-set-ops">
+                            <?php
+                            /*
+                             * ITS OWN FORM, BESIDE DELETE AND NOT INSIDE THE
+                             * EDITOR'S FORM. Forms cannot nest, and duplicating
+                             * copies what is STORED rather than what is on
+                             * screen, so unsaved edits in the form above are
+                             * deliberately not carried into the copy. Save
+                             * first, then duplicate.
+                             */
+                            ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">
+                                <input type="hidden" name="uc_action" value="faq_set_duplicate" />
+                                <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
+                                <?php wp_nonce_field( 'uc_portal_faq_set_duplicate', 'uc_nonce' ); ?>
+                                <button type="submit" class="uc-btn uc-btn-sm">Duplicate this set</button>
+                            </form>
+
+                            <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>"
+                                  onsubmit="return confirm('Delete this set? Events that already used it keep their questions, because the rows were copied when it was applied.');">
+                                <input type="hidden" name="uc_action" value="faq_set_delete" />
+                                <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
+                                <?php wp_nonce_field( 'uc_portal_faq_set_delete', 'uc_nonce' ); ?>
+                                <button type="submit" class="uc-link-danger">Delete this set</button>
+                            </form>
                         </div>
-                    </form>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>"
-                          onsubmit="return confirm('Delete this set? Events that already used it keep their questions, because the rows were copied when it was applied.');">
-                        <input type="hidden" name="uc_action" value="faq_set_delete" />
-                        <input type="hidden" name="faq_set_id" value="<?php echo esc_attr( $set['id'] ); ?>" />
-                        <?php wp_nonce_field( 'uc_portal_faq_set_delete', 'uc_nonce' ); ?>
-                        <button type="submit" class="uc-link-danger">Delete this set</button>
-                    </form>
-                </div>
+                        <p class="uc-hint">
+                            A copy starts from these questions as they are saved now. Editing either one afterwards leaves the other alone.
+                        </p>
+                    </div>
+                </details>
             <?php endforeach; ?>
         <?php endif; ?>
         <?php

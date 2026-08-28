@@ -1514,14 +1514,10 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-venue-new > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; }
 
 /* ---------- FAQ card ---------- */
-.uc-faq-saveset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.uc-faq-saveset input[type="text"] { min-width: 240px; padding: 7px 10px; border: 1px solid var(--p-border);
-    border-radius: 7px; font-size: 13px; }
-.uc-faq-saveset-note { font-size: 12px; }
-/* The form the save-as-set control belongs to. It has to be in the document and
-   has nothing to show, so it takes no space rather than being display:none,
-   which some browsers treat as a reason to skip its controls. */
-.uc-offscreen-form { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* .uc-faq-saveset and .uc-offscreen-form went with "Save these as a set" in
+   3.63.0. The offscreen rule existed only for that control's hidden form and
+   had no other user, so it went with it rather than being left as a class
+   nothing carries. */
 
 /* The search box says it is working, since a submit is a page load. */
 .uc-filters-bar.uc-searching input[type="search"] { opacity: 0.7; }
@@ -2847,6 +2843,51 @@ body.uc-modal-open { overflow: hidden; }
 .uc-add-toggle::marker { content: ""; }
 .uc-add-toggle:hover { filter: brightness(0.95); }
 .uc-add-toggle:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   A SET ON THE FAQ SETS SCREEN, COLLAPSED (3.63.0).
+
+   Every set rendered fully expanded, so the screen was every question of every
+   set at once. Each one is a <details> now, closed by default.
+
+   THE SUMMARY IS THE CARD'S OWN HEAD, not a button. It wears the same band,
+   the same full-bleed negative margins and the same type as .uc-card-head, so
+   a closed set reads as a card that has a head and nothing else yet, rather
+   than as a new kind of control. The negative margins are restated rather than
+   inherited: .uc-card-head is a class this element does not carry, and giving a
+   <summary> two classes that both set margin is how they come to disagree.
+
+   DELIBERATELY NOT .uc-add-toggle, which is yellow. Yellow means "act on this"
+   and is reserved for the one control that leads a screen, which here is
+   "Create a set". A page of twelve yellow set headers would mean none of them
+   led. See DESIGN.md.
+
+   NO name ATTRIBUTE ON THESE, so two can be open at once: somebody comparing
+   two sets needs both, and a named group is exclusive.
+   ------------------------------------------------------------------------- */
+.uc-faq-set { padding: 20px; }
+.uc-faq-set-toggle {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    cursor: pointer; list-style: none;
+    margin: -20px -20px 0; padding: 11px 20px;
+    background: var(--uc-band); border-bottom: 1px solid var(--p-border);
+    /* 14 / 600 is the card-heading step, which is what this is. It was written
+       at 700 and the sweep caught it: between two steps, the headings above and
+       below it stop reading as a hierarchy. See DESIGN.md. */
+    font-size: 14px; font-weight: 600; color: var(--p-text);
+}
+.uc-faq-set[open] > .uc-faq-set-toggle { margin-bottom: 16px; }
+.uc-faq-set-toggle::-webkit-details-marker { display: none; }
+.uc-faq-set-toggle::marker { content: ""; }
+.uc-faq-set-toggle:hover { filter: brightness(0.97); }
+.uc-faq-set-toggle:focus-visible { outline: 2px solid var(--p-text); outline-offset: -2px; }
+.uc-faq-set-name { flex: 1 1 auto; }
+
+/* Duplicate and Delete on one line, the quiet button first. Delete keeps
+   .uc-link-danger and is not a button, so it does not compete. */
+.uc-faq-set-ops { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--p-border); }
+.uc-faq-set-ops form { margin: 0; }
 
 /* The card wrapping an add disclosure has no business looking like a panel
    until it is open: closed, it is one control. */

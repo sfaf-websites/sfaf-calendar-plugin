@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 32 items.** Quick 15, needs real conditions 14, blocked on other
+**Outstanding: 34 items.** Quick 17, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -183,6 +183,41 @@ and it is the one route on this feature the suite can only model.
   see whether either offers a Join button from `CONFERENCE`. Neither is required
   to; the description carries the link regardless. This is worth knowing, not
   fixing.
+
+### 1.16 Duplicating a set, and the collapsed list (3.63.0)
+
+Nothing in the build can open a `<details>`, move a caret, or see two sets at
+once. On **FAQ Sets** in caladmin, with at least three sets:
+
+- **Every set is closed on arrival**, showing its name and a count in brackets.
+  Open two of them: **both stay open.** If opening the second closes the first,
+  a `name` attribute has got onto the group and that is the fault.
+- **With JavaScript switched off**, they still open and close. That is why they
+  are `<details>` and not script.
+- **Press Duplicate this set.** The page comes back with the copy **already
+  open** and the **caret already in its name field**, named
+  `<original> - copy`. If the page opens with nothing focused, `autofocus` is
+  being ignored and the list will fill with sets called "copy".
+- **Check the original is untouched:** same name, same questions, still there.
+- **Rename the copy, change one of its answers, save.** Reopen the original: its
+  answer must be unchanged. Then edit the original and reopen the copy: also
+  unchanged. That is the copy-not-link guarantee at set level.
+- **Duplicate the same set twice.** Two sets both named `<original> - copy` is
+  correct and must not be refused.
+- **Check an event that already used the original.** Its questions must be
+  exactly what they were. Nothing in 3.63.0 touches an event's stored FAQs.
+
+### 1.17 The event editor's FAQ card, after the removal (3.63.0)
+
+Open any event with FAQs.
+
+- **There is no text box and no "Save these as a set" button** in the FAQ card
+  header. The header is the word FAQs and nothing else.
+- **"Apply a saved FAQ set" still works**, unchanged: choose a set, press Add
+  these questions, and the rows arrive underneath the ones already there.
+- **On an event with no sets yet**, the panel above the form points at the FAQ
+  Sets screen rather than telling somebody to press a control that no longer
+  exists.
 
 ---
 

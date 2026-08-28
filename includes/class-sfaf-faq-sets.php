@@ -196,28 +196,45 @@ class SFAF_FAQ_Sets {
     }
 
     /**
-     * Save an event's current FAQ rows as a new set.
+     * Copy a set.
      *
-     * Imported rows are included by their text but never by their ID, so what
-     * comes out is a set of ordinary questions with no tie to any platform.
+     * create_from_event() USED TO BE HERE AND IS GONE. Its only caller was the
+     * event editor's "Save these as a set", removed in 3.63.0: an event applies
+     * a set and holds its own questions, and the shared list is made and
+     * maintained on one screen.
      *
-     * @param int    $post_id
-     * @param string $name
-     * @return string|WP_Error
+     * WHY DUPLICATION EXISTS AT ALL, AND WHY IT IS NOT A LINK. Applying a set
+     * copies its rows, deliberately, so that editing a set never rewrites an
+     * event that already used it. Answers drift year to year, and a manager
+     * correcting a 2027 answer must not silently rewrite the 2025 and 2026
+     * events sitting on the calendar as past events. Duplication is the same
+     * argument one level up: "next year's version of this set" is a NEW set
+     * that starts from this one's text, never a live reference to it. Editing
+     * the copy cannot reach the original and editing the original cannot reach
+     * the copy, because after this call there is nothing joining them.
+     *
+     * THE ROWS ARE TAKEN THROUGH all(), so they arrive already cleaned by
+     * clean_rows(), and save() cleans them again on the way in. Passing them
+     * through the ordinary writer rather than duplicating the option row by
+     * hand is what keeps the row cap, the sanitizers and the id-collision
+     * handling identical for a copy and for a set typed from scratch.
+     *
+     * DUPLICATE NAMES ARE ALLOWED. save() resolves collisions on the ID and
+     * never on the name, so two sets may read the same and are kept apart in
+     * storage. Refusing would put a failure state in front of something that is
+     * about to be renamed anyway: the copy opens in edit mode with its name
+     * focused.
+     *
+     * @param string $id
+     * @return string|WP_Error The new set's id.
      */
-    public static function create_from_event( $post_id, $name ) {
-        $post_id = (int) $post_id;
-
-        // What is on the event IS what is on screen. Nothing is inherited from
-        // anywhere, so there is nothing to merge in before saving — see the
-        // note above sfaf_faq_meta_key().
-        $rows = sfaf_get_faqs( $post_id );
-
-        if ( empty( $rows ) ) {
-            return new WP_Error( 'sfaf_faq_set_nothing', 'This event has no FAQs to save yet.' );
+    public static function duplicate( $id ) {
+        $set = self::get( (string) $id );
+        if ( ! $set ) {
+            return new WP_Error( 'sfaf_faq_set_missing', 'That set no longer exists.' );
         }
 
-        return self::save( '', $name, $rows );
+        return self::save( '', $set['name'] . ' - copy', $set['rows'] );
     }
 
     /**

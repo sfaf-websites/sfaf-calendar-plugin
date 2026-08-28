@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.62.2
+Stable tag: 3.63.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,35 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.63.0 =
+
+**FAQ sets are made and maintained in one place, sets can be duplicated, and the list no longer opens every question at once.**
+
+**The model, plainly.** On an **event** you apply a set and write questions specific to that event. On the **FAQ Sets** screen you create, edit, duplicate and delete sets. Nothing on an event adds to the shared list any more.
+
+**"Save these as a set" is gone from the event editor**, along with its text box, its button, the hidden form it posted to, its handler and the script that collected the rows. It had three things wrong with it and all three are disposed of rather than repaired, because the control was going:
+
+* **The browser collected the questions on screen and the server ignored them**, building the set from the last *saved* state. On a new event with unsaved questions it refused with "this event has no FAQs to save yet" while the questions sat on screen in front of the person reading it.
+* **A refusal redirected with the success message key**, so the page showed a green "FAQ set saved" banner and a red error on the same load.
+* **It was gated differently from every other set operation.** Creating a set was the per-event gate, so a contributor could add a row to a list every event picks from, while editing and deleting one were editor-level. A shared list is not something to add to from inside one event.
+
+**"Apply a saved FAQ set" is untouched.** That control was correct and is unchanged.
+
+**Sets can be duplicated.** Each set on the FAQ Sets screen carries **Duplicate this set**. The copy is named **"<original name> - copy"**, and it **opens with its name field already focused**, so renaming is the first thing that happens rather than a step somebody skips and a list that fills with sets called "copy". The original is untouched in every respect.
+
+**A copy is a copy, not a link, and that is the same argument applying a set already makes.** Applying copies rows onto an event so that editing a set never rewrites an event that already used it. Answers drift year to year, and a manager correcting a 2027 answer must not silently rewrite the 2025 and 2026 events sitting on the calendar as past events. Duplication is that argument one level up: "next year's version of this set" is a **new set that starts from this one's text**. Editing either one afterwards leaves the other alone, because after the copy is made there is nothing joining them.
+
+**Two sets may share a name and this is not refused.** Storage has always kept sets apart by id rather than by name, so a duplicate name was never a collision. Refusing would put a failure state in front of something that is about to be renamed anyway.
+
+**Duplication takes the editor gate**, the same one editing and deleting already take.
+
+**The sets list is collapsed.** Every set rendered fully expanded, so the screen was every question of every set at once and finding one meant scrolling past all the others. A set now shows its **name and question count**, in the same format the apply dropdown uses, and opens to reveal its questions for editing.
+
+**Opening one does not close the others**, because somebody comparing two sets needs both. It is a native disclosure rather than scripted show and hide, so it works with JavaScript off and the browser supplies the keyboard and screen-reader behaviour, which is the same reasoning as the dashboard's form-link control.
+
+**Nothing in this release reaches a single event's stored questions.** No event's FAQ block is read, written, or migrated by any part of it. Events that already used a set keep exactly what they had, as they always did, because the rows were copied when the set was applied.
+
 
 = 3.62.2 =
 
