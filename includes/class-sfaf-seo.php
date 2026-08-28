@@ -169,6 +169,31 @@ class SFAF_SEO {
             ),
         );
 
+        /*
+         * ONLINE: A VirtualLocation, AND ITS url IS THE EVENT PAGE.
+         *
+         * schema.org says a VirtualLocation's url is where the event happens,
+         * which for us is the meeting link, and that is exactly why it is not
+         * put there. This block is emitted into the public head, is read by
+         * every crawler that visits and is quoted back in search results. It is
+         * one of the surfaces SFAF_Online exists to keep the link off.
+         *
+         * The event page is the honest substitute rather than a fudge: it is
+         * where somebody finds out how to attend, which is what a reader of
+         * this property is trying to establish. The PostalAddress above is
+         * REPLACED and not merely blanked, because a Place with an empty street
+         * and a defaulted "San Francisco, CA" would assert an address for an
+         * event that has none.
+         */
+        if ( SFAF_Online::is_online( $id ) ) {
+            $schema['eventAttendanceMode'] = 'https://schema.org/OnlineEventAttendanceMode';
+            $schema['location']            = array(
+                '@type' => 'VirtualLocation',
+                'name'  => SFAF_Online::LABEL,
+                'url'   => get_permalink( $id ),
+            );
+        }
+
         if ( $dt ) {
             $schema['startDate'] = $dt[0]->format( 'c' );
             $schema['endDate']   = $dt[1]->format( 'c' );

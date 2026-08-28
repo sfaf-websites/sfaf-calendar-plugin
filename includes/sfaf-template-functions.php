@@ -227,6 +227,14 @@ function sfaf_icon_paths() {
         'link'      => '<path d="M10.5 13.5a4.5 4.5 0 0 0 6.8.5l2.4-2.4a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4"/><path d="M13.5 10.5a4.5 4.5 0 0 0-6.8-.5L4.3 12.4a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4"/>',
         'bolt'      => '<path d="M13 2.5 4.5 14H11l-1 7.5L19.5 10H13z"/>',
         'venue'     => '<path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/>',
+
+        /*
+         * WHERE 'pin' WOULD GO ON AN ONLINE EVENT. A map pin next to the words
+         * "Online Event" says the opposite of what the line says, so the fact
+         * row swaps the glyph rather than dropping it and leaving the row
+         * ragged against the ones above it. Same 24 grid, same 2px stroke.
+         */
+        'video'     => '<rect x="3" y="6.5" width="12.5" height="11" rx="2.5"/><path d="M15.5 11 21 8v8l-5.5-3z"/>',
         'ticket'    => '<path d="M4 8.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1.6a2.4 2.4 0 0 0 0 4.8v1.6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.6a2.4 2.4 0 0 0 0-4.8z"/><path d="M14 7v2M14 11v2M14 15v2"/>',
         'mail'      => '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/>',
         'check'     => '<path d="M20 6.5 9.5 17 4 11.5"/>',
@@ -1956,7 +1964,14 @@ function sfaf_event_location_parts( $post_id ) {
  * @return string '' when the event has no location at all.
  */
 function sfaf_event_location_short( $post_id ) {
-    $post_id  = (int) $post_id;
+    $post_id = (int) $post_id;
+
+    // An online event has no place to shorten. Same answer as the long form,
+    // because two words is already the short form. See SFAF_Online.
+    if ( SFAF_Online::is_online( $post_id ) ) {
+        return SFAF_Online::LABEL;
+    }
+
     $venue_id = SFAF_Venues::id_for_event( $post_id );
     if ( $venue_id ) {
         $venue = SFAF_Venues::get( $venue_id );
@@ -1978,6 +1993,25 @@ function sfaf_event_location_short( $post_id ) {
 
 function sfaf_event_location( $post_id ) {
     $post_id = (int) $post_id;
+
+    /*
+     * ONLINE IS ANSWERED FIRST AND ANSWERED HERE.
+     *
+     * This function is the single reader every surface goes through: the event
+     * page, the cards, the sidebar, the month grid, the four emails, the .ics,
+     * the JSON-LD, the satellite payload, the WordPress admin box and the
+     * caladmin lists. Answering "Online Event" in one place is what makes that
+     * phrase appear in all of them without a condition being written thirteen
+     * times, and without one of the thirteen being forgotten.
+     *
+     * IT IS NEVER THE MEETING LINK. Everything downstream prints what this
+     * returns, several of those things are public, and one of them is a Google
+     * Maps query string. The link lives behind SFAF_Online::link() and reaches
+     * only the paths that class's whitelist names.
+     */
+    if ( SFAF_Online::is_online( $post_id ) ) {
+        return SFAF_Online::LABEL;
+    }
 
     $venue_id = SFAF_Venues::id_for_event( $post_id );
     if ( $venue_id ) {
@@ -2936,6 +2970,21 @@ function sfaf_map_search_url( $location ) {
  * @return string
  */
 function sfaf_event_map_html( $post_id ) {
+    /*
+     * AN ONLINE EVENT HAS NO "GETTING THERE", AND THIS IS NOT COSMETIC.
+     *
+     * sfaf_event_location() answers "Online Event" for one, which would
+     * otherwise be handed to Google twice: once as a maps search link and once
+     * as the `q` of an embedded frame that loads on page view. The frame is the
+     * part that matters. It would tell Google this browser viewed this page,
+     * and these pages cover HIV services, substance use programmes and trans
+     * health groups. Requesting a map of two words that are not a place buys
+     * nothing and costs that.
+     */
+    if ( SFAF_Online::is_online( $post_id ) ) {
+        return '';
+    }
+
     $location = sfaf_event_location( $post_id );
     if ( '' === $location ) {
         return '';

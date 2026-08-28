@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.61.0
+ * Version: 3.62.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.61.0' );
+define( 'SFAF_VERSION', '3.62.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -89,6 +89,9 @@ $sfaf_includes = array(
     'includes/sfaf-template-functions.php',
     'includes/class-sfaf-series.php',
     'includes/class-sfaf-venues.php',
+    // Online events. After SFAF_Venues, whose set_for_event() it calls to clear
+    // the place, and after the template functions that hold the address parts.
+    'includes/class-sfaf-online.php',
     'includes/class-sfaf-organizers.php',
     'includes/class-sfaf-closures.php',
     'includes/class-sfaf-categories.php',
@@ -505,9 +508,47 @@ function sfaf_output_ics() {
     $lines[] = 'DTSTAMP:' . gmdate( 'Ymd\THis\Z' );
     $lines[] = 'DTSTART:' . $start->format( 'Ymd\THis\Z' );
     $lines[] = 'DTEND:' . $end->format( 'Ymd\THis\Z' );
+    /*
+     * THE MEETING LINK, ON THE CONFIRMATION'S COPY OF THIS FILE AND NO OTHER.
+     *
+     * This endpoint is public and addressed by post id, so nothing about "the
+     * event is online and has a link" may be enough on its own to get one: four
+     * digits would walk the calendar. `j` is an HMAC keyed on the site's auth
+     * salt (SFAF_Online::ics_join_token), and only SFAF_Online::ics_url_with_link()
+     * builds one, which only build_confirmation() calls. A request without it,
+     * or with a wrong one, gets the same file everybody else gets.
+     *
+     * SO THIS IS DELIBERATELY WIDER THAN THE EMAIL, AND IT IS RECORDED RATHER
+     * THAN ASSUMED. A calendar entry syncs to the person's phone, their laptop
+     * and any calendar they have shared with somebody else, so a link that
+     * lands here can be read by people who never registered. Mark has decided
+     * that, for the case where the person already holds the link because the
+     * confirmation carried it. It is not done for the morning-of reminder,
+     * because the .ics is offered by the confirmation and by nothing else.
+     *
+     * LOCATION STAYS "Online Event". The link goes in the description and in
+     * the RFC 7986 CONFERENCE property, which is the property that means "the
+     * URI you join at" and is what a client offers as a Join button.
+     */
+    $join = '';
+    if ( SFAF_Online::is_online( $post_id ) && SFAF_Online::has_link( $post_id ) ) {
+        $asked = isset( $_GET[ SFAF_Online::ICS_JOIN_ARG ] )
+            ? sanitize_text_field( wp_unslash( $_GET[ SFAF_Online::ICS_JOIN_ARG ] ) )
+            : '';
+        if ( SFAF_Online::sends_with( $post_id, 'confirmation' ) && SFAF_Online::ics_join_ok( $post_id, $asked ) ) {
+            $join = SFAF_Online::link( $post_id );
+        }
+    }
+    if ( '' !== $join ) {
+        $description = 'Join: ' . $join . ( '' !== $description ? "\n\n" . $description : '' );
+    }
+
     $lines[] = 'SUMMARY:' . sfaf_ics_escape( get_the_title( $post_id ) );
     $lines[] = 'DESCRIPTION:' . sfaf_ics_escape( $description );
     $lines[] = 'LOCATION:' . sfaf_ics_escape( sfaf_event_location( $post_id ) );
+    if ( '' !== $join ) {
+        $lines[] = 'CONFERENCE;VALUE=URI;FEATURE=VIDEO;LABEL=Join the event:' . $join;
+    }
     $lines[] = 'URL:' . esc_url_raw( get_permalink( $post_id ) );
     $lines[] = 'END:VEVENT';
     $lines[] = 'END:VCALENDAR';

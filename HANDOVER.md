@@ -6,22 +6,15 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-08-27, at 3.61.0.
+**Last updated:** 2026-08-28, at 3.62.0.
 
 ---
 
 ## What shipped last
 
-**3.61.0**, built as `sfaf-calendar-3.61.0.zip` in the project root, committed
+**3.62.0**, built as `sfaf-calendar-3.62.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
-
-> **3.60.0 WAS BUILT AND ZIPPED BUT NEVER COMMITTED**, and this file said it had
-> been. It was committed unchanged at the head of the 3.61.0 session, so it is
-> one commit behind 3.61.0 rather than lost. Worth knowing only because a
-> handover asserting a push that did not happen is the thing that made it
-> invisible for a day.
-
 
 > **3.53.0 ADDED A TABLE**, `uc_series_followers`, and took `SFAF_DB_VERSION` to
 > `6`. 3.54.0 adds nothing, but if the site is still on 3.52.0 this still
@@ -33,15 +26,33 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.62.0** | Online events. One tick, "Online Event" everywhere a location renders, a meeting link that goes out only with the messages the manager ticks, and a whitelist that fails the build if anything else reads it. |
 | **3.61.0** | The public filter bar: a tinted ground under it, a dropdown that looks like one, a search field that does not, and two pill rows that read as different kinds of filter. Every control raised above the resets, and the bar measures its own column instead of the window. |
 | **3.60.0** | Closures stand out: red diagonal stripes and a two-line CLOSED label, in the grid and the list alike. Text sits on a solid panel, the name line drops below 560px, and an event on a closed day is untouched. |
 | **3.59.0** | The sweep was judging a GoFundMe Pro fundraising window as an event's end, so four rows never cleared. The end date is now believed only where the item's type says it means an event's end, and the type is stored on the row. |
-| **3.58.0** | Only events are imported: GoFundMe Pro donation pages are refused by campaign type, and anything dateless or already past is refused everywhere. Expired rows leave the Pending and Dismissed queues on their own. Published events untouched. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.61.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.62.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
+
+> **3.62.0 IS A FIRST PASS TO SHOW A TEAM, NOT A FINISHED WORKFLOW**, and the
+> half that is missing is on purpose. **Everybody who registers gets the meeting
+> link** if the manager ticked the message that carries it. Per-registrant
+> approval before it goes out is still being decided and was deliberately not
+> half built. Nothing in this build assumes every registrant gets the link: the
+> link is a field on the event and the delivery is decided per message, so the
+> gate slots in front of `SFAF_Online::sends_with()` without unpicking anything.
+>
+> **Two things about it want saying out loud to the team.** The link is in the
+> confirmation's calendar file, and **a calendar entry is shared more widely
+> than an email**: it syncs to the person's phone, their laptop and any calendar
+> they share with a partner or an assistant. Mark has decided that for the case
+> where the person already holds the link, and it is recorded rather than
+> assumed. And **the link is a credential on a calendar carrying HIV, substance
+> use and trans health programming**, which is why it is on no public surface
+> and why `.claude/online-events-test.php` fails the build if anything new reads
+> it.
 
 > **INSTALL BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from 3.36.0
 > to 3.40.0, pressing Save in the caladmin event editor cancelled the event and
@@ -153,8 +164,8 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 29 items.** Quick 13, needs
-real conditions 13, blocked on other people 3. Nothing in the build can settle
+**`TESTING.md` holds the manual testing backlog, 32 items.** Quick 15, needs
+real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 
 ## Open decisions

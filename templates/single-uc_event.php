@@ -188,7 +188,25 @@ while ( have_posts() ) :
                                     <span><?php echo esc_html( sfaf_ap_time_range( $start_time, $end_time ) ); ?></span>
                                 </li>
                             <?php endif; ?>
-                            <?php if ( $location ) : ?>
+                            <?php
+                            /*
+                             * ONLINE: THE WORDS, AND NOTHING THAT LEADS ANYWHERE.
+                             *
+                             * Not a maps link, because "Online Event" is not an
+                             * address and handing it to Google as a search is
+                             * both nonsense and a request this page should not
+                             * be making on a visitor's behalf. NOT the meeting
+                             * link either, at any price: this is the public
+                             * page, and it is the first place anybody looking
+                             * for the link would try. See SFAF_Online.
+                             */
+                            ?>
+                            <?php if ( SFAF_Online::is_online( $post_id ) ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'video' ); ?></span>
+                                    <span><?php echo esc_html( SFAF_Online::LABEL ); ?></span>
+                                </li>
+                            <?php elseif ( $location ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'pin' ); ?></span>
                                     <?php // A plain link to Google Maps, which costs a
@@ -197,7 +215,12 @@ while ( have_posts() ) :
                                     <span><a class="uc-fact-maplink" href="<?php echo esc_url( sfaf_map_search_url( $location ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a></span>
                                 </li>
                             <?php endif; ?>
-                            <?php if ( ! empty( $venues ) ) : ?>
+                            <?php // The venue name, and only where the event has a venue.
+                                  // An online event's term was cleared by SFAF_Online::set(),
+                                  // so this is already empty for one; the explicit test is
+                                  // the second mechanism, for a row written before 3.62.0
+                                  // by something that predates that rule. ?>
+                            <?php if ( ! empty( $venues ) && ! SFAF_Online::is_online( $post_id ) ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'venue' ); ?></span>
                                     <span><?php echo esc_html( implode( ', ', wp_list_pluck( $venues, 'name' ) ) ); ?></span>
@@ -250,8 +273,16 @@ while ( have_posts() ) :
                             <?php endif; ?>
                             <?php
                             /* The venue's own site, beside the address rather
-                             * than on the card. See sfaf_event_venue_website(). */
-                            $venue_site = sfaf_event_venue_website( $post_id );
+                             * than on the card. See sfaf_event_venue_website().
+                             *
+                             * NOT ON AN ONLINE EVENT. This one is a community
+                             * submission field and belongs to SFAF_Submit, not
+                             * to the location picker, so SFAF_Online::set() does
+                             * not clear it and should not: it is not this
+                             * feature's field to delete. It is simply not shown
+                             * beside "Online Event", where a venue's website is
+                             * an answer to a question nobody asked. */
+                            $venue_site = SFAF_Online::is_online( $post_id ) ? '' : sfaf_event_venue_website( $post_id );
                             if ( '' !== $venue_site ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'home' ); ?></span>

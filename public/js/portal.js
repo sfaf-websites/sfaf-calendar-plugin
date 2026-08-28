@@ -318,19 +318,33 @@
     function initLocationPicker() {
         document.querySelectorAll('[data-uc-location]').forEach(function (root) {
             var modes = Array.prototype.slice.call(root.querySelectorAll('[data-uc-location-mode]'));
-            if (!modes.length) {
+
+            /* Online, and the venue/address half it replaces. Both are
+             * server-rendered and both submit; the SAVE prefers the tick, so
+             * this only hides the half that does not apply. An imported event
+             * has neither control and drops out here. */
+            var online = root.querySelector('[data-uc-online-toggle]');
+            var place  = root.querySelector('[data-uc-location-place]');
+            var panel  = root.querySelector('[data-uc-online-panel]');
+
+            if (!modes.length && !online) {
                 return;
             }
 
             function apply() {
+                var isOnline = !!(online && online.checked);
+                if (panel) { panel.hidden = !isOnline; }
+                if (place) { place.hidden = isOnline; }
+
                 var chosen = 'custom';
                 modes.forEach(function (m) { if (m.checked) { chosen = m.value; } });
-                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-location-panel]'), function (panel) {
-                    panel.hidden = (panel.getAttribute('data-uc-location-panel') !== chosen);
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-location-panel]'), function (p) {
+                    p.hidden = (p.getAttribute('data-uc-location-panel') !== chosen);
                 });
             }
 
             modes.forEach(function (m) { m.addEventListener('change', apply); });
+            if (online) { online.addEventListener('change', apply); }
             root.classList.add('uc-location-on');
             apply();
         });
@@ -2992,6 +3006,15 @@
      * string here: composing the same address twice in two languages is how
      * they come to disagree. */
     function locationNow(form) {
+        /* Online answers first, exactly as sfaf_event_location() does, and with
+         * the same two words. The dialog that asks "tell everybody registered
+         * what moved" compares this against the stored value, so a disagreement
+         * here is an email saying the wrong thing. */
+        var online = form.querySelector('[data-uc-online-toggle]');
+        if (online && online.checked) {
+            return 'Online Event';
+        }
+
         var mode = form.querySelector('input[name="location_mode"]:checked');
         if (!mode) {
             var plain = form.querySelector('input[name="location"]');

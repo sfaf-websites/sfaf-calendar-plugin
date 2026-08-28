@@ -88,6 +88,17 @@ class SFAF_Recurrence {
      */
     private static $copied_meta = array(
         '_uc_start_time', '_uc_end_time', '_uc_location',
+        /*
+         * ONLINE, THE MEETING LINK AND WHICH MESSAGES CARRY IT.
+         *
+         * Written out as literals rather than spread from
+         * SFAF_Online::meta_keys(), for the reason stated on $copied_taxonomies
+         * below: a static property initializer is a constant expression, and a
+         * function call here would make this class depend on another having
+         * loaded first. The two lists are checked against each other in
+         * .claude/online-events-test.php so they cannot drift.
+         */
+        '_uc_online', '_uc_meeting_url', '_uc_online_send',
         '_uc_capacity', '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal',
         '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
         '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',

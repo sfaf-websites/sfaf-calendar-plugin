@@ -1431,6 +1431,18 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-location-venue, .uc-location-custom { margin: 0 0 12px 22px; }
 .uc-location-on .uc-location-venue[hidden], .uc-location-on .uc-location-custom[hidden] { display: none; }
 
+/* The online tick and what it swaps in.
+   [hidden] IS RESTATED AS display:none HERE for the same reason it is above:
+   these panels are display:flex/grid children in the bento layout, and a flex
+   item's `display` beats the UA sheet's `[hidden] { display: none }`, so the
+   attribute alone leaves the panel on screen. Only under .uc-location-on, so
+   with scripting off nothing is hidden and every control still submits. */
+.uc-online-check { margin-bottom: 4px; }
+.uc-online-panel { margin: 0 0 12px 22px; padding-top: 4px; }
+.uc-online-panel input[type="url"] { width: 100%; }
+.uc-location-on .uc-online-panel[hidden],
+.uc-location-on .uc-location-place[hidden] { display: none; }
+
 /* ---------------------------------------------------------------------------
    CATEGORIES (Series & Categories screen).
 

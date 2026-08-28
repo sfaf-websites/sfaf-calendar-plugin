@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 29 items.** Quick 13, needs real conditions 13, blocked on other
+**Outstanding: 32 items.** Quick 15, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -147,12 +147,66 @@ the six past faults in this area were embed-only and looked correct here.
   choosing a category and choosing an organizer must each change the **count**,
   not just the visible rows, and must still work past page one.
 
+### 1.14 An online event, everywhere a location renders (3.62.0)
+
+Make one event online, with a real Zoom link, and tick both delivery boxes. Then
+**look at every public surface** and confirm the same two words and nothing else.
+
+- **"Online Event" on the event page**, in the sidebar facts, with a video glyph
+  rather than a map pin, and **not a link**. There must be **no "Getting there"
+  section and no map** anywhere on that page.
+- **The cards, the sidebar rows and the month grid** say "Online Event" where
+  they used to say a street.
+- **View source and search the page for `zoom.us`.** Nothing. Do the same on the
+  embed on sfaf.org, and on the JSON-LD block in the head, which must read
+  `OnlineEventAttendanceMode` and a `VirtualLocation`.
+- **Untick it and confirm the address does NOT come back.** That is the designed
+  behaviour and the control says so; what is being checked is that the screen
+  agrees with the sentence.
+- **With scripting off** the venue picker and the meeting link are both visible
+  and both submit, and saving with the tick on still clears the address.
+
+### 1.15 The two calendar files, one with the link and one without (3.62.0)
+
+The `.ics` route is the only place the link leaves this site outside an email,
+and it is the one route on this feature the suite can only model.
+
+- Open the online event's page and press **Add to calendar > Apple / Outlook**.
+  That file is the PUBLIC one: **it must not contain the link.** Open it in a
+  text editor; `LOCATION` reads `Online Event` and there is no `CONFERENCE` line.
+- **Then take the .ics link out of the confirmation email** somebody actually
+  received and open that. It carries `CONFERENCE` and a `Join:` line in the
+  description. **Delete the `&j=...` from the end of that URL and load it again:
+  the link must vanish from the file.** If it does not, the token is not being
+  checked and that is the whole gate.
+- **Import the confirmation's file into Apple Calendar and into Outlook** and
+  see whether either offers a Join button from `CONFERENCE`. Neither is required
+  to; the description carries the link regardless. This is worth knowing, not
+  fixing.
+
 ---
 
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
+
+### 2.14 The joining block in a real confirmation and a real reminder (3.62.0)
+
+**Register a real address for an online event with both delivery boxes ticked**
+and read both messages in Outlook on Windows, which is the client that renders
+with Word's engine.
+
+- The **Joining online** heading, a **Join the event** button, and the full URL
+  under it as text. The URL is there so it can be copied and so a client that
+  strips styling still shows it.
+- **Then clear the meeting link on the event and register again.** The same
+  block must appear saying **"A link to join will be sent before the event."**
+  That is the fallback, and it fires off the tick rather than off the link.
+- **Untick both boxes and register a third time.** Neither message may carry
+  anything about joining, and everything else about both must be unchanged.
+- **The morning-of reminder needs the next morning**, or an event dated
+  tomorrow. Its copy to the notification list carries the link too, on purpose.
 
 ### 2.1 Follow a series, end to end
 

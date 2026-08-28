@@ -260,6 +260,12 @@ class SFAF_Source_GFMP {
     public static function raised_amount( $post_id ) { return 0; }
 }
 
+/* THE REAL CLASS, NOT A STUB. sfaf_event_location() and its short form both ask
+ * it first, so a stub answering "not online" would make these panels prove
+ * nothing about an online event. Every fixture below is in person, so it
+ * answers false throughout; what it is here for is that the call is real. */
+require_once $root . '/includes/class-sfaf-online.php';
+
 require_once $root . '/includes/sfaf-template-functions.php';
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 

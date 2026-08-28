@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.61.0
+Stable tag: 3.62.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,37 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.62.0 =
+
+**An event can now say it is online, and the meeting link goes out only where somebody chose to send it.**
+
+**This is a first pass to show a team, and the approval workflow is not in it.** Everybody who registers gets whatever the ticks below select. Per-registrant screening is still being decided and is deliberately absent rather than half built.
+
+**One tick on the event, default off.** Ticking it says the event has no place. The venue picker goes, and **"Online Event"** is what renders everywhere an address would have: the event page and its sidebar, the cards, the month grid, the four emails, the calendar file, the structured data and the satellite feed. That is one change in one function, `sfaf_event_location()`, which every one of those already read.
+
+**No "Getting there" section and no map.** The Google frame on an event page loads on view, and asking Google for a map of two words that are not a place buys nothing and tells it this browser viewed this page. The address in the sidebar becomes plain text with a video glyph rather than a maps link.
+
+**Either a venue, or an address, or online. Never two of them.** Ticking online clears the venue term, the composed address line and all four of its parts, in one call, so nothing downstream has to decide which one wins and no stale value survives for something added later to find and believe. **Unticking does not bring an address back**, and the control says so before you tick it.
+
+**A meeting link field, and two tickboxes deciding who gets it:** with the registration confirmation, with the morning-of reminder, both, or neither. **With the tick on and no link entered, the ticked messages say a link will be sent before the event.** That is the honest thing to tell somebody who has just registered for a meeting with no address.
+
+**The link is treated as a credential, because it is one.** Anybody holding it can join, and this calendar carries HIV, substance use and trans health programming. **It never appears on the public event page**, not in the location, not in a details block, not anywhere a template can reach. It is not in the embed payload, the REST feed, the satellite feed, the search index or the structured data. An organizer who types it into the description themselves has made that decision; nothing here does it for them.
+
+**That is asserted as a whitelist, not a checklist**, the same way private events are. One function reads the link, every place in the source that names the key or calls one of the functions that emits it is enumerated with a reason, and **anything not on the list fails the build**. A field added next year cannot leak it quietly, because it will not be on the list. Alongside it, every public payload is built for real with a link on the event and the bytes are searched for it, because a rule can be right about code that does not do what the rule assumed.
+
+**The structured data says `OnlineEventAttendanceMode` and a `VirtualLocation` named "Online Event".** schema.org would put the meeting link in that node's `url`; the event page goes there instead. This block is emitted into the public head and quoted in search results.
+
+**The calendar file carries the link only on the confirmation's copy, and that is wider distribution than the email.** A calendar entry syncs to the person's phone, to their laptop and to any calendar they share with a partner, an assistant or a household, and anybody with sight of that calendar can read the link. It is deliberate, for the case where the person already holds it. **When the link is only going out with the morning-of reminder it is in no calendar file at all**, because the file is offered by the confirmation.
+
+**The `.ics` route is public and addressed by post id**, so the join copy requires a token keyed on the site's own salt, which only the confirmation builds. Walking the ids returns the ordinary file. The link goes in the description and in the standard `CONFERENCE` property; `LOCATION` still reads "Online Event".
+
+**Imported events are not offered the tick.** Eventbrite and GoFundMe Pro own the location field and rewrite it every hour, so a tick that emptied it would be undone by the next fetch. An online event from a platform already says so in the text the platform sends. An adapter is also refused these three keys outright, the way it is already refused the privacy flag: the cost of honouring one once would be a URL this plugin has never seen going out in the confirmation of everybody who registers.
+
+**The tick travels with a repeating event**, onto generated occurrences and across an "all upcoming" save, exactly like the address it replaces.
+
+**Nothing else moved.** Registration is the same flow with the same confirmation and the same reminder. The consent rule for manager-caused mail is untouched, and no message is sent that was not already going to be sent. Private events, cancellation and their own guarantees are unchanged.
+
 
 = 3.61.0 =
 

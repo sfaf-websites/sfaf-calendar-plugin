@@ -1091,6 +1091,24 @@ class SFAF_Sources {
                 if ( SFAF_Privacy::META === $meta_key ) {
                     continue;
                 }
+                /*
+                 * NOR ANYTHING BELONGING TO THE ONLINE TICK, AND ONE OF THE
+                 * THREE IS A CREDENTIAL.
+                 *
+                 * Same hard refusal and same reasoning as the privacy flag
+                 * above: no platform has a concept of this tick, so a key of
+                 * that name arriving from one is a coincidence of naming. The
+                 * cost of honouring it once is not a wrong label. It is an
+                 * adapter writing _uc_meeting_url, which would put a URL this
+                 * plugin has never seen into the confirmation email of
+                 * everybody who registers, over the manager's signature.
+                 *
+                 * The tick is not offered on an imported event at all, so there
+                 * is no editor state for this to contradict.
+                 */
+                if ( in_array( $meta_key, SFAF_Online::meta_keys(), true ) ) {
+                    continue;
+                }
                 // The Donate box has an editor control, so it is gated by the
                 // declaration like any other visible field. Without this an
                 // adapter could write a box the editor left editable.

@@ -1521,7 +1521,39 @@ class SFAF_Portal {
          * field and writes it on every fetch, so the picker is not rendered
          * there and 'location_mode' does not arrive.
          */
-        if ( ! $is_locked( 'location' ) && isset( $_POST['location_mode'] ) ) {
+        /*
+         * ONLINE IS A THIRD ANSWER TO "WHERE", AND IT IS DECIDED FIRST.
+         *
+         * The venue/text pair is EITHER/OR so that nothing downstream has to
+         * choose between two places. Online is the same rule with a third case:
+         * it wins outright, and SFAF_Online::set() clears the term, the line
+         * and the four parts in the one call, so no combination of them
+         * survives for a renderer added later to find and believe.
+         *
+         * $handled is what stops the branches below writing a location back
+         * onto an event that has just said it has none. Without it the form
+         * posts location_mode as well (both controls are in the form, exactly
+         * as the radio pair both submit) and the very next block would restore
+         * what set() had deleted, in the same request.
+         *
+         * GATED ON THE SAME LOCK AS THE FIELD. An imported event is never
+         * offered the control, and the marker never arrives from it, so this is
+         * belt to those braces: a POST that has been tampered with cannot mark
+         * a GoFundMe Pro campaign online.
+         */
+        $handled = false;
+        if ( ! $is_locked( 'location' ) && isset( $_POST['uc_online_present'] ) ) {
+            $want_online = ( '1' === (string) wp_unslash( $_POST['uc_online'] ) );
+            SFAF_Online::set(
+                $event_id,
+                $want_online,
+                isset( $_POST['meeting_url'] ) ? wp_unslash( $_POST['meeting_url'] ) : '',
+                isset( $_POST['meeting_send'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['meeting_send'] ) ) : array()
+            );
+            $handled = $want_online;
+        }
+
+        if ( ! $handled && ! $is_locked( 'location' ) && isset( $_POST['location_mode'] ) ) {
             $mode  = ( 'venue' === sanitize_key( wp_unslash( $_POST['location_mode'] ) ) ) ? 'venue' : 'custom';
             $venue = isset( $_POST['venue'] ) ? intval( $_POST['venue'] ) : 0;
 
@@ -1566,7 +1598,7 @@ class SFAF_Portal {
                 }
                 update_post_meta( $event_id, '_uc_location', $line );
             }
-        } elseif ( ! $is_locked( 'location' ) && isset( $_POST['location'] ) ) {
+        } elseif ( ! $handled && ! $is_locked( 'location' ) && isset( $_POST['location'] ) ) {
             // A form that carried the plain field and no mode: the pending
             // queue, and any older bookmarked form. Text only, venue untouched.
             update_post_meta( $event_id, '_uc_location', sanitize_text_field( wp_unslash( $_POST['location'] ) ) );
@@ -2003,6 +2035,22 @@ class SFAF_Portal {
 
         $meta_keys = array(
             '_uc_start_time', '_uc_end_time', '_uc_location',
+            /*
+             * ONLINE TRAVELS WITH THE GROUP, AND IT IS AN ORDINARY META COPY.
+             *
+             * Unlike privacy, which cannot go in this list because the slug is
+             * the other half of its state, these three are just values: the
+             * tick, the link and which messages carry it. A weekly group that
+             * moves online moves online on every upcoming date, which is what
+             * the scope answer promised. The list is SFAF_Online::meta_keys()
+             * rather than three literals so a key added there travels without
+             * anybody remembering to come back here.
+             *
+             * The loop below DELETES a key whose source value is empty, which
+             * is exactly right for the tick coming off: the target loses the
+             * link and the delivery ticks along with it, the same way
+             * SFAF_Online::set() clears them on the source.
+             */
             '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal',
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
@@ -2015,6 +2063,7 @@ class SFAF_Portal {
             sfaf_fundraising_progress_meta_key(),
             sfaf_faq_meta_key(),
         );
+        $meta_keys = array_merge( $meta_keys, SFAF_Online::meta_keys() );
         if ( ! isset( $locked['capacity'] ) ) {
             $meta_keys[] = '_uc_capacity';
         }
@@ -9418,6 +9467,15 @@ class SFAF_Portal {
         $text     = $event_id ? (string) get_post_meta( $event_id, '_uc_location', true ) : '';
 
         if ( $imported ) {
+            /*
+             * NO ONLINE TICK HERE, AND REFUSING COSTS NOTHING.
+             *
+             * The platform owns this field and rewrites it every hour, so a
+             * tick that emptied it would be undone by the next fetch and the
+             * event would flicker between "Online Event" and whatever
+             * Eventbrite says. An online event from a platform already says so
+             * in the text the platform sends. See SFAF_Online.
+             */
             ?>
             <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'location', $state ); ?>>
                 <span class="uc-field-label">Location <?php echo $this->field_badge( $state, $prov['label'] ); ?></span>
@@ -9433,6 +9491,10 @@ class SFAF_Portal {
         $venues   = SFAF_Venues::all();
         $venue_id = $event_id ? SFAF_Venues::id_for_event( $event_id ) : 0;
         $mode     = $venue_id ? 'venue' : 'custom';
+
+        $online     = $event_id ? SFAF_Online::is_online( $event_id ) : false;
+        $meet_link  = $event_id ? SFAF_Online::link( $event_id ) : '';
+        $sends      = $event_id ? SFAF_Online::sends( $event_id ) : array();
         ?>
         <div class="uc-field uc-location-field" data-uc-location>
             <span class="uc-field-label">Location
@@ -9442,6 +9504,75 @@ class SFAF_Portal {
                     'venues'
                 ); ?>
             </span>
+
+            <?php
+            /*
+             * THE ONLINE TICK, ABOVE THE PICKER IT REPLACES.
+             *
+             * FIRST IN THE FIELD, because it is the question that decides
+             * whether the rest of the field applies at all. The hidden 0 is the
+             * same discipline every other checkbox on these screens uses: the
+             * save may only speak for what the form showed, and without it an
+             * unticked box and a form that never asked are the same bytes.
+             *
+             * WITHOUT SCRIPTING the venue and address panels stay visible and
+             * still submit, and the save prefers the tick, exactly as it
+             * prefers the radio. So this degrades to three controls and a rule
+             * rather than to nothing.
+             */
+            ?>
+            <input type="hidden" name="uc_online_present" value="1" />
+            <input type="hidden" name="uc_online" value="0" />
+            <label class="uc-check uc-online-check">
+                <input type="checkbox" name="uc_online" value="1" data-uc-online-toggle <?php checked( $online ); ?> />
+                This is an online event
+            </label>
+            <p class="uc-hint">
+                Ticking this removes the venue or address from this event, and unticking it does not bring it back.
+            </p>
+
+            <div class="uc-online-panel" data-uc-online-panel>
+                <label class="uc-field">
+                    <span class="uc-field-label">Meeting link</span>
+                    <input type="url" name="meeting_url" value="<?php echo esc_attr( $meet_link ); ?>"
+                           placeholder="https://zoom.us/j/00000000000" />
+                    <span class="uc-hint">
+                        Never shown on the event page. It goes out only in the messages ticked below.
+                    </span>
+                </label>
+
+                <div class="uc-field">
+                    <span class="uc-field-label">Who gets the link</span>
+                    <?php
+                    /*
+                     * THE MARKER, AND WHY THIS LIST NEEDS ONE MORE THAN MOST.
+                     *
+                     * A checkbox group with nothing ticked submits nothing at
+                     * all, which is indistinguishable from a form that never
+                     * offered it. That is the shape that switched every email
+                     * off on a save from the pending queue once already; see
+                     * the notification kinds above. uc_online_present, posted by
+                     * the hidden field at the top of this field, says the whole
+                     * of this block was on screen.
+                     */
+                    foreach ( SFAF_Online::deliveries() as $key => $label ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="meeting_send[]" value="<?php echo esc_attr( $key ); ?>"
+                                   <?php checked( in_array( $key, $sends, true ) ); ?> />
+                            <?php echo esc_html( $label ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                    <p class="uc-hint">
+                        With no link entered, the ticked messages say a link will be sent before the event.
+                    </p>
+                    <p class="uc-hint">
+                        <strong>The confirmation's calendar file carries the link too, and a calendar entry is shared more widely than an email.</strong>
+                        It syncs to the person's phone and to anybody they share a calendar with. The morning-of reminder does not add it to any calendar file.
+                    </p>
+                </div>
+            </div>
+
+            <div class="uc-location-place" data-uc-location-place>
 
             <?php if ( empty( $venues ) ) : ?>
                 <p class="uc-hint">
@@ -9522,6 +9653,7 @@ class SFAF_Portal {
                     <p class="uc-hint">Shows as: <strong><?php echo esc_html( $text ); ?></strong></p>
                 <?php endif; ?>
             </div>
+            </div><?php // uc-location-place: everything the online tick replaces. ?>
         </div>
         <?php
     }

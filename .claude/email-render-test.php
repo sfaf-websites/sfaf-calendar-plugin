@@ -135,6 +135,12 @@ class SFAF_Portal {
 }
 
 require $root . '/includes/class-sfaf-email.php';
+/* THE REAL CLASS. The confirmation and the reminder both compose a joining
+ * block from it, so stubbing it would render two of the five messages without
+ * the part that was added to them. The event under test is in person, so the
+ * block is empty and the five shapes below are unchanged; whether the block
+ * itself is right is asserted in .claude/online-events-test.php. */
+require $root . '/includes/class-sfaf-online.php';
 require $root . '/includes/class-sfaf-notifications.php';
 
 /* The event under test. */

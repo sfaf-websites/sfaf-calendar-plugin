@@ -290,7 +290,18 @@ class SFAF_Notifications {
         );
 
         $gcal = sfaf_google_calendar_url( $event_id );
-        $ics  = sfaf_ics_url( $event_id );
+        /*
+         * THE .ics ADDRESS, WHICH IS THE ONE PLACE THAT DIFFERS FROM EVERY
+         * OTHER MESSAGE.
+         *
+         * ics_url_with_link() returns the ordinary public address unless this
+         * event's link is going out with the confirmation, in which case it
+         * adds the token that lets the file carry it. Nothing else in this
+         * class calls it, and the reminder deliberately does not: the .ics is
+         * offered here and nowhere else, so "the link is only in the reminder"
+         * means it is in no calendar file. See SFAF_Online and sfaf_output_ics().
+         */
+        $ics = SFAF_Online::ics_url_with_link( $event_id );
 
         $custom = self::custom_body( $event_id, 'confirmation' );
 
@@ -301,6 +312,17 @@ class SFAF_Notifications {
             $html .= SFAF_Email::para( 'We have your place. Here are the details.' );
         }
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
+
+        /*
+         * HOW TO JOIN, ABOVE ADD TO CALENDAR.
+         *
+         * Empty unless this event is online AND the manager ticked this
+         * message, so the condition lives in one place rather than here and in
+         * the reminder. With the tick on and no link entered yet it is the
+         * sentence saying one is coming, which is what somebody who has just
+         * registered for a meeting with no address needs to be told.
+         */
+        $html .= SFAF_Online::joining_html( $event_id, 'confirmation' );
 
         /*
          * ADD TO CALENDAR: A HEADING AND TWO SHORT LABELS.
@@ -339,6 +361,7 @@ class SFAF_Notifications {
             $text .= "We have your place. Here are the details.\n\n";
         }
         $text .= self::detail_text( $f ) . "\n\n";
+        $text .= SFAF_Online::joining_text( $event_id, 'confirmation' );
         if ( $gcal || $ics ) { $text .= "Add to calendar\n"; }
         if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
         if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
@@ -372,6 +395,20 @@ class SFAF_Notifications {
         }
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
 
+        /*
+         * HOW TO JOIN, BEFORE THE EVENT PAGE BUTTON.
+         *
+         * This message arrives on the morning of, so it is the one somebody
+         * opens at five to eleven looking for a way in. The link goes above the
+         * link to the page, which does not carry it.
+         *
+         * THE STAFF COPY GETS IT TOO. The notification list is copied in on
+         * this message and its members are the people running the meeting, so
+         * withholding the address of their own event to be careful would be
+         * carefulness pointed at the wrong people.
+         */
+        $html .= SFAF_Online::joining_html( $event_id, 'reminder' );
+
         if ( $f['url'] ) {
             $html .= SFAF_Email::button( $f['url'], 'See the event page', 'primary' );
         }
@@ -389,6 +426,7 @@ class SFAF_Notifications {
             $text .= "This is the copy of the reminder everybody registered has just been sent.\n\n";
         }
         $text .= self::detail_text( $f ) . "\n\n";
+        $text .= SFAF_Online::joining_text( $event_id, 'reminder' );
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
             $text .= "\nCannot make it? Cancel your registration so somebody else can take your place. We will ask you to confirm: " . $cancel . "\n";

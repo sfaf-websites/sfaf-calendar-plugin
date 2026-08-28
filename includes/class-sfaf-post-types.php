@@ -224,7 +224,33 @@ class SFAF_Post_Types {
             <div class="uc-meta-row">
                 <div class="uc-meta-field" style="flex: 2;">
                     <label for="uc_location">Location</label>
-                    <input type="text" id="uc_location" name="uc_location" value="<?php echo esc_attr( $location ); ?>" placeholder="e.g., Strut - 470 Castro St" />
+                    <?php
+                    /*
+                     * READ-ONLY AND WITHOUT A NAME ON AN ONLINE EVENT, AND THE
+                     * MISSING `name` IS THE PART THAT MATTERS.
+                     *
+                     * $location already reads "Online Event", because
+                     * sfaf_event_location() answers that for one. If this input
+                     * kept its name it would post those two words straight back
+                     * into _uc_location, and the event would be online with a
+                     * stored address saying so, which is the one state
+                     * SFAF_Online::set() exists to make unreachable.
+                     *
+                     * The tick itself is not offered here. This screen is
+                     * administrator concerns only and the control lives in
+                     * caladmin, beside the venue picker it replaces; the note
+                     * says where to go rather than growing a second editor for
+                     * the same field.
+                     */
+                    ?>
+                    <?php if ( SFAF_Online::is_online( $post->ID ) ) : ?>
+                        <input type="text" id="uc_location" value="<?php echo esc_attr( $location ); ?>" readonly />
+                        <p class="description">
+                            Change this on <a href="<?php echo esc_url( SFAF_Portal::link( 'events/edit/' . (int) $post->ID ) ); ?>">this event in the calendar portal</a>.
+                        </p>
+                    <?php else : ?>
+                        <input type="text" id="uc_location" name="uc_location" value="<?php echo esc_attr( $location ); ?>" placeholder="e.g., Strut - 470 Castro St" />
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="uc-meta-row">
@@ -764,6 +790,19 @@ class SFAF_Post_Types {
             'uc_capacity'    => '_uc_capacity',
             'uc_email_subject' => '_uc_email_subject',
         );
+        /*
+         * AN ONLINE EVENT HAS NO LOCATION FOR THIS BOX TO WRITE.
+         *
+         * The input renders read-only and without a name for one, so this never
+         * fires in the ordinary case. It is here as the second mechanism, for a
+         * bookmarked form or a hand-made POST: a save may only speak for the
+         * fields its form actually showed, and this form showed no editable
+         * location. See render_meta_box() and SFAF_Online.
+         */
+        if ( SFAF_Online::is_online( $post_id ) ) {
+            unset( $text_fields['uc_location'] );
+        }
+
         foreach ( $text_fields as $post_key => $meta_key ) {
             if ( isset( $_POST[ $post_key ] ) ) {
                 update_post_meta( $post_id, $meta_key, sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) );

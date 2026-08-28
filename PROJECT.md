@@ -1347,6 +1347,87 @@ one-off in somebody's back garden is not a venue and should not become one.
 An **imported** event keeps its text: the platform owns that field and writes it
 on every fetch, so the venue picker is not offered there.
 
+### Online events, and a meeting link that is a credential
+
+One checkbox on the event, default off (`_uc_online`). `SFAF_Online` owns it.
+
+**Online is a THIRD case of the venue/text rule, not an exception to it.** An
+event has a venue reference, or its own location text, or neither because it is
+online. `SFAF_Online::set()` clears the term, the composed line and all four
+address parts in one call, so no combination survives for something added later
+to read. **Turning the tick off does not restore an address**, because nothing
+is kept to restore it from; it also clears the link and the delivery ticks, so
+an in-person event never carries an orphan credential.
+
+**"Online Event" is answered once, in `sfaf_event_location()`.** That function
+is what the event page, the sidebar, the cards, the month grid, the five emails,
+the `.ics`, the JSON-LD, the satellite payload, the WordPress admin box and the
+caladmin lists all read, so one branch puts the phrase in all of them and none
+of them can be forgotten. `sfaf_event_map_html()` returns nothing for an online
+event: the Google frame loads on view, and asking for a map of two words that
+are not a place buys nothing and attributes a visit.
+
+**The meeting link is a credential and is treated as one.** Anybody holding it
+can join, and this calendar carries HIV, substance use and trans health
+programming. It is on no public surface: not the event page, the cards, the
+embed payload, the REST feed, the satellite feed, the search index or the
+structured data.
+
+**That is asserted as a WHITELIST, the same inversion private events use.**
+`SFAF_Online::link()` is the one reader of the meta;
+`.claude/online-events-test.php` sweeps every file for the key, the constant and
+the four functions that emit it, and **anything not on the list fails**. A field
+added later is caught by default, because it will be neither excluded nor
+listed. A second pass builds every public payload for an online event carrying a
+link and searches the bytes for it, because a whitelist proves nothing new reads
+it and only rendering proves the existing readers do not print it.
+
+**The delivery is decided per message, not per person, and that is deliberately
+where the seam is.** Two tickboxes, both off by default, stored as the set that
+is ON: the confirmation, the morning-of reminder, both, or neither.
+`build_confirmation()` and `build_reminder()` each ask
+`SFAF_Online::sends_with()` for their own kind. Per-registrant approval, when it
+arrives, is a gate in front of that same call; nothing about today's build
+assumes every registrant gets the link.
+
+**With the tick on and no link entered, the ticked messages say a link will be
+sent before the event.** The tick selects the message; whether that message
+carries a URL or the promise is decided by whether a link exists.
+
+**The `.ics` carries the link only on the confirmation's copy, and that is wider
+distribution than the email.** A calendar entry syncs to the person's phone,
+their laptop and any calendar they share, so people who never registered can
+read it. Mark decided this for the case where the person already holds the link.
+It is **not** done for the reminder, because the `.ics` is offered by the
+confirmation and by nothing else.
+
+The `.ics` endpoint is public and addressed by post id, so the join copy
+requires `j=`, an HMAC over the event id keyed on `wp_salt( 'auth' )`, built only
+by `SFAF_Online::ics_url_with_link()`. It is keyed on the id and not on the link,
+so correcting a Zoom URL does not break the button in confirmations already
+sent, and it is stateless: no row, nothing for a per-registrant gate to unpick.
+`LOCATION` stays "Online Event"; the link goes in `DESCRIPTION` and in the RFC
+7986 `CONFERENCE` property.
+
+**The structured data says `OnlineEventAttendanceMode` and a `VirtualLocation`.**
+schema.org would put the meeting link in that node's `url`; the event permalink
+goes there instead. The `PostalAddress` is replaced rather than blanked, because
+an empty street with a defaulted "San Francisco, CA" asserts an address the
+event does not have.
+
+**An imported event is not offered the tick, and refusing costs nothing.** The
+platform owns the location field and rewrites it every hour, so a tick that
+emptied it would be undone by the next fetch. The control is not rendered, the
+save is gated on the same lock the location field is, and
+`SFAF_Sources::import_event()` refuses all three keys outright the way it
+already refuses `_uc_private`. An online event from a platform says so in the
+text the platform sends.
+
+**The tick travels with a repeating event**, in `SFAF_Recurrence::$copied_meta`
+and in `SFAF_Portal::apply_to_group()`, like the address it replaces. The
+recurrence list holds literals rather than a call, because a static property
+initializer is a constant expression; the test asserts the two lists agree.
+
 ### Private events are unlisted links, not access control
 
 One checkbox on the event, default off (`_uc_private`).
