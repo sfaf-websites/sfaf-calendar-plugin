@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.62.1
+Stable tag: 3.62.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,27 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.62.2 =
+
+**Fix: what happens to the meeting link was told in three places, and one case was told nowhere.**
+
+Copy only. Every tick does exactly what it did in 3.62.0, and nothing about the link, the whitelist or the calendar file changed.
+
+A hint under the link box said who gets it. A sentence under the tick group said what happens with no link entered. A paragraph under the same ticks said what a calendar file carries. An organizer had to read all three and assemble the picture, and **a fourth case was in none of them: entering a link and ticking neither box**, which keeps it on the event for the organizer's own reference and sends it nowhere. Nothing said that was possible.
+
+**All of it is now under the meeting link field, as two lines:**
+
+> Only people who register will get this link. It never appears on the event page.
+>
+> If no link is entered, RSVP emails will say a link will be provided before the event. If you enter one, choose below where it goes out, or leave both unticked to keep it here for your own reference.
+
+Four cases, one place, beside the field they are about.
+
+**The tick group carries nothing beneath it now.** Both lines under it are gone.
+
+**The calendar point moved onto the tick that causes it**, rather than being dropped. It was a paragraph under **both** ticks while only one of them has anything to do with a calendar file, so the confirmation tick now reads **"Send the link with the registration confirmation (also added to their calendar file)"**. It is read at the moment of deciding rather than as a paragraph afterwards. The morning-of reminder's label is unchanged, because that message carries no calendar file at all.
+
 
 = 3.62.1 =
 

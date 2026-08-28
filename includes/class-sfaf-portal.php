@@ -9536,8 +9536,26 @@ class SFAF_Portal {
                     <span class="uc-field-label">Meeting link</span>
                     <input type="url" name="meeting_url" value="<?php echo esc_attr( $meet_link ); ?>"
                            placeholder="https://zoom.us/j/00000000000" />
+                    <?php
+                    /*
+                     * ALL OF THE LINK MESSAGING IS HERE, UNDER THE LINK BOX.
+                     *
+                     * It used to be three places: this hint, a sentence under
+                     * the tick group about the no-link case, and a paragraph
+                     * about calendar files. An organizer had to assemble the
+                     * picture from all three, and the fourth case was in none of
+                     * them: a link entered with neither box ticked, kept on the
+                     * event for the organizer's own reference and sent nowhere.
+                     * Four cases, one place, next to the field they are about.
+                     */
+                    ?>
                     <span class="uc-hint">
                         Only people who register will get this link. It never appears on the event page.
+                    </span>
+                    <span class="uc-hint">
+                        If no link is entered, RSVP emails will say a link will be provided before the event.
+                        If you enter one, choose below where it goes out, or leave both unticked to keep it
+                        here for your own reference.
                     </span>
                 </label>
 
@@ -9572,22 +9590,19 @@ class SFAF_Portal {
                             <?php echo esc_html( $label ); ?>
                         </label>
                     <?php endforeach; ?>
-                    <p class="uc-hint">
-                        No link yet? The emails will say one is coming before the event.
-                    </p>
                     <?php
                     /*
-                     * THE EMPHASIS IS ON THE SECOND SENTENCE, WHICH IS THE ONE
-                     * THAT COSTS SOMEBODY SOMETHING. Same shape as the private
-                     * event card, where the bold sentence is "a link can be
-                     * forwarded": the first sentence says what happens, the
-                     * bold one says who else can end up seeing it.
+                     * NOTHING UNDER THE TICKS, AND THE CALENDAR POINT MOVED
+                     * ONTO THE TICK THAT CAUSES IT.
+                     *
+                     * The no-link sentence is covered under the link box above.
+                     * The calendar consequence was a paragraph beneath BOTH
+                     * ticks while only one of them causes it, so it is now in
+                     * the confirmation tick's own label, where it is read at the
+                     * moment of deciding rather than afterwards. See
+                     * SFAF_Online::deliveries().
                      */
                     ?>
-                    <p class="uc-hint">
-                        Registrants can add the event to their calendar with the link included.
-                        <strong>Calendar entries can be visible to anyone they share a calendar with.</strong>
-                    </p>
                 </div>
             </div>
 

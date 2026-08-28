@@ -134,7 +134,16 @@ class SFAF_Online {
      */
     public static function deliveries() {
         return array(
-            'confirmation' => 'Send the link with the registration confirmation',
+            /*
+             * THE CALENDAR CONSEQUENCE IS IN THIS LABEL, NOT IN A PARAGRAPH
+             * UNDER BOTH TICKS.
+             *
+             * Only this tick puts the link in the calendar file, so only this
+             * tick says so, and it says so where the decision is being made.
+             * The reminder carries no calendar file at all, which is why its
+             * label is the plain one.
+             */
+            'confirmation' => 'Send the link with the registration confirmation (also added to their calendar file)',
             'reminder'     => 'Send the link with the morning-of reminder',
         );
     }
