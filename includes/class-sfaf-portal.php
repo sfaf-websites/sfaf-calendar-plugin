@@ -9528,7 +9528,7 @@ class SFAF_Portal {
                 This is an online event
             </label>
             <p class="uc-hint">
-                Ticking this removes the venue or address from this event, and unticking it does not bring it back.
+                The venue and address will be cleared. You'll need to re-enter them if you switch back.
             </p>
 
             <div class="uc-online-panel" data-uc-online-panel>
@@ -9537,12 +9537,22 @@ class SFAF_Portal {
                     <input type="url" name="meeting_url" value="<?php echo esc_attr( $meet_link ); ?>"
                            placeholder="https://zoom.us/j/00000000000" />
                     <span class="uc-hint">
-                        Never shown on the event page. It goes out only in the messages ticked below.
+                        Only people who register will get this link. It never appears on the event page.
                     </span>
                 </label>
 
                 <div class="uc-field">
-                    <span class="uc-field-label">Who gets the link</span>
+                    <?php
+                    /*
+                     * "WHEN", NOT "WHO", BECAUSE THE CONTROLS ANSWER WHEN.
+                     *
+                     * Both of these emails go to everybody registered, so the
+                     * label asked a question its own two ticks cannot answer,
+                     * and an organizer reading "Who gets the link" reasonably
+                     * expects to be choosing people.
+                     */
+                    ?>
+                    <span class="uc-field-label">When the link goes out</span>
                     <?php
                     /*
                      * THE MARKER, AND WHY THIS LIST NEEDS ONE MORE THAN MOST.
@@ -9563,11 +9573,20 @@ class SFAF_Portal {
                         </label>
                     <?php endforeach; ?>
                     <p class="uc-hint">
-                        With no link entered, the ticked messages say a link will be sent before the event.
+                        No link yet? The emails will say one is coming before the event.
                     </p>
+                    <?php
+                    /*
+                     * THE EMPHASIS IS ON THE SECOND SENTENCE, WHICH IS THE ONE
+                     * THAT COSTS SOMEBODY SOMETHING. Same shape as the private
+                     * event card, where the bold sentence is "a link can be
+                     * forwarded": the first sentence says what happens, the
+                     * bold one says who else can end up seeing it.
+                     */
+                    ?>
                     <p class="uc-hint">
-                        <strong>The confirmation's calendar file carries the link too, and a calendar entry is shared more widely than an email.</strong>
-                        It syncs to the person's phone and to anybody they share a calendar with. The morning-of reminder does not add it to any calendar file.
+                        Registrants can add the event to their calendar with the link included.
+                        <strong>Calendar entries can be visible to anyone they share a calendar with.</strong>
                     </p>
                 </div>
             </div>

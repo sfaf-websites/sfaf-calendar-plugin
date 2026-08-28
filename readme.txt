@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.62.0
+Stable tag: 3.62.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.62.1 =
+
+**Fix: the online event helper text explained the code instead of the event.**
+
+Copy only. Every tick does exactly what it did in 3.62.0, and nothing about the link, the whitelist or the calendar file changed.
+
+The four hints under the online tick were written from the implementation outwards. They described what happens to stored values, which messages a block rides on, and what a calendar file does and does not carry. An organizer setting up a Zoom meeting is deciding what happens to their event and to the people registering for it, and none of the four sentences answered that.
+
+| | |
+|---|---|
+| was | Ticking this removes the venue or address from this event, and unticking it does not bring it back. |
+| now | The venue and address will be cleared. You'll need to re-enter them if you switch back. |
+| was | Never shown on the event page. It goes out only in the messages ticked below. |
+| now | Only people who register will get this link. It never appears on the event page. |
+| was | With no link entered, the ticked messages say a link will be sent before the event. |
+| now | No link yet? The emails will say one is coming before the event. |
+| was | The confirmation's calendar file carries the link too, and a calendar entry is shared more widely than an email. It syncs to the person's phone and to anybody they share a calendar with. The morning-of reminder does not add it to any calendar file. |
+| now | Registrants can add the event to their calendar with the link included. **Calendar entries can be visible to anyone they share a calendar with.** |
+
+**The last one lost a sentence saying the morning-of reminder does not add the link to a calendar file.** That is a statement about something that does not happen, in a paragraph about the other tick, and nobody reading it had reason to wonder. It is gone rather than moved.
+
+**"Who gets the link" was asking a question its own controls do not answer.** Both of those emails go to everybody registered, so the two ticks choose *when* the link goes out and never *who* gets it, and a label promising to choose people is a label that will be believed. It reads **"When the link goes out"**.
+
 
 = 3.62.0 =
 
