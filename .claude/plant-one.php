@@ -246,11 +246,18 @@ $edits = array(
             "                \$all_series = SFAF_Series::all();\n"
             . "                \$cur_series = \$event_id ? SFAF_Series::id_for_event( \$event_id ) : 0;\n",
             '' ),
+        /* AFTER the comment block closes, not inside it. The first version of
+         * this plant put the two statements between a `/ *` and its `* /`, so
+         * they were commented out and the EDIT screen lost its control too. A
+         * plant that is worse than the fault proves the check catches something
+         * else, and the run that follows is measuring the wrong thing. */
         array( $P,
-            '                     * $all_series AND $cur_series ARE RESOLVED AT THE TOP OF THE',
+            "                    /*\n"
+            . "                     * ON AN EDIT ONLY. A new event asks this at the top of the",
             "                    \$all_series = SFAF_Series::all();\n"
             . "                    \$cur_series = \$event_id ? SFAF_Series::id_for_event( \$event_id ) : 0;\n"
-            . '                     * $all_series AND $cur_series ARE RESOLVED AT THE TOP OF THE' ),
+            . "                    /*\n"
+            . "                     * ON AN EDIT ONLY. A new event asks this at the top of the" ),
     ),
 
     /* A multi-select on a taxonomy both readers take the FIRST term of. The

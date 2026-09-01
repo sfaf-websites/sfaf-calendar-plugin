@@ -70,6 +70,8 @@ try redraw-composes "the redraw composes it a second time" .claude/combined-outc
 try shape-from-client "the shape comes from the client" .claude/combined-outcome-test.php
 try grid-draws-head "the combined grid draws its own head" .claude/combined-outcome-test.php
 try range-line-back "the range line comes back"        .claude/combined-outcome-test.php
+try series-order    "the series ordering fault returns" .claude/series-control-test.php
+try series-multi    "the series control goes multi-select" .claude/series-control-test.php
 
 restore
 echo "-------------------------------------------"
