@@ -7662,8 +7662,52 @@ class SFAF_Portal {
          * occurrence rather than the first. The next one is the current shape of
          * the event: its location, its times and its capacity as they are now,
          * not as they were when the group was set up in March.
+         *
+         * ---------------------------------------------------------------------
+         * AND IT COMES FROM THE GROUP, NOT MERELY FROM THE SERIES (3.64.1).
+         *
+         * The lists above are TERM-scoped: every event in this series, whatever
+         * made it. Everything the seed feeds is GROUP-scoped: the pattern, the
+         * cadence controls, the times and the sentence describing the schedule
+         * all describe the set of dates one recurrence produced. Reading them
+         * off whichever event happens to be soonest silently mixes the two.
+         *
+         * WHAT THAT LOOKS LIKE WHEN IT GOES WRONG. Assign a one-off event to a
+         * series by hand and date it before the next generated occurrence. It
+         * sorts first, becomes the seed, and carries no pattern, because nothing
+         * generated it. pattern_of() returns '', has_cadence() is then false, and
+         * the pattern form stops offering a frequency FOR A SERIES THAT PLAINLY
+         * HAS ONE. The sentence at the top of the card says the same wrong thing.
+         *
+         * IT WAS ALREADY REACHABLE, through the WordPress admin metabox, and
+         * restoring the caladmin control in this same release makes it easy. It
+         * is display only: schedule_pattern_from_post() reads the pattern and the
+         * anchor off upcoming_in_group( $group ), never off this, so nothing has
+         * ever been WRITTEN from the wrong event. The screen simply described the
+         * schedule as something it is not.
+         *
+         * THE FALLBACK IS THE OLD BEHAVIOUR, and it is the right one where it
+         * applies: a series with no recurrence group at all is a plain container
+         * of hand-made dates, and its soonest event is exactly what a new date
+         * should be copied from.
+         * ---------------------------------------------------------------------
          */
-        $seed_id = ! empty( $upcoming ) ? $upcoming[0] : ( ! empty( $past ) ? $past[0] : 0 );
+        $seed_id = 0;
+        if ( '' !== $group ) {
+            // Upcoming first, then the most recent past one, which is the order
+            // the two lists are already in.
+            foreach ( array( $upcoming, $past ) as $list ) {
+                foreach ( $list as $eid ) {
+                    if ( SFAF_Recurrence::group_of( $eid ) === $group ) {
+                        $seed_id = $eid;
+                        break 2;
+                    }
+                }
+            }
+        }
+        if ( ! $seed_id ) {
+            $seed_id = ! empty( $upcoming ) ? $upcoming[0] : ( ! empty( $past ) ? $past[0] : 0 );
+        }
 
         /*
          * IMPORTED EVENTS HAVE NO SCHEDULE OF OURS TO EDIT. Recurrence has been
@@ -8688,6 +8732,71 @@ class SFAF_Portal {
 
                 <?php
                 /*
+                 * SERIES: the umbrella this event belongs to, and where its
+                 * other dates are edited. A plain term assignment; nothing is
+                 * inherited from it and changing it never touches another event.
+                 *
+                 * ---------------------------------------------------------------
+                 * THESE TWO LINES LIVED 102 LINES BELOW THIS POINT UNTIL 3.64.1,
+                 * AND THAT IS THE WHOLE OF THE DEFECT.
+                 *
+                 * They sat with the edit-only <select> further down, which is
+                 * where they were written and where they still made sense. Then
+                 * 3.38.0 added the prefill card ABOVE them and passed them to it.
+                 * Straight-line code in one function: at the call both variables
+                 * were undefined, PHP passed null, and render_series_prefill()
+                 * took its `empty()` early return. THE CARD HAS NEVER RENDERED.
+                 *
+                 * It failed in the quietest way available. Two `Undefined
+                 * variable` warnings, suppressed wherever display_errors is off,
+                 * and a function that returns nothing when it has nothing to
+                 * offer, which is correct behaviour for the case it thought it
+                 * was in. Twenty-six releases, and the only symptom was a control
+                 * nobody could find.
+                 *
+                 * EVERY STATIC CHECK PASSED, AND WOULD PASS AGAIN. The call
+                 * exists, the method exists, the arity matches, the file parses.
+                 * Nothing but ORDER was wrong, and order is not a property any of
+                 * those questions can see. .claude/series-control-test.php
+                 * renders the form and reads what came back, which is the only
+                 * shape of check that could have caught it. See PROJECT.md §7.
+                 * ---------------------------------------------------------------
+                 */
+                $all_series = SFAF_Series::all();
+                $cur_series = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
+
+                /*
+                 * A NEW EVENT MAY ARRIVE WITH ITS SERIES ALREADY CHOSEN.
+                 *
+                 * The schedule screen's second route, "create a new event in this
+                 * series", is for the date whose details genuinely differ:
+                 * another location, another description. It sends somebody here
+                 * because this is where those are asked for properly, and the one
+                 * thing that screen knew and this one does not is which series
+                 * they came from. Carrying it in the URL is the whole of that.
+                 *
+                 * IT ARRIVED NOWHERE UNTIL 3.64.1. This was read AFTER the dead
+                 * call above, so on a new event it was validated into a variable
+                 * and then consumed by nothing: the only other reader is the
+                 * <select> below, which is gated on $event_id. The button on the
+                 * schedule screen carried the term correctly and this screen
+                 * dropped it. Same one ordering fault, second casualty.
+                 *
+                 * CHECKED, NOT TRUSTED. It is a query string, so it is an integer
+                 * that must name a series that exists; anything else leaves the
+                 * field on "Not part of a series" rather than preselecting
+                 * something that is not there. It only preselects a control the
+                 * manager can still change, so the worst a valid-but-unintended
+                 * id can do is need one click.
+                 */
+                if ( ! $event_id && isset( $_GET['series'] ) ) {
+                    $pre = intval( $_GET['series'] );
+                    if ( $pre > 0 && SFAF_Series::exists( $pre ) ) {
+                        $cur_series = $pre;
+                    }
+                }
+
+                /*
                  * ---- WHICH SERIES, FIRST, ON A NEW EVENT ONLY ----------------
                  *
                  * The first decision somebody makes creating an event is what it
@@ -8799,40 +8908,16 @@ class SFAF_Portal {
 
                     <?php
                     /*
-                     * SERIES: the umbrella this event belongs to, and where its
-                     * other dates are edited. A plain term assignment; nothing
-                     * is inherited from it and changing it never touches another
-                     * event.
-                     */
-                    $all_series = SFAF_Series::all();
-                    $cur_series = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
-
-                    /*
-                     * A NEW EVENT MAY ARRIVE WITH ITS SERIES ALREADY CHOSEN.
+                     * $all_series AND $cur_series ARE RESOLVED AT THE TOP OF THE
+                     * BENTO, above the prefill card that also needs them. They
+                     * were assigned here, 102 lines below their first use, which
+                     * is the 3.64.1 defect; see the note at that call.
                      *
-                     * The schedule screen's second route, "create a new event in
-                     * this series", is for the date whose details genuinely
-                     * differ: another location, another description. It sends
-                     * somebody here because this is where those are asked for
-                     * properly, and the one thing that screen knew and this one
-                     * does not is which series they came from. Carrying it in
-                     * the URL is the whole of that.
-                     *
-                     * CHECKED, NOT TRUSTED. It is a query string, so it is an
-                     * integer that must name a series that exists; anything else
-                     * leaves the field on "Not part of a series" rather than
-                     * preselecting something that is not there. It only
-                     * preselects a control the manager can still change, so the
-                     * worst a valid-but-unintended id can do is need one click.
+                     * Nothing is recomputed here. Reading them twice from two
+                     * places is how the two copies come to disagree, and the
+                     * question "which series is this event in" has one answer per
+                     * render.
                      */
-                    if ( ! $event_id && isset( $_GET['series'] ) ) {
-                        $pre = intval( $_GET['series'] );
-                        if ( $pre > 0 && SFAF_Series::exists( $pre ) ) {
-                            $cur_series = $pre;
-                        }
-                    }
-                    ?>
-                    <?php
                     /*
                      * ON AN EDIT ONLY. A new event asks this at the top of the
                      * form, with the prefill offer beside it. Rendering the

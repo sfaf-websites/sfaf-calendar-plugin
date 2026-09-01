@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.64.0
+Stable tag: 3.64.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,27 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.64.1 =
+
+**The series control on New Event has never worked, and this is the release that makes it appear. Fix only.**
+
+**What was wrong, and it was one thing.** `render_event_form()` called the "Is this part of a series?" card 102 lines above the two lines that give it the list of series to show. Straight-line code, one function, no loop, so both variables were undefined at the call, PHP passed `null`, and the card's own `empty()` guard returned without drawing anything. **The card has never rendered on the New Event screen since it was added in 3.38.0**, 26 releases ago. The only symptom was two `Undefined variable` warnings, suppressed wherever `display_errors` is off, and a control nobody could find.
+
+**Every static check passed, and would pass again.** The call is there, the method is there, the arity matches, the file parses, the callable audit is clean. Nothing was wrong except the ORDER of two statements, and order is not a property any of those questions can see.
+
+**A second thing comes back with it.** The schedule screen's **Create a new event in this series** button carries the term in the URL, and its own comment says "The series arrives already chosen, which is the only thing this screen knows that the editor does not." It arrived nowhere: the query string was validated into a variable AFTER the dead call, and the only other reader is the dropdown further down, which renders on an edit and not on a new event. Same one ordering fault, second casualty. The button now does what it always said it did.
+
+**The schedule screen's seed comes from the recurrence group.** The list of dates on that screen is scoped to the SERIES, but the pattern, the cadence controls, the times and the sentence describing the schedule all describe a recurrence GROUP. It read them off whichever event happened to be soonest. Assign a one-off event to a series by hand, date it before the next generated occurrence, and it becomes the seed, carries no pattern because nothing generated it, and **the pattern form stops offering a frequency for a series that plainly has one**. The sentence at the top said the same wrong thing. Display only: the save has always read the group rather than the seed, so nothing was ever written from the wrong event. It was already reachable through the WordPress admin metabox, and restoring the caladmin control makes it easy, which is why it is fixed in the same release.
+
+**`.claude/series-control-test.php` is committed and decides the outcome by rendering the form.** It loads the real portal, invokes the real `render_event_form()`, captures the HTML and parses it, then asserts that New Event emits exactly one control named `series`, that it is a single `<select>` and not a multi-select in either spelling, that `?series=` arrives as the chosen option, that an id naming no term chooses nothing, and that the Edit screen still emits exactly one. **A grep for the call would have passed on every release since 3.38.0.**
+
+**It also refuses a multi-select, and that is not hypothetical.** One series per event is enforced only in the control: both readers take the first term and the save writes a single-element array through `wp_set_object_terms()`, whose default replaces. A multi-select here would let somebody pick two and lose one on save, silently, with nothing logged. That is the categories fault of 3.8.0 and the organizers fault of 3.40.0.
+
+**Both faults are planted and caught.** `series-order` puts the assignment back where it was, in two edits, because the fault IS a position and a single find-and-replace could only approximate it; `series-multi` turns the control into a multi-select. `.claude/plant-one.php` grew support for a multi-edit plant to make the first one faithful, and stages every edit before writing any, so a plant that cannot apply in full applies not at all.
+
+**Nothing else changed.** One series per event, the recurrence group marker and everything scoped to it, the Edit Event control, the WordPress admin metabox control, and following are all untouched.
+
 
 = 3.64.0 =
 

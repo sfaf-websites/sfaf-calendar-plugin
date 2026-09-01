@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-01, at 3.64.0.
+**Last updated:** 2026-09-01, at 3.64.1.
 
 ---
 
 ## What shipped last
 
-**3.64.0**, built as `sfaf-calendar-3.64.0.zip` in the project root, committed
+**3.64.1**, built as `sfaf-calendar-3.64.1.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.64.1** | **An event can be put into an existing series from New Event.** The control was written in 3.38.0 and called 102 lines above the variables it needed, so it has never rendered; the fix is moving two lines. The schedule screen's "Create a new event in this series" button now actually arrives with the series chosen, and that screen reads its pattern from a recurrence group member rather than from whichever date is soonest. |
 | **3.64.0** | One definition per kind of control in /caladmin. A secondary button has a surface, so it is no longer a text field with a heavier label; a select has an end cap; an option group no longer looks like a row of buttons. Fourteen declarations of a text field became one, and four classes that were declared twice are declared once. **And no Add to Calendar button on an event that takes registrations**, because it sat under the RSVP button; the calendar file goes out with the confirmation instead, which it already did. |
 | **3.63.0** | FAQ sets are made and maintained on one screen. "Save these as a set" is gone from the event editor, with its two reported defects disposed of rather than repaired. Sets can be duplicated, and the list is collapsed instead of showing every question of every set at once. |
 | **3.62.0** to **3.62.2** | Online events. One tick, "Online Event" everywhere a location renders, a meeting link that goes out only with the messages the manager ticks, and a whitelist that fails the build if anything else reads it. **3.62.1 and 3.62.2 are copy only**: the hints under the tick described the implementation rather than what happens to the event, and the link messaging was spread over three places with one case missing from all of them. `CLAUDE.md` §6 is the standing fault behind both. |
-| **3.61.0** | The public filter bar: a tinted ground under it, a dropdown that looks like one, a search field that does not, and two pill rows that read as different kinds of filter. Every control raised above the resets, and the bar measures its own column instead of the window. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.64.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.64.1, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -80,6 +80,15 @@ button rather than a hook on occurrence creation, is in `PROJECT.md` §8.
 **Somebody can follow a series today and will never hear anything until part 2
 ships.** That is the expected state, not a fault. The confirmation email is real
 and the unsubscribe link in it works.
+
+**Part 2's one dependency is met as of 3.64.1.** It needs a single event created
+by hand to be assignable to an existing series, and until that release the
+control for doing so had never rendered. It renders now, and the resulting
+event, in a series and in no recurrence group, is a state the rest of the
+plugin already handles correctly. **Nothing about part 2 is built and nothing
+here should be read as a start on it.** `TESTING.md` 1.22 is the item that
+confirms the assignment behaves on a real screen, and it should be done before
+part 2 is designed on top of it.
 
 **A DECISION FOR MARK'S TEAM, from 3.56.0.** There is now a fifth email: the
 event's notification list is told when somebody cancels a registration, naming
@@ -164,7 +173,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 38 items.** Quick 21, needs
+**`TESTING.md` holds the manual testing backlog, 40 items.** Quick 23, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 

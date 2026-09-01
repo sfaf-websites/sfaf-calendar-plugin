@@ -231,6 +231,36 @@ $edits = array(
     'range-line-back' => array( 'includes/class-sfaf-shortcodes.php',
         '                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid[\'label\'] ); ?></h3>',
         '                    <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid[\'label\'] ); ?></h3>' . "\n" . '                    <p class="uc-month-range">range</p>' ),
+    /* ---------------------------------------------------------------------
+     * THE 3.38.0-TO-3.64.0 ORDERING FAULT, PUT BACK EXACTLY.
+     *
+     * Two edits, because the fault IS a position: take the assignment out from
+     * above the prefill call and put it back where it lived, 102 lines below,
+     * with the edit-only <select>. Both variables are then undefined at the
+     * call, render_series_prefill() takes its empty() early return, and the New
+     * Event screen has no series control. Nothing else changes: the file still
+     * parses, the call still exists, the arity still matches.
+     * ------------------------------------------------------------------ */
+    'series-order' => array(
+        array( $P,
+            "                \$all_series = SFAF_Series::all();\n"
+            . "                \$cur_series = \$event_id ? SFAF_Series::id_for_event( \$event_id ) : 0;\n",
+            '' ),
+        array( $P,
+            '                     * $all_series AND $cur_series ARE RESOLVED AT THE TOP OF THE',
+            "                    \$all_series = SFAF_Series::all();\n"
+            . "                    \$cur_series = \$event_id ? SFAF_Series::id_for_event( \$event_id ) : 0;\n"
+            . '                     * $all_series AND $cur_series ARE RESOLVED AT THE TOP OF THE' ),
+    ),
+
+    /* A multi-select on a taxonomy both readers take the FIRST term of. The
+     * categories fault of 3.8.0 and the organizers fault of 3.40.0: the picker
+     * offers several, the save writes one back through a function that
+     * replaces, and the rest are gone with nothing logged. */
+    'series-multi' => array( $P,
+        '<select name="series" data-uc-series-select>',
+        '<select name="series[]" multiple data-uc-series-select>' ),
+
     /* The save half that invents an organizer term. */
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",
@@ -248,14 +278,36 @@ if ( ! isset( $edits[ $which ] ) ) {
     exit( 2 );
 }
 
-list( $file, $find, $replace ) = $edits[ $which ];
-$src = file_get_contents( $file );
-if ( false === strpos( $src, $find ) ) {
-    fwrite( STDERR, "PLANT DID NOT APPLY: text not found for '$which' in $file\n" );
-    exit( 1 );
+/*
+ * A PLANT MAY BE MORE THAN ONE EDIT, and 'series-order' is why (3.64.1). The
+ * defect it reproduces is that two lines sat 102 lines BELOW their first use,
+ * so restoring it means taking them out of one place and putting them back in
+ * another. Expressed as a single find/replace it would only ever be an
+ * approximation of the fault, and a plant that is not the fault proves the
+ * check catches something else.
+ *
+ * One edit is still written the old way, as array( $file, $find, $replace ).
+ * A list is a list of those. Every edit in a list must apply or none is kept:
+ * a half-applied plant leaves the tree in a state nobody designed and the run
+ * that follows it is measuring nothing.
+ */
+$plant = $edits[ $which ];
+$steps = is_array( $plant[0] ) ? $plant : array( $plant );
+
+$staged = array();
+foreach ( $steps as $n => $step ) {
+    list( $file, $find, $replace ) = $step;
+    $src = isset( $staged[ $file ] ) ? $staged[ $file ] : file_get_contents( $file );
+    if ( false === strpos( $src, $find ) ) {
+        fwrite( STDERR, "PLANT DID NOT APPLY: text not found for '$which' step " . ( $n + 1 ) . " in $file\n" );
+        exit( 1 );
+    }
+    /* Replace the FIRST occurrence only, which is what a real edit would be. */
+    $pos = strpos( $src, $find );
+    $staged[ $file ] = substr( $src, 0, $pos ) . $replace . substr( $src, $pos + strlen( $find ) );
 }
-/* Replace the FIRST occurrence only, which is what a real edit would be. */
-$pos = strpos( $src, $find );
-$src = substr( $src, 0, $pos ) . $replace . substr( $src, $pos + strlen( $find ) );
-file_put_contents( $file, $src );
+
+foreach ( $staged as $file => $src ) {
+    file_put_contents( $file, $src );
+}
 echo "planted: $which\n";

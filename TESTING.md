@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 38 items.** Quick 21, needs real conditions 14, blocked on other
+**Outstanding: 40 items.** Quick 23, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -271,6 +271,38 @@ registrations" by the stored value, so the Add to Calendar button is absent
 there too. Open a cancelled event that has registrations on and say whether an
 absent button is right. Adding a cancelled event to a calendar is arguably not
 wanted either, which is why this was left as it fell rather than special-cased.
+
+### 1.22 Assign an event to a series by hand, then look at that series' schedule (3.64.1)
+
+**THE PATH THIS EXERCISES IS CORRECT IN THE CODE AND HAS NEVER RUN.** The New
+Event series control has not rendered since 3.38.0, so nobody has ever
+hand-assigned an event to a series through caladmin, and the one-off-in-a-series
+case has only ever existed in theory. The suite proves the control is drawn and
+that a pattern edit is scoped to the recurrence group. It cannot prove what a
+schedule screen looks like with a hand-added event on it, because there is no
+WordPress here to make one.
+
+Take a series that has generated dates from a pattern. Then:
+
+- **Create an event from New Event**, choose that series from "Is this part of a
+  series?", and **date it BEFORE the next generated occurrence**. That ordering
+  is the whole point: it is the case that made the seed wrong.
+- **Open the series' schedule screen.** The new event appears in the list,
+  marked **one-off**, with its own Edit and Remove.
+- **The pattern form still offers a frequency**, and the sentence at the top of
+  the card still describes the real repeat. Before 3.64.1 both would have
+  described a series with no pattern at all.
+- **Change the pattern.** The generated dates move. **The hand-added event does
+  not**, and the count in the confirmation does not include it.
+- **Open the hand-added event.** It offers no "edit all upcoming occurrences"
+  choice, because it is in no recurrence group. That is correct, not a fault.
+
+### 1.23 The schedule screen's "Create a new event in this series" button (3.64.1)
+
+It has carried the series in the URL since 3.38.0 and the editor dropped it.
+Press it and confirm the New Event form opens with that series **already
+chosen** in the card at the top, and that saving without touching the control
+leaves the event in that series.
 
 ---
 

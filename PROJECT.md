@@ -1140,6 +1140,27 @@ bulk edit reaches it, a time change applies to it. But a later pattern edit
 moving Wednesdays to Tuesdays must **leave it exactly where it is**. Without the
 marker the Saturday would be shifted to a Sunday nobody chose.
 
+**An event may be in a series and in NO group at all**, and that is an ordinary
+state rather than an edge case: it is what assigning an existing event to a
+series produces. Everything holds, because nothing that reads a series ever asks
+where the event came from. `bulk_targets()` returns nothing for an empty group,
+so no scope choice is offered; `upcoming_in_group()` returns nothing, so a
+pattern edit, an extend and a time change all skip it; and the schedule screen
+labels its row **one-off** and says why. `SFAF_Follow` is keyed on the term
+alone, so such an event is in a followed series on exactly the same footing as a
+generated one.
+
+**The schedule screen's SEED must come from the group, not from the series**
+(3.64.1). Its list of dates is term-scoped, but the pattern, the cadence
+controls, the times and the sentence describing the schedule all describe the
+group. Reading them off whichever event is soonest mixes the two: a hand-added
+event dated before the next occurrence became the seed, carried no pattern, and
+the pattern form stopped offering a frequency for a series that plainly had one.
+The save was never affected, because `schedule_pattern_from_post()` has always
+read `upcoming_in_group()`. **The general rule that produced the defect: where a
+screen shows one grouping and edits another, every value it derives has to say
+which one it came from.**
+
 ### Categories are multi-select
 
 An event has zero or more categories. Color and icon are term meta
@@ -2902,6 +2923,17 @@ mattered.** This is the finding, not a footnote on the one above.
 - 3.40.0's assertions about the event editor were greps over the source, and the
   destructive fault above does not exist in the source. It exists only once a
   parser has read it.
+- **3.38.0 to 3.64.0 is the purest instance, and it went unnoticed for 26
+  releases.** `render_event_form()` called the series prefill card 102 lines
+  above the two lines assigning the variables it takes, so both were undefined,
+  PHP passed `null`, and the card's `empty()` guard returned. The New Event
+  screen has never had a series control. **Every static question returns the
+  right answer**: the call exists, the method exists, the arity matches, the
+  file parses, the callable audit is clean. Nothing was wrong except the ORDER
+  of two statements, which is not a property any of those questions can see, and
+  the only symptom was two warnings suppressed on any production
+  `display_errors` setting. `.claude/series-control-test.php` renders the form
+  and parses what came back.
 
 > The common shape is not "the tests were too weak". Each asserted a PROPERTY OF
 > THE CODE believed to imply the outcome, and never the outcome. **Write the
