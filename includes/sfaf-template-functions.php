@@ -483,6 +483,32 @@ function sfaf_show_feature( $post_id, $feature ) {
 }
 
 /**
+ * Whether this event takes registrations.
+ *
+ * ONE PREDICATE, THREE CALLERS, AND A FOURTH IN CALADMIN (3.64.0). Two things
+ * have to be true and they are different kinds of thing: the manager switched
+ * registration on, and the Display card is showing the control. Both were
+ * written out longhand in sfaf_rsvp_block(), sfaf_rsvp_spots_text() and the
+ * volunteer variant, so a question asked in four places had four answers that
+ * only happened to agree. It is asked in a fifth now, by the Add to Calendar
+ * button, which must not appear when this is true, so the four have to become
+ * one before they can disagree.
+ *
+ * IT IS NOT CANCELLATION-AWARE, deliberately. A cancelled event still takes no
+ * registrations, but the reason is the cancellation and the refusal is
+ * SFAF_RSVP's at the write. This answers only "is this an event people sign up
+ * for", which is what decides whether the calendar file goes out with the
+ * confirmation instead of from the page.
+ *
+ * @param int $post_id
+ * @return bool
+ */
+function sfaf_event_takes_rsvps( $post_id ) {
+    return '1' === (string) get_post_meta( $post_id, '_uc_rsvp_enabled', true )
+        && sfaf_show_feature( $post_id, 'rsvp' );
+}
+
+/**
  * Build the start/end DateTime objects (in the site timezone) for an event.
  *
  * @return array|null array( DateTime $start, DateTime $end ) or null when no date.
@@ -749,8 +775,29 @@ function sfaf_show_fundraising_progress( $post_id ) {
 
 /**
  * "Add to Calendar" dropdown: Google Calendar link + .ics download.
+ *
+ * NOT ON AN EVENT THAT TAKES REGISTRATIONS (3.64.0). It sat directly under the
+ * RSVP button, and the two are a pair of things to press with no obvious order
+ * between them, so somebody could press this one believing it was how you sign
+ * up and come away with a calendar entry and no place held. There is no wording
+ * that fixes that: two buttons is the problem.
+ *
+ * NOTHING IS LOST, WHICH IS WHY THIS IS A REMOVAL AND NOT A WARNING. The
+ * registration confirmation already carries both destinations, the Google link
+ * and the .ics, and it carries them at the moment the place is actually held.
+ * On an event that takes no registrations there is no confirmation and no other
+ * route, so the button is the only thing available and stays exactly as it was.
+ *
+ * THE TICK IN CALADMIN IS NOT WHAT DECIDES THIS. `_uc_show_calendar` still says
+ * what the manager wants when the event is not taking names, and the editor
+ * greys the control and says so rather than leaving it looking settable. The
+ * save does not read it while registrations are on, so the behaviour does not
+ * depend on the disabled attribute surviving in the browser.
  */
 function sfaf_add_to_calendar( $post_id ) {
+    if ( sfaf_event_takes_rsvps( $post_id ) ) {
+        return '';
+    }
     if ( ! sfaf_show_feature( $post_id, 'calendar' ) ) {
         return '';
     }
@@ -872,7 +919,7 @@ function sfaf_rsvp_block( $post_id ) {
         return '';
     }
 
-    if ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) !== '1' || ! sfaf_show_feature( $post_id, 'rsvp' ) ) {
+    if ( ! sfaf_event_takes_rsvps( $post_id ) ) {
         return '';
     }
 
@@ -2813,7 +2860,7 @@ function sfaf_fundraising_progress( $post_id ) {
  * @return string
  */
 function sfaf_rsvp_spots_text( $post_id ) {
-    if ( get_post_meta( $post_id, '_uc_rsvp_enabled', true ) !== '1' || ! sfaf_show_feature( $post_id, 'rsvp' ) ) {
+    if ( ! sfaf_event_takes_rsvps( $post_id ) ) {
         return '';
     }
     $capacity = (int) get_post_meta( $post_id, '_uc_capacity', true );

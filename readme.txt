@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.63.0
+Stable tag: 3.64.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,37 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.64.0 =
+
+**One definition per kind of control, applied everywhere in /caladmin, and no Add to Calendar button on an event that takes registrations.**
+
+**What was reported, three times, on three screens.** Controls were white on white with thin gray outlines, and controls that do different things looked the same. Choose Image, Add these questions, Add FAQ, Add category, Save Draft and Back all read as the same weight and none read as pressable; the Title and Capacity fields were faint borders on white cards. Two of the three reports were fixed by restyling the screen they were reported on, which is what made the third one arrive.
+
+**The defect was not "this button looks wrong".** A secondary button was a white box with a 1px gray outline and an 8px radius. A text input was a white box with a 1px gray outline and an 8px radius. The only difference was font-weight. Meanwhile one kind of control had SEVERAL definitions and the one that reached the screen was decided by which wrapper it happened to sit inside: a text field's appearance was declared in **fourteen** places, **nine** of which handed it the decorative hairline (1.26:1) instead of a control boundary (3.33:1). The same `<select>` had a visible edge in the event editor and effectively none on the Users screen, in the filter bars and on the sign-in box.
+
+**A secondary button has a surface now.** Brand Light Gray `#D1D3D4`, ink `#373433` at 8.22:1, measuring 1.50:1 against a white card and 1.39:1 against the page. White stays "you type in this, or it opens", which is the rule the public filter bar settled in 3.61.0; caladmin had the first half of it and not the second. The border stays and is still what carries the boundary, because a fill at 1.50:1 is a surface and not an edge. It cannot be mistaken for the disabled state, which in this portal is *lighter* than the page with *muted* ink.
+
+**The vocabulary is four weights and a quiet fifth, and nothing else:** yellow primary (one per view), Light Gray secondary, solid teal utility, solid red destructive, and the link-shaped quiet actions that have no surface in any state.
+
+**A select looks like a select.** It gains the end cap the public filter bar uses, a hairline just inside the right-hand end that makes that end part of the control, and the chevron turns over while the menu is open. That is the same idea as the public bar rather than a second answer to the same question.
+
+**An option group no longer looks like a row of buttons.** The Repeats switch and the All events / My events switch were two copies of one control written 1500 lines apart, value for value identical; they are one declaration. The option card, a radio with its consequence written under it, existed three times, and one of the three was scoped to markup that has not existed for several releases, so the class read as a bordered card in the stylesheet and rendered as a bare list of radios on the screen. The cancel card's two visibility choices are proper option cards now, which is a visible change there.
+
+**Focus is teal, everywhere.** Every field inside a labelled wrapper painted its focused border YELLOW, which is the one colour reserved for the single primary action on a screen, and it keyed on `:focus` rather than `:focus-visible`, so a mouse click lit it too.
+
+**A disclosure has one mark.** There were three answers to "does this open?" in one stylesheet: the shared chevron element, a text triangle drawn in CSS, and, on seven summaries, nothing at all. "Change the pattern", "Extend the series", "Use this event's details on another date", "Contributor categories", the past-dates fold, the pending-queue field panel and "Get a form link" were lines of text with no marker. All of them carry the mark now, and the plain glyph is the default: the 28px ring belongs to a summary that IS a card's head band, and was previously the default that had to be undone by hand.
+
+**Four rules were dead and read as if they worked.** `.uc-disclosure-chevron` was declared twice at the same specificity, so the cancel disclosure wore a white circle nobody chose and the rule saying otherwise lost silently. `.uc-role-help`, its toggle and its body were each declared twice. `.uc-organizer-add`, `.uc-organizer-add-body` and `.uc-organizer-row` were each declared twice with different values. `.uc-inline-form` was `display: flex` in one place and `display: inline` in another, so the Users screen's add-user form had been spacing its select and its button with a space character.
+
+**`.claude/control-standard-audit.php` is committed and is a build gate.** It fails if a text control's appearance is declared outside the baseline, if any control takes the decorative hairline as its boundary, if a button and a field share a fill, if a single class is declared twice at the same specificity, if a `<summary>` carries no mark, if a button variant replaces the face and forgets to on hover, or if any measured pair drops under its floor. It has a `--self-test` that proves it can fail, including on the two traps that have made audits in this project lie before: `:where()` counted as specificity, and a comment inside a declaration block eating the declaration after it.
+
+**No Add to Calendar button on an event that takes registrations.** It sat directly under the RSVP button, and two things to press with no order between them is a control somebody presses believing it is how you sign up, coming away with a calendar entry and no place held. The calendar file goes out with the registration confirmation instead, which it already did, at the moment the place is actually held. On an event that takes no registrations the button is exactly as it was, because then it is the only route there is.
+
+**In caladmin the Display card's tick is greyed while registration is on**, with a line saying where the calendar link goes instead, rather than leaving a control that looks settable and is not. It keeps the manager's stored value, so switching registration off later gives back the setting they chose. **The save does not read the tick either**: a disabled input posts nothing, and a save that read "nothing" as "unticked" would quietly clear a setting nobody touched, so `save_event_from_post()` asks the stored value rather than trusting the attribute to survive. `.claude/addcal-rsvp-test.php` covers all of it, including that the confirmation email still carries both calendar destinations, because the removal is only safe while that route exists.
+
+**Scope.** The public calendar's filter bar is untouched: it was done in 3.61.0 and has the host-stylesheet constraint on top. The standard is a property of `body.uc-portal`, which is caladmin plus the two standalone submission forms, which use the same chassis and no host page.
+
 
 = 3.63.0 =
 

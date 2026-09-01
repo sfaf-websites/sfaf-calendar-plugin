@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-08-28, at 3.63.0.
+**Last updated:** 2026-09-01, at 3.64.0.
 
 ---
 
 ## What shipped last
 
-**3.63.0**, built as `sfaf-calendar-3.63.0.zip` in the project root, committed
+**3.64.0**, built as `sfaf-calendar-3.64.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.64.0** | One definition per kind of control in /caladmin. A secondary button has a surface, so it is no longer a text field with a heavier label; a select has an end cap; an option group no longer looks like a row of buttons. Fourteen declarations of a text field became one, and four classes that were declared twice are declared once. **And no Add to Calendar button on an event that takes registrations**, because it sat under the RSVP button; the calendar file goes out with the confirmation instead, which it already did. |
 | **3.63.0** | FAQ sets are made and maintained on one screen. "Save these as a set" is gone from the event editor, with its two reported defects disposed of rather than repaired. Sets can be duplicated, and the list is collapsed instead of showing every question of every set at once. |
 | **3.62.0** to **3.62.2** | Online events. One tick, "Online Event" everywhere a location renders, a meeting link that goes out only with the messages the manager ticks, and a whitelist that fails the build if anything else reads it. **3.62.1 and 3.62.2 are copy only**: the hints under the tick described the implementation rather than what happens to the event, and the link messaging was spread over three places with one case missing from all of them. `CLAUDE.md` §6 is the standing fault behind both. |
 | **3.61.0** | The public filter bar: a tinted ground under it, a dropdown that looks like one, a search field that does not, and two pill rows that read as different kinds of filter. Every control raised above the resets, and the bar measures its own column instead of the window. |
-| **3.60.0** | Closures stand out: red diagonal stripes and a two-line CLOSED label, in the grid and the list alike. Text sits on a solid panel, the name line drops below 560px, and an event on a closed day is untouched. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.63.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.64.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -164,7 +164,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 34 items.** Quick 17, needs
+**`TESTING.md` holds the manual testing backlog, 38 items.** Quick 21, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 
@@ -213,9 +213,17 @@ existing embed, which is why it has not simply been done.
 ## Queued work
 
 1. **The `/caladmin` design audit.** 106 findings against `portal.css`, never
-   written down. Enumerate first, split by mechanism.
+   written down. **3.64.0 took the control chunk** and left it enumerated as a
+   build gate rather than a list: `.claude/control-standard-audit.php`. What is
+   left is spacing, density and type on individual screens.
 2. **Simplify the event editor.** A parade of checkboxes, and four more cards
    since 3.35.0. A rendering-order and disclosure problem, not a data-model one.
+   The control standard went first on purpose: it is a property of being a
+   control, so moving controls between cards cannot undo it.
+3. **Tailwind greys are still in `portal.css`.** `#F3F4F6`, `#6B7280`,
+   `#4B5563`, `#D1D5DB`, `#E5E7EB` carry the locked and disabled states and are
+   in neither the palette nor `DESIGN.md`'s derived neutrals. Nothing looks
+   wrong, so 3.64.0 left them: a separate sweep with its own arithmetic.
 
 ## Before touching anything
 

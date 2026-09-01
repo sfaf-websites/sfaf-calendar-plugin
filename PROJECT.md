@@ -2039,6 +2039,32 @@ blocked one reserves its exact box and a pair of buttons stays the same height
 either way. The test checks this by **stripping the images and reading again**,
 not by reasoning about alt text.
 
+**The confirmation is the ONLY route to the calendar file on an event that takes
+registrations** (3.64.0). `sfaf_add_to_calendar()` returns nothing when
+`sfaf_event_takes_rsvps()` is true, so the button is off the event page. It sat
+directly under the RSVP button, and two things to press with no order between
+them is a control somebody presses believing it is how you sign up, coming away
+with a calendar entry and no place held. No wording fixes that; two buttons is
+the problem.
+
+The removal is only safe because the other route already existed and already
+runs at the better moment, when the place is actually held.
+`.claude/addcal-rsvp-test.php` therefore checks that the confirmation still
+carries both destinations, so taking them out of the email fails the build
+rather than leaving an event with no calendar file at all.
+
+**On an event that takes no registrations the button is unchanged**, because
+then it is the only thing there is. `_uc_show_calendar` still records what the
+manager wants for that case: the editor's tick is greyed while registration is
+on, with a line saying where the link goes instead, and **`save_event_from_post()`
+skips the field on its own test rather than trusting the disabled attribute**.
+A disabled input posts nothing, so reading it would silently write "off" over a
+setting nobody touched.
+
+`sfaf_event_takes_rsvps()` is that question asked in one place. It was written
+out longhand in three, and a fourth reading of it would have been the first
+chance for two of them to disagree.
+
 ### Cancelling, and why it is meta rather than a post status
 
 An event that is not happening still has to exist: somebody registered for it,

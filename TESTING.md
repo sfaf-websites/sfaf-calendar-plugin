@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 34 items.** Quick 17, needs real conditions 14, blocked on other
+**Outstanding: 38 items.** Quick 21, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -218,6 +218,59 @@ Open any event with FAQs.
 - **On an event with no sets yet**, the panel above the form points at the FAQ
   Sets screen rather than telling somebody to press a control that no longer
   exists.
+
+### 1.18 Walk every caladmin screen and confirm nothing lost an affordance (3.64.0)
+
+**Fourteen rules that styled a text field were replaced by one, and nine of them
+were removed rather than reconciled.** The audit proves the standard is the only
+declaration left; it cannot prove that no control depended on a rule that is now
+gone for something the standard does not supply. That is a looking job.
+
+Open each screen and check every control has a visible edge, that fields and
+buttons read as different things, and that nothing is the browser's own chrome:
+Dashboard, Events (list and both filter bars), the event editor including the
+Repeats switch, the dates picker, the notification picker and the cancel card,
+Series, the schedule screen, Categories, Organizers, Venues, FAQ Sets, Pending,
+Dismissed, Registrations, Opt-ins, Users and Teams, Settings, and the sign-in
+box. **The sign-in box and the Users screen are the two most likely to have
+moved**, because both had rules of their own that were deleted outright.
+
+### 1.19 The select's end cap and its chevron, in Firefox and Safari (3.64.0)
+
+The cap is a 1px `linear-gradient` layer and the chevron is a data-URI SVG, both
+on the select's own `background-image`, and the chevron swaps for an upward one
+on `:focus`. Chromium is what the build was written against. Check a dropdown in
+Firefox and in Safari: one cap, one chevron, the chevron turning over while the
+menu is open, and no second arrow from the platform.
+
+**A native `<select>` on iOS and on Android draws its own picker**, so also open
+one on a phone and confirm the control still opens normally.
+
+### 1.20 An event that takes registrations has no Add to Calendar button (3.64.0)
+
+The one public change in 3.64.0, and the test suite can only prove the gate is
+written.
+
+- **On an event with registrations on**, the event page shows the RSVP button
+  and **no Add to Calendar button**. Register, and the confirmation email
+  carries both destinations, Google and the `.ics`.
+- **On an event with registrations off**, the button is there exactly as before.
+- **In caladmin**, the Display card's "Add to calendar" tick is greyed while
+  Accept RSVPs is ticked, with the line about the confirmation under it. Untick
+  Accept RSVPs and it should become settable **without a save**.
+- **The one that needs two saves.** With registrations on, tick Add to calendar
+  is greyed at whatever it was; save; switch registrations off; save; the tick
+  must still be where the manager left it rather than reset to off.
+
+### 1.21 A cancelled event that takes registrations (3.64.0)
+
+**Deliberately not settled in the build, because the rule as written decides
+it and somebody should look at the result.** A cancelled event renders no RSVP
+button, so nothing can be confused with Add to Calendar, but it still "takes
+registrations" by the stored value, so the Add to Calendar button is absent
+there too. Open a cancelled event that has registrations on and say whether an
+absent button is right. Adding a cancelled event to a calendar is arguably not
+wanted either, which is why this was left as it fell rather than special-cased.
 
 ---
 

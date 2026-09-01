@@ -63,7 +63,7 @@ unknown backdrop cannot be contrast-checked.
 | Purple | `#8D54A2` | Category only |
 | Green | `#8CC745` | Category, and success state |
 | Teal | `#16BECF` | The single structural accent |
-| Light Gray | `#D1D3D4` | Hairlines, and text on dark surfaces |
+| Light Gray | `#D1D3D4` | Hairlines, text on dark surfaces, and the secondary button's face |
 | Dark Gray | `#373433` | Body text, and the portal sidebar |
 
 Nothing outside this list is a brand color. Neutrals derived for surfaces
@@ -355,6 +355,80 @@ Two things follow from it and are worth keeping:
   `background:` anything, which is how WordPress's select arrow was lost in
   3.18.0. Drawn as an element, and placed on the wrapper rather than on the
   control, no rule about `select` or `input` can reach it at all.
+
+### The control standard (3.64.0)
+
+The rule above was settled on the public filter bar and then applied to one
+surface. `/caladmin` kept the first half of it and not the second: a text field
+was white with a boundary, and so was a secondary button, so **the two were the
+same object with a different font-weight**. It was reported three times, on
+three screens, and fixed twice by restyling the screen it was reported on.
+
+**Fixing instances is what makes the next instance.** The defect is not "this
+button looks wrong"; it is that one kind of control had several definitions and
+the one that reached the screen was decided by which wrapper the control
+happened to sit in. A text field's appearance was declared in **fourteen**
+places, nine of which handed it the decorative hairline instead of a boundary.
+
+**One definition per kind, and the kinds are these.**
+
+| Kind | Fill | Boundary | Says |
+|---|---|---|---|
+| Text input, select, textarea | white | `--p-border-strong` | you type in this |
+| Select | white, plus a chevron **and an end cap** | `--p-border-strong` | it opens a list |
+| Secondary button | Light Gray `#D1D3D4` | `--p-border-strong` | you press this |
+| Primary button | Yellow `#FFD900`, ink `#373433` | `#E0BE00` | this is THE action. One per view |
+| Utility button | `#0E7680`, white ink | its own | go and get it again |
+| Destructive button | `#c0392b`, white ink | its own | behind a disclosure |
+| Quiet action | none | none | a verb in a row of verbs |
+| Segmented option group | white, chosen fills `#0E7680` | one boundary, seams inside | pick one of these |
+| Option card | white | `--p-border-strong` | pick one, with its consequence under it |
+| Disclosure | inherits | none, or a ring on a card head | this opens |
+
+**In caladmin the button takes the surface, not the field, and that is not a
+reversal of the filter-bar rule.** "No fill" is only available where the group
+sits on a tint. A caladmin button sits on a white card as often as on the page,
+so transparent *is* white there. The statement is kept by inverting which half
+carries it: white stays "you type in this", and the button gets Light Gray.
+Measured, in `.claude/control-standard-audit.php`:
+
+| Pairing | Ratio |
+|---|---|
+| `#D1D3D4` face against a white card | 1.50:1 |
+| `#D1D3D4` face against the page `#F5F6F7` | 1.39:1 |
+| `#373433` ink on the face | 8.22:1 |
+| `#BFC2C4` hover face, ink on it | 6.89:1 |
+
+**The fill is not the boundary and is not asked to be.** 1.50:1 is a visible
+surface, not an edge; the 1px `--p-border-strong` at 3.33:1 is what clears WCAG
+1.4.11. Two jobs, two declarations.
+
+**It must not read as disabled, and the numbers are how that stays true.** A
+disabled control here is *lighter* than the page with *muted* ink: `#F3F4F6`
+with `#6B7280`, or `#F9FAFB` with `#4B5563`. The button face is darker than
+both, at full ink and 600 weight, and measures 1.37:1 against the nearer of
+them.
+
+**An option group is not a row of buttons.** Pressing a segment picks a value;
+it does not do a thing. So a pick-one group wears **one** boundary with seams
+inside it and its chosen item fills, and a choice with a consequence written
+under it is an **option card** with the white "you are working in this" fill,
+never the button face. The moment either takes a button surface, the screen has
+stopped saying which things do something.
+
+**A disclosure has one mark, and the plain glyph is the default.** The ring is
+for a `<summary>` that IS a card's head band, where the band is a surface and
+the ring is a control on it. Everywhere else the chevron inherits its colour
+from the line it sits in, so no disclosure needs a rule about its own marker.
+
+**And the affordance rule above has a boundary of its own.** `/caladmin` has no
+host page: `portal.css` is the only stylesheet on it, and the one rule that
+could delete a `background-image` affordance is the `background` shorthand,
+which the baseline bans and the audit checks. So the select's chevron and end
+cap are background layers there, and elements on the public calendar, and that
+difference is a decision rather than a drift. The idea is the same one either
+way: a chevron says it opens, and an end cap makes the right-hand end a part of
+the control rather than more of the field.
 
 ### No diagnostic or developer output on a manager's screen
 

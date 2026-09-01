@@ -1681,7 +1681,30 @@ class SFAF_Portal {
             'show_calendar'   => '_uc_show_calendar',
             'show_reminders'  => '_uc_show_reminders',
         );
+        /*
+         * SHOW_CALENDAR IS NOT READ WHILE THE EVENT TAKES REGISTRATIONS.
+         *
+         * The editor greys that tick, because the button is off the event page
+         * in that case and the calendar file goes out with the confirmation
+         * instead. A disabled input posts nothing, so this loop would write '0'
+         * and quietly forget the manager's own setting, and the next person to
+         * switch registration off would find Add to calendar unticked without
+         * having unticked it.
+         *
+         * IT IS NOT READ EITHER, WHICH IS THE OTHER HALF. A disabled control is
+         * one that posts nothing today and posts something the day somebody
+         * removes the attribute in the browser. The form is not the guarantee;
+         * this test is.
+         *
+         * ORDER MATTERS AND IS SAFE. save_rsvp_settings_from_post() has already
+         * written _uc_rsvp_enabled above, and 'show_rsvp' is written before
+         * 'show_calendar' in the list below, so both halves of the predicate
+         * are this save's values rather than the previous save's.
+         */
         foreach ( $toggles as $field => $key ) {
+            if ( 'show_calendar' === $field && sfaf_event_takes_rsvps( $event_id ) ) {
+                continue;
+            }
             update_post_meta( $event_id, $key, isset( $_POST[ $field ] ) ? '1' : '0' );
         }
 
@@ -3380,6 +3403,7 @@ class SFAF_Portal {
             <summary class="uc-form-links-open">
                 <?php echo sfaf_icon( 'link', array( 'size' => '15px' ) ); ?>
                 <span>Get a form link</span>
+            <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
             </summary>
 
             <div class="uc-form-links-body">
@@ -7814,6 +7838,7 @@ class SFAF_Portal {
                     ?>
                     <details class="uc-schedule-pastfold">
                         <summary>
+                            <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
                             <?php echo (int) count( $past ); ?> past
                             <?php echo esc_html( _n( 'date', 'dates', count( $past ) ) ); ?>
                         </summary>
@@ -7869,7 +7894,7 @@ class SFAF_Portal {
                     <h4 class="uc-schedule-head">Add a date</h4>
 
                     <details class="uc-schedule-add">
-                        <summary>Use this event's details on another date</summary>
+                        <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>Use this event's details on another date</summary>
                         <p class="uc-hint">
                             Copies this event onto a date you choose: same location, description, times, category,
                             organizer and questions. It starts with nobody registered, because registrations belong to
@@ -7973,7 +7998,7 @@ class SFAF_Portal {
         $n_pat   = (int) $ctx['n_pat'];
         ?>
         <details class="uc-schedule-edit">
-            <summary>Change the pattern</summary>
+            <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>Change the pattern</summary>
             <p class="uc-hint">
                 Applies to the <strong><?php echo (int) $n_up; ?></strong>
                 upcoming <?php echo esc_html( _n( 'occurrence', 'occurrences', $n_up ) ); ?>
@@ -8182,7 +8207,7 @@ class SFAF_Portal {
         }
         ?>
         <details class="uc-schedule-extend">
-            <summary>Extend the series</summary>
+            <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>Extend the series</summary>
 
             <p class="uc-hint">
                 Generated through <strong><?php echo esc_html( sfaf_ap_date( $ctx['horizon'], 'full' ) ); ?></strong>.
@@ -8609,9 +8634,50 @@ class SFAF_Portal {
                      * back on wherever somebody had turned it off.
                      */
                     $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Follow the series' );
+
+                    /*
+                     * ADD TO CALENDAR IS NOT A CHOICE WHILE REGISTRATIONS ARE
+                     * ON (3.64.0). The button is off the event page in that
+                     * case, because it sat under the RSVP button and could be
+                     * pressed by somebody who thought it was how you sign up.
+                     * The calendar file goes out with the confirmation instead,
+                     * which it already did.
+                     *
+                     * SO THE CONTROL SAYS WHAT WILL HAPPEN rather than looking
+                     * settable and doing nothing. It keeps the manager's own
+                     * stored value, because switching registration off later
+                     * should give them back the setting they chose, and the
+                     * sentence under it is what carries the fact.
+                     *
+                     * THE SAVE DOES NOT READ IT EITHER, and that is the half
+                     * that matters. A disabled input is a control that posts
+                     * nothing today and posts something the day somebody takes
+                     * the attribute off, so save_event_from_post() skips
+                     * show_calendar on its own test rather than trusting the
+                     * browser to withhold it. The standing rule this brushes
+                     * against is about permission-sensitive fields and this is
+                     * not one; nothing is protected by the greying.
+                     *
+                     * portal.js keeps it in step live, so ticking Accept RSVPs
+                     * in the card below greys this one without a save.
+                     */
+                    $takes_rsvps = $event_id ? sfaf_event_takes_rsvps( $event_id ) : false;
+
                     foreach ( $feat as $f => $lbl ) :
-                        $on = $event_id ? sfaf_show_feature( $event_id, str_replace( 'show_', '', $f ) ) : true; ?>
-                        <label class="uc-check"><input type="checkbox" name="<?php echo esc_attr( $f ); ?>" value="1" <?php checked( $on ); ?> /> <?php echo esc_html( $lbl ); ?></label>
+                        $on   = $event_id ? sfaf_show_feature( $event_id, str_replace( 'show_', '', $f ) ) : true;
+                        $lock = ( 'show_calendar' === $f && $takes_rsvps );
+                        ?>
+                        <label class="uc-check<?php echo $lock ? ' uc-check-locked' : ''; ?>"<?php
+                            echo 'show_calendar' === $f ? ' data-uc-calendar-check' : ''; ?>>
+                            <input type="checkbox" name="<?php echo esc_attr( $f ); ?>" value="1" <?php checked( $on ); ?><?php
+                                echo $lock ? ' disabled' : ''; ?> />
+                            <?php echo esc_html( $lbl ); ?>
+                        </label>
+                        <?php if ( 'show_calendar' === $f ) : ?>
+                            <p class="uc-hint uc-calendar-note" data-uc-calendar-note<?php echo $lock ? '' : ' hidden'; ?>>
+                                The calendar link goes out with the registration confirmation instead.
+                            </p>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                 </section>
             <?php
@@ -10819,6 +10885,9 @@ class SFAF_Portal {
                     <span class="uc-picker-count" data-uc-picker-count><?php
                         echo esc_html( $this->notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) );
                     ?></span>
+                    <?php // The same mark every disclosure in caladmin carries.
+                          // It drew its own text triangle in CSS until 3.64.0. ?>
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
                 </summary>
 
                 <div class="uc-picker-panel">
@@ -12317,6 +12386,7 @@ class SFAF_Portal {
                       // moment a manager has chosen this event. ?>
                 <details class="uc-queue-panel">
                     <summary>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
                         <?php echo $needs_t ? esc_html( $needs_t ) : 'Set the fields this platform does not supply'; ?>
                     </summary>
                     <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-form uc-queue-form">
@@ -13167,7 +13237,7 @@ class SFAF_Portal {
                         <?php endif; ?>
                     </div>
                     <details class="uc-user-cats">
-                        <summary>Contributor categories</summary>
+                        <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>Contributor categories</summary>
                         <p class="uc-hint">Leave all unchecked to allow all categories.</p>
                         <div class="uc-check-grid">
                             <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) : ?>

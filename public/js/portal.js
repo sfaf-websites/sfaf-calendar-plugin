@@ -60,7 +60,50 @@
         run('asyncActions', initAsyncActions);
         run('disclosures', initDisclosures);
         run('filterLists', initFilterLists);
+        run('calendarTick', initCalendarTick);
     });
+
+    /* ---------------------------------------------------------------------
+     * "Add to calendar" follows "Accept RSVPs", live.
+     *
+     * Both controls are on the event editor at once, in two different cards,
+     * and the answer to one decides whether the other means anything: an event
+     * taking registrations has no Add to Calendar button on its page, because
+     * the calendar file goes out with the confirmation instead. The server
+     * renders the greyed state on load; this is the same state while somebody
+     * is still deciding, so ticking Accept RSVPs does not leave a live-looking
+     * control that a save will ignore.
+     *
+     * IT IS NOT WHAT MAKES IT TRUE, and that is the whole reason it is safe to
+     * do in the browser. save_event_from_post() asks the same question of the
+     * stored value and skips the field either way, so with scripting off, or
+     * with the attribute removed by hand, nothing about what gets saved
+     * changes. This only keeps the screen honest.
+     * ------------------------------------------------------------------ */
+    function initCalendarTick() {
+        var label = document.querySelector('[data-uc-calendar-check]');
+        var note = document.querySelector('[data-uc-calendar-note]');
+        var rsvp = document.querySelector('input[name="rsvp_enabled"]');
+        var show = document.querySelector('input[name="show_rsvp"]');
+        if (!label || !note || !rsvp) { return; }
+
+        var box = label.querySelector('input');
+        if (!box) { return; }
+
+        function sync() {
+            // Both halves, exactly as sfaf_event_takes_rsvps() asks them:
+            // registration is on AND the RSVP control is being shown. The
+            // second is a tick in this very card, so it can change too.
+            var on = rsvp.checked && (!show || show.checked);
+            box.disabled = on;
+            label.classList.toggle('uc-check-locked', on);
+            note.hidden = !on;
+        }
+
+        rsvp.addEventListener('change', sync);
+        if (show) { show.addEventListener('change', sync); }
+        sync();
+    }
 
     /* ---------------------------------------------------------------------
      * Disclosures: keep aria-expanded in step with the <details> state.

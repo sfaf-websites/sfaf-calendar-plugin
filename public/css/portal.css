@@ -56,6 +56,41 @@
        a darker variation of the same brand gray and clears 3:1. */
     --p-border: #E2E5EA;
     --p-border-strong: #8C8D8E;
+    /* ---------------------------------------------------------------------
+       THE TWO CONTROL FACES. WHITE IS THE STATEMENT, AND IT ONLY WORKS IF
+       SOMETHING ELSE IS NOT WHITE.
+
+       DESIGN.md settled this on the public filter bar in 3.61.0: white fill
+       with a boundary means you TYPE in this or it OPENS; no fill means you
+       PRESS it. Caladmin had the first half and not the second, so a
+       secondary button and a text field were the same object twice, white
+       with a 1px --p-border-strong edge and an 8px radius, differing only in
+       font-weight. That is the whole of the reported complaint, reported
+       three times on three screens.
+
+       In caladmin "no fill" is not available: a button sits on a white card
+       as often as on the page, so transparent IS white there. So the pair is
+       inverted and the BUTTON takes the surface. Brand Light Gray at its own
+       value, which spends no accent and cannot compete with the one yellow.
+
+       MEASURED, in .claude/control-standard-audit.php, which fails the build
+       if these two ever come to the same value again:
+
+         #D1D3D4 face against a white card         1.50:1
+         #D1D3D4 face against the page #F5F6F7     1.39:1
+         #373433 ink on the face                   8.22:1
+         #BFC2C4 hover face, ink on it             6.89:1
+
+       IT IS NOT THE DISABLED STATE, and the numbers are how that is kept
+       true rather than a hope. A disabled control here is LIGHTER than the
+       page with MUTED ink: #F3F4F6 with #6B7280 (.uc-field-nobulk) or
+       #F9FAFB with #4B5563 (.uc-field-locked). This is darker than both, at
+       full ink and 600 weight, and measures 1.37:1 against the nearer of
+       them.
+       --------------------------------------------------------------------- */
+    --p-control-face: #ffffff;   /* you type in this, or it opens */
+    --p-btn-face: #D1D3D4;       /* you press this */
+    --p-btn-face-hover: #BFC2C4;
     --p-text: #373433;       /* brand Dark Gray, not pure black */
     --p-muted: #6B6764;      /* a warm gray from the same family, 5.60:1 on white */
     /* The bento cards sit on the page background and need to read as raised
@@ -219,7 +254,11 @@ body.uc-portal {
 .uc-login-sub { color: var(--p-muted); margin: 0 0 24px; }
 .uc-login-form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
 .uc-login-form label { font-size: 13px; font-weight: 600; display: flex; flex-direction: column; gap: 6px; }
-.uc-login-form input[type=text], .uc-login-form input[type=password] { padding: 11px 14px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 15px; }
+/* Nothing about the box, only about the screen: a login field is the standard
+   field and gets it from the baseline. It kept a 15px face and the decorative
+   hairline as its boundary until 3.64.0, which is why the sign-in box read
+   fainter than every field behind it. */
+.uc-login-form input[type=text], .uc-login-form input[type=password] { width: 100%; }
 .uc-login-remember { flex-direction: row !important; align-items: center; gap: 8px; font-weight: 500 !important; }
 .uc-login-error { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
 .uc-portal-brandmark { display: inline-block; background: var(--sfaf-yellow); color: #000; font-weight: 800; padding: 8px 12px; border-radius: 8px; letter-spacing: 1px; }
@@ -401,23 +440,48 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
 
 /* ---------------------------------------------------------------------------
-   ALL EVENTS / MY EVENTS.
+   ALL EVENTS / MY EVENTS, and every other PICK ONE OF THESE.
 
-   The same segmented shape as the recurrence control, built from two real
-   links rather than radios, because each one is a URL that can be bookmarked
-   and shared and that survives paging and sorting. The chosen segment is the
-   darkened teal with white on it, measured at 5.35:1; brand teal would have
-   been 2.26:1 and is never used behind text.
+   THE SEGMENTED CONTROL IS DECLARED HERE ONCE (3.64.0) and worn by both of the
+   places that need it. It was written out twice, 1500 lines apart and value for
+   value identical: this, built from two real links, and the recurrence
+   control's Repeats switch, built from radios. Two copies of one control is
+   how the two come to disagree, and it is the same fault as the fourteen
+   separate declarations of a text field.
+
+   The elements stay different on purpose. All events / My events are LINKS,
+   because each is a URL that can be bookmarked and shared and that survives
+   paging and sorting. Repeats is a group of RADIOS, because it is a value on a
+   form. Nothing about the two shapes differs, so nothing about the two
+   declarations does either: each selector keeps its own specificity in the
+   list, (0,2,0) for the anchor so it beats `.uc-portal a`, and (0,1,1) for the
+   span the radio paints.
+
+   AND IT IS NOT A ROW OF BUTTONS, which is the distinction the whole standard
+   turns on. Pressing a segment picks a value; it does not do a thing. So it
+   wears one continuous boundary with seams inside it rather than four separate
+   edges, and the chosen one FILLS: the darkened teal with white on it, 5.35:1.
+   Brand teal would have been 2.26:1 and is never used behind text.
    ------------------------------------------------------------------------- */
-.uc-scope-switch { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--p-border-strong);
-    border-radius: 9px; overflow: hidden; align-self: center; }
-.uc-portal .uc-scope-opt { display: block; padding: 8px 16px; font-size: 13px; font-weight: 600;
-    color: var(--p-text); background: #fff; border-left: 1px solid var(--p-border);
-    text-decoration: none; white-space: nowrap; }
-.uc-portal .uc-scope-opt:first-child { border-left: 0; }
-.uc-portal .uc-scope-opt:hover { background: var(--uc-band); color: var(--p-text); text-decoration: none; }
-.uc-portal .uc-scope-opt.is-on { background: var(--uc-accent-text); color: #fff; }
-.uc-portal .uc-scope-opt:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+.uc-scope-switch,
+.uc-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--p-border-strong);
+    border-radius: 9px; overflow: hidden; }
+.uc-scope-switch { align-self: center; }
+.uc-seg { align-self: flex-start; }
+
+.uc-portal .uc-scope-opt,
+.uc-seg-opt span { display: block; padding: 8px 16px; font-size: 13px; font-weight: 600;
+    color: var(--p-text); background: var(--p-control-face);
+    border-left: 1px solid var(--p-border);
+    text-decoration: none; white-space: nowrap; cursor: pointer; user-select: none; }
+.uc-portal .uc-scope-opt:first-child,
+.uc-seg-opt:first-child span { border-left: 0; }
+.uc-portal .uc-scope-opt:hover,
+.uc-seg-opt input:hover + span { background: var(--uc-band); color: var(--p-text); text-decoration: none; }
+.uc-portal .uc-scope-opt.is-on,
+.uc-seg-opt input:checked + span { background: var(--uc-accent-text); color: #fff; }
+.uc-portal .uc-scope-opt:focus-visible,
+.uc-seg-opt input:focus-visible + span { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
 .uc-scope-switch + .uc-view-hint { margin-top: 14px; }
 
 /* The read-only table other people's events are drawn in. No actions column,
@@ -468,8 +532,11 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
     border: 1px solid var(--p-border-strong);
     border-radius: 8px;
     /* background-color, never the shorthand: `background` resets
-       background-image, which is what draws the chevron on a select. */
-    background-color: #fff;
+       background-image, which is what draws the chevron on a select.
+       WHITE IS SAID OUT LOUD because it is the statement, not the default:
+       in this portal white fill plus a boundary means you type in this or it
+       opens, and the button face beside it is Light Gray. See --p-btn-face. */
+    background-color: var(--p-control-face);
     color: var(--p-text);
     font-family: inherit;
     font-size: 14px;
@@ -496,17 +563,47 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    `background` shorthand in the baseline above cannot delete it, because it is
    set after it on background-image.
    ------------------------------------------------------------------------- */
+/* THE END CAP CAME WITH IT IN 3.64.0, and it is the public filter bar's
+   answer rather than a second one. The chevron alone was not enough: a select
+   and a text field were the same white box with the same boundary, and the
+   only difference was a 16px glyph at the far right that reads as an icon
+   inside the field rather than as part of the control. calendar.css draws a
+   1px hairline just inside the right-hand end, which turns that end into a
+   PART of the control, and that is the thing a text box does not have.
+
+   HERE IT IS A SECOND BACKGROUND LAYER, NOT AN ELEMENT, and the difference
+   between the two surfaces is why. On the public calendar the affordance has
+   to be in the markup, because a host stylesheet saying `background: none`
+   would delete it and the failure would be invisible. Nothing hosts
+   /caladmin: this file is the only stylesheet on the page, and the rule that
+   would delete it is the `background` shorthand, which is banned in the
+   baseline above and checked by .claude/control-standard-audit.php. Two
+   layers means the renderers do not have to wrap 21 bare selects in a span.
+
+   Layer order is cap then chevron, both painted over the fill. */
 :where(.uc-portal) :where(select) {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    padding-right: 34px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6764' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 11px center;
-    background-size: 16px 16px;
+    padding-right: 38px;
+    background-image:
+        linear-gradient(var(--p-border), var(--p-border)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230E7680' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat, no-repeat;
+    background-position: right 33px center, right 10px center;
+    background-size: 1px 60%, 16px 16px;
 }
-/* A list box has no menu to open, so a chevron on it would be a lie. */
+/* Open, and pointing the way it opens. `:focus` rather than `:focus-visible`
+   deliberately: the native menu is up for exactly as long as the select has
+   focus however it was reached, including by mouse, which is the state this
+   describes. The same reasoning as `:focus-within` on the public bar. */
+:where(.uc-portal) :where(select):focus {
+    background-image:
+        linear-gradient(var(--p-border), var(--p-border)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230E7680' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+}
+/* A list box has no menu to open, so a chevron on it would be a lie, and an
+   end cap with nothing behind it is the same lie in a quieter voice. */
 :where(.uc-portal) :where(select[multiple], select[size]:not([size="1"])) {
     appearance: auto; -webkit-appearance: auto; background-image: none; padding-right: 12px;
 }
@@ -539,9 +636,11 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
     padding: 8px; border: 1px dashed var(--p-border-strong); border-radius: 8px;
     background: var(--p-bg); max-width: 100%;
 }
+/* The one part of a file input that IS a button gets the button face, so
+   "Choose file" reads as pressable next to every other button on the form. */
 :where(.uc-portal) :where(input[type="file"])::file-selector-button {
     margin-right: 10px; padding: 6px 12px; border: 1px solid var(--p-border-strong);
-    border-radius: 7px; background: #fff; color: var(--p-text);
+    border-radius: 7px; background: var(--p-btn-face); color: var(--p-text);
     font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 
@@ -556,29 +655,53 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    should supply a surface, not a layout. */
 :where(.uc-portal) :where(button, input[type="submit"], input[type="button"], input[type="reset"]) {
     padding: 9px 16px; border-radius: 8px;
-    border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-text);
+    border: 1px solid var(--p-border-strong); background: var(--p-btn-face); color: var(--p-text);
     font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4; cursor: pointer;
 }
 :where(.uc-portal) :where(button, input[type="submit"]):focus-visible {
     outline: 2px solid var(--uc-accent-text); outline-offset: 2px;
 }
 
-/* ---------- Buttons ---------- */
-/* A SECONDARY BUTTON IS OUTLINED, A PRIMARY ONE IS YELLOW. That is the whole
-   button vocabulary, and it is why yellow appears nowhere else: the moment it
-   decorates something, a yellow button stops meaning "this is the action".
-   Dark Gray on yellow measures 8.92:1. The border is the strong gray so the
-   control's own edge clears 3:1 rather than being a hairline. */
+/* ---------------------------------------------------------------------------
+   THE BUTTON VOCABULARY. FOUR WEIGHTS AND A QUIET FIFTH, AND NOTHING ELSE.
+
+   A SECONDARY BUTTON HAS A SURFACE (3.64.0). It was a white box with a 1px
+   --p-border-strong outline and an 8px radius, which is byte for byte what a
+   text input was, so Choose Image, Add these questions, Add FAQ, Add category,
+   Save Draft and Back all read as the same thing as the Title field beside
+   them. An outline on white does not say "press me"; it says "there is an edge
+   here". The fill is what says it, and the fill is brand Light Gray:
+
+     PRIMARY      yellow #FFD900, ink #373433, 8.92:1. ONE per view.
+     SECONDARY    Light Gray #D1D3D4, ink #373433, 8.22:1. The default.
+     UTILITY      solid teal #0E7680, white ink, 5.35:1. "Go and get it again".
+     DESTRUCTIVE  solid #c0392b, white ink, 5.44:1. Behind a disclosure.
+     QUIET        no surface at all: .uc-action-link, .uc-link-danger,
+                  .uc-link-ok. A verb in a row of verbs, never a box.
+
+   The border stays. The fill is 1.50:1 against a white card, which is a
+   visible surface and not a boundary, so the edge is still the thing clearing
+   WCAG 1.4.11's 3:1 at 3.33:1. Two jobs, two declarations.
+
+   HOVER MOVES THE FACE, not just the edge. The old hover changed border and
+   text colour only, so on a white card the thing that moved was a hairline.
+   ------------------------------------------------------------------------- */
 .uc-btn,
-.uc-form-links-open { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.uc-form-links-open { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border-strong); background: var(--p-btn-face); color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
 .uc-btn:hover,
-.uc-form-links-open:hover { border-color: var(--uc-accent-text); color: var(--uc-accent-text); text-decoration: none; }
+.uc-form-links-open:hover { background: var(--p-btn-face-hover); border-color: var(--uc-accent-text); color: var(--p-text); text-decoration: none; }
 .uc-btn:focus-visible,
 .uc-form-links-open:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
 .uc-btn-primary,
 .uc-form-links-open { background: var(--uc-primary); border-color: #E0BE00; color: var(--sfaf-darkgray); }
+/* THE FILL IS NAMED IN THE HOVER TOO, and that is not redundancy. Until the
+   secondary button had a face of its own, `.uc-btn:hover` set no background
+   and a yellow button simply kept its own through the hover. It sets one now,
+   so a rule that only darkens with a filter would hover from yellow to grey.
+   Same shape as the 3.39.0 fault: a state rule inheriting a fill from the
+   resting rule, which holds right up until the resting rule changes. */
 .uc-btn-primary:hover,
-.uc-form-links-open:hover { filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
+.uc-form-links-open:hover { background: var(--uc-primary); filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
 /* ---------------------------------------------------------------------------
    THE UTILITY BUTTON: "go and get it again".
 
@@ -611,9 +734,13 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-btn-block { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 .uc-btn-sm { padding: 6px 12px; font-size: 13px; }
 .uc-link-danger { background: none; border: none; color: var(--p-danger-text); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
-.uc-link-danger:hover { text-decoration: underline; }
+/* NO SURFACE IN ANY STATE. Both of these are worn alongside .uc-btn in a few
+   places, and since 3.64.0 `.uc-btn:hover` names a fill. A quiet action that
+   inherited "no fill" through the hover would grow a grey box on the way past.
+   The pair is declared together, which is the 3.39.0 rule. */
+.uc-link-danger:hover { background: none; text-decoration: underline; }
 .uc-link-ok { background: none; border: none; color: var(--p-green); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
-.uc-link-ok:hover { text-decoration: underline; }
+.uc-link-ok:hover { background: none; text-decoration: underline; }
 
 /* ---------- Stats ---------- */
 .uc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
@@ -800,21 +927,34 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 
 /* ---------- Filters ---------- */
 .uc-filters-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
-.uc-filters-bar input, .uc-filters-bar select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background-color: #fff; }
+/* LAYOUT ONLY. The box, the boundary and the face come from the baseline, so
+   the search field on Registrations and the one on Opt-ins cannot render as
+   two different controls again. */
 .uc-filters-bar input[type=search] { flex: 1; min-width: 180px; }
 
 /* ---------- Forms ---------- */
 .uc-form-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
 .uc-form-main, .uc-form-side { display: flex; flex-direction: column; gap: 16px; }
 .uc-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--p-text); }
-/* A control's own boundary has to be visible: --p-border-strong is a darker
-   variation of brand Light Gray and measures 3.33:1 on white. --p-border is
-   the hairline BETWEEN things, which is decoration and does not. */
-.uc-field input, .uc-field select, .uc-field textarea { padding: 10px 12px; border: 1px solid var(--p-border-strong); border-radius: 8px; font-size: 14px; font-weight: 400; font-family: inherit; background-color: #fff; width: 100%; }
-.uc-field input:focus, .uc-field select:focus, .uc-field textarea:focus { outline: none; border-color: var(--uc-primary); box-shadow: 0 0 0 3px rgba(22,190,207,0.12); }
+/* LAYOUT ONLY, SINCE 3.64.0. This rule used to declare the whole appearance of
+   a field — padding, boundary, radius, size, face — at (0,1,1), and it was one
+   of FOURTEEN rules in this file that did, nine of which handed the control the
+   decorative hairline instead of a boundary. The appearance is the baseline's
+   now and this says the one thing that is genuinely about being inside a
+   labelled field: fill the column.
+
+   ITS :focus RULE IS GONE AND IS NOT COMING BACK. It painted the focused
+   border YELLOW, which is the one colour reserved for the single primary
+   action on a screen, and it keyed on :focus rather than :focus-visible so a
+   mouse click lit it too. Focus is teal, from the baseline, everywhere. */
+.uc-field input, .uc-field select, .uc-field textarea { width: 100%; }
 /* A BOX IS NOT A TEXT FIELD, and the rule above does not know that.
-   `.uc-field input` gives every input inside a .uc-field wrapper width: 100%,
-   12px of padding and a bordered white background. Several wrappers are DIVS
+   `.uc-field input` gives every input inside a .uc-field wrapper width: 100%.
+   The padding, border and background this also resets came from the same rule
+   until 3.64.0 and now come from nowhere, because the baseline excludes
+   checkbox and radio by name; they are kept because the damage they undo is
+   what somebody adding a shorthand back here would reintroduce, and the reset
+   costs nothing. Several wrappers are DIVS
    holding boxes rather than labels around one text input, so their checkboxes
    and radios were being drawn as full-width text fields: .uc-location-field,
    .uc-cat-field (the category list), .uc-fund-field (the fundraising toggle)
@@ -844,6 +984,22 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 /* The box holds its size and the label takes the rest, so a two-word label
    never wraps because the control grew. The gap owns the spacing. */
 .uc-check input[type="checkbox"], .uc-check input[type="radio"] { flex: 0 0 auto; margin: 0; }
+/* ---------------------------------------------------------------------------
+   A TICK THAT IS NOT A CHOICE RIGHT NOW (3.64.0).
+
+   "Add to calendar" in the Display card, while the event is taking
+   registrations. The button is off the event page in that case, so the control
+   would be settable and do nothing. It keeps its stored value and greys, and
+   the line under it says where the calendar link goes instead.
+
+   IT IS THE SAME GREY AS EVERY OTHER DISABLED CONTROL in this portal, #6B7280
+   on the ambient surface, which is the .uc-field-nobulk pair. A second way of
+   saying "you cannot set this" would be a second thing for a manager to learn.
+   ------------------------------------------------------------------------- */
+.uc-check-locked { color: #6B7280; }
+.uc-check-locked input { cursor: not-allowed; }
+.uc-calendar-note { margin: -4px 0 8px 24px; }
+
 .uc-side-box { background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 10px; padding: 14px; }
 .uc-side-box h3 { margin-top: 0; }
 .uc-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--p-border); }
@@ -1024,8 +1180,14 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 }
 .uc-danger-toggle:hover { color: var(--p-text); background: var(--p-surface-2, #f6f7f8); }
 .uc-danger-disclosure > summary:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; border-radius: 8px; }
-.uc-disclosure-chevron { display: inline-flex; transition: transform 0.15s ease; }
-.uc-danger-disclosure[open] > summary .uc-disclosure-chevron { transform: rotate(90deg); }
+/* THE CHEVRON IS NOT DECLARED HERE (3.64.0). It was, and the declaration was
+ * dead: `.uc-disclosure-chevron` was declared again 1350 lines below at the
+ * same specificity, as a 28px ring, so the later one won and this quiet
+ * disclosure wore a circle nobody chose. Exactly the shape of the 3.39.0
+ * .uc-btn-danger fault, and now checked for every single-class rule in the
+ * file by .claude/control-standard-audit.php. The glyph this one wanted is
+ * the default there now, and the turn is the shared
+ * `[open] > summary .uc-disclosure-chevron` rule. */
 .uc-danger-body {
     margin-top: 12px; padding: 20px;
     border: 1px solid #e6c9c5;
@@ -1033,9 +1195,6 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
     background: #fdf7f6;
 }
 .uc-danger-body .uc-cancel-form { margin-top: 0; }
-@media (prefers-reduced-motion: reduce) {
-    .uc-disclosure-chevron { transition: none; }
-}
 
 /* ---------------------------------------------------------------------------
    A SAVE BUTTON NEEDS AIR UNDER IT, NOT JUST OVER IT.
@@ -1131,13 +1290,14 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-section-sub { margin: 0; font-size: 13px; color: var(--p-muted); }
 
 /* ---------- Users ---------- */
-.uc-inline-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.uc-inline-form select { padding: 9px 12px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 14px; background-color: #fff; }
+/* Layout only. The box is the baseline's. */
+.uc-inline-form select { max-width: 100%; }
 .uc-user-row { display: grid; grid-template-columns: 1.4fr 1.6fr auto; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--p-border); }
 .uc-user-id strong { display: block; }
 .uc-user-controls { display: flex; gap: 12px; flex-wrap: wrap; }
 .uc-user-controls label { font-size: 12px; color: var(--p-muted); display: flex; flex-direction: column; gap: 4px; }
-.uc-user-controls select { padding: 7px 10px; border: 1px solid var(--p-border); border-radius: 7px; }
+/* No rule of its own. Both selects on this screen are the standard select,
+   and this one was the smallest and faintest of the three sizes in use. */
 /* ---------------------------------------------------------------------------
    THE EVENT EDITOR: BENTO CARDS
 
@@ -1227,9 +1387,20 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    click, tap, Enter and Space, and carries aria-expanded; never hover, which no
    touch screen and no keyboard can produce. With the script gone the region is
    simply visible, so nothing behind one is ever unreachable. */
+/* A CONTROL BOUNDARY, NOT A HAIRLINE (3.64.0). This is a 16px circle carrying
+   one character, so its edge is the whole of what says a control is there, and
+   it was drawn in the decorative --p-border at 1.26:1. The boundary token is
+   3.33:1, which is what WCAG 1.4.11 asks of a control that has no label. */
+/* IT KEEPS THE WHITE FILL, AND THAT IS NOT AN OVERSIGHT (3.64.0). Everything
+   else pressable in caladmin took the Light Gray button face, because white
+   is what a field wears and the two were indistinguishable. This one is a
+   16px circle carrying one character, and its two states ARE white and solid
+   teal: closed is white, open is filled. Giving the closed state the button
+   face would put a grey circle and a teal circle a step apart instead of two
+   steps, for the sake of a consistency nothing here was confused by. */
 .uc-help-btn { display: inline-flex; align-items: center; justify-content: center;
     width: 16px; height: 16px; margin-left: 5px; padding: 0; border-radius: 50%;
-    border: 1px solid var(--p-border); background: #fff; color: var(--p-muted);
+    border: 1px solid var(--p-border-strong); background: #fff; color: var(--p-muted);
     font-size: 11px; font-weight: 700; line-height: 1; cursor: pointer; vertical-align: middle; }
 .uc-help-btn:hover { color: var(--uc-accent-text); border-color: var(--uc-accent-text); }
 .uc-help-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
@@ -1265,30 +1436,22 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    ------------------------------------------------------------------------- */
 .uc-repeat { display: flex; flex-direction: column; gap: 12px; }
 
-.uc-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--p-border-strong);
-    border-radius: 9px; overflow: hidden; align-self: flex-start; }
+/* The Repeats switch IS the segmented control, declared up beside All events /
+   My events so the two cannot drift. All that is left here is the mechanism:
+   a real radio taken out of the flow, keeping its focus ring, its keyboard
+   behaviour and its announcement, with the visible segment as its sibling. */
 .uc-seg-opt { position: relative; }
 .uc-seg-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.uc-seg-opt span { display: block; padding: 8px 16px; font-size: 13px; font-weight: 600;
-    color: var(--p-text); background: #fff; border-left: 1px solid var(--p-border);
-    cursor: pointer; user-select: none; white-space: nowrap; }
-.uc-seg-opt:first-child span { border-left: 0; }
-.uc-seg-opt input:hover + span { background: var(--uc-band); }
-/* The chosen segment is the darkened teal with white on it, measured at
-   5.35:1. Brand teal would have been 2.26:1 and is never used behind text. */
-.uc-seg-opt input:checked + span { background: var(--uc-accent-text); color: #fff; }
-.uc-seg-opt input:focus-visible + span { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
 
 .uc-repeat-panel { display: flex; flex-direction: column; gap: 8px;
     padding: 12px 14px; border: 1px solid var(--p-border); border-radius: 10px; background: var(--p-bg); }
 .uc-repeat-every { display: flex; align-items: center; gap: 8px; font-size: 14px; flex-wrap: wrap; }
-.uc-repeat-num { width: 74px; padding: 7px 9px; border: 1px solid var(--p-border-strong);
-    border-radius: 7px; font-size: 14px; font-family: inherit; }
-.uc-repeat-date { padding: 7px 9px; border: 1px solid var(--p-border-strong);
-    border-radius: 7px; font-size: 14px; font-family: inherit; }
+/* Width, and nothing else: "every N weeks" is a two-digit answer and a
+   full-width box for it says the wrong thing about how long the answer is.
+   The box itself is the standard field, so the three controls inside the
+   recurrence panel now match the three outside it. */
+.uc-repeat-num { width: 74px; }
 .uc-repeat-nth { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: 22px; }
-.uc-repeat-nth select { padding: 7px 9px; border: 1px solid var(--p-border-strong);
-    border-radius: 7px; font-size: 14px; font-family: inherit; background-color: #fff; }
 
 /* THE DAY CIRCLES ARE CHECKBOXES. Round is a style; what a screen reader and a
    keyboard get is a labelled checkbox in a group, which is what it is. */
@@ -1405,8 +1568,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    removed rather than silently still being there. */
 .uc-email-pill input:not(:checked) ~ .uc-email-pill-text { text-decoration: line-through; opacity: 0.55; }
 .uc-email-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.uc-email-add input { flex: 1 1 240px; min-width: 0; padding: 8px 11px;
-    border: 1px solid var(--p-border-strong); border-radius: 8px; font-size: 14px; font-family: inherit; }
+.uc-email-add input { flex: 1 1 240px; min-width: 0; }
 .uc-emails-field { gap: 8px; }
 
 /* ---------- Categories as chips ---------- */
@@ -1666,12 +1828,12 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-route { display: flex; align-items: center; gap: 12px; padding: 10px 0; flex-wrap: wrap; border-bottom: 1px solid var(--p-border); }
 .uc-route:last-child { border-bottom: none; }
 .uc-route .uc-check { margin-bottom: 0; min-width: 200px; }
-.uc-route input[type=email], .uc-route input[type=url] { flex: 1; min-width: 220px; padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 7px; }
+.uc-route input[type=email], .uc-route input[type=url] { flex: 1; min-width: 220px; }
 .uc-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--p-gray); flex-shrink: 0; }
 .uc-dot.on { background: var(--p-green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
 .uc-repeater-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .uc-repeater-row { display: flex; gap: 8px; align-items: center; }
-.uc-repeater-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 7px; font-size: 13px; }
+.uc-repeater-row input { flex: 1; }
 .uc-map-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--p-border); }
 .uc-map-cat { font-weight: 600; font-size: 13px; }
 .uc-tier { margin-top: 14px; padding: 12px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-size: 13px; color: #1e40af; }
@@ -1720,8 +1882,12 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
     border: 1px solid var(--p-border);
     border-radius: 10px;
 }
+/* The row itself sits on the page tint, so the two fields inside it have to
+   say white deliberately rather than inherit it. The baseline already does;
+   this is the case where the surface UNDER the control is not white and the
+   statement "white means you type in this" needs restating. */
 .uc-faq-row input[type=text],
-.uc-faq-row textarea { background: var(--p-panel); }
+.uc-faq-row textarea { background-color: var(--p-control-face); }
 /* The editor is an iframe in a chrome of its own, so the white has to be asked
    for on the wrapper rather than inherited through it. */
 .uc-faq-row .wp-editor-container { background: var(--p-panel); }
@@ -1741,31 +1907,26 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
 /* Full width. The 44px of right padding went with the corner button it was
    keeping a long question out from under. */
-.uc-faq-row input[type=text] { flex: none; width: 100%; font-size: 14px; }
+.uc-faq-row input[type=text] { flex: none; width: 100%; }
 
 /* DANGER AS INK, NOT AS FILL. A solid red button on every row would be a wall
    of red on a set of ten, and the row is not a dangerous place to be. The
    neutral button carries a red word, and the confirmation carries the weight.
    Declared as a pair, so the two never come apart: 3.39.0 split a fill from its
    ink across two declarations and got red on red at 1.19:1. */
-.uc-faq-row .uc-faq-remove { color: var(--p-danger-text); background: var(--p-panel); }
+.uc-faq-row .uc-faq-remove { color: var(--p-danger-text); background: var(--p-btn-face); }
 .uc-faq-row .uc-faq-remove:hover { color: #fff; background: var(--p-danger-text); border-color: var(--p-danger-text); }
 
-/* TALLER, AND DRAGGABLE. `resize: vertical` is the no-script fallback's grip;
-   the editor's own is TinyMCE's, turned on in SFAF_Rich_Text::settings(), and
-   the two are separate mechanisms for the same gesture. A box that scrolls
-   inside a page that scrolls is the thing being fixed, so the floor is a real
-   paragraph rather than three lines. */
+/* TALLER. A box that scrolls inside a page that scrolls is the thing being
+   fixed, so the floor is a real paragraph rather than three lines.
+   `resize: vertical` is the baseline's, on every textarea in the portal, and
+   is the no-script fallback's grip; the editor's own is TinyMCE's, turned on
+   in SFAF_Rich_Text::settings(). They are separate mechanisms for one gesture
+   and neither is declared here any more. */
 .uc-faq-row textarea {
     flex: none;
     width: 100%;
     min-height: 180px;
-    resize: vertical;
-    font-family: inherit;
-    padding: 8px 10px;
-    border: 1px solid var(--p-border);
-    border-radius: 7px;
-    font-size: 13px;
     line-height: 1.5;
 }
 
@@ -1871,7 +2032,18 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    Third-party import queue (dashboard fetch report + Pending sub-sections)
    --------------------------------------------------------------------------- */
 .uc-head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.uc-inline-form { display: inline; margin: 0; }
+/* ONE DECLARATION, RECONCILING TWO (3.64.0). This was declared twice at the
+   same specificity: `display: flex` up by the Users screen, so the add-user
+   form could space its select and its button, and `display: inline` here, so a
+   one-button form is transparent inside .uc-head-actions. The later one won,
+   which meant the gap and the wrap up there had been dead the whole time and
+   the Users form spaced its two controls with a space character.
+
+   `inline-flex` is both: inline-level, so nothing about the one-button case
+   changes, and a flex container, so the gap works. Inside .uc-head-actions it
+   makes no difference at all, because a flex container blockifies its children
+   whatever display they ask for. */
+.uc-inline-form { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; }
 
 /* .uc-section-title is gone with 3.17.0. It was the second way of heading a
    card, a bare <h2> floating above the card it named, and it is what made the
@@ -2017,7 +2189,10 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
     gap: 4px; text-align: left; font-weight: 600; padding: 12px 14px; height: auto; }
 .uc-scope-btn-sub { font-weight: 400; font-size: 12px; line-height: 1.45; color: var(--p-muted); }
 .uc-scope-btn-all { border-color: #fcd34d; background: #fffbeb; }
-.uc-scope-btn-all:hover { border-color: #f59e0b; }
+/* The amber is the fact that this choice touches every occurrence, so the
+   hover has to stay amber. It names its own fill for the same reason the
+   yellow primary does. #92400e on #fef3c7 is the pending-pill pair. */
+.uc-scope-btn-all:hover { background: #fef3c7; border-color: #f59e0b; }
 .uc-scope-btn-all .uc-scope-btn-sub { color: #92400e; }
 .uc-scope-dismiss { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--p-border); }
 .uc-scope-noscript { margin: 10px 0 0; font-size: 13px; color: #92400e; }
@@ -2168,8 +2343,7 @@ body.uc-modal-open { overflow: hidden; }
    have given it. */
 .uc-faq-picker-label { flex: 1 1 240px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .uc-faq-picker-label > .uc-field-label { font-size: 13px; font-weight: 600; color: var(--p-text); display: block; }
-.uc-faq-picker-label select { width: 100%; padding: 8px 10px; border: 1px solid var(--p-border);
-    border-radius: 7px; font-size: 14px; background-color: #fff; color: var(--p-text); }
+.uc-faq-picker-label select { width: 100%; }
 .uc-faq-picker-row .uc-btn { flex: 0 0 auto; }
 .uc-faq-picker .uc-hint { margin: 8px 0 0; }
 .uc-faq-picker-said { margin: 10px 0 0; }
@@ -2203,8 +2377,14 @@ body.uc-modal-open { overflow: hidden; }
     flex-wrap: wrap; padding: 11px 14px; cursor: pointer; font-size: 14px; font-weight: 600;
     color: var(--p-text); list-style: none; border-radius: 10px; }
 .uc-picker-toggle::-webkit-details-marker { display: none; }
-.uc-picker-toggle::after { content: "▾"; margin-left: auto; color: var(--p-muted); font-size: 12px; }
-.uc-picker[open] > .uc-picker-toggle::after { content: "▴"; }
+.uc-picker-toggle::marker { content: ""; }
+/* A THIRD ANSWER TO ONE QUESTION IS GONE (3.64.0). This drew its own marker as
+   a text triangle in ::after, swapped for a second character when open, while
+   every other disclosure in caladmin used the shared .uc-disclosure-chevron
+   element and turned it. Two mechanisms means two sizes, two colours and two
+   ways of failing; the glyph also sat at whatever weight the font gave it. The
+   summary carries the element now, like the rest. */
+.uc-picker-toggle .uc-disclosure-chevron { margin-left: auto; }
 .uc-picker[open] > .uc-picker-toggle { border-bottom: 1px solid var(--p-border); border-radius: 10px 10px 0 0; }
 .uc-picker-toggle:hover { background: var(--p-bg); }
 .uc-picker-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
@@ -2227,8 +2407,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker-tabbed .uc-picker-panel-body + .uc-picker-panel-body { margin-top: 0; }
 
 .uc-picker-filter { display: block; margin-bottom: 8px; }
-.uc-picker-filter input { width: 100%; padding: 8px 10px; border: 1px solid var(--p-border);
-    border-radius: 7px; font-size: 13px; background: #fff; }
+.uc-picker-filter input { width: 100%; }
 /* Fixed height whether there are three calendar users or three hundred, so the
    Save button never moves as staff are added. */
 .uc-picker-options { display: flex; flex-direction: column; gap: 2px; max-height: 240px;
@@ -2377,19 +2556,46 @@ body.uc-modal-open { overflow: hidden; }
 .uc-rsvp-settings-name { font-size: 14px; }
 .uc-rsvp-settings-id .uc-muted { font-size: 12px; }
 
-/* The disclosure marker, shared by anything using data-uc-disclosure. */
+/* ---------------------------------------------------------------------------
+   THE DISCLOSURE MARK. ONE MECHANISM, AND THE PLAIN GLYPH IS THE DEFAULT
+   (3.64.0).
+
+   There were THREE answers to "does this open?" in one stylesheet: this
+   element, a text triangle drawn in .uc-picker-toggle::after, and, on seven
+   summaries, nothing at all. Somebody meeting "Change the pattern" or "Extend
+   the series" had a line of teal text and no reason to think it opened.
+
+   AND THE DEFAULT WAS BACKWARDS. This class was declared as a 28px white ring,
+   which is right on a summary that IS a card's head band and wrong everywhere
+   else, so it had to be undone by hand, once, for .uc-team-add-toggle. The
+   other place that needed it undone did try: `.uc-disclosure-chevron` was
+   declared as a bare glyph 1350 lines above here, at the same specificity, and
+   lost, so the quiet cancel disclosure wore a white circle nobody chose and the
+   rule saying otherwise read as if it worked. Same shape as the 3.39.0
+   .uc-btn-danger fault. The default is now the glyph, which is what most of
+   them want, and the ring is named by the three that are card heads. Adding a
+   disclosure tomorrow gets the right mark without a second rule.
+
+   COLOUR IS INHERITED, deliberately. The glyph is part of the sentence it sits
+   in, so it is teal on a teal line, dark gray on the yellow pill and muted on
+   the cancel toggle, and no summary needs a rule about it.
+   ------------------------------------------------------------------------- */
 .uc-disclosure-chevron { display: inline-flex; align-items: center; justify-content: center;
-    width: 28px; height: 28px; flex: 0 0 auto; border-radius: 50%;
+    flex: 0 0 auto; color: inherit; transition: transform .18s ease; }
+
+/* THE RING, FOR A SUMMARY THAT IS A CARD'S HEAD. The band is a surface and the
+   ring is a control on it, which is why these three and no others. */
+.uc-rsvp-settings-toggle .uc-disclosure-chevron,
+.uc-faq-set-toggle .uc-disclosure-chevron,
+.uc-team-summary .uc-disclosure-chevron {
+    width: 28px; height: 28px; border-radius: 50%;
     border: 1px solid var(--p-border-strong); background: #fff; color: var(--uc-accent-text);
     transition: transform .18s ease, background-color .18s ease, border-color .18s ease; }
 .uc-rsvp-settings-toggle:hover .uc-disclosure-chevron {
     background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
+
 [open] > .uc-rsvp-settings-toggle .uc-disclosure-chevron,
 [open] > summary .uc-disclosure-chevron { transform: rotate(90deg); }
-/* The Add member toggle is a small pill, not a card header, so its marker is
-   the glyph without the 28px ring the card version wears. */
-.uc-team-add-toggle .uc-disclosure-chevron { width: auto; height: auto;
-    border: 0; background: none; color: inherit; }
 @media (prefers-reduced-motion: reduce) { .uc-disclosure-chevron { transition: none; } }
 .uc-rsvp-settings-form { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-settings-form .uc-form-actions { margin-top: 4px; }
@@ -2407,11 +2613,39 @@ body.uc-modal-open { overflow: hidden; }
 .uc-remove-lead { font-size: 15px; margin: 0 0 16px; }
 .uc-remove-goes { margin: 16px 0 0; }
 .uc-remove-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
-.uc-remove-option { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px;
-    border: 1px solid var(--p-border); border-radius: 10px; cursor: pointer; background: #fff; }
-.uc-remove-option:hover { border-color: var(--uc-accent-text); }
-.uc-remove-option:focus-within { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
-.uc-remove-option > input[type="radio"] { margin-top: 3px; flex: 0 0 auto; }
+
+/* ---------------------------------------------------------------------------
+   THE OPTION CARD: A CHOICE WITH A CONSEQUENCE WRITTEN UNDER IT.
+
+   ONE DECLARATION, THREE PLACES (3.64.0). This existed three times: here for
+   the two ways to remove a series, as `.uc-scope-options .uc-radio-opt` for
+   which occurrences an edit touches, and as `.uc-cancel-visibility
+   .uc-radio-opt` for what a cancelled event does on the public calendar. All
+   three are a radio, a bold clause and a sentence saying what happens.
+
+   THE THIRD ONE MATCHED NOTHING, which is the part worth writing down.
+   `.uc-scope-options` is in no renderer, so the rule that drew the card for
+   `.uc-radio-opt` never ran, and the only live rule for that class was the
+   cancel card's, which gave it no box at all. Reading the stylesheet said
+   "option cards"; the screen said "a list of radios". Neither was lying and
+   the two did not agree. The card is declared here now and both class names
+   name it.
+
+   IT IS NOT A BUTTON AND MUST NOT LOOK LIKE ONE. Pressing it chooses; a
+   separate control does the thing. So it keeps the white "you are working in
+   this" fill and the hairline BETWEEN things, and it never takes the button
+   face. That is the whole of the rule the standard exists for.
+   ------------------------------------------------------------------------- */
+.uc-remove-option,
+.uc-radio-opt { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px;
+    border: 1px solid var(--p-border-strong); border-radius: 10px; cursor: pointer;
+    background: var(--p-control-face); font-size: 14px; line-height: 1.5; }
+.uc-remove-option:hover,
+.uc-radio-opt:hover { border-color: var(--uc-accent-text); }
+.uc-remove-option:focus-within,
+.uc-radio-opt:focus-within { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
+.uc-remove-option > input[type="radio"],
+.uc-radio-opt > input[type="radio"] { margin-top: 3px; flex: 0 0 auto; }
 .uc-remove-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
 .uc-remove-option-danger { border-color: color-mix(in srgb, #c0392b 40%, var(--p-border)); }
 .uc-remove-sub { display: flex; flex-direction: column; gap: 4px; margin-top: 8px;
@@ -2448,21 +2682,18 @@ body.uc-modal-open { overflow: hidden; }
  * Series lifecycle: edit scope, removal choices, orphan repair.
  * ------------------------------------------------------------------------ */
 
-/* Scope is a decision with consequences, so the options are given room rather
- * than compressed into a row of radios somebody skims past. */
-.uc-scope-options { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
-.uc-scope-options .uc-radio-opt { display: flex; align-items: flex-start; gap: 9px; padding: 9px 12px;
-    border: 1px solid var(--p-border); border-radius: 8px; background: #fff; font-size: 14px; cursor: pointer; }
-.uc-scope-options .uc-radio-opt:hover { border-color: var(--p-accent, #16BECF); }
-.uc-scope-options input { margin: 3px 0 0; flex: 0 0 auto; }
-
-/* Two removal choices, side by side and equally legible: the destructive one
- * must not be the only one that catches the eye, and it must not be hidden. */
-.uc-removal-options { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 16px; }
-.uc-removal-options > form { flex: 1 1 320px; min-width: 280px; padding: 16px 18px;
-    border: 1px solid var(--p-border); border-radius: 10px; background: #fff; }
-.uc-removal-options h3 { margin: 0 0 6px; font-size: 15px; }
-.uc-removal-options .uc-hint { margin: 0 0 12px; }
+/* .uc-scope-options AND .uc-removal-options ARE GONE, AND THEY WERE ALREADY
+ * GONE (3.64.0). Neither class appears in any renderer or in portal.js. They
+ * were the pre-3.23.0 markup for the same two questions the scope modal and
+ * .uc-remove-options ask now, and the rules outlived it.
+ *
+ * The one that mattered is `.uc-scope-options .uc-radio-opt`, which drew the
+ * option card: a border, a fill, 9/12 of padding. It matched nothing, so the
+ * only live `.uc-radio-opt` was the cancel card's, which had a rule giving it
+ * no box at all. That is why the same class read as two different controls
+ * depending on where you looked it up, and why the reading in the stylesheet
+ * did not agree with the screen. The card is declared once now, at
+ * .uc-remove-option, and the cancel options wear it. */
 
 /* A danger card wears its warning on the band, not on the heading text. The
    heading is already uppercase and tracked like every other card heading, so
@@ -2696,13 +2927,23 @@ body.uc-modal-open { overflow: hidden; }
 /* What each access level can do. The 3.10.0 disclosure, wearing the same
    toggle as the RSVP settings panel: a summary, so click, tap, Enter and
    Space all work with no script at all. */
-.uc-role-help { margin-bottom: 16px; }
+/* ONE DECLARATION EACH (3.64.0). All three of these were declared twice, here
+   and again 220 lines down beside the organizer rows, at the same specificity.
+   The later one won for what it named and this one survived for what it did
+   not, so reading either gave the wrong padding, the wrong size, or a card that
+   is not there. Merged, at the values that were actually reaching the screen.
+
+   The disclosure is INSIDE the add-user card, not a card of its own further up
+   the page (3.38.0): help anywhere other than beside the control it explains is
+   help nobody finds at the moment they need it. */
+.uc-role-help { margin: 0 0 16px; border: 1px solid var(--p-border);
+    border-radius: 10px; background: var(--p-bg); }
 .uc-role-help-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer;
-    padding: 12px 16px; font-size: 14px; list-style: none; }
+    padding: 10px 14px; font-size: 13.5px; list-style: none; }
 .uc-role-help-toggle::-webkit-details-marker { display: none; }
 .uc-role-help-toggle::marker { content: ""; }
 .uc-role-help-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
-.uc-role-help-body { padding: 0 16px 16px; }
+.uc-role-help-body { padding: 0 14px 14px; }
 .uc-role-help-list { margin: 0; }
 .uc-role-help-list dt { margin: 12px 0 2px; font-size: 13px; font-weight: 600; }
 .uc-role-help-list dt:first-child { margin-top: 0; }
@@ -2736,8 +2977,14 @@ body.uc-modal-open { overflow: hidden; }
 .uc-cancel-visibility { margin: 0 0 12px; padding: 0; border: 0; }
 /* A legend over a set of radio options is a field label, and takes that step. */
 .uc-cancel-visibility legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
-.uc-cancel-visibility .uc-radio-opt { display: flex; gap: 8px; align-items: flex-start;
-    margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+/* THESE ARE OPTION CARDS NOW (3.64.0), and it is a visible change on this
+ * card. They were a bare stack of radios at 13px, because the rule that drew
+ * the card was scoped to markup that no longer exists and this ancestor rule
+ * was the only one reaching them. A choice between leaving a cancelled event
+ * listed and taking it off the public calendar is exactly the kind the card
+ * exists for: two consequences, written under the thing that causes them.
+ * All that is left here is the space between two of them. */
+.uc-cancel-visibility .uc-radio-opt { margin-bottom: 8px; }
 .uc-cancel-visibility .uc-radio-opt strong { display: block; }
 /* NO SECOND .uc-btn-danger HERE (3.39.0). This file already declares one,
    white on #c0392b at 5.44:1. A second rule at the same specificity set
@@ -2775,17 +3022,21 @@ body.uc-modal-open { overflow: hidden; }
    card, because 3.34.0 found five screens that looked correct only because
    every child happened to carry some and one that did not.
    ------------------------------------------------------------------------- */
-.uc-organizer-add { margin-bottom: 16px; }
-.uc-organizer-add-body { padding: 0 16px 16px; }
+/* THESE TWO ARE DECLARED FURTHER DOWN, with the rules that made the closed
+   disclosure stop looking like a panel (3.38.0). Both were declared HERE as
+   well, at the same specificity and with different values, so the pair that
+   reached the screen was the later one and this pair read as if it worked.
+   3.64.0 removed them rather than reconciling them, because there is nothing
+   here the later block does not say. */
 .uc-organizer-add-body .uc-field { margin-bottom: 12px; }
 
+/* Padding and align-items are NOT here: the row rhythm block below declares
+   both, later and at the same specificity, and its values are the live ones. */
 .uc-organizer-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "id actions" "edit edit";
     gap: 4px 12px;
-    align-items: start;
-    padding: 14px 16px;
     border-bottom: 1px solid var(--p-border);
 }
 .uc-organizer-row:last-child { border-bottom: 0; }
@@ -2910,12 +3161,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-organizer-id strong { font-size: 14px; font-weight: 600; }
 .uc-organizer-id .uc-muted + .uc-muted { margin-top: 4px; }
 
-/* The role help is a disclosure INSIDE the add-user card now, not a card of its
-   own further up the page (3.38.0). Help anywhere other than beside the control
-   it explains is help nobody finds at the moment they need it. */
-.uc-role-help { margin: 0 0 16px; border: 1px solid var(--p-border); border-radius: 10px; background: var(--p-bg); }
-.uc-role-help-toggle { padding: 10px 14px; font-size: 13.5px; }
-.uc-role-help-body { padding: 0 14px 14px; }
+/* The role help disclosure is declared once, up beside .uc-role-help-list. */
 
 /* ---------------------------------------------------------------------------
    SERIES PREFILL, AT CREATION (3.38.0).
