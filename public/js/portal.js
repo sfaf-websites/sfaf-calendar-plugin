@@ -570,6 +570,56 @@
         }
     }
 
+    /* ---------------------------------------------------------------------
+     * SHOWING AND HIDING THE PREVIEW, IN ONE PLACE (3.64.2).
+     *
+     * These were closures inside bindImageField(), which is where they were
+     * needed while Choose Image and the URL box were the only two things that
+     * could put a picture on an event. The series prefill is a third: it writes
+     * the hidden id and the URL directly, and until this release it left the
+     * preview empty, so the button said it had filled six things in and the
+     * picture was the one nobody could see.
+     *
+     * A field is a `.uc-image-field`, and every part of the preview is found
+     * within it, so this works for the pending queue's several fields on one
+     * page exactly as the binding does.
+     * ------------------------------------------------------------------ */
+    function showImagePreview(field, src) {
+        if (!field || !src) { return; }
+        var preview    = field.querySelector('[data-uc-image-preview]');
+        var previewImg = field.querySelector('[data-uc-image-preview-img]');
+        var removeBtn  = field.querySelector('.uc-remove-image');
+        if (!preview || !previewImg) { return; }
+        previewImg.src = src;
+        preview.style.display = '';
+        if (removeBtn) { removeBtn.style.display = ''; }
+    }
+
+    function hideImagePreview(field) {
+        if (!field) { return; }
+        var preview    = field.querySelector('[data-uc-image-preview]');
+        var previewImg = field.querySelector('[data-uc-image-preview-img]');
+        var removeBtn  = field.querySelector('.uc-remove-image');
+        if (!preview || !previewImg) { return; }
+        preview.style.display = 'none';
+        previewImg.src = '';
+        if (removeBtn) { removeBtn.style.display = 'none'; }
+    }
+
+    /*
+     * THE TAG BESIDE "Featured Image" SAYS WHERE THE PICTURE CAME FROM, and a
+     * picture written onto this event came from this event. The words are the
+     * server's, carried on the tag itself, so renaming the label renames it
+     * here too.
+     */
+    function markImageAsOwn(field) {
+        if (!field) { return; }
+        var tag = field.querySelector('[data-uc-img-source-tag]');
+        if (!tag) { return; }
+        var own = tag.getAttribute('data-uc-img-source-own');
+        if (own) { tag.textContent = own; }
+    }
+
     function bindImageField(field) {
         var chooseBtn = field.querySelector('.uc-choose-image');
         if (!chooseBtn) {
@@ -586,17 +636,8 @@
             return;
         }
 
-        function show(src) {
-            if (!src) { return; }
-            previewImg.src = src;
-            preview.style.display = '';
-            if (removeBtn) { removeBtn.style.display = ''; }
-        }
-        function hide() {
-            preview.style.display = 'none';
-            previewImg.src = '';
-            if (removeBtn) { removeBtn.style.display = 'none'; }
-        }
+        function show(src) { showImagePreview(field, src); }
+        function hide() { hideImagePreview(field); }
 
         chooseBtn.addEventListener('click', function (e) {
             e.preventDefault();
@@ -2667,7 +2708,30 @@
             {
                 key: 'image', label: 'Image',
                 has: function (d) { return d.image_url !== '' || d.image_id > 0; },
-                preview: function (d) { return d.image_url ? d.image_url.split('/').pop() : 'the series image'; },
+                preview: function (d) { return fileName(d.image_url); },
+                /*
+                 * A PICTURE, NOT ITS FILE NAME (3.64.2). Every other row on
+                 * this card shows the value itself: the address, the times, the
+                 * opening words. This row showed
+                 * prop-harm-reduction-1024x576.jpg, which answers nothing
+                 * anybody is asking at that moment. The file name stays as the
+                 * alt text, so a screen reader keeps the only handle it had,
+                 * and as the fallback when the URL will not load.
+                 */
+                previewNode: function (d) {
+                    var src = d.image_preview || d.image_url;
+                    if (!src) { return null; }
+                    var img = document.createElement('img');
+                    img.className = 'uc-prefill-thumb';
+                    img.alt = fileName(d.image_url);
+                    img.addEventListener('error', function () {
+                        var span = document.createElement('span');
+                        span.textContent = fileName(d.image_url);
+                        if (img.parentNode) { img.parentNode.replaceChild(span, img); }
+                    });
+                    img.src = src;
+                    return img;
+                },
                 filled: function () {
                     var url = form.querySelector('[data-uc-image-url]');
                     var id = form.querySelector('[data-uc-image-id]');
@@ -2678,6 +2742,25 @@
                     if (url && d.image_url) { url.value = d.image_url; }
                     var id = form.querySelector('[data-uc-image-id]');
                     if (id && d.image_id) { id.value = String(d.image_id); }
+
+                    /*
+                     * AND THE SCREEN HAS TO SHOW IT (3.64.2). Writing the two
+                     * hidden values left the preview empty and the tag reading
+                     * "Placeholder", so the button reported filling six things
+                     * in and the picture was the one thing that could not be
+                     * seen. It is COPIED onto this event, exactly as the
+                     * location and the times are, so it reads as the event's
+                     * own image and not as an inherited one.
+                     */
+                    var anchor = url || id;
+                    var field = anchor && anchor.closest ? anchor.closest('.uc-image-field') : null;
+                    if (field) {
+                        showImagePreview(field, d.image_preview || d.image_url);
+                        markImageAsOwn(field);
+                    }
+                    // Setting .value in script fires neither input nor change,
+                    // so the completeness meter has to be told by hand.
+                    if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
                 }
             },
             {
@@ -2758,6 +2841,10 @@
             var w = String(s).split(' ');
             return w.length <= n ? s : w.slice(0, n).join(' ') + '...';
         }
+        function fileName(url) {
+            var name = String(url || '').split('?')[0].split('/').pop();
+            return name || 'the series image';
+        }
 
         /*
          * THE DESCRIPTION MAY BE TinyMCE OR A TEXTAREA, and which one depends on
@@ -2827,9 +2914,21 @@
                 text.className = 'uc-prefill-opt-text';
                 var strong = document.createElement('strong');
                 strong.textContent = o.label;
+                /*
+                 * A ROW SHOWS ITS VALUE, and for one of them the value is a
+                 * picture. previewNode() is optional: an option without one is
+                 * text, exactly as every row was before, and an option with one
+                 * that hands back nothing falls back to the same text rather
+                 * than to an empty row.
+                 */
                 var quiet = document.createElement('span');
                 quiet.className = 'uc-muted';
-                quiet.textContent = o.preview(d) || '';
+                var node = o.previewNode ? o.previewNode(d) : null;
+                if (node) {
+                    quiet.appendChild(node);
+                } else {
+                    quiet.textContent = o.preview(d) || '';
+                }
 
                 text.appendChild(strong);
                 text.appendChild(quiet);

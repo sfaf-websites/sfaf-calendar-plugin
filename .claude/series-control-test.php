@@ -759,6 +759,86 @@ expect( 'the prefill card is not on the edit screen',
     false !== strpos( $edit, 'data-uc-series-prefill' ), false );
 
 /* ===========================================================================
+ * 5. THE HOOKS THE PREFILL WRITES THROUGH ARE ON THE PAGE (3.64.2).
+ *
+ * WHAT THIS IS HALF OF. "Fill these in" used to write the image into two
+ * hidden fields and leave the preview empty and the tag reading "Placeholder",
+ * so the button said six things had been filled in and the picture was the one
+ * nobody could see. The fix is in portal.js, and
+ * .claude/prefill-image-test.js runs that code and reads the result.
+ *
+ * THAT TEST BUILDS ITS OWN DOM, which is the one thing it cannot prove: a
+ * stub can hold any shape at all, including one this form does not render.
+ * So the shape is proved HERE, from the real render, and the two files
+ * together are the assertion. Rename an attribute and this half fails.
+ * ======================================================================== */
+
+/** @return DOMElement[] Every element matching an XPath over the render. */
+function nodes_matching( $html, $xpath ) {
+    if ( '' === trim( $html ) ) { return array(); }
+    $doc = new DOMDocument();
+    libxml_use_internal_errors( true );
+    $doc->loadHTML( '<?xml encoding="utf-8" ?>' . $html );
+    libxml_clear_errors();
+    $out = array();
+    foreach ( ( new DOMXPath( $doc ) )->query( $xpath ) as $el ) { $out[] = $el; }
+    return $out;
+}
+
+$img_fields = nodes_matching( $new, '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-field ")]' );
+expect( 'New Event renders one featured image field', count( $img_fields ), 1 );
+
+foreach ( array(
+    'the hidden attachment id'   => '@data-uc-image-id',
+    'the image URL box'          => '@data-uc-image-url',
+    'the preview container'      => '@data-uc-image-preview',
+    'the preview <img>'          => '@data-uc-image-preview-img',
+    'the source tag'             => '@data-uc-img-source-tag',
+) as $what => $attr ) {
+    expect( "the image field carries $what",
+        count( nodes_matching( $new, '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-field ")]//*[' . $attr . ']' ) ) > 0,
+        true );
+}
+
+/* The words the script writes into the tag come from the tag, so there is one
+   spelling of "Event-specific" and it is the server's. */
+$own_tag = nodes_matching( $new, '//*[@data-uc-img-source-own]' );
+expect( 'the tag carries the label the script will write', count( $own_tag ), 1 );
+if ( 1 === count( $own_tag ) ) {
+    expect( 'and that label is the event-specific one',
+        $own_tag[0]->getAttribute( 'data-uc-img-source-own' ), 'Event-specific' );
+    expect( 'a new event starts on the placeholder tag',
+        trim( $own_tag[0]->textContent ), 'Placeholder' );
+}
+
+/* ===========================================================================
+ * 6. THE DISPLAY CARD: ADD TO CALENDAR SITS UNDER RSVP (3.64.2).
+ *
+ * A control whose availability is decided by another belongs beside it, and
+ * "beside" is a property of the RENDERED order, not of the array literal that
+ * happens to produce it today. So the order comes off the page.
+ * ======================================================================== */
+
+$display_boxes = nodes_matching( $new, '//input[@type="checkbox"][starts-with(@name, "show_")]' );
+$display_order = array();
+foreach ( $display_boxes as $b ) { $display_order[] = $b->getAttribute( 'name' ); }
+
+expect( 'the Display card renders its five ticks in one order',
+    $display_order,
+    array( 'show_rsvp', 'show_calendar', 'show_donate', 'show_social', 'show_reminders' ) );
+
+/* The greyed-out line moves with the tick it belongs to, and says why before
+   it says what happens instead. */
+$note = nodes_matching( $new, '//*[@data-uc-calendar-note]' );
+expect( 'the calendar note is on the page', count( $note ), 1 );
+if ( 1 === count( $note ) ) {
+    expect( 'and it names the cause before the consequence',
+        0 === strpos( preg_replace( '/\s+/', ' ', trim( $note[0]->textContent ) ),
+            'Because this event takes RSVPs, the calendar link goes out' ),
+        true );
+}
+
+/* ===========================================================================
  * THE READER, PROVED BEFORE IT IS TRUSTED.
  *
  * --self-test. Every assertion above rests on controls_named() and

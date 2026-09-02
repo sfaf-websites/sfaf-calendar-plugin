@@ -69,6 +69,11 @@ done
 for f in public/js/*.js admin/js/*.js; do
   run "node --check $(basename "$f")" node --check "$f"
 done
+# The DOM stub and the selector matcher under prefill-image-test.js, proved
+# before the assertions above are allowed to rest on them. Same reason
+# filter-bar-test carries one: a reader that cannot see the thing it is
+# checking reports its absence rather than its own mistake.
+run "prefill-image-test --self-test" node .claude/prefill-image-test.js --self-test
 
 echo
 echo "=== shell guards ==="

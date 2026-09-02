@@ -223,7 +223,23 @@ check( 'the Display card asks the same question the save asks',
 check( 'the tick is disabled, not hidden',
     (bool) strpos( $portal, "echo \$lock ? ' disabled' : '';" ), true );
 check( 'and a line says where the calendar link goes instead',
-    (bool) strpos( $portal, 'The calendar link goes out with the registration confirmation instead.' ), true );
+    (bool) strpos( $portal, 'the calendar link goes out with the registration confirmation instead.' ), true );
+
+/*
+ * THE SENTENCE NAMES THE CAUSE BEFORE THE CONSEQUENCE (3.64.2). It read
+ * "The calendar link goes out with the registration confirmation instead",
+ * which is only half of what the reader needs: a greyed tick and a sentence
+ * about email, and the connection between them left to them.
+ */
+check( 'and it says WHY before it says what happens instead',
+    (bool) strpos( $portal, 'Because this event takes RSVPs, the calendar link goes out' ), true );
+
+/*
+ * AND THE TICK SITS UNDER THE ONE THAT GREYS IT (3.64.2). Order in $feat is
+ * order on the screen, so this is the whole of the assertion.
+ */
+check( 'Add to calendar is the row directly under RSVP',
+    (bool) strpos( $portal, "'show_rsvp' => 'RSVP', 'show_calendar' => 'Add to calendar'" ), true );
 
 $js = file_get_contents( dirname( __DIR__ ) . '/public/js/portal.js' );
 check( 'portal.js keeps the two in step without a save',

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.64.1
+Stable tag: 3.64.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.64.2 =
+
+**Two corrections. The series prefill card now shows the picture it is offering and the picture it has just applied, and Add to calendar sits under the tick that decides whether it means anything. No behaviour changed anywhere else.**
+
+**"Fill these in" left the picture invisible.** The Image option wrote the series image into the event's two hidden fields and stopped there, so the preview under **Featured Image** stayed empty and the tag beside the label went on reading "Placeholder". The button reported filling six things in, and the one thing that is a picture was the one thing nobody could see. It now looks exactly as it does after Choose Image: the preview comes up, **Remove** is offered beside it, and the tag reads **Event-specific**, which is what the picture now is. The image is COPIED onto the event, the same as the location, the times, the description, the category and the organizer, so a later change to the series image does not reach this event; **Reset to series image** on the Edit screen is what puts that back, and that is unchanged.
+
+**The tag's words come from the tag.** The label the script writes is carried on the element by the server rather than spelled a second time in `portal.js`, so there is one definition of "Event-specific" and renaming it renames it everywhere.
+
+**The image row on the card shows the picture, not the file name.** Every other row on "Is this part of a series?" shows its actual value: the address, the times, the description's opening words, the category and organizer names. The image row showed `prop-harm-reduction-1024x576.jpg`. It is now a small thumbnail, cropped to the 16:9 the cards use so a portrait file cannot make that row twice the height of the five around it. The file name is kept as the picture's alt text, so a screen reader still has the handle it had, and it is what the row falls back to if the picture will not load.
+
+**Add to calendar moved to directly under RSVP in the Display card.** The order is now RSVP, Add to calendar, Donate, Social share, Follow the series. Ticking **Accept RSVPs** greys **Add to calendar**, and a control whose availability is decided by another belongs beside it. This trades a rough match to the order those things appear on the public event page, deliberately: nobody reads the card with the event page open next to it, and plenty of people tick Accept RSVPs and then wonder why a tick four rows down went grey.
+
+**And the greyed-out line says why before it says what happens instead.** It read "The calendar link goes out with the registration confirmation instead", which left an organizer to connect a grey tick and a sentence about email on their own. It now reads **"Because this event takes RSVPs, the calendar link goes out with the registration confirmation instead."**
+
+**The rule itself is untouched.** An event that accepts registrations still shows no Add to Calendar button on its page, one that does not still shows it, and the save still skips the field on its own test rather than trusting a `disabled` attribute to survive.
+
+**Proved by what the screen shows.** `.claude/prefill-image-test.js` is new: it runs the real `initSeriesPrefill()` out of `portal.js` over a document, presses the button and then reads the preview, the Remove button and the tag, because every check that could have been written about the WRITE passed for as long as the defect existed. `.claude/series-control-test.php` is the other half and holds the document to the real render, asserting from the rendered New Event page that the image field carries the hooks that test uses, that the five Display ticks come out in the new order, and that the note names the cause first.
 
 = 3.64.1 =
 

@@ -1113,6 +1113,31 @@ no events is valid** and is not cleaned up.
 In practice there is **one series per repeating event**. The series screen is
 where the schedule is edited, and schedule writes are **upcoming-only**.
 
+**What a series lends a new event is COPIED, never linked.** `SFAF_Series::prefill_data()`
+gathers the offer for the "Is this part of a series?" card on New Event: the
+description, image and default FAQ set from the term, and the location, times,
+category and organizers from the series' most recent event, because those are
+properties of the events and not of the umbrella. Pressing **Fill these in**
+writes them into the fields on the page. Nothing posts, nothing redirects, and
+nothing already typed is lost, which is the FAQ set picker's shape and 3.3.0's
+reason for it. **The date is never in the payload at all**: setting the date is
+why somebody is on that screen.
+
+The consequence to know is that **a later change to the series image no longer
+reaches an event filled in from it**. That is intended, it is how the default
+FAQ set has always behaved, and **Reset to series image** on the Edit screen is
+what undoes it for a single event. Because the picture is the event's own from
+that moment, the tag beside **Featured Image** reads "Event-specific" as soon as
+the button runs, and the preview shows the picture exactly as it does after
+Choose Image (3.64.2).
+
+`prefill_data()` returns `image_url` and `image_preview` and they are different
+jobs. `image_url` is the value COPIED into the event's URL field, and it is
+legitimately empty when the picture is a chosen attachment, since the id is then
+what carries it. `image_preview` is a URL for the SCREEN, resolved from the
+attachment when there is one, and is never written into a field. Reading one key
+for both is what leaves a library picture with a blank preview.
+
 ### The recurrence group is separate from series membership
 
 `_uc_recurrence_group` is a random string marking "these events were generated
@@ -2082,6 +2107,20 @@ skips the field on its own test rather than trusting the disabled attribute**.
 A disabled input posts nothing, so reading it would silently write "off" over a
 setting nobody touched.
 
+**Add to calendar sits directly under RSVP in the Display card** (3.64.2), and
+the order of `$feat` is the order on the screen. A control whose availability is
+decided by another belongs beside it, so the pair can be watched working: the
+tick greys the moment Accept RSVPs is ticked, without a save. What that cost is
+worth recording, because it was a trade rather than an oversight: the card used
+to follow the rough order these appear on the public event page, and that match
+is gone. Nobody reads the card with the event page open beside it.
+
+The greyed line **names the cause before the consequence**: "Because this event
+takes RSVPs, the calendar link goes out with the registration confirmation
+instead." It opened on the confirmation email until 3.64.2, which left an
+organizer who is not in this calendar every day to connect a grey tick and a
+sentence about mail on their own.
+
 `sfaf_event_takes_rsvps()` is that question asked in one place. It was written
 out longhand in three, and a fourth reading of it would have been the first
 chance for two of them to disagree.
@@ -2934,6 +2973,16 @@ mattered.** This is the finding, not a footnote on the one above.
   the only symptom was two warnings suppressed on any production
   `display_errors` setting. `.claude/series-control-test.php` renders the form
   and parses what came back.
+- **3.38.0 to 3.64.1, the same card, the other half of the same shape.** The
+  prefill's Image option wrote the series picture into two hidden fields and
+  stopped. Every assertion available about the WRITE was true the whole time:
+  the values were set, on the right elements, from the right keys. What a person
+  saw was an empty preview and a tag still reading "Placeholder", under a message
+  saying six things had been filled in. **"The value was written" is not "the
+  screen shows it"**, and a control that reports success while its result is
+  invisible is worse than one that fails. `.claude/prefill-image-test.js` runs
+  the real `initSeriesPrefill()` over a document and then reads the preview, the
+  Remove button and the tag.
 
 > The common shape is not "the tests were too weak". Each asserted a PROPERTY OF
 > THE CODE believed to imply the outcome, and never the outcome. **Write the

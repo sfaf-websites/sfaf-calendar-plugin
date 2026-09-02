@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 40 items.** Quick 23, needs real conditions 14, blocked on other
+**Outstanding: 42 items.** Quick 25, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -303,6 +303,38 @@ It has carried the series in the URL since 3.38.0 and the editor dropped it.
 Press it and confirm the New Event form opens with that series **already
 chosen** in the card at the top, and that saving without touching the control
 leaves the event in that series.
+
+### 1.24 "Fill these in" with a series that has a picture (3.64.2)
+
+Everything about this is browser behaviour over a real image URL, and the build
+environment has neither. Make a series with an image, then open **New Event**
+and choose it.
+
+- **On the card**, the Image row shows a small thumbnail of that picture, not
+  `something-1024x576.jpg`. Confirm the row is not noticeably taller than the
+  five around it, and that a portrait original is cropped rather than stretching
+  the row.
+- **Press Fill these in.** The preview under **Featured Image** comes up showing
+  that picture, **Remove** appears beside it, and the tag beside the label
+  changes from **Placeholder** to **Event-specific**.
+- **Save, reopen, and confirm the picture stuck** and the tag still says
+  Event-specific. Then change the series image and confirm this event does NOT
+  follow it, and that **Reset to series image** on the Edit screen puts it back.
+- **Repeat with a series whose picture is a chosen library file rather than a
+  pasted URL.** That is the case where the URL field is legitimately left empty
+  and the preview has to come from the attachment instead. A blank preview here
+  is the defect this release was about, in its other form.
+
+### 1.25 The Display card after the reorder (3.64.2)
+
+Open any event editor and look at the **Display** card. The order is RSVP, Add
+to calendar, Donate, Social share, Follow the series. Tick **Accept RSVPs** in
+the card below and confirm **Add to calendar** greys immediately, without a
+save, and that the line under it reads "Because this event takes RSVPs, the
+calendar link goes out with the registration confirmation instead." Untick it
+and confirm the tick comes back holding the value it had, and the line goes.
+Then save with registration on and reopen, and confirm the stored value is
+still what the manager chose rather than "off".
 
 ---
 

@@ -648,6 +648,7 @@ class SFAF_Series {
             'description'   => '',
             'image_url'     => '',
             'image_id'      => 0,
+            'image_preview' => '',
             'categories'    => array(),
             'category_names'=> array(),
             'organizers'    => array(),
@@ -666,6 +667,18 @@ class SFAF_Series {
         $out['description'] = (string) $term->description;
         $out['image_url']   = (string) self::image_url( $term_id );
         $out['faq_set']     = (string) self::default_faq_set( $term_id );
+
+        /*
+         * WHAT TO SHOW IS NOT ALWAYS WHAT TO WRITE, which is the whole reason
+         * this is a second key rather than the same one read twice.
+         *
+         * 'image_url' is the value COPIED into the event's URL field, and it is
+         * legitimately empty when the picture is a chosen attachment: the id is
+         * then what carries it. A card and a preview still have to show
+         * something, so 'image_preview' is a URL for the screen and nothing
+         * else. Never write it into a field.
+         */
+        $out['image_preview'] = $out['image_url'];
         if ( '' !== $out['faq_set'] ) {
             $set = SFAF_FAQ_Sets::get( $out['faq_set'] );
             $out['faq_set_name'] = $set ? $set['name'] : '';
@@ -712,6 +725,14 @@ class SFAF_Series {
         if ( '' === $out['image_url'] ) {
             $out['image_url'] = (string) get_post_meta( $id, '_uc_image_url', true );
             $out['image_id']  = (int) get_post_thumbnail_id( $id );
+
+            $out['image_preview'] = $out['image_url'];
+            if ( $out['image_id'] ) {
+                $src = wp_get_attachment_image_url( $out['image_id'], 'medium' );
+                if ( $src ) {
+                    $out['image_preview'] = (string) $src;
+                }
+            }
         }
 
         foreach ( (array) wp_get_post_terms( $id, 'uc_event_category' ) as $c ) {

@@ -5548,7 +5548,21 @@ class SFAF_Portal {
                      <?php echo $this->image_picker_atts( $folder_has_any ); ?>
                      <?php echo $this->field_watch_attr( 'image', $state ); ?>>
                     <span class="uc-field-label">Featured Image
-                        <span class="uc-img-source-tag"><?php echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source ); ?></span>
+                        <?php
+                        /*
+                         * THE TAG IS WRITTEN BY THE SCRIPT TOO, so it carries
+                         * the label rather than the script carrying a copy of
+                         * it. Filling a new event in from a series COPIES the
+                         * picture onto the event, so the tag has to stop saying
+                         * "Placeholder" the moment the button runs; a second
+                         * spelling of "Event-specific" in portal.js would be a
+                         * second place for it to be renamed and missed.
+                         */
+                        ?>
+                        <span class="uc-img-source-tag" data-uc-img-source-tag
+                              data-uc-img-source-own="<?php echo esc_attr( $src_labels['event'] ); ?>"><?php
+                            echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source );
+                        ?></span>
                         <?php echo $this->field_badge( $state, $label ); ?>
                     </span>
                     <?php /*
@@ -8677,7 +8691,21 @@ class SFAF_Portal {
                      * event's absent new value as "on" and switched the control
                      * back on wherever somebody had turned it off.
                      */
-                    $feat = array( 'show_rsvp' => 'RSVP', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_calendar' => 'Add to calendar', 'show_reminders' => 'Follow the series' );
+                    /*
+                     * ADD TO CALENDAR SITS UNDER RSVP (3.64.2), because
+                     * ticking RSVP is what greys it. A control whose
+                     * availability is decided by another one belongs beside
+                     * that one, and the two are now a pair a manager can watch
+                     * work.
+                     *
+                     * WHAT THAT COST: the order used to follow the order these
+                     * appear on the public event page. That match is gone, and
+                     * it was traded on purpose. Nobody reads this card with the
+                     * event page open beside it; plenty of people tick Accept
+                     * RSVPs and then wonder why a tick four rows down went
+                     * grey.
+                     */
+                    $feat = array( 'show_rsvp' => 'RSVP', 'show_calendar' => 'Add to calendar', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_reminders' => 'Follow the series' );
 
                     /*
                      * ADD TO CALENDAR IS NOT A CHOICE WHILE REGISTRATIONS ARE
@@ -8691,7 +8719,11 @@ class SFAF_Portal {
                      * settable and doing nothing. It keeps the manager's own
                      * stored value, because switching registration off later
                      * should give them back the setting they chose, and the
-                     * sentence under it is what carries the fact.
+                     * sentence under it is what carries the fact. That sentence
+                     * NAMES THE CAUSE FIRST (3.64.2): it used to open on the
+                     * confirmation email, leaving somebody who is not in this
+                     * calendar every day to connect a greyed tick to a sentence
+                     * about mail on their own.
                      *
                      * THE SAVE DOES NOT READ IT EITHER, and that is the half
                      * that matters. A disabled input is a control that posts
@@ -8719,7 +8751,7 @@ class SFAF_Portal {
                         </label>
                         <?php if ( 'show_calendar' === $f ) : ?>
                             <p class="uc-hint uc-calendar-note" data-uc-calendar-note<?php echo $lock ? '' : ' hidden'; ?>>
-                                The calendar link goes out with the registration confirmation instead.
+                                Because this event takes RSVPs, the calendar link goes out with the registration confirmation instead.
                             </p>
                         <?php endif; ?>
                     <?php endforeach; ?>
