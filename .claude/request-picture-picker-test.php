@@ -542,11 +542,20 @@ expect( 'the picture fieldset has one legend', count( $legend ), 1 );
 if ( 1 === count( $legend ) ) {
     expect( 'and it is a section heading rather than a field label',
         $legend[0]->getAttribute( 'class' ), 'uc-field-group-title' );
-    expect( 'saying what the section is', seen( $legend[0] ), 'The picture' );
+    expect( 'saying what the section is', seen( $legend[0] ), 'Event Image' );
 }
-expect( 'the fieldset takes the section divider',
-    false !== strpos( (string) nodes( $html, '//fieldset' )[0]->getAttribute( 'class' ), 'uc-form-section-group' ),
-    true );
+$fieldset_class = (string) nodes( $html, '//fieldset' )[0]->getAttribute( 'class' );
+expect( 'the fieldset takes the section treatment',
+    false !== strpos( $fieldset_class, 'uc-form-section-group' ), true );
+/*
+ * AND NOT .uc-field WITH IT (3.68.0). `.uc-request-card fieldset.uc-field` is
+ * (0,2,1) and sets `border: 0; padding: 0`; `.uc-form-section-group` is (0,1,0).
+ * One class loses to one class plus one type, so while this fieldset carried
+ * both it drew no boundary and had no top padding, and the form's picture
+ * section ran straight on from the field above it.
+ */
+expect( 'and does not carry .uc-field, which would strip its boundary',
+    false !== strpos( ' ' . $fieldset_class . ' ', ' uc-field ' ), false );
 expect( 'and the way out is still named',
     (bool) strpos( $html, 'Roxane Chicoine' ), true );
 

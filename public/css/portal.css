@@ -1082,6 +1082,14 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-request-card h1 { margin: 0 0 10px; font-size: 24px; font-weight: 800; }
 .uc-request-card > .uc-hint { margin-bottom: 22px; }
 .uc-request-card .uc-field { margin-bottom: 18px; }
+/* A FIELDSET THAT IS ONE FIELD, stripped back to looking like one: the
+   Categories checkboxes are a fieldset because they need a legend, not because
+   they are a section.
+   ONLY A FIELD, AND A SECTION MUST NEVER CARRY .uc-field. This is (0,2,1) and
+   .uc-form-section-group is (0,1,0), so a section that took this class lost its
+   boundary and its padding to these three lines and drew nothing. That is what
+   3.68.0 found. The section class is now the only class those fieldsets carry;
+   request-form-test.php fails if one of them takes .uc-field back. */
 .uc-request-card fieldset.uc-field { border: 0; padding: 0; margin-inline: 0; }
 .uc-request-card legend.uc-field-label { padding: 0; }
 
@@ -1126,6 +1134,12 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-image-option-thumb { flex: 0 0 auto; width: 64px; height: 36px; object-fit: cover;
     border-radius: 4px; border: 1px solid var(--p-border); background: var(--p-bg); }
 .uc-image-option-blank { border-style: dashed; }
+/* THE SAME BOX, CARRYING THE SERIES PHOTO (3.68.0). The "nothing chosen" row is
+   a <span> rather than an <img>, so the picture arrives as a background and
+   this is what makes it fill the box the way object-fit fills the others. The
+   dashed edge goes with it: there is something in the box now. */
+.uc-image-option-thumb-series { border-style: solid; background-size: cover;
+    background-position: 50% 50%; background-repeat: no-repeat; }
 .uc-image-option-text { min-width: 0; }
 /* ONE NAME PER ROW (3.67.0), the picture's title where it has a real one and
    its file name where it does not. It was both, one above the other, which
@@ -3257,69 +3271,60 @@ body.uc-modal-open { overflow: hidden; }
    image, not a second field here. */
 .uc-submit-banner img { width: 100%; height: auto; display: block; }
 
-/* A GROUP OF FIELDS THAT ARE ABOUT A DIFFERENT SUBJECT. "About you" is not
-   about the event, and a stranger reading a single unbroken column of fourteen
-   inputs cannot tell which of them the public will see. */
-.uc-field-group { margin: 0 0 22px; padding: 16px 18px; border: 1px solid var(--p-border, #D1D3D4);
-    border-radius: 12px; background: var(--p-surface-2, #f6f7f8); }
-/* LAYOUT ONLY (3.66.0). This declared `font-weight: 700` and no size, over a
-   legend already carrying .uc-field-label at 13/600. The rendered pair was
-   13/700, which is NOT a step on the ladder, and the type-scale sweep could not
-   see it because the size and the weight are in two different rules. What the
-   weight was reaching for is the Subhead step, and .uc-field-group-title below
-   is that step, declared as a pair. */
-.uc-field-group > legend { padding: 0 6px; }
-.uc-field-group > .uc-hint { margin: 0 0 12px; }
-.uc-field-group .uc-field:last-child { margin-bottom: 0; }
-
 /* ---------------------------------------------------------------------------
-   HIERARCHY ON THE TWO REQUEST FORMS (3.66.0).
+   ONE SECTION MECHANISM ON BOTH REQUEST FORMS (3.68.0).
 
-   BOTH FORMS USED THE SCALE AND THE SCALE IS NOT FLAT. What they did was reach
-   for the wrong step: a heading over a GROUP of fields was set at
-   .uc-field-label, 13/600, which is the step the labels of the fields inside
-   that group are already at. A heading and the thing it heads rendered the
-   same, so twenty fields read as one undifferentiated column.
+   WHAT WAS WRONG, AND IT WAS NOT THE TYPE. 3.66.0 fixed the type: a group
+   heading had been set at the field-label step, so a heading and the labels
+   under it rendered identically. That fix was right and is untouched. What it
+   could not fix is that a rule between sections is the only thing dividing
+   them, on a white card, in black text, and there were TWO mechanisms drawing
+   it, of which one was silently losing:
 
-   The Subhead step, 16/600, sat unused between Field label 13/600 and Section
-   20/700. It is what a group heading is for, and neither rule below introduces
-   a size: .uc-form-section takes its type from `.uc-portal h2`, which is
-   already 16/600, and .uc-field-group-title states the same pair for a
-   <legend>, which cannot inherit it.
+     .uc-request-card fieldset.uc-field    (0,2,1)  border: 0; padding: 0
+     .uc-form-section-group                (0,1,0)  border-top: 1px; padding: 18px 0 0
+
+   One class loses to one class plus one type, which is the recurring fault on
+   this project. So the picture section and the team section had no rule and no
+   top padding at all, while the <h2> sections beside them did, and a form of
+   six sections drew four dividers.
+
+   THE FIX IS ONE MECHANISM AND A SURFACE, NOT A SPECIFICITY WAR. Every section
+   on both forms is now a <fieldset class="uc-form-section-group"> with a
+   <legend class="uc-field-group-title">, and none of them carries .uc-field, so
+   the reset above cannot reach them. .uc-field-group and .uc-form-section were
+   the other two spellings of this and are gone; nothing outside these two forms
+   ever used either.
+
+   THE SURFACE CARRIES NO INFORMATION, which is what DESIGN.md's decoration rule
+   requires of it. One neutral tint and one neutral hairline, the same on every
+   section of both forms, so it groups without claiming that any section is a
+   state, a category or a warning. It is the treatment the community form's
+   three groups already had; what changed is that the staff form has it too.
+
+   NO NEW TYPE STEP. The legend keeps .uc-field-group-title, which is the
+   Subhead step 16/600 that 3.66.0 settled on, declared once below.
    ------------------------------------------------------------------------- */
-.uc-field-group-title { font-size: 16px; font-weight: 600; }
-
-/* A heading over a run of ordinary fields, where there is no fieldset to carry
-   a legend. The rule above it is what makes it read as a division rather than
-   as a bolder label; the first one on a form has no rule, because there is
-   nothing above it to divide from.
-
-   NO TYPE HERE ON PURPOSE. `.uc-portal h2` is already 16/600, so this rule sets
-   spacing and a border and nothing else. Restating the pair would be a second
-   declaration of the Subhead step, which is the fault 3.64.0 spent a release
-   removing. */
-.uc-form-section { margin: 30px 0 14px; padding-top: 18px;
-    border-top: 1px solid var(--p-border, #D1D3D4); }
-.uc-form-section:first-of-type { margin-top: 4px; padding-top: 0; border-top: 0; }
-
-/* THE SAME DIVISION, WHERE THE SECTION IS A FIELDSET. A group of controls that
-   belong together needs a <legend> rather than a heading beside it, so the two
-   cannot be one class; they get the same rule above so a form reads as one
-   sequence of sections rather than two kinds of them. The legend carries
-   .uc-field-group-title for the type. */
-.uc-form-section-group { margin: 30px 0 22px; padding: 18px 0 0;
-    border: 0; border-top: 1px solid var(--p-border, #D1D3D4); border-radius: 0;
-    background: none; margin-inline: 0; }
+.uc-form-section-group { margin: 0 0 20px; padding: 16px 18px;
+    border: 1px solid var(--p-border, #D1D3D4); border-radius: 12px;
+    background: var(--p-surface-2, #f6f7f8); margin-inline: 0; }
 /* THE FLOAT IS LOAD-BEARING AND MUST NOT BE TIDIED AWAY. A <legend> is placed
    INSIDE its fieldset's top border by every browser, and the border is
-   interrupted behind it: the rule would run up to the heading, stop, and start
-   again after it. Floating the legend takes it out of that placement and makes
-   it an ordinary block, so the rule draws unbroken above the heading and these
-   sections match the <h2> ones exactly. width:100% is what stops the fields
-   flowing up beside it, and the clear below is what stops the float escaping
-   the fieldset. */
+   interrupted behind it: the panel's edge would run up to the heading, stop,
+   and start again after it. Floating the legend takes it out of that placement
+   and makes it an ordinary block inside the padding, so the panel draws
+   unbroken. width:100% is what stops the fields flowing up beside it, and the
+   clear below is what stops the float escaping the fieldset. */
 .uc-form-section-group > legend { float: left; width: 100%; padding: 0; margin: 0 0 14px; }
 .uc-form-section-group::after { content: ""; display: table; clear: both; }
+.uc-form-section-group > .uc-hint { margin: 0 0 12px; }
+.uc-form-section-group .uc-field:last-child { margin-bottom: 0; }
+
+/* THE SUBHEAD STEP, 16/600, DECLARED ONCE (3.66.0). It sat unused between Field
+   label 13/600 and Section 20/700, and it is what a group heading is for. A
+   <legend> cannot inherit `.uc-portal h2`, so the pair is stated here and
+   nowhere else. */
+.uc-field-group-title { font-size: 16px; font-weight: 600; }
 
 /* THE FILE INPUT IS LEFT AS A FILE INPUT. A styled one is a label with the
    real control hidden behind it, and that loses the filename the browser shows

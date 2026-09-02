@@ -835,6 +835,104 @@ foreach ( array( 'svg', 'image/svg', 'application/pdf' ) as $never ) {
     }
 }
 /* =========================================================================
+ * 11. ONE SECTION MECHANISM, AND THE SERIES ASKED FIRST (3.68.0).
+ *
+ * THE FAULT THIS PINS DOWN WAS A CASCADE ONE, not a type one. 3.66.0 fixed the
+ * type. What was left is that a form of six sections drew four dividers,
+ * because two of them were fieldsets carrying BOTH .uc-field and
+ * .uc-form-section-group, and `.uc-request-card fieldset.uc-field` at (0,2,1)
+ * sets `border: 0; padding: 0` over the section rule's (0,1,0). One class loses
+ * to one class plus one type, which is the recurring fault on this project.
+ *
+ * So the assertions are about the CLASSES ON THE ELEMENTS, which is where that
+ * fault lives, and about there being ONE spelling of a section rather than the
+ * three there were: an <h2 class="uc-form-section">, a
+ * <fieldset class="uc-field-group"> and a
+ * <fieldset class="uc-form-section-group">.
+ *
+ * READ OUT OF THE SOURCE OF BOTH FORMS. Rendering the staff form needs a live
+ * token, a rich text editor and the venue list; what is being checked is the
+ * shape of the markup, and the picture section is rendered for real in
+ * .claude/request-picture-picker-test.php.
+ * ====================================================================== */
+$forms = array(
+    'the staff form'     => $src,
+    'the community form' => file_get_contents( $root . '/includes/class-sfaf-submit.php' ),
+);
+foreach ( $forms as $which => $form_src ) {
+    if ( preg_match( '/<h2\s+class="uc-form-section"/', $form_src ) ) {
+        $fails[] = "$which still heads a section with an <h2>, so it has two kinds of section again";
+    }
+    if ( preg_match( '/class="uc-field-group"/', $form_src ) ) {
+        $fails[] = "$which still uses .uc-field-group, which is the third spelling of a section";
+    }
+    /* THE ONE THAT ACTUALLY BROKE. A section fieldset must not carry
+     * .uc-field, or the reset in .uc-request-card strips its boundary. */
+    if ( preg_match_all( '/<fieldset class="([^"]*uc-form-section-group[^"]*)"/', $form_src, $sections ) ) {
+        foreach ( $sections[1] as $classes ) {
+            if ( false !== strpos( ' ' . $classes . ' ', ' uc-field ' ) ) {
+                $fails[] = "a section on $which carries .uc-field, which is (0,2,1) and strips the boundary the section is drawn with";
+            }
+        }
+    } else {
+        $fails[] = "$which has no sections at all";
+    }
+    /* And every section names itself at the one step a group heading uses. */
+    if ( preg_match_all( '/<legend class="([^"]*)"/', $form_src, $legends ) ) {
+        foreach ( $legends[1] as $classes ) {
+            if ( 'uc-field-group-title' !== $classes && 'uc-field-label' !== $classes ) {
+                $fails[] = "a legend on $which carries '$classes', which is neither the group step nor a field label";
+            }
+        }
+    }
+}
+
+/* THE SERIES IS THE FIRST QUESTION. Choosing one is what gives the event its
+ * picture, so asking it after the picture chooser is asking in the wrong
+ * order. New Event asks first for the same reason. */
+$form_at   = strpos( $src, 'uc_request_action' );
+$series_at = strpos( $src, 'data-uc-request-series' );
+$name_at   = strpos( $src, 'name="requester_name"' );
+$image_at  = strpos( $src, 'render_image_choice(' );
+if ( false === $series_at || false === $name_at ) {
+    $fails[] = 'the staff form has no series control or no name field, so the order cannot be checked';
+} else {
+    if ( $series_at > $name_at ) {
+        $fails[] = 'the series is still asked after the requester name, so it is not the first question';
+    }
+    if ( false !== $image_at && $series_at > $image_at ) {
+        $fails[] = 'the series is asked after the picture chooser, which is the control it answers';
+    }
+    if ( false !== $form_at && $series_at < $form_at ) {
+        $fails[] = 'the series control is outside the form, so it would post nothing';
+    }
+}
+
+/* AND IT CARRIES THE SERIES PICTURE FOR THE CONTROL BELOW IT. Shown, never
+ * written: create_event() copies no image, because an event in a series with
+ * no picture of its own already resolves to the series photo at display time. */
+if ( false === strpos( $src, 'data-uc-series-thumb' ) ) {
+    $fails[] = 'the series options carry no picture, so nothing can say what choosing one does to the image';
+}
+if ( false === strpos( $src, 'data-uc-image-default' ) ) {
+    $fails[] = 'the "nothing chosen" image row is unmarked, so the series picture has nowhere to be shown';
+}
+if ( preg_match( '/set_post_thumbnail\(\s*\$event_id,\s*\$c\[.series.\]/', $src ) ) {
+    $fails[] = 'the series image is copied onto the event, which is a value that goes stale when the series photo changes';
+}
+
+/* THE COPY MARK'S TWO LABELS (3.68.0). */
+if ( false === strpos( $src, '<span class="uc-field-label">Location</span>' ) ) {
+    $fails[] = 'the Location field is not labelled Location';
+}
+if ( false !== strpos( $src, '<span class="uc-field-label">Where</span>' ) ) {
+    $fails[] = 'the Location field is still labelled Where';
+}
+if ( false === strpos( $src, '>Event Image</legend>' ) ) {
+    $fails[] = 'the picture section is not headed Event Image';
+}
+
+/* =========================================================================
  * FAQs: A SET, THE REQUESTER'S OWN, OR BOTH (3.52.0).
  *
  * The three things this has to get right are all decisions rather than

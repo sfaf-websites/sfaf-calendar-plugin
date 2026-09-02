@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.67.0
+Stable tag: 3.68.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.68.0 =
+
+**Six changes to the two public forms and the pending queue, and two investigations reported rather than acted on.**
+
+**Both request forms are one sequence of sections with a boundary you can see.** The complaint was one white box after the next with no clear break, and it turned out not to be the type: 3.66.0 fixed that and its fix is untouched. It was a **cascade fault of the shape this project keeps meeting**. Two of the staff form's six sections were fieldsets carrying both `.uc-field` and `.uc-form-section-group`, and `.uc-request-card fieldset.uc-field` at (0,2,1) sets `border: 0; padding: 0` over the section rule's (0,1,0), so the picture section and the team section drew no divider and had no top padding while the four `<h2>` sections beside them did. **There were also three spellings of a section**: an `<h2 class="uc-form-section">`, a `<fieldset class="uc-field-group">` and a `<fieldset class="uc-form-section-group">`. There is one now, on both forms, and no section carries `.uc-field`. Each is a **neutral panel**, one tint and one hairline, the same on every section of both forms, which is what DESIGN.md's decoration rule requires of a surface that groups: it carries no information and cannot be read as a state, a category or a warning. **No new type step and the type-scale sweep still passes:** the legend keeps the Subhead step 16/600 that 3.66.0 settled on.
+
+**The community form had the same fault for a different reason** and is fixed with the same mechanism. Three of its groups were panels and the eleven fields between them were one undifferentiated run with no headings at all. They are now The event, When, Cost and who can come, Signing up, Event Image, Questions people often ask, and Anything else we should know. **One field moved:** the capacity now sits beside the registration link rather than between Cost and Age, because those two are one question and the old order was the order the fields were written in.
+
+**The staff form asks which series first, and the picture chooser says what that means.** It was the fifth question, after the description and the categories, so a requester met the picture chooser before they had been asked the thing that answers it. Choosing a series now shows that series' photo on the "nothing chosen" row of the picker and on the closed control, **only while no picture has been chosen**: picking one leaves both alone. **Nothing is copied.** The radio still posts 0, because an event in a series with no picture of its own already resolves to the series photo every time it is displayed, and a copy is a value that goes stale the moment somebody changes the series photo.
+
+**Why that is not the same code New Event runs, which is a fair question.** The two screens share the question and the rule, not the control. caladmin fills six fields through two hidden inputs and a wp.media preview; this form has neither, because the page has no logged-in user, and its picture control is a list of radio buttons over the calendar folder. What they do share is `SFAF_Series::prefill_data()` and `SFAF_Series::image_url()` for the data, and the rule that a filled field is never overwritten.
+
+**An event that arrives with no location says so on the pending queue.** Neither form requires one and that stays deliberate: both land in Pending and a manager decides before anything is published. What was missing is that the row said nothing, so an event with nowhere to be looked exactly like one with a venue. It is **the state the imports already had, extended rather than duplicated**: the same amber row, the same mark, and the wording from the same `field_phrase()`. **An online event is not missing a location**, which also corrects the import path, where every online campaign would have carried the mark forever.
+
+**Two copy corrections on the staff form** and one on the event page. The Location card's first label reads **Location** rather than Where; the picture section is **Event Image**; and a cancelled event now says "If you have a place, you do not need to do anything" rather than the awkward past tense.
+
+**The private event copy is three sentences.** It ran to five and two of them described the mechanism: which surfaces the event is left out of, and what happens to the old address if it is switched back off. Neither is a thing to do or a thing that happens to the reader. The **third sentence is why this is not one sentence**: ticking the box breaks a link somebody may already have sent, and nothing else on the screen would say so. Both screens that carry the control now use the same wording. **"This choice is yours permanently. A fetch never changes it." was already conditional on the event being imported and is unchanged.**
+
+**A private event page already emits noindex and nofollow**, and always has. `SFAF_Privacy::robots()` sets both on `wp_robots`, the event is stamped with Yoast's own noindex meta, and it is filtered out of the core sitemap and Yoast's. Nothing was added, and the copy says nothing about it because it is not a decision a manager makes.
+
+**Two investigations, reported and not acted on.** What caladmin's Listing detail card is, field by field, and what its contact box should do now that it reads a key no form has written since 3.47.0. And two things on the event editor reached from Pending: why the FAQ editors do not start until somebody presses Add, and why there are two FAQ set controls on that screen.
+
+**Proved by running.** `request-form-test.php` reproduces the cascade fault by name if a section takes `.uc-field` back, and checks the series is asked before the name and before the picture chooser. `pending-queue-test.php` renders the queue and reads the rows: an event with no location carries the mark, one with a location does not, and an online one does not; removing the new call makes it fail by name. `request-picture-picker-test.php` renders the picture section for real.
 
 = 3.67.0 =
 

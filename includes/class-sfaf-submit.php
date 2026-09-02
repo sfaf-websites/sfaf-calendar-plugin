@@ -1054,7 +1054,7 @@ class SFAF_Submit {
                 <input type="hidden" name="uc_submit_action" value="submit_event" />
                 <?php SFAF_Submissions::honeypot(); ?>
 
-                <fieldset class="uc-field-group">
+                <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">About you</legend>
                     <p class="uc-hint">Not shown on the calendar.</p>
                     <label class="uc-field">
@@ -1124,6 +1124,9 @@ class SFAF_Submit {
                     </div>
                 </fieldset>
 
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">The event</legend>
+
                 <label class="uc-field">
                     <span class="uc-field-label">Event name</span>
                     <input type="text" name="title" required maxlength="200" value="<?php echo esc_attr( $v( 'title' ) ); ?>" />
@@ -1143,6 +1146,10 @@ class SFAF_Submit {
                     <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
                     <?php SFAF_Submissions::field_error( $err( 'description' ) ); ?>
                 </div>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">When</legend>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Date</span>
@@ -1162,8 +1169,9 @@ class SFAF_Submit {
                         <?php SFAF_Submissions::field_error( $err( 'end_time' ) ); ?>
                     </label>
                 </div>
+                </fieldset>
 
-                <fieldset class="uc-field-group">
+                <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Where it happens</legend>
                     <?php $venues = SFAF_Venues::all(); ?>
                     <?php if ( ! empty( $venues ) ) : ?>
@@ -1212,6 +1220,9 @@ class SFAF_Submit {
                     </label>
                 </fieldset>
 
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">Cost and who can come</legend>
+
                 <div class="uc-field">
                     <span class="uc-field-label">Cost</span>
                     <?php
@@ -1243,13 +1254,6 @@ class SFAF_Submit {
                     </label>
                 </div>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">How many places, if there is a limit</span>
-                    <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
-                    <span class="uc-hint">Leave it blank if there is no limit.</span>
-                    <?php SFAF_Submissions::field_error( $err( 'capacity' ) ); ?>
-                </label>
-
                 <div class="uc-field">
                     <span class="uc-field-label">Age restriction</span>
                     <select name="age_restriction" data-uc-reveal="uc-age-other">
@@ -1266,6 +1270,28 @@ class SFAF_Submit {
                         <?php SFAF_Submissions::field_error( $err( 'age_other' ) ); ?>
                     </label>
                 </div>
+                </fieldset>
+
+                <?php
+                /*
+                 * SIGNING UP, AS ONE SECTION (3.68.0). The capacity moved down
+                 * one place to sit beside the link, which is the only field
+                 * that changed position on this form. They are one question,
+                 * "how do people get a place and how many are there", and the
+                 * capacity was between Cost and Age because that is the order
+                 * the fields were written in rather than a grouping anybody
+                 * chose.
+                 */
+                ?>
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">Signing up</legend>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">How many places, if there is a limit</span>
+                    <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
+                    <span class="uc-hint">Leave it blank if there is no limit.</span>
+                    <?php SFAF_Submissions::field_error( $err( 'capacity' ) ); ?>
+                </label>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Registration link</span>
@@ -1274,6 +1300,7 @@ class SFAF_Submit {
                     <span class="uc-hint">If people sign up somewhere else, put that address here.</span>
                     <?php SFAF_Submissions::field_error( $err( 'rsvp_url' ) ); ?>
                 </label>
+                </fieldset>
 
                 <?php
                 /*
@@ -1285,7 +1312,7 @@ class SFAF_Submit {
                  * to work it out from the field order.
                  */
                 ?>
-                <fieldset class="uc-field-group">
+                <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Contact for the event</legend>
                     <p class="uc-hint">
                         <strong>This one appears on the public listing</strong>, including the phone number if you give one.
@@ -1310,7 +1337,10 @@ class SFAF_Submit {
                     <span class="uc-hint">Give an email address, a phone number, or both.</span>
                 </fieldset>
 
-                <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Event Image</legend>
+                    <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
+                </fieldset>
 
                 <?php
                 /*
@@ -1385,9 +1415,9 @@ class SFAF_Submit {
                     $faq_rows = array( array( 'question' => '', 'answer' => '' ) );
                 }
                 ?>
-                <div class="uc-field">
-                    <span class="uc-field-label">Questions people often ask</span>
-                    <span class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</span>
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Questions people often ask</legend>
+                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
                     <div class="uc-repeater" data-repeater>
                         <div class="uc-repeater-rows">
                             <?php foreach ( $faq_rows as $i => $row ) : ?>
@@ -1404,13 +1434,16 @@ class SFAF_Submit {
                             <?php sfaf_faq_row( array( 'maxlength' => 300 ) ); ?>
                         </template>
                     </div>
-                </div>
+                </fieldset>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">Anything else we should know</span>
-                    <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
-                    <span class="uc-hint">Not shown on the listing.</span>
-                </label>
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Anything else we should know</legend>
+                    <label class="uc-field">
+                        <span class="uc-visually-hidden">Anything else we should know</span>
+                        <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
+                        <span class="uc-hint">Not shown on the listing.</span>
+                    </label>
+                </fieldset>
 
                 <?php SFAF_Turnstile::field(); ?>
 

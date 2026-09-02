@@ -303,15 +303,62 @@ step**. A heading over a group of fields was set at `.uc-field-label`, 13/600,
 which is the step the labels of the fields inside that group are already at, so
 a heading and the thing it headed rendered identically and twenty fields read as
 one column. Subhead, 16/600, sat unused between Field label 13/600 and Section
-20/700. `.uc-form-section` is an `<h2>` over a run of plain fields and takes its
-type from `.uc-portal h2`, which is already that pair;
-`.uc-form-section-group` is the same divider on a `<fieldset>`, whose `<legend>`
-carries `.uc-field-group-title`. **No new size exists.**
+20/700, and `.uc-field-group-title` on a `<legend>` is that pair, declared once.
+**No new size exists.**
+
+**A section is one thing, spelled one way** (3.68.0). Every section on both
+forms is a `<fieldset class="uc-form-section-group">` with a
+`<legend class="uc-field-group-title">`, and **no section carries `.uc-field`**.
+There were three spellings before that: an `<h2 class="uc-form-section">`, a
+`<fieldset class="uc-field-group">` and a `<fieldset class="uc-form-section-group">`.
+
+> **THE CASCADE FAULT THIS FIXED, AND IT IS THE RECURRING ONE.** Two of the
+> staff form's six sections carried `.uc-field` as well, and
+>
+> ```
+> .uc-request-card fieldset.uc-field   (0,2,1)   border: 0; padding: 0
+> .uc-form-section-group               (0,1,0)   border-top: 1px; padding: 18px 0 0
+> ```
+>
+> One class loses to one class plus one type. So the picture section and the
+> team section drew no divider and had no top padding while the four `<h2>`
+> sections beside them did, and the form read as an unbroken column of white
+> boxes. **The remedy taken was to stop the reset matching**, by removing
+> `.uc-field` from the sections, rather than raising the section rule: that
+> class was written for a fieldset that IS one field, which is the Categories
+> checkboxes, and a section never was one. `request-form-test.php` fails by
+> name if a section takes it back.
+
+**A section is a neutral panel, and that is what makes it allowed.** One tint,
+one hairline, the same on every section of both forms. DESIGN.md's decoration
+rule keeps colour where colour is the sole carrier of information; a surface
+that groups carries none, so it must not look as though it does. It cannot be
+read as a state, a category or a warning because every section has it.
 
 > **A legend is placed inside its fieldset's top border by every browser**, and
 > the border is interrupted behind it. `.uc-form-section-group > legend` floats
-> for that reason and the float is load-bearing: without it the section rule
+> for that reason and the float is load-bearing: without it the panel's edge
 > runs up to the heading, stops, and starts again after it.
+
+**The series is the first question, and it is what the picture chooser answers**
+(3.68.0). It was the fifth, after the description and the categories, so a
+requester met the picture chooser before being asked the thing that decides it.
+
+- **Choosing a series shows that series' photo** on the picker's "nothing
+  chosen" row and on the closed control, **only while no picture is chosen**.
+  Picking one leaves both alone.
+- **Nothing is copied.** The radio still posts 0. An event in a series with no
+  picture of its own already resolves to the series photo every time it is
+  displayed, so a copy would be a value that goes stale when the series photo
+  changes, and an attachment id the server would have to check against the
+  calendar folder again. `create_event()` has said this since the form existed.
+- **It is not the code New Event runs, and cannot be.** caladmin's
+  `initSeriesPrefill()` fills six fields through two hidden inputs and a
+  wp.media preview; this page has no logged-in user, so it has neither, and its
+  picture control is radio buttons over the calendar folder. The two screens
+  share the QUESTION, the RULE that a filled field is never overwritten, and
+  the data in `SFAF_Series::prefill_data()` and `SFAF_Series::image_url()`.
+  They do not share a control, because they do not have one.
 
 **A title WordPress invented is not a title.** WordPress sets an attachment's
 title from its filename on upload, so a picture nobody titled comes back as
@@ -524,6 +571,68 @@ directly for nineteen releases and rendered an empty line for it.
 > prefer. **Reported, not changed:** whether that box edits the three fields or
 > stays a fourth is a decision, and its save path carries the `$offered`
 > guarantee. See "Open decisions" in `HANDOVER.md`.
+
+### The Listing detail card, and its contact box
+
+**What the card is.** Four text fields, in the shared manager panel, so they
+appear identically on the **pending queue** and in the **event editor**: one
+render, one save, one list. They are the four lines a **community submission**
+puts on the public event page, offered so a manager can correct them, because
+the form that wrote them is not somewhere a stranger can go back to and a public
+typo would otherwise sit on the calendar permanently.
+
+| Box | Meta | Where it is read |
+|---|---|---|
+| Cost | `_uc_cost` | `sfaf_event_cost()`, the event page's fact list |
+| Age restriction | `_uc_age_restriction` | `sfaf_event_age_restriction()`, same list |
+| **Contact shown publicly** | **`_uc_public_contact`** | **`sfaf_event_public_contact()`, but only as a fallback** |
+| Registration link | `_uc_rsvp_url` | `sfaf_event_rsvp_url()`, the "Register for this event" link |
+
+**When it is offered.** Only on a saved event, and only when **at least one of
+those four keys already has a value**, tested in `manager_panel_fields()`. Four
+empty boxes on every event would be four more things to read past. In practice
+**Cost is what makes it appear on a community submission**, because the form
+requires cost, so the card is present with an empty contact box rather than
+absent.
+
+**The defect.** 3.47.0 replaced the single open contact box with three fields,
+`_uc_contact_name`, `_uc_contact_email` and `_uc_contact_phone`, and no public
+form has written `_uc_public_contact` since. `sfaf_event_public_contact()`
+prefers the three where they exist. So on every community submission from 3.47.0
+onwards, **the box is empty while the event page shows a contact**, and anything
+typed into it is stored and then not preferred: a manager corrects a typo, saves,
+and the page is unchanged, with nothing saying why. **A control that appears to
+work and silently discards what somebody typed is the worst shape this can
+take**, and it is worse than the pending panel's version of the same fault,
+which 3.67.0 fixed, because that one only failed to show.
+
+**The three options.**
+
+1. **Make it edit the three fields.** One box in, three keys out, which means
+   parsing a line back into a name, an address and a phone number. Guessing
+   where a person's name stops is exactly what the 3.47.0 split was for.
+   Rejected.
+2. **Make it three boxes.** Honest and unambiguous: Name, Email, Phone in the
+   card, writing the three keys, with `_uc_public_contact` kept read-only as the
+   pre-3.47.0 fallback. Costs three controls on a card that already has four,
+   on the screen with a queued job to simplify it.
+3. **Take the box out and show the contact instead.** The three fields are
+   already visible on the pending panel from 3.67.0, so removing this box loses
+   the ability to CORRECT them, which is the reason the card exists.
+
+**The recommendation is 2.** The card's whole purpose is that a public value
+somebody outside SFAF wrote can be corrected, and the contact is the line most
+likely to need it. 1 cannot be done correctly and 3 gives up the purpose. The
+cost is one card row becoming three, which the simplification job can take up
+later; the alternative is leaving a control that lies. **Not built: Mark
+decides.**
+
+> **WHICHEVER IS CHOSEN, THE SAVE PATH CARRIES THE `$offered` GUARANTEE.**
+> `uc_listing_detail_present` is the marker that makes an empty box mean empty
+> rather than "this screen did not ask", and an emptied box DELETES the meta
+> rather than storing `''`. Three boxes need three markers or one covering all
+> three, and getting that wrong blanks a public line on every save from a screen
+> that did not carry the control.
 
 ### Approving a submission asks two questions, once
 
@@ -923,6 +1032,21 @@ the public request form's fields (anonymous input is stripped on purpose, see
 editors are started by `wp.editor.initialize()`, and a second copy of the
 toolbar written into `portal.js` would be the same drift in a new place.
 
+> **THERE ARE TWO WAYS AN EDITOR STARTS HERE, AND ONLY ONE OF THEM CAN FAIL
+> QUIETLY.** `SFAF_Rich_Text::render()` calls `wp_editor()`, which renders the
+> control while the page is being assembled and starts itself. Its four callers
+> are the event description, the series description and the description on each
+> public form. `SFAF_Rich_Text::deferred()` prints a plain
+> `<textarea data-uc-rich>` that only `initRichText()` in `portal.js` can turn
+> into an editor. **Every FAQ answer on every screen takes the second path**,
+> including rows that exist when the page is built, because they all come from
+> `sfaf_faq_row()`. `deferred()`'s own docblock says it is for cloned rows and
+> for the template, which is not what it is used for.
+>
+> That is why a screen can show a working description above a column of FAQ
+> answers displaying raw markup: they are not one mechanism, and nothing about
+> the first one working says anything about the second.
+
 **Email bodies do not get it.** An HTML email is not a browser: clients strip
 `<style>`, ignore most of what they do not strip, and the plain text
 alternative has to carry the same message with no markup at all. The bodies are
@@ -1186,6 +1310,29 @@ list would put things nobody must act on among things somebody must.
 
 **The badge identifies and the filter narrows; they are not alternatives.** The
 kind badges from 3.46.0 stay on the rows.
+
+**One "still needs something" state, and it covers submissions too** (3.68.0).
+The amber row and the pencil began as the imports' state: a GoFundMe Pro
+campaign arrives needing an image and a description **every time, by design**,
+which is why the mark is amber and a pencil rather than red and an exclamation.
+It answered nothing at all for anything else, because
+`SFAF_Sources::missing_manager_fields()` returns `array()` for an event with no
+source, by its first guard.
+
+- **A submitted event can arrive with no location.** Neither public form
+  requires one, and the staff form will accept a request with neither a venue
+  nor a typed address. **That stays deliberate:** both forms land here and a
+  manager decides before anything is published, and a field somebody cannot
+  answer means an abandoned form rather than an incomplete submission.
+- **So the state was extended, not duplicated.** `missing_fields()` takes a
+  named list and `missing_manager_fields()` delegates to it, so the mark, the
+  amber row and the wording all still come from `field_phrase()` and
+  `field_is_filled()`. A second mechanism would be a second answer to "what is
+  this event still missing".
+- **An online event is not missing a location.** `SFAF_Online::set_online()`
+  deletes `_uc_location`, because there is nowhere to be, so the bare meta test
+  would have marked every online event forever. That correction applies to the
+  import path as well, where the same thing was true and nobody had met it yet.
 
 > **THIS QUEUE HAS HAD THREE MARKING OR FILTERING FAULTS AND NOT ONE WAS VISIBLE
 > IN SOURCE.** A badge that asked "does it have a request email" when both forms
@@ -1797,6 +1944,33 @@ guessable address. Past occurrences are never reached.
 Everything else works normally for anybody holding the link: registration, all
 four emails, add-to-calendar, the map, capacity, cancellation. The `.ics` export
 needed its own gate.
+
+**A private event page tells search engines not to index it, and always has.**
+Being absent from a sitemap only means nobody was told the page exists; it does
+not stop a crawler that finds the address another way, and a link gets
+forwarded. There are three independent mechanisms and they were all there before
+3.68.0 asked the question:
+
+- `SFAF_Privacy::robots()` on `wp_robots` sets **noindex and nofollow** on the
+  page itself, and unsets `index`, `follow` and the three `max-` directives so
+  nothing else can put them back. **nofollow as well as noindex**, because a
+  crawler that reached the page must not walk on from it.
+- `set()` stamps **Yoast's own `_yoast_wpseo_meta-robots-noindex`**, which is
+  what covers the tag Yoast emits and the sitemap Yoast builds in one write.
+  `wpseo_exclude_from_sitemap_by_post_ids` is registered as well, for an event
+  made private before that meta existed.
+- Core's XML sitemap is filtered on `wp_sitemaps_posts_query_args`.
+
+**The control says nothing about any of it, on purpose.** It is not a decision a
+manager makes and not a consequence they meet; it happens whatever they do. The
+copy is three sentences (3.68.0): the event will not appear anywhere on the
+site, only people sent the link can find it, and **turning it on gives the event
+a new link so any link already shared stops working.** That third sentence is
+why it is not one sentence: ticking the box breaks a link somebody may already
+have sent to a room full of people, and nothing else on the screen would say so.
+Both screens carrying the control use that wording. What was dropped was the
+mechanism: which surfaces it is left out of, and what happens to the old address
+if it is switched back off.
 
 ---
 

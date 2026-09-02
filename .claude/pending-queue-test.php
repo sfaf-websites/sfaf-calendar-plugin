@@ -318,7 +318,33 @@ class SFAF_Sources {
 
     public static function queue_count( $status ) { return count( self::queue_ids( $status ) ); }
     public static function missing_manager_fields( $id ) { return array(); }
-    public static function field_phrase( $fields ) { return implode( ', ', (array) $fields ); }
+
+    /*
+     * A REAL IMPLEMENTATION, NOT A STUB THAT AGREES (3.68.0).
+     *
+     * This is what the queue asks about an event that came from a form rather
+     * than a platform, and it is what puts the amber mark on one that arrived
+     * with nowhere to be. A stub returning array() would uphold every assertion
+     * about that mark by removing the thing being asserted, which is how a
+     * planted fault went uncaught in 3.36.0. So it reads the same meta key
+     * SFAF_Sources::field_is_filled() reads, and answers the same way about an
+     * online event, which has no location on purpose.
+     */
+    public static function missing_fields( $id, $fields ) {
+        $out = array();
+        foreach ( (array) $fields as $field ) {
+            if ( 'location' !== $field ) { continue; }
+            if ( '1' === (string) get_post_meta( $id, '_uc_online', true ) ) { continue; }
+            if ( '' === trim( (string) get_post_meta( $id, '_uc_location', true ) ) ) { $out[] = $field; }
+        }
+        return $out;
+    }
+    public static function field_phrase( $fields ) {
+        $words = array( 'location' => 'a location', 'image' => 'an image', 'description' => 'a description' );
+        $out   = array();
+        foreach ( (array) $fields as $f ) { $out[] = isset( $words[ $f ] ) ? $words[ $f ] : $f; }
+        return implode( ', ', $out );
+    }
     public static function active_adapters() { return array(); }
     public static function owned_fields_for( $source ) { return array(); }
     public static function manager_fields_for( $source ) { return array(); }
@@ -823,6 +849,66 @@ foreach ( array( 'Staff request', 'Community submission' ) as $badge ) {
         fail( "the '$badge' badge is gone from the rows" );
     }
 }
+
+/* =========================================================================
+ * 6b. AN EVENT THAT ARRIVED WITH NOWHERE TO BE SAYS SO (3.68.0).
+ *
+ * Neither public form requires a location, and that stays deliberate: both land
+ * here and a manager decides before anything is published. What was missing is
+ * that this row said nothing about it, so an event with no location looked
+ * exactly like one that had a venue.
+ *
+ * THE SAME STATE THE IMPORTS ALREADY HAD, EXTENDED. Same icon, same amber row
+ * class, same wording out of field_phrase(). Asserted on the RENDERED row
+ * rather than on the helper, because the helper answering correctly while the
+ * row asks it only for imports is exactly the shape this is fixing.
+ *
+ * AND AN ONLINE EVENT IS NOT MISSING ONE. It has nowhere to be on purpose, and
+ * a permanent amber mark on every online event would train people to ignore
+ * the mark.
+ * ====================================================================== */
+$GLOBALS['meta'][103]['_uc_location'] = '470 Castro St, San Francisco';
+$GLOBALS['meta'][102]['_uc_online']   = '1';
+
+$located = screen_html( array() );
+
+/* One row per state, read back by id out of the rendered list. */
+function row_html( $html, $id ) {
+    $at = strpos( $html, 'data-uc-id="' . (int) $id . '"' );
+    if ( false === $at ) { return ''; }
+    $open = strrpos( substr( $html, 0, $at ), '<li ' );
+    $end  = strpos( $html, '</li>', $at );
+    if ( false === $open || false === $end ) { return ''; }
+    return substr( $html, $open, $end - $open );
+}
+
+$no_where = row_html( $located, 101 );
+if ( '' === $no_where ) {
+    fail( 'the staff request row could not be found in the rendered queue at all' );
+} else {
+    if ( false === strpos( $no_where, 'uc-needs-flag' ) ) {
+        fail( 'an event that arrived with no location carries no mark on the queue, so the gap is only findable by opening it' );
+    }
+    if ( false === strpos( $no_where, 'Needs a location' ) ) {
+        fail( 'the mark on an event with no location does not name the location, so it says only that something is wrong' );
+    }
+    if ( false === strpos( $no_where, 'uc-queue-item-needs' ) ) {
+        fail( 'the row itself is not marked, so the mark is an icon nobody scanning the list will see' );
+    }
+}
+
+$has_where = row_html( $located, 103 );
+if ( '' !== $has_where && false !== strpos( $has_where, 'Needs a location' ) ) {
+    fail( 'an event WITH a location is marked as needing one, so the mark means nothing' );
+}
+
+$online = row_html( $located, 102 );
+if ( '' !== $online && false !== strpos( $online, 'Needs a location' ) ) {
+    fail( 'an online event is marked as needing a location, which it has none of on purpose' );
+}
+
+/* Back to the world the sections below expect. */
+unset( $GLOBALS['meta'][103]['_uc_location'], $GLOBALS['meta'][102]['_uc_online'] );
 
 /* =========================================================================
  * 7. THE LAST AUTOMATIC FETCH, AS RENDERED.

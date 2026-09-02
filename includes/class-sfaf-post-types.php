@@ -389,11 +389,12 @@ class SFAF_Post_Types {
                     <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
                     <strong>Private</strong>
                 </label>
+                <?php // The same three sentences caladmin's control carries, and
+                      // for the same reason. Two screens, one wording. ?>
                 <p class="description">
-                    Hidden from the calendar, search, its series page and the sitemap. Anybody with the
-                    direct link sees a normal event page and can register normally. Turning this on changes
-                    the event's web address to an unguessable one; turning it off restores the old address.
-                    <strong>A link can be forwarded.</strong>
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
                 </p>
                 <?php if ( $is_private ) : ?>
                     <p class="description">Send this address:<br />

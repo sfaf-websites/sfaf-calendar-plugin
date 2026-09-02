@@ -5876,30 +5876,34 @@ class SFAF_Portal {
                     <input type="hidden" name="uc_private" value="0" />
                     <label class="uc-check">
                         <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
-                        Private: hide this event everywhere, reachable only by its direct link
+                        Make this event private
                     </label>
                     <?php
                     /*
-                     * WHAT IT DOES AND WHAT IT DOES NOT DO, IN THAT ORDER, AND
-                     * THE SECOND HALF IS NOT OPTIONAL.
+                     * WHAT HAPPENS, AND THE ONE CONSEQUENCE NOBODY EXPECTS
+                     * (3.68.0).
                      *
-                     * A manager choosing this for a donor reception is deciding
-                     * who can find the event, and they need to know that
-                     * forwarding is possible before they rely on it. Saying
-                     * only "private" would let somebody believe it is access
-                     * control. It is not, and the honest sentence is short.
+                     * This ran to five sentences and two of them described the
+                     * mechanism: which surfaces the event is left out of, and
+                     * what happens to the old address if it is switched back
+                     * off. Neither is a thing to do or a thing that will happen
+                     * to the reader at the moment they are deciding.
+                     *
+                     * THE THIRD SENTENCE IS THE ONE THAT MATTERS AND IS WHY
+                     * THIS IS NOT ONE SENTENCE. Ticking this box breaks a link
+                     * somebody may already have sent to a room full of people,
+                     * and nothing else on this screen would tell them.
+                     *
+                     * THE NO-INDEX HALF NEEDS NO SENTENCE. It is not a decision
+                     * a manager makes or a consequence they meet: the page
+                     * emits noindex, nofollow and is out of both sitemaps
+                     * whatever they do. See SFAF_Privacy::robots().
                      */
                     ?>
                     <p class="uc-hint">
-                        Off by default. A private event is left out of the calendar, the month grid, search,
-                        its series page, the sitemap and everything this site publishes. Anybody with the link
-                        sees a normal event page and can register normally.
-                    </p>
-                    <p class="uc-hint">
-                        <strong>The link is the only thing protecting it, and a link can be forwarded.</strong>
-                        Turning this on changes the event's web address to an unguessable one, so the old
-                        address stops working. Turning it off again restores the old address, and the
-                        private link you already sent keeps working.
+                        The event will not appear anywhere on the site. Only people you send the link to can
+                        find it. Turning this on gives the event a new link, so any link you have already
+                        shared will stop working.
                     </p>
                     <?php if ( $is_private ) : ?>
                         <p class="uc-hint uc-private-link">
@@ -12406,8 +12410,20 @@ class SFAF_Portal {
 
         /* Fields the platform will never supply and nobody has filled in yet.
          * Amber and a mark, never red: a campaign arrives needing these EVERY
-         * time by design, so it is a step in the job and not a fault. */
-        $needs   = ( 'import' === $shape ) ? SFAF_Sources::missing_manager_fields( $id ) : array();
+         * time by design, so it is a step in the job and not a fault.
+         *
+         * AND THE SAME MARK ON AN EVENT THAT ARRIVED WITH NO LOCATION (3.68.0).
+         * Neither public form requires one: the staff form asks for a venue OR
+         * a typed address and accepts neither, and that stays deliberate,
+         * because both forms land here and a manager sees them before anything
+         * is published. What was missing is that this row said nothing about
+         * it, so an event with nowhere to be looked exactly like one without.
+         * Extended rather than a second mechanism: the same icon, the same
+         * amber row, and the wording out of the same field_phrase(). An online
+         * event answers "filled", because it has nowhere to be on purpose. */
+        $needs   = ( 'import' === $shape )
+            ? SFAF_Sources::missing_manager_fields( $id )
+            : SFAF_Sources::missing_fields( $id, array( 'location' ) );
         $needs_t = ! empty( $needs ) ? 'Needs ' . SFAF_Sources::field_phrase( $needs ) : '';
 
         /* The submitted file, where it can be seen. A working copy rather than

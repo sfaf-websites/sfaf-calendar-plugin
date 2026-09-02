@@ -730,9 +730,41 @@ class SFAF_Sources {
         if ( '' === $source ) {
             return array();
         }
+        return self::missing_fields( $post_id, self::manager_fields_for( $source ) );
+    }
 
+    /**
+     * The same question, about a named list of fields.
+     *
+     * WHY THIS IS SEPARATE FROM THE ONE ABOVE (3.68.0). The pending queue marks
+     * an imported event that still needs an image, and does it off the adapter's
+     * declaration, which is the right source for an import and answers nothing
+     * at all for anything else: an event with no source gets `array()` from
+     * missing_manager_fields() by its first guard.
+     *
+     * A SUBMITTED EVENT CAN ARRIVE WITH NO LOCATION. The staff form does not
+     * require one, deliberately, because both forms land in Pending and a
+     * manager sees them before anything is published. What was missing was that
+     * the queue said nothing about it, so the gap was only findable by opening
+     * the event.
+     *
+     * SO THE STATE IS EXTENDED RATHER THAN A SECOND ONE ADDED. Same icon, same
+     * amber row, same wording out of field_phrase(), same filled test out of
+     * field_is_filled(). A second mechanism would be a second answer to "what
+     * is this event still missing", and the two would have disagreed the first
+     * time either list changed.
+     *
+     * @param int      $post_id
+     * @param string[] $fields Keys from completeness_fields().
+     * @return string[] Those of them that are not filled in.
+     */
+    public static function missing_fields( $post_id, $fields ) {
+        $post_id = (int) $post_id;
+        if ( ! $post_id ) {
+            return array();
+        }
         $missing = array();
-        foreach ( self::manager_fields_for( $source ) as $field ) {
+        foreach ( (array) $fields as $field ) {
             if ( ! self::field_is_filled( $post_id, $field ) ) {
                 $missing[] = $field;
             }
@@ -766,6 +798,17 @@ class SFAF_Sources {
             case 'title':
                 return '' !== trim( (string) get_post_field( 'post_title', $post_id ) );
             case 'location':
+                /*
+                 * AN ONLINE EVENT HAS NO LOCATION AND IS NOT MISSING ONE.
+                 * SFAF_Online::set_online() deletes _uc_location, because there
+                 * is nowhere to go, so the bare meta test would report every
+                 * online event as incomplete and put an amber mark on it
+                 * forever. Asked of SFAF_Online rather than of a second meta
+                 * key here, so there is one answer to "is this online".
+                 */
+                if ( class_exists( 'SFAF_Online' ) && SFAF_Online::is_online( $post_id ) ) {
+                    return true;
+                }
                 return '' !== trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
             case 'date':
                 return '' !== trim( (string) get_post_meta( $post_id, '_uc_event_date', true ) );

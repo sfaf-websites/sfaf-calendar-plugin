@@ -1355,7 +1355,53 @@ class SFAF_Request {
                 <input type="hidden" name="uc_token" value="<?php echo esc_attr( $token ); ?>" />
                 <?php self::honeypot(); ?>
 
-                <h2 class="uc-form-section">About the event</h2>
+                <?php
+                /*
+                 * THE SERIES IS THE FIRST QUESTION (3.68.0).
+                 *
+                 * It was the fifth, under About the event, after the
+                 * description and the categories. Choosing one is what gives
+                 * the event its picture, so a requester met the picture
+                 * chooser before they had been asked the thing that answers
+                 * it. New Event asks first for the same reason.
+                 *
+                 * ITS OWN SECTION, NOT A FIELD AT THE TOP OF ANOTHER ONE.
+                 * "About the event" is the event's own facts; which series it
+                 * joins is a fact about the calendar, and the two read as one
+                 * question if they share a heading.
+                 */
+                $all_series = SFAF_Series::all();
+                ?>
+                <?php if ( ! empty( $all_series ) ) : ?>
+                    <fieldset class="uc-form-section-group">
+                        <legend class="uc-field-group-title">Series</legend>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Part of a series?</span>
+                            <select name="series" data-uc-request-series>
+                                <option value="0" data-uc-series-thumb="">Not part of one</option>
+                                <?php foreach ( $all_series as $s ) : ?>
+                                    <?php
+                                    /* The series picture, for the image control below. It is
+                                     * shown there and never written into a field: an event in
+                                     * a series with no picture of its own already falls back
+                                     * to this one at display time, so copying it would only
+                                     * make a value that can go stale. See create_event(). */
+                                    $s_thumb = SFAF_Series::image_url( (int) $s->term_id, 'medium' );
+                                    ?>
+                                    <option value="<?php echo (int) $s->term_id; ?>"
+                                            data-uc-series-thumb="<?php echo esc_url( $s_thumb ); ?>"
+                                            <?php selected( (int) $v( 'series' ), (int) $s->term_id ); ?>>
+                                        <?php echo esc_html( $s->name ); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="uc-hint">Choosing one uses that series' photo unless you pick a picture below. It fills in nothing else.</span>
+                        </label>
+                    </fieldset>
+                <?php endif; ?>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">About the event</legend>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Your name</span>
@@ -1399,23 +1445,10 @@ class SFAF_Request {
                     </fieldset>
                 <?php endif; ?>
 
-                <?php $all_series = SFAF_Series::all(); ?>
-                <?php if ( ! empty( $all_series ) ) : ?>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Part of a series?</span>
-                        <select name="series" data-uc-request-series>
-                            <option value="0">Not part of one</option>
-                            <?php foreach ( $all_series as $s ) : ?>
-                                <option value="<?php echo (int) $s->term_id; ?>" <?php selected( (int) $v( 'series' ), (int) $s->term_id ); ?>>
-                                    <?php echo esc_html( $s->name ); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <span class="uc-hint">Choosing one uses that series' photo if you do not pick a picture below. It does not fill in anything else.</span>
-                    </label>
-                <?php endif; ?>
+                </fieldset>
 
-                <h2 class="uc-form-section">When</h2>
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">When</legend>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Date</span>
@@ -1453,11 +1486,14 @@ class SFAF_Request {
                     <?php self::field_error( $err( 'repeat_until' ) ); ?>
                 </label>
 
-                <h2 class="uc-form-section">Where</h2>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">Location</legend>
 
                 <?php $venues = SFAF_Venues::all(); ?>
                 <label class="uc-field">
-                    <span class="uc-field-label">Where</span>
+                    <span class="uc-field-label">Location</span>
                     <select name="venue">
                         <option value="0">Somewhere else (say where below)</option>
                         <?php foreach ( (array) $venues as $venue ) : ?>
@@ -1472,10 +1508,12 @@ class SFAF_Request {
                     <input type="text" name="venue_other" maxlength="200" value="<?php echo esc_attr( $v( 'venue_other' ) ); ?>"
                            placeholder="470 Castro St, San Francisco" />
                 </label>
+                </fieldset>
 
                 <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ) ); ?>
 
-                <h2 class="uc-form-section">RSVP</h2>
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">RSVP</legend>
 
                 <label class="uc-check">
                     <input type="checkbox" name="rsvp" value="1" <?php checked( (bool) $v( 'rsvp', false ) ); ?> />
@@ -1486,6 +1524,7 @@ class SFAF_Request {
                     <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
                     <?php self::field_error( $err( 'capacity' ) ); ?>
                 </label>
+                </fieldset>
 
                 <?php
                 /*
@@ -1513,9 +1552,9 @@ class SFAF_Request {
                     $faq_rows = array( array( 'question' => '', 'answer' => '' ) );
                 }
                 ?>
-                <div class="uc-field">
-                    <span class="uc-field-label">Questions people often ask</span>
-                    <span class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</span>
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Questions people often ask</legend>
+                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
 
                     <?php if ( ! empty( $faq_sets ) ) : ?>
                         <label class="uc-field uc-faq-set-pick">
@@ -1550,14 +1589,17 @@ class SFAF_Request {
                             <?php sfaf_faq_row( array( 'maxlength' => 300 ) ); ?>
                         </template>
                     </div>
-                </div>
+                </fieldset>
 
                 <?php self::render_team_choice( (array) $v( 'teams', array() ), $err( 'request_teams' ) ); ?>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">Anything else we should know</span>
-                    <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
-                </label>
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Anything else we should know</legend>
+                    <label class="uc-field">
+                        <span class="uc-visually-hidden">Anything else we should know</span>
+                        <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
+                    </label>
+                </fieldset>
 
                 <div class="uc-form-actions uc-form-actions-primary">
                     <p class="uc-form-actions-note">This goes to the MarCom team. You will get a copy of it by email.</p>
@@ -1764,7 +1806,10 @@ class SFAF_Request {
         $chosen = array_map( 'strval', (array) $chosen );
         $cap    = SFAF_Teams::MAX_PER_EVENT;
         ?>
-        <fieldset class="uc-field uc-form-section-group uc-request-teams">
+        <?php // NO .uc-field ON A SECTION. That class is (0,2,1) inside
+              // .uc-request-card and strips the border and padding this one is
+              // drawn with. See the note beside that rule in portal.css. ?>
+        <fieldset class="uc-form-section-group uc-request-teams">
             <legend class="uc-field-group-title">Who should be able to edit it</legend>
             <p class="uc-hint">
                 Choose up to <?php echo (int) $cap; ?>. Anyone on a team you choose can open this event in the
@@ -1816,8 +1861,10 @@ class SFAF_Request {
             }
         }
         ?>
-        <fieldset class="uc-field uc-form-section-group uc-request-images">
-            <legend class="uc-field-group-title">The picture</legend>
+        <?php // NO .uc-field ON A SECTION, for the reason given on the team
+              // section above. ?>
+        <fieldset class="uc-form-section-group uc-request-images">
+            <legend class="uc-field-group-title">Event Image</legend>
             <?php if ( empty( $rows ) ) : ?>
                 <p class="uc-hint">
                     There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for
@@ -1874,7 +1921,28 @@ class SFAF_Request {
                         </label>
 
                         <div class="uc-picker-options uc-image-options" data-uc-filter-list>
-                            <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture">
+                            <?php
+                            /*
+                             * THE ROW THE SERIES FILLS IN (3.68.0).
+                             *
+                             * data-uc-image-default marks the "nothing chosen"
+                             * option so portal.js can say what that actually
+                             * means once a series has been picked, which is the
+                             * series' own photo rather than nothing at all.
+                             * Choosing any picture below leaves this row alone
+                             * and the trigger untouched: a picture somebody
+                             * chose is never overwritten.
+                             *
+                             * IT STILL POSTS 0. Nothing is copied onto the
+                             * event, because an event in a series with no
+                             * picture of its own already resolves to the series
+                             * photo at display time, and a copy is a value that
+                             * goes stale when the series photo changes. See
+                             * create_event().
+                             */
+                            ?>
+                            <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture"
+                                   data-uc-image-default>
                                 <input type="radio" name="image_id" value="0" <?php checked( 0, $chosen ); ?>
                                        data-uc-image-option data-uc-image-name="No picture" />
                                 <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>

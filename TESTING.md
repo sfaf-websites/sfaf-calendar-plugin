@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 51 items.** Quick 34, needs real conditions 14, blocked on other
+**Outstanding: 55 items.** Quick 38, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -487,6 +487,61 @@ you came from, which is what proves `rel="noopener"` was used rather than
 `noreferrer`. **With a screen reader**, each of those links must announce
 "opens in a new tab" as part of its name, and the hidden sentence must not be
 visible on screen anywhere.
+
+### 1.35 Both request forms, section by section (3.68.0)
+
+Open the staff form and the community form and look at each as a whole. Every
+part of both must sit inside a **panel**: a heading, a hairline edge and a light
+ground, the same on every section of both forms.
+
+- Nothing should be loose between panels except the robot check and the submit
+  button on the community form.
+- **The two that were broken are the picture section and the team section on the
+  staff form.** They had no edge and no top padding, so they ran straight on
+  from the field above. Check those two hardest.
+- **The legend must sit ABOVE an unbroken edge, not inside it.** If the panel's
+  top edge runs up to a heading, stops, and starts again after it, the float on
+  the legend has been lost. Check the same in Safari, which places legends
+  differently.
+- Nothing should have changed size or weight. If a heading now looks bigger than
+  it did, a type step has crept in and the sweep did not see it.
+
+### 1.36 The staff form's series, first, filling the picture (3.68.0)
+
+The series question is now the first thing on the staff form.
+
+- Choose a series that **has a photo**. The picture chooser's closed control
+  must show that photo and say **The series picture**, and the top row inside
+  the list must show it too.
+- Now choose a real picture from the list. The closed control must show the one
+  you chose. **Go back to the series select and change the series.** The picture
+  you chose must not change. That is the whole guard.
+- Choose **Not part of one**. The top row must go back to a dashed empty box
+  saying **No picture**.
+- Send the request and check the pending row: the event must show the series
+  photo without anything having been copied onto it.
+- **Turn JavaScript off and reload.** The series select must still be there and
+  still post; the picture row says "No picture"; the hint above still explains
+  what choosing a series does. Nothing on this form may depend on the script.
+
+### 1.37 An event with no location on the pending queue (3.68.0)
+
+Send a staff request with **no venue and nothing in the "If somewhere else"
+box**, which the form allows. On the pending queue that row must carry the amber
+mark and say **Needs a location**, exactly as an import needing an image does.
+
+Then check the two that must NOT carry it: an event with a venue, and an
+**online** event. An online event has no location on purpose, and a permanent
+mark on every one of them would train people to ignore the mark.
+
+### 1.38 The private event copy, on both screens (3.68.0)
+
+Open the private control in caladmin and again in the WordPress post editor.
+Both must read the same three sentences. Confirm the third one is there: turning
+it on gives the event a new link, so a link already shared stops working.
+
+**Then prove the sentence.** On a test event, copy the public address, tick
+private, save, and open the old address. It must not resolve to the event.
 
 ---
 

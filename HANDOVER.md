@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-02, at 3.67.0.
+**Last updated:** 2026-09-02, at 3.68.0.
 
 ---
 
 ## What shipped last
 
-**3.67.0**, built as `sfaf-calendar-3.67.0.zip` in the project root, committed
+**3.68.0**, built as `sfaf-calendar-3.68.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.68.0** | **Six changes to the two public forms and the pending queue, and two investigations.** Both forms are **one sequence of sections with a visible boundary**: the fault was a cascade one, `.uc-request-card fieldset.uc-field` at (0,2,1) stripping the border off `.uc-form-section-group` at (0,1,0), and there were three spellings of a section where there is now one neutral panel. The staff form **asks which series first** and the picture chooser shows that series' photo while nothing is chosen. The pending queue **marks an event that arrived with no location**, using the imports' existing state rather than a second one. Location and Event Image are relabelled, the private copy is three sentences, and a cancelled event says "if you have a place". **A private event already emits noindex and nofollow** and always has. **Parts A and H were investigations:** the Listing detail contact box, and the FAQ editors that do not start until Add is pressed. See "Open decisions". |
 | **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
 | **3.66.0** | **Five changes and an investigation.** The four pages that build their own document have the calendar's favicon; the Get a form link dialog says **Event Series** rather than Campaign; the staff form can name the team that gets access, up to caladmin's own cap of two; both request forms have a visible heading hierarchy off the unused Subhead step. **"All Events" was going to the sfaf.org homepage because the cross-origin referrer arrives as an origin with no path**, which the code accepted; it is now treated as no referrer, and **Mark still has to fill in the Calendar home URL setting** for the other half. **Five organizer addresses on the community form was stopped, not built**: see "Open decisions". |
 | **3.65.0** | **The staff request form's picture chooser is a picker rather than a grid.** It drew every picture in the calendar folder at once, which is fine at a dozen and unusable at two hundred. Now: a closed control showing what is chosen, a search box, and a scrollable list with every picture named (one name per row since 3.67.0). It is a native `<details>` of radio buttons, so it works with no JavaScript, which this form needs because it is used by staff who are not logged in. Nothing on the community form or in caladmin was touched. |
-| **3.64.2** | **Two corrections.** "Fill these in" wrote the series picture into two hidden fields and left the preview empty and the tag on "Placeholder", so the button reported filling six things in and the picture was the one nobody could see. It now shows the preview, offers **Remove**, and turns the tag to **Event-specific**, which is what a copied image is. The card's Image row shows a thumbnail rather than `something-1024x576.jpg`. And **Add to calendar** moved to directly under **RSVP** in the Display card, since RSVP is what greys it, with the greyed line now naming the cause first. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.66.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.68.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -173,7 +173,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 51 items.** Quick 34, needs
+**`TESTING.md` holds the manual testing backlog, 55 items.** Quick 38, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 
@@ -187,6 +187,41 @@ instead is **Settings, Display, Calendar home URL**, which is empty. Empty means
 the fall-through is the event archive on resources.sfaf.org, which is not a
 public surface. `PROJECT.md` §1 has the whole of it.
 
+**TWO FAQ CONTROLS ON THE EVENT EDITOR, AND ONE OF THEM IS AN EMPTY SHELL.**
+Found in 3.68.0, reported and not removed. The **FAQ sets** card above the form
+is the no-script fallback: `initFaqSetPicker()` reveals the live picker inside
+the FAQs card and then hides that card's **form**, which leaves the card's
+heading and its "Manage sets" link on screen with nothing under them. So with
+JavaScript working there are two FAQ set controls visible and one of them does
+nothing. **The fix is a decision, not a defect with an obvious answer:** hide
+the whole card when the picker goes live, or delete the card and move "Manage
+sets" beside the live picker, which is what I would do. `PROJECT.md` §1.
+
+**THE FAQ EDITORS DO NOT START ON PAGE LOAD, and it is at least two faults.**
+Reproduced twice on a GoFundMe Pro event opened from Pending: the answers show
+raw markup as text until somebody presses **Add FAQ**, which turns every box on
+the screen into an editor including the rows that were already there.
+**Investigated in 3.68.0 and deliberately not fixed**, because the third finding
+is that the code hides the reason. See the report and `PROJECT.md` §1 under
+"Rich text is a rule". The three findings:
+
+1. **Every FAQ answer takes the browser-started path**, `deferred()`, even rows
+   that exist when the page is built, while the description beside them is a
+   real `wp_editor()` that starts itself. That is why one works and the other
+   does not; they are not one mechanism.
+2. **The load pass and the Add pass differ by exactly one thing**, a
+   `setTimeout(..., 0)`, and the one that works is the deferred one.
+3. **`start()` swallows the exception with no console output.** Until that logs,
+   the underlying reason cannot be named from a browser, and `run()` exists
+   precisely so a failure is never silent.
+
+**caladmin's "Listing detail" contact box is still the one that discards what
+somebody types.** 3.67.0 found it, 3.68.0 described the whole card and the three
+options, and **Mark has not chosen**. The recommendation is to make it three
+boxes writing the three keys, keeping the old single key read-only as the
+pre-3.47.0 fallback. `PROJECT.md` §1, "The Listing detail card, and its contact
+box", has the field table and why the other two options were rejected.
+
 **THE COMMUNITY FORM'S TWO EMAIL FIELDS STILL NEED NAMING.** Half of what this
 blocked in 3.66.0 has shipped: **About you, Your email** takes up to five
 addresses as of 3.67.0 and they all reach the notification list, and the pending
@@ -195,14 +230,6 @@ row shows what was submitted. What is undecided is what the two are CALLED.
 first, which says what the field does and is longer than a label wants to be;
 **Contact for the event, Email** is still just "Email" under a legend carrying
 the whole of its meaning. `PROJECT.md` §8 has the table.
-
-**caladmin's "Listing detail" card still reads the key 3.47.0 replaced.** Its
-"Contact shown publicly" box is `_uc_public_contact`, which no public form has
-written since, so on a community submission the box is **empty while the event
-page shows a contact**, and typing into it stores a value the page will not
-prefer. **Reported, not changed:** whether that box should edit the three fields
-or stay a fourth is a decision, and its save path carries the `$offered`
-guarantee. `PROJECT.md` §1, under the community submission form.
 
 **WHAT THE TWO PUBLIC FORMS REQUIRE IS MARK'S CALL, AND NOTHING WAS CHANGED.**
 The full field-by-field inventory was the 3.67.0 hand-off. The shape of it:
@@ -218,6 +245,10 @@ The full field-by-field inventory was the 3.67.0 hand-off. The shape of it:
 - **The constraint on the decision:** a field somebody cannot answer means an
   abandoned form rather than an incomplete submission, and an image is often
   the thing an external organizer does not have.
+- **The location half is answered for now.** Mark's call was that both forms
+  land in Pending either way, so nothing was made required and 3.68.0 instead
+  **marks an event that arrived with no location on the pending row**, using
+  the imports' existing state. The rest of the list is still open.
 
 **Four things the calendar publicly asserts that are untrue or incomplete.**
 Found by reading `SFAF_Seo` during 3.56.0, and deliberately not changed: each is

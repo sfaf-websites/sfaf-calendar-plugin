@@ -63,6 +63,9 @@
         // After filterLists, which is what actually narrows this one's list.
         // This adds only what a <details> and a radio cannot do on their own.
         run('imageChoice', initImageChoice);
+        // After imageChoice, which is what makes the picker live and is where
+        // the trigger renderer this one reuses is bound.
+        run('requestSeriesImage', initRequestSeriesImage);
         run('calendarTick', initCalendarTick);
     });
 
@@ -129,6 +132,36 @@
      * closed control and the open one cannot describe the same picture
      * differently.
      * ------------------------------------------------------------------ */
+    /**
+     * What the closed trigger says: the chosen row's picture and its name.
+     *
+     * HOISTED OUT OF initImageChoice() (3.68.0) so the series control can
+     * refresh the same trigger without a second copy of this. Two functions
+     * writing that element would be two answers to "what is chosen", free to
+     * disagree the first time either changed.
+     *
+     * Rebuilt as nodes rather than markup: these names come out of the media
+     * library and are never put through innerHTML.
+     */
+    function showImageChoice(current, radio) {
+        if (!current || !radio) { return; }
+        var thumb = radio.getAttribute('data-uc-image-thumb');
+        var name = radio.getAttribute('data-uc-image-name') || '';
+
+        current.textContent = '';
+        if (thumb) {
+            var img = document.createElement('img');
+            img.className = 'uc-image-current-thumb';
+            img.alt = '';
+            img.src = thumb;
+            current.appendChild(img);
+        }
+        var label = document.createElement('span');
+        label.className = 'uc-image-current-name';
+        label.textContent = name;
+        current.appendChild(label);
+    }
+
     function initImageChoice() {
         document.querySelectorAll('[data-uc-image-picker]').forEach(function (picker) {
             var current = picker.querySelector('[data-uc-image-current]');
@@ -140,25 +173,7 @@
             // Only now is the search box a thing that does something.
             picker.classList.add('uc-image-picker-live');
 
-            function show(radio) {
-                var thumb = radio.getAttribute('data-uc-image-thumb');
-                var name = radio.getAttribute('data-uc-image-name') || '';
-
-                // Rebuilt as nodes rather than markup: these names come out of
-                // the media library and are never put through innerHTML.
-                current.textContent = '';
-                if (thumb) {
-                    var img = document.createElement('img');
-                    img.className = 'uc-image-current-thumb';
-                    img.alt = '';
-                    img.src = thumb;
-                    current.appendChild(img);
-                }
-                var label = document.createElement('span');
-                label.className = 'uc-image-current-name';
-                label.textContent = name;
-                current.appendChild(label);
-            }
+            function show(radio) { showImageChoice(current, radio); }
 
             Array.prototype.forEach.call(options, function (radio) {
                 radio.addEventListener('change', function () {
@@ -181,6 +196,91 @@
                 });
             }
         });
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE SERIES FILLS IN THE PICTURE, ON THE STAFF REQUEST FORM (3.68.0)
+     *
+     * WHAT THIS DOES, AND WHAT IT DELIBERATELY DOES NOT. Choosing a series
+     * makes the picture chooser SAY what that event's picture will be, which is
+     * the series' own photo. It writes nothing: the radio still posts 0, and an
+     * event in a series with no picture of its own already resolves to the
+     * series photo every time it is displayed. Copying the id here would make a
+     * value that goes stale the moment somebody changes the series photo, and
+     * would also hand the server an attachment id it has to check against the
+     * calendar folder all over again.
+     *
+     * NEVER OVER A PICTURE SOMEBODY CHOSE. The closed trigger is rewritten only
+     * while the "nothing chosen" row is the one selected. Picking a real
+     * picture leaves the trigger alone, and the row underneath goes on saying
+     * what would happen if they went back to it, which is true either way.
+     *
+     * WHY IT IS NOT initSeriesPrefill(). That control is caladmin's, and it
+     * fills in six fields through two hidden inputs and a wp.media preview.
+     * This form has no hidden image fields and no media library: its picture
+     * control is a list of radio buttons over the calendar folder, because the
+     * page has no logged-in user. The two screens share the QUESTION and the
+     * RULE, not the control. See PROJECT.md.
+     *
+     * IT ADDS NOTHING THE FORM NEEDS. With this function deleted the select
+     * still posts, the hint above it still says what choosing a series does,
+     * and the event still gets the series photo.
+     * ------------------------------------------------------------------ */
+    function initRequestSeriesImage() {
+        var select = document.querySelector('[data-uc-request-series]');
+        var picker = document.querySelector('[data-uc-image-picker]');
+        if (!select || !picker) { return; }
+
+        var row = picker.querySelector('[data-uc-image-default]');
+        var current = picker.querySelector('[data-uc-image-current]');
+        if (!row || !current) { return; }
+
+        var radio = row.querySelector('input[type="radio"]');
+        var thumb = row.querySelector('.uc-image-option-thumb');
+        var name = row.querySelector('.uc-image-option-name');
+        if (!radio || !thumb || !name) { return; }
+
+        var NONE = 'No picture';
+
+        function chosenThumb() {
+            var opt = select.options[select.selectedIndex];
+            return opt ? (opt.getAttribute('data-uc-series-thumb') || '') : '';
+        }
+
+        function apply() {
+            var src = chosenThumb();
+            if (src) {
+                /* backgroundImage, not a swapped <img>: the row already has one
+                   element sized and bordered for a thumbnail, and replacing it
+                   would mean rebuilding it again on the way back. The picture
+                   is decoration here, exactly as the alt="" thumbs beside it
+                   are, so it carries no name of its own. */
+                thumb.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")';
+                thumb.classList.add('uc-image-option-thumb-series');
+                thumb.classList.remove('uc-image-option-blank');
+                name.textContent = 'The series picture';
+                radio.setAttribute('data-uc-image-thumb', src);
+                radio.setAttribute('data-uc-image-name', 'The series picture');
+            } else {
+                thumb.style.backgroundImage = '';
+                thumb.classList.remove('uc-image-option-thumb-series');
+                thumb.classList.add('uc-image-option-blank');
+                name.textContent = NONE;
+                radio.removeAttribute('data-uc-image-thumb');
+                radio.setAttribute('data-uc-image-name', NONE);
+            }
+
+            // ONLY WHEN NOTHING IS CHOSEN. This is the whole guard.
+            if (radio.checked) {
+                showImageChoice(current, radio);
+            }
+        }
+
+        select.addEventListener('change', apply);
+        // And on load, because a rejected submission comes back with the series
+        // still chosen and the trigger would otherwise say "No picture chosen"
+        // about an event that has one.
+        apply();
     }
 
     /* ---------------------------------------------------------------------
