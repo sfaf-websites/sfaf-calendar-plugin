@@ -2538,31 +2538,17 @@ class SFAF_Portal {
     <title><?php echo esc_html( $title ); ?> - SFAF Calendar</title>
     <?php
     /*
-     * THE FAVICON, AND WHY IT IS DECLARED HERE AND NOWHERE ELSE (3.49.0).
+     * THE FAVICON (3.49.0), FROM THE ONE PLACE THAT DECLARES IT (3.66.0).
      *
-     * caladmin builds its own document, so this <head> is the only one in the
-     * plugin, and a rel="icon" written here reaches caladmin and nothing else.
-     * resources.sfaf.org keeps its own favicon, and so do the event pages and
-     * both public submission forms, because every one of those is rendered by
-     * the theme through wp_head() and nothing below touches that.
-     *
-     * WHAT IT IS. The calendar glyph this plugin already draws, simplified for
-     * 16 pixels, in Dark Gray #373433 on brand Yellow #FFD900. It is bundled in
-     * the plugin rather than uploaded, exactly as the email banner is, so it
-     * travels with the code and cannot be deleted from the media library by
-     * somebody tidying up.
-     *
-     * SVG FIRST, PNG SECOND, AND THE ORDER IS THE FALLBACK. A browser that
-     * understands image/svg+xml takes the first and stops; one that does not
-     * ignores it and takes the PNG. Safari is the reason the PNG is not
-     * optional. The 180px one is what iOS uses when somebody adds the portal to
-     * a home screen, which is a real thing managers do with a tool they open
-     * every day.
+     * The comment that stood here said these three lines reached caladmin and
+     * nothing else, and that the public forms did not need them because they
+     * went through wp_head(). THEY DO NOT: both forms and the notice page write
+     * their own documents and call wp_head() nowhere, which is why they had no
+     * icon at all. sfaf_favicon_links() is now the single declaration and all
+     * four self-built documents call it.
      */
+    sfaf_favicon_links();
     ?>
-    <link rel="icon" type="image/svg+xml" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/images/favicon-caladmin.svg?ver=' . SFAF_VERSION ); ?>" />
-    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/images/favicon-caladmin.png?ver=' . SFAF_VERSION ); ?>" />
-    <link rel="apple-touch-icon" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/images/favicon-caladmin-180.png?ver=' . SFAF_VERSION ); ?>" />
     <?php
     /*
      * MONTSERRAT, THE BRAND'S WEB HEADLINE FACE (guide v3.0, p.10).
@@ -3375,7 +3361,7 @@ class SFAF_Portal {
      * URL, neither is advertised anywhere in this portal on purpose, and the
      * effect was that sending somebody a link meant remembering its shape. The
      * staff form's is one query var; the community form's names a series, so it
-     * is a different link per campaign and exactly the thing nobody should be
+     * is a different link per series and exactly the thing nobody should be
      * assembling by hand.
      *
      * ON THE DASHBOARD, NOT ON PENDING, AND VISIBLE TO EVERYONE WHO GETS HERE.
@@ -3422,6 +3408,27 @@ class SFAF_Portal {
 
                 <div class="uc-form-link">
                     <h3>Community form</h3>
+                    <?php
+                    /*
+                     * THREE NAMES FOR ONE TAXONOMY, ON PURPOSE (3.66.0). Do not
+                     * "fix" this by making them agree; each one is chosen for
+                     * who is reading it.
+                     *
+                     *   Groups        the public calendar's filter row. A
+                     *                 visitor should not have to know this
+                     *                 calendar has a taxonomy, let alone what
+                     *                 it is called.
+                     *   Series        everywhere in caladmin. The people there
+                     *                 manage them and it is the word the
+                     *                 screens, the URL and the code all use.
+                     *   Event Series  here, and only here. Somebody in this
+                     *                 dialog is choosing WHICH KIND OF THING a
+                     *                 link points at, with a staff form link
+                     *                 sitting directly above that points at no
+                     *                 series at all. "Campaign" was a fourth
+                     *                 name and named nothing in the product.
+                     */
+                    ?>
                     <?php if ( empty( $series ) ) : ?>
                         <?php
                         /*
@@ -3431,13 +3438,13 @@ class SFAF_Portal {
                          * that goes to the "that link is not right" page.
                          */
                         ?>
-                        <p class="uc-hint">This form opens a campaign by name, and there are no series yet.
+                        <p class="uc-hint">This form opens an event series by name, and there are no series yet.
                             <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>">Create one</a> and its link appears here.</p>
                     <?php else : ?>
-                        <p class="uc-hint">Choose the campaign. Each one has its own link, and a submission arrives against that campaign.</p>
+                        <p class="uc-hint">Choose the event series. Each one has its own link, and a submission arrives against that series.</p>
                         <div class="uc-form-link-pick">
                             <label class="uc-field">
-                                <span class="uc-field-label">Campaign</span>
+                                <span class="uc-field-label">Event Series</span>
                                 <select class="uc-form-link-series" data-uc-form-link-series>
                                     <?php foreach ( $series as $term ) : ?>
                                         <option value="<?php echo esc_attr( SFAF_Submit::url( $term->slug ) ); ?>">
@@ -3457,7 +3464,7 @@ class SFAF_Portal {
                         <?php
                         /*
                          * WITHOUT JAVASCRIPT THE PICKER CANNOT REWRITE THE BOX,
-                         * so the box would keep showing the first campaign's link
+                         * so the box would keep showing the first series' link
                          * whatever was chosen: a wrong answer presented as a right
                          * one. Every link is written out instead, and the picker
                          * above it is the thing that is missing rather than the

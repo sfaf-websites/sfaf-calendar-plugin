@@ -977,7 +977,7 @@ class SFAF_Submit {
                 <?php SFAF_Submissions::honeypot(); ?>
 
                 <fieldset class="uc-field-group">
-                    <legend class="uc-field-label">About you</legend>
+                    <legend class="uc-field-group-title">About you</legend>
                     <p class="uc-hint">Not shown on the calendar.</p>
                     <label class="uc-field">
                         <span class="uc-field-label">Your name</span>
@@ -1031,7 +1031,7 @@ class SFAF_Submit {
                 </div>
 
                 <fieldset class="uc-field-group">
-                    <legend class="uc-field-label">Where it happens</legend>
+                    <legend class="uc-field-group-title">Where it happens</legend>
                     <?php $venues = SFAF_Venues::all(); ?>
                     <?php if ( ! empty( $venues ) ) : ?>
                         <label class="uc-field">
@@ -1153,7 +1153,7 @@ class SFAF_Submit {
                  */
                 ?>
                 <fieldset class="uc-field-group">
-                    <legend class="uc-field-label">Contact for the event</legend>
+                    <legend class="uc-field-group-title">Contact for the event</legend>
                     <p class="uc-hint">
                         <strong>This one appears on the public listing</strong>, including the phone number if you give one.
                         Give the details people should use to ask about the event, which may not be yours.

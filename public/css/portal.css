@@ -3262,9 +3262,64 @@ body.uc-modal-open { overflow: hidden; }
    inputs cannot tell which of them the public will see. */
 .uc-field-group { margin: 0 0 22px; padding: 16px 18px; border: 1px solid var(--p-border, #D1D3D4);
     border-radius: 12px; background: var(--p-surface-2, #f6f7f8); }
-.uc-field-group > legend { padding: 0 6px; font-weight: 700; }
+/* LAYOUT ONLY (3.66.0). This declared `font-weight: 700` and no size, over a
+   legend already carrying .uc-field-label at 13/600. The rendered pair was
+   13/700, which is NOT a step on the ladder, and the type-scale sweep could not
+   see it because the size and the weight are in two different rules. What the
+   weight was reaching for is the Subhead step, and .uc-field-group-title below
+   is that step, declared as a pair. */
+.uc-field-group > legend { padding: 0 6px; }
 .uc-field-group > .uc-hint { margin: 0 0 12px; }
 .uc-field-group .uc-field:last-child { margin-bottom: 0; }
+
+/* ---------------------------------------------------------------------------
+   HIERARCHY ON THE TWO REQUEST FORMS (3.66.0).
+
+   BOTH FORMS USED THE SCALE AND THE SCALE IS NOT FLAT. What they did was reach
+   for the wrong step: a heading over a GROUP of fields was set at
+   .uc-field-label, 13/600, which is the step the labels of the fields inside
+   that group are already at. A heading and the thing it heads rendered the
+   same, so twenty fields read as one undifferentiated column.
+
+   The Subhead step, 16/600, sat unused between Field label 13/600 and Section
+   20/700. It is what a group heading is for, and neither rule below introduces
+   a size: .uc-form-section takes its type from `.uc-portal h2`, which is
+   already 16/600, and .uc-field-group-title states the same pair for a
+   <legend>, which cannot inherit it.
+   ------------------------------------------------------------------------- */
+.uc-field-group-title { font-size: 16px; font-weight: 600; }
+
+/* A heading over a run of ordinary fields, where there is no fieldset to carry
+   a legend. The rule above it is what makes it read as a division rather than
+   as a bolder label; the first one on a form has no rule, because there is
+   nothing above it to divide from.
+
+   NO TYPE HERE ON PURPOSE. `.uc-portal h2` is already 16/600, so this rule sets
+   spacing and a border and nothing else. Restating the pair would be a second
+   declaration of the Subhead step, which is the fault 3.64.0 spent a release
+   removing. */
+.uc-form-section { margin: 30px 0 14px; padding-top: 18px;
+    border-top: 1px solid var(--p-border, #D1D3D4); }
+.uc-form-section:first-of-type { margin-top: 4px; padding-top: 0; border-top: 0; }
+
+/* THE SAME DIVISION, WHERE THE SECTION IS A FIELDSET. A group of controls that
+   belong together needs a <legend> rather than a heading beside it, so the two
+   cannot be one class; they get the same rule above so a form reads as one
+   sequence of sections rather than two kinds of them. The legend carries
+   .uc-field-group-title for the type. */
+.uc-form-section-group { margin: 30px 0 22px; padding: 18px 0 0;
+    border: 0; border-top: 1px solid var(--p-border, #D1D3D4); border-radius: 0;
+    background: none; margin-inline: 0; }
+/* THE FLOAT IS LOAD-BEARING AND MUST NOT BE TIDIED AWAY. A <legend> is placed
+   INSIDE its fieldset's top border by every browser, and the border is
+   interrupted behind it: the rule would run up to the heading, stop, and start
+   again after it. Floating the legend takes it out of that placement and makes
+   it an ordinary block, so the rule draws unbroken above the heading and these
+   sections match the <h2> ones exactly. width:100% is what stops the fields
+   flowing up beside it, and the clear below is what stops the float escaping
+   the fieldset. */
+.uc-form-section-group > legend { float: left; width: 100%; padding: 0; margin: 0 0 14px; }
+.uc-form-section-group::after { content: ""; display: table; clear: both; }
 
 /* THE FILE INPUT IS LEFT AS A FILE INPUT. A styled one is a label with the
    real control hidden behind it, and that loses the filename the browser shows

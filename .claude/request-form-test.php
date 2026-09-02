@@ -96,6 +96,32 @@ class SFAF_Media_Folder {
 class SFAF_Portal {
     public static function link( $p = '' ) { return 'https://example.org/caladmin/' . $p; }
 }
+/*
+ * TEAMS, WITH THE REAL CAP AND THE REAL WRITER'S SHAPE (3.66.0).
+ *
+ * The staff form offers a team picker, so validate() reads the team list. The
+ * cap is NOT restated here: MAX_PER_EVENT is taken from the real class so the
+ * form and the portal cannot end up enforcing two different numbers, which is
+ * the whole reason the form asks SFAF_Teams rather than carrying a literal.
+ *
+ * set_access_for_event() records what it was handed, so the assertions below
+ * can ask what actually reached the one writer rather than reading the meta and
+ * hoping the right path wrote it.
+ */
+$GLOBALS['team_writes'] = array();
+class SFAF_Teams {
+    const MAX_PER_EVENT = 2;
+    public static function all() {
+        return array(
+            'marcom'  => array( 'id' => 'marcom',  'name' => 'MarCom',        'users' => array( 1 ) ),
+            'clinic'  => array( 'id' => 'clinic',  'name' => 'Clinic',        'users' => array( 2 ) ),
+            'harmred' => array( 'id' => 'harmred', 'name' => 'Harm Reduction', 'users' => array( 3 ) ),
+        );
+    }
+    public static function set_access_for_event( $event_id, $ids ) {
+        $GLOBALS['team_writes'][] = array( 'event' => (int) $event_id, 'ids' => array_values( (array) $ids ) );
+    }
+}
 
 /*
  * wp_kses() IS NOT RE-IMPLEMENTED HERE, AND THAT IS DELIBERATE.
@@ -315,6 +341,114 @@ $out = SFAF_Request::validate( good_post( array( 'image_id' => 44 ) ) );
 expect( 'a post that is not an attachment is refused',     $out['clean']['image'], 0 );
 $out = SFAF_Request::validate( good_post( array( 'image_id' => 99999 ) ) );
 expect( 'an id that is nothing at all is refused',         $out['clean']['image'], 0 );
+
+/* ---------------------------------------------------------------------------
+ * THE TEAM PICKER (3.66.0).
+ *
+ * A requester names the team that should be able to work on the event. It is
+ * still the public surface this whole file is about, so the questions are the
+ * same ones: what can somebody who edits the form get out of it that they were
+ * not offered?
+ * ------------------------------------------------------------------------ */
+
+$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic' ) ) ) );
+expect( 'a real team is kept',       $out['clean']['teams'], array( 'clinic' ) );
+expect_no_error( 'and raises nothing', $out['errors'], 'request_teams' );
+
+$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'marcom' ) ) ) );
+expect( 'two teams are kept, which is the cap', $out['clean']['teams'], array( 'clinic', 'marcom' ) );
+
+/* Over the cap is an ERROR, not a silent trim. With scripting off nothing stops
+   a third box being ticked, and dropping one quietly would leave the requester
+   believing they had said something they had not. */
+$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'marcom', 'harmred' ) ) ) );
+expect_error( 'three teams is refused out loud', $out['errors'], 'request_teams' );
+
+$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'clinic' ) ) ) );
+expect( 'the same team twice is one team', $out['clean']['teams'], array( 'clinic' ) );
+
+/*
+ * WHAT THE GUARANTEE ACTUALLY IS, and writing it the other way round found the
+ * mistake. The first draft of this asserted that malformed ids are REFUSED, and
+ * three of them were not: sanitize_key() lowercases and strips, so 'MARCOM' and
+ * '../marcom' both arrive as 'marcom'. That is not a hole and refusing them
+ * would not close one, because a normalized id still has to name a team that
+ * EXISTS before it is kept. Whatever a hand-edited form sends, the result can
+ * only ever be real team ids.
+ *
+ * So the assertion is that property, over hostile input, rather than a guess
+ * about which strings survive normalization.
+ */
+$known_team_ids = array_keys( SFAF_Teams::all() );
+$hostile = array(
+    array( 'no-such-team' ),
+    array( '' ),
+    array( '0' ),
+    array( 'MARCOM' ),
+    array( '../marcom' ),
+    array( 'clinic;drop' ),
+    array( 'nope', 'harmred' ),
+    array( 'clinic', 'clinic', 'clinic', 'marcom', 'harmred' ),
+    'clinic',                       // not an array at all
+    array( array( 'clinic' ) ),     // nested, which sanitize_key sees as ''
+    123,
+    null,
+);
+foreach ( $hostile as $i => $sent ) {
+    $res = SFAF_Request::validate( good_post( array( 'request_teams' => $sent ) ) );
+    $got = $res['clean']['teams'];
+
+    expect( "case $i names only teams that exist",
+        array_values( array_diff( $got, $known_team_ids ) ), array() );
+    expect( "case $i has no duplicates", count( $got ), count( array_unique( $got ) ) );
+
+    /*
+     * OVER THE CAP IS ALLOWED IN $clean AND ONLY THERE. The ticks are kept so
+     * the form comes back showing what the person actually chose, with an error
+     * telling them to drop one; store() is never reached while there is an
+     * error, and set_access_for_event() caps again on the way in. So the
+     * contract is "within the cap, OR refused by name", and asserting only the
+     * first was what this test got wrong first time.
+     */
+    expect( "case $i is within the cap or refused by name",
+        count( $got ) <= SFAF_Teams::MAX_PER_EVENT || isset( $res['errors']['request_teams'] ),
+        true );
+}
+
+/* An invented id alongside a real one takes the real one and nothing else,
+   rather than failing the whole field. */
+$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'nope', 'harmred' ) ) ) );
+expect( 'a real team survives an invented one beside it', $out['clean']['teams'], array( 'harmred' ) );
+
+/* An id naming no team is dropped rather than kept as a string. */
+$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'no-such-team' ) ) ) );
+expect( 'an id naming no team is dropped', $out['clean']['teams'], array() );
+
+/*
+ * ONE WRITER, AND THIS IS AN ASSERTION ABOUT ABSENCE.
+ *
+ * store() is not called here for the reason given in section 10 below, and the
+ * claim being made is not about a value anyway: it is that this file writes the
+ * access list through SFAF_Teams and NOWHERE ELSE. A second path writing
+ * _uc_event_teams directly would be a second definition of what a valid access
+ * list is, free to drift from the cap and the existence check the portal
+ * enforces. Only a search for what is not there can answer that.
+ */
+$request_src = file_get_contents( $root . '/includes/class-sfaf-request.php' );
+/* COMMENTS STRIPPED FIRST. The note beside the call names the meta key in order
+   to say it is not written here, and a search over the raw file finds that
+   sentence and reports the opposite of the truth. */
+$request_code = preg_replace( '#/\*.*?\*/#s', '', $request_src );
+expect( 'the access list is written through SFAF_Teams',
+    (bool) strpos( $request_code, 'SFAF_Teams::set_access_for_event( $event_id, $c[\'teams\'] )' ), true );
+expect( 'and the meta key is never touched directly',
+    false !== strpos( $request_code, '_uc_event_teams' ), false );
+expect( 'the cap is asked of SFAF_Teams rather than written out',
+    substr_count( $request_src, 'SFAF_Teams::MAX_PER_EVENT' ) >= 2, true );
+
+$out = SFAF_Request::validate( good_post() );
+expect( 'naming no team is allowed and is the default', $out['clean']['teams'], array() );
+expect_no_error( 'and is not an error', $out['errors'], 'request_teams' );
 
 /* Dates. */
 foreach ( array( '', 'tomorrow', '2026-13-01', '2026-02-30', '26-01-01', '2026-1-1', '2026-01-01T10:00' ) as $bad ) {

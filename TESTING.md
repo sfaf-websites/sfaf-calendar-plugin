@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 43 items.** Quick 26, needs real conditions 14, blocked on other
+**Outstanding: 47 items.** Quick 30, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -77,8 +77,13 @@ that depends on reading the editor rather than the textarea behind it.
 
 Open Pending, press **Get a form link**, then compare a caladmin tab against a
 resources tab. Four tabs with the counts you expect, imports and submissions in
-one list; both links open in a private window; the favicon is caladmin only, so
-anything else changing icon reached too far.
+one list; both links open in a private window.
+
+**The favicon note here changed in 3.66.0.** The calendar mark is now expected
+on caladmin AND on both forms and the notice page, which is item 1.27. What
+would still be reaching too far is an ordinary resources.sfaf.org page changing
+icon. Check the dialog says **Event Series** rather than Campaign while it is
+open.
 
 ### 1.10 The three filter toggles and the organizer dropdown (3.50.0)
 
@@ -360,6 +365,64 @@ a browser. Open the staff request form from a real emailed link.
   file name once, on the file-name line, and no title line above it. A row
   reading "harm reduction 2026 a" above "harm-reduction-2026-a.jpg" means the
   exact test added in 3.65.0 is not matching and wants reporting.
+
+### 1.27 The favicon on the four self-built pages (3.66.0)
+
+Nothing in the build can see a browser tab. Open each of these and look at the
+tab: **caladmin**, the **staff request form** from a real emailed link, the
+**community submission form**, and the page a **follow confirmation link** or a
+**registration cancel link** lands on. All four must show the yellow calendar
+mark, and it must be the same mark on all four. A blank page icon on any one of
+them means that document is not calling the emitter.
+
+**Check Safari too.** It is the reason the PNG exists beside the SVG, and a
+browser that takes the SVG and one that takes the PNG must show the same thing.
+
+### 1.28 "All Events" after filling in the Calendar home URL (3.66.0)
+
+**Fill in Settings, Display, Calendar home URL first.** The code half of this
+fix does nothing on its own. Then, from a calendar page on sfaf.org, click
+through to an event and press **All Events** at the top. It must land on the
+page named in that setting, not on the sfaf.org homepage and not on
+resources.sfaf.org.
+
+Then check the case that must not have broken: from **resources.sfaf.org/events/**
+click an event and press All Events. It should go back to that archive, because
+a same-origin referrer still carries its full path.
+
+**A category chip on an event page uses the same resolver**, so try one and
+confirm it lands on the calendar page with the filter applied rather than on the
+site root.
+
+### 1.29 The team picker on the staff form, WITH SCRIPT OFF (3.66.0)
+
+Open the staff request form from a real emailed link. Under **Who should be able
+to edit it**, tick one team and send the request. Then, as somebody who is on
+that team but is not an admin, open caladmin and confirm **the pending request is
+visible and editable** before anybody approves it. That is the whole point of
+writing the team on a pending row.
+
+- **Tick three teams and send.** It must come back with an error naming the
+  field, with the three still ticked so you can see what you chose, and nothing
+  saved.
+- **Turn JavaScript off and repeat both.** Nothing here is built by script and
+  nothing should behave differently.
+- **Then remove yourself from that team** and confirm the event disappears from
+  your list on the next page load, without anything being re-saved.
+
+### 1.30 Heading hierarchy on both request forms (3.66.0)
+
+Open the staff form and the community form and look at them as a whole. The
+section headings must read as **headings** rather than as slightly bolder field
+labels: About the event, When, Where, The picture, Registration, Who should be
+able to edit it on the staff form; About you, Where it happens, Contact for the
+event on the community form.
+
+**The one thing to look at closely is the rule above a fieldset heading.** A
+`<legend>` normally sits inside its fieldset's top border and cuts it, and the
+fix for that is a float. If the rule above **The picture** or **Who should be
+able to edit it** runs up to the heading, stops, and starts again after it, the
+float has been lost. Check the same in Safari.
 
 ---
 

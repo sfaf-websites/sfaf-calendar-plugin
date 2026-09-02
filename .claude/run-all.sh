@@ -61,6 +61,11 @@ echo "=== the picker's reader ==="
 run "picture-picker --self-test" php .claude/request-picture-picker-test.php --self-test
 
 echo
+# The icon-link reader and the function slicer under self-built-pages-test.
+echo "=== the self-built pages' reader ==="
+run "self-built-pages --self-test" php .claude/self-built-pages-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

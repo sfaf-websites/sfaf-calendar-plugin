@@ -472,6 +472,15 @@ class SFAF_Submissions {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title><?php echo esc_html( $title ); ?></title>
+<?php
+/*
+ * THE FAVICON (3.66.0). This document is hand-written and calls wp_head()
+ * nowhere, so nothing supplies an icon unless this page asks for one. Both
+ * public forms sat with the browser's blank page mark until this release, for
+ * exactly the reason they had no stylesheet until 3.44.0.
+ */
+sfaf_favicon_links();
+?>
 <link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/portal.css?ver=' . SFAF_VERSION ); ?>" />
 <?php
 if ( $args['editor'] ) {

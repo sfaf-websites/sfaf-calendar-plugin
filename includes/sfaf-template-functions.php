@@ -1741,6 +1741,36 @@ function sfaf_calendar_referrer() {
 
     $path = isset( $parts['path'] ) ? $parts['path'] : '/';
 
+    /*
+     * AN ORIGIN IS NOT A PAGE (3.66.0), AND THIS IS THE COMMON CASE RATHER
+     * THAN AN EDGE ONE.
+     *
+     * The event page is on resources.sfaf.org and the calendar is a page on
+     * sfaf.org, so every real click through to an event is CROSS-ORIGIN. Every
+     * current browser defaults to a referrer policy of
+     * strict-origin-when-cross-origin, which sends the ORIGIN ONLY:
+     * "https://sfaf.org/", with no path at all. Nothing here can recover which
+     * calendar page that was, because it was never sent.
+     *
+     * Everything below then passed it. The host is ours, the scheme is https,
+     * the path has no segments so it is not an event page, and the function
+     * handed back "https://sfaf.org/". "All Events" took a visitor who was
+     * reading a calendar to the SITE ROOT, and it looked like a lost referrer
+     * or an unfilled setting when it was neither: the referrer arrived, was
+     * valid, and named nothing.
+     *
+     * So a referrer with no path is a referrer we do not have, and the caller
+     * falls through to the configured Calendar home URL, which is the setting
+     * written for exactly this case. FILLING THAT SETTING IN IS HALF THE FIX
+     * and this is the other half; neither works alone.
+     *
+     * A SAME-ORIGIN REFERRER IS UNAFFECTED and still carries its full path, so
+     * an event reached from this site's own archive still goes back to it.
+     */
+    if ( '' === trim( $path, '/' ) ) {
+        return '';
+    }
+
     // An event page is not a calendar. The single-event rewrite is /events/{slug},
     // so a path with a segment under the archive base is one of ours; the bare
     // archive is not, and stays usable.
@@ -3164,6 +3194,45 @@ function sfaf_series_dates_link( $post_id ) {
  * @param string $title
  * @param string $html
  */
+/**
+ * The calendar's favicon links, for a page that builds its own <head>.
+ *
+ * THIS PLUGIN OWNS THE ICON. It is not the site's and it is not the theme's:
+ * `public/images/favicon-caladmin.*` is bundled with the code and drawn by
+ * `.claude/build-favicon.js` from `sfaf_icon_paths()['calendar']`, in Dark Gray
+ * #373433 on brand Yellow #FFD900. It travels with the plugin and cannot be
+ * deleted from the media library by somebody tidying up.
+ *
+ * WHY IT IS A FUNCTION NOW (3.66.0). caladmin declared these three lines
+ * inline, and the comment beside them said the public forms did not need them
+ * because they went through `wp_head()`. They do not. `SFAF_Submissions::page_open()`
+ * and `sfaf_notice_page()` write their own documents with hand-written heads and
+ * call `wp_head()` nowhere, which is the same reason those pages loaded no
+ * stylesheet until 3.44.0. So they had no icon from either direction: nothing in
+ * their document pointed at one, and there was no `wp_head()` to supply the
+ * site's.
+ *
+ * FOUR SURFACES, ONE DECLARATION. caladmin, the staff request form, the
+ * community submission form, and the notice page the follow links and the
+ * registration cancel link land on. A second copy of three <link> tags is three
+ * more things to update when the icon changes, which is the fault this project
+ * has paid for with the FAQ row nine times over.
+ *
+ * SVG FIRST, PNG SECOND, AND THE ORDER IS THE FALLBACK. A browser that
+ * understands image/svg+xml takes the first and stops; one that does not
+ * ignores it and takes the PNG. Safari is why the PNG is not optional. The
+ * 180px one is what iOS uses for a home-screen shortcut.
+ */
+function sfaf_favicon_links() {
+    $base = SFAF_PLUGIN_URL . 'public/images/';
+    $ver  = '?ver=' . SFAF_VERSION;
+    ?>
+<link rel="icon" type="image/svg+xml" href="<?php echo esc_url( $base . 'favicon-caladmin.svg' . $ver ); ?>" />
+<link rel="icon" type="image/png" sizes="32x32" href="<?php echo esc_url( $base . 'favicon-caladmin.png' . $ver ); ?>" />
+<link rel="apple-touch-icon" href="<?php echo esc_url( $base . 'favicon-caladmin-180.png' . $ver ); ?>" />
+<?php
+}
+
 function sfaf_notice_page( $title, $html ) {
     nocache_headers();
     status_header( 200 );
@@ -3177,6 +3246,7 @@ function sfaf_notice_page( $title, $html ) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title><?php echo esc_html( $title ); ?></title>
+<?php sfaf_favicon_links(); // Hand-written head, no wp_head(). See 3.66.0. ?>
 <link rel="stylesheet" href="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/css/calendar.css?ver=' . SFAF_VERSION ); ?>" />
 </head>
 <body class="uc-notice-page">

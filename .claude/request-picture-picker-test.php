@@ -520,6 +520,26 @@ expect( 'and the calendar folder only',
 
 expect( 'the upload field is still on the form',
     count( nodes( $html, '//*[@data-uc-test-upload-field]' ) ), 1 );
+
+/*
+ * THE PICTURE IS A SECTION NOW (3.66.0), not a field label.
+ *
+ * Both request forms were black text at one size: a heading over a GROUP of
+ * fields was set at .uc-field-label, 13/600, which is the step the labels of
+ * the fields INSIDE that group are already at, so a heading and the thing it
+ * headed rendered identically. The Subhead step, 16/600, was sitting unused.
+ * This fieldset heads two fields, the picker and the upload, so it takes it.
+ */
+$legend = nodes( $html, '//fieldset/legend' );
+expect( 'the picture fieldset has one legend', count( $legend ), 1 );
+if ( 1 === count( $legend ) ) {
+    expect( 'and it is a section heading rather than a field label',
+        $legend[0]->getAttribute( 'class' ), 'uc-field-group-title' );
+    expect( 'saying what the section is', seen( $legend[0] ), 'The picture' );
+}
+expect( 'the fieldset takes the section divider',
+    false !== strpos( (string) nodes( $html, '//fieldset' )[0]->getAttribute( 'class' ), 'uc-form-section-group' ),
+    true );
 expect( 'and the way out is still named',
     (bool) strpos( $html, 'Roxane Chicoine' ), true );
 

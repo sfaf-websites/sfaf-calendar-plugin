@@ -169,6 +169,7 @@ function sfaf_ap_date( $d, $f = 'full' ) { return (string) $d; }
 function sfaf_ap_datetime( $ts ) { return 'a stamped time'; }
 function sfaf_ap_time_range( $a, $b ) { return $a . ' to ' . $b; }
 function sfaf_icon( $n, $a = array() ) { return ''; }
+function sfaf_favicon_links() { echo "<link rel=\"icon\" data-uc-test-favicon />"; }
 function sfaf_event_image_url( $id, $s = 'large' ) { return ''; }
 function sfaf_event_image_source( $id ) { return 'none'; }
 function sfaf_fundraising_progress_meta_key() { return '_uc_show_fund_progress'; }

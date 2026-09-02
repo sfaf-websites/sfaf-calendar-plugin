@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-02, at 3.65.0.
+**Last updated:** 2026-09-02, at 3.66.0.
 
 ---
 
 ## What shipped last
 
-**3.65.0**, built as `sfaf-calendar-3.65.0.zip` in the project root, committed
+**3.66.0**, built as `sfaf-calendar-3.66.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.66.0** | **Five changes and an investigation.** The four pages that build their own document have the calendar's favicon; the Get a form link dialog says **Event Series** rather than Campaign; the staff form can name the team that gets access, up to caladmin's own cap of two; both request forms have a visible heading hierarchy off the unused Subhead step. **"All Events" was going to the sfaf.org homepage because the cross-origin referrer arrives as an origin with no path**, which the code accepted; it is now treated as no referrer, and **Mark still has to fill in the Calendar home URL setting** for the other half. **Five organizer addresses on the community form was stopped, not built**: see "Open decisions". |
 | **3.65.0** | **The staff request form's picture chooser is a picker rather than a grid.** It drew every picture in the calendar folder at once, which is fine at a dozen and unusable at two hundred. Now: a closed control showing what is chosen, a search box, and a scrollable list with each picture's **file name visible**. It is a native `<details>` of radio buttons, so it works with no JavaScript, which this form needs because it is used by staff who are not logged in. Nothing on the community form or in caladmin was touched. |
 | **3.64.2** | **Two corrections.** "Fill these in" wrote the series picture into two hidden fields and left the preview empty and the tag on "Placeholder", so the button reported filling six things in and the picture was the one nobody could see. It now shows the preview, offers **Remove**, and turns the tag to **Event-specific**, which is what a copied image is. The card's Image row shows a thumbnail rather than `something-1024x576.jpg`. And **Add to calendar** moved to directly under **RSVP** in the Display card, since RSVP is what greys it, with the greyed line now naming the cause first. |
 | **3.64.1** | **An event can be put into an existing series from New Event.** The control was written in 3.38.0 and called 102 lines above the variables it needed, so it has never rendered; the fix is moving two lines. The schedule screen's "Create a new event in this series" button now actually arrives with the series chosen, and that screen reads its pattern from a recurrence group member rather than from whichever date is soonest. |
-| **3.64.0** | One definition per kind of control in /caladmin. A secondary button has a surface, so it is no longer a text field with a heavier label; a select has an end cap; an option group no longer looks like a row of buttons. Fourteen declarations of a text field became one, and four classes that were declared twice are declared once. **And no Add to Calendar button on an event that takes registrations**, because it sat under the RSVP button; the calendar file goes out with the confirmation instead, which it already did. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.65.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.66.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -173,11 +173,29 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 43 items.** Quick 26, needs
+**`TESTING.md` holds the manual testing backlog, 47 items.** Quick 30, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 
 ## Open decisions
+
+**MARK HAS TO FILL IN THE CALENDAR HOME URL SETTING**, and until he does,
+"All Events" on an event page still does not land anywhere useful. 3.66.0 fixed
+the code half: a cross-origin referrer arrives as an origin with no path, and
+that is now treated as no referrer rather than as the site root. What answers
+instead is **Settings, Display, Calendar home URL**, which is empty. Empty means
+the fall-through is the event archive on resources.sfaf.org, which is not a
+public surface. `PROJECT.md` §1 has the whole of it.
+
+**THE COMMUNITY FORM'S TWO EMAIL FIELDS NEED NAMING BEFORE ANYTHING IS BUILT ON
+THEM.** Five organizer addresses was asked for in 3.66.0 and stopped. **About
+you, Your email** is the submitter's identity and is the only address that
+reaches the notification list. **Contact for the event, Email** is printed on
+the public event page and reaches no list at all. Two findings came with that:
+the pending row does not show the contact block at all, because it reads a meta
+key the public form has not written since 3.47.0, so **no submitted contact
+address is visible to an approver today**. `PROJECT.md` §8 has the table and the
+order the three decisions want taking in.
 
 **Four things the calendar publicly asserts that are untrue or incomplete.**
 Found by reading `SFAF_Seo` during 3.56.0, and deliberately not changed: each is

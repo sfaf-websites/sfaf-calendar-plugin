@@ -55,6 +55,54 @@ host or a host sharing the last two labels of this site's domain, must not
 itself be an event page, and the URL is **rebuilt** from the validated parts
 rather than passed through. That is what stops it becoming an open redirect.
 
+**AN ORIGIN IS NOT A PAGE, and in practice that is the common case rather than
+an edge one** (3.66.0). Because the event page and the calendar are on different
+hosts, **every real click through to an event is cross-origin**, and every
+current browser defaults to a referrer policy of
+`strict-origin-when-cross-origin`, which sends the **origin only**:
+`https://sfaf.org/`, with no path. Nothing can recover which calendar page that
+was, because it was never sent.
+
+That passed every check above. The host is ours, the scheme is https, and a
+path with no segments is not an event page, so the function returned
+`https://sfaf.org/` and **"All Events" took a visitor who was reading a calendar
+to the site root**. It looked like a lost referrer or an unfilled setting and
+was neither: the referrer arrived, was valid, and named nothing. A referrer with
+no path is now treated as no referrer, so the configured URL answers instead.
+
+> **The code half does not work alone.** With `calendar_home_url` empty the
+> fall-through is the archive on resources.sfaf.org, which is not a public
+> surface. **Filling that setting in is the other half of this fix.**
+
+> **A related quirk, recorded rather than changed.** The "is this an event page"
+> test applies THIS site's archive base to any allowed host, so a calendar page
+> at `sfaf.org/events/whatever` is refused as though it were one of our event
+> permalinks. The consequence is mild, because it falls through to the
+> configured URL, which is a calendar page anyway.
+> `.claude/self-built-pages-test.php` asserts it so it is a decision somebody
+> can find rather than a surprise the next person debugs from scratch.
+
+### Pages that build their own document
+
+Four surfaces write their own `<!DOCTYPE>` and their own `<head>` and call
+`wp_head()` **nowhere**: caladmin, the staff request form, the community
+submission form, and the notice page the follow links and the registration
+cancel link land on. Anything an ordinary WordPress page gets for free, these
+get only if their own head asks for it.
+
+**This has cost the same thing twice.** They had no stylesheet until 3.44.0, and
+no favicon until 3.66.0, for one reason. The comment beside caladmin's icon
+links said the public forms did not need them because they were "rendered by the
+theme through `wp_head()`", which was true of nothing and is why nobody looked
+again.
+
+**The plugin owns the favicon.** `public/images/favicon-caladmin.*` is bundled
+with the code and drawn by `.claude/build-favicon.js` from
+`sfaf_icon_paths()['calendar']`, so it travels with the plugin and cannot be
+deleted from the media library by somebody tidying up. It is not the site's icon
+and not the theme's. `sfaf_favicon_links()` is the one declaration; a fifth
+self-built document calls it rather than copying three `<link>` tags.
+
 ### Why no new REST route can be added
 
 `SFAF_Embed::is_embed_request()` compares `$request->get_route()` against the
@@ -189,6 +237,49 @@ list control later is more work than including it now.
 > is new is the difference between a row of people and a row of pictures.
 > `.claude/request-picture-picker-test.php` renders the control and parses what
 > came back.
+
+**The requester names the team that should be able to edit it** (3.66.0). Teams
+only, never individuals: membership resolves at read time, so adding somebody to
+a team hands them every event that team owns and removing them takes it back,
+while a typed name or address is a string that is correct on the day it is typed
+and nobody's job afterwards. The requester sees team **names** and never who is
+on them.
+
+- **The cap is `SFAF_Teams::MAX_PER_EVENT`, asked rather than restated.** A
+  second number here would be a second answer to the same question, free to
+  disagree with the one caladmin enforces.
+- **Over the cap is an error, not a silent trim.** With scripting off nothing
+  stops a third box being ticked, and dropping one quietly would leave the
+  requester believing they had said something they had not. The ticks are kept
+  so the form comes back showing what they chose.
+- **It is written through `SFAF_Teams::set_access_for_event()`**, the call the
+  portal makes. `_uc_event_teams` is never touched from this file, and
+  `request-form-test.php` asserts that absence.
+- **It is written on a PENDING row, which is the point.** Access resolves at
+  read time, so the named team can open the request in caladmin before anybody
+  approves it.
+
+> **Showing team names on an unauthenticated page is safe because of the gate
+> that is already there.** The form is only ever rendered after a token sent to
+> a verified sfaf.org mailbox has resolved, so anybody who can see the list has
+> already proved an sfaf.org address. Mark confirmed team names may be shown
+> once that is true.
+
+**Hierarchy on both forms comes from the Subhead step** (3.66.0). Both forms
+used the type scale and the scale is not flat; they reached for the **wrong
+step**. A heading over a group of fields was set at `.uc-field-label`, 13/600,
+which is the step the labels of the fields inside that group are already at, so
+a heading and the thing it headed rendered identically and twenty fields read as
+one column. Subhead, 16/600, sat unused between Field label 13/600 and Section
+20/700. `.uc-form-section` is an `<h2>` over a run of plain fields and takes its
+type from `.uc-portal h2`, which is already that pair;
+`.uc-form-section-group` is the same divider on a `<fieldset>`, whose `<legend>`
+carries `.uc-field-group-title`. **No new size exists.**
+
+> **A legend is placed inside its fieldset's top border by every browser**, and
+> the border is interrupted behind it. `.uc-form-section-group > legend` floats
+> for that reason and the float is load-bearing: without it the section rule
+> runs up to the heading, stops, and starts again after it.
 
 **A title WordPress invented is not a title.** WordPress sets an attachment's
 title from its filename on upload, so a picture nobody titled comes back as
@@ -3088,6 +3179,42 @@ and hunt the effect by any mechanism.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Up to five organizer addresses on the community form, stopped 2026-09-02
+
+**Asked for, and stopped before it was built, because checking the premise found
+the premise was wrong.** The request was: allow up to five organizer addresses
+on the community submission form, the submitter's own being the first of the
+five, all of them going on the event's notification list so they receive the
+registration alerts and the pre-event summary.
+
+**The instruction was to pick the field that feeds that list, and to stop and
+say so if it turned out to be the About you field.** It is. The community form
+has two email fields and they do unrelated jobs:
+
+| Field | Meta | What it actually does |
+|---|---|---|
+| **About you → Your email** | `_uc_request_email` | The submitter's identity. `SFAF_Submissions::submitter()` reads it, the confirmation goes to it, and it is **the only address that reaches the notification list**, at approval, when a manager ticks the prompt. |
+| **Contact for the event → Email** | `_uc_contact_email` | Printed on the **public event page** through `sfaf_event_public_contact()`. It reaches no list and no message. |
+
+So "the public form takes one organizer email" describes neither field
+accurately. **The labels are what is wrong**, and renaming them is a decision
+rather than a build.
+
+**Two findings came out of the same check and are the reason this is worth
+keeping.** Both are about the pending row:
+
+- **It does not show the contact block at all.** It reads `_uc_public_contact`,
+  the single open box that 3.47.0 replaced with three fields, and the public
+  form has not written that key since. So "Contact for the listing" renders
+  empty on every community submission from 3.47.0 onwards, and the name, email
+  and phone the submitter actually filled in are invisible to the approver.
+- **Therefore the assumption that every submitted address is already visible in
+  Pending does not hold**, for one address or five.
+
+**Nothing was built.** The right order is: decide what the two fields are
+called, fix the pending row so it shows what was submitted, and only then decide
+whether five of anything is wanted.
 
 ### Announcing new dates to followers, agreed 2026-08-24
 

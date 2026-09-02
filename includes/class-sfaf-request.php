@@ -637,6 +637,46 @@ class SFAF_Request {
             }
         }
 
+        /* ---- Who should be able to edit it. ----
+         *
+         * TEAMS, NEVER INDIVIDUALS. A team is a name and a set of user ids that
+         * resolves AT READ TIME, so adding somebody to a team hands them every
+         * event that team owns and removing them takes it back. A typed address
+         * is a string nobody maintains. The requester knows the team's name and
+         * has no business seeing who is in it, so this offers names and nothing
+         * else. See SFAF_Teams.
+         *
+         * THE CAP IS THE ONE THAT ALREADY EXISTS. An event names at most
+         * SFAF_Teams::MAX_PER_EVENT teams in caladmin, and a second number here
+         * would be a second answer to the same question, free to disagree.
+         *
+         * OVER THE CAP IS AN ERROR, NOT A SILENT TRIM. set_access_for_event()
+         * stops at the cap, so passing three would quietly drop one and the
+         * requester would never know which. With scripting off there is nothing
+         * to stop a third box being ticked, so the server has to say so.
+         */
+        $clean['teams'] = array();
+        $known_teams    = SFAF_Teams::all();
+        foreach ( (array) ( isset( $post['request_teams'] ) ? $post['request_teams'] : array() ) as $team_id ) {
+            // A hand-built post body can nest an array here, and casting one to
+            // a string is a PHP warning and an empty key. Anything that is not
+            // a scalar names no team.
+            if ( ! is_scalar( $team_id ) ) {
+                continue;
+            }
+            $team_id = sanitize_key( (string) $team_id );
+            if ( '' !== $team_id && isset( $known_teams[ $team_id ] ) && ! in_array( $team_id, $clean['teams'], true ) ) {
+                $clean['teams'][] = $team_id;
+            }
+        }
+        if ( count( $clean['teams'] ) > SFAF_Teams::MAX_PER_EVENT ) {
+            $errors['request_teams'] = sprintf(
+                'Choose at most %d %s.',
+                SFAF_Teams::MAX_PER_EVENT,
+                ( 1 === SFAF_Teams::MAX_PER_EVENT ) ? 'team' : 'teams'
+            );
+        }
+
         /* ---- Registration. ---- */
         $clean['rsvp']     = ! empty( $post['rsvp'] );
         $clean['capacity'] = 0;
@@ -942,6 +982,25 @@ class SFAF_Request {
          */
         if ( $upload_id ) {
             update_post_meta( $event_id, SFAF_Submit::META_IMAGE, (int) $upload_id );
+        }
+
+        /*
+         * THE TEAM GOES ON THROUGH THE ONE WRITER (3.66.0).
+         *
+         * SFAF_Teams::set_access_for_event() is what caladmin calls, so this is
+         * the same path rather than a second one: it drops ids that name no
+         * team, refuses duplicates, stops at MAX_PER_EVENT and deletes the meta
+         * when nothing is left. Writing _uc_event_teams here directly would be
+         * a second definition of what a valid access list is, free to drift
+         * from the one the portal enforces.
+         *
+         * IT IS WRITTEN ON A PENDING ROW, WHICH IS THE POINT. Access resolves
+         * at read time, so the named team can open the request in caladmin
+         * before anybody approves it, which is the whole reason the requester
+         * was asked.
+         */
+        if ( ! empty( $c['teams'] ) ) {
+            SFAF_Teams::set_access_for_event( $event_id, $c['teams'] );
         }
 
         update_post_meta( $event_id, SFAF_Submissions::META_KIND, SFAF_Submissions::KIND_STAFF );
@@ -1296,6 +1355,8 @@ class SFAF_Request {
                 <input type="hidden" name="uc_token" value="<?php echo esc_attr( $token ); ?>" />
                 <?php self::honeypot(); ?>
 
+                <h2 class="uc-form-section">About the event</h2>
+
                 <label class="uc-field">
                     <span class="uc-field-label">Your name</span>
                     <input type="text" name="requester_name" required maxlength="120" value="<?php echo esc_attr( $v( 'name' ) ); ?>" />
@@ -1354,6 +1415,8 @@ class SFAF_Request {
                     </label>
                 <?php endif; ?>
 
+                <h2 class="uc-form-section">When</h2>
+
                 <label class="uc-field">
                     <span class="uc-field-label">Date</span>
                     <input type="date" name="date" required value="<?php echo esc_attr( $v( 'date' ) ); ?>" />
@@ -1390,6 +1453,8 @@ class SFAF_Request {
                     <?php self::field_error( $err( 'repeat_until' ) ); ?>
                 </label>
 
+                <h2 class="uc-form-section">Where</h2>
+
                 <?php $venues = SFAF_Venues::all(); ?>
                 <label class="uc-field">
                     <span class="uc-field-label">Where</span>
@@ -1409,6 +1474,8 @@ class SFAF_Request {
                 </label>
 
                 <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ) ); ?>
+
+                <h2 class="uc-form-section">Registration</h2>
 
                 <label class="uc-check">
                     <input type="checkbox" name="rsvp" value="1" <?php checked( (bool) $v( 'rsvp', false ) ); ?> />
@@ -1484,6 +1551,8 @@ class SFAF_Request {
                         </template>
                     </div>
                 </div>
+
+                <?php self::render_team_choice( (array) $v( 'teams', array() ), $err( 'request_teams' ) ); ?>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Anything else we should know</span>
@@ -1653,6 +1722,69 @@ class SFAF_Request {
     }
 
     /**
+     * Which team should be able to work on this event.
+     *
+     * WHY A TEAM AND NOT A PERSON. Membership resolves at read time, so adding
+     * somebody to a team hands them every event that team owns and removing
+     * them takes it back on the same read. A typed name or address is a string
+     * that is correct on the day it is typed and nobody's job afterwards. The
+     * caladmin editor has offered exactly this since teams existed; the staff
+     * form has not, so a requester could say what the event is and not who
+     * should be able to touch it.
+     *
+     * NAMES ONLY, NEVER MEMBERSHIP. The requester knows the team's name, which
+     * is the whole of what they are being asked. Who is on it is caladmin's
+     * business and appears nowhere here.
+     *
+     * WHAT MAKES SHOWING THE LIST SAFE, AND IT IS WORTH BEING EXPLICIT. This
+     * page is unauthenticated and reached by a link, and links get forwarded.
+     * The gate is that the form is only ever rendered after a token sent to a
+     * verified sfaf.org mailbox has resolved, which by the time this method
+     * runs has already happened. So this costs nothing extra: anybody who can
+     * see this list has already proved an sfaf.org address. Mark has confirmed
+     * team names may be shown once that is true.
+     *
+     * CHECKBOXES, SO IT WORKS WITH NO SCRIPT. Nothing here is built by
+     * JavaScript and nothing here is inert without it. The cap is enforced by
+     * validate() rather than by disabling boxes in the browser, because a
+     * browser-side cap is not a cap on a page a form can be posted to.
+     *
+     * @param string[] $chosen
+     * @param string   $error
+     */
+    private static function render_team_choice( $chosen, $error = '' ) {
+        $teams = SFAF_Teams::all();
+        if ( empty( $teams ) ) {
+            // No teams, no question. A fieldset saying there is nothing to
+            // choose is a thing to read and not a thing to answer.
+            return;
+        }
+
+        $chosen = array_map( 'strval', (array) $chosen );
+        $cap    = SFAF_Teams::MAX_PER_EVENT;
+        ?>
+        <fieldset class="uc-field uc-form-section-group uc-request-teams">
+            <legend class="uc-field-group-title">Who should be able to edit it</legend>
+            <p class="uc-hint">
+                Choose up to <?php echo (int) $cap; ?>. Anyone on a team you choose can open this event in the
+                calendar tool. Leave it empty and only the MarCom team can.
+            </p>
+            <?php self::field_error( $error ); ?>
+            <div class="uc-picker-options">
+                <?php foreach ( $teams as $team ) : ?>
+                    <label class="uc-check uc-picker-option">
+                        <input type="checkbox" name="request_teams[]"
+                               value="<?php echo esc_attr( $team['id'] ); ?>"
+                               <?php checked( in_array( (string) $team['id'], $chosen, true ) ); ?> />
+                        <span><?php echo esc_html( $team['name'] ); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </fieldset>
+        <?php
+    }
+
+    /**
      * Pick a picture, from the calendar folder only.
      *
      * NOT wp.media, AND IT CANNOT BE. The media frame needs a logged-in user
@@ -1683,8 +1815,8 @@ class SFAF_Request {
             }
         }
         ?>
-        <fieldset class="uc-field uc-request-images">
-            <legend class="uc-field-label">Picture</legend>
+        <fieldset class="uc-field uc-form-section-group uc-request-images">
+            <legend class="uc-field-group-title">The picture</legend>
             <?php if ( empty( $rows ) ) : ?>
                 <p class="uc-hint">
                     There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for

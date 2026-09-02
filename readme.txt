@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.65.0
+Stable tag: 3.66.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.66.0 =
+
+**Five changes and an investigation. One requested change was stopped before it was built, because checking its premise found the premise was wrong.**
+
+**The four pages that build their own document have the calendar's favicon.** The staff request form, the community submission form, and the notice page the follow links and the registration cancel link land on all write their own `<head>` and call `wp_head()` nowhere, which is why they loaded no stylesheet until 3.44.0 and why they had no icon from either direction. **The icon is the calendar's own**, not the site's and not the theme's: `public/images/favicon-caladmin.*`, bundled with the plugin and drawn from the calendar glyph the plugin already uses, in Dark Gray on brand Yellow. caladmin declared those three links inline with a comment saying the public forms did not need them because they went through `wp_head()`. They do not. There is one declaration now, `sfaf_favicon_links()`, and all four documents call it.
+
+**"Campaign" is "Event Series" in the Get a form link dialog.** The dialog only. **The three names are deliberate and are now recorded in a comment where the dialog is built**, so nobody reconciles them later: the public calendar's filter row says **Groups**, because a visitor should not have to know this calendar has a taxonomy; caladmin says **Series**; this dialog says **Event Series** because somebody there is choosing which kind of thing a link points at, with a staff form link directly above it that points at no series at all. "Campaign" was a fourth name and named nothing in the product.
+
+**The staff request form can name the team that should be able to edit the event.** Teams only, never individuals: membership resolves at read time, so adding somebody to a team hands them every event that team owns and removing them takes it back, while a typed address is a string nobody maintains. The requester sees team names and never who is on them. **Up to two, which is the cap caladmin already enforces**, asked of `SFAF_Teams::MAX_PER_EVENT` rather than written out a second time, and going over it is refused by name rather than silently trimmed. The team is written through `SFAF_Teams::set_access_for_event()`, the same call the portal makes, so there is one definition of a valid access list. Showing the list costs nothing: the form is only ever rendered after a token sent to a verified sfaf.org mailbox has resolved.
+
+**Both request forms have a visible heading hierarchy.** They used the type scale correctly and the scale is not flat. What they did was **reach for the wrong step**: a heading over a group of fields was set at the field-label step, 13/600, which is the step the labels of the fields inside that group are already at, so a heading and the thing it headed rendered the same. The Subhead step, 16/600, sat unused between Field label and Section. It is what a group heading is for and it is what they use now. **No new size was introduced** and the type-scale sweep still passes. One related fault came out with it: `.uc-field-group > legend` declared `font-weight: 700` over a legend already carrying 13/600, making the rendered pair 13/700, which is not a step at all. The sweep could not see it because the size and the weight are in two different rules.
+
+**"All Events" on an event page took visitors to the sfaf.org homepage, and it was not an unfilled setting.** The referrer chain was working, and that is what produced it. The event page is on resources.sfaf.org and the calendar is a page on sfaf.org, so every real click through to an event is **cross-origin**, and every current browser then sends the **origin only**: `https://sfaf.org/`, with no path. That passed every check, and the function handed back the site root. **An origin with no path names no calendar page**, so it is now treated as no referrer at all and the configured Calendar home URL answers instead. **Filling that setting in is the other half of the fix and neither half works alone.** A same-origin referrer is untouched and still carries its full path.
+
+**One requested change was stopped rather than built.** Up to five organizer addresses on the community submission form, feeding the event's notification list. Checking which field feeds that list found it is **Your email under About you**, the submitter's own address, not the "Contact for the event" email, which is a public field printed on the event page and reaches no list. The labels are what is wrong there, and that is a decision rather than a build. **Two related findings came out of the same check:** the pending row does not show all the submitted addresses, and it does not show the contact block at all, because it reads a meta key the public form has not written since 3.47.0 split that field into three.
+
+**Proved by rendering and by running.** `.claude/self-built-pages-test.php` is new: it renders the icon links, checks the files they point at exist, asserts all four documents call the one emitter and none writes its own, and drives the real referrer function over the exact headers a browser sends. Removing the new condition makes it reproduce the reported symptom by name. The team picker's assertions are in `request-form-test.php`, and writing them found two faults in the new code: a nested array in the post body threw a PHP warning, and the first draft asserted the wrong guarantee.
 
 = 3.65.0 =
 
