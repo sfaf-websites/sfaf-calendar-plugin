@@ -60,6 +60,9 @@
         run('asyncActions', initAsyncActions);
         run('disclosures', initDisclosures);
         run('filterLists', initFilterLists);
+        // After filterLists, which is what actually narrows this one's list.
+        // This adds only what a <details> and a radio cannot do on their own.
+        run('imageChoice', initImageChoice);
         run('calendarTick', initCalendarTick);
     });
 
@@ -103,6 +106,81 @@
         rsvp.addEventListener('change', sync);
         if (show) { show.addEventListener('change', sync); }
         sync();
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE PICTURE PICKER ON THE STAFF REQUEST FORM (3.65.0).
+     *
+     * WHAT THIS DOES NOT DO, WHICH IS THE POINT. It does not build the control.
+     * The control is a <details> full of radio buttons, rendered by
+     * SFAF_Request, and the browser opens it, closes it, and posts the chosen
+     * radio with no script at all. This page is reached by a link and used by
+     * people with no WordPress account, so a picker that exists only once
+     * JavaScript has run is not something this form can carry.
+     *
+     * IT ADDS TWO THINGS. It reveals the search box, which cannot honestly be
+     * shown before something can act on it, and it closes the panel when a
+     * picture is chosen, which is what makes it feel like a picker rather than
+     * a long list. The narrowing itself is initFilterLists(), the same one the
+     * teams screen uses; nothing about searching is written twice.
+     *
+     * THE TRIGGER IS UPDATED FROM THE ROW THAT WAS CHOSEN, not from a second
+     * copy of the list. Each radio carries its own thumbnail and name, so the
+     * closed control and the open one cannot describe the same picture
+     * differently.
+     * ------------------------------------------------------------------ */
+    function initImageChoice() {
+        document.querySelectorAll('[data-uc-image-picker]').forEach(function (picker) {
+            var current = picker.querySelector('[data-uc-image-current]');
+            var summary = picker.querySelector('summary');
+            var search = picker.querySelector('input[data-uc-filter]');
+            var options = picker.querySelectorAll('[data-uc-image-option]');
+            if (!current || !options.length) { return; }
+
+            // Only now is the search box a thing that does something.
+            picker.classList.add('uc-image-picker-live');
+
+            function show(radio) {
+                var thumb = radio.getAttribute('data-uc-image-thumb');
+                var name = radio.getAttribute('data-uc-image-name') || '';
+
+                // Rebuilt as nodes rather than markup: these names come out of
+                // the media library and are never put through innerHTML.
+                current.textContent = '';
+                if (thumb) {
+                    var img = document.createElement('img');
+                    img.className = 'uc-image-current-thumb';
+                    img.alt = '';
+                    img.src = thumb;
+                    current.appendChild(img);
+                }
+                var label = document.createElement('span');
+                label.className = 'uc-image-current-name';
+                label.textContent = name;
+                current.appendChild(label);
+            }
+
+            Array.prototype.forEach.call(options, function (radio) {
+                radio.addEventListener('change', function () {
+                    if (!radio.checked) { return; }
+                    show(radio);
+                    picker.open = false;
+                    // Closing the panel under somebody's cursor leaves a
+                    // keyboard user nowhere, so the trigger takes the focus
+                    // back. It is also what they would press next.
+                    if (summary) { summary.focus(); }
+                });
+            });
+
+            if (search) {
+                picker.addEventListener('toggle', function () {
+                    // Opening it is the moment somebody is looking for a
+                    // picture, which is the moment the search box is worth
+                    // having under the cursor.
+                    if (picker.open) { search.focus(); }
+                });
+            }
+        });
     }
 
     /* ---------------------------------------------------------------------

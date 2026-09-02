@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 42 items.** Quick 25, needs real conditions 14, blocked on other
+**Outstanding: 43 items.** Quick 26, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -335,6 +335,31 @@ calendar link goes out with the registration confirmation instead." Untick it
 and confirm the tick comes back holding the value it had, and the line goes.
 Then save with registration on and reopen, and confirm the stored value is
 still what the manager chose rather than "off".
+
+### 1.26 The staff form's picture picker, INCLUDING WITH JAVASCRIPT OFF (3.65.0)
+
+The no-script half is the point of this control and nothing in the build can see
+a browser. Open the staff request form from a real emailed link.
+
+- **With script.** The closed control says "No picture chosen". Open it: a
+  search box, and a scrollable list of thumbnails with each file name beside
+  its picture. Type part of a file name and confirm the list narrows and that
+  "No pictures match that" appears when nothing does. Press Escape mid-search
+  and confirm it clears the box rather than closing the panel. Click a picture:
+  the panel closes and the trigger now shows that picture and its name.
+- **Then turn JavaScript off and reload.** This is the assertion that matters.
+  **The search box should not be there at all.** The control still opens, the
+  full list is still in it, a picture can still be chosen, and **submitting the
+  form must attach that picture**. Check the pending row afterwards to confirm
+  the right one arrived.
+- **On a phone.** The list scrolls inside its own box rather than the page, and
+  the rows are big enough to hit.
+- **File names that are long and have no spaces** must wrap inside the row
+  rather than widening the panel.
+- **Look for a picture whose title is really its file name.** It should show the
+  file name once, on the file-name line, and no title line above it. A row
+  reading "harm reduction 2026 a" above "harm-reduction-2026-a.jpg" means the
+  exact test added in 3.65.0 is not matching and wants reporting.
 
 ---
 

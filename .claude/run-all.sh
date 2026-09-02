@@ -54,6 +54,13 @@ echo "=== cascade arithmetic ==="
 run "filter-bar-test --self-test" php .claude/filter-bar-test.php --self-test
 
 echo
+# The DOM reader under request-picture-picker-test, for the same reason: the
+# picker is decided by parsing what was rendered, so a parser that cannot see a
+# control would report its absence rather than its own mistake.
+echo "=== the picker's reader ==="
+run "picture-picker --self-test" php .claude/request-picture-picker-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

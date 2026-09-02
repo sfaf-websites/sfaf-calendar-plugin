@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-02, at 3.64.2.
+**Last updated:** 2026-09-02, at 3.65.0.
 
 ---
 
 ## What shipped last
 
-**3.64.2**, built as `sfaf-calendar-3.64.2.zip` in the project root, committed
+**3.65.0**, built as `sfaf-calendar-3.65.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.65.0** | **The staff request form's picture chooser is a picker rather than a grid.** It drew every picture in the calendar folder at once, which is fine at a dozen and unusable at two hundred. Now: a closed control showing what is chosen, a search box, and a scrollable list with each picture's **file name visible**. It is a native `<details>` of radio buttons, so it works with no JavaScript, which this form needs because it is used by staff who are not logged in. Nothing on the community form or in caladmin was touched. |
 | **3.64.2** | **Two corrections.** "Fill these in" wrote the series picture into two hidden fields and left the preview empty and the tag on "Placeholder", so the button reported filling six things in and the picture was the one nobody could see. It now shows the preview, offers **Remove**, and turns the tag to **Event-specific**, which is what a copied image is. The card's Image row shows a thumbnail rather than `something-1024x576.jpg`. And **Add to calendar** moved to directly under **RSVP** in the Display card, since RSVP is what greys it, with the greyed line now naming the cause first. |
 | **3.64.1** | **An event can be put into an existing series from New Event.** The control was written in 3.38.0 and called 102 lines above the variables it needed, so it has never rendered; the fix is moving two lines. The schedule screen's "Create a new event in this series" button now actually arrives with the series chosen, and that screen reads its pattern from a recurrence group member rather than from whichever date is soonest. |
 | **3.64.0** | One definition per kind of control in /caladmin. A secondary button has a surface, so it is no longer a text field with a heavier label; a select has an end cap; an option group no longer looks like a row of buttons. Fourteen declarations of a text field became one, and four classes that were declared twice are declared once. **And no Add to Calendar button on an event that takes registrations**, because it sat under the RSVP button; the calendar file goes out with the confirmation instead, which it already did. |
-| **3.63.0** | FAQ sets are made and maintained on one screen. "Save these as a set" is gone from the event editor, with its two reported defects disposed of rather than repaired. Sets can be duplicated, and the list is collapsed instead of showing every question of every set at once. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.64.2, the
+repo.** The tell is the Plugins screen: if it does not say 3.65.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -173,7 +173,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 42 items.** Quick 25, needs
+**`TESTING.md` holds the manual testing backlog, 43 items.** Quick 26, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 

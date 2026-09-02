@@ -157,12 +157,47 @@ form, and `post_author` stays 0 because nobody logged in made it.
 > limit one inbox can be filled; without the per-client limit every address in
 > the organisation can be hit once each. Neither closes it alone.
 
-**The picture grid is not `wp.media`, and cannot be.** The frame needs a
+**The picture chooser is not `wp.media`, and cannot be.** The frame needs a
 logged-in user with `upload_files`, so on this page it would not open. It is
 radio buttons over the same `SFAF_Media_Folder` query the editor's picker uses.
-**Picking from that grid sets the featured image**, because everything in it is
+**Picking one sets the featured image**, because everything in that folder is
 already an approved picture. Sending one of your own does not: see "Files from
 people with no account" below.
+
+**It is a picker rather than a grid** (3.65.0). Every picture in the folder was
+drawn at once, which is fine at a dozen and unusable at two hundred. The closed
+control shows the picture chosen or says none is; opening it gives a search box
+and a scrollable list, one row per picture, each with **its file name visible**.
+Two photographs of the same event look alike at 64px and the file is often the
+only thing that separates them, and it is what the search matches. Search is not
+needed at today's number and was built anyway, because retrofitting it into a
+list control later is more work than including it now.
+
+> **WITHOUT JAVASCRIPT IT IS STILL A COMPLETE CONTROL, and on this page that is
+> not a nicety.** The form is reached by a link and used by staff who are not
+> logged in to WordPress, so a control that posts nothing without scripting is a
+> form somebody cannot finish, and nobody finds out from a screenshot. It is a
+> native `<details>` full of radio buttons: the browser opens and closes it on
+> its own and the radios post whether it is open or shut. Script adds the
+> filtering and closes the panel on a choice, and creates none of it. The search
+> box is hidden until portal.js can act on it, because a box that cannot filter
+> is a control that lies, which is the same reason the notification picker's
+> tabs stay hidden until they can be switched.
+>
+> It wears `.uc-picker`, the disclosure the notification picker and the teams
+> screen already use, and it filters through the same `initFilterLists()`. What
+> is new is the difference between a row of people and a row of pictures.
+> `.claude/request-picture-picker-test.php` renders the control and parses what
+> came back.
+
+**A title WordPress invented is not a title.** WordPress sets an attachment's
+title from its filename on upload, so a picture nobody titled comes back as
+"harm reduction 2026 a" and reads as a caption. Given the file that is an exact
+question rather than a guess: drop the extension, turn dashes and underscores
+into spaces, compare. `looks_like_a_filename()` asks that first and keeps its
+two older guesses as the net for a title somebody typed that reads like a file.
+It was guesses alone until 3.65.0, and neither of them caught the shape the
+function's own comment used as its example.
 
 **The description is rich text from 3.46.0, and is sanitised on the way in.**
 3.43.0 stripped markup from everything here and said why. Staff behind an

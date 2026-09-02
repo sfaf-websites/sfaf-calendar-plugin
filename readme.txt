@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.64.2
+Stable tag: 3.65.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.65.0 =
+
+**The staff request form's picture chooser is a picker rather than a grid. Nothing else on that form, and nothing on the community form or in caladmin, is touched.**
+
+**What it was.** Every picture in the calendar folder, drawn at once, as a grid of thumbnails at least 140px wide, capped at 60. Each tile was a hidden radio button with the image as its control and a ring around the chosen one, and the picture's title appeared under it only when the title was a real one. That is workable with a dozen pictures and unusable with two hundred, and the folder only grows.
+
+**What it is now.** A closed control showing the picture currently chosen, or saying none is. Opening it reveals a search box and a scrollable list. Each row is a thumbnail, the picture's **file name**, and its title above that when somebody actually gave it one. Typing narrows the list; clicking a row chooses that picture and closes the panel.
+
+**The file name is on every row, not on hover.** Two photographs of the same event look alike at 64px and the file is often the only thing that separates them. It is also what the search matches.
+
+**It works with no JavaScript, and that is the requirement this form is built around.** The page is reached by a link and used by staff who are not logged in to WordPress, so a control that posts nothing without scripting would be a form somebody cannot complete. The picker is a native `<details>` full of radio buttons: the browser opens and closes it on its own, and the radios post whether it is open or shut. Script adds exactly two things, the filtering and closing the panel on a choice, and creates none of the control. The search box is hidden until portal.js can act on it, because a box that cannot filter is a control that lies. Same shape as the dashboard's form-link disclosure and the notification picker.
+
+**Nothing was imported to build it.** It is the `.uc-picker` disclosure that the notification picker and the teams screen already wear, so the trigger, the search box, the panel and the list are the definitions 3.64.0 established rather than a third answer to the same question. The narrowing is the same `initFilterLists()` the teams screen uses. What is new is the difference between a row of people and a row of pictures, and nothing else.
+
+**The calendar folder restriction is unchanged**, and so is what the form submits, how the image is stored, and the cleanup on the way in. Only an attachment already in the calendar folder can be chosen, and `validate()` checks that again rather than trusting the list.
+
+**A picture nobody titled no longer gets a caption made out of its file name.** WordPress sets an attachment's title from its filename on upload, and the test written for this release found that the guard against that has never caught the shape its own comment used as the example: "img 2847 final v3" is nine letters against five digits with no extension, and slipped through both tests. Given the file, that is an exact question rather than a guess: take the file, drop the extension, turn dashes and underscores into spaces, and compare. The two older guesses stay as the net for a title somebody typed that reads like a file anyway.
+
+**Proved by rendering it.** `.claude/request-picture-picker-test.php` is new and renders the control, parses what came back, and asks the no-script questions as outcomes: there is a set of radios named `image_id`, one per picture with its own attachment id, none disabled, none hidden, all inside a native `<details>` that starts closed. Three faults were planted and each was caught by name, including a file name moved into a `title` attribute where it would only appear on hover.
 
 = 3.64.2 =
 

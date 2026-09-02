@@ -1094,21 +1094,46 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    PICKING A PICTURE WITH NO MEDIA LIBRARY
 
    wp.media needs an account, so this is radio buttons over the same calendar
-   folder the editor's picker queries. The control is the image: the radio
-   itself is hidden and the chosen one takes a ring, which is the same way a
-   category chip says it is selected.
+   folder the editor's picker queries.
+
+   A PICKER, NOT A GRID (3.65.0). This was a grid of every picture in the
+   folder, drawn all at once. Workable at a dozen and unusable at two hundred,
+   and the folder only grows. It is a .uc-picker now, which is the same
+   disclosure the notification picker and the teams screen already wear, so
+   everything below is the difference between a row of PEOPLE and a row of
+   PICTURES and nothing else. The trigger, the search box, the panel and the
+   list are declared once, up beside .uc-picker.
    --------------------------------------------------------------------------- */
-.uc-request-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px; margin: 12px 0; }
-.uc-request-image { position: relative; display: block; cursor: pointer; border-radius: 10px;
-    overflow: hidden; border: 2px solid transparent; background: var(--p-surface-2, #f6f7f8); }
-.uc-request-image img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-.uc-request-image input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.uc-request-image:has(input:checked) { border-color: var(--p-text); }
-.uc-request-image:has(input:focus-visible) { outline: 2px solid var(--p-text); outline-offset: 2px; }
-.uc-request-image-none { display: flex; align-items: center; justify-content: center;
-    min-height: 84px; border: 2px dashed var(--p-border); font-size: 13px; font-weight: 600; }
-.uc-request-image-none:has(input:checked) { border-style: solid; border-color: var(--p-text); }
+.uc-image-picker { margin: 12px 0; }
+/* Its trigger carries a thumbnail, and a picture has no baseline to sit on. */
+.uc-image-picker > .uc-picker-toggle { align-items: center; }
+.uc-image-current { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.uc-image-current-thumb { flex: 0 0 auto; width: 48px; height: 27px; object-fit: cover;
+    border-radius: 4px; border: 1px solid var(--p-border); }
+.uc-image-current-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* THE SEARCH BOX IS NOT THERE UNTIL IT CAN WORK. portal.js reveals it. Without
+   script the list still renders and a picture can still be chosen and sent; a
+   box that cannot filter would be the one part of this that lied. Same
+   mechanism as .uc-picker-tabbed on the notification picker. */
+.uc-image-search { display: none; }
+.uc-image-picker-live .uc-image-search { display: block; }
+
+/* Taller than the people list, because each row is a picture rather than a
+   line of text, and the whole point is being able to see enough of them. */
+.uc-image-options { max-height: 320px; }
+.uc-image-option { gap: 10px; }
+.uc-image-option-thumb { flex: 0 0 auto; width: 64px; height: 36px; object-fit: cover;
+    border-radius: 4px; border: 1px solid var(--p-border); background: var(--p-bg); }
+.uc-image-option-blank { border-style: dashed; }
+.uc-image-option-text { min-width: 0; }
+.uc-image-option-title { display: block; font-size: 13px; font-weight: 600; line-height: 1.3; }
+/* THE FILE NAME IS ON EVERY ROW, not on hover. Two photographs of the same
+   event look alike at 64px and the file is often the only thing that separates
+   them, and it is what the search matches. It breaks anywhere rather than
+   widening the panel, because these names are long and have no spaces. */
+.uc-image-option-file { display: block; font-size: 12px; line-height: 1.35;
+    color: var(--p-muted); overflow-wrap: anywhere; }
 
 /* ---------------------------------------------------------------------------
    A REQUEST IN THE QUEUE, AND ON THE EVENT IT BECAME
@@ -3300,14 +3325,8 @@ body.uc-modal-open { overflow: hidden; }
    accent edges only where colour is the SOLE carrier. The words stay; the
    edge goes. */
 
-/* THE PICTURE'S TITLE, UNDER IT (3.47.0). The grid was twelve thumbnails with
-   nothing saying what any of them is for. Two lines at most and then an
-   ellipsis: a title long enough to need three lines is a title that would set
-   the row height for every tile beside it. */
-.uc-request-image-title { display: block; padding: 6px 8px 8px; font-size: 13px;
-    line-height: 1.35; font-weight: 600; color: var(--p-text);
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden; }
+/* The picture's title moved with the grid it was clamping (3.65.0). It is
+   .uc-image-option-title now, declared beside the rest of the picker. */
 
 /* ---------------------------------------------------------------------------
    THE APPROVAL PROMPT (3.48.0)
