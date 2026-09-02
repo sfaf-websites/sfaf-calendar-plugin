@@ -3296,6 +3296,12 @@ body.uc-modal-open { overflow: hidden; }
    the other two spellings of this and are gone; nothing outside these two forms
    ever used either.
 
+   > AND THE SAME FAULT ONE LEVEL ALONG, WHICH IS 3.68.1. The reset was three
+   > properties, but the CLASS carrying it was also `display: flex`, and that was
+   > holding a floated legend inert. Taking the class away to stop the reset
+   > matching took the layout mode with it. **A section declares its own display
+   > below**, so it can never again depend on a class it should not carry.
+
    THE SURFACE CARRIES NO INFORMATION, which is what DESIGN.md's decoration rule
    requires of it. One neutral tint and one neutral hairline, the same on every
    section of both forms, so it groups without claiming that any section is a
@@ -3305,18 +3311,42 @@ body.uc-modal-open { overflow: hidden; }
    NO NEW TYPE STEP. The legend keeps .uc-field-group-title, which is the
    Subhead step 16/600 that 3.66.0 settled on, declared once below.
    ------------------------------------------------------------------------- */
-.uc-form-section-group { margin: 0 0 20px; padding: 16px 18px;
+/* ---------------------------------------------------------------------------
+   THE SECTION DECLARES ITS OWN LAYOUT MODE, AND THAT IS THE WHOLE OF 3.68.1.
+
+   WHAT 3.68.0 BROKE. The legend was floated, to get it out of the fieldset's
+   top border so the panel's edge could draw unbroken. That float had existed
+   since 3.66.0 and HAD NEVER RUN: both fieldsets carrying the rule also carried
+   .uc-field, which is `display: flex`, and float computes to none on a flex
+   item. Removing .uc-field, which is what 3.68.0 did to stop the reset above
+   reaching a section, switched the float on for the first time.
+
+   A LIVE FLOAT AND A FLEX SIBLING DO NOT SHARE A LINE. Every first child of
+   every section on both forms is .uc-field, .uc-field-row, .uc-check or
+   .uc-check-grid, and all four are flex or grid containers. A flex or grid
+   container establishes its own formatting context, so it refuses to overlap a
+   float and is placed BESIDE it; and a flex item's `min-width: auto` means it
+   cannot shrink to nothing, so it overflowed into a narrow column at the right
+   with the heading on the left. Only the first child sat at the float's
+   vertical position, which is why every field after it was correct.
+
+   SO THE FIX IS TO DECLARE THE LAYOUT MODE HERE rather than inherit one by
+   accident from a class the section should not carry. A flex column stacks the
+   legend above the fields inside the padding, exactly as the float was trying
+   to, and it does it by making the float impossible rather than by arranging
+   for it to be harmless. The float, the width and the clearfix are gone with
+   it: there is nothing left to clear.
+
+   NO GAP, DELIBERATELY. The children carry their own margins, `.uc-field` at
+   18px and the hints at their own values, and a gap on top of those would move
+   every field on both forms. Flex changes the stacking mechanism and nothing
+   about the spacing.
+   ------------------------------------------------------------------------- */
+.uc-form-section-group { display: flex; flex-direction: column;
+    margin: 0 0 20px; padding: 16px 18px;
     border: 1px solid var(--p-border, #D1D3D4); border-radius: 12px;
     background: var(--p-surface-2, #f6f7f8); margin-inline: 0; }
-/* THE FLOAT IS LOAD-BEARING AND MUST NOT BE TIDIED AWAY. A <legend> is placed
-   INSIDE its fieldset's top border by every browser, and the border is
-   interrupted behind it: the panel's edge would run up to the heading, stop,
-   and start again after it. Floating the legend takes it out of that placement
-   and makes it an ordinary block inside the padding, so the panel draws
-   unbroken. width:100% is what stops the fields flowing up beside it, and the
-   clear below is what stops the float escaping the fieldset. */
-.uc-form-section-group > legend { float: left; width: 100%; padding: 0; margin: 0 0 14px; }
-.uc-form-section-group::after { content: ""; display: table; clear: both; }
+.uc-form-section-group > legend { padding: 0; margin: 0 0 14px; }
 .uc-form-section-group > .uc-hint { margin: 0 0 12px; }
 .uc-form-section-group .uc-field:last-child { margin-bottom: 0; }
 

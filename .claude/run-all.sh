@@ -66,6 +66,12 @@ echo "=== the self-built pages' reader ==="
 run "self-built-pages --self-test" php .claude/self-built-pages-test.php --self-test
 
 echo
+# The stylesheet reader under section-layout-test, which checks for the ABSENCE
+# of a declaration over a file that explains the absence at length in prose.
+echo "=== the section reader ==="
+run "section-layout --self-test" php .claude/section-layout-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

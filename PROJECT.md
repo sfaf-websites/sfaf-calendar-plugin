@@ -335,10 +335,40 @@ rule keeps colour where colour is the sole carrier of information; a surface
 that groups carries none, so it must not look as though it does. It cannot be
 read as a state, a category or a warning because every section has it.
 
-> **A legend is placed inside its fieldset's top border by every browser**, and
-> the border is interrupted behind it. `.uc-form-section-group > legend` floats
-> for that reason and the float is load-bearing: without it the panel's edge
-> runs up to the heading, stops, and starts again after it.
+**A section declares its own `display`, and that is not a detail** (3.68.1).
+`.uc-form-section-group` is `display: flex; flex-direction: column`, which
+stacks the legend above the fields inside the padding and keeps the panel's edge
+unbroken. **There is no float anywhere in these rules, on purpose.**
+
+> **THE SAME FAULT ONE LEVEL ALONG, AND IT SHIPPED.** A legend is placed inside
+> its fieldset's top border by every browser, so 3.66.0 floated it to lift it
+> out. **That float never ran:** the only two fieldsets carrying the rule also
+> carried `.uc-field`, which is `display: flex`, and **float computes to `none`
+> on a flex item**. 3.68.0 then took `.uc-field` off the sections to stop the
+> reset above reaching them. The reset was `border`, `padding` and
+> `margin-inline`, none of which mattered here; **the class carrying it was also
+> the section's layout mode**, and removing it switched the float on for the
+> first time.
+>
+> **A live float and the first field could not share a line.** Every first child
+> of every section on both forms is `.uc-field`, `.uc-field-row`, `.uc-check` or
+> `.uc-check-grid`, and all four are flex or grid containers. Each establishes
+> its own formatting context, so it refuses to overlap a float and is placed
+> beside it, and a flex item's `min-width: auto` stops it shrinking away. The
+> heading rendered on the left with the first field in a roughly 40px column at
+> the right. **Only the first child sits at the float's vertical position**,
+> which is why every field after it was correct and made the fault look like a
+> property of one field rather than of the section.
+>
+> **The remedy is to declare the layout mode rather than inherit one**, so a
+> float on a child is impossible instead of merely inert.
+> `.claude/section-layout-test.php` fails by name if a legend is floated again
+> or if the section stops declaring a `display` of its own. It proves the rules
+> and no geometry; `TESTING.md` 1.39 is the other half.
+
+> **When a class is removed to escape a rule, ask what else that class was
+> doing.** The reset was the reason and the `display` was the casualty, and
+> nothing about the reset's three properties would have led anybody to it.
 
 **The series is the first question, and it is what the picture chooser answers**
 (3.68.0). It was the fifth, after the description and the categories, so a
@@ -3419,10 +3449,26 @@ the planted fault went uncaught until the fixture was corrected.
 > **A self-test built only from the case that prompted the checker proves the
 > checker handles that case.** Give it the input you think cannot happen.
 
+**A rule that has never run is not a rule that works.** 3.66.0 floated a section
+legend and 3.68.0 was the first release in which that float did anything,
+because until then every fieldset carrying it was also a flex container and
+float computes to `none` on a flex item. The comment beside it said the float
+was load-bearing and must not be tidied away; it had been load-bearing on
+nothing for two releases, and the moment it took load it broke both forms.
+
+> **Removing a class to escape one of its rules removes all of them.** The
+> reset being escaped was `border`, `padding` and `margin-inline`. The class was
+> also the section's `display`, and nothing about those three properties would
+> have led anybody to look for it. **Before taking a class off an element, list
+> what else that class declares**, the same way a container audit lists what
+> else a property brings.
+
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not
 answer "why does this still look like that". Start from the element as rendered
-and hunt the effect by any mechanism.
+and hunt the effect by any mechanism. **And a stylesheet is not rendered
+output:** every check on these two forms reads markup or rules, so a fault that
+lives only in geometry reaches Mark's screen with the suite green.
 
 ---
 

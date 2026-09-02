@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-02, at 3.68.0.
+**Last updated:** 2026-09-02, at 3.68.1.
 
 ---
 
 ## What shipped last
 
-**3.68.0**, built as `sfaf-calendar-3.68.0.zip` in the project root, committed
+**3.68.1**, built as `sfaf-calendar-3.68.1.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,13 +26,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.68.1** | **A layout fault 3.68.0 shipped on both request forms, and nothing else.** Every section's heading rendered beside its first field, with Date and Venue squeezed into a roughly 40px column. **The cause was a float that had never run.** The legend float written in 3.66.0 was inert because the fieldsets carrying it were also `display: flex`, and float computes to none on a flex item; 3.68.0 took `.uc-field` off the sections to stop a reset reaching them, and **the class carrying that reset was also the section's layout mode**. A live float and a flex first child cannot share a line. **A section declares its own `display` now** and there is no float in these rules. Structure, headings, tint and hairline are as 3.68.0 left them. |
 | **3.68.0** | **Six changes to the two public forms and the pending queue, and two investigations.** Both forms are **one sequence of sections with a visible boundary**: the fault was a cascade one, `.uc-request-card fieldset.uc-field` at (0,2,1) stripping the border off `.uc-form-section-group` at (0,1,0), and there were three spellings of a section where there is now one neutral panel. The staff form **asks which series first** and the picture chooser shows that series' photo while nothing is chosen. The pending queue **marks an event that arrived with no location**, using the imports' existing state rather than a second one. Location and Event Image are relabelled, the private copy is three sentences, and a cancelled event says "if you have a place". **A private event already emits noindex and nofollow** and always has. **Parts A and H were investigations:** the Listing detail contact box, and the FAQ editors that do not start until Add is pressed. See "Open decisions". |
 | **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
 | **3.66.0** | **Five changes and an investigation.** The four pages that build their own document have the calendar's favicon; the Get a form link dialog says **Event Series** rather than Campaign; the staff form can name the team that gets access, up to caladmin's own cap of two; both request forms have a visible heading hierarchy off the unused Subhead step. **"All Events" was going to the sfaf.org homepage because the cross-origin referrer arrives as an origin with no path**, which the code accepted; it is now treated as no referrer, and **Mark still has to fill in the Calendar home URL setting** for the other half. **Five organizer addresses on the community form was stopped, not built**: see "Open decisions". |
-| **3.65.0** | **The staff request form's picture chooser is a picker rather than a grid.** It drew every picture in the calendar folder at once, which is fine at a dozen and unusable at two hundred. Now: a closed control showing what is chosen, a search box, and a scrollable list with every picture named (one name per row since 3.67.0). It is a native `<details>` of radio buttons, so it works with no JavaScript, which this form needs because it is used by staff who are not logged in. Nothing on the community form or in caladmin was touched. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.68.0, the
+repo.** The tell is the Plugins screen: if it does not say 3.68.1, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -173,7 +173,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 55 items.** Quick 38, needs
+**`TESTING.md` holds the manual testing backlog, 56 items.** Quick 39, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 

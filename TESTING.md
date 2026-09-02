@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 55 items.** Quick 38, needs real conditions 14, blocked on other
+**Outstanding: 56 items.** Quick 39, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -499,12 +499,12 @@ ground, the same on every section of both forms.
 - **The two that were broken are the picture section and the team section on the
   staff form.** They had no edge and no top padding, so they ran straight on
   from the field above. Check those two hardest.
-- **The legend must sit ABOVE an unbroken edge, not inside it.** If the panel's
-  top edge runs up to a heading, stops, and starts again after it, the float on
-  the legend has been lost. Check the same in Safari, which places legends
-  differently.
 - Nothing should have changed size or weight. If a heading now looks bigger than
   it did, a type step has crept in and the sweep did not see it.
+
+**The heading's own position and the field widths moved to 1.39** when 3.68.1
+fixed the layout fault, which covers strictly more than this item did and adds
+the narrow width. Do 1.39 as well; neither replaces the other.
 
 ### 1.36 The staff form's series, first, filling the picture (3.68.0)
 
@@ -542,6 +542,30 @@ it on gives the event a new link, so a link already shared stops working.
 
 **Then prove the sentence.** On a test event, copy the public address, tick
 private, save, and open the old address. It must not resolve to the event.
+
+### 1.39 Both request forms, section by section, and at 770px (3.68.1)
+
+**This is the half no test covers.** `.claude/section-layout-test.php` proves
+the rules; it computes no geometry and opens no browser.
+
+Open the staff form and the community form.
+
+- **Every section's heading must sit ABOVE its first field**, not beside it.
+  The two that were wrong in 3.68.0 are **When** on the staff form, where Date
+  ended up in a roughly 40px column at the right, and **Where it happens** on the
+  community form, where Venue did. Check every section on both forms.
+- **The Date input and the Venue select must be full width**, the same width as
+  Start, End, the street address and the venue website below them.
+- **No hint may wrap one word per line.** The Venue select's hint was doing that
+  down a narrow column.
+- There must be **no large empty area under a heading**.
+- **The panel's edge must draw unbroken above each heading.** If it runs up to
+  the heading, stops, and starts again after it, the legend is being placed in
+  the border again. Check that in **Safari**, which places legends differently.
+
+**Then do all of it again at 770px**, which is the width these forms render at
+inside a host page. Narrow is where a field that is sharing a line with a
+heading has least room to hide.
 
 ---
 

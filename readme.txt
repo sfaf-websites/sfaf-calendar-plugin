@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.68.0
+Stable tag: 3.68.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.68.1 =
+
+**A layout fault 3.68.0 shipped on both request forms, and nothing else.**
+
+**What was on screen.** Every section's heading and its first field rendered side by side: "When" on the left with the Date input squeezed into a roughly 40px column at the right, "Where it happens" with the Venue select the same, and a large empty area under the heading. Every field after the first was correct and full width, and both forms had it.
+
+**What was causing it was a float that had never run before.** The section's `<legend>` was floated, to lift it out of the fieldset's top border so the panel's edge could draw unbroken. That rule was written in 3.66.0 and **was inert from the day it was written**: the only two fieldsets carrying it also carried `.uc-field`, which is `display: flex`, and **float computes to `none` on a flex item**. So the float sat there doing nothing for two releases.
+
+**3.68.0 switched it on, and did so as a side effect of the previous fix.** The remedy taken for the earlier cascade fault was to stop `.uc-request-card fieldset.uc-field` matching a section, by taking `.uc-field` off it. That reset was three properties, `border`, `padding` and `margin-inline`, and none of them mattered here. **The class carrying it was also the section's `display`.** Removing the class to escape the reset removed the layout mode that was holding the float inert, which is the same fault one level along, exactly as it was predicted to be.
+
+**Why a live float broke the first field and only the first field.** Every first child of every section on both forms is `.uc-field`, `.uc-field-row`, `.uc-check` or `.uc-check-grid`, and all four are flex or grid containers. Such a container establishes its own formatting context, so it **refuses to overlap a float and is placed beside it**, and a flex item's `min-width: auto` stops it shrinking away, so it overflowed into a narrow column at the right. Only the first child sits at the float's vertical position; everything below it flows normally, which is why Start and End, the address parts and the venue website were all correct.
+
+**The fix is that a section now declares its own layout mode.** `.uc-form-section-group` is `display: flex; flex-direction: column`, which stacks the legend above the fields inside the padding exactly as the float was trying to, and does it by **making a float impossible rather than by arranging for one to be harmless**. The float, its `width: 100%` and the clearfix that existed only for it are gone. No gap was added: the children keep their own margins, so the mechanism changed and the spacing did not.
+
+**Nothing else changed.** The section structure, the seven named sections on the community form, the heading scale, the tint and the hairline are all as 3.68.0 left them. The type-scale sweep still passes and no new step exists.
+
+**What the new check proves and what it does not.** `.claude/section-layout-test.php` reads `portal.css` with comments removed by a real pass, and asserts that no rule floats a legend inside a section, that a section declares its own `display`, that the value is one in which a float on a child is inert, and that the first child of all eighteen sections across both forms really is one of the flex or grid classes this fault needs. Putting either half of the fault back makes it fail by name. **It computes no geometry and opens no browser**, so it cannot say the Date control is full width, that no hint wraps one word per line, or that the panel edge draws unbroken. That is `TESTING.md` 1.39, including at the 770px the forms render at inside a host page, and it is the only thing that settles it.
 
 = 3.68.0 =
 
