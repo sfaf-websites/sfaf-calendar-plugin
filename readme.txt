@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.66.0
+Stable tag: 3.67.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.67.0 =
+
+**Four changes and an investigation. Two of them are things 3.66.0 found and stopped short of.**
+
+**The community submission form takes up to five email addresses, and the submitter's own is the first of them.** An external organizer who wants two colleagues told when somebody RSVPs can now say so. **It is the About you field**, which is the one that feeds `_uc_request_email` and, at approval, the event's notification list; the "Contact for the event" email is a separate field printed on the public event page and is untouched. An **Add email** button adds a box, and **at five the button is not there at all** rather than greyed out. All five go on the notification list when a manager ticks the registrations box at approval, so they get the alert on every registration and the list of everybody registered on the morning of the event. They get nothing else: no caladmin access, no edit rights, and no message from the form. **The confirmation of submission still goes to the first address only**, because that is the person who filled the form in.
+
+**Rate limiting is unchanged and five addresses are not five allowances.** The limiter counts POSTS, keyed on the client address and on the campaign, and neither key has ever been an email address. One submission is one count whether it names one address or five, and the form still sends exactly one confirmation and one message per approver.
+
+**The pending row shows the contact details the submitter actually entered.** It read the single open box 3.47.0 replaced with three fields, and the public form has not written that key since, so **"Contact for the listing" rendered empty on every community submission for nineteen releases** and the name, email and phone were invisible to whoever approved it. Nothing was lost: the values were stored the whole time under the three keys the event page already reads. The panel now asks `sfaf_event_public_contact()`, the same reader the event page uses, so the two cannot disagree. **The approval prompt names every address the submission asked to have told**, because a tick that puts five people on a list carrying registrant names has to say who they are.
+
+**Event links open in a new tab, everywhere the calendar renders.** The month grid day link, the sidebar row, the card's picture, the card's title, the View event button, the compact card and both "in this series" lists. `target="_blank"` and never `_top`, which would replace the whole window the embed is sitting in. **`rel="noopener"` and deliberately not `noreferrer`:** noopener is the security half, and noreferrer would also suppress the Referer header, which is exactly what the event page reads to work out which calendar somebody came from. Every link a person can reach carries a visually hidden **"(opens in a new tab)"**, which is the pattern the external marker already used here. **The back link is untouched.**
+
+**Two copy corrections.** The staff form's picture picker shows **one name per row**: the picture's title where somebody gave it a real one, its file name where they did not, decided by the check 3.65.0 added rather than by a second rule. It was drawing both, which made a titled picture two lines and an untitled one a line with a gap above it. And the staff form says **"People need to RSVP"** rather than "People need to register", with the section heading and the confirmation email's summary row moved to match, since the control this mirrors in caladmin says **Accept RSVPs**.
+
+**Proved by running.** `.claude/repeater-max-test.js` is new: it slices the real `initRepeaters()` out of `portal.js`, presses the add button until the cap and asks whether the button is still **in the document**, which is a question no class or `disabled` check would answer. Replacing the removal with `disabled = true` makes it fail by name. `submissions-test.php` runs the real validator over six, duplicate, empty, malformed and nested-array addresses, and reads back what the approval screen would; `request-form-test.php` reproduces the empty contact block if the stale key is put back; `embed-modes-test.php` counts the five event anchors and fails if one loses its attributes or gains a `noreferrer`.
+
+**An investigation, reported and not acted on.** What both public forms require today, field by field, which is enforced on the server rather than only in markup, and what a manager loses when each optional field is empty. Nothing was made required: that is Mark's call, and a field somebody cannot answer means an abandoned form rather than an incomplete submission.
 
 = 3.66.0 =
 

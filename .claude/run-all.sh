@@ -86,6 +86,9 @@ done
 # filter-bar-test carries one: a reader that cannot see the thing it is
 # checking reports its absence rather than its own mistake.
 run "prefill-image-test --self-test" node .claude/prefill-image-test.js --self-test
+# And the DOM stub under repeater-max-test.js, for the same reason: it decides
+# whether a button is IN the document, which is the whole assertion there.
+run "repeater-max-test --self-test" node .claude/repeater-max-test.js --self-test
 
 echo
 echo "=== shell guards ==="

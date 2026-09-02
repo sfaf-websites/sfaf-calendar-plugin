@@ -126,6 +126,49 @@ preg_match_all( '/sfaf_event_link\s*\(/', $code, $m2 );
 check( count( $m2[0] ) >= 4, 'fewer than four renderers ask sfaf_event_link(); the card, compact card, sidebar row and month grid all should' );
 
 /* =========================================================================
+ * EVERY LINK TO AN EVENT OPENS A NEW TAB, AND SAYS SO (3.67.0)
+ *
+ * The calendar renders inside somebody else's page, so a card that navigated
+ * in place would take a visitor away from wherever they were reading. That is
+ * also why it is _blank and never _top: _top replaces the whole window the
+ * embed sits in.
+ *
+ * COUNTED, NOT SPOT CHECKED. There are five anchors in this file that point at
+ * an event: the month grid day link, the sidebar row, the card's media, the
+ * card's title and the compact card. One left behind is a display mode that
+ * behaves differently for no reason anybody could see.
+ * ====================================================================== */
+
+preg_match_all( '/sfaf_new_tab_attrs\s*\(/', $code, $m3 );
+check( count( $m3[0] ) >= 5,
+    sprintf( 'only %d of the five event anchors carry sfaf_new_tab_attrs(); one renderer still navigates in place', count( $m3[0] ) ) );
+
+check( false === strpos( $code, 'target="_top"' ),
+    'a renderer uses target="_top", which replaces the whole window the embed is sitting in' );
+
+/*
+ * AND NEVER noreferrer ON ONE OF THEM. noopener is the security half and is
+ * what these carry. noreferrer ALSO suppresses the Referer header, and the
+ * event page reads exactly that header to work out which calendar somebody
+ * came from, which is what "All Events" needs. See sfaf_calendar_referrer().
+ */
+if ( preg_match_all( '/rel="([^"]*)"/', $code, $rels ) ) {
+    foreach ( $rels[1] as $rel ) {
+        if ( false !== strpos( $rel, 'noreferrer' ) ) {
+            check( false, 'a card link carries rel="noreferrer", which strips the referrer the event page reads for its back link' );
+            break;
+        }
+    }
+}
+
+/* THE ANNOUNCEMENT, once per link a person can reach. The card's media anchor
+ * is aria-hidden and out of the tab order, so it has no name to add one to,
+ * which leaves four. */
+preg_match_all( '/sfaf_new_tab_note\s*\(/', $code, $m4 );
+check( count( $m4[0] ) >= 4,
+    sprintf( 'only %d event links say they open a new tab; a link that moves somebody to one has to say so', count( $m4[0] ) ) );
+
+/* =========================================================================
  * THE COMBINED MODE
  * ====================================================================== */
 

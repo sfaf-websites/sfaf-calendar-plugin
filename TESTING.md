@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 47 items.** Quick 30, needs real conditions 14, blocked on other
+**Outstanding: 51 items.** Quick 34, needs real conditions 14, blocked on other
 people 3.
 
 ---
@@ -423,6 +423,70 @@ event on the community form.
 fix for that is a float. If the rule above **The picture** or **Who should be
 able to edit it** runs up to the heading, stops, and starts again after it, the
 float has been lost. Check the same in Safari.
+
+### 1.31 The five-address field, INCLUDING WITH JAVASCRIPT OFF (3.67.0)
+
+Open the community form at `/?uc_event_submit=<series-slug>`. **About you** now
+shows one email box and an **Add email** button.
+
+- Press **Add email** four times. There must be **five boxes and no button at
+  all**, not a greyed-out one. Nothing here removes a box, so the button does
+  not come back.
+- Fill the first box and one other, submit the rest of the form, and check the
+  confirmation arrives **only at the first address**.
+- **Turn JavaScript off and reload.** There must be exactly one box, it must
+  still be required, and the form must still submit. The Add button does
+  nothing without script, which is the state this form has always been in for
+  one address.
+- Submit with something that is not an address in the second box. It must
+  refuse and say so, rather than quietly dropping it.
+
+The validator and the button's disappearance are both proved in the suite. What
+needs a person is that a real browser posts the array, that the confirmation
+goes where it should, and the no-script path.
+
+### 1.32 Approve a submission that named several addresses (3.67.0)
+
+Send a community submission naming three addresses, then open it in **Pending**
+and press **Approve**.
+
+- The panel must name the other two addresses, in full, above the ticks.
+- With the registrations tick left on, approve it, then open the event's
+  notification list. **All three addresses must be on it**, once each.
+- Approve a second time. There must still be one of each.
+- The published notice goes to the first address only, and says they will start
+  getting mail.
+
+**This puts registrant names and email addresses in front of people outside
+SFAF**, which is the whole reason the panel names them. Check the wording says
+what it does.
+
+### 1.33 The pending row shows a submitted contact (3.67.0)
+
+Open any community submission in **Pending**. The row must show **Contact for
+the listing** with the name, email and phone the submitter typed. It rendered
+empty on every submission from 3.47.0 to 3.66.0, so a submission made before
+this release is the case to look at: the values were stored the whole time.
+
+Compare it with what the published event page shows under the mail icon. The
+two read the same function and must say the same thing.
+
+### 1.34 Event links open a new tab, on the embed and in the shortcode (3.67.0)
+
+On a page carrying the calendar, and again on an embed on a different site,
+click through from each of these and confirm a **new tab** opens rather than
+the page navigating:
+
+- a card title, a card picture and its **View event** button
+- a row in the **Upcoming event dates** sidebar
+- an event in a **month grid** day cell
+- a compact card, and a row in an **"in this series"** list
+
+Then, in the new tab, press **All Events**. It must still go to the calendar
+you came from, which is what proves `rel="noopener"` was used rather than
+`noreferrer`. **With a screen reader**, each of those links must announce
+"opens in a new tab" as part of its name, and the hidden sentence must not be
+visible on screen anywhere.
 
 ---
 

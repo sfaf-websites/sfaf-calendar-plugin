@@ -1402,7 +1402,7 @@ class SFAF_Shortcodes {
                                                  * See sfaf_day_event_thumb().
                                                  */
                                                 ?>
-                                                <a href="<?php echo esc_url( sfaf_event_link( $id ) ); ?>"
+                                                <a href="<?php echo esc_url( sfaf_event_link( $id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
                                                    style="--cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>; --cat-media: <?php echo esc_attr( $shades['media'] ); ?>">
                                                     <?php echo sfaf_day_event_thumb( $id ); ?>
                                                     <span class="uc-day-event-text">
@@ -1411,6 +1411,7 @@ class SFAF_Shortcodes {
                                                             <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
                                                         <?php endif; ?>
                                                     </span>
+                                                    <?php echo sfaf_new_tab_note(); ?>
                                                 </a>
                                             </li>
                                         <?php endforeach; ?>
@@ -1672,7 +1673,7 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <a class="uc-sidebar-row" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"
+        <a class="uc-sidebar-row" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
            data-category="<?php echo esc_attr( $slugs ); ?>">
             <span class="uc-sidebar-thumb"><?php echo sfaf_thumb_media( $post_id ); ?></span>
             <span class="uc-sidebar-body">
@@ -1713,6 +1714,7 @@ class SFAF_Shortcodes {
                     <span class="uc-sidebar-where"><?php echo esc_html( $where ); ?></span>
                 <?php endif; ?>
             </span>
+            <?php echo sfaf_new_tab_note(); ?>
         </a>
         <?php
         return ob_get_clean();
@@ -3337,11 +3339,14 @@ class SFAF_Shortcodes {
              */
             ?>
             <div class="uc-lc-media">
-                <a href="<?php echo esc_url( $permalink ); ?>" tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
+                <?php // No new-tab note on this one: it is aria-hidden and out
+                      // of the tab order, so it has no name to add a sentence
+                      // to. The title below is the same destination. ?>
+                <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?> tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
             </div>
 
             <h3 class="uc-card-title uc-lc-title">
-                <a href="<?php echo esc_url( $permalink ); ?>"><?php echo esc_html( get_the_title( $post_id ) ); ?></a>
+                <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?>><?php echo esc_html( get_the_title( $post_id ) ); ?><?php echo sfaf_new_tab_note(); ?></a>
             </h3>
 
             <?php if ( '' !== $summary ) : ?>
@@ -3386,6 +3391,7 @@ class SFAF_Shortcodes {
                         'label'   => 'View event',
                         'href'    => $permalink,
                         'variant' => 'secondary',
+                        'new_tab' => true,
                     ) ); ?>
                     <?php if ( $can_donate ) : ?>
                         <?php echo sfaf_action_button( array(
@@ -3431,7 +3437,7 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <a href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>" class="uc-compact-card"
+        <a href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?> class="uc-compact-card"
            data-category="<?php echo esc_attr( $cat_slugs ); ?>">
             <div class="uc-compact-thumb"><?php echo sfaf_event_thumbnail( $post_id, 'thumbnail' ); ?></div>
             <div class="uc-compact-date">
@@ -3452,6 +3458,7 @@ class SFAF_Shortcodes {
                     <?php endif; ?>
                 </div>
             </div>
+            <?php echo sfaf_new_tab_note(); ?>
         </a>
         <?php
         return ob_get_clean();

@@ -817,6 +817,13 @@
             // Start the index above any server-rendered rows.
             var counter = rows ? rows.querySelectorAll('.uc-repeater-row').length : 0;
 
+            /* HOW MANY ROWS THIS REPEATER ALLOWS, or 0 for no ceiling, which
+               is every repeater that had one before this attribute existed.
+               The number is written by the renderer that owns the control, so
+               the browser cannot offer a row the server would refuse. */
+            var max = parseInt(rep.getAttribute('data-repeater-max') || '0', 10);
+            if (!(max > 0)) { max = 0; }
+
             if (addBtn && tpl && rows) {
                 addBtn.addEventListener('click', function () {
                     var html = tpl.innerHTML.replace(/__I__/g, 'new-' + counter);
@@ -825,6 +832,13 @@
                     wrap.innerHTML = html.trim();
                     var node = wrap.firstChild;
                     rows.appendChild(node);
+                    /* AT THE CAP THE BUTTON GOES, rather than being disabled.
+                       A disabled control is still something to read and wonder
+                       about; one that is not there is answered. Nothing here
+                       removes a row, so it has no reason to come back. */
+                    if (max && rows.querySelectorAll('.uc-repeater-row').length >= max) {
+                        addBtn.remove();
+                    }
                 });
             }
 

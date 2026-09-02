@@ -308,11 +308,11 @@ if ( $self ) {
     $probe( 'does not read an attribute as visible text',
         seen( nodes( '<span data-name="hidden-thing"></span>', '//span' )[0] ), '' );
     $probe( 'finds an element by class among several',
-        count( nodes( '<span class="a uc-image-option-file b">x</span>',
-            '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-file ")]' ) ), 1 );
+        count( nodes( '<span class="a uc-image-option-name b">x</span>',
+            '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-name ")]' ) ), 1 );
     $probe( 'does not match a class that is only a prefix',
-        count( nodes( '<span class="uc-image-option-filename">x</span>',
-            '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-file ")]' ) ), 0 );
+        count( nodes( '<span class="uc-image-option-nameplate">x</span>',
+            '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-name ")]' ) ), 0 );
 
     echo "\n" . ( $ok ? 'the reader can see what it is looking for.' : 'THE READER IS BROKEN.' ) . "\n";
     exit( $ok ? 0 : 1 );
@@ -394,22 +394,28 @@ expect( 'which portal.js is what marks',
     (bool) strpos( $js, "picker.classList.add('uc-image-picker-live');" ), true );
 
 /* =========================================================================
- * 4. EVERY ROW SHOWS ITS FILE NAME, AS TEXT.
+ * 4. EVERY ROW SHOWS ONE NAME, AS TEXT: THE TITLE OR THE FILE, NEVER BOTH.
  *
- * The reason this control exists. An attribute is not a file name somebody can
+ * The reason this control exists. An attribute is not a name somebody can
  * read, and neither is a title attribute that appears on hover.
+ *
+ * WHICH ONE EACH ROW GETS IS THE WHOLE ASSERTION (3.67.0). 41 was titled by a
+ * person and shows that title. 42's and 45's titles are what WordPress makes
+ * of a file name, and 43 has no title at all, so all three show the file. A
+ * row that showed both was two lines for one picture and a line with a gap
+ * above it for the next.
  * ====================================================================== */
 
-$files = array_map( 'seen', nodes( $html,
-    '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-file ")]' ) );
-expect( 'the file name is visible on every row, and on the no-picture row',
-    $files,
-    array( 'No picture', 'prep-clinic-open-day-1200x675.jpg', 'harm-reduction-2026-a.jpg', 'harm-reduction-2026-b.jpg', 'dsc_0043.jpg' ) );
+$names = array_map( 'seen', nodes( $html,
+    '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-name ")]' ) );
+expect( 'one name on every row, and on the no-picture row',
+    $names,
+    array( 'No picture', 'PrEP clinic open day', 'harm-reduction-2026-a.jpg', 'harm-reduction-2026-b.jpg', 'dsc_0043.jpg' ) );
 
 /* Two pictures whose names differ only in a suffix are still told apart, which
    is the case a thumbnail alone cannot answer. */
 expect( 'two similar pictures are distinguishable by what is on the screen',
-    count( array_unique( $files ) ), count( $files ) );
+    count( array_unique( $names ) ), count( $names ) );
 
 $thumbs = nodes( $html, '//img[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-thumb ")]' );
 expect( 'every picture row carries a thumbnail', count( $thumbs ), 4 );
@@ -418,13 +424,14 @@ expect( 'and the thumbnails are decorative, because the name is beside them',
     array( '' ) );
 
 /*
- * A REAL TITLE STILL LEADS, AND WORDPRESS' FILENAME FALLBACK STILL DOES NOT.
- * 41 was titled by a person; 42's "title" is "img 2847 final v3", which is what
- * WordPress makes of a filename and says nothing.
+ * AND NOTHING DRAWS A SECOND LINE. The two classes the old two-line row used
+ * are gone from the rendered markup entirely, so a row cannot quietly grow its
+ * file name back under a title.
  */
-$titles = array_map( 'seen', nodes( $html,
-    '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-title ")]' ) );
-expect( 'only the picture a person titled gets a title line', $titles, array( 'PrEP clinic open day' ) );
+expect( 'no row carries a separate title line', count( nodes( $html,
+    '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-title ")]' ) ), 0 );
+expect( 'and no row carries a separate file line', count( nodes( $html,
+    '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-option-file ")]' ) ), 0 );
 
 /*
  * THE FALLBACK IS DECIDED AGAINST THE FILE, and this is the question the

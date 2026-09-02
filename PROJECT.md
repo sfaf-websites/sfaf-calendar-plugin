@@ -82,6 +82,38 @@ no path is now treated as no referrer, so the configured URL answers instead.
 > `.claude/self-built-pages-test.php` asserts it so it is a decision somebody
 > can find rather than a surprise the next person debugs from scratch.
 
+### Event links open a new tab, and rel="noopener" is load-bearing
+
+**Every link from the calendar to an event opens a new tab** (3.67.0): the month
+grid day link, the sidebar row, the list card's picture and title, the View
+event button, the compact card, and the two "in this series" lists. The calendar
+renders inside somebody else's page, so a card that navigated in place would
+take a visitor away from whatever they were reading, and closing a tab is how
+they get back.
+
+- **`_blank`, and never `_top`.** `_top` replaces the whole window the embed is
+  sitting in, which is somebody else's page.
+- **`rel="noopener"`, and deliberately NOT `noreferrer`.** noopener is the
+  security half: it stops the opened page reaching back through
+  `window.opener`. **noreferrer also suppresses the Referer header, which is
+  exactly what the section above reads** to work out which calendar somebody
+  came from. Adding it would break "All Events" on every event opened from a
+  card. `sfaf_action_button()`'s `external` flag keeps `noreferrer`, because
+  that one goes off this site entirely; event links take `new_tab` instead.
+- **Every link a person can reach says so**, in a visually hidden
+  `(opens in a new tab)` inside the link, which is the pattern
+  `sfaf_external_marker()` already established here. The list card's picture
+  link is the exception and is `aria-hidden` with `tabindex="-1"`: it has no
+  name to add a sentence to, and the title beside it is the same destination.
+- **One place decides both**, `sfaf_new_tab_attrs()` and `sfaf_new_tab_note()`,
+  for the reason `sfaf_event_link()` is one place: a rule written into three of
+  four renderers is a display mode that behaves differently for no visible
+  reason. `.claude/embed-modes-test.php` counts the anchors and fails if one
+  loses its attributes or gains a `noreferrer`.
+
+**The back link is unchanged.** Carrying a return address on the embed is a
+separate piece of work and nothing here begins it.
+
 ### Pages that build their own document
 
 Four surfaces write their own `<!DOCTYPE>` and their own `<head>` and call
@@ -451,9 +483,47 @@ place to put the picture is a second place for it to be wrong.
 - **The event contact is three fields and is public. The submitter's own name
   and address are two fields and are not.** Different keys, different labels,
   and only the first is readable from a template.
+- **The About you email takes up to five addresses, and the submitter's own is
+  the FIRST of them rather than additional to them.** An external organizer
+  wanting colleagues told when somebody RSVPs says so here. The first address
+  is stored where every reader already looks, `SFAF_Request::META_EMAIL`, so
+  `kind()`, `submitter()`, the confirmation and the pending queue are untouched
+  by the field taking more than one; the whole list goes to
+  `SFAF_Submit::META_NOTIFY_EMAILS`, and only when there is more than the
+  submitter. `SFAF_Submissions::notify_addresses()` is the one reader, and the
+  approval tick adds every one of them. **The confirmation goes to the first
+  address only**, because that is the person who filled the form in, and the
+  others get no message from the form at all.
+- **The cap is `SFAF_Submit::MAX_EMAILS`, read by the control and the
+  validator.** The Add button is not rendered at the cap, and portal.js removes
+  it there: `data-repeater-max` on the standard repeater. **Gone rather than
+  disabled**, because a disabled control is still a thing to read and wonder
+  about. An address past the cap is dropped; an address that is not an address
+  is an ERROR, because dropping it would promote the next one to first and the
+  first is who the submission is recorded as being from.
+- **Five addresses are not five allowances.** The rate limiter counts POSTS,
+  keyed on the client and on the campaign, and neither key has ever been an
+  address.
 - **A submitted address does not create a venue.** The venue list is offered
   first; the parts are stored as the submitter's answer, and promoting one is a
   decision taken at approval by somebody who knows it will be used again.
+
+**THE PUBLIC CONTACT IS STORED TWICE AND ONE READER DECIDES.** 3.47.0 replaced
+`_uc_public_contact`, a single open box, with `_uc_contact_name`,
+`_uc_contact_email` and `_uc_contact_phone`. The old key is still read, because
+events submitted on 3.46.0 have one and there is no migration.
+`sfaf_event_public_contact()` is the single reader: **the three-part answer
+wins where it exists**, and anything that wants to show what a submitter gave
+asks that function rather than a meta key. The pending row read the old key
+directly for nineteen releases and rendered an empty line for it.
+
+> **caladmin's "Listing detail" card still reads and writes the OLD key**, in
+> `render_field()` and `save_event_from_post()`. On a submission from 3.47.0
+> onwards its "Contact shown publicly" box is therefore empty while the event
+> page shows a contact, and typing into it stores a value the page will not
+> prefer. **Reported, not changed:** whether that box edits the three fields or
+> stays a fourth is a decision, and its save path carries the `$offered`
+> guarantee. See "Open decisions" in `HANDOVER.md`.
 
 ### Approving a submission asks two questions, once
 
@@ -487,7 +557,15 @@ hook on the status, so an event published by any other route sends nothing.
 - **Both answers are re-derived from the event at approval.** The POST carries
   two ticks and nothing else: no address, no name. An address arriving in the
   request would be an address anybody who can reach that route could nominate,
-  onto a list that is sent people's names and addresses.
+  onto a list that is sent people's names and addresses. That is why the
+  community form's extra addresses are read back through
+  `SFAF_Submissions::notify_addresses()`, which re-checks every one and applies
+  the cap again whatever is in the database.
+- **The prompt names every address it is about to add.** One tick can put five
+  people on a list carrying registrant names, and somebody cannot decide about
+  a set they cannot see. `$listed`, which decides whether the published notice
+  says "you will start getting mail", still means the SUBMITTER and only the
+  submitter: that message goes to the first address and speaks for it alone.
 - **No usable address means neither question is offered**, and the prompt says
   so. A tick that cannot do anything still reads as a promise that it did.
 - The prompt is a plain panel that portal.js lifts into a `<dialog>`, and its
@@ -3180,41 +3258,23 @@ Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
 
-### Up to five organizer addresses on the community form, stopped 2026-09-02
+### Naming the community form's two email fields, still open
 
-**Asked for, and stopped before it was built, because checking the premise found
-the premise was wrong.** The request was: allow up to five organizer addresses
-on the community submission form, the submitter's own being the first of the
-five, all of them going on the event's notification list so they receive the
-registration alerts and the pre-event summary.
-
-**The instruction was to pick the field that feeds that list, and to stop and
-say so if it turned out to be the About you field.** It is. The community form
-has two email fields and they do unrelated jobs:
+**Both do unrelated jobs and neither label says which.** This was raised in
+3.66.0 and half of what it blocked has since shipped: five addresses on the
+About you field, in 3.67.0, and the pending row showing what was submitted.
+**What is still undecided is what the two fields are CALLED.**
 
 | Field | Meta | What it actually does |
 |---|---|---|
-| **About you → Your email** | `_uc_request_email` | The submitter's identity. `SFAF_Submissions::submitter()` reads it, the confirmation goes to it, and it is **the only address that reaches the notification list**, at approval, when a manager ticks the prompt. |
+| **About you → Your email** | `_uc_request_email`, plus `_uc_submitted_notify_emails` for the rest | The submitter's identity, and now up to five addresses. `SFAF_Submissions::submitter()` reads the first, the confirmation goes to it, and these are **the only addresses that reach the notification list**, at approval, when a manager ticks the prompt. |
 | **Contact for the event → Email** | `_uc_contact_email` | Printed on the **public event page** through `sfaf_event_public_contact()`. It reaches no list and no message. |
 
-So "the public form takes one organizer email" describes neither field
-accurately. **The labels are what is wrong**, and renaming them is a decision
-rather than a build.
-
-**Two findings came out of the same check and are the reason this is worth
-keeping.** Both are about the pending row:
-
-- **It does not show the contact block at all.** It reads `_uc_public_contact`,
-  the single open box that 3.47.0 replaced with three fields, and the public
-  form has not written that key since. So "Contact for the listing" renders
-  empty on every community submission from 3.47.0 onwards, and the name, email
-  and phone the submitter actually filled in are invisible to the approver.
-- **Therefore the assumption that every submitted address is already visible in
-  Pending does not hold**, for one address or five.
-
-**Nothing was built.** The right order is: decide what the two fields are
-called, fix the pending row so it shows what was submitted, and only then decide
-whether five of anything is wanted.
+3.67.0 ships **"Your email, and anybody else who should get RSVPs"** on the
+first, which says what the field does and is longer than a label wants to be.
+The second is still **"Email"** under a legend that carries the whole of its
+meaning. Renaming either is a decision rather than a build, and it wants taking
+with the pair in front of you rather than one at a time.
 
 ### Announcing new dates to followers, agreed 2026-08-24
 

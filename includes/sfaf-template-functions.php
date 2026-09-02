@@ -183,6 +183,51 @@ function sfaf_external_marker( $post_id ) {
         . '<span class="uc-sr-only"> (opens on the event\'s own site)</span>';
 }
 
+/**
+ * What makes a link to an event open in a new tab.
+ *
+ * ONE PLACE, FOR THE SAME REASON sfaf_event_link() IS ONE PLACE. Four
+ * renderers draw a link to an event, and a rule written into three of them is
+ * a display mode where the behaviour silently differs.
+ *
+ * WHY A NEW TAB AT ALL. The calendar renders inside somebody else's page, and
+ * a visitor reading a list of events keeps their place by closing the tab
+ * rather than by finding their way back. That is also why this is `_blank` and
+ * never `_top`: `_top` would replace the whole window the embed is sitting in.
+ *
+ * rel="noopener" AND DELIBERATELY NOT "noreferrer". noopener is the security
+ * half: it stops the opened page reaching back through window.opener. noreferrer
+ * ALSO suppresses the Referer header, and the event page reads exactly that
+ * header to work out which calendar somebody came from. See
+ * sfaf_calendar_referrer(). Adding it would break "All Events" on every event
+ * opened from a card, which is the thing 3.66.0 was for.
+ *
+ * @return string Attributes, with a leading space, ready to concatenate.
+ */
+function sfaf_new_tab_attrs() {
+    return ' target="_blank" rel="noopener"';
+}
+
+/**
+ * The sentence that says a link opens a new tab.
+ *
+ * A LINK THAT MOVES SOMEBODY TO A NEW TAB HAS TO SAY SO. It is the same
+ * pattern sfaf_external_marker() already uses on this codebase: a real
+ * sentence in a visually hidden span, clipped rather than display:none so it
+ * is announced, sitting inside the link so it becomes part of the link's own
+ * name.
+ *
+ * NOT A TITLE ATTRIBUTE. A title is not announced reliably, is not reachable
+ * by touch, and vanishes on a keyboard. NOT AN ICON EITHER: the arrow this
+ * codebase already draws means "this leaves the site", which is a different
+ * fact, and drawing it on every card would say the wrong thing on most of them.
+ *
+ * @return string
+ */
+function sfaf_new_tab_note() {
+    return '<span class="uc-sr-only"> (opens in a new tab)</span>';
+}
+
 /* -------------------------------------------------------------------------
  * SFAF icon set (brand guide v3.0, p.14)
  *
@@ -307,7 +352,10 @@ function sfaf_icon_paths() {
  *     @type string $variant  'primary' or 'secondary'. Default 'secondary'.
  *     @type string $class    Extra classes, e.g. a JS hook.
  *     @type array  $attrs    Extra attributes as name => value.
- *     @type bool   $external Open in a new tab with noopener.
+ *     @type bool   $external Off this site: a new tab, noopener and noreferrer.
+ *     @type bool   $new_tab  A new tab on this site: noopener, and the referrer
+ *                            kept, because the event page reads it. See
+ *                            sfaf_new_tab_attrs().
  * }
  * @return string
  */
@@ -319,6 +367,7 @@ function sfaf_action_button( $args = array() ) {
         'class'    => '',
         'attrs'    => array(),
         'external' => false,
+        'new_tab'  => false,
     ), (array) $args );
 
     $label = trim( (string) $args['label'] );
@@ -334,11 +383,16 @@ function sfaf_action_button( $args = array() ) {
     $is_link = ( '' !== (string) $args['href'] );
     $tag     = $is_link ? 'a' : 'button';
 
-    $out = '<' . $tag . ' class="' . esc_attr( $classes ) . '"';
+    $out     = '<' . $tag . ' class="' . esc_attr( $classes ) . '"';
+    $new_tab = false;
     if ( $is_link ) {
         $out .= ' href="' . esc_url( $args['href'] ) . '"';
         if ( ! empty( $args['external'] ) ) {
-            $out .= ' target="_blank" rel="noopener noreferrer"';
+            $out    .= ' target="_blank" rel="noopener noreferrer"';
+            $new_tab = true;
+        } elseif ( ! empty( $args['new_tab'] ) ) {
+            $out    .= sfaf_new_tab_attrs();
+            $new_tab = true;
         }
     } else {
         $out .= ' type="button"';
@@ -348,6 +402,11 @@ function sfaf_action_button( $args = array() ) {
     }
     $out .= '>';
     $out .= '<span class="uc-actionbtn-label">' . esc_html( $label ) . '</span>';
+    /* A button that opens a new tab says so, in the link's own name, whichever
+     * of the two reasons it is doing it for. */
+    if ( $new_tab ) {
+        $out .= sfaf_new_tab_note();
+    }
     $out .= '<span class="uc-actionbtn-arrow" aria-hidden="true">' . sfaf_icon( 'arrow', array( 'size' => '15px' ) ) . '</span>';
     $out .= '</' . $tag . '>';
 
@@ -1173,10 +1232,10 @@ function sfaf_series_list_html( $post_id ) {
                 $st = get_post_meta( $eid, '_uc_start_time', true );
                 $ts = $d ? strtotime( $d ) : false; ?>
                 <li>
-                    <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
+                    <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>>
                         <span class="uc-series-date"><?php echo $ts ? esc_html( sfaf_ap_date( $ts, 'short' ) ) : ''; ?></span>
                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
-                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?>
+                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?><?php echo sfaf_new_tab_note(); ?>
                     </a>
                 </li>
             <?php endforeach; ?>

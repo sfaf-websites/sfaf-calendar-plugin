@@ -6,13 +6,13 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-02, at 3.66.0.
+**Last updated:** 2026-09-02, at 3.67.0.
 
 ---
 
 ## What shipped last
 
-**3.66.0**, built as `sfaf-calendar-3.66.0.zip` in the project root, committed
+**3.67.0**, built as `sfaf-calendar-3.67.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
 one stray PNG that is not part of the plugin.
 
@@ -26,10 +26,10 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
 | **3.66.0** | **Five changes and an investigation.** The four pages that build their own document have the calendar's favicon; the Get a form link dialog says **Event Series** rather than Campaign; the staff form can name the team that gets access, up to caladmin's own cap of two; both request forms have a visible heading hierarchy off the unused Subhead step. **"All Events" was going to the sfaf.org homepage because the cross-origin referrer arrives as an origin with no path**, which the code accepted; it is now treated as no referrer, and **Mark still has to fill in the Calendar home URL setting** for the other half. **Five organizer addresses on the community form was stopped, not built**: see "Open decisions". |
-| **3.65.0** | **The staff request form's picture chooser is a picker rather than a grid.** It drew every picture in the calendar folder at once, which is fine at a dozen and unusable at two hundred. Now: a closed control showing what is chosen, a search box, and a scrollable list with each picture's **file name visible**. It is a native `<details>` of radio buttons, so it works with no JavaScript, which this form needs because it is used by staff who are not logged in. Nothing on the community form or in caladmin was touched. |
+| **3.65.0** | **The staff request form's picture chooser is a picker rather than a grid.** It drew every picture in the calendar folder at once, which is fine at a dozen and unusable at two hundred. Now: a closed control showing what is chosen, a search box, and a scrollable list with every picture named (one name per row since 3.67.0). It is a native `<details>` of radio buttons, so it works with no JavaScript, which this form needs because it is used by staff who are not logged in. Nothing on the community form or in caladmin was touched. |
 | **3.64.2** | **Two corrections.** "Fill these in" wrote the series picture into two hidden fields and left the preview empty and the tag on "Placeholder", so the button reported filling six things in and the picture was the one nobody could see. It now shows the preview, offers **Remove**, and turns the tag to **Event-specific**, which is what a copied image is. The card's Image row shows a thumbnail rather than `something-1024x576.jpg`. And **Add to calendar** moved to directly under **RSVP** in the Display card, since RSVP is what greys it, with the greyed line now naming the cause first. |
-| **3.64.1** | **An event can be put into an existing series from New Event.** The control was written in 3.38.0 and called 102 lines above the variables it needed, so it has never rendered; the fix is moving two lines. The schedule screen's "Create a new event in this series" button now actually arrives with the series chosen, and that screen reads its pattern from a recurrence group member rather than from whichever date is soonest. |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
 repo.** The tell is the Plugins screen: if it does not say 3.66.0, the
@@ -173,7 +173,7 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 47 items.** Quick 30, needs
+**`TESTING.md` holds the manual testing backlog, 51 items.** Quick 34, needs
 real conditions 14, blocked on other people 3. Nothing in the build can settle
 any of them.
 
@@ -187,15 +187,37 @@ instead is **Settings, Display, Calendar home URL**, which is empty. Empty means
 the fall-through is the event archive on resources.sfaf.org, which is not a
 public surface. `PROJECT.md` §1 has the whole of it.
 
-**THE COMMUNITY FORM'S TWO EMAIL FIELDS NEED NAMING BEFORE ANYTHING IS BUILT ON
-THEM.** Five organizer addresses was asked for in 3.66.0 and stopped. **About
-you, Your email** is the submitter's identity and is the only address that
-reaches the notification list. **Contact for the event, Email** is printed on
-the public event page and reaches no list at all. Two findings came with that:
-the pending row does not show the contact block at all, because it reads a meta
-key the public form has not written since 3.47.0, so **no submitted contact
-address is visible to an approver today**. `PROJECT.md` §8 has the table and the
-order the three decisions want taking in.
+**THE COMMUNITY FORM'S TWO EMAIL FIELDS STILL NEED NAMING.** Half of what this
+blocked in 3.66.0 has shipped: **About you, Your email** takes up to five
+addresses as of 3.67.0 and they all reach the notification list, and the pending
+row shows what was submitted. What is undecided is what the two are CALLED.
+3.67.0 ships **"Your email, and anybody else who should get RSVPs"** on the
+first, which says what the field does and is longer than a label wants to be;
+**Contact for the event, Email** is still just "Email" under a legend carrying
+the whole of its meaning. `PROJECT.md` §8 has the table.
+
+**caladmin's "Listing detail" card still reads the key 3.47.0 replaced.** Its
+"Contact shown publicly" box is `_uc_public_contact`, which no public form has
+written since, so on a community submission the box is **empty while the event
+page shows a contact**, and typing into it stores a value the page will not
+prefer. **Reported, not changed:** whether that box should edit the three fields
+or stay a fourth is a decision, and its save path carries the `$offered`
+guarantee. `PROJECT.md` §1, under the community submission form.
+
+**WHAT THE TWO PUBLIC FORMS REQUIRE IS MARK'S CALL, AND NOTHING WAS CHANGED.**
+The full field-by-field inventory was the 3.67.0 hand-off. The shape of it:
+
+- **Community form, optional today:** venue choice, street/city/state/ZIP (the
+  street is required only when no venue is picked), venue website, capacity,
+  age restriction, registration link, contact email OR phone (one of the two is
+  required, neither on its own), picture, FAQs, notes.
+- **Staff form, optional today:** categories, series, repeat and repeat-until,
+  venue AND the "somewhere else" box (so a request can arrive with **no
+  location at all**, which the community form refuses), picture, upload, RSVP
+  and capacity, FAQ set, own FAQs, teams, notes.
+- **The constraint on the decision:** a field somebody cannot answer means an
+  abandoned form rather than an incomplete submission, and an image is often
+  the thing an external organizer does not have.
 
 **Four things the calendar publicly asserts that are untrue or incomplete.**
 Found by reading `SFAF_Seo` during 3.56.0, and deliberately not changed: each is

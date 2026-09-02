@@ -89,10 +89,10 @@ $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
                                 $d  = get_post_meta( $eid, '_uc_event_date', true );
                                 $st = get_post_meta( $eid, '_uc_start_time', true ); ?>
                                 <li>
-                                    <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
+                                    <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>>
                                         <span class="uc-series-date"><?php echo esc_html( sfaf_ap_date( $d, 'short' ) ); ?></span>
                                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
-                                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?>
+                                        <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?><?php echo sfaf_new_tab_note(); ?>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
@@ -108,9 +108,9 @@ $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
                                 // The stored string, for the reason given in the block above.
                                 $d = get_post_meta( $eid, '_uc_event_date', true ); ?>
                                 <li>
-                                    <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
+                                    <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>>
                                         <span class="uc-series-date"><?php echo esc_html( sfaf_ap_date( $d, 'short_year' ) ); ?></span>
-                                        <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
+                                        <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span><?php echo sfaf_new_tab_note(); ?>
                                     </a>
                                 </li>
                             <?php endforeach; ?>

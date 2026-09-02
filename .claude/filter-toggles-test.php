@@ -173,6 +173,12 @@ function sfaf_prime_rsvp_counts( $ids ) {}
 function sfaf_event_categories( $id ) { return array(); }
 function sfaf_thumb_media( $id ) { return '<span class="uc-thumb-ph"></span>'; }
 function sfaf_event_link( $id ) { return get_permalink( $id ); }
+/* THE REAL STRINGS, NOT A BLANK STUB. These decide what a card's link markup
+ * actually is, so a stub returning '' would let a renderer lose its new-tab
+ * attributes without a single assertion here noticing. See sfaf_new_tab_attrs()
+ * in sfaf-template-functions.php. */
+function sfaf_new_tab_attrs() { return ' target="_blank" rel="noopener"'; }
+function sfaf_new_tab_note() { return '<span class="uc-sr-only"> (opens in a new tab)</span>'; }
 function sfaf_event_location_short( $id ) { return ''; }
 function sfaf_event_location( $id ) { return ''; }
 function sfaf_icon( $n, $a = array() ) { return ''; }

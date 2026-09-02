@@ -151,6 +151,50 @@ class SFAF_Submissions {
     }
 
     /**
+     * Every address the submitter asked to have told, the submitter first.
+     *
+     * ONE READER FOR BOTH FORMS. The staff form takes a single address and
+     * gets a list of one; the community form takes up to
+     * SFAF_Submit::MAX_EMAILS and gets what was actually sent. The approval
+     * screen asks this rather than counting fields, so a form that offered a
+     * different number would not need a second branch here.
+     *
+     * RE-DERIVED AND RE-CHECKED, NEVER TAKEN FROM A REQUEST. These go onto a
+     * list that is sent registrant names and addresses, so each one is checked
+     * again on the way out and the cap is applied again, whatever is in the
+     * database. A stored value can predate the rule that would have refused it.
+     *
+     * @param int $event_id
+     * @return string[] Lower-cased, deduplicated, capped, the submitter first.
+     */
+    public static function notify_addresses( $event_id ) {
+        $event_id = (int) $event_id;
+        $who      = self::submitter( $event_id );
+
+        $out = array();
+        if ( ! empty( $who['usable'] ) ) {
+            $out[] = $who['email'];
+        }
+
+        $stored = get_post_meta( $event_id, SFAF_Submit::META_NOTIFY_EMAILS, true );
+        foreach ( (array) $stored as $one ) {
+            if ( ! is_scalar( $one ) ) {
+                continue;
+            }
+            $one = strtolower( trim( (string) $one ) );
+            if ( '' === $one || ! is_email( $one ) || in_array( $one, $out, true ) ) {
+                continue;
+            }
+            $out[] = $one;
+            if ( count( $out ) >= SFAF_Submit::MAX_EMAILS ) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Put the submitter on the event's notification list.
      *
      * A TYPED ADDRESS, WHICH IS EXACTLY WHAT THIS IS. The list already accepts

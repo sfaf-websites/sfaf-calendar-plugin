@@ -351,6 +351,120 @@ if ( ! isset( $out['errors']['end_time'] ) ) {
 }
 
 /* =========================================================================
+ * 3b. UP TO FIVE ADDRESSES ON THE ABOUT YOU FIELD (3.67.0).
+ *
+ * The submitter's own is the FIRST of the five rather than additional to them,
+ * so nothing about who submitted a thing changes; what changes is how many
+ * people the approval tick can put on the event's notification list. That list
+ * is sent registrant names and email addresses, which is why every one of the
+ * assertions below is about REFUSING rather than about accepting.
+ * ====================================================================== */
+$out = SFAF_Submit::validate( good( array(
+    'submitter_email' => array( 'dana@example.org', 'lee@example.org', 'sam@example.org' ),
+) ) );
+expect( 'three addresses are kept, in the order they were given',
+    $out['clean']['submitter_emails'],
+    array( 'dana@example.org', 'lee@example.org', 'sam@example.org' ) );
+expect( 'and the first of them is the submitter',
+    $out['clean']['submitter_email'], 'dana@example.org' );
+if ( ! empty( $out['errors'] ) ) {
+    fail( 'a submission with three addresses was refused: ' . implode( ', ', array_keys( $out['errors'] ) ) );
+}
+
+/* ONE ADDRESS STILL POSTS AS A STRING, which is what a browser with no script
+ * sends and what every existing caller passes. */
+$out = SFAF_Submit::validate( good() );
+expect( 'a single address still arrives as a list of one',
+    $out['clean']['submitter_emails'], array( 'dana@example.org' ) );
+
+/* THE CAP IS THE SERVER'S, not the button's. A sixth is a hand-built body. */
+$out = SFAF_Submit::validate( good( array( 'submitter_email' => array(
+    'a@example.org', 'b@example.org', 'c@example.org',
+    'd@example.org', 'e@example.org', 'f@example.org',
+) ) ) );
+expect( 'the sixth address is dropped', count( $out['clean']['submitter_emails'] ), SFAF_Submit::MAX_EMAILS );
+if ( in_array( 'f@example.org', $out['clean']['submitter_emails'], true ) ) {
+    fail( 'an address past the cap was stored' );
+}
+
+/* A BAD ONE IS AN ERROR, NOT A SILENT DROP. Dropping it would promote the next
+ * address to first, and the first is who the submission is recorded as being
+ * from and who gets the confirmation. */
+$out = SFAF_Submit::validate( good( array(
+    'submitter_email' => array( 'not-an-address', 'lee@example.org' ),
+) ) );
+if ( ! isset( $out['errors']['submitter_email'] ) ) {
+    fail( 'an address that is not one was dropped silently, promoting the next to submitter' );
+}
+
+expect( 'the same address twice is stored once',
+    SFAF_Submit::validate( good( array( 'submitter_email' => array(
+        'dana@example.org', 'DANA@example.org',
+    ) ) ) )['clean']['submitter_emails'],
+    array( 'dana@example.org' ) );
+
+expect( 'an empty box between two filled ones is skipped rather than stored',
+    SFAF_Submit::validate( good( array( 'submitter_email' => array(
+        'dana@example.org', '', 'lee@example.org',
+    ) ) ) )['clean']['submitter_emails'],
+    array( 'dana@example.org', 'lee@example.org' ) );
+
+/* A NESTED ARRAY NAMES NO ADDRESS. Casting one to a string is a PHP warning
+ * and an empty key, which is the shape a hand-built post body arrives in. */
+$out = SFAF_Submit::validate( good( array(
+    'submitter_email' => array( 'dana@example.org', array( 'x' => 'y' ) ),
+) ) );
+expect( 'a nested array in the field is ignored',
+    $out['clean']['submitter_emails'], array( 'dana@example.org' ) );
+
+/*
+ * WHAT THE APPROVAL SCREEN READS BACK, and it re-checks rather than trusting
+ * what is stored: a stored value can predate the rule that would have refused
+ * it, and these go onto a list carrying registrant data.
+ */
+$GLOBALS['meta'] = array(
+    20 => array(
+        SFAF_Submissions::META_KIND    => SFAF_Submissions::KIND_COMMUNITY,
+        SFAF_Request::META_EMAIL       => 'dana@example.org',
+        SFAF_Submit::META_NOTIFY_EMAILS => array( 'dana@example.org', 'lee@example.org', 'sam@example.org' ),
+    ),
+    21 => array(
+        SFAF_Submissions::META_KIND => SFAF_Submissions::KIND_STAFF,
+        SFAF_Request::META_EMAIL    => 'colleague@sfaf.org',
+    ),
+    22 => array(
+        SFAF_Submissions::META_KIND    => SFAF_Submissions::KIND_COMMUNITY,
+        SFAF_Request::META_EMAIL       => 'dana@example.org',
+        SFAF_Submit::META_NOTIFY_EMAILS => array( 'dana@example.org', 'nonsense', 'lee@example.org' ),
+    ),
+);
+expect( 'every address comes back, the submitter first',
+    SFAF_Submissions::notify_addresses( 20 ),
+    array( 'dana@example.org', 'lee@example.org', 'sam@example.org' ) );
+expect( 'a staff request answers with the one address it has',
+    SFAF_Submissions::notify_addresses( 21 ), array( 'colleague@sfaf.org' ) );
+expect( 'a stored value that is not an address is refused on the way out',
+    SFAF_Submissions::notify_addresses( 22 ),
+    array( 'dana@example.org', 'lee@example.org' ) );
+expect( 'an event nobody submitted has nobody to tell',
+    SFAF_Submissions::notify_addresses( 13 ), array() );
+
+/*
+ * FIVE ADDRESSES ARE NOT FIVE SUBMISSIONS. The limiter counts POSTS, keyed on
+ * the client and on the campaign, and neither key has ever been an address.
+ * This is the assertion that says so rather than the reasoning saying so.
+ */
+$submit_rate_src = file_get_contents( $root . '/includes/class-sfaf-submit.php' );
+if ( preg_match( '/SFAF_Submissions::allow\(\s*[\'"]([a-z_]+)[\'"]\s*,\s*([^,]+),/', $submit_rate_src, $m ) ) {
+    if ( false !== strpos( $m[2], 'email' ) ) {
+        fail( 'a rate limiter is keyed on an address, so five addresses would be five allowances' );
+    }
+}
+if ( preg_match_all( '/SFAF_Submissions::allow\(/', $submit_rate_src ) !== 3 ) {
+    fail( 'the submission form no longer makes exactly three rate-limited calls; check none is per address' );
+}
+
+/* =========================================================================
  * 4. WHICH KIND OF PENDING ROW IT IS.
  *
  * BOTH FORMS WRITE AN ADDRESS TO THE SAME KEY, which is exactly why the old
@@ -535,6 +649,28 @@ if ( false !== strpos( $submit_src, 'set_post_thumbnail' ) ) {
 }
 if ( false === strpos( $submit_src, 'SFAF_Submissions::trapped' ) ) {
     fail( 'the submission form has no honeypot' );
+}
+
+/*
+ * THE EMAIL FIELD'S MARKUP, READ RATHER THAN RENDERED.
+ *
+ * Rendering this form needs a term, a rich text editor, Turnstile and the
+ * venue list, so what is read here is the shape and what proves the behaviour
+ * is elsewhere: validate() above runs for real, and
+ * .claude/repeater-max-test.js runs the real initRepeaters() and presses the
+ * button until the cap. These three are one assertion in three files.
+ */
+if ( false === strpos( $submit_src, 'name="submitter_email[]"' ) ) {
+    fail( 'the About you email field does not post as an array, so only one address can ever arrive' );
+}
+if ( false === strpos( $submit_src, 'data-repeater-max="<?php echo (int) self::MAX_EMAILS; ?>"' ) ) {
+    fail( 'the email repeater does not carry the cap the validator enforces, so the two can disagree' );
+}
+if ( false === strpos( $submit_src, 'if ( count( $emails ) < self::MAX_EMAILS ) :' ) ) {
+    fail( 'the Add email button is rendered unconditionally; at the cap it must not be drawn at all' );
+}
+if ( false !== strpos( $submit_src, 'name="submitter_email"' ) ) {
+    fail( 'a single-value submitter_email control is still rendered somewhere on this form' );
 }
 
 /* THE SUBMITTER'S OWN ADDRESS IS NOT A TEMPLATE FIELD. Their contact line is

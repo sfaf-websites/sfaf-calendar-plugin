@@ -61,6 +61,33 @@ class SFAF_Submit {
     const META_IMAGE   = '_uc_submitted_image';
     const META_SERIES  = '_uc_submitted_series';
 
+    /**
+     * Everybody the submitter asked to have told about registrations.
+     *
+     * THE FIRST OF THESE IS THE SUBMITTER, AND IT IS NOT STORED TWICE. The
+     * submitter's own address stays where every reader already looks for it,
+     * SFAF_Request::META_EMAIL, so `kind()`, `submitter()`, the confirmation
+     * and the pending queue are untouched by this existing at all. This key
+     * holds the WHOLE list, first entry included, and exists only when the
+     * submitter named more than themselves.
+     *
+     * WHAT IT IS NOT. It is not a second notification list and it is not an
+     * ownership record. It is what one form answered, read once, at approval,
+     * by SFAF_Submissions::notify_addresses(). Nothing on the event side reads
+     * it, and nothing about editing an event afterwards goes anywhere near it:
+     * the list a manager maintains is the event's own, in
+     * SFAF_Reminders::NOTIFY_EMAILS_META.
+     */
+    const META_NOTIFY_EMAILS = '_uc_submitted_notify_emails';
+
+    /**
+     * How many addresses the About you field takes.
+     *
+     * ONE NUMBER, READ BY THE CONTROL, THE VALIDATOR AND THE READER, so the
+     * button can only disappear at the count the server would refuse past.
+     */
+    const MAX_EMAILS = 5;
+
     /* Fields the event page shows, which the staff form does not collect. */
     const META_COST    = '_uc_cost';
     const META_AGE     = '_uc_age_restriction';
@@ -297,10 +324,48 @@ class SFAF_Submit {
             $errors['submitter_name'] = 'Tell us your name, so we can get back to you.';
         }
 
-        $email = isset( $post['submitter_email'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $post['submitter_email'] ) ) ) ) : '';
-        $clean['submitter_email'] = is_email( $email ) ? $email : '';
+        /*
+         * UP TO MAX_EMAILS ADDRESSES, AND THE FIRST ONE IS THE SUBMITTER.
+         *
+         * The field posts as an array, so a browser with no script sends one
+         * entry and a browser that added rows sends several. Anything past the
+         * cap is dropped rather than refused: the control does not offer a
+         * sixth box, so a sixth value is a hand-built post body and nothing
+         * that arrives one is worth explaining to.
+         *
+         * AN ADDRESS THAT IS NOT ONE IS AN ERROR RATHER THAN A SILENT DROP.
+         * Dropping it would promote the next address to first, which is the
+         * one that gets the confirmation and is recorded as who submitted
+         * this, so a typo would quietly change whose submission it is.
+         */
+        $clean['submitter_emails'] = array();
+        $bad_email = false;
+        $posted_emails = isset( $post['submitter_email'] ) ? wp_unslash( $post['submitter_email'] ) : '';
+        foreach ( (array) $posted_emails as $raw_email ) {
+            if ( ! is_scalar( $raw_email ) ) {
+                continue;
+            }
+            $one = strtolower( trim( sanitize_text_field( (string) $raw_email ) ) );
+            if ( '' === $one ) {
+                continue;
+            }
+            if ( ! is_email( $one ) ) {
+                $bad_email = true;
+                continue;
+            }
+            if ( ! in_array( $one, $clean['submitter_emails'], true ) ) {
+                $clean['submitter_emails'][] = $one;
+            }
+            if ( count( $clean['submitter_emails'] ) >= self::MAX_EMAILS ) {
+                break;
+            }
+        }
+
+        $clean['submitter_email'] = isset( $clean['submitter_emails'][0] ) ? $clean['submitter_emails'][0] : '';
         if ( '' === $clean['submitter_email'] ) {
             $errors['submitter_email'] = 'Give an email address we can reach you at.';
+        } elseif ( $bad_email ) {
+            $errors['submitter_email'] = 'One of those is not an email address. Check them and send again.';
         }
 
         /* ---- The event. ---- */
@@ -704,6 +769,13 @@ class SFAF_Submit {
         update_post_meta( $event_id, SFAF_Submissions::META_KIND, SFAF_Submissions::KIND_COMMUNITY );
         update_post_meta( $event_id, SFAF_Request::META_NAME, $c['submitter_name'] );
         update_post_meta( $event_id, SFAF_Request::META_EMAIL, $c['submitter_email'] );
+        /* Only when there is more than the submitter. One address is already
+         * recorded above, and a second key repeating it would be a second
+         * answer to who sent this. */
+        $extra_emails = isset( $c['submitter_emails'] ) ? (array) $c['submitter_emails'] : array();
+        if ( count( $extra_emails ) > 1 ) {
+            update_post_meta( $event_id, self::META_NOTIFY_EMAILS, array_values( $extra_emails ) );
+        }
         update_post_meta( $event_id, SFAF_Request::META_AT, current_time( 'mysql' ) );
         if ( '' !== $c['notes'] ) {
             update_post_meta( $event_id, SFAF_Request::META_NOTES, $c['notes'] );
@@ -779,6 +851,12 @@ class SFAF_Submit {
             $rows['Registration link'] = $c['rsvp_url'];
         }
         $rows['Submitted by'] = $c['submitter_name'] . ' (' . $c['submitter_email'] . ')';
+        /* Named on the form as people who should get the registrations, which
+         * is a thing the approver decides on rather than discovers. */
+        $also = array_slice( isset( $c['submitter_emails'] ) ? (array) $c['submitter_emails'] : array(), 1 );
+        if ( ! empty( $also ) ) {
+            $rows['They also asked to tell'] = implode( ', ', $also );
+        }
 
         $html = SFAF_Email::heading( 'Somebody submitted an event' )
             . SFAF_Email::para( 'A member of the public submitted an event to the ' . self::series_name( $series ) . ' calendar. It is in the pending queue and nobody can see it yet.' )
@@ -984,11 +1062,66 @@ class SFAF_Submit {
                         <input type="text" name="submitter_name" required maxlength="120" value="<?php echo esc_attr( $v( 'submitter_name' ) ); ?>" />
                         <?php SFAF_Submissions::field_error( $err( 'submitter_name' ) ); ?>
                     </label>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Your email</span>
-                        <input type="email" name="submitter_email" required maxlength="200" autocomplete="email" value="<?php echo esc_attr( $v( 'submitter_email' ) ); ?>" />
+                    <?php
+                    /*
+                     * UP TO FIVE ADDRESSES, THE FIRST OF WHICH IS THE
+                     * SUBMITTER'S OWN.
+                     *
+                     * THE SAME REPEATER THE FAQ ROWS USE, so this is a control
+                     * on a screen rather than a second control: `data-repeater`,
+                     * a rows container, an add button and a template. What is
+                     * new is `data-repeater-max`, which is read by
+                     * initRepeaters() in portal.js and by nothing else.
+                     *
+                     * THE BUTTON GOES AT THE CAP RATHER THAN GREYING OUT. A
+                     * disabled control is a thing to read and wonder about; a
+                     * control that is not there is answered. It is not rendered
+                     * at all when the form comes back already holding five.
+                     *
+                     * NO REMOVE CONTROL, AND NONE IS NEEDED. An empty box is
+                     * dropped by validate(), so clearing one is how a row goes,
+                     * and there is nothing to confirm and nothing to undo.
+                     *
+                     * WITH NO SCRIPT THIS IS ONE BOX AND STILL A COMPLETE
+                     * FORM. The button does nothing without portal.js, the
+                     * field posts as an array either way, and one address is
+                     * what this asked for until this release.
+                     */
+                    $emails = array_values( array_filter( (array) $v( 'submitter_emails', array() ) ) );
+                    if ( empty( $emails ) ) {
+                        $emails = array( '' );
+                    }
+                    $emails = array_slice( $emails, 0, self::MAX_EMAILS );
+                    ?>
+                    <div class="uc-field">
+                        <span class="uc-field-label">Your email, and anybody else who should get RSVPs</span>
+                        <span class="uc-hint">The first one is yours. Your copy of this submission goes there.</span>
+                        <div class="uc-repeater uc-email-repeat" data-repeater
+                             data-repeater-max="<?php echo (int) self::MAX_EMAILS; ?>">
+                            <div class="uc-repeater-rows">
+                                <?php foreach ( $emails as $i => $one ) : ?>
+                                    <label class="uc-repeater-row">
+                                        <span class="uc-visually-hidden"><?php
+                                            echo esc_html( 0 === (int) $i ? 'Your email' : 'Another email address' );
+                                        ?></span>
+                                        <input type="email" name="submitter_email[]" maxlength="200"
+                                               <?php echo ( 0 === (int) $i ) ? 'required autocomplete="email"' : 'autocomplete="off"'; ?>
+                                               value="<?php echo esc_attr( $one ); ?>" />
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if ( count( $emails ) < self::MAX_EMAILS ) : ?>
+                                <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add email</button>
+                            <?php endif; ?>
+                            <template class="uc-repeater-tpl">
+                                <label class="uc-repeater-row">
+                                    <span class="uc-visually-hidden">Another email address</span>
+                                    <input type="email" name="submitter_email[]" maxlength="200" autocomplete="off" value="" />
+                                </label>
+                            </template>
+                        </div>
                         <?php SFAF_Submissions::field_error( $err( 'submitter_email' ) ); ?>
-                    </label>
+                    </div>
                 </fieldset>
 
                 <label class="uc-field">

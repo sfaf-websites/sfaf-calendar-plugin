@@ -671,6 +671,59 @@ foreach ( array( 'SFAF_Request::META_EMAIL', 'SFAF_Submissions::kind', 'render_r
 }
 
 /*
+ * AND THE PANEL SHOWS THE CONTACT THAT WAS ACTUALLY SUBMITTED (3.67.0).
+ *
+ * IT READ A KEY NOTHING HAS WRITTEN SINCE 3.47.0. SFAF_Submit::META_CONTACT is
+ * the single open box that release replaced with three fields, so "Contact for
+ * the listing" rendered empty on every community submission for nineteen
+ * releases and the name, email and phone the submitter typed were invisible to
+ * whoever approved it. Nothing was lost; nothing was shown.
+ *
+ * THE FIX IS TO ASK THE READER THE EVENT PAGE ASKS, sfaf_event_public_contact(),
+ * which prefers the three fields and falls back to the old box. Asserted as
+ * "this method calls that function and names no meta key of its own", because
+ * a panel assembling the three keys again would be a second answer free to
+ * disagree with the page.
+ *
+ * THE SLICE IS BOUNDED BY THE NEXT METHOD, not by counting braces: this method
+ * is mixed PHP and HTML, and a brace counter over that is a brace counter over
+ * whatever is in the markup.
+ */
+/* COMMENTS OUT FIRST, with the tokenizer, for the reason given at section 6:
+ * every assertion below is "this method does not contain X", and the method's
+ * own comment explains at length which key it used to read. */
+$portal_code = '';
+foreach ( token_get_all( $portal ) as $t ) {
+    if ( is_array( $t ) && in_array( $t[0], array( T_COMMENT, T_DOC_COMMENT ), true ) ) {
+        continue;
+    }
+    $portal_code .= is_array( $t ) ? $t[1] : $t;
+}
+if ( strlen( $portal_code ) >= strlen( $portal ) ) {
+    $fails[] = 'stripping comments from the portal removed nothing, so the panel checks prove nothing';
+}
+
+$panel_at = strpos( $portal_code, 'function render_request_panel(' );
+if ( false === $panel_at ) {
+    $fails[] = 'render_request_panel() is gone; the pending row shows nothing about who submitted an event';
+} else {
+    $panel_end = strpos( $portal_code, ' function ', $panel_at + 30 );
+    $panel     = substr( $portal_code, $panel_at, ( false === $panel_end ? strlen( $portal_code ) : $panel_end ) - $panel_at );
+
+    if ( false === strpos( $panel, 'sfaf_event_public_contact(' ) ) {
+        $fails[] = 'the pending panel does not ask sfaf_event_public_contact(), so it can disagree with the event page about what is public';
+    }
+    if ( false !== strpos( $panel, 'SFAF_Submit::META_CONTACT' ) ) {
+        $fails[] = 'the pending panel still reads SFAF_Submit::META_CONTACT, which no public form has written since 3.47.0';
+    }
+    foreach ( array( 'META_CONTACT_NAME', 'META_CONTACT_EMAIL', 'META_CONTACT_PHONE' ) as $part ) {
+        if ( false !== strpos( $panel, $part ) ) {
+            $fails[] = "the pending panel assembles $part itself rather than asking the one reader";
+        }
+    }
+}
+
+/*
  * AND IT CAN TELL THE TWO KINDS OF SUBMISSION APART.
  *
  * Both forms write an address to the same meta key, so "has an email" stopped

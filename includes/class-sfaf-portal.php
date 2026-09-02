@@ -999,8 +999,30 @@ class SFAF_Portal {
                  */
                 $who = SFAF_Submissions::submitter( $event_id );
                 if ( $who['is_submission'] && $who['usable'] ) {
-                    $listed = ! empty( $_POST['notify_submitter'] )
-                        && SFAF_Submissions::add_to_notify_list( $event_id, $who['email'] );
+                    /*
+                     * THE TICK COVERS EVERY ADDRESS THE SUBMISSION NAMED, and
+                     * the community form takes up to five. They are read from
+                     * the event by SFAF_Submissions::notify_addresses(), for
+                     * the reason above: an address arriving in this POST would
+                     * be an address anybody who can reach this route could
+                     * nominate onto a list that is sent registrant names.
+                     *
+                     * `$listed` STILL MEANS THE SUBMITTER, and only the
+                     * submitter, because it is what the published notice reads
+                     * to decide whether to say "you will start getting mail".
+                     * That message goes to the first address and speaks for it
+                     * alone; the others were named by somebody else and get no
+                     * message from here at all.
+                     */
+                    $listed = false;
+                    if ( ! empty( $_POST['notify_submitter'] ) ) {
+                        foreach ( SFAF_Submissions::notify_addresses( $event_id ) as $n => $addr ) {
+                            $added = SFAF_Submissions::add_to_notify_list( $event_id, $addr );
+                            if ( 0 === $n ) {
+                                $listed = $added;
+                            }
+                        }
+                    }
 
                     if ( ! empty( $_POST['tell_submitter'] ) ) {
                         SFAF_Submissions::send_published_notice( $event_id, $listed );
@@ -11897,10 +11919,31 @@ class SFAF_Portal {
                  * does, to the person deciding whether to do it.
                  */
                 ?>
+                <?php
+                /*
+                 * AND IT NAMES THE OTHER ADDRESSES (3.67.0). The community
+                 * form takes up to SFAF_Submit::MAX_EMAILS, so one tick can
+                 * put five people on a list that is sent registrant names and
+                 * addresses. Every one of them is printed here, because the
+                 * person deciding cannot decide about a set they cannot see.
+                 */
+                $addresses = SFAF_Submissions::notify_addresses( $event_id );
+                $others    = array_slice( $addresses, 1 );
+                ?>
                 <label class="uc-check">
                     <input type="checkbox" name="notify_submitter" value="1" checked form="<?php echo esc_attr( $form ); ?>" />
-                    Send <?php echo esc_html( $who['name'] ); ?> registrations for this event
+                    <?php if ( empty( $others ) ) : ?>
+                        Send <?php echo esc_html( $who['name'] ); ?> registrations for this event
+                    <?php else : ?>
+                        Send registrations for this event to <?php echo esc_html( $who['name'] ); ?>
+                        and <?php echo (int) count( $others ); ?> more
+                    <?php endif; ?>
                 </label>
+                <?php if ( ! empty( $others ) ) : ?>
+                    <p class="uc-hint uc-approve-others">
+                        <?php echo esc_html( implode( ', ', $others ) ); ?>
+                    </p>
+                <?php endif; ?>
                 <p class="uc-hint">
                     They get an email each time somebody registers, and a list of everybody registered
                     on the morning of the event, with names and email addresses. Untick it if that is not right.
@@ -12683,8 +12726,30 @@ class SFAF_Portal {
         $shot      = SFAF_Uploads::url( $shot_id, 'medium' );
         $cost      = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
         $age       = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
-        $contact   = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT, true );
         $rsvp_url  = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
+
+        /*
+         * THE CONTACT, THROUGH THE ONE FORMATTER (3.67.0).
+         *
+         * This read SFAF_Submit::META_CONTACT, the single open box that 3.47.0
+         * replaced with three fields, and the public form has not written that
+         * key since. So this line rendered empty on every community submission
+         * from 3.47.0 onwards and the name, email and phone the submitter
+         * filled in were invisible to whoever approved it. Nothing was lost:
+         * the values were stored the whole time, under the three keys the event
+         * page already reads.
+         *
+         * sfaf_event_public_contact() IS THAT READER, and it is asked here
+         * rather than the three keys being assembled again. It prefers the
+         * three-part answer and falls back to the old box, so a submission from
+         * 3.46.0 still shows, and this panel and the event page cannot disagree
+         * about what the public contact is.
+         */
+        $contact   = sfaf_event_public_contact( $event_id );
+
+        /* Everybody the submitter asked to have told about registrations. The
+         * first is the submitter, already named above, so only the rest. */
+        $also_tell = array_slice( SFAF_Submissions::notify_addresses( $event_id ), 1 );
         ?>
         <div class="uc-card uc-request-panel">
             <div class="uc-card-head"><h2><?php echo $community ? 'Submitted by a member of the public' : 'Requested by a colleague'; ?></h2></div>
@@ -12706,8 +12771,12 @@ class SFAF_Portal {
             <?php if ( '' !== $where ) : ?>
                 <p class="uc-hint"><strong>Place given as:</strong> <?php echo esc_html( $where ); ?>. Add it as a venue if it will be used again.</p>
             <?php endif; ?>
+            <?php if ( ! empty( $also_tell ) ) : ?>
+                <p class="uc-hint"><strong>They also asked to tell:</strong> <?php echo esc_html( implode( ', ', $also_tell ) ); ?>.
+                    Approving with the registrations tick puts all of these on this event's notification list.</p>
+            <?php endif; ?>
             <?php if ( '' !== $contact ) : ?>
-                <p class="uc-hint"><strong>Contact for the listing:</strong> <?php echo esc_html( $contact ); ?>. This one IS public, and is theirs rather than ours.</p>
+                <p class="uc-hint"><strong>Contact for the listing:</strong> <?php echo esc_html( $contact ); ?>. This one is shown on the event page.</p>
             <?php endif; ?>
             <?php if ( '' !== $cost ) : ?>
                 <p class="uc-hint"><strong>Cost:</strong> <?php echo esc_html( $cost ); ?>. Nothing is collected here.</p>

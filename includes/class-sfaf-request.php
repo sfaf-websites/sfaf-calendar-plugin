@@ -677,7 +677,7 @@ class SFAF_Request {
             );
         }
 
-        /* ---- Registration. ---- */
+        /* ---- RSVP. ---- */
         $clean['rsvp']     = ! empty( $post['rsvp'] );
         $clean['capacity'] = 0;
         if ( $clean['rsvp'] && isset( $post['capacity'] ) && '' !== $post['capacity'] ) {
@@ -1162,7 +1162,7 @@ class SFAF_Request {
             'Time'     => sfaf_ap_time_range( $c['start'], $c['end'] ),
             'Repeats'  => self::repeat_phrase( $c ),
             'Where'    => $c['venue'] ? SFAF_Venues::display( $c['venue'] ) : $c['venue_other'],
-            'Register' => $c['rsvp'] ? ( $c['capacity'] > 0 ? 'Yes, ' . $c['capacity'] . ' places' : 'Yes, no limit on places' ) : 'No',
+            'RSVP'     => $c['rsvp'] ? ( $c['capacity'] > 0 ? 'Yes, ' . $c['capacity'] . ' places' : 'Yes, no limit on places' ) : 'No',
         );
 
         $html = SFAF_Email::heading( 'Thanks, that is with the team' )
@@ -1475,11 +1475,11 @@ class SFAF_Request {
 
                 <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ) ); ?>
 
-                <h2 class="uc-form-section">Registration</h2>
+                <h2 class="uc-form-section">RSVP</h2>
 
                 <label class="uc-check">
                     <input type="checkbox" name="rsvp" value="1" <?php checked( (bool) $v( 'rsvp', false ) ); ?> />
-                    People need to register
+                    People need to RSVP
                 </label>
                 <label class="uc-field">
                     <span class="uc-field-label">How many places, if there is a limit</span>
@@ -1666,18 +1666,19 @@ class SFAF_Request {
             }
 
             /*
-             * THE FILE NAME IS SHOWN ON EVERY ROW, and it is what search
-             * matches. Two photographs of the same event look alike at 64px and
-             * the file is often the only thing that tells them apart.
+             * ONE NAME PER ROW: THE TITLE, OR THE FILE NAME (3.67.0).
              *
-             * THE TITLE STILL LEADS WHEN THERE IS A REAL ONE (3.47.0). Alt text
-             * describes what is IN a picture; a title says what it is FOR,
-             * which is the question somebody choosing is actually asking. What
-             * that release could not do was show BOTH, so a picture nobody
-             * titled came back as "img 2847 final v3" from WordPress' own
-             * filename fallback and was suppressed entirely, leaving a bare
-             * thumbnail. Now the file name is always there in its own right and
-             * the title is an extra line above it when it says something.
+             * A title says what a picture is FOR, which is the question
+             * somebody choosing is actually asking, so it leads where there is
+             * a real one. Where there is not, the file name is what tells two
+             * photographs of the same event apart at 64px, and it is shown in
+             * the title's place rather than under it. Both were drawn between
+             * 3.65.0 and now, which made a titled picture two lines and an
+             * untitled one a line with a gap above it.
+             *
+             * BOTH ARE STILL WHAT SEARCH MATCHES, because somebody who knows
+             * the file name of an untitled picture should still find it by
+             * typing the file name, whichever of the two the row is showing.
              */
             $file  = basename( (string) get_post_meta( $img->ID, '_wp_attached_file', true ) );
             $title = trim( (string) get_the_title( $img->ID ) );
@@ -1860,7 +1861,7 @@ class SFAF_Request {
 
                     <div class="uc-picker-panel" data-uc-filter-scope>
                         <label class="uc-picker-filter uc-image-search">
-                            <span class="uc-visually-hidden">Search pictures by file name</span>
+                            <span class="uc-visually-hidden">Search pictures</span>
                             <?php
                             /*
                              * NO name, SO IT POSTS NOTHING. It narrows the list
@@ -1868,7 +1869,7 @@ class SFAF_Request {
                              * as the notification and team filters.
                              */
                             ?>
-                            <input type="search" placeholder="Search pictures by file name&hellip;"
+                            <input type="search" placeholder="Search pictures&hellip;"
                                    data-uc-filter autocomplete="off" />
                         </label>
 
@@ -1878,7 +1879,7 @@ class SFAF_Request {
                                        data-uc-image-option data-uc-image-name="No picture" />
                                 <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>
                                 <span class="uc-image-option-text">
-                                    <span class="uc-image-option-file">No picture</span>
+                                    <span class="uc-image-option-name">No picture</span>
                                 </span>
                             </label>
                             <?php foreach ( $rows as $row ) : ?>
@@ -1891,10 +1892,23 @@ class SFAF_Request {
                                            data-uc-image-name="<?php echo esc_attr( '' !== $row['title'] ? $row['title'] : $row['file'] ); ?>" />
                                     <img class="uc-image-option-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
                                     <span class="uc-image-option-text">
-                                        <?php if ( '' !== $row['title'] ) : ?>
-                                            <span class="uc-image-option-title"><?php echo esc_html( $row['title'] ); ?></span>
-                                        <?php endif; ?>
-                                        <span class="uc-image-option-file"><?php echo esc_html( $row['file'] ); ?></span>
+                                        <?php
+                                        /*
+                                         * ONE NAME, NOT TWO (3.67.0). The title
+                                         * where the picture has a real one, the
+                                         * file name where it does not, decided
+                                         * by looks_like_a_filename() in
+                                         * folder_pictures(): a title WordPress
+                                         * made from the file is not a title, and
+                                         * that row has already had it blanked.
+                                         * So this is the same choice the closed
+                                         * trigger makes, and the two cannot
+                                         * describe one picture differently.
+                                         */
+                                        ?>
+                                        <span class="uc-image-option-name"><?php
+                                            echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                                        ?></span>
                                     </span>
                                 </label>
                             <?php endforeach; ?>
