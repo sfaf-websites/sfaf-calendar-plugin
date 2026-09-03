@@ -7,13 +7,29 @@ then delete the folder from the server.
 
 **Mark's list is the structure.** It is written out by hand in `build-plan.php`,
 organizer by organizer, and it is the only thing that decides which series exist
-and which events each one holds. The four WXR exports in the project root are a
-source of detail for the rows that match it, and nothing more: description,
-start and end times, venue, organizer, featured image. Where they disagree the
-list wins. Where the list has no match, the export row is dropped.
+and which events each one holds. Series and event are not one to one: Coffee
+Social, PROP, Mobile Health Sites and Strut community events each hold several
+distinct events.
 
-Series and event are not one to one. Coffee Social, PROP, Mobile Health Sites
-and Strut community events each hold several distinct events.
+**Three sources supply the detail, and they rank:**
+
+1. **What Mark supplies directly**, written into `build-plan.php` as `desc`,
+   `time`, `pat` and `on`. Most recent, and it wins over everything.
+2. **The Stonewall Project group info sheet**, current as of 2026-27. It
+   supersedes the export for every Stonewall series.
+3. **The export**, and only the **most recent occurrence** of a title.
+
+Where a description or a schedule comes from 1 or 2, the export's is not taken.
+The export still supplies what neither mentions: the featured image, and the
+times of the three PROP groups. Each event records which source its description
+came from, in `from`.
+
+**Rule 3 is not a preference, it is a correction.** El Salon's first twelve
+export rows say 09:30-11:00 on a Wednesday and its most recent says 12:30-14:00
+on a Thursday; Express Yourself's early rows are Thursdays and its most recent
+is a Monday. The Stonewall sheet agrees with the recent rows in both cases, so
+the first row in the file is not merely the oldest fact in it, it is the wrong
+one.
 
 ## The files
 
@@ -23,6 +39,7 @@ and Strut community events each hold several distinct events.
 | `build-plan.php` | **Mark's list, by hand**, joined to the export. Writes `plan.php`. |
 | `plan.php` | Generated. The whole import as one data array. Do not edit it; edit `build-plan.php` and re-run. |
 | `export-rules.php` | Every distinct recurrence rule the export holds for a matched title, with the rows it came from. The evidence for which schedules are live. |
+| `trashed-only.php` | Which titles exist in the export **only** as trashed or draft rows. The 3.69.0 report said five names on Mark's list matched only trashed rows; it is one, Brothers Who Read, and this is the check that settles it. |
 | `schedule.php` | Where a generated schedule starts. No WordPress, no database. |
 | `dryrun.php` | The plan run through `SFAF_Recurrence` itself, with WordPress stubbed. Carries a self-test. |
 | `sfaf-tec-import.php` | The importer. Runs on the site. |

@@ -107,6 +107,45 @@ if ( $self ) {
         sfaf_import_nth_of_month( 2026, 9, 5, 5 ), '' );
     $check( 'last Friday of September 2026',
         sfaf_import_nth_of_month( 2026, 9, -1, 5 ), '2026-09-25' );
+
+    // The four ordinals Mark's corrections added.
+    $check( 'fourth Friday on or after 2026-09-03',
+        sfaf_import_first_date( 'monthly_nth:4:5', '2026-09-03' ), '2026-09-25' );
+    $check( 'second Saturday on or after 2026-09-03',
+        sfaf_import_first_date( 'monthly_nth:2:6', '2026-09-03' ), '2026-09-12' );
+    $check( 'second Thursday on or after 2026-09-03',
+        sfaf_import_first_date( 'monthly_nth:2:4', '2026-09-03' ), '2026-09-10' );
+    $check( 'fourth Thursdays, 2026-09-10 to 2026-12-31',
+        sfaf_import_nth_series( 4, 4, '2026-09-10', '2026-12-31' ),
+        array( '2026-09-24', '2026-10-22', '2026-11-26', '2026-12-24' ) );
+
+    /*
+     * THE FIXED-DATE PATH, WHICH IS THE ONE THAT SILENTLY LOST DATES.
+     *
+     * Coffee Social is three dates chosen by hand. It has to come back as a
+     * seed plus two dates in `extra`, because on an event with no pattern the
+     * explicit list is the ONLY thing carrying them: the last assertion below
+     * is what the first version of this handed generate(), and it produces
+     * nothing. The pattern was never the problem, and the assertion before it
+     * proves generate() would have normalised '' to 'custom' by itself.
+     */
+    $coffee = sfaf_import_plan_dates(
+        array( 'on' => array( '2026-09-05', '2026-09-12', '2026-09-26' ), 'pattern' => '', 'also' => array() ),
+        '2026-09-03', '2026-12-31'
+    );
+    $check( 'three chosen dates: the seed', $coffee['seed'], '2026-09-05' );
+    $check( 'three chosen dates: the rest', $coffee['dates'], array( '2026-09-12', '2026-09-26' ) );
+    $check( 'three chosen dates: the pattern generate() gets', $coffee['gen_pattern'], 'custom' );
+    $check( "and the engine returns both under 'custom'",
+        SFAF_Recurrence::dates( '2026-09-05', '2026-12-31', 'custom', 0, array( '2026-09-12', '2026-09-26' ) ),
+        array( '2026-09-12', '2026-09-26' ) );
+    $check( "an empty pattern carries them too, so 'custom' is clarity not necessity",
+        SFAF_Recurrence::dates( '2026-09-05', '2026-12-31', '', 0, array( '2026-09-12', '2026-09-26' ) ),
+        array( '2026-09-12', '2026-09-26' ) );
+    $check( 'but with no explicit list there is nothing at all: the fault',
+        SFAF_Recurrence::dates( '2026-09-05', '2026-12-31', 'custom', 0, array() ),
+        array() );
+
     echo "\n" . ( $fails ? "FAILED: {$fails}\n" : "self-test passed.\n" );
     exit( $fails ? 1 : 0 );
 }
@@ -158,7 +197,13 @@ foreach ( $plan['series'] as $s ) {
             $unmatched[] = $e['title'];
         }
 
-        printf( "    - %-52s  %s\n", $e['title'], $e['case'] );
+        $whence = array(
+            'mark'   => "Mark's list",
+            'sheet'  => 'Stonewall sheet',
+            'export' => ( '' !== $e['source'] ? 'export: ' . $e['source'] : 'export' ),
+            ''       => 'no description',
+        );
+        printf( "    - %-52s  %-6s  %s\n", $e['title'], $e['case'], $whence[ $e['from'] ] );
         printf( "      time %s  venue %s  cats %s  image %s  desc %d chars\n",
             ( '' !== $e['start'] ? $e['start'] . '-' . $e['end'] : 'none' ),
             ( $e['online'] ? 'ONLINE' : ( '' !== $e['venue'] ? $e['venue'] : 'none' ) ),
@@ -189,35 +234,45 @@ function wp_strip_tags_local( $html ) {
 }
 
 /* ---------------------------------------------------------------------------
- * WHICH IMPORTED DESCRIPTIONS ARE NOT REAL COPY.
+ * DESCRIPTIONS: WHERE EACH ONE CAME FROM, AND WHICH ARE NOT REAL COPY.
  *
- * THE THRESHOLD IS 130 CHARACTERS OF TEXT, and it is unambiguous here rather
- * than arbitrary: the longest thing that is not a description is 66 characters
- * ("For more details, please refer to the Stonewall Services Schedule.") and
- * the shortest thing that is one is 240. Nothing in this import falls between
- * them, so no judgement is being made about a borderline case.
+ * THE PLACEHOLDER TEST APPLIES ONLY TO THE EXPORT, and that is the whole of it
+ * now. A short description Mark supplied is his copy however short it is:
+ * Express Yourself's is 110 characters and is a finished sentence. A short one
+ * from the export is the Stonewall Services Schedule link or an RSVP button.
+ * The threshold for those is 130 characters, unambiguous rather than arbitrary,
+ * because the longest thing in the export that is not a description is 66 and
+ * the shortest thing that is one is 246.
  * ------------------------------------------------------------------------ */
-echo "\nDESCRIPTIONS THAT ARE NOT REAL COPY\n" . str_repeat( '-', 78 ) . "\n";
-$empty = array();
-$stub  = array();
+echo "\nDESCRIPTIONS\n" . str_repeat( '-', 78 ) . "\n";
+$none = array();
+$stub = array();
+$srcs = array( 'mark' => array(), 'sheet' => array(), 'export' => array() );
 foreach ( $plan['series'] as $s ) {
     foreach ( $s['events'] as $e ) {
-        if ( '' === $e['source'] ) {
-            continue; // nothing matched, so there was nothing to import.
-        }
         $text = wp_strip_tags_local( $e['content'] );
-        if ( '' === $text ) {
-            $empty[] = $e['title'];
-        } elseif ( strlen( $text ) < 130 ) {
+        if ( '' === $e['from'] || '' === $text ) {
+            $none[] = $e['title'];
+            continue;
+        }
+        $srcs[ $e['from'] ][] = $e['title'];
+        if ( 'export' === $e['from'] && strlen( $text ) < 130 ) {
             $stub[] = array( $e['title'], $text );
         }
     }
 }
-echo "  matched but the export's description is empty:\n";
-foreach ( $empty as $t ) {
+printf( "  from Mark:            %d\n", count( $srcs['mark'] ) );
+printf( "  from the Stonewall sheet: %d\n", count( $srcs['sheet'] ) );
+printf( "  from the export:      %d\n", count( $srcs['export'] ) );
+printf( "  none at all:          %d\n", count( $none ) );
+echo "\n  no description anywhere, so created with a title and nothing else:\n";
+foreach ( $none as $t ) {
     echo "    - {$t}\n";
 }
-echo "  matched, imported, and a placeholder:\n";
+echo "\n  imported from the export and still a placeholder:\n";
+if ( ! $stub ) {
+    echo "    (none)\n";
+}
 foreach ( $stub as $row ) {
     printf( "    - %-30s %s\n", $row[0], $row[1] );
 }

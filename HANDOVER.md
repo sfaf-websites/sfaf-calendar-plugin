@@ -31,7 +31,7 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
-| **3.69.0** | **No plugin code changed. The release carries the one-time import of the old Events Calendar**, in `.claude/import/`, which is not in the zip. Mark's list is the authoritative structure and the four WXR exports are detail for the rows that match it; where they disagree the list wins. **32 series, 39 events, 128 draft posts, nothing published.** Dates are generated only from a live schedule, meaning the list states a day and time or the export's rule has no end date: **every rule with an end date among the twenty matched rows has already passed**, the latest 2026-07-01, so 26 events arrive with times and a description and no dates for Mark to fill in. **Nothing has been written to the site yet.** Report mode first, then clear, then import; `TESTING.md` 2.15 to 2.18. |
+| **3.69.0** | **No plugin code changed. The release carries the one-time import of the old Events Calendar**, in `.claude/import/`, which is not in the zip. **There are three sources and they rank:** what Mark supplies directly, then the Stonewall Project's 2026-27 group info sheet, then the export's most recent occurrence. Twelve descriptions come from Mark, nine from the sheet, eight from the export, and ten events have none. **32 series, 39 events, 273 draft posts, nothing published:** 18 events take their dates from a stated schedule, 7 from a rule in the export with no end date, and 14 have none. **Every rule in the export that carries an end date has already passed**, the latest 2026-07-01, which is why the sheet matters. **Nothing has been written to the site yet.** Report mode first, then clear, then import; `TESTING.md` 2.15 to 2.18. |
 | **3.68.1** | **A layout fault 3.68.0 shipped on both request forms, and nothing else.** Every section's heading rendered beside its first field, with Date and Venue squeezed into a roughly 40px column. **The cause was a float that had never run.** The legend float written in 3.66.0 was inert because the fieldsets carrying it were also `display: flex`, and float computes to none on a flex item; 3.68.0 took `.uc-field` off the sections to stop a reset reaching them, and **the class carrying that reset was also the section's layout mode**. A live float and a flex first child cannot share a line. **A section declares its own `display` now** and there is no float in these rules. Structure, headings, tint and hairline are as 3.68.0 left them. |
 | **3.68.0** | **Six changes to the two public forms and the pending queue, and two investigations.** Both forms are **one sequence of sections with a visible boundary**: the fault was a cascade one, `.uc-request-card fieldset.uc-field` at (0,2,1) stripping the border off `.uc-form-section-group` at (0,1,0), and there were three spellings of a section where there is now one neutral panel. The staff form **asks which series first** and the picture chooser shows that series' photo while nothing is chosen. The pending queue **marks an event that arrived with no location**, using the imports' existing state rather than a second one. Location and Event Image are relabelled, the private copy is three sentences, and a cancelled event says "if you have a place". **A private event already emits noindex and nofollow** and always has. **Parts A and H were investigations:** the Listing detail contact box, and the FAQ editors that do not start until Add is pressed. See "Open decisions". |
 | **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
@@ -83,13 +83,12 @@ SITE.** `.claude/import/README.md` is the run order and `TESTING.md` 2.15 to
 - **Clear trashes, it does not delete.** Every `uc_event` moves to the trash and
   the count is reported before and after. Emptying the trash is a separate
   decision on a separate screen.
-- **Twenty of the 39 events on Mark's list matched nothing in the export**, and
-  five names in it match only rows that are in the trash there. Those arrive as
-  titled drafts with no times and no description. The full list is in the report
-  handed over with this release, and **the three Leather Lab descriptions were
-  written from the facts on Mark's list rather than copied from it**, because
-  what reached the build was a summary of them; each one names its own host on
-  the list and those names did not.
+- **Ten of the 39 events arrive with a title and nothing else.** Mark supplied
+  real copy and schedules for twelve more, and the Stonewall Project's 2026-27
+  sheet for nine, so what was 26 dateless events is now 14. **Exactly one name
+  on the list matched only a trashed row**, Brothers Who Read, and it no longer
+  needs the export. `.claude/import/trashed-only.php` is the check; the 3.69.0
+  report said five and was wrong.
 
 **Following a series is half built, and the half that is missing is the point of
 it.** 3.53.0 established who the followers are and how somebody becomes one.
@@ -204,6 +203,18 @@ real conditions 18, blocked on other people 3. Nothing in the build can settle
 any of them.
 
 ## Open decisions
+
+**222 PUBLISHED EVENT ADDRESSES DIE WITH THE EVENTS CALENDAR, AND NOTHING
+CREATES REDIRECTS.** They are live today at `resources.sfaf.org/event/<slug>/`
+and at `/event/<slug>/<date>/` for each occurrence of a recurring one. When TEC
+is removed they stop resolving. The import does not address this and was not
+asked to: it creates events at this plugin's own addresses under different
+slugs, so nothing maps one to the other automatically. **Whether that matters is
+a decision about what links to those URLs**, which is not knowable from the
+repository: printed material, the sfaf.org theme, mail already sent, and
+whatever search engines hold. If it does matter, the cheapest answer is a
+redirect table built from the export, which lists every old slug and its
+`_wp_old_slug` history.
 
 **MARK HAS TO FILL IN THE CALENDAR HOME URL SETTING**, and until he does,
 "All Events" on an event page still does not land anywhere useful. 3.66.0 fixed

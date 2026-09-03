@@ -461,15 +461,13 @@ foreach ( $sfaf_plan['series'] as $s ) {
         }
 
         if ( $count > 1 ) {
-            $gen = SFAF_Recurrence::generate( $post_id, $e['pattern'], $horizon, 0, $d['extra'] );
+            $gen = SFAF_Recurrence::generate( $post_id, $d['gen_pattern'], $horizon, 0, $d['extra'] );
             if ( count( $gen['created'] ) !== count( $d['dates'] ) ) {
                 $failures[] = sprintf(
                     'event "%s": planned %d further dates, created %d',
                     $e['title'], count( $d['dates'] ), count( $gen['created'] )
                 );
             }
-        } elseif ( ! empty( $e['on'] ) && count( $e['on'] ) > 1 ) {
-            $failures[] = 'event "' . $e['title'] . '": more than one fixed date and no pattern to hang them on';
         }
     }
 }

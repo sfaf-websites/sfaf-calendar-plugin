@@ -597,7 +597,7 @@ that reads the live site. Four things in it have to be read rather than skimmed:
 `&mode=clear&confirm=CLEAR`, then `&mode=import&confirm=IMPORT`. Clear **trashes
 and does not delete**, so the first thing to check is that the trash holds
 exactly what the count said and that nothing outside `uc_event` moved. Then the
-import: **128 draft event posts across 32 series**, none published, and the
+import: **273 draft event posts across 32 series**, none published, and the
 report's own failure list empty.
 
 ### 2.17 Open six of the imported drafts and check what only a screen can show (3.69.0)
@@ -610,13 +610,15 @@ Not the count, which the report gives. What a browser has to answer:
   no longer matches a media row.
 - **The two online events** (Damn, Daddy!, Virtual Check-In) show as online with
   **no meeting link**, and carry no venue and no address.
-- **An event with no date is in the caladmin list at all.** Twenty-six of them
+- **An event with no date is in the caladmin list at all.** Fourteen of them
   have none; they are written with an empty `_uc_event_date` for exactly this
   reason, and if they are missing from the list the reasoning was wrong.
 - **The Spanish descriptions render as they were written**, accents included.
-- **Transformaciones and Trans Galaxy show seven dates**, the first and third
-  Wednesdays, and the schedule screen offers to change the pattern without
-  offering to move the three that arrived as chosen dates.
+- **The four two-ordinal groups show both ordinals.** Transformaciones and
+  Trans Galaxy are the first and third Wednesday, seven dates each; HUES Sista
+  Circles is the second and fourth Saturday and Soul Sessions the second and
+  fourth Thursday, eight each. The schedule screen should offer to change the
+  pattern without offering to move the dates that arrived as chosen ones.
 
 ### 2.18 Delete the import folder from the server (3.69.0)
 

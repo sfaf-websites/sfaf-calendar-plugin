@@ -178,25 +178,42 @@ if ( ! function_exists( 'sfaf_import_nth_of_month' ) ) {
      * monthly_nth here always carries an explicit ordinal and weekday and only
      * infers them from the seed when it does not.
      *
+     * WHAT `extra` AND `gen_pattern` ARE FOR ON A FIXED-DATE EVENT.
+     *
+     * SFAF_Recurrence::generate() creates the dates after the seed, and it
+     * takes them from two places: the pattern, and the explicit list. A set of
+     * dates chosen by hand has no pattern, so **the explicit list is the only
+     * thing carrying them**, and returning it empty here would have created
+     * Coffee Social's first date and silently dropped the other two. That was
+     * the fault, and it was in `extra`, not in the pattern.
+     *
+     * `gen_pattern` is 'custom' rather than '' for clarity, not for necessity:
+     * generate() normalises an empty pattern to 'custom' by itself, and the
+     * self-test in dryrun.php asserts both halves of that so neither claim
+     * rests on a reading of the engine.
+     *
      * @param array  $e       One planned event from plan.php.
      * @param string $today   Y-m-d. Nothing before this is ever produced.
      * @param string $horizon Y-m-d, inclusive.
-     * @return array{seed:string,dates:string[],extra:string[],note:string}
+     * @return array{seed:string,dates:string[],extra:string[],gen_pattern:string,note:string}
      */
     function sfaf_import_plan_dates( $e, $today, $horizon ) {
-        $out = array( 'seed' => '', 'dates' => array(), 'extra' => array(), 'note' => '' );
+        $out = array( 'seed' => '', 'dates' => array(), 'extra' => array(), 'gen_pattern' => '', 'note' => '' );
 
-        // Fixed dates: the three dated Leather Labs. No pattern, no arithmetic.
+        // Fixed dates: the three Leather Labs and the two Coffee Socials.
         if ( ! empty( $e['on'] ) ) {
             $on = $e['on'];
             sort( $on );
-            $out['seed']  = $on[0];
-            $out['dates'] = array_slice( $on, 1 );
+            $out['seed']        = $on[0];
+            $out['dates']       = array_slice( $on, 1 );
+            $out['extra']       = $out['dates'];
+            $out['gen_pattern'] = 'custom';
             return $out;
         }
         if ( '' === (string) $e['pattern'] ) {
             return $out;
         }
+        $out['gen_pattern'] = (string) $e['pattern'];
 
         $starts = array();
         $first  = sfaf_import_first_date( $e['pattern'], $today );

@@ -41,6 +41,11 @@ series.xml
 organizadores.xml
 recintos.xml
 
+# Source documents for the import, dropped in the project root: the Stonewall
+# Project group info sheet and anything that follows it. Same reasoning as the
+# exports. What the import uses is in .claude/import/plan.php.
+Event Documents/
+
 # Anything under a folder explicitly marked private/local.
 private/
 scratch/
