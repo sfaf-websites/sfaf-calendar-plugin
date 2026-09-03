@@ -31,7 +31,7 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
-| **3.69.0** | **No plugin code changed. The release carries the one-time import of the old Events Calendar**, in `.claude/import/`, which is not in the zip. **There are three sources and they rank:** what Mark supplies directly, then the Stonewall Project's 2026-27 group info sheet, then the export's most recent occurrence. Twelve descriptions come from Mark, nine from the sheet, eight from the export, and ten events have none. **32 series, 39 events, 273 draft posts, nothing published:** 18 events take their dates from a stated schedule, 7 from a rule in the export with no end date, and 14 have none. **Every rule in the export that carries an end date has already passed**, the latest 2026-07-01, which is why the sheet matters. **Nothing has been written to the site yet.** Report mode first, then clear, then import; `TESTING.md` 2.15 to 2.19. |
+| **3.69.0** | **No plugin code changed. The release carries the one-time import of the old Events Calendar**, in `.claude/import/`, which is not in the zip. **There are three sources and they rank:** what Mark supplies directly, then the Stonewall Project's 2026-27 group info sheet, then the export's most recent occurrence. Twelve descriptions come from Mark, nine from the sheet, eight from the export, and ten events have none. **32 series, 39 events, 287 draft posts, nothing published:** 18 events take their dates from a stated schedule, 7 from a rule in the export with no end date, and 14 have none. **Every rule in the export that carries an end date has already passed**, the latest 2026-07-01, which is why the sheet matters. **Nothing has been written to the site yet.** Report mode first, then clear, then import; `TESTING.md` 2.15 to 2.19. |
 | **3.68.1** | **A layout fault 3.68.0 shipped on both request forms, and nothing else.** Every section's heading rendered beside its first field, with Date and Venue squeezed into a roughly 40px column. **The cause was a float that had never run.** The legend float written in 3.66.0 was inert because the fieldsets carrying it were also `display: flex`, and float computes to none on a flex item; 3.68.0 took `.uc-field` off the sections to stop a reset reaching them, and **the class carrying that reset was also the section's layout mode**. A live float and a flex first child cannot share a line. **A section declares its own `display` now** and there is no float in these rules. Structure, headings, tint and hairline are as 3.68.0 left them. |
 | **3.68.0** | **Six changes to the two public forms and the pending queue, and two investigations.** Both forms are **one sequence of sections with a visible boundary**: the fault was a cascade one, `.uc-request-card fieldset.uc-field` at (0,2,1) stripping the border off `.uc-form-section-group` at (0,1,0), and there were three spellings of a section where there is now one neutral panel. The staff form **asks which series first** and the picture chooser shows that series' photo while nothing is chosen. The pending queue **marks an event that arrived with no location**, using the imports' existing state rather than a second one. Location and Event Image are relabelled, the private copy is three sentences, and a cancelled event says "if you have a place". **A private event already emits noindex and nofollow** and always has. **Parts A and H were investigations:** the Listing detail contact box, and the FAQ editors that do not start until Add is pressed. See "Open decisions". |
 | **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
@@ -80,14 +80,21 @@ SITE.** `.claude/import/README.md` is the run order and `TESTING.md` 2.15 to
   already there. An organizer reported as "would create" that is not one of
   Aging Services, PWUD Health or Onyx Northwest means a name was not recognised,
   and importing then leaves a near-duplicate.
-- **Clear trashes, it does not delete.** Every `uc_event` moves to the trash and
-  the count is reported before and after. Emptying the trash is a separate
-  decision on a separate screen.
+- **Clear trashes, it does not delete, and it clears TEST EVENTS ONLY.** Rows in
+  the Pending and Dismissed queues, submissions awaiting review, and anything
+  carrying source provenance are left exactly where they are. **Status alone
+  does not find them:** an import that vanished at its source is parked as an
+  ordinary `draft` and a submission is an ordinary `pending`, so the provenance
+  meta is what tells them apart. **Trashing a queue row would be data loss.**
+  `all_statuses()` includes trash and `find_existing()` searches with it, so the
+  next fetch matches the trashed row, finds trash is not updatable and counts it
+  untouched rather than creating a new one. It does not come back by fetching.
+  Report mode names every kept row with its id and reason.
 - **NOTHING IT CREATES CAN CAUSE MAIL, AND THAT TOOK A CHANGE.** The address it
   would otherwise have added is one nobody typed: `wp_insert_post()` defaults
   `post_author` to whoever is logged in, and **the creator is on an event's
   notification list unless the event says otherwise**, so running it from a
-  browser would have put that administrator on all 273 lists. **The opt-out does
+  browser would have put that administrator on all 287 lists. **The opt-out does
   not travel to an occurrence either**, because `SFAF_Recurrence` copies
   `post_author` and its `$copied_meta` carries none of the notification keys. So
   every post is opted out and then asks `notify_list()` who is left.

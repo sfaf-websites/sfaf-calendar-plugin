@@ -156,6 +156,7 @@ if ( $self ) {
 
 $total_events = 0;
 $total_posts  = 0;
+$total_dated  = 0;
 $by_case      = array( 'list' => 0, 'rule' => 0, 'none' => 0 );
 $matched      = array();
 $unmatched    = array();
@@ -189,7 +190,17 @@ foreach ( $plan['series'] as $s ) {
         $by_case[ $e['case'] ]++;
         $d     = sfaf_import_plan_dates( $e, $today, $horizon );
         $count = ( '' === $d['seed'] ) ? 0 : 1 + count( $d['dates'] );
-        $total_posts += $count;
+        /*
+         * POSTS, NOT DATES, AND THEY ARE DIFFERENT NUMBERS.
+         *
+         * An event with no schedule still becomes one post: a draft with times
+         * and a description for Mark to date. Adding $count here counted its
+         * dates, which are none, so this report said 273 while the importer
+         * created 287, and the importer was right. The two now agree because
+         * they compute the same thing.
+         */
+        $total_posts += max( 1, $count );
+        $total_dated += $count;
 
         if ( '' !== $e['source'] ) {
             $matched[] = array( $e['title'], $e['source'] );
@@ -281,5 +292,5 @@ echo "\n" . str_repeat( '=', 78 ) . "\n";
 printf( "series: %d\n", count( $plan['series'] ) );
 printf( "events named on the list: %d  (dates from the list %d, from a live rule %d, no dates %d)\n",
     $total_events, $by_case['list'], $by_case['rule'], $by_case['none'] );
-printf( "event posts this would create: %d\n", $total_posts );
+printf( "event posts this would create: %d, of which %d carry a date\n", $total_posts, $total_dated );
 printf( "matched to an export row: %d   unmatched: %d\n", count( $matched ), count( $unmatched ) );

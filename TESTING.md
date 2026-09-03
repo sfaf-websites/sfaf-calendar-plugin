@@ -597,8 +597,15 @@ that reads the live site. Four things in it have to be read rather than skimmed:
 `&mode=clear&confirm=CLEAR`, then `&mode=import&confirm=IMPORT`. Clear **trashes
 and does not delete**, so the first thing to check is that the trash holds
 exactly what the count said and that nothing outside `uc_event` moved. Then the
-import: **273 draft event posts across 32 series**, none published, and the
+import: **287 draft event posts across 32 series**, none published, and the
 report's own failure list empty.
+
+**THE CHECK THAT MATTERS MOST IS THE PENDING AND DISMISSED QUEUES, BEFORE AND
+AFTER THE CLEAR.** Open both, write down what is in them, run the clear, open
+them again. **Nothing may have moved**, including any row sitting in an ordinary
+`draft` or `pending` status that came from a source or a submission. A trashed
+import does not come back on a re-fetch, so this is the one step in the whole
+run that could lose data rather than inconvenience somebody.
 
 ### 2.17 Open six of the imported drafts and check what only a screen can show (3.69.0)
 

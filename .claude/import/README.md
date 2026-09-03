@@ -75,17 +75,46 @@ or, logged in as an administrator:
 can only happen on the site: which organizers, venues, categories and series
 caladmin already has. Read it before `clear`.
 
-`clear` moves every uc_event to the **trash**, not to deletion, and counts
-before and after. `wp_trash_post()` is what the plugin's own remove actions use,
-so a wrong call is one click to undo.
+`clear` moves **test events made by hand** to the trash, not to deletion, and
+counts before and after. `wp_trash_post()` is what the plugin's own remove
+actions use, so a wrong call is one click to undo. It is not a blanket clear:
+see below.
 
 Everything `import` creates is a **draft**.
+
+## The clear leaves every queue row alone, and it has to
+
+Four kinds of row survive, and **status alone does not find them all**. An
+import that vanished at its source is parked as an ordinary `draft`, and a
+submission awaiting review is an ordinary `pending`, so both look exactly like a
+hand-made test event until the provenance meta is read.
+
+| Kept | How it is recognised |
+|---|---|
+| In the Pending queue | status `uc_imported` |
+| In the Dismissed queue | status `uc_dismissed` |
+| A submission awaiting review | `_uc_submission_kind` |
+| Imported from a source, any status | `_uc_external_id` or `_uc_external_source` |
+| An import that vanished at its source | `_uc_source_removed_at` |
+
+**Trashing a queue row would be data loss, not an inconvenience.**
+`SFAF_Sources::all_statuses()` includes `trash` and `find_existing()` searches
+with it, so the next fetch **matches** the trashed row, finds `trash` is not in
+`updatable_statuses()`, counts it untouched and moves on. **It does not create a
+new one.** So a trashed import does not come back on a re-fetch. It comes back
+only if somebody restores it from the trash by hand, and if WordPress empties
+the trash first the row and every decision recorded on it are gone. The plugin
+states this itself, in the paragraph of `SFAF_Sources` explaining why an expired
+pending row is dismissed rather than trashed.
+
+Report mode names every kept row with its id, its reason and its title, because
+those are the rows a wrong clear would cost.
 
 ## Nothing it creates can cause mail to anybody
 
 The calendar has not rolled out. An address on an event's notification list
 means a real person starts receiving registration alerts and pre-event summaries
-the moment that event is published, and this creates 273 drafts for somebody to
+the moment that event is published, and this creates 287 drafts for somebody to
 publish in bulk.
 
 **The address it would otherwise add is one nobody typed.**
@@ -94,7 +123,7 @@ publish in bulk.
 writes none of the last three. But `wp_insert_post()` defaults `post_author` to
 whoever is logged in, and the creator is on the list unless the event says
 otherwise, so running it from a browser would put the administrator who ran it
-on all 273 lists.
+on all 287 lists.
 
 **And the opt-out does not travel to an occurrence.** `SFAF_Recurrence` copies
 `post_author` onto every generated occurrence, and its `$copied_meta` carries

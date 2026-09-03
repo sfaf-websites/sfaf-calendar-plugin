@@ -73,8 +73,16 @@ if ( ! $sfaf_import_cli && ! current_user_can( 'manage_options' ) ) {
     status_header( 403 );
     exit( 'This runs as an administrator.' );
 }
-if ( ! class_exists( 'SFAF_Series' ) || ! class_exists( 'SFAF_Recurrence' ) ) {
-    exit( "The SFAF Calendar plugin is not active. Nothing was done.\n" );
+/*
+ * EVERY CLASS THIS FILE READS, NOT JUST THE TWO IT WRITES THROUGH. The clear
+ * decides what to spare by asking SFAF_Sources and SFAF_Submissions, so a
+ * partial load would make every queue row look like a hand-made test event and
+ * trash it. Refusing is the only safe answer to that.
+ */
+foreach ( array( 'SFAF_Series', 'SFAF_Recurrence', 'SFAF_Sources', 'SFAF_Submissions', 'SFAF_Reminders', 'SFAF_Venues', 'SFAF_Organizers', 'SFAF_Online' ) as $needed ) {
+    if ( ! class_exists( $needed ) ) {
+        exit( "The SFAF Calendar plugin is not fully loaded ({$needed} is missing). Nothing was done.\n" );
+    }
 }
 
 require __DIR__ . '/schedule.php';
@@ -149,10 +157,18 @@ say();
  * 1. The existing events.
  * ======================================================================== */
 
-/** Every uc_event, counted by status. */
+/**
+ * Every uc_event, counted by status.
+ *
+ * THE STATUS LIST COMES FROM THE PLUGIN, NOT FROM HERE. The first version of
+ * this named six statuses by hand and so could not see the two that matter
+ * most: `uc_imported` and `uc_dismissed` are custom statuses, and a hand-typed
+ * list silently reported the Pending and Dismissed queues as empty when they
+ * were not. SFAF_Sources::all_statuses() is the same list find_existing() uses.
+ */
 function sfaf_import_event_counts() {
     $counts = array();
-    foreach ( array( 'publish', 'pending', 'draft', 'future', 'private', 'trash' ) as $status ) {
+    foreach ( SFAF_Sources::all_statuses() as $status ) {
         $ids = get_posts( array(
             'post_type'      => 'uc_event',
             'post_status'    => $status,
@@ -165,17 +181,134 @@ function sfaf_import_event_counts() {
     return $counts;
 }
 
+/**
+ * Why one event must survive the clear, or '' when it is Mark's to remove.
+ *
+ * THE CLEAR IS FOR TEST EVENTS SOMEBODY MADE BY HAND AND NOTHING ELSE. A row in
+ * a queue is a decision waiting to be made, or one already made, and neither is
+ * a test event.
+ *
+ * WHY TRASHING A QUEUE ROW WOULD BE DATA LOSS RATHER THAN AN INCONVENIENCE.
+ * SFAF_Sources::all_statuses() includes 'trash' and find_existing() searches
+ * with it, so the next fetch MATCHES a trashed row. It then finds that 'trash'
+ * is not in updatable_statuses(), counts the row as untouched and moves on.
+ * **It does not create a new one.** So a trashed import does not come back on a
+ * re-fetch; it comes back only if somebody restores it from the trash by hand,
+ * and if WordPress empties the trash first the row and every decision recorded
+ * on it are gone. The plugin says this itself in SFAF_Sources, in the paragraph
+ * explaining why an expired pending row is dismissed rather than trashed.
+ *
+ * FOUR THINGS ARE KEPT, and status alone is not enough to find them all. An
+ * import that vanished at its source is parked as an ordinary `draft`, and a
+ * submission awaiting review is an ordinary `pending`, so both look exactly
+ * like a hand-made test event until the provenance meta is read.
+ *
+ * @param int $post_id
+ * @return string A reason, or '' to clear.
+ */
+function sfaf_import_keep_reason( $post_id ) {
+    $post_id = (int) $post_id;
+    $status  = (string) get_post_status( $post_id );
+
+    if ( SFAF_Sources::STATUS_PENDING === $status ) {
+        return 'in the Pending queue';
+    }
+    if ( SFAF_Sources::STATUS_DISMISSED === $status ) {
+        return 'in the Dismissed queue';
+    }
+    if ( '' !== (string) get_post_meta( $post_id, SFAF_Submissions::META_KIND, true ) ) {
+        return 'a submission awaiting review';
+    }
+    if ( '' !== (string) get_post_meta( $post_id, SFAF_Sources::META_EXTERNAL_ID, true )
+        || '' !== (string) get_post_meta( $post_id, SFAF_Sources::META_SOURCE, true ) ) {
+        return 'imported from a source';
+    }
+    if ( '' !== (string) get_post_meta( $post_id, SFAF_Sources::META_REMOVED_AT, true ) ) {
+        return 'an import that vanished at the source';
+    }
+    return '';
+}
+
+/**
+ * Split every event into what the clear would remove and what it would keep.
+ *
+ * Already-trashed rows are not candidates: they are out of the way already and
+ * trashing them again would do nothing.
+ *
+ * @return array{clear:int[],keep:array<int,string>}
+ */
+function sfaf_import_clear_plan() {
+    $out      = array( 'clear' => array(), 'keep' => array() );
+    $statuses = array_values( array_diff( SFAF_Sources::all_statuses(), array( 'trash' ) ) );
+
+    $ids = get_posts( array(
+        'post_type'      => 'uc_event',
+        'post_status'    => $statuses,
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+    ) );
+    foreach ( $ids as $id ) {
+        $reason = sfaf_import_keep_reason( $id );
+        if ( '' === $reason ) {
+            $out['clear'][] = (int) $id;
+        } else {
+            $out['keep'][ (int) $id ] = $reason;
+        }
+    }
+    return $out;
+}
+
 $before = sfaf_import_event_counts();
 say( 'EVENTS ON THE SITE NOW' );
 rule( '-' );
-$total_live = 0;
 foreach ( $before as $status => $n ) {
-    say( sprintf( '  %-10s %d', $status, $n ) );
-    if ( 'trash' !== $status ) {
-        $total_live += $n;
-    }
+    say( sprintf( '  %-14s %d', $status, $n ) );
 }
-say( sprintf( '  %-10s %d', 'to clear', $total_live ) );
+say();
+
+$plan_clear = sfaf_import_clear_plan();
+$keep_by    = array();
+foreach ( $plan_clear['keep'] as $id => $reason ) {
+    $keep_by[ $reason ] = ( $keep_by[ $reason ] ?? 0 ) + 1;
+}
+$clear_by = array();
+foreach ( $plan_clear['clear'] as $id ) {
+    $s              = (string) get_post_status( $id );
+    $clear_by[ $s ] = ( $clear_by[ $s ] ?? 0 ) + 1;
+}
+
+say( 'WHAT THE CLEAR WOULD REMOVE' );
+rule( '-' );
+if ( ! $clear_by ) {
+    say( '  nothing' );
+}
+foreach ( $clear_by as $s => $n ) {
+    say( sprintf( '  %-14s %d', $s, $n ) );
+}
+say( sprintf( '  %-14s %d', 'TOTAL', count( $plan_clear['clear'] ) ) );
+say();
+
+say( 'WHAT IT LEAVES ALONE' );
+rule( '-' );
+if ( ! $keep_by ) {
+    say( '  nothing: no queue rows, submissions or imported events exist' );
+}
+foreach ( $keep_by as $reason => $n ) {
+    say( sprintf( '  %-38s %d', $reason, $n ) );
+}
+if ( $plan_clear['keep'] ) {
+    say();
+    say( '  Named, because these are the rows a wrong clear would cost:' );
+    foreach ( $plan_clear['keep'] as $id => $reason ) {
+        say( sprintf( '    #%-6d %-38s %s', $id, $reason, get_the_title( $id ) ) );
+    }
+    say();
+    say( '  A TRASHED IMPORT DOES NOT COME BACK ON A RE-FETCH. all_statuses()' );
+    say( '  includes trash and find_existing() searches with it, so the next' );
+    say( '  fetch matches the trashed row, finds trash is not updatable, and' );
+    say( '  counts it untouched rather than creating a new one.' );
+}
 say();
 
 if ( 'clear' === $sfaf_mode ) {
@@ -188,30 +321,43 @@ if ( 'clear' === $sfaf_mode ) {
      * Emptying the trash afterwards is a separate decision and a separate
      * screen.
      */
+    /*
+     * IT CLEARS THE LIST IT JUST PRINTED, and nothing else. The ids come from
+     * sfaf_import_clear_plan(), which is the same call that produced the
+     * breakdown above, so what was named is what goes and there is no second
+     * definition of "clearable" to drift from the first.
+     *
+     * The keep reason is asked again per row, because between printing the
+     * list and acting on it a fetch could have run.
+     */
     $cleared = 0;
-    foreach ( array( 'publish', 'pending', 'draft', 'future', 'private' ) as $status ) {
-        $ids = get_posts( array(
-            'post_type'      => 'uc_event',
-            'post_status'    => $status,
-            'posts_per_page' => -1,
-            'fields'         => 'ids',
-            'no_found_rows'  => true,
-        ) );
-        foreach ( $ids as $id ) {
-            if ( wp_trash_post( $id ) ) {
-                $cleared++;
-            }
+    $spared  = 0;
+    foreach ( $plan_clear['clear'] as $id ) {
+        $reason = sfaf_import_keep_reason( $id );
+        if ( '' !== $reason ) {
+            $spared++;
+            say( sprintf( '  spared #%d, now %s', $id, $reason ) );
+            continue;
+        }
+        if ( wp_trash_post( $id ) ) {
+            $cleared++;
         }
     }
     $after = sfaf_import_event_counts();
     say( 'CLEARED' );
     rule( '-' );
-    say( '  moved to trash: ' . $cleared );
+    say( '  moved to trash:  ' . $cleared );
+    say( '  left alone:      ' . count( $plan_clear['keep'] ) );
+    if ( $spared ) {
+        say( '  spared late:     ' . $spared . ' (changed between the listing and the clear)' );
+    }
+    say();
     foreach ( $after as $status => $n ) {
-        say( sprintf( '  %-10s %d', $status, $n ) );
+        say( sprintf( '  %-14s %d  (was %d)', $status, $n, $before[ $status ] ) );
     }
     say();
     say( 'Nothing was deleted. Each one reinstates from the trash.' );
+    say( 'No queue row, submission or imported event was touched.' );
     exit;
 }
 
@@ -224,7 +370,7 @@ if ( 'clear' === $sfaf_mode ) {
  *
  * The calendar has not rolled out. An address on an event's notification list
  * means a real person starts receiving registration alerts and pre-event
- * summaries the moment that event is published, and 273 drafts are about to be
+ * summaries the moment that event is published, and 287 drafts are about to be
  * created for somebody to publish in bulk.
  *
  * THE ADDRESS THIS IMPORT WOULD OTHERWISE ADD IS THE AUTHOR'S, AND NOBODY
@@ -233,7 +379,7 @@ if ( 'clear' === $sfaf_mode ) {
  * writes none of the last three. But wp_insert_post() defaults post_author to
  * whoever is logged in, and the creator is on the list unless the event says
  * otherwise, so running this from a browser would put the administrator who
- * ran it on all 273 lists without a single address being typed anywhere.
+ * ran it on all 287 lists without a single address being typed anywhere.
  *
  * AND THE OPT-OUT DOES NOT TRAVEL TO AN OCCURRENCE. SFAF_Recurrence copies
  * post_author onto every generated occurrence and its $copied_meta carries none

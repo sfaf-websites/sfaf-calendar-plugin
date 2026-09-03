@@ -4,7 +4,7 @@
  *
  * The calendar has not rolled out. An address on an event's notification list
  * means a real person starts receiving registration alerts and pre-event
- * summaries the moment that event is published, and the import creates 273
+ * summaries the moment that event is published, and the import creates 287
  * drafts for somebody to publish in bulk. So this is a build-time check, not a
  * thing to remember while editing.
  *
