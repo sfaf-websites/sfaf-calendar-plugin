@@ -244,16 +244,16 @@ function good_post( $over = array() ) {
  * 1. WHO MAY ASK FOR A LINK.
  * ------------------------------------------------------------------------ */
 foreach ( array(
-    'dana@sfaf.org'            => true,
+    'tester@sfaf.org'            => true,
     'DANA@SFAF.ORG'            => true,
-    'dana@mail.sfaf.org'       => true,
-    'dana@notsfaf.org'         => false,
-    'dana@sfaf.org.example.com'=> false,
-    'dana@sfaf.com'            => false,
-    'dana@example.org'         => false,
+    'tester@mail.sfaf.org'       => true,
+    'tester@notsfaf.org'         => false,
+    'tester@sfaf.org.example.com'=> false,
+    'tester@sfaf.com'            => false,
+    'tester@example.org'         => false,
     'not-an-address'           => false,
     ''                         => false,
-    'dana@sfaf.org '           => true,
+    'tester@sfaf.org '           => true,
 ) as $address => $want ) {
     expect( "is_staff_address(" . var_export( $address, true ) . ")", SFAF_Request::is_staff_address( $address ), $want );
 }
@@ -263,10 +263,10 @@ foreach ( array(
  * ------------------------------------------------------------------------ */
 $ref = new ReflectionMethod( 'SFAF_Request', 'issue_token' );
 $ref->setAccessible( true );
-$token = $ref->invoke( null, 'dana@sfaf.org' );
+$token = $ref->invoke( null, 'tester@sfaf.org' );
 
 expect( 'a token is 32 hex characters', (bool) preg_match( '/^[a-f0-9]{32}$/', $token ), true );
-expect( 'a live token resolves to its address', SFAF_Request::resolve_token( $token ), 'dana@sfaf.org' );
+expect( 'a live token resolves to its address', SFAF_Request::resolve_token( $token ), 'tester@sfaf.org' );
 expect( 'an unknown token resolves to nothing', SFAF_Request::resolve_token( str_repeat( 'a', 32 ) ), '' );
 expect( 'a short token is refused',             SFAF_Request::resolve_token( 'abc' ), '' );
 expect( 'a non-hex token is refused',           SFAF_Request::resolve_token( str_repeat( 'z', 32 ) ), '' );
@@ -280,14 +280,14 @@ foreach ( array_keys( $GLOBALS['transients'] ) as $key ) {
     }
 }
 /* And the stored value is the address, which is what the form needs. */
-expect( 'the store holds the address', in_array( 'dana@sfaf.org', array_values( $GLOBALS['transients'] ), true ), true );
+expect( 'the store holds the address', in_array( 'tester@sfaf.org', array_values( $GLOBALS['transients'] ), true ), true );
 
 /* A token whose stored address stops being a staff one is dead. Somebody's
  * address is the only thing making a token usable. */
 $key = 'sfaf_evreq_tok_' . hash( 'sha256', $token );
 $GLOBALS['transients'][ $key ] = 'someone@example.org';
 expect( 'a token holding a non-staff address is dead', SFAF_Request::resolve_token( $token ), '' );
-$GLOBALS['transients'][ $key ] = 'dana@sfaf.org';
+$GLOBALS['transients'][ $key ] = 'tester@sfaf.org';
 
 /* ---------------------------------------------------------------------------
  * 3. THE FIELDS. What a good submission keeps.

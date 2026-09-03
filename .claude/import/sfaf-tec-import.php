@@ -130,6 +130,80 @@ function rule( $ch = '=' ) {
     say( str_repeat( $ch, 78 ) );
 }
 
+/* ---------------------------------------------------------------------------
+ * THE RUN LOG, AND WHY THERE IS ONE.
+ *
+ * The three modes were run out of order once, IMPORT then REPORT then CLEAR,
+ * and the clear trashed everything the import had just made. Nothing was lost,
+ * because clear trashes rather than deletes, but it cost an afternoon. The
+ * import also ran twice, which nothing stopped and nothing reported.
+ *
+ * So each run records itself, every mode prints what has run before, and import
+ * refuses to add a second copy on top of a first without being told twice.
+ * ------------------------------------------------------------------------ */
+define( 'SFAF_TEC_LOG_OPTION', 'sfaf_tec_import_log' );
+
+function sfaf_import_log_read() {
+    $log = get_option( SFAF_TEC_LOG_OPTION, array() );
+    return is_array( $log ) ? $log : array();
+}
+
+function sfaf_import_log_add( $mode, $note ) {
+    $log   = sfaf_import_log_read();
+    $log[] = array(
+        'mode' => (string) $mode,
+        'when' => current_time( 'Y-m-d H:i:s' ),
+        'who'  => (string) wp_get_current_user()->user_login,
+        'note' => (string) $note,
+    );
+    // Bounded, so a runaway loop cannot grow an option without limit.
+    if ( count( $log ) > 50 ) {
+        $log = array_slice( $log, -50 );
+    }
+    update_option( SFAF_TEC_LOG_OPTION, $log, false );
+}
+
+/**
+ * Live events already sitting in the series this plan would fill.
+ *
+ * THE PRECONDITION FOR IMPORT IS NOT "CLEAR HAS RUN", IT IS "THESE EVENTS ARE
+ * NOT ALREADY HERE". Those are different, and only the second is what actually
+ * goes wrong: a clear that ran a week ago is no protection, and a site that was
+ * never dirty needs no clear at all. So this asks the question that matters.
+ *
+ * Trashed rows do not count. An import whose output is in the trash is not a
+ * duplicate waiting to happen; it is an import that was undone.
+ *
+ * @return array<string,int> series name => live events in it.
+ */
+function sfaf_import_existing_in_plan( $plan ) {
+    $out      = array();
+    $statuses = array_values( array_diff( SFAF_Sources::all_statuses(), array( 'trash' ) ) );
+
+    foreach ( $plan['series'] as $s ) {
+        $term = sfaf_import_term_by_name( $s['name'], SFAF_Series::TAXONOMY );
+        if ( ! $term ) {
+            continue;
+        }
+        $ids = get_posts( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => $statuses,
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'tax_query'      => array( array(
+                'taxonomy' => SFAF_Series::TAXONOMY,
+                'field'    => 'term_id',
+                'terms'    => (int) $term,
+            ) ),
+        ) );
+        if ( $ids ) {
+            $out[ $s['name'] ] = count( $ids );
+        }
+    }
+    return $out;
+}
+
 $today   = current_time( 'Y-m-d' );
 $horizon = $sfaf_plan['horizon'];
 
@@ -151,6 +225,24 @@ say( 'author:  ' . ( ( $sfaf_author && $sfaf_author->ID )
 say( '         Every post is created with that author AND with the author taken' );
 say( '         off its notification list, so no mail can reach anybody. Nothing' );
 say( '         else writes an address. Addresses inside descriptions stay.' );
+say();
+
+/* ---------------------------------------------------------------------------
+ * What has already been run. Printed in EVERY mode, first, before anything
+ * else, because the fault this prevents is not knowing.
+ * ------------------------------------------------------------------------ */
+$sfaf_log = sfaf_import_log_read();
+say( 'WHAT HAS ALREADY BEEN RUN' );
+rule( '-' );
+if ( ! $sfaf_log ) {
+    say( '  nothing recorded. Either this is the first run, or every run so far' );
+    say( '  predates the log, which was added after the modes were run out of order.' );
+} else {
+    foreach ( $sfaf_log as $entry ) {
+        say( sprintf( '  %-7s %s  by %-16s %s',
+            $entry['mode'], $entry['when'], $entry['who'], $entry['note'] ) );
+    }
+}
 say();
 
 /* ===========================================================================
@@ -358,6 +450,8 @@ if ( 'clear' === $sfaf_mode ) {
     say();
     say( 'Nothing was deleted. Each one reinstates from the trash.' );
     say( 'No queue row, submission or imported event was touched.' );
+    sfaf_import_log_add( 'clear', sprintf(
+        'trashed %d, left alone %d', $cleared, count( $plan_clear['keep'] ) ) );
     exit;
 }
 
@@ -548,6 +642,53 @@ say();
  * 3. Series and events.
  * ======================================================================== */
 
+/* ---------------------------------------------------------------------------
+ * THE PREFLIGHT. Import will not quietly add a second copy on top of a first.
+ *
+ * Reported in every mode so report mode answers "is it safe to import" without
+ * anybody having to run import to find out. Enforced only in import mode, and
+ * overridable, because a deliberate top-up is a real thing to want; what is not
+ * a real thing to want is doing it by accident.
+ * ------------------------------------------------------------------------ */
+$sfaf_existing = sfaf_import_existing_in_plan( $sfaf_plan );
+$sfaf_existing_total = array_sum( $sfaf_existing );
+
+say( 'WHAT IS ALREADY IN THESE SERIES' );
+rule( '-' );
+if ( ! $sfaf_existing ) {
+    say( '  nothing. Importing adds to empty series.' );
+} else {
+    foreach ( $sfaf_existing as $name => $n ) {
+        say( sprintf( '  %-46s %d live event(s)', $name, $n ) );
+    }
+    say( sprintf( '  %-46s %d', 'TOTAL', $sfaf_existing_total ) );
+    say();
+    say( '  Trashed events are not counted: an import sitting in the trash has' );
+    say( '  been undone and is not a duplicate waiting to happen.' );
+}
+say();
+
+if ( 'import' === $sfaf_mode && $sfaf_existing_total > 0 ) {
+    $anyway = $sfaf_import_cli
+        ? in_array( 'anyway', array_slice( isset( $argv ) ? $argv : array(), 1 ), true )
+        : ( isset( $_GET['anyway'] ) && 'YES' === strtoupper( sanitize_text_field( wp_unslash( $_GET['anyway'] ) ) ) );
+
+    if ( ! $anyway ) {
+        say( 'REFUSED' );
+        rule( '-' );
+        say( sprintf( '  %d event(s) already live in the series this would fill.', $sfaf_existing_total ) );
+        say( '  Importing now would add a SECOND copy of every event listed above,' );
+        say( '  not replace them. Nothing has been written.' );
+        say();
+        say( '  Run clear first, or add &anyway=YES if a second copy is genuinely' );
+        say( '  what you want.' );
+        sfaf_import_log_add( 'import', sprintf( 'refused: %d live events already in the plan\'s series', $sfaf_existing_total ) );
+        exit;
+    }
+    say( 'PROCEEDING ON TOP OF ' . $sfaf_existing_total . ' EXISTING EVENT(S), because anyway=YES was given.' );
+    say();
+}
+
 say( 'SERIES AND EVENTS' );
 rule( '-' );
 
@@ -730,7 +871,18 @@ if ( $failures ) {
     say( 'no failures.' );
 }
 
+if ( 'import' === $sfaf_mode ) {
+    sfaf_import_log_add( 'import', sprintf(
+        'created %d post(s) across %d series, %d failure(s)',
+        $made_posts, count( $sfaf_plan['series'] ), count( $failures ) ) );
+}
+
 if ( ! $WRITING ) {
     say();
-    say( 'Nothing was written. Run clear first, then import.' );
+    if ( $sfaf_existing_total > 0 ) {
+        say( 'Nothing was written. Import would REFUSE right now: ' . $sfaf_existing_total
+            . ' event(s) are already live in these series. Run clear first.' );
+    } else {
+        say( 'Nothing was written. These series are empty, so import is safe to run.' );
+    }
 }

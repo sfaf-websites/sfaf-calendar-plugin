@@ -193,7 +193,7 @@ class WP_Error { public function __construct( $c = '', $m = '' ) {} }
 class WP_User {
     public $ID = 0;
     public $display_name = 'Mark';
-    public $user_email = 'mark@sfaf.org';
+    public $user_email = 'manager@sfaf.org';
     public $first_name = 'Mark';
     public function __construct( $id = 0 ) { $this->ID = (int) $id; }
 }

@@ -2320,8 +2320,11 @@ or published are skipped, which is correct and adjustable through the
 `sfaf_gfmp_max_pages`, `sfaf_gfmp_per_page`, `sfaf_gfmp_fetch_raised`,
 `sfaf_gfmp_raised_lookup_limit`, `sfaf_gfmp_campaign_overview_path`.
 
-`apiv2-public-gfmp.json` in the project root is their OpenAPI spec and the
-source of truth for field names. It is 2.2 MB and too large to read whole: query
+`apiv2-public-gfmp.json` is their OpenAPI spec and the source of truth for
+field names. **It is kept on disk and deliberately not in the repository:** it
+is GoFundMe Pro's document rather than ours, it carries no licence granting
+redistribution, and it is 2.2 MB. Download it again from their developer
+documentation if it is not in the project root. It is 2.2 MB and too large to read whole: query
 it with a small Node script against `.paths` and
 `.components.schemas.Campaign.properties`. Treat it as a starting point, not an
 authority, for the reasons below.

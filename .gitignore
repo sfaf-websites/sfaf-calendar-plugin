@@ -46,6 +46,13 @@ recintos.xml
 # exports. What the import uses is in .claude/import/plan.php.
 Event Documents/
 
+# GoFundMe Pro's own OpenAPI spec, 2.2 MB. Kept on disk because two comments
+# in class-sfaf-source-gfmp.php and PROJECT.md cite it as the source of truth
+# for the endpoint and the Campaign schema, and out of the repository because it
+# is their document, carries no licence granting redistribution, and is a third
+# of the repository's weight. Re-download it from their developer docs.
+apiv2-public-gfmp.json
+
 # Anything under a folder explicitly marked private/local.
 private/
 scratch/

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.69.0
+Stable tag: 3.70.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,18 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.70.0 =
+
+**The plugin updates from inside WordPress now, from GitHub releases on a public repository.** The Plugins screen shows an update notice like any other plugin and Update now does the rest. **No token is stored on the site**, which is the whole reason the repository serving releases is public: a private one would mean keeping a credential on the site to fetch its release assets, and that is the thing this arrangement exists to avoid.
+
+**One zip, not two.** The update downloads the release **asset**, which is the exact file `.claude/build-zip.sh` already produces and which is what gets uploaded by hand today. It is deliberately not GitHub's auto-generated source zip: that one is named after the tag, carries the whole repository including the checkers and the documents, and unpacks to a folder WordPress would treat as a different plugin. `SFAF_Updater::asset_url()` accepts only an asset named `sfaf-calendar-X.Y.Z.zip`, so **a release published without one reports no update rather than installing the wrong thing**.
+
+**One version, not two.** The installed version is `SFAF_VERSION` and the available one is the release tag with any leading `v` removed. Nothing in the updater holds a version of its own. **`build-zip.sh` now refuses to build unless the three places version discipline already bumps agree with each other**, so the tag is derived from them rather than being a fourth place to keep in step. That check would have caught a zip named for a version the plugin did not claim, which mattered little while the zip was uploaded by hand and matters now: a mismatch means either an update nobody can install or one that installs and then offers itself forever.
+
+**What it will not do.** It never downgrades: a release older than what is installed is silently not an update. It caches for twelve hours, and for one hour after any failure, so a rate limit or an outage costs one slow admin page rather than one per page load. It registers on every request rather than in wp-admin only, because WordPress runs its update check on cron, which has no admin screen.
+
+**Two things came out of the repository.** `apiv2-public-gfmp.json`, GoFundMe Pro's own 2.2 MB OpenAPI spec, is now kept on disk and ignored: it is their document, it carries no licence granting redistribution, and it was a third of the repository's weight. The comments citing it as the source of truth for the endpoint and the Campaign schema remain accurate as provenance. Real staff addresses used as test fixtures were replaced with role addresses, and a developer's Windows username and local paths came out of `guard-test.sh`.
 
 = 3.69.0 =
 

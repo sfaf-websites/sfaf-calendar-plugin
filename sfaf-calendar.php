@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.69.0
+ * Version: 3.70.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.69.0' );
+define( 'SFAF_VERSION', '3.70.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -138,6 +138,9 @@ $sfaf_includes = array(
     'includes/class-sfaf-portal.php',
     'includes/class-sfaf-orphans.php',
     'includes/sfaf-sample-data.php',
+    // Updates from GitHub releases. Last, because it depends on SFAF_VERSION
+    // and on nothing else in the plugin.
+    'includes/class-sfaf-updater.php',
     'admin/class-sfaf-admin.php',
 );
 try {
@@ -268,6 +271,15 @@ function sfaf_init() {
 
     $seo = new SFAF_SEO();
     $seo->register();
+
+    /*
+     * UPDATES FROM GITHUB RELEASES. Registered for every request rather than
+     * admin only: WordPress runs its update check on cron, which has no admin
+     * screen, and a check that only ran in wp-admin would only ever notice a
+     * new version while somebody was looking.
+     */
+    $updater = new SFAF_Updater();
+    $updater->register();
 
     /*
      * THE 3.0.0 SERIES MIGRATION IS GONE, AND IT WAS NEVER RUN.
