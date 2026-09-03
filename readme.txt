@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.70.1
+Stable tag: 3.71.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.71.0 =
+
+**A series' upcoming drafts publish in one press.** The import creates 287 drafts across 32 series and the schedule screen could show them and not act on them, so approving a series meant opening 270 events one at a time.
+
+**One already existed, and it is worth knowing where.** WordPress's own Events list at **/wp-admin/edit.php?post_type=uc_event** has bulk actions, and `uc_event` never set `show_ui` or `show_in_menu` to false, so the menu entry has been there all along under **SFAF Calendar**. It works, and it is the wrong tool for this: it knows nothing about a series, nothing about upcoming versus past, and nothing about which rows are somebody else's decision to make.
+
+**What the new one covers, said before it is pressed.** The button carries the count, the line above it carries the date range, and both name what is being left out. Nothing is discovered afterwards.
+
+**Upcoming only, and an event with no date is not upcoming.** Publishing a past date puts a session that has already happened on the public calendar. The import also leaves events with no date at all, for series whose schedule is filled in later; publishing one of those would put it on no calendar while removing the draft badge that says it still needs a date. Both are skipped and both are counted in the line above the button.
+
+**Four kinds of row are never touched**, and three of them are somebody else's decision rather than a state: anything that is not a draft, which includes a `pending` submission awaiting review; anything carrying source provenance, which a fetch owns; an import parked as a draft because it vanished at its source, where publishing would put back what the source dropped; and a submission. The Pending and Dismissed queues need no rule and get none, because `uc_imported` and `uc_dismissed` are not in `editable_statuses()` and this screen has never been able to see them.
+
+**The imported events qualify, and the rule is written so they keep qualifying.** They were created by a script rather than through the event editor, so what they carry is worth stating: a `draft` status, a `_uc_event_date` and the series term. That is the whole of what this asks for, and the rule is written in terms of what an event **is** rather than how it was made.
+
+**The set is decided again when the button is pressed**, not taken from a hidden field, because between the page rendering and the press a fetch could have run or a date could have passed midnight. `wp_update_post()`, not a direct status write, so `save_post` fires for every listener that cares about an event becoming public.
+
+**`.claude/series-publish-test.php`** exercises the rule over fifteen cases without a database and plants five holes in it, requiring all five caught. The route whitelist caught the new action before the suite went green, which is what it is for.
 
 = 3.70.1 =
 

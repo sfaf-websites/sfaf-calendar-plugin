@@ -72,6 +72,12 @@ echo "=== the section reader ==="
 run "section-layout --self-test" php .claude/section-layout-test.php --self-test
 
 echo
+# The bulk publish rule, which is the only thing on the schedule screen that
+# reaches the public calendar and acts on a whole series at once.
+echo "=== the bulk publish rule ==="
+run "series-publish --self-test" php .claude/series-publish-test.php --self-test
+
+echo
 # The modal check, which is the only thing in the build that would notice the
 # registration dialog going back under the theme's header. There is no browser
 # here, so a <dialog> quietly becoming a <div> passes everything else.

@@ -499,6 +499,149 @@ class SFAF_Series {
      * ================================================================== */
 
     /**
+     * The drafts in this series that a bulk publish may touch, and what it
+     * would leave behind.
+     *
+     * WHY THIS EXISTS. The import creates a series' worth of drafts at once, and
+     * approving 270 of them one at a time is not a thing anybody is going to do.
+     * WordPress's own Events list in wp-admin can already bulk-publish, but it
+     * knows nothing about a series, nothing about upcoming versus past, and
+     * nothing about which rows are somebody else's decision to make. This is the
+     * same action with those three things known.
+     *
+     * UPCOMING ONLY, AND AN EVENT WITH NO DATE IS NOT UPCOMING. Publishing a
+     * past date puts a session that has already happened on the public calendar,
+     * which is the one outcome nobody wants from a button labelled "publish".
+     * The import also leaves events with no date at all, for series whose
+     * schedule Mark fills in later; those are not upcoming either, and
+     * publishing an event with no date would put it on no calendar while
+     * removing the draft badge that says it still needs one.
+     *
+     * FOUR KINDS OF ROW ARE NEVER TOUCHED, and three of them are somebody else's
+     * decision rather than a state:
+     *
+     *   - anything that is not a draft. A published event is already published,
+     *     and a `pending` row is a submission awaiting review, which is the
+     *     reviewer's call and not a bulk one.
+     *   - anything carrying source provenance. A fetch owns those.
+     *   - an import parked as a draft because it vanished at its source.
+     *     Publishing it would put back an event the source has dropped.
+     *   - a submission. It reaches the calendar by being approved.
+     *
+     * The queue statuses need no rule here and get none: `uc_imported` and
+     * `uc_dismissed` are not in editable_statuses(), so this screen has never
+     * been able to see them.
+     *
+     * THE IMPORT'S OWN EVENTS ARE ORDINARY DRAFTS AND ARE MEANT TO QUALIFY.
+     * They were created by a script rather than through the event editor, so it
+     * is worth saying what they carry: a `draft` status, a `_uc_event_date`, and
+     * this series' term. That is the whole of what this asks for. They carry no
+     * source provenance and no submission marker, so nothing here excludes
+     * them, and the rule is written in terms of what an event IS rather than
+     * how it was made so that stays true.
+     *
+     * @param int $term_id
+     * @return array{ready:int[],skipped:array<string,int>}
+     */
+    public static function publishable( $term_id ) {
+        $term_id = (int) $term_id;
+        $out     = array( 'ready' => array(), 'skipped' => array() );
+
+        $ids   = self::events( $term_id, array(
+            'status' => self::editable_statuses(),
+            'limit'  => -1,
+        ) );
+        $today = current_time( 'Y-m-d' );
+
+        foreach ( $ids as $id ) {
+            $why = self::publish_skip_reason( (int) $id, $today );
+            if ( '' === $why ) {
+                $out['ready'][] = (int) $id;
+            } else {
+                $out['skipped'][ $why ] = ( isset( $out['skipped'][ $why ] ) ? $out['skipped'][ $why ] : 0 ) + 1;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Why one event is not this bulk publish's to touch, or '' when it is.
+     *
+     * ITS OWN METHOD BECAUSE IT IS THE PART THAT MATTERS. publishable() decides
+     * which events to ask about, which is a WP_Query and is the same query the
+     * screen already runs. This decides what happens to each one, and it is the
+     * only thing standing between a button labelled "publish" and somebody
+     * else's row. A rule that can be exercised without a database is a rule
+     * that gets exercised; see .claude/series-publish-test.php.
+     *
+     * The order is deliberate: cheapest and most common first, so an ordinary
+     * published event costs one get_post_status() and nothing else.
+     *
+     * @param int    $id
+     * @param string $today Y-m-d, passed in so one run judges every event
+     *                      against one date rather than against the clock.
+     * @return string
+     */
+    public static function publish_skip_reason( $id, $today ) {
+        $id = (int) $id;
+
+        if ( 'draft' !== get_post_status( $id ) ) {
+            return 'not a draft';
+        }
+        $date = (string) get_post_meta( $id, '_uc_event_date', true );
+        if ( '' === $date ) {
+            return 'no date yet';
+        }
+        if ( $date < (string) $today ) {
+            return 'already happened';
+        }
+        $prov = SFAF_Sources::provenance( $id );
+        if ( '' !== $prov['source'] || '' !== $prov['external_id'] ) {
+            return 'imported from a source';
+        }
+        if ( '' !== (string) get_post_meta( $id, SFAF_Sources::META_REMOVED_AT, true ) ) {
+            return 'gone at its source';
+        }
+        if ( '' !== (string) get_post_meta( $id, SFAF_Submissions::META_KIND, true ) ) {
+            return 'a submission';
+        }
+        return '';
+    }
+
+    /**
+     * Publish those drafts.
+     *
+     * THE SET IS RE-DECIDED HERE RATHER THAN TAKEN FROM THE FORM. The button
+     * said a number, and between the page rendering and the press a fetch could
+     * have run, a date could have passed midnight or somebody could have
+     * published one by hand. Asking publishable() again is what makes the button
+     * do what its label meant rather than what a hidden field remembered.
+     *
+     * wp_update_post(), not a direct status write, so save_post fires and every
+     * listener that cares about an event becoming public gets its turn.
+     *
+     * @param int $term_id
+     * @return array{published:int,skipped:array<string,int>,failed:int}
+     */
+    public static function publish_drafts( $term_id ) {
+        $plan   = self::publishable( $term_id );
+        $done   = 0;
+        $failed = 0;
+
+        foreach ( $plan['ready'] as $id ) {
+            $res = wp_update_post( array( 'ID' => (int) $id, 'post_status' => 'publish' ), true );
+            if ( is_wp_error( $res ) || ! $res ) {
+                $failed++;
+            } else {
+                $done++;
+            }
+        }
+
+        return array( 'published' => $done, 'skipped' => $plan['skipped'], 'failed' => $failed );
+    }
+
+    /**
      * Create a series.
      *
      * @param string $name

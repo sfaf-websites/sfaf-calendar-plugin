@@ -879,6 +879,11 @@ class SFAF_Portal {
                 $this->schedule_remove_date_from_post();
                 break;
 
+            case 'schedule_publish':
+                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                $this->schedule_publish_from_post();
+                break;
+
             /* ---- Categories. What kind of event this is. ------------------ */
             case 'save_category':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
@@ -2897,6 +2902,7 @@ class SFAF_Portal {
             'schedule_extend_no_cadence' => 'These dates were chosen one at a time rather than produced by a pattern, so there is no cadence to carry forward. Add each new date below.',
             'schedule_extend_nothing'  => 'Nothing to add: every date the pattern produces up to then is already on the schedule, or was removed on purpose.',
             'schedule_extend_failed'   => 'The series could not be extended.',
+            'schedule_publish_none'    => 'Nothing was published. Every upcoming date in this series is already public, or the drafts left are ones this action does not touch.',
             'schedule_no_group' => 'These dates are not on a repeating pattern, so there is no pattern to change. Each date can still be edited on its own.',
             'schedule_nothing_upcoming' => 'There are no upcoming dates to change. Dates that have already been are the record of what happened and are never rewritten.',
             'schedule_imported' => 'This event comes from another platform, which decides when it happens. Changing the schedule here would be undone by the next fetch.',
@@ -3020,6 +3026,19 @@ class SFAF_Portal {
                 );
             }
             $said .= ' Past dates were not touched.';
+            echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
+            return;
+        }
+
+        if ( 'schedule_published' === $key ) {
+            $made   = isset( $_GET['made'] ) ? max( 0, intval( $_GET['made'] ) ) : 0;
+            $failed = isset( $_GET['failed'] ) ? max( 0, intval( $_GET['failed'] ) ) : 0;
+
+            $said = sprintf( '%d %s now on the public calendar.', $made, _n( 'draft is', 'drafts are', $made ) );
+            $said .= ' Past dates, events with no date yet, imported events and submissions were left as they were.';
+            if ( $failed > 0 ) {
+                $said .= ' ' . sprintf( '%d could not be published and %s still %s.', $failed, _n( 'is', 'are', $failed ), _n( 'a draft', 'drafts', $failed ) );
+            }
             echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
             return;
         }
@@ -7474,6 +7493,34 @@ class SFAF_Portal {
      * returns a reason rather than a sentence, and this is the screen that turns
      * one into the other.
      */
+    /**
+     * Publish this series' upcoming drafts.
+     *
+     * NO NONCE CHECK HERE, and that is the file's arrangement rather than an
+     * omission: the dispatcher verifies `uc_portal_ . $action` for every posted
+     * action before the switch, and this form emits
+     * `uc_portal_schedule_publish` to match. can_view_all() is asked by the case
+     * that calls this, as it is for the other four schedule actions.
+     */
+    private function schedule_publish_from_post() {
+        $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
+        if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
+            $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
+        }
+
+        $result = SFAF_Series::publish_drafts( $term_id );
+
+        if ( 0 === $result['published'] && 0 === $result['failed'] ) {
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_publish_none' ) );
+        }
+
+        $this->redirect( 'series/edit/' . $term_id, array(
+            'msg'    => 'schedule_published',
+            'made'   => $result['published'],
+            'failed' => $result['failed'],
+        ) );
+    }
+
     private function schedule_extend_from_post() {
         $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
         if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
@@ -7900,6 +7947,8 @@ class SFAF_Portal {
                     ?>
                 <?php endif; ?>
 
+                <?php $this->render_schedule_publish_form( $term_id ); ?>
+
                 <h4 class="uc-schedule-head">Upcoming</h4>
                 <?php if ( empty( $upcoming ) ) : ?>
                     <p class="uc-empty">Nothing upcoming. Add a date below.</p>
@@ -8252,6 +8301,82 @@ class SFAF_Portal {
                 </div>
             </form>
         </details>
+        <?php
+    }
+
+    /**
+     * Publish this series' upcoming drafts, in one press.
+     *
+     * THE ONE ACTION ON THIS SCREEN THAT REACHES THE PUBLIC CALENDAR, which is
+     * why it says the count twice: once on the button, so nobody has to press it
+     * to find out, and once in a confirmation. Everything it will not touch is
+     * named above the button rather than discovered afterwards.
+     *
+     * IT RENDERS NOTHING WHEN THERE IS NOTHING TO DO. A series whose dates are
+     * all published gets no button, no empty state and no explanation of an
+     * action that would do nothing: the absence is the answer.
+     *
+     * @param int $term_id
+     */
+    private function render_schedule_publish_form( $term_id ) {
+        $plan  = SFAF_Series::publishable( $term_id );
+        $ready = count( $plan['ready'] );
+        if ( $ready < 1 ) {
+            return;
+        }
+
+        $first = (string) get_post_meta( $plan['ready'][0], '_uc_event_date', true );
+        $last  = (string) get_post_meta( $plan['ready'][ $ready - 1 ], '_uc_event_date', true );
+
+        /*
+         * THE SKIPPED COUNTS ARE SHOWN, NOT SUPPRESSED. "Publish 47" beside a
+         * screen listing 61 dates invites the question this line answers, and a
+         * manager who cannot see why fourteen are staying put will press it
+         * again rather than trust it.
+         */
+        $left = array();
+        foreach ( $plan['skipped'] as $why => $n ) {
+            $left[] = $n . ' ' . $why;
+        }
+
+        $confirm = sprintf(
+            'Publish %d upcoming %s in this series?',
+            $ready,
+            _n( 'draft', 'drafts', $ready )
+        );
+        $confirm .= ' They go on the public calendar straight away.';
+        if ( $left ) {
+            $confirm .= ' Nothing else is touched: ' . implode( ', ', $left ) . '.';
+        }
+        ?>
+        <div class="uc-schedule-publish">
+            <h4 class="uc-schedule-head">Publish</h4>
+            <p class="uc-hint">
+                <?php echo (int) $ready; ?> upcoming
+                <?php echo esc_html( _n( 'draft', 'drafts', $ready ) ); ?>
+                <?php if ( $first === $last ) : ?>
+                    on <?php echo esc_html( sfaf_ap_date( $first, 'short_year' ) ); ?>.
+                <?php else : ?>
+                    from <?php echo esc_html( sfaf_ap_date( $first, 'short_year' ) ); ?>
+                    to <?php echo esc_html( sfaf_ap_date( $last, 'short_year' ) ); ?>.
+                <?php endif; ?>
+                <?php if ( $left ) : ?>
+                    Not included: <?php echo esc_html( implode( ', ', $left ) ); ?>.
+                <?php endif; ?>
+            </p>
+            <form method="post" class="uc-inline-form">
+                <input type="hidden" name="uc_action" value="schedule_publish" />
+                <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                <?php wp_nonce_field( 'uc_portal_schedule_publish', 'uc_nonce' ); ?>
+                <div class="uc-form-actions">
+                    <button type="submit" class="uc-btn uc-btn-primary"
+                            data-uc-confirm="<?php echo esc_attr( $confirm ); ?>">
+                        Publish <?php echo (int) $ready; ?> upcoming
+                        <?php echo esc_html( _n( 'draft', 'drafts', $ready ) ); ?>
+                    </button>
+                </div>
+            </form>
+        </div>
         <?php
     }
 

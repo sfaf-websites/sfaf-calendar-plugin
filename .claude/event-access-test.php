@@ -351,6 +351,12 @@ $ALLOWED = array(
     'POST:schedule_extend'        => array( 'viewall' ),
     'POST:schedule_add_date'      => array( 'viewall' ),
     'POST:schedule_remove_date'   => array( 'viewall' ),
+    // The only schedule action that reaches the public calendar, and the same
+    // gate as the other four: it edits a series, and editing a series has
+    // always been can_view_all. What it may touch within that series is decided
+    // again per event by SFAF_Series::publish_skip_reason(), which is the check
+    // that keeps it off submissions, imports and past dates.
+    'POST:schedule_publish'       => array( 'viewall' ),
     'POST:save_category'          => array( 'viewall' ),
     'POST:delete_category'        => array( 'viewall' ),
     'POST:save_venue'             => array( 'viewall' ),
