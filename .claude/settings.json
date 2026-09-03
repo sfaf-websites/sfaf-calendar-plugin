@@ -17,7 +17,7 @@
     "PATH SYNTAX ON THIS MACHINE, BECAUSE IT IS NOT WHAT YOU WOULD GUESS.",
     "Claude Code on Windows here writes absolute path rules in POSIX form with the",
     "drive as a lowercase segment behind a double slash:",
-    "    Read(//c/Users/msapoznikov/Documents/Apps/**)",
+    "    Read(//c/Users/<you>/Documents/Apps/**)",
     "NOT C:\\Users\\... and NOT /c/Users/... . A rule in the wrong form matches",
     "nothing and fails silently, which looks exactly like a rule that is working.",
     "This file therefore avoids absolute paths entirely: the file tools are allowed",

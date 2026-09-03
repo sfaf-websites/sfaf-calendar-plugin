@@ -230,7 +230,7 @@ $next_week = date( 'Y-m-d', strtotime( '+8 days' ) );
 function good_post( $over = array() ) {
     global $tomorrow;
     return array_merge( array(
-        'requester_name' => 'Dana Reed',
+        'requester_name' => 'Tester Reed',
         'title'          => 'Board Social',
         'description'    => 'An evening for the board and volunteers.',
         'date'           => $tomorrow,
@@ -245,7 +245,7 @@ function good_post( $over = array() ) {
  * ------------------------------------------------------------------------ */
 foreach ( array(
     'tester@sfaf.org'            => true,
-    'DANA@SFAF.ORG'            => true,
+    'TESTER@SFAF.ORG'            => true,
     'tester@mail.sfaf.org'       => true,
     'tester@notsfaf.org'         => false,
     'tester@sfaf.org.example.com'=> false,
