@@ -72,6 +72,13 @@ echo "=== the section reader ==="
 run "section-layout --self-test" php .claude/section-layout-test.php --self-test
 
 echo
+# The modal check, which is the only thing in the build that would notice the
+# registration dialog going back under the theme's header. There is no browser
+# here, so a <dialog> quietly becoming a <div> passes everything else.
+echo "=== the modal reader ==="
+run "modal-toplayer --self-test" php .claude/modal-toplayer-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

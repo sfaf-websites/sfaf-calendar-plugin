@@ -1120,12 +1120,64 @@
         $scope.find('.uc-count-number').text(value);
     }
 
+    /* ---------------------------------------------------------------------
+     * OPENING A MODAL IN THE TOP LAYER.
+     *
+     * Both modals here used to be divs toggled with an `active` class, relying
+     * on `position: fixed` and a large z-index. On resources.sfaf.org that put
+     * the registration dialog under the theme's header and centred it on the
+     * page rather than the viewport. See the block above
+     * `dialog.uc-rsvp-modal-overlay` in calendar.css for why one cause
+     * produces both symptoms and why no number written by us could fix it.
+     *
+     * showModal() is what changes: the element is painted above every stacking
+     * context in the document and its containing block is the viewport, so
+     * neither an ancestor's transform nor a theme's header can reach it. Focus
+     * moves into the dialog and the rest of the page goes inert, both of which
+     * this dialog should always have had.
+     *
+     * THE FALLBACK IS THE OLD BEHAVIOUR, not an error. A browser without
+     * showModal() gets the `open` attribute instead, which makes the dialog
+     * display: flex and leaves it competing on z-index exactly as before. That
+     * is worse on this one theme and no worse than today anywhere else.
+     *
+     * THE FRAME BETWEEN display AND opacity IS NOT DECORATION. The element
+     * goes from `display: none` to `display: flex` in the same tick, and a
+     * transition cannot start from a box that did not exist a moment ago. One
+     * animation frame later, it can, and the fade is preserved.
+     * ------------------------------------------------------------------- */
+    function openOverlay($el) {
+        var el = $el[0];
+        if (!el) { return; }
+        if (typeof el.showModal === 'function') {
+            if (!el.open) { el.showModal(); }
+        } else {
+            el.setAttribute('open', '');
+        }
+        if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(function () { $el.addClass('active'); });
+        } else {
+            $el.addClass('active');
+        }
+    }
+
+    function closeOverlay($el) {
+        var el = $el[0];
+        if (!el) { return; }
+        $el.removeClass('active');
+        if (typeof el.close === 'function') {
+            if (el.open) { el.close(); }
+        } else {
+            el.removeAttribute('open');
+        }
+    }
+
     /**
      * RSVP system
      */
     function initRSVP() {
         // Build the modal (inject into body once)
-        var modalHTML = '<div class="uc-rsvp-modal-overlay" id="uc-rsvp-modal">' +
+        var modalHTML = '<dialog class="uc-rsvp-modal-overlay" id="uc-rsvp-modal">' +
             '<div class="uc-rsvp-modal">' +
                 '<div class="uc-rsvp-form-view">' +
                     '<h3>Register for this Event</h3>' +
@@ -1200,10 +1252,18 @@
                     '<button class="uc-rsvp-cancel" id="uc-rsvp-close-btn" style="margin-top: 16px;">Close</button>' +
                 '</div>' +
             '</div>' +
-        '</div>';
+        '</dialog>';
 
         $('body').append(modalHTML);
         modal = $('#uc-rsvp-modal');
+
+        /* A dialog closes itself on Escape, and that path does not go through
+           closeOverlay(). Listening for its own close event is what keeps the
+           fade class and the pending event id from surviving it. */
+        modal.on('close', function () {
+            modal.removeClass('active');
+            currentEventId = null;
+        });
 
         // Open modal
         $(document).on('click', '.uc-rsvp-btn', function(e) {
@@ -1238,7 +1298,7 @@
             $('.uc-rsvp-form-view').show();
             $('#uc-rsvp-success').hide();
 
-            modal.addClass('active');
+            openOverlay(modal);
         });
 
         // Close modal
@@ -1264,7 +1324,7 @@
     }
 
     function closeModal() {
-        modal.removeClass('active');
+        closeOverlay(modal);
         currentEventId = null;
     }
 
@@ -1401,7 +1461,7 @@
      * would answer "is that address known here".
      */
     function initFollow() {
-        var modalHTML = '<div class="uc-rsvp-modal-overlay" id="uc-follow-modal">' +
+        var modalHTML = '<dialog class="uc-rsvp-modal-overlay" id="uc-follow-modal">' +
             '<div class="uc-rsvp-modal">' +
                 '<div class="uc-follow-form-view">' +
                     /* THE SERIES NAME GOES IN THE HEADING AND NOWHERE ELSE. It
@@ -1429,10 +1489,11 @@
                     '<button class="uc-rsvp-cancel" id="uc-follow-close-btn" style="margin-top: 16px;">Close</button>' +
                 '</div>' +
             '</div>' +
-        '</div>';
+        '</dialog>';
 
         $('body').append(modalHTML);
         var fmodal = $('#uc-follow-modal');
+        fmodal.on('close', function () { fmodal.removeClass('active'); });
         var followSeriesId = null;
 
         $(document).on('click', '.uc-follow-btn', function(e) {
@@ -1448,17 +1509,17 @@
             $('#uc-follow-submit-btn').prop('disabled', false).text('Yes, follow this series');
             $('.uc-follow-form-view').show();
             $('#uc-follow-success').hide();
-            fmodal.addClass('active');
+            openOverlay(fmodal);
         });
 
         fmodal.on('click', function(e) {
-            if (e.target === this) fmodal.removeClass('active');
+            if (e.target === this) closeOverlay(fmodal);
         });
         $(document).on('click', '#uc-follow-cancel-btn, #uc-follow-close-btn', function() {
-            fmodal.removeClass('active');
+            closeOverlay(fmodal);
         });
         $(document).on('keydown', function(e) {
-            if (e.key === 'Escape') fmodal.removeClass('active');
+            if (e.key === 'Escape') closeOverlay(fmodal);
         });
 
         function submitFollow() {

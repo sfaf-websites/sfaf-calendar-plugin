@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.70.0
+Stable tag: 3.70.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.70.1 =
+
+**The registration dialog opened underneath the site header, and it was one cause with two symptoms rather than a z-index that needed raising.**
+
+**What the second symptom proved.** The dialog was also centred on the page rather than the viewport, beginning above the fold on a short screen. It already declared `position: fixed; inset: 0` with `align-items: center` and `max-height: 90vh`, and an element like that **is** the viewport by definition: it cannot begin above the fold and it cannot be page-centred. So `fixed` was not resolving against the viewport, which leaves exactly two possibilities, and **both of them also explain the layering**. Either an ancestor became the containing block for fixed descendants, which it can only do by creating a stacking context, and that traps every z-index inside it; or the theme overrode `position` to something for which z-index is inert. One cause, both symptoms.
+
+**Why no number here could have fixed it.** The overlay already carried `z-index: 99999`. If it is trapped in a stacking context, that number is compared only against its siblings inside the trap and never against the header; if `position` is no longer fixed or absolute, the number does not apply at all. Raising it would have been a guess against a value that is not readable from this repository, because the header belongs to the resources.sfaf.org theme and the theme is not in it.
+
+**Both modals now open in the top layer.** The registration dialog and the follow dialog are `<dialog>` elements opened with `showModal()`. A top-layer element is painted above every stacking context in the document and **its containing block is the viewport whatever its ancestors do**, so it is immune to both candidate causes at once and to whatever the theme actually declares. A browser without `showModal()` gets the `open` attribute instead and behaves exactly as before.
+
+**Three things come free with it,** and the dialog should always have had them: focus moves into the dialog, the rest of the page becomes inert, and Escape is handled by the browser. The user-agent box a dialog carries is fully overridden so the dim still fills the viewport, and the fade is preserved by adding the visible class one animation frame after the element stops being `display: none`.
+
+**A check was added because nothing else in the build would notice a regression.** There is no browser here, so a `<dialog>` quietly becoming a `<div>` again, or `showModal()` becoming a class toggle, would pass lint, the callable audit and the whole suite while putting the dialog back under the header. `.claude/modal-toplayer-test.php` plants eight regressions against itself and requires all eight caught.
 
 = 3.70.0 =
 

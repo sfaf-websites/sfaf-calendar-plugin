@@ -1302,8 +1302,69 @@
  * and would have been reset to `width: auto`; .uc-rsvp-note carries the only
  * paragraph margin in the modal.
  * ======================================================================== */
-.uc-rsvp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
-.uc-rsvp-modal-overlay.active { opacity: 1; pointer-events: all; }
+/* ---------------------------------------------------------------------------
+   THE MODAL IS A <dialog> AND IT OPENS IN THE TOP LAYER. IT DOES NOT COMPETE
+   ON z-index, BECAUSE IT CANNOT WIN THAT COMPETITION FROM HERE.
+
+   WHAT WENT WRONG. This was a div with `position: fixed; inset: 0` and
+   `z-index: 99999`, appended to <body>, and on resources.sfaf.org it opened
+   UNDERNEATH the theme's header and centred on the PAGE rather than the
+   viewport. The second symptom is the one that names the cause: a fixed
+   element with `inset: 0` is the viewport, by definition, and it can never
+   begin above the fold. So `fixed` was not resolving against the viewport,
+   which means either an ancestor became its containing block or the theme
+   overrode `position`. EITHER ONE ALSO EXPLAINS THE LAYERING: an ancestor that
+   becomes a containing block for fixed descendants does so by creating a
+   stacking context, which traps every z-index inside it, and a `position` that
+   is no longer fixed or absolute makes z-index inert outright. One cause, both
+   symptoms, and no number written here could have fixed it.
+
+   WHY THE TOP LAYER IS THE ANSWER RATHER THAN A BIGGER NUMBER. An element
+   opened with showModal() is painted in the top layer, above every stacking
+   context in the document, and its containing block is the viewport whatever
+   its ancestors do. So it is immune to both candidate causes at once, and to
+   whatever the theme's header actually declares, which is not readable from
+   this repository. Raising 99999 would have been a guess against a number
+   nobody here can see.
+
+   THE UA STYLES THAT HAVE TO GO. A dialog is `width: fit-content`,
+   `height: fit-content`, `margin: auto`, `max-width` and `max-height` of
+   `calc(100% - 6px - 2em)`, with a border and padding. All of those would
+   shrink the full-viewport dim to a small centred box, so each is overridden
+   here; `inset: 0` then sizes it. The overrides are at (0,1,1) because
+   `dialog` is a type selector, which also puts them above this file's own
+   (0,1,0) reset, as the header of this file requires a note for.
+
+   `display` IS THE OPEN STATE. A closed dialog is `display: none` from the UA
+   sheet, so `[open]` is what makes it a flex container. `pointer-events` is
+   gone with it: a display:none element cannot be clicked, so the pair that
+   used to stand in for that is no longer doing anything.
+   --------------------------------------------------------------------- */
+dialog.uc-rsvp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgba(0,0,0,0.5);
+    /* Kept for the fallback path only, where the dialog is opened without the
+       top layer. In the top layer it is inert, and correctly so. */
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+dialog.uc-rsvp-modal-overlay[open] { display: flex; }
+dialog.uc-rsvp-modal-overlay.active { opacity: 1; }
+/* The dim is on the dialog itself, which fills the viewport, so the browser's
+   own backdrop would only ever double it. */
+dialog.uc-rsvp-modal-overlay::backdrop { background: transparent; }
 
 .uc-rsvp-modal-overlay .uc-rsvp-modal { background: #fff; border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); text-align: left; }
 .uc-rsvp-modal-overlay .uc-rsvp-modal h3 { font-family: var(--uc-font-heading); font-size: 20px; font-weight: 700; line-height: 1.3; margin: 0 0 4px; color: var(--uc-text); }
