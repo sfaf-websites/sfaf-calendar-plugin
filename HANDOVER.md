@@ -6,15 +6,20 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-02, at 3.68.1.
+**Last updated:** 2026-09-03, at 3.69.0.
 
 ---
 
 ## What shipped last
 
-**3.68.1**, built as `sfaf-calendar-3.68.1.zip` in the project root, committed
+**3.69.0**, built as `sfaf-calendar-3.69.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. The working tree is clean apart from
-one stray PNG that is not part of the plugin.
+one stray PNG and the four export XMLs, none of which are part of the plugin.
+
+> **NO PLUGIN CODE CHANGED IN 3.69.0.** The zip differs from 3.68.1's in the
+> three version strings and nothing else, so installing it changes nothing on
+> the site. What the release carries is the one-time import tooling in
+> `.claude/import/`, which is not in the zip.
 
 > **3.53.0 ADDED A TABLE**, `uc_series_followers`, and took `SFAF_DB_VERSION` to
 > `6`. 3.54.0 adds nothing, but if the site is still on 3.52.0 this still
@@ -26,13 +31,13 @@ The last four releases, so a fresh chat knows what is recent:
 
 | | |
 |---|---|
+| **3.69.0** | **No plugin code changed. The release carries the one-time import of the old Events Calendar**, in `.claude/import/`, which is not in the zip. Mark's list is the authoritative structure and the four WXR exports are detail for the rows that match it; where they disagree the list wins. **32 series, 39 events, 128 draft posts, nothing published.** Dates are generated only from a live schedule, meaning the list states a day and time or the export's rule has no end date: **every rule with an end date among the twenty matched rows has already passed**, the latest 2026-07-01, so 26 events arrive with times and a description and no dates for Mark to fill in. **Nothing has been written to the site yet.** Report mode first, then clear, then import; `TESTING.md` 2.15 to 2.18. |
 | **3.68.1** | **A layout fault 3.68.0 shipped on both request forms, and nothing else.** Every section's heading rendered beside its first field, with Date and Venue squeezed into a roughly 40px column. **The cause was a float that had never run.** The legend float written in 3.66.0 was inert because the fieldsets carrying it were also `display: flex`, and float computes to none on a flex item; 3.68.0 took `.uc-field` off the sections to stop a reset reaching them, and **the class carrying that reset was also the section's layout mode**. A live float and a flex first child cannot share a line. **A section declares its own `display` now** and there is no float in these rules. Structure, headings, tint and hairline are as 3.68.0 left them. |
 | **3.68.0** | **Six changes to the two public forms and the pending queue, and two investigations.** Both forms are **one sequence of sections with a visible boundary**: the fault was a cascade one, `.uc-request-card fieldset.uc-field` at (0,2,1) stripping the border off `.uc-form-section-group` at (0,1,0), and there were three spellings of a section where there is now one neutral panel. The staff form **asks which series first** and the picture chooser shows that series' photo while nothing is chosen. The pending queue **marks an event that arrived with no location**, using the imports' existing state rather than a second one. Location and Event Image are relabelled, the private copy is three sentences, and a cancelled event says "if you have a place". **A private event already emits noindex and nofollow** and always has. **Parts A and H were investigations:** the Listing detail contact box, and the FAQ editors that do not start until Add is pressed. See "Open decisions". |
 | **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
-| **3.66.0** | **Five changes and an investigation.** The four pages that build their own document have the calendar's favicon; the Get a form link dialog says **Event Series** rather than Campaign; the staff form can name the team that gets access, up to caladmin's own cap of two; both request forms have a visible heading hierarchy off the unused Subhead step. **"All Events" was going to the sfaf.org homepage because the cross-origin referrer arrives as an origin with no path**, which the code accepted; it is now treated as no referrer, and **Mark still has to fill in the Calendar home URL setting** for the other half. **Five organizer addresses on the community form was stopped, not built**: see "Open decisions". |
 
 **Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.68.1, the
+repo.** The tell is the Plugins screen: if it does not say 3.69.0, the
 deployment is stale or partial, and that has explained a "fix that did not work"
 before.
 
@@ -64,6 +69,27 @@ unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here,
 not a "does it work" question.
 
 ## In flight
+
+**THE IMPORT IS BUILT AND HAS NOT BEEN RUN. NOTHING HAS BEEN WRITTEN TO THE
+SITE.** `.claude/import/README.md` is the run order and `TESTING.md` 2.15 to
+2.18 is what to check. Three things about it are worth knowing cold:
+
+- **Report mode first, and read it.** It writes nothing, and it is the half of
+  the dry run that could not happen in the build environment, because it is the
+  half that reads caladmin: which organizers, venues, categories and series are
+  already there. An organizer reported as "would create" that is not one of
+  Aging Services, PWUD Health or Onyx Northwest means a name was not recognised,
+  and importing then leaves a near-duplicate.
+- **Clear trashes, it does not delete.** Every `uc_event` moves to the trash and
+  the count is reported before and after. Emptying the trash is a separate
+  decision on a separate screen.
+- **Twenty of the 39 events on Mark's list matched nothing in the export**, and
+  five names in it match only rows that are in the trash there. Those arrive as
+  titled drafts with no times and no description. The full list is in the report
+  handed over with this release, and **the three Leather Lab descriptions were
+  written from the facts on Mark's list rather than copied from it**, because
+  what reached the build was a summary of them; each one names its own host on
+  the list and those names did not.
 
 **Following a series is half built, and the half that is missing is the point of
 it.** 3.53.0 established who the followers are and how somebody becomes one.
@@ -173,8 +199,8 @@ Four smaller things waiting on somebody here:
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 56 items.** Quick 39, needs
-real conditions 14, blocked on other people 3. Nothing in the build can settle
+**`TESTING.md` holds the manual testing backlog, 60 items.** Quick 39, needs
+real conditions 18, blocked on other people 3. Nothing in the build can settle
 any of them.
 
 ## Open decisions

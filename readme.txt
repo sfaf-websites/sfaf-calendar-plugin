@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.68.1
+Stable tag: 3.69.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.69.0 =
+
+**No plugin code changed in this release.** What it carries is the tooling for a one-time import of the old Events Calendar, in `.claude/import/`, which is not part of the plugin and is not in the zip. The zip differs from 3.68.1's only in the three version strings, so installing it changes nothing on the site. It exists so that the version running while the import runs is the version this repository describes.
+
+**What the import is.** resources.sfaf.org runs The Events Calendar and is being replaced by this plugin. Mark's list of organizers and series is the authoritative structure; the four WXR exports in the project root are a source of detail for the rows that match it, and nothing more: description, start and end times, venue, organizer and featured image. Where they disagree the list wins, and where the list has no match the export row is dropped. 32 series, 39 events, 128 draft event posts.
+
+**The export is reliable for times and descriptions and unreliable for whether something still happens.** Among the twenty rows this import matched, **every rule that carries an end date has already passed**, the latest being 2026-07-01. So dates are generated only from a live schedule, meaning either the list states a day and time or the export's rule has no end date at all, and everything else gets its times and its description with no dates. Eight events take their dates from a live rule, five from the list, and 26 are handed over for Mark to schedule.
+
+**The most recent occurrence is what the export means, not the first one.** El Salon's first twelve rows say 09:30-11:00 and its most recent says 12:30-14:00; Express Yourself's early rows are Thursdays and its most recent is a Monday. Reading the first row in the file would have imported the oldest fact in it.
+
+**Two groups meet on the first and the third Wednesday**, which the plugin's `monthly_nth` cannot say in one pattern because it carries one ordinal. The second rule arrives the way a hand-picked date does, and **the seed is the earliest date either rule produces** rather than the earliest the pattern produces: `merge_dates()` discards every explicit date on or before the start, and rightly so, which means anchoring on the pattern alone would have silently dropped a third Wednesday falling before the first one.
+
+**Everything is created as a draft**, and an event with no schedule still gets an empty `_uc_event_date` row rather than none, because the caladmin event list orders by that meta key and a query that orders by a meta key drops every post with no row for it. An event Mark is meant to fill in has to be in the list to be filled in.
+
+**Clearing the existing events is a separate mode that must be asked for by name, and it trashes rather than deletes.** `wp_trash_post()` is what the plugin's own remove actions already use, so a wrong call is one click to undo. The importer creates no category ever: every category in caladmin carries a brand color and an icon somebody chose, and one created here would carry the defaults and look like a mistake on the calendar.
 
 = 3.68.1 =
 

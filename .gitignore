@@ -31,6 +31,16 @@ Old Calendar Files/
 *.transcript
 /*.log
 
+# The Events Calendar exports, dropped in the project root for the one-time
+# import. Four WXR files, 5MB, holding a whole site's event history including
+# trashed and draft rows and the addresses and phone numbers of staff. What the
+# import actually uses is committed, extracted and byte-exact, in
+# .claude/import/plan.php. These stay on disk and out of the repository.
+SFAF Calendar Export.xml
+series.xml
+organizadores.xml
+recintos.xml
+
 # Anything under a folder explicitly marked private/local.
 private/
 scratch/

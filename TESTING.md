@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 56 items.** Quick 39, needs real conditions 14, blocked on other
+**Outstanding: 60 items.** Quick 39, needs real conditions 18, blocked on other
 people 3.
 
 ---
@@ -573,6 +573,56 @@ heading has least room to hide.
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
+
+### 2.15 Run the import's report mode and read it before clearing anything (3.69.0)
+
+`.../sfaf-tec-import.php?mode=report` writes nothing and is **the half of the
+dry run that could not happen in the build environment**, because it is the half
+that reads the live site. Four things in it have to be read rather than skimmed:
+
+- **Which organizers it found and under what name.** It tries Mark's name first
+  and then the longer forms the same organizer has been called. A line reading
+  "would create" for anything other than Aging Services, PWUD Health and Onyx
+  Northwest means an existing organizer was not recognised, and importing then
+  would leave a near-duplicate.
+- **Which categories resolved.** It creates none, ever. Every "NOT FOUND" line
+  is an event that will be created with no category.
+- **Which series it found.** An existing series keeps its description, its image
+  and its FAQ set, and 32 names are matched into. Anything reported as "would
+  create" that Mark believes already exists is a name that differs.
+- **The event count before clearing.** Compare it with what caladmin shows.
+
+### 2.16 Clear, import, and count (3.69.0)
+
+`&mode=clear&confirm=CLEAR`, then `&mode=import&confirm=IMPORT`. Clear **trashes
+and does not delete**, so the first thing to check is that the trash holds
+exactly what the count said and that nothing outside `uc_event` moved. Then the
+import: **128 draft event posts across 32 series**, none published, and the
+report's own failure list empty.
+
+### 2.17 Open six of the imported drafts and check what only a screen can show (3.69.0)
+
+Not the count, which the report gives. What a browser has to answer:
+
+- **A featured image resolved to the media library** rather than falling back to
+  a URL. Damn, Daddy!, Transformaciones, Trans Galaxy and El Salon each carry
+  one. The files are already on this site, so a fallback means the export's URL
+  no longer matches a media row.
+- **The two online events** (Damn, Daddy!, Virtual Check-In) show as online with
+  **no meeting link**, and carry no venue and no address.
+- **An event with no date is in the caladmin list at all.** Twenty-six of them
+  have none; they are written with an empty `_uc_event_date` for exactly this
+  reason, and if they are missing from the list the reasoning was wrong.
+- **The Spanish descriptions render as they were written**, accents included.
+- **Transformaciones and Trans Galaxy show seven dates**, the first and third
+  Wednesdays, and the schedule screen offers to change the pattern without
+  offering to move the three that arrived as chosen dates.
+
+### 2.18 Delete the import folder from the server (3.69.0)
+
+It is three files that write content and clear events, guarded by
+`manage_options` and a confirmation word. Neither guard is a reason to leave it
+there after the one time it is needed.
 
 ### 2.14 The joining block in a real confirmation and a real reminder (3.62.0)
 
