@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 60 items.** Quick 39, needs real conditions 18, blocked on other
+**Outstanding: 61 items.** Quick 39, needs real conditions 19, blocked on other
 people 3.
 
 ---
@@ -619,6 +619,22 @@ Not the count, which the report gives. What a browser has to answer:
   Circles is the second and fourth Saturday and Soul Sessions the second and
   fourth Thursday, eight each. The schedule screen should offer to change the
   pattern without offering to move the dates that arrived as chosen ones.
+
+### 2.19 Open the notification card on an imported event and an imported occurrence (3.69.0)
+
+**The one thing in the import that could reach real people.** The build proves
+the code is right and cannot prove the database is, so this needs a screen.
+
+Open any imported event, then **a generated date of the same event**, which is
+the case that needed its own handling because the opt-out is not among the meta
+an occurrence inherits. On both, the notification card must show **nobody at
+all**, and the creator must be listed as opted out rather than absent. Then
+**publish one imported event and register a test address on it**: no alert may
+reach anybody, because there is nobody to alert.
+
+If a name appears on either, stop before publishing anything else and say so.
+The import's own report would have failed on it, so a name here means the check
+and the database disagree.
 
 ### 2.18 Delete the import folder from the server (3.69.0)
 

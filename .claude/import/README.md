@@ -81,6 +81,36 @@ so a wrong call is one click to undo.
 
 Everything `import` creates is a **draft**.
 
+## Nothing it creates can cause mail to anybody
+
+The calendar has not rolled out. An address on an event's notification list
+means a real person starts receiving registration alerts and pre-event summaries
+the moment that event is published, and this creates 273 drafts for somebody to
+publish in bulk.
+
+**The address it would otherwise add is one nobody typed.**
+`SFAF_Reminders::notify_entries()` reads four sources: `post_author`,
+`_uc_notify_users`, `_uc_notify_emails`, and the event's teams. This import
+writes none of the last three. But `wp_insert_post()` defaults `post_author` to
+whoever is logged in, and the creator is on the list unless the event says
+otherwise, so running it from a browser would put the administrator who ran it
+on all 273 lists.
+
+**And the opt-out does not travel to an occurrence.** `SFAF_Recurrence` copies
+`post_author` onto every generated occurrence, and its `$copied_meta` carries
+none of the three notification keys. That is right for a manager building a
+group by hand and wrong here, so `sfaf_import_silence()` runs on the seed **and
+on every date generated from it**.
+
+**The check is the plugin's own resolver, not an assertion about it.** Every
+post ends by asking `SFAF_Reminders::notify_list()` who is left, and a non-empty
+answer is a reported failure. `no-mail-check.php` proves the same thing at build
+time, and carries a self-test that plants five violations.
+
+**Addresses inside descriptions stay exactly as written.** They are text on a
+page, no send path reads them, and Mark's team reviews every description during
+the audit.
+
 ## Two things it will not do
 
 It **never creates a category.** Every category in caladmin carries a brand

@@ -131,6 +131,18 @@ say( 'mode:    ' . $sfaf_mode . ( $WRITING ? '  (WRITING)' : '  (reads only, wri
 say( 'today:   ' . $today );
 say( 'horizon: ' . $horizon );
 say( 'plan:    ' . $sfaf_plan['generated'] );
+
+/*
+ * SAID OUT LOUD, IN EVERY MODE, because the address that would otherwise be
+ * added is the one nobody typed. See sfaf_import_silence().
+ */
+$sfaf_author = wp_get_current_user();
+say( 'author:  ' . ( ( $sfaf_author && $sfaf_author->ID )
+    ? $sfaf_author->display_name . ' <' . $sfaf_author->user_email . '>'
+    : 'nobody (no logged-in user)' ) );
+say( '         Every post is created with that author AND with the author taken' );
+say( '         off its notification list, so no mail can reach anybody. Nothing' );
+say( '         else writes an address. Addresses inside descriptions stay.' );
 say();
 
 /* ===========================================================================
@@ -206,6 +218,54 @@ if ( 'clear' === $sfaf_mode ) {
 /* ===========================================================================
  * 2. Organizers, venues and categories.
  * ======================================================================== */
+
+/**
+ * NOTHING THIS IMPORT CREATES MAY CAUSE MAIL TO ANYBODY.
+ *
+ * The calendar has not rolled out. An address on an event's notification list
+ * means a real person starts receiving registration alerts and pre-event
+ * summaries the moment that event is published, and 273 drafts are about to be
+ * created for somebody to publish in bulk.
+ *
+ * THE ADDRESS THIS IMPORT WOULD OTHERWISE ADD IS THE AUTHOR'S, AND NOBODY
+ * TYPED IT. SFAF_Reminders::notify_entries() reads four sources: post_author,
+ * _uc_notify_users, _uc_notify_emails, and the event's teams. This import
+ * writes none of the last three. But wp_insert_post() defaults post_author to
+ * whoever is logged in, and the creator is on the list unless the event says
+ * otherwise, so running this from a browser would put the administrator who
+ * ran it on all 273 lists without a single address being typed anywhere.
+ *
+ * AND THE OPT-OUT DOES NOT TRAVEL TO AN OCCURRENCE. SFAF_Recurrence copies
+ * post_author onto every generated occurrence and its $copied_meta carries none
+ * of the three notification keys, which is correct for a manager creating a
+ * group by hand and wrong here. So this runs on the seed AND on every date
+ * generated from it, one at a time.
+ *
+ * THE CHECK IS THE PLUGIN'S OWN RESOLVER, NOT AN ASSERTION ABOUT IT.
+ * notify_list() is what the mail actually asks, so asking it back is the only
+ * thing that proves the list is empty. A future default that put somebody on a
+ * list by another route would be caught by this and not by any reasoning about
+ * which keys are written.
+ *
+ * Addresses inside descriptions are text on a page, no send path reads them,
+ * and they stay exactly as written.
+ *
+ * @param int $post_id
+ * @return string '' when nobody is on the list, or the addresses that are.
+ */
+function sfaf_import_silence( $post_id ) {
+    $post_id = (int) $post_id;
+    if ( ! $post_id ) {
+        return 'no post id';
+    }
+
+    update_post_meta( $post_id, SFAF_Reminders::NOTIFY_AUTHOR_OPTOUT_META, '1' );
+    delete_post_meta( $post_id, SFAF_Reminders::NOTIFY_USERS_META );
+    delete_post_meta( $post_id, SFAF_Reminders::NOTIFY_EMAILS_META );
+
+    $list = SFAF_Reminders::notify_list( $post_id );
+    return empty( $list ) ? '' : implode( ', ', array_keys( $list ) );
+}
 
 /** A term by name in one taxonomy, or 0. Case-insensitive. */
 function sfaf_import_term_by_name( $name, $taxonomy ) {
@@ -349,6 +409,7 @@ $made_series   = 0;
 $found_series  = 0;
 $made_events   = 0;
 $made_posts    = 0;
+$silenced      = 0;
 $failures      = array();
 
 foreach ( $sfaf_plan['series'] as $s ) {
@@ -460,6 +521,17 @@ foreach ( $sfaf_plan['series'] as $s ) {
             }
         }
 
+        /*
+         * SILENCED BEFORE THE OCCURRENCES EXIST AND AGAIN AFTER, because the
+         * opt-out is not among the meta an occurrence inherits. Every post this
+         * import creates goes through this, and every one of them is checked.
+         */
+        $left = sfaf_import_silence( $post_id );
+        if ( '' !== $left ) {
+            $failures[] = 'event "' . $e['title'] . '" still has a notification list: ' . $left;
+        }
+        $silenced++;
+
         if ( $count > 1 ) {
             $gen = SFAF_Recurrence::generate( $post_id, $d['gen_pattern'], $horizon, 0, $d['extra'] );
             if ( count( $gen['created'] ) !== count( $d['dates'] ) ) {
@@ -467,6 +539,13 @@ foreach ( $sfaf_plan['series'] as $s ) {
                     'event "%s": planned %d further dates, created %d',
                     $e['title'], count( $d['dates'] ), count( $gen['created'] )
                 );
+            }
+            foreach ( $gen['created'] as $occ_id ) {
+                $left = sfaf_import_silence( $occ_id );
+                if ( '' !== $left ) {
+                    $failures[] = 'occurrence ' . (int) $occ_id . ' of "' . $e['title'] . '" still has a notification list: ' . $left;
+                }
+                $silenced++;
             }
         }
     }
@@ -477,6 +556,11 @@ rule();
 say( sprintf( 'series:  %d existing, %d %s', $found_series, $made_series, $WRITING ? 'created' : 'to create' ) );
 say( sprintf( 'events:  %d named on the list', $made_events ) );
 say( sprintf( 'posts:   %d %s, all drafts', $made_posts, $WRITING ? 'created' : 'to create' ) );
+if ( $WRITING ) {
+    say( sprintf( 'mail:    %d of %d posts checked, every notification list empty', $silenced, $made_posts ) );
+} else {
+    say( 'mail:    every post created will have an empty notification list, checked one at a time' );
+}
 
 if ( $WRITING ) {
     $after = sfaf_import_event_counts();
