@@ -1802,6 +1802,81 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-schedule-routes { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--p-border); }
 .uc-schedule-route { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 12px 0 0; }
 .uc-schedule-route .uc-hint { margin: 0; }
+
+/* ---------------------------------------------------------------------------
+   THE PUBLISH PICKER (3.72.0).
+
+   A LIST THAT SCROLLS RATHER THAN A PAGE THAT DOES. The import's biggest series
+   carries dozens of upcoming drafts, and a bare list of them would push the
+   button that acts on them off the bottom of the screen. The cap is on the LIST
+   and the button sits under it, so what somebody is about to press is always in
+   view beside what it is about to do.
+
+   NO container-type HERE. 3.24.1: size containment zeroes an element's
+   intrinsic size, and this list is a flex/grid child in the schedule column.
+   max-height and overflow are what is wanted and they cost nothing.
+
+   AN INELIGIBLE ROW HAS NO BOX, so it is indented to the column the ticked rows'
+   text starts in rather than left hanging where a control would be. It reads as
+   part of the same list, which it is, rather than as a row whose control failed
+   to render.
+   ------------------------------------------------------------------------- */
+.uc-publish-picker { margin-top: 10px; }
+.uc-publish-all { margin: 0 0 8px; font-weight: 600; }
+
+.uc-publish-list {
+    margin: 0 0 14px; padding: 4px 0;
+    list-style: none;
+    max-height: 340px; overflow-y: auto;
+    border-top: 1px solid var(--p-border);
+    border-bottom: 1px solid var(--p-border);
+}
+.uc-publish-row { margin: 0; padding: 5px 2px; font-size: 13px; line-height: 1.4; }
+.uc-publish-row + .uc-publish-row { border-top: 1px solid var(--p-border); }
+.uc-publish-row .uc-check { margin: 0; align-items: baseline; gap: 8px; }
+
+/* The date column is fixed so the titles line up down the list and the eye can
+   run the dates on their own. tabular-nums keeps the digits from shifting. */
+.uc-publish-when { flex: 0 0 auto; min-width: 116px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.uc-publish-when .uc-muted { font-weight: 400; }
+.uc-publish-title { flex: 1 1 auto; }
+
+.uc-publish-row.is-blocked {
+    display: flex; align-items: baseline; gap: 8px;
+    /* The width of a checkbox plus its gap, so this row's date starts where a
+       ticked row's date does. */
+    padding-left: 26px;
+    color: var(--p-muted, #6B6764);
+}
+/* THE REASON IS THE POINT OF THE ROW, so it is not muted twice over: the row is
+   already grey and a fainter reason inside it would be the least readable thing
+   on the screen. It keeps full-strength ink and gets its emphasis from the
+   surface rather than from weight.
+
+   12px / 400 IS THE HELPER STEP, and it is deliberately not 12px / 600. That
+   pair sits between two rungs of the scale in DESIGN.md and
+   .claude/type-scale-sweep.php refuses it, correctly: the honest ways to make
+   this stand out more are a step up in size or a stronger surface, not a weight
+   nothing else in the file uses at this size. The pill is the surface. */
+.uc-publish-why {
+    flex: 0 0 auto; margin-left: auto;
+    font-size: 12px; font-weight: 400;
+    color: var(--p-text);
+    background: var(--p-surface-2, #f6f7f8);
+    border: 1px solid var(--p-border);
+    border-radius: 999px; padding: 1px 9px;
+}
+
+/* Nothing ticked. The button says what it would do, which is nothing. */
+.uc-publish-picker button[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 560px) {
+    /* The date and the title stack, so neither is truncated on a phone. */
+    .uc-publish-row .uc-check { flex-wrap: wrap; }
+    .uc-publish-when { min-width: 0; flex-basis: 100%; }
+    .uc-publish-row.is-blocked { flex-wrap: wrap; }
+    .uc-publish-why { margin-left: 0; }
+}
 .uc-schedule-list { list-style: none; margin: 0; padding: 0; }
 .uc-schedule-row { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
                    gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--p-border); font-size: 14px; }
@@ -2413,6 +2488,12 @@ body.uc-modal-open { overflow: hidden; }
 .uc-faq-picker-label > .uc-field-label { font-size: 13px; font-weight: 600; color: var(--p-text); display: block; }
 .uc-faq-picker-label select { width: 100%; }
 .uc-faq-picker-row .uc-btn { flex: 0 0 auto; }
+/* "Manage sets", moved here from the card that no longer exists (3.72.0). At
+   the end of the row and pushed to the far edge, so it reads as the way out of
+   this control rather than as a second thing to press in it. The bottom padding
+   matches the button's, so a link and a button sitting on one baseline line up
+   on their text rather than on their boxes. */
+.uc-faq-picker-row .uc-faq-manage { flex: 0 0 auto; margin-left: auto; padding-bottom: 10px; }
 .uc-faq-picker .uc-hint { margin: 8px 0 0; }
 .uc-faq-picker-said { margin: 10px 0 0; }
 

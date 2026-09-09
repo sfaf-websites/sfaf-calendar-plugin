@@ -2999,7 +2999,7 @@ class SFAF_Portal {
             'schedule_extend_no_cadence' => 'These dates were chosen one at a time rather than produced by a pattern, so there is no cadence to carry forward. Add each new date below.',
             'schedule_extend_nothing'  => 'Nothing to add: every date the pattern produces up to then is already on the schedule, or was removed on purpose.',
             'schedule_extend_failed'   => 'The series could not be extended.',
-            'schedule_publish_none'    => 'Nothing was published. Every upcoming date in this series is already public, or the drafts left are ones this action does not touch.',
+            'schedule_publish_none'    => 'Nothing was published. Either no date was ticked, or the drafts left are ones this action does not touch.',
             'schedule_no_group' => 'These dates are not on a repeating pattern, so there is no pattern to change. Each date can still be edited on its own.',
             'schedule_nothing_upcoming' => 'There are no upcoming dates to change. Dates that have already been are the record of what happened and are never rewritten.',
             'schedule_imported' => 'This event comes from another platform, which decides when it happens. Changing the schedule here would be undone by the next fetch.',
@@ -5104,6 +5104,23 @@ class SFAF_Portal {
                     </select>
                 </label>
                 <button type="button" class="uc-btn uc-btn-sm" data-uc-faq-apply>Add these questions</button>
+                <?php
+                /*
+                 * "MANAGE SETS" LIVES HERE FROM 3.72.0.
+                 *
+                 * It was in the head of the card above the form, which is where
+                 * it was when that card was the control. The control is this
+                 * one, and the moment somebody wants the management screen is
+                 * the moment they have opened this list and not found the set
+                 * they wanted, so the link belongs at the end of this row.
+                 *
+                 * A LINK, NOT A BUTTON, because it navigates. Leaving the
+                 * editor from here loses unsaved work like any other link on
+                 * this page, and nothing in caladmin warns about that: see
+                 * PROJECT.md 7. It is not made more prominent for that reason.
+                 */
+                ?>
+                <a class="uc-action-link uc-faq-manage" href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">Manage sets</a>
             </div>
             <p class="uc-flash uc-faq-picker-said" data-uc-faq-said role="status" hidden></p>
             <p class="uc-hint">
@@ -5971,17 +5988,35 @@ class SFAF_Portal {
                 break;
 
             case 'listing_detail':
-                $d_cost    = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
-                $d_age     = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
-                $d_contact = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT, true );
-                $d_rsvp    = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
+                $d_cost  = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
+                $d_age   = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
+                $d_rsvp  = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
+                $d_name  = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT_NAME, true );
+                $d_email = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT_EMAIL, true );
+                $d_phone = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT_PHONE, true );
+                /* The pre-3.47.0 single box, read only where the three-part
+                 * answer is empty. See below and sfaf_event_public_contact(). */
+                $d_old   = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT, true );
                 ?>
                 <div class="uc-field uc-listing-detail">
                     <span class="uc-field-label">Listing detail</span>
-                    <p class="uc-hint">Somebody outside SFAF wrote these and they are on the event page. Empty a box to take that line off.</p>
-                    <?php // The marker, so an empty box means empty rather than
-                          // "this screen did not ask". Same discipline as the
-                          // two toggles below. ?>
+                    <p class="uc-hint">These are on the event page. Empty a box to take that line off.</p>
+                    <?php
+                    /*
+                     * ONE MARKER FOR THE WHOLE CARD, AND IT NOW HAS TO COVER
+                     * SIX FIELDS (3.72.0).
+                     *
+                     * The marker is what makes an empty box mean empty rather
+                     * than "this screen did not ask", and the save deletes the
+                     * meta on empty rather than storing ''. That contract is
+                     * unchanged and it is why the marker travels with the
+                     * control: a screen that does not render this card posts no
+                     * marker, so its save cannot blank a public line it never
+                     * showed. Splitting one box into three means three more
+                     * fields depending on it, which is the same guarantee and
+                     * not a new one.
+                     */
+                    ?>
                     <input type="hidden" name="uc_listing_detail_present" value="1" />
                     <label class="uc-field">
                         <span class="uc-field-label">Cost</span>
@@ -5991,10 +6026,70 @@ class SFAF_Portal {
                         <span class="uc-field-label">Age restriction</span>
                         <input type="text" name="listing_age" maxlength="120" value="<?php echo esc_attr( $d_age ); ?>" />
                     </label>
-                    <label class="uc-field">
+
+                    <?php
+                    /*
+                     * THREE BOXES, BECAUSE THE ONE BOX WROTE THE WRONG KEY.
+                     *
+                     * WHAT WAS WRONG. "Contact shown publicly" wrote
+                     * `_uc_public_contact`, which is the single open box the
+                     * community form had before 3.47.0. Since 3.47.0 that form
+                     * has written three keys instead, and
+                     * sfaf_event_public_contact() prefers them: it composes the
+                     * three-part line and only falls back to the old key when
+                     * that line is empty. So on any community submission from
+                     * 3.47.0 onwards, which is all of them, a manager could
+                     * type into this box, save, reload and see their text still
+                     * sitting in the box while the event page showed something
+                     * else entirely. The value was stored. It was just never
+                     * read.
+                     *
+                     * WHY NOT MAKE THE ONE BOX WRITE THE NEW KEYS. Because
+                     * there is no way to split one line into a name, an address
+                     * and a number without guessing, and a guess here is
+                     * printed on a public page.
+                     *
+                     * WHY NOT DROP THE OLD KEY. Events submitted on 3.46.0 have
+                     * one and there is no migration. A stored value that
+                     * predates a change is not a value to throw away, and this
+                     * is the only screen that could ever show somebody what
+                     * theirs says.
+                     *
+                     * THE OLD ONE IS READ-ONLY AND ONLY APPEARS WHEN IT IS
+                     * DOING SOMETHING. An editable second control writing a key
+                     * that loses to the three above it is the same fault again
+                     * in a smaller box. Where the three are filled in, the old
+                     * value is not being read by anything, so it is not shown:
+                     * a field labelled "not in use" is an invitation to work
+                     * out why. Filling in any of the three is what retires it,
+                     * and the note says so.
+                     */
+                    $old_live = ( '' !== trim( $d_old ) && '' === trim( $d_name . $d_email . $d_phone ) );
+                    ?>
+                    <div class="uc-field uc-contact-group">
                         <span class="uc-field-label">Contact shown publicly</span>
-                        <input type="text" name="listing_contact" maxlength="200" value="<?php echo esc_attr( $d_contact ); ?>" />
-                    </label>
+                        <span class="uc-hint">On the event page, for anybody who wants to ask about it. Leave all three empty for no contact line.</span>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Name</span>
+                            <input type="text" name="contact_name" maxlength="120" value="<?php echo esc_attr( $d_name ); ?>" />
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Email</span>
+                            <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $d_email ); ?>" />
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Phone</span>
+                            <input type="text" name="contact_phone" maxlength="60" value="<?php echo esc_attr( $d_phone ); ?>" />
+                        </label>
+                        <?php if ( $old_live ) : ?>
+                            <div class="uc-field uc-contact-legacy">
+                                <span class="uc-field-label">What the event page shows now</span>
+                                <input type="text" value="<?php echo esc_attr( $d_old ); ?>" readonly />
+                                <span class="uc-hint">Submitted before the three boxes above existed. Fill any of them in and this stops being used.</span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
                     <label class="uc-field">
                         <span class="uc-field-label">Registration link</span>
                         <input type="url" name="listing_rsvp_url" maxlength="500" value="<?php echo esc_attr( $d_rsvp ); ?>" />
@@ -6214,11 +6309,44 @@ class SFAF_Portal {
          * storing '', so the template's single test for absence stays single.
          */
         if ( isset( $_POST['uc_listing_detail_present'] ) ) {
+            /*
+             * THE CONTACT IS THREE KEYS NOW (3.72.0), and `_uc_public_contact`
+             * IS NOT IN THIS LIST ON PURPOSE.
+             *
+             * The card writes the same three keys the community form writes,
+             * which is what makes what a manager types the thing the event page
+             * prints: sfaf_event_public_contact() composes those three and only
+             * falls back to the old single key when they are all empty. See the
+             * renderer for the whole of why.
+             *
+             * NOT LISTED HERE MEANS NEVER WRITTEN AND NEVER DELETED. The old
+             * key is shown read-only where it is still the value being used, so
+             * there is no control that could post it, and this save leaves it
+             * exactly where it is. That matters: an event on the pre-3.47.0
+             * shape whose manager saves this card without touching the contact
+             * must not lose its only public contact line. Filling any of the
+             * three above is what supersedes it, by the reader's own rule,
+             * rather than by anything deleting anything.
+             *
+             * THE EMAIL IS SANITISED AS AN EMAIL AND NOT AS A LINE. It is
+             * printed on a public page and is the one of the three that has a
+             * shape. An address that is not one is dropped rather than
+             * published, which is the same answer the community form gives.
+             */
+            $c_email = isset( $_POST['contact_email'] )
+                ? sanitize_email( trim( (string) wp_unslash( $_POST['contact_email'] ) ) )
+                : '';
+            if ( '' !== $c_email && ! is_email( $c_email ) ) {
+                $c_email = '';
+            }
+
             $detail = array(
-                SFAF_Submit::META_COST     => SFAF_Submissions::line( isset( $_POST['listing_cost'] ) ? wp_unslash( $_POST['listing_cost'] ) : '', 120 ),
-                SFAF_Submit::META_AGE      => SFAF_Submissions::line( isset( $_POST['listing_age'] ) ? wp_unslash( $_POST['listing_age'] ) : '', 120 ),
-                SFAF_Submit::META_CONTACT  => SFAF_Submissions::line( isset( $_POST['listing_contact'] ) ? wp_unslash( $_POST['listing_contact'] ) : '', 200 ),
-                SFAF_Submit::META_RSVP_URL => SFAF_Submissions::url( isset( $_POST['listing_rsvp_url'] ) ? wp_unslash( $_POST['listing_rsvp_url'] ) : '' ),
+                SFAF_Submit::META_COST          => SFAF_Submissions::line( isset( $_POST['listing_cost'] ) ? wp_unslash( $_POST['listing_cost'] ) : '', 120 ),
+                SFAF_Submit::META_AGE           => SFAF_Submissions::line( isset( $_POST['listing_age'] ) ? wp_unslash( $_POST['listing_age'] ) : '', 120 ),
+                SFAF_Submit::META_CONTACT_NAME  => SFAF_Submissions::line( isset( $_POST['contact_name'] ) ? wp_unslash( $_POST['contact_name'] ) : '', 120 ),
+                SFAF_Submit::META_CONTACT_EMAIL => $c_email,
+                SFAF_Submit::META_CONTACT_PHONE => SFAF_Submissions::line( isset( $_POST['contact_phone'] ) ? wp_unslash( $_POST['contact_phone'] ) : '', 60 ),
+                SFAF_Submit::META_RSVP_URL      => SFAF_Submissions::url( isset( $_POST['listing_rsvp_url'] ) ? wp_unslash( $_POST['listing_rsvp_url'] ) : '' ),
             );
             foreach ( $detail as $detail_key => $detail_value ) {
                 if ( '' === $detail_value ) {
@@ -7663,7 +7791,29 @@ class SFAF_Portal {
             $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
         }
 
-        $result = SFAF_Series::publish_drafts( $term_id );
+        /*
+         * WHICH ONES, AND THE MARKER IS WHAT MAKES "NONE" SAYABLE (3.72.0).
+         *
+         * publish_ids[] arrives when the picker is on the form and a box is
+         * ticked. It does NOT arrive when every box is unticked, and it does
+         * not arrive from a form with no picker at all, and those two mean
+         * opposite things. uc_publish_picker_present tells them apart: with the
+         * marker, an absent list is an empty selection and nothing is
+         * published; without it, null is passed and publish_drafts() does what
+         * the button has always done.
+         *
+         * NOTHING IS TRUSTED FROM HERE. These ids are intersected with what
+         * publishable() says is ready, so this is a narrowing and never a way
+         * in. See SFAF_Series::publish_drafts().
+         */
+        $only = null;
+        if ( isset( $_POST['uc_publish_picker_present'] ) ) {
+            $only = isset( $_POST['publish_ids'] )
+                ? array_map( 'intval', (array) wp_unslash( $_POST['publish_ids'] ) )
+                : array();
+        }
+
+        $result = SFAF_Series::publish_drafts( $term_id, $only );
 
         if ( 0 === $result['published'] && 0 === $result['failed'] ) {
             $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_publish_none' ) );
@@ -8210,11 +8360,11 @@ class SFAF_Portal {
                                 </label>
                                 <label class="uc-field">
                                     <span class="uc-field-label">Start time</span>
-                                    <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>" />
+                                    <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>"<?php echo sfaf_time_step_attr( $start ); ?> />
                                 </label>
                                 <label class="uc-field">
                                     <span class="uc-field-label">End time</span>
-                                    <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>" />
+                                    <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>"<?php echo sfaf_time_step_attr( $end ); ?> />
                                 </label>
                             </div>
 
@@ -8415,11 +8565,11 @@ class SFAF_Portal {
                 <div class="uc-field-row">
                     <label class="uc-field">
                         <span class="uc-field-label">Start time</span>
-                        <input type="time" name="start_time" value="<?php echo esc_attr( $ctx['start'] ); ?>" />
+                        <input type="time" name="start_time" value="<?php echo esc_attr( $ctx['start'] ); ?>"<?php echo sfaf_time_step_attr( $ctx['start'] ); ?> />
                     </label>
                     <label class="uc-field">
                         <span class="uc-field-label">End time</span>
-                        <input type="time" name="end_time" value="<?php echo esc_attr( $ctx['end'] ); ?>" />
+                        <input type="time" name="end_time" value="<?php echo esc_attr( $ctx['end'] ); ?>"<?php echo sfaf_time_step_attr( $ctx['end'] ); ?> />
                     </label>
                 </div>
 
@@ -8473,6 +8623,34 @@ class SFAF_Portal {
      *
      * @param int $term_id
      */
+    /**
+     * ONE ROW PER DRAFT, ALL TICKED (3.72.0).
+     *
+     * WHY THE TICKS. The button published every upcoming draft in the series
+     * and there was no other answer. On the import's series that is the right
+     * answer most of the time, and it is the wrong one exactly when a manager
+     * has read the list and found two dates that are not right yet. Their only
+     * route was to publish all of them and unpublish two, which puts two
+     * sessions on the public calendar for as long as it takes to notice.
+     *
+     * ALL TICKED BY DEFAULT, so publishing everything is still one press and
+     * the common case costs nothing. This is the opposite default from the
+     * rejection notice a few hundred lines up, and deliberately: that one sends
+     * mail nobody asked for, this one does what the button has always done.
+     *
+     * AN INELIGIBLE ROW GETS NO TICK AND SAYS WHY. A disabled checkbox is still
+     * a checkbox: it draws a box, it sits in the column your eye is running
+     * down, and it reads as something that could be ticked if you found the
+     * right way to do it. These rows get the reason where the box would have
+     * been, which is the only thing anybody wants from them.
+     *
+     * THE TICKS DO NOT DECIDE ELIGIBILITY AND CANNOT. publish_drafts()
+     * intersects whatever is posted with publishable()['ready'], so an id typed
+     * into the form by hand is dropped by the same four rules that drew this
+     * list. See that method.
+     *
+     * @param int $term_id
+     */
     private function render_schedule_publish_form( $term_id ) {
         $plan  = SFAF_Series::publishable( $term_id );
         $ready = count( $plan['ready'] );
@@ -8519,15 +8697,99 @@ class SFAF_Portal {
                     Not included: <?php echo esc_html( implode( ', ', $left ) ); ?>.
                 <?php endif; ?>
             </p>
-            <form method="post" class="uc-inline-form">
+            <form method="post" class="uc-form uc-publish-picker" data-uc-publish-picker>
                 <input type="hidden" name="uc_action" value="schedule_publish" />
                 <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
+                <?php
+                /*
+                 * THE MARKER, so an empty list of ticks means "none of them"
+                 * rather than "this form did not ask". Without it, unticking
+                 * every row would post no publish_ids at all, which is
+                 * byte-identical to the no-script form, and the handler would
+                 * publish the lot. Same discipline as every other shared
+                 * control on these screens.
+                 */
+                ?>
+                <input type="hidden" name="uc_publish_picker_present" value="1" />
                 <?php wp_nonce_field( 'uc_portal_schedule_publish', 'uc_nonce' ); ?>
+
+                <?php
+                /*
+                 * SELECT-ALL IS AN ENHANCEMENT AND SAYS SO BY BEING HIDDEN
+                 * UNTIL THE SCRIPT REVEALS IT. A box that cannot select
+                 * anything is a control that lies, which is the same reason
+                 * the image picker's search box starts hidden.
+                 */
+                ?>
+                <label class="uc-check uc-publish-all" hidden data-uc-publish-all-row>
+                    <input type="checkbox" checked data-uc-publish-all />
+                    <span>Select all</span>
+                </label>
+
+                <ul class="uc-publish-list">
+                    <?php foreach ( $plan['ready'] as $rid ) :
+                        $r_date = (string) get_post_meta( $rid, '_uc_event_date', true );
+                        $r_time = sfaf_ap_time_range(
+                            (string) get_post_meta( $rid, '_uc_start_time', true ),
+                            (string) get_post_meta( $rid, '_uc_end_time', true )
+                        );
+                        ?>
+                        <li class="uc-publish-row">
+                            <label class="uc-check">
+                                <input type="checkbox" name="publish_ids[]" value="<?php echo (int) $rid; ?>"
+                                       checked data-uc-publish-one />
+                                <span class="uc-publish-when">
+                                    <?php echo esc_html( sfaf_ap_date( $r_date, 'short_year' ) ); ?>
+                                    <?php if ( '' !== $r_time ) : ?>
+                                        <span class="uc-muted"><?php echo esc_html( $r_time ); ?></span>
+                                    <?php endif; ?>
+                                </span>
+                                <span class="uc-publish-title"><?php echo esc_html( get_the_title( $rid ) ?: '(untitled)' ); ?></span>
+                            </label>
+                        </li>
+                    <?php endforeach; ?>
+
+                    <?php
+                    /*
+                     * AND THE ONES THAT CANNOT BE PUBLISHED, IN THE SAME LIST.
+                     * In a list of their own they read as a second thing to
+                     * deal with. Here they read as what they are: rows on this
+                     * schedule that this button is not for, each saying which
+                     * of the four rules it met.
+                     */
+                    ?>
+                    <?php foreach ( $plan['blocked'] as $bid => $why ) :
+                        $b_date = (string) get_post_meta( $bid, '_uc_event_date', true );
+                        ?>
+                        <li class="uc-publish-row is-blocked">
+                            <span class="uc-publish-when">
+                                <?php echo '' !== $b_date
+                                    ? esc_html( sfaf_ap_date( $b_date, 'short_year' ) )
+                                    : '<span class="uc-muted">No date</span>'; ?>
+                            </span>
+                            <span class="uc-publish-title"><?php echo esc_html( get_the_title( $bid ) ?: '(untitled)' ); ?></span>
+                            <span class="uc-publish-why"><?php echo esc_html( $why ); ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+
                 <div class="uc-form-actions">
+                    <?php
+                    /*
+                     * THE BUTTON STILL CARRIES THE FULL COUNT. It is the
+                     * server-rendered number and it is right on arrival, when
+                     * everything is ticked. portal.js keeps it in step as ticks
+                     * change; with no script the ticks cannot change, so the
+                     * number cannot go stale.
+                     */
+                    ?>
                     <button type="submit" class="uc-btn uc-btn-primary"
-                            data-uc-confirm="<?php echo esc_attr( $confirm ); ?>">
-                        Publish <?php echo (int) $ready; ?> upcoming
-                        <?php echo esc_html( _n( 'draft', 'drafts', $ready ) ); ?>
+                            data-uc-confirm="<?php echo esc_attr( $confirm ); ?>"
+                            data-uc-publish-submit
+                            data-uc-publish-word="<?php echo esc_attr( _n( 'draft', 'drafts', $ready ) ); ?>"
+                            data-uc-publish-word-one="draft">
+                        Publish <span data-uc-publish-count><?php echo (int) $ready; ?></span> upcoming
+                        <span data-uc-publish-noun><?php echo esc_html( _n( 'draft', 'drafts', $ready ) ); ?></span>
                     </button>
                 </div>
             </form>
@@ -9243,11 +9505,11 @@ class SFAF_Portal {
                     <div class="uc-field-row">
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
                             <span class="uc-field-label">Start <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
-                            <input type="time" name="start_time" value="<?php echo esc_attr( $g( '_uc_start_time' ) ); ?>"<?php echo $this->field_disabled( $s_start ); ?> />
+                            <input type="time" name="start_time" value="<?php echo esc_attr( $g( '_uc_start_time' ) ); ?>"<?php echo sfaf_time_step_attr( $g( '_uc_start_time' ) ); ?><?php echo $this->field_disabled( $s_start ); ?> />
                         </label>
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_end ) ); ?>">
                             <span class="uc-field-label">End <?php echo $this->field_badge( $s_end, $prov['label'] ); ?></span>
-                            <input type="time" name="end_time" value="<?php echo esc_attr( $g( '_uc_end_time' ) ); ?>"<?php echo $this->field_disabled( $s_end ); ?> />
+                            <input type="time" name="end_time" value="<?php echo esc_attr( $g( '_uc_end_time' ) ); ?>"<?php echo sfaf_time_step_attr( $g( '_uc_end_time' ) ); ?><?php echo $this->field_disabled( $s_end ); ?> />
                         </label>
                     </div>
 
@@ -9582,378 +9844,97 @@ class SFAF_Portal {
     }
 
     /**
-     * "Does this repeat?", asked so that the answer is readable.
+     * "Does this repeat?", rendered by SFAF_Recurrence (3.72.0).
      *
-     * WHAT WAS WRONG WITH THE DROPDOWN. Six options, each of which had to be
-     * reverse-engineered: "every Thursday" was spelled "Every week" and only
-     * meant Thursday if the date above happened to be one, "the first Monday of
-     * the month" was spelled "Every month, on the same weekday", and a group
-     * meeting Tuesdays AND Thursdays could not be expressed at all. The list
-     * described the ARITHMETIC. This describes the schedule.
+     * THE CONTROL MOVED, THE SCREEN DID NOT. The staff request form asks the
+     * same question now, and two copies of a control that writes a recurrence
+     * pattern is the drift SFAF_Rich_Text was made a class to prevent: the two
+     * would differ in what somebody is ALLOWED TO SAY, and nobody would notice
+     * until a request arrived expressing a schedule caladmin cannot store.
      *
-     * FOUR CONTROLS, EACH ANSWERING ONE QUESTION. How often (segmented), on
-     * which days (circles), when it stops (ends), and what that comes to (the
-     * summary). The summary is the important one: generation is a creation-time
-     * action that makes N independent posts, so the number is stated before the
-     * button is pressed rather than discovered afterwards.
-     *
-     * NO JAVASCRIPT: every section is visible and every control is a real
-     * input. The server reads repeat_mode and uses only the fields belonging to
-     * it, exactly as the location picker reads location_mode. What is lost
-     * without script is the folding away of the sections that do not apply and
-     * the live summary; nothing becomes unreachable and nothing is built by
-     * script.
-     *
-     * KEYBOARD: the day circles are checkboxes with visible labels, styled
-     * round; the mode switch is a radio group. Both are focusable, both answer
-     * to Space, and both are announced as what they are.
+     * So the markup, the field names and the summary live with the engine that
+     * reads them back, and both screens call one renderer. See
+     * SFAF_Recurrence::render_control().
      *
      * @param int    $event_id
      * @param string $date The event's own date, which anchors every pattern.
      */
     private function render_recurrence_control( $event_id, $date ) {
-        $uid  = 'uc-rep-' . (int) $event_id;
-        $dow  = $date ? (int) SFAF_Recurrence::dow_of( $date ) : (int) current_time( 'w' );
-        $days = SFAF_Recurrence::weekday_names();
-        $abbr = SFAF_Recurrence::weekday_names( true );
+        SFAF_Recurrence::render_control(
+            $event_id,
+            $date,
+            $this->recurrence_prefill( $event_id )
+        );
+    }
 
-        // Through the formatter, and with no ordinal suffix: see the note in
-        // SFAF_Recurrence::pattern_label(). The old 'jS' here read "the 4th".
-        $day_num = $date ? sfaf_ap_date( $date, 'daynum' ) : '';
-        $nth     = $date ? SFAF_Recurrence::nth_weekday_of_month( $date ) : null;
-        ?>
-        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="<?php echo esc_attr( $date ); ?>">
+    /**
+     * What a pending staff request asked for about repeating, for the control.
+     *
+     * THE OTHER HALF OF "CAPTURED, NOT ARMED" (3.72.0). The request form asks
+     * the real question and stores the answer under keys of its own, and this
+     * is the one thing that reads them: the approver opens the event, the
+     * control is already set to "every Wednesday until December", and pressing
+     * Save is what creates the dates. Nothing generates before that press.
+     *
+     * ONLY WHILE THE EVENT HAS NO SCHEDULE OF ITS OWN, and that is the rule
+     * that makes this safe to call on every render. The moment somebody saves,
+     * the event carries a real pattern or a real recurrence group, and from
+     * then on this returns nothing: a prefill that kept reasserting the
+     * requester's answer would silently undo an approver who had deliberately
+     * changed it, on every reload, which is a far worse fault than not
+     * prefilling at all.
+     *
+     * A DRAFT AND A PENDING ROW BOTH QUALIFY. The keys are written by the
+     * request form and by nothing else, so their presence is the whole test;
+     * there is no need to ask what status the row is in.
+     *
+     * @param int $event_id
+     * @return array Empty when there is nothing to offer.
+     */
+    private function recurrence_prefill( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return array();
+        }
 
-            <span class="uc-field-label">Repeats
-                <?php echo sfaf_help(
-                    'uc-help-repeat-' . (int) $event_id,
-                    'On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.',
-                    'repeating'
-                ); ?>
-            </span>
+        // Already scheduled: leave it alone. Either answers yes.
+        if ( '' !== (string) get_post_meta( $event_id, SFAF_Recurrence::PATTERN_META, true ) ) {
+            return array();
+        }
+        if ( '' !== (string) SFAF_Recurrence::group_of( $event_id ) ) {
+            return array();
+        }
 
-            <?php
-            /*
-             * ---- How often. A radio group that looks like a switch. ----
-             *
-             * CUSTOM IS THE FIFTH OPTION AND IT IS NOT A PATTERN. It covers the
-             * programme that meets on a Monday one week, a Tuesday the next and
-             * a Wednesday after that: there is no cadence to express, so nothing
-             * is stored as one. Choosing it reveals the same date picker the
-             * other four modes get, and in that mode the picker holds the whole
-             * schedule rather than additions to it.
-             */
-            ?>
-            <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
-                <?php foreach ( array(
-                    ''        => 'Never',
-                    'daily'   => 'Daily',
-                    'weekly'  => 'Weekly',
-                    'monthly' => 'Monthly',
-                    'custom'  => 'Custom',
-                ) as $val => $label ) : ?>
-                    <label class="uc-seg-opt">
-                        <input type="radio" name="repeat_mode" value="<?php echo esc_attr( $val ); ?>"
-                               <?php checked( '' === $val ); ?> data-uc-repeat-mode />
-                        <span><?php echo esc_html( $label ); ?></span>
-                    </label>
-                <?php endforeach; ?>
-            </div>
+        $pattern = (string) get_post_meta( $event_id, SFAF_Request::META_PATTERN, true );
+        $dates   = get_post_meta( $event_id, SFAF_Request::META_PATTERN_DATES, true );
+        $dates   = is_array( $dates ) ? array_values( array_map( 'strval', $dates ) ) : array();
+        if ( '' === $pattern && empty( $dates ) ) {
+            return array();
+        }
 
-            <?php // ---- Weekly ------------------------------------------- ?>
-            <div class="uc-repeat-panel" data-uc-repeat-panel="weekly">
-                <div class="uc-repeat-every">
-                    <span>Every</span>
-                    <input type="number" name="repeat_weekly_interval" value="1" min="1" max="52"
-                           class="uc-repeat-num" aria-label="Weeks between occurrences" />
-                    <span>week(s) on</span>
-                </div>
-                <div class="uc-days" role="group" aria-label="Which days of the week">
-                    <?php foreach ( $abbr as $i => $letter ) : ?>
-                        <label class="uc-day">
-                            <input type="checkbox" name="repeat_days[]" value="<?php echo (int) $i; ?>"
-                                   <?php checked( $i === $dow ); ?> data-uc-repeat-day />
-                            <span aria-hidden="true"><?php echo esc_html( $letter ); ?></span>
-                            <span class="uc-visually-hidden"><?php echo esc_html( $days[ $i ] ); ?></span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
-            </div>
-
-            <?php // ---- Monthly ------------------------------------------ ?>
-            <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
-                <label class="uc-radio-row">
-                    <input type="radio" name="repeat_monthly_mode" value="date" checked data-uc-repeat-monthly />
-                    <span>On <strong><?php echo esc_html( $day_num ? 'day ' . $day_num : 'the same date' ); ?></strong> of each month</span>
-                </label>
-                <label class="uc-radio-row">
-                    <input type="radio" name="repeat_monthly_mode" value="nth" data-uc-repeat-monthly />
-                    <span>On the</span>
-                </label>
-                <div class="uc-repeat-nth">
-                    <select name="repeat_nth" aria-label="Which occurrence in the month">
-                        <?php foreach ( array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', -1 => 'last' ) as $n => $word ) : ?>
-                            <option value="<?php echo (int) $n; ?>" <?php selected( $nth && (int) $nth['nth'] === (int) $n ); ?>><?php echo esc_html( $word ); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <select name="repeat_nth_dow" aria-label="Which weekday">
-                        <?php foreach ( $days as $i => $name ) : ?>
-                            <option value="<?php echo (int) $i; ?>" <?php selected( $i === $dow ); ?>><?php echo esc_html( $name ); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <span>of each month</span>
-                </div>
-                <?php // "last" is not "fifth": a month with four Fridays has a
-                      // last Friday and no fifth one, and the engine skips the
-                      // months a fifth would fall outside. ?>
-                <p class="uc-hint">Choose <em>last</em> rather than <em>fourth</em> if you mean the final one, since some months have five.</p>
-            </div>
-
-            <?php // ---- Ends --------------------------------------------- ?>
-            <div class="uc-repeat-panel" data-uc-repeat-panel="ends">
-                <span class="uc-field-label">Ends</span>
-                <label class="uc-radio-row">
-                    <input type="radio" name="repeat_ends" value="never" checked data-uc-repeat-ends />
-                    <span>No end date</span>
-                </label>
-                <label class="uc-radio-row">
-                    <input type="radio" name="repeat_ends" value="on" data-uc-repeat-ends />
-                    <span>On</span>
-                    <input type="date" name="repeat_until" value="" class="uc-repeat-date"
-                           aria-label="Repeat until this date" />
-                </label>
-                <label class="uc-radio-row">
-                    <input type="radio" name="repeat_ends" value="after" data-uc-repeat-ends />
-                    <span>After</span>
-                    <input type="number" name="repeat_count" value="12" min="2" max="366" class="uc-repeat-num"
-                           aria-label="How many occurrences in total" />
-                    <span>occurrences</span>
-                </label>
-                <?php
-                /*
-                 * "NO END DATE" CANNOT MEAN FOREVER, AND SAYS SO.
-                 *
-                 * Generation makes real posts, once. There is no pattern left
-                 * afterwards for anything to extend, so an unbounded choice
-                 * would have to mean "as many as we are willing to create",
-                 * and pretending otherwise would be the one place on this
-                 * screen that lies about what the software does.
-                 */
-                ?>
-                <p class="uc-hint">
-                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
-                    afterwards; add more dates later from the series screen.
-                </p>
-            </div>
-
-            <?php
-            /*
-             * ---- The dates picker: Custom's whole schedule, or extras ----
-             *
-             * ONE CONTROL FOR BOTH JOBS, and one field name, because they are
-             * the same job. In Custom mode the list IS the schedule. Beside
-             * Daily, Weekly or Monthly the same list is dates the pattern does
-             * not cover: a weekly Wednesday group that also meets on one
-             * Saturday. Either way each entry becomes an event in the same
-             * recurrence group, so "edit all upcoming occurrences" reaches
-             * them. Only the label changes, and portal.js changes it.
-             *
-             * NO JAVASCRIPT: FOUR EMPTY SLOTS. Adding rows without script is
-             * the one thing this control cannot do, so the server renders four
-             * ordinary date inputs carrying the same repeat_dates[] name. With
-             * script they are hidden and the add-and-list interaction replaces
-             * them; without it, four dates can still be typed and saved. One
-             * field name, one parser, in both cases.
-             */
-            ?>
-            <div class="uc-repeat-panel uc-dates" data-uc-repeat-panel="dates">
-                <span class="uc-field-label" data-uc-dates-label>Dates</span>
-
-                <?php // The add row. Hidden until portal.js takes it over, so a
-                      // browser with no script is never shown a button that
-                      // does nothing. ?>
-                <div class="uc-dates-add" data-uc-dates-add hidden>
-                    <input type="date" class="uc-repeat-date" data-uc-dates-input
-                           aria-label="A date this also happens on" />
-                    <button type="button" class="uc-btn uc-btn-sm" data-uc-dates-addbtn>Add date</button>
-                </div>
-
-                <ol class="uc-dates-list" data-uc-dates-list></ol>
-
-                <div class="uc-dates-slots" data-uc-dates-slots>
-                    <?php for ( $i = 0; $i < 4; $i++ ) : ?>
-                        <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
-                               aria-label="<?php echo esc_attr( sprintf( 'Date %d', $i + 1 ) ); ?>" />
-                    <?php endfor; ?>
-                </div>
-
-                <p class="uc-hint" data-uc-dates-hint>
-                    Every date here becomes its own event, at the same start and end time, in the same group as the
-                    rest. A date the pattern already covers is not added twice.
-                </p>
-            </div>
-
-            <?php
-            /*
-             * THE SUMMARY, AND THE COUNT.
-             *
-             * Rendered by the server for the page load and recomputed by
-             * portal.js on every change, from the same rules. The number is
-             * the whole point: this creates N independent events and nobody
-             * should meet that number for the first time afterwards.
-             *
-             * BOTH SIDES CALL A FUNCTION RATHER THAN ASSEMBLING A SENTENCE.
-             * SFAF_Recurrence::summary() is the server's, ucRecurrenceSummary()
-             * is the mirror, and .claude/recurrence-crosscheck.php runs the two
-             * against each other. A count that disagrees with what generation
-             * makes is the one bug on this screen that costs real posts.
-             */
-            ?>
-            <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
-                <?php echo esc_html( SFAF_Recurrence::summary( $date, '', '', 0, array(), '' ) ); ?>
-            </p>
-        </div>
-        <?php
+        return array(
+            'pattern' => $pattern,
+            'until'   => (string) get_post_meta( $event_id, SFAF_Request::META_PATTERN_UNTIL, true ),
+            'limit'   => (int) get_post_meta( $event_id, SFAF_Request::META_PATTERN_LIMIT, true ),
+            'dates'   => $dates,
+        );
     }
     /**
-     * Read the recurrence control back into a pattern, an end date and a count.
+     * Read the recurrence control back, through SFAF_Recurrence (3.72.0).
      *
-     * ALL FOUR PANELS POST, ALWAYS, because without script they are all on
-     * screen and even with it they are only hidden. So this reads repeat_mode
-     * first and then looks at nothing else: the weekly interval on a form
-     * saved as Monthly is a field somebody never saw, and honouring it would
-     * be honouring a value nobody chose. Same rule as the location picker,
-     * which reads location_mode and then ignores whichever branch lost.
-     *
-     * THE DEFAULT IS ALWAYS "NO", in every direction. An unrecognised mode, a
-     * missing end, a count of zero: each returns something that generates
-     * nothing, because this function's mistakes create posts.
-     *
-     * THE EXPLICIT DATES ARE READ FOR EVERY MODE EXCEPT "NEVER", and that is
-     * the one place this function does not follow "read the mode and ignore the
-     * rest". The picker is a single control shown in five of the six states, so
-     * repeat_dates[] belongs to the mode rather than to a branch of it: under
-     * Custom it is the schedule, beside a pattern it is the additions. Under
-     * Never the whole control is off and nothing is read.
+     * THE READER MOVED WITH THE RENDERER, and they had to move together. The
+     * staff request form emits the same control, so a second parser for the
+     * same field names would be free to disagree with this one about what
+     * `repeat_mode=weekly` with no days ticked means, and the disagreement
+     * would surface as a request that generates the wrong dates at approval.
+     * One render, one save. See SFAF_Recurrence::from_post().
      *
      * @return array{0:string,1:string,2:int,3:string[]} pattern, end date,
      *         occurrence limit, explicit dates.
      */
     private function recurrence_from_post() {
-        $mode = isset( $_POST['repeat_mode'] ) ? sanitize_key( wp_unslash( $_POST['repeat_mode'] ) ) : '';
-
-        // The pre-3.14.0 form posted a single `repeat` select. Still honoured,
-        // because a browser can hold a form open across a plugin update.
-        if ( '' === $mode && isset( $_POST['repeat'] ) ) {
-            $legacy = SFAF_Recurrence::clean_pattern( wp_unslash( $_POST['repeat'] ) );
-            $until  = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
-            return array( $legacy, $until, 0, array() );
-        }
-
-        // Cleaned against the event's own date, so a date on or before it never
-        // reaches the generator. SFAF_Recurrence::clean_dates() is the only
-        // implementation of that rule; this does not re-state it.
-        $own_date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
-        $extra    = ( '' !== $mode && isset( $_POST['repeat_dates'] ) )
-            ? SFAF_Recurrence::clean_dates( wp_unslash( $_POST['repeat_dates'] ), $own_date )
-            : array();
-
-        /*
-         * CUSTOM ENDS HERE. There is no cadence, so there is no interval to
-         * read, no weekday to read and nothing for "Ends" to bound: the list is
-         * the whole answer. A Custom save with an empty list generates nothing
-         * and leaves a perfectly good one-off event, which is the right outcome
-         * for somebody who chose Custom and then changed their mind.
-         */
-        if ( 'custom' === $mode ) {
-            return array( empty( $extra ) ? '' : 'custom', '', 0, $extra );
-        }
-
-        $spec = null;
-        if ( 'daily' === $mode ) {
-            $spec = array( 'type' => 'daily', 'interval' => 1 );
-        } elseif ( 'weekly' === $mode ) {
-            $days = array();
-            if ( isset( $_POST['repeat_days'] ) && is_array( $_POST['repeat_days'] ) ) {
-                foreach ( wp_unslash( $_POST['repeat_days'] ) as $d ) {
-                    $d = (int) $d;
-                    if ( $d >= 0 && $d <= 6 ) {
-                        $days[] = $d;
-                    }
-                }
-            }
-            $spec = array(
-                'type'     => 'weekly',
-                'interval' => isset( $_POST['repeat_weekly_interval'] ) ? (int) $_POST['repeat_weekly_interval'] : 1,
-                'days'     => $days,
-            );
-        } elseif ( 'monthly' === $mode ) {
-            $monthly = isset( $_POST['repeat_monthly_mode'] ) ? sanitize_key( wp_unslash( $_POST['repeat_monthly_mode'] ) ) : 'date';
-            if ( 'nth' === $monthly ) {
-                $spec = array(
-                    'type' => 'monthly_nth',
-                    'nth'  => isset( $_POST['repeat_nth'] ) ? (int) $_POST['repeat_nth'] : 1,
-                    'dow'  => isset( $_POST['repeat_nth_dow'] ) ? (int) $_POST['repeat_nth_dow'] : 0,
-                );
-            } else {
-                $spec = array( 'type' => 'monthly', 'interval' => 1 );
-            }
-        }
-
-        if ( ! $spec ) {
-            return array( '', '', 0, $extra );
-        }
-        $pattern = SFAF_Recurrence::pattern_string( $spec );
-        if ( '' === $pattern ) {
-            return array( '', '', 0, $extra );
-        }
-
-        $ends  = isset( $_POST['repeat_ends'] ) ? sanitize_key( wp_unslash( $_POST['repeat_ends'] ) ) : 'never';
-        $until = '';
-        $limit = 0;
-
-        /*
-         * AN UNUSABLE "ENDS" ANSWER DROPS THE PATTERN AND KEEPS THE EXTRAS.
-         *
-         * Those are two separate instructions and only one of them is broken. A
-         * manager who ticked Weekly, forgot the end date and added a Saturday
-         * has asked for the Saturday unambiguously; throwing it away because the
-         * other half of the form is incomplete would silently discard a date
-         * they typed. The pattern is dropped because "until" with no date is not
-         * an instruction, and the summary said so before the save.
-         */
-        if ( 'on' === $ends ) {
-            $until = isset( $_POST['repeat_until'] ) ? sanitize_text_field( wp_unslash( $_POST['repeat_until'] ) ) : '';
-            if ( '' === $until ) {
-                return array( '', '', 0, $extra );
-            }
-        } elseif ( 'after' === $ends ) {
-            // The control counts the event itself as the first occurrence,
-            // because that is what somebody means by "after 12". The engine
-            // counts dates it CREATES, which is one fewer.
-            $total = isset( $_POST['repeat_count'] ) ? (int) $_POST['repeat_count'] : 0;
-            $limit = max( 0, $total - 1 );
-            if ( $limit <= 0 ) {
-                return array( '', '', 0, $extra );
-            }
-        } else {
-            // No end date. Bounded at a year, and the control says so.
-            $limit = self::REPEAT_OPEN_ENDED_LIMIT;
-        }
-
-        return array( $pattern, $until, $limit, $extra );
+        return SFAF_Recurrence::from_post( $_POST );
     }
-
-    /**
-     * How many dates "no end date" creates.
-     *
-     * Generation is one-off and makes real posts, so unbounded is not a thing
-     * this can offer. A year is the honest reading of "keep going", it is what
-     * the control tells the manager it will do, and the summary states the
-     * resulting number before anything is created.
-     */
-    const REPEAT_OPEN_ENDED_LIMIT = 52;
 
     /**
      * Where the event happens: a venue, or somewhere one-off.
@@ -13408,9 +13389,35 @@ class SFAF_Portal {
         // that used to be here described the three-storage-case model, which
         // was the model rather than a quirk of the panel.
         ?>
-        <div class="uc-card uc-faq-set-panel">
-            <div class="uc-card-head"><h2><?php echo sfaf_icon( 'help' ); ?> FAQ sets</h2>
-                <a href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">Manage sets</a></div>
+        <?php
+        /*
+         * NO CARD, AND NO HEADING (3.72.0).
+         *
+         * WHAT WAS ON SCREEN. A card headed "FAQ sets" with a "Manage sets"
+         * link, and nothing under it. The picker inside the FAQs card takes
+         * over on load and portal.js hides THIS CARD'S FORM, which was the only
+         * thing in it that did anything, so what a manager saw with JavaScript
+         * working was two FAQ set controls, one of them an empty box with a
+         * title.
+         *
+         * THE FORM STAYS. It is the whole of the no-script path for applying a
+         * set: it posts and redirects, which is correct on the server and is
+         * the only route somebody without JavaScript has. What goes is the card
+         * around it, so there is nothing left to be an empty shell.
+         *
+         * THE WHOLE BLOCK IS MARKED FOR HIDING, not just the form, which is the
+         * actual fix. A wrapper that carries the flash from a no-script apply
+         * and nothing else has no reason to be on screen once the live picker
+         * is running.
+         *
+         * "MANAGE SETS" MOVED RATHER THAN BEING DELETED. It is the only route
+         * from an event to the screen where sets are made, and it now sits
+         * beside the live picker, which is where somebody who has just looked
+         * at the list of sets and not found the one they want is standing. See
+         * faq_set_picker().
+         */
+        ?>
+        <div class="uc-faq-set-panel" data-uc-faq-fallback-block>
 
             <?php if ( is_array( $result ) ) : ?>
                 <?php if ( ! empty( $result['error'] ) ) : ?>

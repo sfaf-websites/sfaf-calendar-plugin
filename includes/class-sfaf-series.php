@@ -540,12 +540,21 @@ class SFAF_Series {
      * them, and the rule is written in terms of what an event IS rather than
      * how it was made so that stays true.
      *
+     * `blocked` CARRIES THE ROWS, `skipped` CARRIES THE COUNTS, AND BOTH ARE
+     * WANTED (3.72.0). The counts are what the line above the button says, and
+     * they were the whole of what this returned while the button was all or
+     * nothing. Now that the screen lists every row with a tick, it has to be
+     * able to draw the ones with no tick and say why each one has none, and a
+     * count cannot do that. Neither is derived from the other at the call site,
+     * because deriving the counts by grouping `blocked` in the renderer would
+     * be a second place that decides what a skip reason is.
+     *
      * @param int $term_id
-     * @return array{ready:int[],skipped:array<string,int>}
+     * @return array{ready:int[],skipped:array<string,int>,blocked:array<int,string>}
      */
     public static function publishable( $term_id ) {
         $term_id = (int) $term_id;
-        $out     = array( 'ready' => array(), 'skipped' => array() );
+        $out     = array( 'ready' => array(), 'skipped' => array(), 'blocked' => array() );
 
         $ids   = self::events( $term_id, array(
             'status' => self::editable_statuses(),
@@ -559,6 +568,7 @@ class SFAF_Series {
                 $out['ready'][] = (int) $id;
             } else {
                 $out['skipped'][ $why ] = ( isset( $out['skipped'][ $why ] ) ? $out['skipped'][ $why ] : 0 ) + 1;
+                $out['blocked'][ (int) $id ] = $why;
             }
         }
 
@@ -621,13 +631,33 @@ class SFAF_Series {
      * wp_update_post(), not a direct status write, so save_post fires and every
      * listener that cares about an event becoming public gets its turn.
      *
-     * @param int $term_id
+     * THE CHOSEN SET NARROWS, IT NEVER WIDENS (3.72.0). The screen now carries
+     * a tick per row, so a press can mean "these four" rather than "all of
+     * them", and $only is how that arrives. It is INTERSECTED with what
+     * publishable() says is ready, in that order: an id that is not in `ready`
+     * is dropped whatever the form said, so individual selection cannot become
+     * a route to publishing a past date, an event with no date, a submission or
+     * somebody else's imported row. The four skip rules are unchanged and are
+     * still the only thing that decides eligibility.
+     *
+     * NULL MEANS ALL OF THEM, which is the no-script path: with no ticks posted
+     * the form falls back to what the button has always done. An EMPTY ARRAY is
+     * not the same thing and does not mean all: it means somebody unticked
+     * everything, and the honest answer to that is to publish nothing.
+     *
+     * @param int        $term_id
+     * @param int[]|null $only Ids the manager ticked, or null for every ready one.
      * @return array{published:int,skipped:array<string,int>,failed:int}
      */
-    public static function publish_drafts( $term_id ) {
+    public static function publish_drafts( $term_id, $only = null ) {
         $plan   = self::publishable( $term_id );
         $done   = 0;
         $failed = 0;
+
+        if ( null !== $only ) {
+            $wanted        = array_map( 'intval', (array) $only );
+            $plan['ready'] = array_values( array_intersect( $plan['ready'], $wanted ) );
+        }
 
         foreach ( $plan['ready'] as $id ) {
             $res = wp_update_post( array( 'ID' => (int) $id, 'post_status' => 'publish' ), true );

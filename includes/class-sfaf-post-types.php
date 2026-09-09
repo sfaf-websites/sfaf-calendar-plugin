@@ -214,11 +214,11 @@ class SFAF_Post_Types {
                 </div>
                 <div class="uc-meta-field">
                     <label for="uc_start_time">Start Time</label>
-                    <input type="time" id="uc_start_time" name="uc_start_time" value="<?php echo esc_attr( $start_time ); ?>" />
+                    <input type="time" id="uc_start_time" name="uc_start_time" value="<?php echo esc_attr( $start_time ); ?>"<?php echo sfaf_time_step_attr( $start_time ); ?> />
                 </div>
                 <div class="uc-meta-field">
                     <label for="uc_end_time">End Time</label>
-                    <input type="time" id="uc_end_time" name="uc_end_time" value="<?php echo esc_attr( $end_time ); ?>" />
+                    <input type="time" id="uc_end_time" name="uc_end_time" value="<?php echo esc_attr( $end_time ); ?>"<?php echo sfaf_time_step_attr( $end_time ); ?> />
                 </div>
             </div>
             <div class="uc-meta-row">

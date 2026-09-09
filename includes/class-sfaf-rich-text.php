@@ -171,10 +171,31 @@ class SFAF_Rich_Text {
     /**
      * A textarea that the browser will turn into an editor.
      *
-     * FOR REPEATER ROWS ONLY. A row that exists when the page is built gets a
-     * real wp_editor(); this is for the ones cloned from a template afterwards,
-     * and for the template itself. It is a working textarea if the script never
-     * runs, which is the same degradation the rendered editors have.
+     * FOR REPEATER ROWS. Both the ones cloned from a template after load and
+     * the ones already in the page when it is built, and that second half is a
+     * correction to what this docblock used to say (3.72.0).
+     *
+     * WHAT IT USED TO SAY, AND WHY IT WAS WRONG. "A row that exists when the
+     * page is built gets a real wp_editor()." No row ever has. sfaf_faq_row()
+     * is the ONE renderer for a stored row and for the <template>, it has been
+     * since 3.44.0, and it calls this for both. So the rule written here
+     * described an arrangement the code has never had, which is worse than no
+     * rule: 3.68.0 spent an investigation reading it as a statement of fact.
+     *
+     * AND THE RULE IS NOT BEING RESTORED, deliberately. Forking sfaf_faq_row()
+     * so a stored row rendered wp_editor() and a cloned row rendered this would
+     * put the FAQ repeater back to two copies of one control, which is the
+     * exact shape of the fault that renderer exists to prevent and which this
+     * project has paid for more than once. It would also fix nothing on its own:
+     * the description beside these answers IS a real wp_editor() and starts
+     * correctly, so a difference in how they start is what the browser-side
+     * fault is about, not a difference in which one is right.
+     *
+     * WHAT ACTUALLY HAS TO HOLD is that the browser-started path works, and
+     * that when it does not, it says so. See initRichText() in portal.js.
+     *
+     * It is a working textarea if the script never runs, which is the same
+     * degradation the rendered editors have.
      *
      * @param string $name
      * @param string $content

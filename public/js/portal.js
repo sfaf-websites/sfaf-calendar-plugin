@@ -67,7 +67,103 @@
         // the trigger renderer this one reuses is bound.
         run('requestSeriesImage', initRequestSeriesImage);
         run('calendarTick', initCalendarTick);
+        run('publishPicker', initPublishPicker);
     });
+
+    /* ---------------------------------------------------------------------
+     * WHICH DRAFTS THE PUBLISH BUTTON IS ABOUT TO PUBLISH (3.72.0)
+     *
+     * ENHANCEMENT ONLY, AND THE SERVER ALREADY RENDERED A COMPLETE CONTROL.
+     * Every eligible draft has a real checkbox with a real name, ticked, so
+     * with this function deleted the list still posts, unticking still works
+     * and the button still publishes what is ticked. What is added here is
+     * select-all, and keeping the button's own number honest while somebody
+     * changes their mind.
+     *
+     * THE NUMBER IS THE POINT. A button reading "Publish 47 upcoming drafts"
+     * over a list where three are unticked is a button that lies about what it
+     * is going to do, and this is the one action on the screen that reaches the
+     * public calendar. The confirmation is rewritten with it for the same
+     * reason: the two must not disagree.
+     *
+     * INELIGIBLE ROWS CARRY NO CHECKBOX AT ALL, so there is nothing here that
+     * has to remember not to tick them. See render_schedule_publish_form().
+     * ------------------------------------------------------------------ */
+    function initPublishPicker() {
+        document.querySelectorAll('[data-uc-publish-picker]').forEach(function (form) {
+            var boxes = form.querySelectorAll('[data-uc-publish-one]');
+            if (!boxes.length) { return; }
+
+            var all = form.querySelector('[data-uc-publish-all]');
+            var allRow = form.querySelector('[data-uc-publish-all-row]');
+            var btn = form.querySelector('[data-uc-publish-submit]');
+            var countEl = form.querySelector('[data-uc-publish-count]');
+            var nounEl = form.querySelector('[data-uc-publish-noun]');
+            /* The plural and the singular, off the server, so the words are
+             * WordPress's answer rather than an "s" glued on here. */
+            var many = btn ? (btn.getAttribute('data-uc-publish-word') || 'drafts') : 'drafts';
+            var one = btn ? (btn.getAttribute('data-uc-publish-word-one') || 'draft') : 'draft';
+            /* The confirmation as the server wrote it, so the count can be
+             * swapped without the rest of the sentence being rebuilt here. */
+            var confirmTpl = btn ? (btn.getAttribute('data-uc-confirm') || '') : '';
+            var total = boxes.length;
+
+            function ticked() {
+                var n = 0;
+                Array.prototype.forEach.call(boxes, function (b) { if (b.checked) { n++; } });
+                return n;
+            }
+
+            function sync() {
+                var n = ticked();
+
+                if (countEl) { countEl.textContent = String(n); }
+                if (nounEl) { nounEl.textContent = (1 === n) ? one : many; }
+
+                if (all) {
+                    all.checked = (n === total);
+                    /* Some but not all: the box says so rather than showing a
+                     * state that is wrong in both directions. */
+                    all.indeterminate = (n > 0 && n < total);
+                }
+
+                if (btn) {
+                    /* Nothing ticked is not an error and does not need a
+                     * message. It is a button with nothing to do, so it says
+                     * so and cannot be pressed. */
+                    btn.disabled = (0 === n);
+
+                    if (confirmTpl) {
+                        /* Only the leading count moves. Everything after it,
+                         * including the list of what is not included, is the
+                         * server's sentence and is still true. */
+                        btn.setAttribute(
+                            'data-uc-confirm',
+                            confirmTpl.replace(
+                                /^Publish \d+ upcoming (draft|drafts)/,
+                                'Publish ' + n + ' upcoming ' + ((1 === n) ? one : many)
+                            )
+                        );
+                    }
+                }
+            }
+
+            Array.prototype.forEach.call(boxes, function (b) {
+                b.addEventListener('change', sync);
+            });
+
+            if (all && allRow) {
+                allRow.hidden = false;
+                all.addEventListener('change', function () {
+                    var on = all.checked;
+                    Array.prototype.forEach.call(boxes, function (b) { b.checked = on; });
+                    sync();
+                });
+            }
+
+            sync();
+        });
+    }
 
     /* ---------------------------------------------------------------------
      * "Add to calendar" follows "Accept RSVPs", live.
@@ -1153,11 +1249,23 @@
         /* The post-and-redirect version, now that the in-place one is live.
          * Only hidden once a picker above has actually initialised, so a
          * browser that fell out of any of the guards above keeps a control
-         * that works. */
+         * that works.
+         *
+         * THE WHOLE BLOCK, NOT THE FORM (3.72.0). This hid the <form> and left
+         * its wrapper standing, which until this release was a card with a
+         * heading and a "Manage sets" link: an empty box with a title, sitting
+         * above a live picker doing the same job. Hiding what the form was in
+         * is what makes the fallback a fallback rather than a second control.
+         *
+         * FALLING BACK TO THE FORM ITSELF, so a screen whose markup predates
+         * the wrapper is still handled rather than left with two controls. */
         if (document.querySelector('[data-uc-faq-picker]:not([hidden])')) {
             Array.prototype.forEach.call(
                 document.querySelectorAll('[data-uc-faq-apply-fallback]'),
-                function (form) { form.setAttribute('hidden', 'hidden'); }
+                function (form) {
+                    var block = form.closest('[data-uc-faq-fallback-block]');
+                    (block || form).setAttribute('hidden', 'hidden');
+                }
             );
         }
     }
@@ -3831,15 +3939,82 @@
                 wp.editor.initialize(area.id, settings);
             } catch (err) {
                 area.removeAttribute('data-uc-rich-on');
+                /*
+                 * AND SAY SO (3.72.0). This catch was silent, and that is why
+                 * the fault under it could not be named from a browser: the
+                 * answers showed raw markup as text, nothing appeared in the
+                 * console, and the only observable was that pressing Add FAQ
+                 * afterwards turned every box on the screen into an editor
+                 * including the ones that were already there.
+                 *
+                 * THE SAME CHANNEL run() USES, which is the point rather than a
+                 * detail. run() exists precisely so a failed initialiser is
+                 * named instead of swallowed, and this was the one place in the
+                 * file quietly doing the opposite inside it. The id is in the
+                 * message because there are several of these on a page and
+                 * "one of them failed" is not a report.
+                 */
+                if (window.console && window.console.error) {
+                    window.console.error(
+                        'SFAF caladmin: rich text failed to start on #' + area.id + '. '
+                        + 'The field still works as a plain textarea.',
+                        err
+                    );
+                }
             }
         }
 
-        document.querySelectorAll('textarea[data-uc-rich]').forEach(function (area) {
-            /* Not the ones still inside a <template>: they are the pattern for
-             * future rows, not rows. */
-            if (area.closest('template')) { return; }
-            start(area);
-        });
+        function startAll() {
+            document.querySelectorAll('textarea[data-uc-rich]').forEach(function (area) {
+                /* Not the ones still inside a <template>: they are the pattern
+                 * for future rows, not rows. */
+                if (area.closest('template')) { return; }
+                start(area);
+            });
+        }
+
+        /*
+         * THE LOAD PASS GOES THROUGH THE SAME DEFERRED TASK THE ADD PASS USES
+         * (3.72.0).
+         *
+         * THE TWO PASSES DIFFERED BY EXACTLY ONE THING and the one that worked
+         * was the deferred one. Rows that exist when the page is built were
+         * started synchronously from here, inside DOMContentLoaded; rows added
+         * by Add FAQ are started inside a setTimeout(..., 0). The first showed
+         * raw markup and the second worked, on the same textareas, with the
+         * same settings, through the same start().
+         *
+         * WHAT IS NOT CLAIMED. The underlying reason cannot be named from this
+         * repository: there is no browser here, and until the catch above
+         * started logging there was nothing to read in one either. So this is
+         * not "the fix" being asserted; it is the load pass being made to look
+         * like the pass that demonstrably works, and the exception being made
+         * readable so the next attempt has something to go on.
+         *
+         * AND IT DOES NOT STOP AT ONE TASK. A bare setTimeout(0) is a guess
+         * about timing, and this project has paid for those. If wp.editor is
+         * present but not yet able to start an editor, one deferred turn may
+         * not be enough and no number of them is knowable in advance. So it
+         * retries while nothing has taken, on a short backoff, and gives up
+         * after a second: what is left then is the textarea it already was,
+         * holding the same content, posting the same field. That is the
+         * degradation SFAF_Rich_Text::deferred() promises and it is unchanged.
+         */
+        var tries = 0;
+        function pass() {
+            startAll();
+            tries++;
+            /* Anything still un-started, and time left to try again. Reading
+             * the DOM rather than a counter, so a row that started on the
+             * second attempt is not retried on the third. */
+            var pending = document.querySelector(
+                'textarea[data-uc-rich]:not([data-uc-rich-on])'
+            );
+            if (pending && !pending.closest('template') && tries < 6) {
+                window.setTimeout(pass, tries * 50);
+            }
+        }
+        window.setTimeout(pass, 0);
 
         /*
          * A new row arrives by cloning, and a removed one has to have its
@@ -3850,12 +4025,9 @@
         document.addEventListener('click', function (e) {
             var add = e.target.closest ? e.target.closest('.uc-repeater-add') : null;
             if (add) {
-                /* After initRepeaters() has appended the clone. */
-                window.setTimeout(function () {
-                    document.querySelectorAll('textarea[data-uc-rich]').forEach(function (area) {
-                        if (!area.closest('template')) { start(area); }
-                    });
-                }, 0);
+                /* After initRepeaters() has appended the clone. Same startAll()
+                 * the load pass runs, rather than a second copy of the loop. */
+                window.setTimeout(startAll, 0);
                 return;
             }
             var remove = e.target.closest ? e.target.closest('.uc-repeater-remove') : null;

@@ -1927,4 +1927,494 @@ class SFAF_Recurrence {
 
         return $locked;
     }
+    /**
+     * "Does this repeat?", asked so that the answer is readable.
+     *
+     * WHAT WAS WRONG WITH THE DROPDOWN. Six options, each of which had to be
+     * reverse-engineered: "every Thursday" was spelled "Every week" and only
+     * meant Thursday if the date above happened to be one, "the first Monday of
+     * the month" was spelled "Every month, on the same weekday", and a group
+     * meeting Tuesdays AND Thursdays could not be expressed at all. The list
+     * described the ARITHMETIC. This describes the schedule.
+     *
+     * FOUR CONTROLS, EACH ANSWERING ONE QUESTION. How often (segmented), on
+     * which days (circles), when it stops (ends), and what that comes to (the
+     * summary). The summary is the important one: generation is a creation-time
+     * action that makes N independent posts, so the number is stated before the
+     * button is pressed rather than discovered afterwards.
+     *
+     * NO JAVASCRIPT: every section is visible and every control is a real
+     * input. The server reads repeat_mode and uses only the fields belonging to
+     * it, exactly as the location picker reads location_mode. What is lost
+     * without script is the folding away of the sections that do not apply and
+     * the live summary; nothing becomes unreachable and nothing is built by
+     * script.
+     *
+     * KEYBOARD: the day circles are checkboxes with visible labels, styled
+     * round; the mode switch is a radio group. Both are focusable, both answer
+     * to Space, and both are announced as what they are.
+     *
+     * @param int    $uid_seed A number that makes this control's ids unique on the
+     *                         page: the event id where there is one, 0 on a form
+     *                         for an event that does not exist yet.
+     * @param string $date The event's own date, which anchors every pattern.
+     */
+    public static function render_control( $uid_seed, $date, $prefill = array() ) {
+        $uid  = 'uc-rep-' . (int) $uid_seed;
+        $dow  = $date ? (int) SFAF_Recurrence::dow_of( $date ) : (int) current_time( 'w' );
+        $days = SFAF_Recurrence::weekday_names();
+        $abbr = SFAF_Recurrence::weekday_names( true );
+
+        /*
+         * THE PREFILL, WHICH IS HOW A CAPTURED REQUEST REACHES THE APPROVER
+         * (3.72.0).
+         *
+         * IT IS A STARTING POSITION, NOT A STORED VALUE. Every control below
+         * still posts and is still read back by from_post(), so nothing here
+         * decides anything: an approver who changes the answer changes it, and
+         * an approver who presses save without looking gets what the requester
+         * asked for, which is the whole point of showing it.
+         *
+         * DERIVED FROM THE PATTERN STRING, so there is one shape of truth. The
+         * request stores what from_post() produced; parse_pattern() turns it
+         * back into the spec the controls were built from. A second encoding
+         * carrying "which radio was on" would be free to disagree with the
+         * pattern beside it.
+         *
+         * NOTHING IS PRESELECTED BY DEFAULT, and that stays true for every
+         * screen that passes no prefill: $pre_mode is '' and the segmented
+         * control lands on Never, exactly as it always has.
+         */
+        $pre         = self::parse_pattern( isset( $prefill['pattern'] ) ? (string) $prefill['pattern'] : '' );
+        $pre_dates   = isset( $prefill['dates'] ) ? (array) $prefill['dates'] : array();
+        $pre_until   = isset( $prefill['until'] ) ? (string) $prefill['until'] : '';
+        $pre_limit   = isset( $prefill['limit'] ) ? (int) $prefill['limit'] : 0;
+        $pre_mode    = '';
+        $pre_weekly  = 1;
+        $pre_days    = array();
+        $pre_monthly = 'date';
+
+        if ( $pre ) {
+            switch ( $pre['type'] ) {
+                case 'custom':
+                    $pre_mode = 'custom';
+                    break;
+                case 'daily':
+                    $pre_mode = 'daily';
+                    break;
+                case 'weekly':
+                    $pre_mode   = 'weekly';
+                    $pre_weekly = max( 1, isset( $pre['interval'] ) ? (int) $pre['interval'] : 1 );
+                    $pre_days   = isset( $pre['days'] ) ? array_map( 'intval', (array) $pre['days'] ) : array();
+                    break;
+                case 'monthly':
+                    $pre_mode = 'monthly';
+                    break;
+                case 'monthly_nth':
+                    $pre_mode    = 'monthly';
+                    $pre_monthly = 'nth';
+                    break;
+            }
+        } elseif ( ! empty( $pre_dates ) ) {
+            /* Dates and no cadence IS Custom, which is what from_post() would
+             * have stored had the pattern survived. A request that named three
+             * dates and no rule opens on Custom with those three in the list. */
+            $pre_mode = 'custom';
+        }
+
+        /* "Ends" follows whichever of the two bounds came with the pattern. An
+         * unbounded pattern lands on Never, which is the control's own default
+         * and is what the year cap is for. */
+        $pre_ends = ( '' !== $pre_until ) ? 'on' : ( ( $pre_limit > 0 ) ? 'after' : 'never' );
+
+        /* The control counts the event itself; the engine counts what it
+         * creates. from_post() takes one off on the way in, so this puts it
+         * back, and the number an approver sees is the number a requester
+         * typed. */
+        $pre_count = ( $pre_limit > 0 ) ? ( $pre_limit + 1 ) : 12;
+
+        /* A weekly pattern names its own days; with none named the control
+         * falls back to the event's own weekday, which is what it has always
+         * done. */
+        if ( empty( $pre_days ) ) {
+            $pre_days = array( $dow );
+        }
+
+        // Through the formatter, and with no ordinal suffix: see the note in
+        // SFAF_Recurrence::pattern_label(). The old 'jS' here read "the 4th".
+        $day_num = $date ? sfaf_ap_date( $date, 'daynum' ) : '';
+        $nth     = $date ? SFAF_Recurrence::nth_weekday_of_month( $date ) : null;
+        ?>
+        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="<?php echo esc_attr( $date ); ?>">
+
+            <span class="uc-field-label">Repeats
+                <?php echo sfaf_help(
+                    'uc-help-repeat-' . (int) $uid_seed,
+                    'On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.',
+                    'repeating'
+                ); ?>
+            </span>
+
+            <?php
+            /*
+             * ---- How often. A radio group that looks like a switch. ----
+             *
+             * CUSTOM IS THE FIFTH OPTION AND IT IS NOT A PATTERN. It covers the
+             * programme that meets on a Monday one week, a Tuesday the next and
+             * a Wednesday after that: there is no cadence to express, so nothing
+             * is stored as one. Choosing it reveals the same date picker the
+             * other four modes get, and in that mode the picker holds the whole
+             * schedule rather than additions to it.
+             */
+            ?>
+            <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
+                <?php foreach ( array(
+                    ''        => 'Never',
+                    'daily'   => 'Daily',
+                    'weekly'  => 'Weekly',
+                    'monthly' => 'Monthly',
+                    'custom'  => 'Custom',
+                ) as $val => $label ) : ?>
+                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="<?php echo esc_attr( $val ); ?>"
+                               <?php checked( $pre_mode === $val ); ?> data-uc-repeat-mode />
+                        <span><?php echo esc_html( $label ); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+
+            <?php // ---- Weekly ------------------------------------------- ?>
+            <div class="uc-repeat-panel" data-uc-repeat-panel="weekly">
+                <div class="uc-repeat-every">
+                    <span>Every</span>
+                    <input type="number" name="repeat_weekly_interval" value="<?php echo (int) $pre_weekly; ?>" min="1" max="52"
+                           class="uc-repeat-num" aria-label="Weeks between occurrences" />
+                    <span>week(s) on</span>
+                </div>
+                <div class="uc-days" role="group" aria-label="Which days of the week">
+                    <?php foreach ( $abbr as $i => $letter ) : ?>
+                        <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="<?php echo (int) $i; ?>"
+                                   <?php checked( in_array( (int) $i, $pre_days, true ) ); ?> data-uc-repeat-day />
+                            <span aria-hidden="true"><?php echo esc_html( $letter ); ?></span>
+                            <span class="uc-visually-hidden"><?php echo esc_html( $days[ $i ] ); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
+            </div>
+
+            <?php // ---- Monthly ------------------------------------------ ?>
+            <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="date" <?php checked( 'nth' !== $pre_monthly ); ?> data-uc-repeat-monthly />
+                    <span>On <strong><?php echo esc_html( $day_num ? 'day ' . $day_num : 'the same date' ); ?></strong> of each month</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="nth" <?php checked( 'nth' === $pre_monthly ); ?> data-uc-repeat-monthly />
+                    <span>On the</span>
+                </label>
+                <div class="uc-repeat-nth">
+                    <select name="repeat_nth" aria-label="Which occurrence in the month">
+                        <?php foreach ( array( 1 => 'first', 2 => 'second', 3 => 'third', 4 => 'fourth', -1 => 'last' ) as $n => $word ) : ?>
+                            <option value="<?php echo (int) $n; ?>" <?php selected(
+                                ( $pre && 'monthly_nth' === $pre['type'] )
+                                    ? ( (int) $pre['nth'] === (int) $n )
+                                    : ( $nth && (int) $nth['nth'] === (int) $n )
+                            ); ?>><?php echo esc_html( $word ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="repeat_nth_dow" aria-label="Which weekday">
+                        <?php foreach ( $days as $i => $name ) : ?>
+                            <option value="<?php echo (int) $i; ?>" <?php selected(
+                                ( $pre && 'monthly_nth' === $pre['type'] )
+                                    ? ( (int) $pre['dow'] === (int) $i )
+                                    : ( $i === $dow )
+                            ); ?>><?php echo esc_html( $name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span>of each month</span>
+                </div>
+                <?php // "last" is not "fifth": a month with four Fridays has a
+                      // last Friday and no fifth one, and the engine skips the
+                      // months a fifth would fall outside. ?>
+                <p class="uc-hint">Choose <em>last</em> rather than <em>fourth</em> if you mean the final one, since some months have five.</p>
+            </div>
+
+            <?php // ---- Ends --------------------------------------------- ?>
+            <div class="uc-repeat-panel" data-uc-repeat-panel="ends">
+                <span class="uc-field-label">Ends</span>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="never" <?php checked( 'never' === $pre_ends ); ?> data-uc-repeat-ends />
+                    <span>No end date</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="on" <?php checked( 'on' === $pre_ends ); ?> data-uc-repeat-ends />
+                    <span>On</span>
+                    <input type="date" name="repeat_until" value="<?php echo esc_attr( $pre_until ); ?>" class="uc-repeat-date"
+                           aria-label="Repeat until this date" />
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="after" <?php checked( 'after' === $pre_ends ); ?> data-uc-repeat-ends />
+                    <span>After</span>
+                    <input type="number" name="repeat_count" value="<?php echo (int) $pre_count; ?>" min="2" max="366" class="uc-repeat-num"
+                           aria-label="How many occurrences in total" />
+                    <span>occurrences</span>
+                </label>
+                <?php
+                /*
+                 * "NO END DATE" CANNOT MEAN FOREVER, AND SAYS SO.
+                 *
+                 * Generation makes real posts, once. There is no pattern left
+                 * afterwards for anything to extend, so an unbounded choice
+                 * would have to mean "as many as we are willing to create",
+                 * and pretending otherwise would be the one place on this
+                 * screen that lies about what the software does.
+                 */
+                ?>
+                <p class="uc-hint">
+                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
+                    afterwards; add more dates later from the series screen.
+                </p>
+            </div>
+
+            <?php
+            /*
+             * ---- The dates picker: Custom's whole schedule, or extras ----
+             *
+             * ONE CONTROL FOR BOTH JOBS, and one field name, because they are
+             * the same job. In Custom mode the list IS the schedule. Beside
+             * Daily, Weekly or Monthly the same list is dates the pattern does
+             * not cover: a weekly Wednesday group that also meets on one
+             * Saturday. Either way each entry becomes an event in the same
+             * recurrence group, so "edit all upcoming occurrences" reaches
+             * them. Only the label changes, and portal.js changes it.
+             *
+             * NO JAVASCRIPT: FOUR EMPTY SLOTS. Adding rows without script is
+             * the one thing this control cannot do, so the server renders four
+             * ordinary date inputs carrying the same repeat_dates[] name. With
+             * script they are hidden and the add-and-list interaction replaces
+             * them; without it, four dates can still be typed and saved. One
+             * field name, one parser, in both cases.
+             */
+            ?>
+            <div class="uc-repeat-panel uc-dates" data-uc-repeat-panel="dates">
+                <span class="uc-field-label" data-uc-dates-label>Dates</span>
+
+                <?php // The add row. Hidden until portal.js takes it over, so a
+                      // browser with no script is never shown a button that
+                      // does nothing. ?>
+                <div class="uc-dates-add" data-uc-dates-add hidden>
+                    <input type="date" class="uc-repeat-date" data-uc-dates-input
+                           aria-label="A date this also happens on" />
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-dates-addbtn>Add date</button>
+                </div>
+
+                <ol class="uc-dates-list" data-uc-dates-list></ol>
+
+                <div class="uc-dates-slots" data-uc-dates-slots>
+                    <?php
+                    /*
+                     * FOUR SLOTS, OR AS MANY AS THERE ARE DATES TO SHOW
+                     * (3.72.0). Four is the no-script allowance and it is
+                     * unchanged; a prefilled control has to be able to render
+                     * every date it was given, or an approver opening a request
+                     * for six chosen dates would silently lose two. portal.js
+                     * hides these and rebuilds the list from their values, so
+                     * the script path reads them all either way.
+                     */
+                    $slot_count = max( 4, count( $pre_dates ) );
+                    ?>
+                    <?php for ( $i = 0; $i < $slot_count; $i++ ) : ?>
+                        <input type="date" name="repeat_dates[]" value="<?php echo esc_attr( isset( $pre_dates[ $i ] ) ? (string) $pre_dates[ $i ] : '' ); ?>" class="uc-repeat-date"
+                               aria-label="<?php echo esc_attr( sprintf( 'Date %d', $i + 1 ) ); ?>" />
+                    <?php endfor; ?>
+                </div>
+
+                <p class="uc-hint" data-uc-dates-hint>
+                    Every date here becomes its own event, at the same start and end time, in the same group as the
+                    rest. A date the pattern already covers is not added twice.
+                </p>
+            </div>
+
+            <?php
+            /*
+             * THE SUMMARY, AND THE COUNT.
+             *
+             * Rendered by the server for the page load and recomputed by
+             * portal.js on every change, from the same rules. The number is
+             * the whole point: this creates N independent events and nobody
+             * should meet that number for the first time afterwards.
+             *
+             * BOTH SIDES CALL A FUNCTION RATHER THAN ASSEMBLING A SENTENCE.
+             * SFAF_Recurrence::summary() is the server's, ucRecurrenceSummary()
+             * is the mirror, and .claude/recurrence-crosscheck.php runs the two
+             * against each other. A count that disagrees with what generation
+             * makes is the one bug on this screen that costs real posts.
+             */
+            ?>
+            <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
+                <?php
+                /* The prefill's own summary, so a control that opens on Weekly
+                 * does not open under a sentence reading "Does not repeat".
+                 * With no prefill every argument is the empty default this has
+                 * always passed. */
+                echo esc_html( SFAF_Recurrence::summary(
+                    $date,
+                    $pre_until,
+                    isset( $prefill['pattern'] ) ? (string) $prefill['pattern'] : '',
+                    $pre_limit,
+                    $pre_dates,
+                    ''
+                ) );
+                ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    /**
+     * How many dates "no end date" creates.
+     *
+     * Generation is one-off and makes real posts, so unbounded is not a thing
+     * this can offer. A year is the honest reading of "keep going", it is what
+     * the control tells the manager it will do, and the summary states the
+     * resulting number before anything is created.
+     *
+     * IT MOVED HERE WITH from_post() IN 3.72.0. It was
+     * SFAF_Portal::REPEAT_OPEN_ENDED_LIMIT and had exactly one reader, which is
+     * that method; a bound on generation belongs with the thing that generates
+     * rather than with one of the two screens that ask.
+     */
+    const REPEAT_OPEN_ENDED_LIMIT = 52;
+
+    /**
+     * Read the recurrence control back into a pattern, an end date and a count.
+     *
+     * ALL FOUR PANELS POST, ALWAYS, because without script they are all on
+     * screen and even with it they are only hidden. So this reads repeat_mode
+     * first and then looks at nothing else: the weekly interval on a form
+     * saved as Monthly is a field somebody never saw, and honouring it would
+     * be honouring a value nobody chose. Same rule as the location picker,
+     * which reads location_mode and then ignores whichever branch lost.
+     *
+     * THE DEFAULT IS ALWAYS "NO", in every direction. An unrecognised mode, a
+     * missing end, a count of zero: each returns something that generates
+     * nothing, because this function's mistakes create posts.
+     *
+     * THE EXPLICIT DATES ARE READ FOR EVERY MODE EXCEPT "NEVER", and that is
+     * the one place this function does not follow "read the mode and ignore the
+     * rest". The picker is a single control shown in five of the six states, so
+     * repeat_dates[] belongs to the mode rather than to a branch of it: under
+     * Custom it is the schedule, beside a pattern it is the additions. Under
+     * Never the whole control is off and nothing is read.
+     *
+     * @return array{0:string,1:string,2:int,3:string[]} pattern, end date,
+     *         occurrence limit, explicit dates.
+     */
+    public static function from_post( $post ) {
+        $mode = isset( $post['repeat_mode'] ) ? sanitize_key( wp_unslash( $post['repeat_mode'] ) ) : '';
+
+        // The pre-3.14.0 form posted a single `repeat` select. Still honoured,
+        // because a browser can hold a form open across a plugin update.
+        if ( '' === $mode && isset( $post['repeat'] ) ) {
+            $legacy = SFAF_Recurrence::clean_pattern( wp_unslash( $post['repeat'] ) );
+            $until  = isset( $post['repeat_until'] ) ? sanitize_text_field( wp_unslash( $post['repeat_until'] ) ) : '';
+            return array( $legacy, $until, 0, array() );
+        }
+
+        // Cleaned against the event's own date, so a date on or before it never
+        // reaches the generator. SFAF_Recurrence::clean_dates() is the only
+        // implementation of that rule; this does not re-state it.
+        $own_date = isset( $post['date'] ) ? sanitize_text_field( wp_unslash( $post['date'] ) ) : '';
+        $extra    = ( '' !== $mode && isset( $post['repeat_dates'] ) )
+            ? SFAF_Recurrence::clean_dates( wp_unslash( $post['repeat_dates'] ), $own_date )
+            : array();
+
+        /*
+         * CUSTOM ENDS HERE. There is no cadence, so there is no interval to
+         * read, no weekday to read and nothing for "Ends" to bound: the list is
+         * the whole answer. A Custom save with an empty list generates nothing
+         * and leaves a perfectly good one-off event, which is the right outcome
+         * for somebody who chose Custom and then changed their mind.
+         */
+        if ( 'custom' === $mode ) {
+            return array( empty( $extra ) ? '' : 'custom', '', 0, $extra );
+        }
+
+        $spec = null;
+        if ( 'daily' === $mode ) {
+            $spec = array( 'type' => 'daily', 'interval' => 1 );
+        } elseif ( 'weekly' === $mode ) {
+            $days = array();
+            if ( isset( $post['repeat_days'] ) && is_array( $post['repeat_days'] ) ) {
+                foreach ( wp_unslash( $post['repeat_days'] ) as $d ) {
+                    $d = (int) $d;
+                    if ( $d >= 0 && $d <= 6 ) {
+                        $days[] = $d;
+                    }
+                }
+            }
+            $spec = array(
+                'type'     => 'weekly',
+                'interval' => isset( $post['repeat_weekly_interval'] ) ? (int) $post['repeat_weekly_interval'] : 1,
+                'days'     => $days,
+            );
+        } elseif ( 'monthly' === $mode ) {
+            $monthly = isset( $post['repeat_monthly_mode'] ) ? sanitize_key( wp_unslash( $post['repeat_monthly_mode'] ) ) : 'date';
+            if ( 'nth' === $monthly ) {
+                $spec = array(
+                    'type' => 'monthly_nth',
+                    'nth'  => isset( $post['repeat_nth'] ) ? (int) $post['repeat_nth'] : 1,
+                    'dow'  => isset( $post['repeat_nth_dow'] ) ? (int) $post['repeat_nth_dow'] : 0,
+                );
+            } else {
+                $spec = array( 'type' => 'monthly', 'interval' => 1 );
+            }
+        }
+
+        if ( ! $spec ) {
+            return array( '', '', 0, $extra );
+        }
+        $pattern = SFAF_Recurrence::pattern_string( $spec );
+        if ( '' === $pattern ) {
+            return array( '', '', 0, $extra );
+        }
+
+        $ends  = isset( $post['repeat_ends'] ) ? sanitize_key( wp_unslash( $post['repeat_ends'] ) ) : 'never';
+        $until = '';
+        $limit = 0;
+
+        /*
+         * AN UNUSABLE "ENDS" ANSWER DROPS THE PATTERN AND KEEPS THE EXTRAS.
+         *
+         * Those are two separate instructions and only one of them is broken. A
+         * manager who ticked Weekly, forgot the end date and added a Saturday
+         * has asked for the Saturday unambiguously; throwing it away because the
+         * other half of the form is incomplete would silently discard a date
+         * they typed. The pattern is dropped because "until" with no date is not
+         * an instruction, and the summary said so before the save.
+         */
+        if ( 'on' === $ends ) {
+            $until = isset( $post['repeat_until'] ) ? sanitize_text_field( wp_unslash( $post['repeat_until'] ) ) : '';
+            if ( '' === $until ) {
+                return array( '', '', 0, $extra );
+            }
+        } elseif ( 'after' === $ends ) {
+            // The control counts the event itself as the first occurrence,
+            // because that is what somebody means by "after 12". The engine
+            // counts dates it CREATES, which is one fewer.
+            $total = isset( $post['repeat_count'] ) ? (int) $post['repeat_count'] : 0;
+            $limit = max( 0, $total - 1 );
+            if ( $limit <= 0 ) {
+                return array( '', '', 0, $extra );
+            }
+        } else {
+            // No end date. Bounded at a year, and the control says so.
+            $limit = self::REPEAT_OPEN_ENDED_LIMIT;
+        }
+
+        return array( $pattern, $until, $limit, $extra );
+    }
+
 }

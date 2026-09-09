@@ -184,6 +184,19 @@ if ( ! function_exists( 'get_option' ) ) {
     function delete_option( $n ) { unset( $GLOBALS['options'][ $n ] ); return true; }
 }
 
+/*
+ * THE REAL RECURRENCE ENGINE, NOT A STUB (3.72.0).
+ *
+ * validate() calls SFAF_Recurrence::from_post() now, because the request form
+ * asks the same repeat question caladmin does. A stub here would be a second
+ * answer to "what may a stranger store as a schedule", and it would pass
+ * whatever this file decided it should pass: exactly the shape of fault where
+ * a plant that upholds the rule under test hides the rule's removal.
+ *
+ * So the real file is loaded and the real parser runs. What it needs from
+ * WordPress is already stubbed above.
+ */
+require_once $root . '/includes/class-sfaf-recurrence.php';
 require_once $root . '/includes/class-sfaf-faq-sets.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
@@ -479,6 +492,73 @@ $out = SFAF_Request::validate( good_post( array( 'repeat' => 'weekly', 'repeat_u
 expect_error( 'an end date before the first date is refused', $out['errors'], 'repeat_until' );
 $out = SFAF_Request::validate( good_post( array( 'repeat' => 'none', 'repeat_until' => $next_week ) ) );
 expect( 'an until date on a one-off is dropped', $out['clean']['repeat_until'], '' );
+
+/* ---------------------------------------------------------------------------
+ * THE REAL REPEAT CONTROL (3.72.0), AND THE ONE THING THAT MUST NOT HAPPEN.
+ *
+ * The form asks the same question caladmin does now, so a submitter can post a
+ * real recurrence pattern. Every assertion below is about the boundary that
+ * makes that safe: the pattern is CAPTURED and NOT ARMED. It is stored under
+ * SFAF_Request::META_PATTERN, never under SFAF_Recurrence::PATTERN_META, and
+ * nothing on this path generates a post.
+ * ------------------------------------------------------------------------ */
+$out = SFAF_Request::validate( good_post( array(
+    'repeat_mode'             => 'weekly',
+    'repeat_weekly_interval'  => '1',
+    'repeat_days'             => array( '3' ),
+    'repeat_ends'             => 'on',
+    'repeat_until'            => $next_week,
+) ) );
+expect( 'a weekly pattern is captured', $out['clean']['pattern'], 'weekly:1:3' );
+expect( 'its end date is captured', $out['clean']['repeat_until'], $next_week );
+
+$out = SFAF_Request::validate( good_post( array(
+    'repeat_mode' => 'weekly',
+    'repeat_days' => array( '3' ),
+    'repeat_ends' => 'on',
+    // "until" chosen and left empty is not an instruction, so the pattern goes.
+) ) );
+expect( 'weekly with an empty until stores no pattern', $out['clean']['pattern'], '' );
+
+$out = SFAF_Request::validate( good_post( array(
+    'repeat_mode'  => 'weekly',
+    'repeat_days'  => array( '3' ),
+    'repeat_ends'  => 'after',
+    'repeat_count' => '6',
+) ) );
+expect( 'a count is captured, one fewer than typed', $out['clean']['pattern_limit'], 5 );
+
+$out = SFAF_Request::validate( good_post( array( 'repeat_mode' => '' ) ) );
+expect( 'never stores no pattern', $out['clean']['pattern'], '' );
+expect( 'never stores no dates', count( $out['clean']['pattern_dates'] ), 0 );
+
+/* A day outside 0-6 is not a weekday. It must not reach the pattern string. */
+$out = SFAF_Request::validate( good_post( array(
+    'repeat_mode' => 'weekly',
+    'repeat_days' => array( '9', '3' ),
+    'repeat_ends' => 'never',
+) ) );
+expect( 'an out-of-range weekday is dropped', $out['clean']['pattern'], 'weekly:1:3' );
+
+/* THE ONE THAT MATTERS MOST: whatever a submitter posts, the key the generator
+ * reads is not among the things validate() produces. */
+$out = SFAF_Request::validate( good_post( array(
+    'repeat_mode' => 'weekly',
+    'repeat_days' => array( '3' ),
+    'repeat_ends' => 'never',
+    // Posted by hand, aimed straight at the armed key.
+    '_uc_recurrence_pattern' => 'weekly:1:1',
+) ) );
+expect(
+    'nothing a submitter posts becomes the armed pattern key',
+    isset( $out['clean'][ SFAF_Recurrence::PATTERN_META ] ) ? 'present' : 'absent',
+    'absent'
+);
+expect(
+    'and the captured key is a different key',
+    ( SFAF_Request::META_PATTERN === SFAF_Recurrence::PATTERN_META ) ? 'same' : 'different',
+    'different'
+);
 
 /* Capacity. */
 foreach ( array( '-1', '999999' ) as $bad ) {

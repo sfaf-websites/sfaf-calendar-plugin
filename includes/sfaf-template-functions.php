@@ -2574,6 +2574,45 @@ function sfaf_ap_time( $raw, $meridiem = true ) {
 }
 
 /**
+ * The `step` attribute for a time control, five minutes, when it is safe.
+ *
+ * WHY FIVE MINUTES. `<input type="time">` steps by one minute by default, so
+ * setting an event to 6:30 with the stepper is thirty presses. Nothing on this
+ * calendar starts at 6:07.
+ *
+ * WHAT HAPPENS TO A TIME OFF THE BOUNDARY: THE BROWSER REFUSES IT, and it does
+ * so before the form posts, naming the two nearest valid times itself. That is
+ * `step` doing what `step` means, and it is the honest outcome to pick: rounding
+ * on save would change somebody's answer without telling them, and accepting it
+ * would make the attribute a decoration.
+ *
+ * SO IT IS NOT SET ON A CONTROL ALREADY HOLDING SUCH A TIME. That is the whole
+ * of what this function is for. A stored value can predate the rule, and the
+ * import wrote its times from an export nobody here has read every row of; a
+ * control carrying 6:07 with step="300" on it is a form that cannot be
+ * submitted at all until somebody works out that the time field is the reason.
+ * The event stays editable and its own time stays sayable, and the moment
+ * somebody moves it onto a boundary the control gets the stepper.
+ *
+ * THE SERVER'S RULE IS UNCHANGED AND STAYS UNCHANGED. SFAF_Request::clean_time()
+ * accepts any valid H:i, which is what makes the paragraph above work. This is a
+ * property of a CONTROL, not of the data.
+ *
+ * @param string $value Current H:i value, or ''.
+ * @return string ' step="300"' or ''.
+ */
+function sfaf_time_step_attr( $value ) {
+    $value = trim( (string) $value );
+    if ( '' === $value ) {
+        return ' step="300"';
+    }
+    if ( ! preg_match( '/^(\d{1,2}):(\d{2})/', $value, $m ) ) {
+        return '';
+    }
+    return ( 0 === ( (int) $m[2] % 5 ) ) ? ' step="300"' : '';
+}
+
+/**
  * A start and end as one phrase, AP style.
  *
  *   6 pm and 7:30 pm   ->  "6-7:30 pm"     (same meridiem, first one omitted)

@@ -64,6 +64,28 @@ class SFAF_Request {
     const META_VENUE  = '_uc_request_venue_other';
 
     /**
+     * What the requester asked for about repeating, as the engine spells it.
+     *
+     * FOUR KEYS, AND NONE OF THEM IS SFAF_Recurrence::PATTERN_META. That is the
+     * whole point of them existing (3.72.0). The request form asks the real
+     * question with the real control now, so what comes back is a real pattern
+     * string, and storing it under the real key would make a pending request
+     * that nobody has read look exactly like a schedule a manager built: every
+     * reader of PATTERN_META would start answering about it, and the schedule
+     * screen's generate button would be one press from creating a year of posts
+     * for an event still awaiting review.
+     *
+     * READ BY ONE THING. The schedule screen fills its control in from these
+     * when an approved request first opens, and the approver presses the button
+     * with the summary in front of them. Nothing else reads them and nothing
+     * generates from them.
+     */
+    const META_PATTERN       = '_uc_request_pattern';
+    const META_PATTERN_UNTIL = '_uc_request_pattern_until';
+    const META_PATTERN_LIMIT = '_uc_request_pattern_limit';
+    const META_PATTERN_DATES = '_uc_request_pattern_dates';
+
+    /**
      * How often it repeats, in the words a requester would use.
      *
      * PLAIN LANGUAGE, AND NOT THE RECURRENCE ENGINE'S ENCODING. The editor
@@ -605,17 +627,55 @@ class SFAF_Request {
             $errors['end_time'] = 'The end time needs to be after the start time.';
         }
 
-        /* ---- Repeating, in words. ---- */
+        /*
+         * ---- Repeating: the real pattern, read by the real reader (3.72.0).
+         *
+         * SFAF_Recurrence::from_post() is the same method caladmin's save
+         * calls, handed this form's POST. It returns a pattern string, an end
+         * date, an occurrence limit and any explicitly named dates, and it
+         * returns an empty pattern for every answer it cannot make sense of,
+         * which is the behaviour that matters here: this form is filled in by
+         * somebody with no account and the default in every direction is "no".
+         *
+         * ANCHORED ON THIS FORM'S OWN DATE. from_post() reads $post['date']
+         * for that, which is the field this form already posts under that
+         * name, so the extra dates are cleaned against the start date exactly
+         * as they are in caladmin.
+         *
+         * NOTHING IS ARMED. What comes back is stored on the pending request
+         * under keys of its own; see create_event(). PATTERN_META is not
+         * written and no occurrence is generated.
+         *
+         * THE OLD `repeat` SELECT IS STILL READ, and deliberately. A browser
+         * can hold a form open across a plugin update, and from_post() honours
+         * that legacy field itself for exactly that reason. What is kept here
+         * is the human phrase: repeat_phrase() puts a sentence in the email to
+         * the approver, and a pattern string like `weekly:1:3` is not one.
+         */
         $repeat = isset( $post['repeat'] ) ? sanitize_key( wp_unslash( $post['repeat'] ) ) : 'none';
         $clean['repeat'] = array_key_exists( $repeat, self::repeat_options() ) ? $repeat : 'none';
 
+        list( $r_pattern, $r_until, $r_limit, $r_dates ) = SFAF_Recurrence::from_post( $post );
+        $clean['pattern']       = $r_pattern;
+        $clean['pattern_limit'] = (int) $r_limit;
+        $clean['pattern_dates'] = $r_dates;
+
+        /*
+         * AN "UNTIL" WITH NOTHING TO BOUND IS NOT AN ANSWER, and it is dropped
+         * rather than stored. Somebody who chooses "it happens once" and leaves
+         * a date in the until field, which the old select made easy and the new
+         * control still allows without script, has said nothing about
+         * repeating; keeping the date would put "until December 3" on a
+         * one-off request and give the approver something to reconcile that
+         * nobody meant. The mirror of the rule from_post() applies in the other
+         * direction, where "until" with no date drops the pattern.
+         */
         $clean['repeat_until'] = '';
-        if ( 'none' !== $clean['repeat'] ) {
-            $until = self::clean_date( isset( $post['repeat_until'] ) ? $post['repeat_until'] : '' );
-            if ( '' !== $until && '' !== $clean['date'] && $until < $clean['date'] ) {
+        if ( '' !== $r_pattern ) {
+            if ( '' !== $r_until && '' !== $clean['date'] && $r_until < $clean['date'] ) {
                 $errors['repeat_until'] = 'The last date cannot be before the first one.';
             } else {
-                $clean['repeat_until'] = $until;
+                $clean['repeat_until'] = $r_until;
             }
         }
 
@@ -1017,6 +1077,36 @@ class SFAF_Request {
         }
 
         update_post_meta( $event_id, self::META_REPEAT, self::repeat_phrase( $c ) );
+
+        /*
+         * THE PATTERN, CAPTURED AND NOT ARMED (3.72.0).
+         *
+         * ITS OWN KEYS, AND THE NAMES ARE THE GUARANTEE. Writing
+         * SFAF_Recurrence::PATTERN_META here would make an unreviewed request
+         * indistinguishable from a manager's own schedule, and every screen and
+         * job that asks "does this event repeat" would start answering yes
+         * about a row nobody has approved. These four keys are read by exactly
+         * one thing, the schedule screen's prefill at approval, and by nothing
+         * that generates.
+         *
+         * WRITTEN ONLY WHEN THERE IS SOMETHING TO WRITE, so a one-off request
+         * carries no recurrence meta at all rather than a row of empties. An
+         * empty pattern with dates in the list is a real answer, though: it is
+         * Custom, which is a schedule made of named dates and no cadence.
+         */
+        if ( '' !== $c['pattern'] ) {
+            update_post_meta( $event_id, self::META_PATTERN, $c['pattern'] );
+            if ( '' !== $c['repeat_until'] ) {
+                update_post_meta( $event_id, self::META_PATTERN_UNTIL, $c['repeat_until'] );
+            }
+            if ( $c['pattern_limit'] > 0 ) {
+                update_post_meta( $event_id, self::META_PATTERN_LIMIT, (int) $c['pattern_limit'] );
+            }
+        }
+        if ( ! empty( $c['pattern_dates'] ) ) {
+            update_post_meta( $event_id, self::META_PATTERN_DATES, array_values( (array) $c['pattern_dates'] ) );
+        }
+
         if ( '' !== $c['notes'] ) {
             update_post_meta( $event_id, self::META_NOTES, $c['notes'] );
         }
@@ -1031,6 +1121,50 @@ class SFAF_Request {
      * @return string
      */
     public static function repeat_phrase( $c ) {
+        /*
+         * THE PATTERN'S OWN WORDS, THROUGH THE ENGINE'S OWN LABELLER (3.72.0).
+         *
+         * This used to read a five-option select, and the sentence it produced
+         * was the best that control could do: "Every week, with no end date
+         * given", which does not say which day. The form asks the real question
+         * now, so pattern_label() can say "every Wednesday" or "the first Monday
+         * of the month", and the two places this phrase is printed, the email to
+         * the approver and the pending panel, get an answer somebody can act on.
+         *
+         * ONE LABELLER, NOT A SECOND SENTENCE BUILT HERE. pattern_label() is
+         * what the schedule screen prints, so the request and the schedule
+         * describe the same pattern in the same words.
+         *
+         * THE LEGACY SELECT STILL ANSWERS where it is all there is: a form held
+         * open in a browser across this update posts `repeat` and no pattern,
+         * and its five phrases are still the honest description of what that
+         * form was able to say.
+         */
+        $pattern = isset( $c['pattern'] ) ? (string) $c['pattern'] : '';
+        $dates   = isset( $c['pattern_dates'] ) ? (array) $c['pattern_dates'] : array();
+
+        if ( '' !== $pattern ) {
+            $phrase = SFAF_Recurrence::pattern_label( $pattern, isset( $c['date'] ) ? (string) $c['date'] : '' );
+            if ( '' === $phrase ) {
+                $phrase = 'Repeats';
+            }
+            if ( ! empty( $c['repeat_until'] ) ) {
+                $phrase .= ', until ' . sfaf_ap_date( $c['repeat_until'], 'short_year' );
+            } elseif ( ! empty( $c['pattern_limit'] ) ) {
+                $phrase .= ', ' . ( (int) $c['pattern_limit'] + 1 ) . ' dates in all';
+            } else {
+                $phrase .= ', with no end date given';
+            }
+            if ( ! empty( $dates ) ) {
+                $phrase .= ', plus ' . count( $dates ) . ' ' . _n( 'date named', 'dates named', count( $dates ) );
+            }
+            return $phrase;
+        }
+
+        if ( ! empty( $dates ) ) {
+            return count( $dates ) . ' ' . _n( 'chosen date', 'chosen dates', count( $dates ) );
+        }
+
         $options = self::repeat_options();
         $key     = isset( $c['repeat'] ) ? $c['repeat'] : 'none';
         if ( 'none' === $key || ! isset( $options[ $key ] ) ) {
@@ -1466,32 +1600,49 @@ class SFAF_Request {
                 <div class="uc-field-row">
                     <label class="uc-field">
                         <span class="uc-field-label">Start</span>
-                        <input type="time" name="start_time" required value="<?php echo esc_attr( $v( 'start' ) ); ?>" />
+                        <input type="time" name="start_time" required value="<?php echo esc_attr( $v( 'start' ) ); ?>"<?php echo sfaf_time_step_attr( $v( 'start' ) ); ?> />
                         <?php self::field_error( $err( 'start_time' ) ); ?>
                     </label>
                     <label class="uc-field">
                         <span class="uc-field-label">End</span>
-                        <input type="time" name="end_time" required value="<?php echo esc_attr( $v( 'end' ) ); ?>" />
+                        <input type="time" name="end_time" required value="<?php echo esc_attr( $v( 'end' ) ); ?>"<?php echo sfaf_time_step_attr( $v( 'end' ) ); ?> />
                         <?php self::field_error( $err( 'end_time' ) ); ?>
                     </label>
                 </div>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">Does it repeat?</span>
-                    <select name="repeat">
-                        <?php foreach ( self::repeat_options() as $key => $label ) : ?>
-                            <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $v( 'repeat', 'none' ), $key ); ?>>
-                                <?php echo esc_html( $label ); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <label class="uc-field">
-                    <span class="uc-field-label">If it repeats, until when?</span>
-                    <input type="date" name="repeat_until" value="<?php echo esc_attr( $v( 'repeat_until' ) ); ?>" />
-                    <?php self::field_error( $err( 'repeat_until' ) ); ?>
-                </label>
+                <?php
+                /*
+                 * THE SAME REPEAT CONTROL CALADMIN HAS (3.72.0).
+                 *
+                 * WHAT WAS HERE. A five-option select ("Every week", "Every two
+                 * weeks", "Every month", "Something else, say so in the notes")
+                 * and a bare "until when" date. That pair cannot say "every
+                 * Wednesday": "Every week" names no day, so an end date sat
+                 * under a frequency that had not said what it was repeating
+                 * ON, and the approver had to read the notes to find out. It
+                 * could not say "Tuesdays and Thursdays" at all, and "the first
+                 * Monday of the month" fell into "Something else".
+                 *
+                 * SFAF_Recurrence::render_control() is the control caladmin's
+                 * New Event uses, rendered from one place so the two forms
+                 * cannot differ in what somebody is allowed to say.
+                 *
+                 * THE PATTERN IS CAPTURED, NOT ARMED, AND THAT IS THE WHOLE OF
+                 * WHY THIS IS SAFE. Nothing on this page generates anything.
+                 * The pattern is stored on the pending request under its own
+                 * keys, never under SFAF_Recurrence::PATTERN_META, and
+                 * generation is a creation-time action taken by an approver on
+                 * the schedule screen with the summary in front of them. An
+                 * unapproved request must never put fifty-two posts one press
+                 * away, which is what half-filling the real key would do.
+                 *
+                 * IT NEEDS THE START DATE, which is the field above this one,
+                 * because every pattern is anchored to it. portal.js reads the
+                 * date input and keeps the control's summary in step; the
+                 * server anchors on whatever arrives with the POST.
+                 */
+                SFAF_Recurrence::render_control( 0, (string) $v( 'date' ) );
+                ?>
 
                 </fieldset>
 
