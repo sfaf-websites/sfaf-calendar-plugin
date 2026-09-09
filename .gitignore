@@ -80,3 +80,8 @@ node_modules/
 # What plant-follow.php saves before it breaks a file on purpose. It restores
 # from this, so a stray one means a planted fault is still in the working tree.
 .follow-original.bak
+
+# A generic header image dropped in the project root for an email mock-up. It
+# is not part of the plugin: the mail banner is SFAF_Email::banner_url(), which
+# resolves a URL from settings, and nothing in the tree reads this file.
+SFAF-generic-header-skyline-1200x212.png

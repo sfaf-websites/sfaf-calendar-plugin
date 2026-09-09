@@ -1210,14 +1210,43 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-danger-disclosure > summary { list-style: none; cursor: pointer; }
 .uc-danger-disclosure > summary::-webkit-details-marker { display: none; }
 .uc-danger-disclosure > summary::marker { content: ""; }
+/* ---------------------------------------------------------------------------
+   THIS TOGGLE MOVED FROM QUIET TO DESTRUCTIVE (3.72.0), AND THAT IS A CHANGE
+   OF MIND RATHER THAN A CORRECTION.
+
+   WHAT IT WAS AND WHY. 3.42.1 put cancelling behind a closed disclosure so a
+   manager scrolling past Save did not arrive at a card of radios and a red
+   button reading like the next thing to fill in. That reasoning stands and the
+   disclosure stays. What it also did was give the toggle the QUIET weight from
+   the control standard, --p-muted 13px with no surface, which is the vocabulary
+   for "a verb in a row of verbs". This is not one. It is the only control on
+   the screen that stops an event happening, it sits alone under the form, and
+   it was reported as missed.
+
+   THE TWO DECISIONS ARE SEPARABLE. "Reached deliberately" is what the closed
+   disclosure buys, and it is bought by the fold, not by the ink. "Recognised as
+   destructive" is what the fill buys. Making it quiet bought the first at the
+   cost of the second, and there was never a reason both could not be had.
+
+   THE MEASURED VALUE IS THE STANDARD'S OWN. Solid #c0392b with white ink,
+   5.44:1, which is the DESTRUCTIVE row in the button vocabulary above and the
+   same pair .uc-btn-danger already carries. Nothing new is being mixed here.
+
+   IT IS STILL NOT A .uc-btn. This is a <summary>, so it opens a disclosure
+   rather than doing anything, and it keeps its chevron. What it takes from the
+   destructive row is the surface and the ink, which is what says "this one is
+   different from everything above it".
+   ------------------------------------------------------------------------- */
 .uc-danger-toggle {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 12px; margin: 0 0 0 -12px;
+    padding: 9px 16px; margin: 0;
     border-radius: 8px;
-    color: var(--p-muted, #6B6764);
-    font-size: 13px; font-weight: 600;
+    border: 1px solid #c0392b;
+    background: #c0392b;
+    color: #fff;
+    font-size: 14px; font-weight: 600;
 }
-.uc-danger-toggle:hover { color: var(--p-text); background: var(--p-surface-2, #f6f7f8); }
+.uc-danger-toggle:hover { color: #fff; background: #a33025; border-color: #a33025; }
 .uc-danger-disclosure > summary:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; border-radius: 8px; }
 /* THE CHEVRON IS NOT DECLARED HERE (3.64.0). It was, and the declaration was
  * dead: `.uc-disclosure-chevron` was declared again 1350 lines below at the

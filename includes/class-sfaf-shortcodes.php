@@ -1391,8 +1391,13 @@ class SFAF_Shortcodes {
                                         <?php foreach ( $ids as $id ) :
                                             $start  = (string) get_post_meta( $id, '_uc_start_time', true );
                                             $shades = sfaf_category_shades( sfaf_event_category_color( $id ) );
+                                            /* See render_event_card() for why the word rather than a
+                                             * colour, and why this is not the closure treatment. The
+                                             * mobile day panel clones this markup, so marking the row
+                                             * here reaches that surface without a second renderer. */
+                                            $ev_off = SFAF_Cancellation::is_cancelled( $id );
                                             ?>
-                                            <li class="uc-day-event">
+                                            <li class="uc-day-event<?php echo $ev_off ? ' is-cancelled' : ''; ?>">
                                                 <?php
                                                 /*
                                                  * INK AND TINT, NOT THE RAW HUE.
@@ -1406,6 +1411,9 @@ class SFAF_Shortcodes {
                                                    style="--cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>; --cat-media: <?php echo esc_attr( $shades['media'] ); ?>">
                                                     <?php echo sfaf_day_event_thumb( $id ); ?>
                                                     <span class="uc-day-event-text">
+                                                        <?php if ( $ev_off ) : ?>
+                                                            <span class="uc-day-event-off">Cancelled</span>
+                                                        <?php endif; ?>
                                                         <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
                                                         <?php if ( '' !== $start ) : ?>
                                                             <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
@@ -1671,12 +1679,21 @@ class SFAF_Shortcodes {
             : '';
         $clock = sfaf_ap_time_range( $start, $end );
 
+        /* The third public surface. See render_event_card() for why the word
+         * and not the colour. This row is one line of text beside a 44px
+         * thumbnail, so the word goes above the title where the card puts it
+         * rather than competing with the date line below. */
+        $off = SFAF_Cancellation::is_cancelled( $post_id );
+
         ob_start();
         ?>
-        <a class="uc-sidebar-row" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
+        <a class="uc-sidebar-row<?php echo $off ? ' is-cancelled' : ''; ?>" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
            data-category="<?php echo esc_attr( $slugs ); ?>">
             <span class="uc-sidebar-thumb"><?php echo sfaf_thumb_media( $post_id ); ?></span>
             <span class="uc-sidebar-body">
+                <?php if ( $off ) : ?>
+                    <span class="uc-sidebar-off">Cancelled</span>
+                <?php endif; ?>
                 <span class="uc-sidebar-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></span>
                 <?php if ( '' !== $when || '' !== $clock ) : ?>
                     <span class="uc-sidebar-when">
@@ -3290,9 +3307,35 @@ class SFAF_Shortcodes {
 
         $summary = wp_trim_words( sfaf_flatten_html( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ) ), 25 );
 
+        /*
+         * A CANCELLED EVENT SAYS SO ON THE CARD (3.72.0).
+         *
+         * SFAF_Cancellation::exclude() only removes the ones somebody chose to
+         * hide. An event cancelled and left listed, which is the default and the
+         * recommended answer because people who registered come looking for it,
+         * rendered here exactly like a live one: same title, same time, same
+         * "View event" button. The event page has said "This event has been
+         * cancelled" since 3.36.0 and every surface in front of it said nothing,
+         * so the only person who found out was the one who clicked.
+         *
+         * THE WORD, NOT THE COLOUR. `is-cancelled` carries the styling and
+         * `.uc-lc-cancelled` carries the text, and the text is what a card in a
+         * screenshot, a card printed out, and a card read by anybody who does
+         * not separate red from the category hue beside it all still have. Six
+         * of the ten category colours are already reds and oranges, so a red
+         * treatment here is not even reliably distinguishable from an ordinary
+         * card in this particular palette.
+         *
+         * NOT THE CLOSURE TREATMENT. A closure says the office is shut on a day,
+         * which is a fact about the day and belongs on the day cell. This is one
+         * event being off while everything around it goes ahead. Reusing the
+         * closure's "CLOSED" block would say the wrong thing in the wrong place.
+         */
+        $cancelled = SFAF_Cancellation::is_cancelled( $post_id );
+
         ob_start();
         ?>
-        <div class="uc-event-card uc-lc" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
+        <div class="uc-event-card uc-lc<?php echo $cancelled ? ' is-cancelled' : ''; ?>" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
              style="--uc-cat: <?php echo esc_attr( $cat_color ); ?>; --uc-cat-tint: <?php echo esc_attr( $shades['tint'] ); ?>; --uc-cat-media: <?php echo esc_attr( $shades['media'] ); ?>; --uc-cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>">
 
             <div class="uc-lc-head">
@@ -3344,6 +3387,21 @@ class SFAF_Shortcodes {
                       // to. The title below is the same destination. ?>
                 <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?> tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
             </div>
+
+            <?php
+            /*
+             * ABOVE THE TITLE, NOT AFTER IT. Somebody scanning a list reads
+             * titles, so the word has to be in the path their eye is already
+             * taking rather than at the end of a line they may not finish. It
+             * is also before the title in the reading order, which is where a
+             * screen reader needs it: "Cancelled, Coffee Social" is the useful
+             * order and "Coffee Social, cancelled" makes them listen to the
+             * whole card first.
+             */
+            ?>
+            <?php if ( $cancelled ) : ?>
+                <p class="uc-lc-cancelled">Cancelled</p>
+            <?php endif; ?>
 
             <h3 class="uc-card-title uc-lc-title">
                 <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?>><?php echo esc_html( get_the_title( $post_id ) ); ?><?php echo sfaf_new_tab_note(); ?></a>

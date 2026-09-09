@@ -616,6 +616,19 @@ class SFAF_Notifications {
         if ( '' !== $reason ) {
             $html .= SFAF_Email::para( $reason );
         }
+        /*
+         * THE MESSAGE FOR THE PEOPLE REGISTERED, AND NOBODY ELSE (3.72.0).
+         *
+         * Under the public reason, because that is the order they were written
+         * in and the order they answer questions in: why it is off, then
+         * anything the organizer wanted to add to the people who had a place.
+         * It renders nowhere but here. See SFAF_Cancellation::MESSAGE_META for
+         * why the two are separate keys.
+         */
+        $note = SFAF_Cancellation::message( $event_id );
+        if ( '' !== $note ) {
+            $html .= SFAF_Email::para( $note );
+        }
         $html .= SFAF_Email::para( 'It was going to be:' );
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
         /*
@@ -632,6 +645,9 @@ class SFAF_Notifications {
         $text .= ( '' !== $first ? $first . ', this' : 'This' ) . " event is not going ahead, and you do not need to do anything.\n\n";
         if ( '' !== $reason ) {
             $text .= $reason . "\n\n";
+        }
+        if ( '' !== $note ) {
+            $text .= $note . "\n\n";
         }
         $text .= "It was going to be:\n\n";
         $text .= self::detail_text( $f ) . "\n\n";

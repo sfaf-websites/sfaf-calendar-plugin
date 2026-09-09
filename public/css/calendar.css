@@ -3130,6 +3130,68 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-cancelled-note { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: #4B5563; max-width: 70ch; }
 
 /* ---------------------------------------------------------------------------
+   AND ON EVERY SURFACE IN FRONT OF THAT PAGE (3.72.0).
+
+   The notice above has existed since 3.36.0 and was the only place that said
+   it. A cancelled event left listed, which is the default and the recommended
+   answer, drew an ordinary card in the list, an ordinary row in the month grid
+   and an ordinary line in the sidebar, so the only person who found out was the
+   one who opened it.
+
+   THREE SURFACES, ONE TREATMENT, AND THE WORD DOES THE WORK. `Cancelled` is
+   real text above the title on all three. The colour and the fade are the
+   second signal and never the only one, which matters more here than usual: six
+   of this calendar's ten category hues are already reds and oranges, so a card
+   tinted red is not reliably distinguishable from a card in the Red category
+   sitting next to it.
+
+   #AD1C0D IS THE RED INK FROM THE CATEGORY RAMP, the same stop .uc-rsvp-error
+   uses and for the same reason: --uc-warm #F04937 is 3.68:1 on white and
+   DESIGN.md allows Red as text only at large sizes. This is a 12px uppercase
+   label, measured 7.12:1 on white.
+
+   THE TITLE IS NOT STRUCK THROUGH. A line through a title makes it harder to
+   read, and the person most likely to be reading it is the one who registered
+   and is checking they have the right event.
+
+   NOT THE CLOSURE TREATMENT, which is a filled block on a day cell saying the
+   office is shut. That is a fact about the day. This is one event being off
+   while everything around it goes ahead.
+   ------------------------------------------------------------------------- */
+.uc-lc-cancelled,
+.uc-sidebar-off,
+.uc-day-event-off {
+    display: block;
+    margin: 0 0 2px;
+    color: #AD1C0D;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+/* The card's own label sits in the card rhythm rather than the meta rhythm. */
+.uc-event-card .uc-lc-cancelled { margin: 0 0 4px; font-size: 12px; }
+
+/* THE MEDIA IS WHAT FADES, NOT THE TEXT. Dimming the words would fight the
+   whole point of the label above them; dimming the photo says "this one is
+   not happening" without costing a single character of legibility. */
+.uc-event-card.is-cancelled .uc-lc-img,
+.uc-event-card.is-cancelled .uc-lc-ph,
+.uc-sidebar-row.is-cancelled .uc-thumb-img,
+.uc-sidebar-row.is-cancelled .uc-thumb-ph { opacity: 0.55; }
+
+/* A quiet edge, on top of the word. `.uc-event-card` is one class and this is
+   two, so it wins on points without needing an id or an important. */
+.uc-event-card.is-cancelled { border-color: #e6c9c5; }
+
+/* The grid row keeps its category ring: the ring says which programme it
+   belongs to, which is still true, and taking it off would make a cancelled
+   row read as a different KIND of thing rather than the same thing, off. */
+.uc-day-event.is-cancelled .uc-day-event-title { color: #6B6764; }
+
+/* ---------------------------------------------------------------------------
    CLOSURES (3.38.0). Days SFAF is shut.
 
    NOT AN EVENT, AND IT MUST NOT LOOK LIKE ONE. A closure card is flat: no

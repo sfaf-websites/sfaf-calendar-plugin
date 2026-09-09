@@ -1109,6 +1109,29 @@ class SFAF_Admin {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_email( $input[ $field ] ) : '';
         }
 
+        /*
+         * WHO IS TOLD THAT SOMEBODY SUBMITTED AN EVENT (3.72.0).
+         *
+         * SANITISED HERE, RESOLVED IN SFAF_Submissions. This turns whatever was
+         * typed into a clean comma-separated string and nothing more; the
+         * default, and what happens when it ends up empty, belong with the
+         * thing that sends the message. Two answers to "who gets this" is the
+         * drift that would let the Settings screen and the sender disagree.
+         *
+         * Each address is checked on its own so one typo costs one address
+         * rather than the whole list, which is what a single sanitize_email()
+         * over the joined string would have done.
+         */
+        $alert_raw  = isset( $input['submission_alert_emails'] ) ? (string) $input['submission_alert_emails'] : '';
+        $alert_out  = array();
+        foreach ( preg_split( '/[,\r\n]+/', $alert_raw ) as $one ) {
+            $one = sanitize_email( trim( $one ) );
+            if ( '' !== $one && is_email( $one ) && ! in_array( $one, $alert_out, true ) ) {
+                $alert_out[] = $one;
+            }
+        }
+        $out['submission_alert_emails'] = implode( ', ', $alert_out );
+
         // Textareas.
         foreach ( array( 'email_rsvp_body', 'email_reminder_body', 'email_dayof_body' ) as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_textarea_field( $input[ $field ] ) : '';
@@ -1949,6 +1972,22 @@ class SFAF_Admin {
                         <div class="uc-field-row">
                             <label>Reply-To</label>
                             <input type="email" name="uc_settings[email_reply_to]" value="<?php echo esc_attr( $s( 'email_reply_to' ) ); ?>" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+
+                        <h3>Submissions</h3>
+                        <p class="description">
+                            One email per address, each addressed to that address alone. Leave it empty and
+                            everybody with Admin on the calendar is told instead.
+                        </p>
+                        <div class="uc-field-row">
+                            <label for="uc_submission_alert_emails">Tell these addresses about a new submission</label>
+                            <input type="text" id="uc_submission_alert_emails"
+                                   name="uc_settings[submission_alert_emails]"
+                                   value="<?php echo esc_attr( $s( 'submission_alert_emails', SFAF_Submissions::DEFAULT_ALERT_EMAIL ) ); ?>"
+                                   class="uc-input" placeholder="<?php echo esc_attr( SFAF_Submissions::DEFAULT_ALERT_EMAIL ); ?>" />
+                            <p class="description">
+                                Separate several with commas. An address that is not a real one is dropped on save.
+                            </p>
                         </div>
 
                         <h3>Morning-of Reminder</h3>

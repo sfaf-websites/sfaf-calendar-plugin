@@ -74,6 +74,22 @@ class SFAF_Cancellation {
     /** When it was cancelled, so the editor and the emails can say. */
     const AT_META = '_uc_cancelled_at';
 
+    /**
+     * What the organizer wanted the people registered to know, and nobody else.
+     *
+     * SEPARATE FROM `_uc_cancelled_reason` BECAUSE THE AUDIENCES DIFFER. The
+     * reason renders on the event page, so it is written for whoever arrives at
+     * the address. This is only ever in the email, so it can say the thing that
+     * belongs between an organizer and the twelve people who set an evening
+     * aside, which is not the same sentence and on this calendar is often not a
+     * sentence for a public page at all.
+     *
+     * WRITTEN ONLY ON A SEND. The dialog cannot reach the box except through
+     * the answer that emails, and the handler checks that answer again, so a
+     * stored value here always means it went out.
+     */
+    const MESSAGE_META = '_uc_cancelled_message';
+
     /** The default, and the better answer. See the note at the top. */
     const DEFAULT_VISIBILITY = 'stay';
 
@@ -207,6 +223,46 @@ class SFAF_Cancellation {
             update_post_meta( $post_id, self::AT_META, time() );
         }
         return ! $was;
+    }
+
+    /**
+     * Move a cancelled event on or off the public calendar, and nothing else.
+     *
+     * THE NARROW WRITE THAT "REMOVE FROM THE CALENDAR" NEEDED (3.72.0). set()
+     * is the whole state change and is right at the moment of cancelling;
+     * calling it again to move one key would restate the cancellation, and a
+     * caller that passed the wrong visibility default would silently relist an
+     * event somebody had hidden.
+     *
+     * IT SENDS NOTHING, for the reason set() sends nothing, and it refuses on
+     * an event that is not cancelled: hiding a live event is not this
+     * operation, and there is no confirmation in front of this one.
+     *
+     * @param int    $post_id
+     * @param string $visibility 'stay'|'hide'.
+     * @return bool Whether anything changed.
+     */
+    public static function set_visibility( $post_id, $visibility ) {
+        $post_id = (int) $post_id;
+        if ( ! self::is_cancelled( $post_id ) ) {
+            return false;
+        }
+        $want = ( 'hide' === $visibility ) ? 'hide' : 'stay';
+        if ( self::visibility( $post_id ) === $want ) {
+            return false;
+        }
+        update_post_meta( $post_id, self::VISIBILITY_META, $want );
+        return true;
+    }
+
+    /**
+     * The organizer's message to the people registered, if there is one.
+     *
+     * @param int $post_id
+     * @return string
+     */
+    public static function message( $post_id ) {
+        return trim( (string) get_post_meta( (int) $post_id, self::MESSAGE_META, true ) );
     }
 
     /**

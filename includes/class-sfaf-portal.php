@@ -707,11 +707,47 @@ class SFAF_Portal {
 
                 if ( $undo ) {
                     SFAF_Cancellation::set( $event_id, false );
+                    /*
+                     * THE TWO MESSAGES GO WITH IT (3.72.0). Both describe a
+                     * cancellation that is no longer in force, and leaving
+                     * either behind means the next cancellation inherits a
+                     * sentence somebody wrote about a different one. The public
+                     * reason was already outliving its event before this: set()
+                     * clears the three state keys and has never touched these.
+                     */
+                    delete_post_meta( $event_id, '_uc_cancelled_reason' );
+                    delete_post_meta( $event_id, SFAF_Cancellation::MESSAGE_META );
                     $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'uncancelled' ) );
                 }
 
                 $visibility = ( isset( $_POST['cancel_visibility'] ) && 'hide' === $_POST['cancel_visibility'] )
                     ? 'hide' : 'stay';
+
+                /*
+                 * ALREADY CANCELLED, AND ONLY THE LISTING IS MOVING (3.72.0).
+                 *
+                 * This is "Remove from the calendar" on the cancelled card, and
+                 * it is deliberately not a second trip through the whole cancel
+                 * path. It writes one meta key. It does not touch the public
+                 * reason or the registrants' message, which describe why the
+                 * event is off and are still true; it does not restamp the
+                 * cancelled-at time, which is when it was cancelled rather than
+                 * when it was tidied away; and it never asks about mail, so
+                 * nothing can be sent from here whatever arrives in the POST.
+                 *
+                 * REFUSED WHEN THE EVENT IS NOT CANCELLED, because then this is
+                 * not a visibility change, it is a cancellation with no
+                 * confirmation in front of it.
+                 */
+                if ( isset( $_POST['cancel_visibility_only'] ) ) {
+                    if ( ! SFAF_Cancellation::is_cancelled( $event_id ) ) {
+                        $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'cancel_failed' ) );
+                    }
+                    SFAF_Cancellation::set_visibility( $event_id, $visibility );
+                    $this->redirect( 'events/edit/' . $event_id, array(
+                        'msg' => ( 'hide' === $visibility ) ? 'cancel_hidden' : 'cancel_listed',
+                    ) );
+                }
                 $reason = isset( $_POST['cancel_reason'] )
                     ? sanitize_textarea_field( wp_unslash( $_POST['cancel_reason'] ) ) : '';
 
@@ -726,8 +762,35 @@ class SFAF_Portal {
                 // many people would be told (3.42.0). No answer means no mail:
                 // see sfaf_should_notify(). No registrations means the dialog
                 // never asks, so nothing is sent either.
+                $tell = sfaf_should_notify( $_POST );
+
+                /*
+                 * THE REGISTRANTS' MESSAGE IS WRITTEN ONLY WHEN IT IS BEING
+                 * SENT (3.72.0).
+                 *
+                 * The confirmation cannot reach the box except through the
+                 * answer that sends it, so an arriving message already implies
+                 * the answer. Asking the answer again here is what makes that a
+                 * rule rather than a property of the script: a POST is a request
+                 * anybody can construct, and a message stored on an event nobody
+                 * was emailed about would sit there until the next cancellation
+                 * picked it up and sent it.
+                 *
+                 * It is stored rather than passed because SFAF_Notifications
+                 * builds the message from the event, so every path that renders
+                 * a cancellation reads the same two keys.
+                 */
+                $extra = ( $tell && isset( $_POST['cancel_message'] ) )
+                    ? SFAF_Rich_Text::to_plain( sanitize_textarea_field( wp_unslash( $_POST['cancel_message'] ) ) )
+                    : '';
+                if ( '' !== $extra ) {
+                    update_post_meta( $event_id, SFAF_Cancellation::MESSAGE_META, $extra );
+                } else {
+                    delete_post_meta( $event_id, SFAF_Cancellation::MESSAGE_META );
+                }
+
                 $told = array( 'people' => 0, 'sent' => 0 );
-                if ( sfaf_should_notify( $_POST ) ) {
+                if ( $tell ) {
                     $told = SFAF_Announce::cancelled( array( $event_id ) );
                 }
 
@@ -1039,7 +1102,38 @@ class SFAF_Portal {
 
             case 'reject_event':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                wp_trash_post( intval( $_POST['event_id'] ) );
+                $event_id = intval( $_POST['event_id'] );
+
+                /*
+                 * TOLD BEFORE IT IS TRASHED, AND THAT ORDER IS THE POINT
+                 * (3.72.0).
+                 *
+                 * The message names the event and its date, and it reads them
+                 * off the post. wp_trash_post() does not delete a post, so the
+                 * meta would still be there, but the title of a trashed post is
+                 * not what get_the_title() is for and one status filter added
+                 * later would make this message silently blank. Sending first
+                 * means the message is built from a post that is still what the
+                 * submitter sent.
+                 *
+                 * ONLY UNDER THE TICK. The panel is unticked by default, so
+                 * nothing goes out unless somebody said so, and the note is
+                 * read only in the same branch: a note with no tick is somebody
+                 * who typed and then decided not to send, and it must not be
+                 * stored on a row that is about to be trashed.
+                 */
+                if ( ! empty( $_POST['tell_rejected'] ) ) {
+                    /* Plain text, not prose(). This is typed into a bare
+                     * textarea and read in an email; there is no editor behind
+                     * it and no reason for a tag to survive into a message
+                     * telling somebody no. */
+                    $note = isset( $_POST['reject_note'] )
+                        ? sanitize_textarea_field( wp_unslash( $_POST['reject_note'] ) )
+                        : '';
+                    SFAF_Submissions::send_rejected_notice( $event_id, $note );
+                }
+
+                wp_trash_post( $event_id );
                 $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
                 break;
 
@@ -2862,6 +2956,9 @@ class SFAF_Portal {
             'series_needs_cancel' => 'Some events in this series have people registered, so deleting them is refused. Cancel them instead, below. Once they are cancelled and the people who signed up have been told, the series can be deleted.',
             'cancelled'      => 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it.',
             'uncancelled'    => 'Event is on again. Registrations are open and its reminders will go out as usual. Nobody has been told automatically: if you told people it was cancelled, tell them it is back.',
+            'cancel_hidden'  => 'Off the public calendar. It is still cancelled, its page still opens and still says so, and the registrations are kept. Nobody has been told.',
+            'cancel_listed'  => 'Back on the public calendar, marked cancelled. Nobody has been told.',
+            'cancel_failed'  => 'That could not be changed. The event is not cancelled.',
             'duplicated'     => 'Copied. This is a new draft with no date and no registrations, and the event it came from is unchanged. Set the date, check the details, then publish. If the original was imported, this copy is not: nothing here is tied to the platform and every field is yours to edit.',
             'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
@@ -4722,13 +4819,71 @@ class SFAF_Portal {
                                 <button type="submit" class="uc-action-link uc-action-btn"
                                         title="Create a new draft from this event. No date, no registrations, and this event is not changed.">Duplicate</button>
                             </form>
-                            <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>"
-                                  onsubmit="return confirm('Remove this event? Nothing else changes and nothing brings it back.');">
-                                <input type="hidden" name="uc_action" value="trash_event" />
-                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
-                                <button type="submit" class="uc-link-danger">Remove</button>
-                            </form>
+                            <?php
+                            /*
+                             * REMOVE, AND WHAT IT ACTUALLY DOES (3.72.0).
+                             *
+                             * THE OLD SENTENCE WAS WRONG IN BOTH HALVES. It
+                             * read "Remove this event? Nothing else changes and
+                             * nothing brings it back." The action is
+                             * wp_trash_post(), which is what every remove
+                             * control in this portal does and is one click to
+                             * undo from the WordPress trash, so "nothing brings
+                             * it back" promised a permanence the code has never
+                             * had. And "nothing else changes" is only true of
+                             * the removals that go through: trash_event refuses
+                             * outright on a live event with registrations.
+                             * Somebody who read that sentence and pressed OK
+                             * either destroyed less than they were told, or was
+                             * refused after agreeing to something.
+                             *
+                             * THE REFUSAL WAS ALREADY THERE AND THE ROW DID NOT
+                             * KNOW. The handler has redirected such an event to
+                             * the editor with delete_needs_cancel since 3.36.0,
+                             * and that message names cancelling and links to it.
+                             * What was missing is that this row offered the
+                             * button anyway, so the flow was: confirm a deletion,
+                             * arrive somewhere else, read that it did not happen.
+                             *
+                             * WHICH OF THE TWO CHOICES THIS IS. Not "the same
+                             * flow": rebuilding the cancel confirmation in a
+                             * table row would be a second place that decides who
+                             * gets emailed when an event is called off, and
+                             * PROJECT.md 4 has one place for that on purpose.
+                             * This is the refusal, moved forward to where the
+                             * decision is taken, and it sends the person to the
+                             * event page, which is where the flow that DOES
+                             * handle registrations lives.
+                             *
+                             * THE TEST COSTS NOTHING. sfaf_get_rsvp_count() and
+                             * SFAF_Announce::has_registrations() count the same
+                             * predicate, status = 'confirmed', and the count is
+                             * already read a few cells to the left of here and
+                             * memoized for the request. The server still asks
+                             * its own question at the write, because a POST is a
+                             * request anybody can construct.
+                             */
+                            $blocked = ( $rsvp_n > 0 && ! SFAF_Cancellation::is_cancelled( $id ) );
+                            ?>
+                            <?php if ( $blocked ) : ?>
+                                <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"
+                                   title="<?php echo esc_attr(
+                                       $rsvp_n . ( 1 === $rsvp_n ? ' person is' : ' people are' )
+                                       . ' registered, so this cannot be removed. Cancel it on the event page: that keeps'
+                                       . ' the registrations and offers to tell everybody who signed up.'
+                                   ); ?>">Cancel instead</a>
+                            <?php else : ?>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
+                                    <input type="hidden" name="uc_action" value="trash_event" />
+                                    <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
+                                    <?php // The styled dialog every other destructive control here
+                                          // uses, rather than a browser box that cannot say which
+                                          // row it belongs to. See ucConfirm(). ?>
+                                    <button type="submit" class="uc-link-danger"
+                                            data-uc-confirm="Remove &ldquo;<?php echo esc_attr( get_the_title( $id ) ?: 'this event' ); ?>&rdquo;? It goes to the WordPress trash, where it can be restored until the trash is emptied. Nothing else changes.">Remove</button>
+                                </form>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -10564,16 +10719,88 @@ class SFAF_Portal {
                     <?php echo esc_html( 1 === (int) $counts['registrations'] ? 'registration is' : 'registrations are' ); ?>
                     kept as the record that people signed up.
                 </p>
-                <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form">
-                    <input type="hidden" name="uc_action" value="cancel_event" />
-                    <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
-                    <input type="hidden" name="uncancel" value="1" />
-                    <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
-                    <button type="submit" class="uc-btn">Put it back on</button>
-                    <p class="uc-hint">
-                        Nobody is told automatically. If you emailed people that it was cancelled, tell them it is back.
-                    </p>
-                </form>
+                <div class="uc-cancel-actions">
+                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form">
+                        <input type="hidden" name="uc_action" value="cancel_event" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <input type="hidden" name="uncancel" value="1" />
+                        <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-btn">Put it back on</button>
+                        <p class="uc-hint">
+                            Nobody is told automatically. If you emailed people that it was cancelled, tell them it is back.
+                        </p>
+                    </form>
+
+                    <?php
+                    /*
+                     * TAKING IT OFF THE CALENDAR IS THE OTHER HALF OF THE
+                     * VISIBILITY QUESTION, AND IT WAS ONLY ASKED ONCE (3.72.0).
+                     *
+                     * The question "leave it listed or take it off" is asked at
+                     * the moment of cancelling and never again. Somebody who
+                     * leaves it listed so the people who registered can find it,
+                     * and then wants it gone three weeks later, had exactly one
+                     * route: put it back on and cancel it a second time. That
+                     * route runs through the confirmation, which offers to
+                     * email everybody registered, so tidying the calendar risks
+                     * a second round of mail about an event that was cancelled
+                     * once.
+                     *
+                     * THIS SENDS NOTHING AND CANNOT. It writes the visibility
+                     * meta and returns; SFAF_Cancellation::set() has never sent
+                     * anything and this does not call SFAF_Announce at all. The
+                     * people who needed telling were told when it was cancelled,
+                     * and being told a second time that it is now also hidden is
+                     * not news to anybody.
+                     *
+                     * IT IS NOT THE PRIVATE SETTING, and the difference is the
+                     * whole reason it is a separate control. A private event is
+                     * off the listings and still reachable at its address, on
+                     * purpose, because the URL is the credential and somebody
+                     * was given it. A cancelled event taken off the calendar is
+                     * off the listings AND still answers at its address with the
+                     * cancellation notice, which is what somebody arriving from
+                     * an old link or an old email needs to see. Neither one is
+                     * the other, and an event can be both.
+                     *
+                     * REVERSIBLE, and the row stays in caladmin's event list in
+                     * cancelled status either way, which is where somebody goes
+                     * to change their mind.
+                     */
+                    $hidden = SFAF_Cancellation::is_hidden( $event_id );
+                    ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form">
+                        <input type="hidden" name="uc_action" value="cancel_event" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <input type="hidden" name="cancel_visibility" value="<?php echo $hidden ? 'stay' : 'hide'; ?>" />
+                        <?php
+                        /*
+                         * ITS OWN MARKER RATHER THAN AN INFERENCE. Without it
+                         * the handler would have to work out from an absent
+                         * `uncancel` and a present `cancel_visibility` that this
+                         * is not a fresh cancellation, and it would then run the
+                         * whole cancel path: deleting the public reason, because
+                         * no cancel_reason was posted, and asking
+                         * sfaf_should_notify() a question nobody was asked.
+                         * Naming what this is makes both impossible.
+                         */
+                        ?>
+                        <input type="hidden" name="cancel_visibility_only" value="1" />
+                        <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-btn">
+                            <?php echo $hidden ? 'Put it back on the calendar' : 'Remove from the calendar'; ?>
+                        </button>
+                        <p class="uc-hint">
+                            <?php if ( $hidden ) : ?>
+                                It is off the public calendar. Putting it back lists it again, marked cancelled.
+                                It stays cancelled either way, and nothing is sent.
+                            <?php else : ?>
+                                It stops being listed on the public calendar. Its own page still opens and still says
+                                it is cancelled, the registrations are kept, and nothing is sent.
+                            <?php endif; ?>
+                        </p>
+                    </form>
+                </div>
         </section>
             <?php
             return;
@@ -10624,10 +10851,47 @@ class SFAF_Portal {
                         </label>
                     </fieldset>
 
+                    <?php
+                    /*
+                     * TWO MESSAGES, AND ONLY ONE OF THEM IS ON THIS FORM
+                     * (3.72.0).
+                     *
+                     * This box is PUBLIC. It renders on the event page under
+                     * "This event has been cancelled", for anybody who arrives
+                     * at the address, and it is also carried in the email. It
+                     * is written whether anybody is emailed or not, so it
+                     * belongs here, on the form, where it can be typed before
+                     * the decision about mail is taken.
+                     *
+                     * The second message, the one for the people registered
+                     * and nobody else, is collected by the confirmation
+                     * instead, on the far side of the answer that sends it.
+                     * The hidden field below is where it lands. Putting that
+                     * box here as well would have let somebody write to
+                     * registrants and then choose not to write to them, with
+                     * nothing on the screen saying so.
+                     *
+                     * THE LABEL SAYS WHICH BEFORE ANYBODY TYPES. "Why, in one
+                     * line" said neither, and the placeholder said "Shown to
+                     * the people you tell", which is the half that is least
+                     * true: it is shown to everybody.
+                     */
+                    ?>
                     <label class="uc-field">
                         <span class="uc-field-label">Why, in one line (optional)</span>
-                        <textarea name="cancel_reason" rows="2" placeholder="Shown to the people you tell."></textarea>
+                        <textarea name="cancel_reason" rows="2"
+                                  placeholder="Shown on the event page, and in the email."></textarea>
+                        <span class="uc-hint">This one is public. Anybody who opens the event reads it.</span>
                     </label>
+                    <?php
+                    /*
+                     * FILLED BY THE CONFIRMATION, NEVER BY A CONTROL ON THIS
+                     * PAGE. Empty means there is nothing extra to say, which is
+                     * also what it means when somebody chose not to email, and
+                     * the handler writes it only under sfaf_should_notify().
+                     */
+                    ?>
+                    <input type="hidden" name="cancel_message" value="" data-uc-cancel-message />
 
                     <?php
                     /*
@@ -12021,6 +12285,7 @@ class SFAF_Portal {
         $form = 'uc-approve-' . (int) $event_id;
         ?>
         <div class="uc-approve-ask" id="uc-approve-ask-<?php echo (int) $event_id; ?>"
+             data-uc-ask-panel
              data-uc-approve-form="<?php echo esc_attr( $form ); ?>">
             <?php if ( empty( $who['usable'] ) ) : ?>
                 <p class="uc-hint">
@@ -12031,10 +12296,30 @@ class SFAF_Portal {
                     Submitted by <strong><?php echo esc_html( $who['name'] ); ?></strong>
                     <span class="uc-muted"><?php echo esc_html( $who['email'] ); ?></span>
                 </p>
-                <label class="uc-check">
-                    <input type="checkbox" name="tell_submitter" value="1" form="<?php echo esc_attr( $form ); ?>" />
-                    Email <?php echo esc_html( $who['name'] ); ?> that this event is published
-                </label>
+                <?php
+                /*
+                 * THE OUTCOME NOTICE IS FOR COMMUNITY SUBMISSIONS ONLY
+                 * (3.72.0).
+                 *
+                 * A staff request comes from somebody with a desk here who
+                 * already got a confirmation saying the MarCom team would look
+                 * at it, and who can open caladmin and see what happened. A
+                 * community submission comes from somebody outside SFAF with no
+                 * account and no way to find out at all: the only thing that
+                 * can tell them is a message. So the offer is made where it is
+                 * the only route and not where it is a second one.
+                 *
+                 * The tick disappearing rather than being greyed is deliberate:
+                 * there is no decision to take on a staff request, so a control
+                 * would be asking a question with one answer.
+                 */
+                if ( SFAF_Submissions::KIND_COMMUNITY === SFAF_Submissions::kind( $event_id ) ) :
+                    ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="tell_submitter" value="1" form="<?php echo esc_attr( $form ); ?>" />
+                        Email <?php echo esc_html( $who['name'] ); ?> that this event is published
+                    </label>
+                <?php endif; ?>
                 <?php
                 /*
                  * TICKED BY DEFAULT, AND THE WORDING SAYS BOTH THINGS.
@@ -12078,6 +12363,66 @@ class SFAF_Portal {
                     on the morning of the event, with names and email addresses. Untick it if that is not right.
                 </p>
             <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * What Reject asks, for a community submission with a usable address.
+     *
+     * THE MIRROR OF render_approve_ask(), AND DELIBERATELY NOT THE SAME METHOD.
+     * The two ask different questions of different shapes: approving offers two
+     * ticks about a person's future mail, rejecting offers one tick and a box.
+     * Folding them into one renderer with a mode flag would be the thing
+     * PROJECT.md 7 warns about, a single method deciding what it is allowed to
+     * show.
+     *
+     * COMMUNITY ONLY, for the reason the published notice is community only: a
+     * staff requester has an account and a colleague to ask, and somebody
+     * outside SFAF has neither.
+     *
+     * UNTICKED BY DEFAULT, WHICH IS THE OPPOSITE OF THE REGISTRATIONS TICK
+     * ABOVE. That one has a useful default because an organizer who does not
+     * get their own registrations has a real problem. This one tells somebody
+     * no, and a message that goes out because nobody untangled a default is not
+     * a decision anybody took. The consent rule in PROJECT.md 4 is the same
+     * rule: only an explicit send sends.
+     *
+     * NOTHING IS STORED WHEN NOTHING IS SENT. See reject_event, which reads the
+     * note only under the tick.
+     *
+     * @param int   $event_id
+     * @param array $who From SFAF_Submissions::submitter().
+     */
+    private function render_reject_ask( $event_id, $who ) {
+        if ( empty( $who['is_submission'] ) || empty( $who['usable'] ) ) {
+            return;
+        }
+        if ( SFAF_Submissions::KIND_COMMUNITY !== SFAF_Submissions::kind( $event_id ) ) {
+            return;
+        }
+        $form = 'uc-reject-' . (int) $event_id;
+        ?>
+        <div class="uc-approve-ask uc-reject-ask" id="uc-reject-ask-<?php echo (int) $event_id; ?>"
+             data-uc-ask-panel>
+            <p class="uc-approve-who">
+                Submitted by <strong><?php echo esc_html( $who['name'] ); ?></strong>
+                <span class="uc-muted"><?php echo esc_html( $who['email'] ); ?></span>
+            </p>
+            <label class="uc-check">
+                <input type="checkbox" name="tell_rejected" value="1" form="<?php echo esc_attr( $form ); ?>" />
+                Email <?php echo esc_html( $who['name'] ); ?> that it is not going on the calendar
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Anything to tell them (optional)</span>
+                <textarea name="reject_note" rows="3" maxlength="600"
+                          form="<?php echo esc_attr( $form ); ?>"
+                          placeholder="We only list events run by SFAF or one of our partners."></textarea>
+                <span class="uc-hint">Goes in that email and nowhere else. Leave it blank to send just the decision.</span>
+            </label>
+            <p class="uc-hint">
+                The event is removed either way. Mail cannot be recalled.
+            </p>
         </div>
         <?php
     }
@@ -12674,16 +13019,35 @@ class SFAF_Portal {
                                 <button class="uc-link-ok" type="submit"
                                     <?php echo $who['is_submission'] ? ' data-uc-approve-ask="uc-approve-ask-' . $id . '"' : ''; ?>>Approve</button>
                             </form>
-                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" onsubmit="return confirm('Reject and remove this event?');">
+                            <?php
+                            /*
+                             * REJECT ASKS THE WAY APPROVE ASKS (3.72.0).
+                             *
+                             * It was a browser confirm() reading "Reject and
+                             * remove this event?", which cannot carry a
+                             * control, so there was nowhere to write the one
+                             * thing somebody rejecting an event usually wants
+                             * to say. It now opens the same <dialog> Approve
+                             * does, holding the note and the tick that sends
+                             * it. With no script the panel is visible beside
+                             * the button and both still post.
+                             */
+                            ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>"
+                                  id="uc-reject-<?php echo $id; ?>">
                                 <input type="hidden" name="uc_action" value="reject_event" />
                                 <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
                                 <?php wp_nonce_field( 'uc_portal_reject_event', 'uc_nonce' ); ?>
-                                <button class="uc-link-danger" type="submit">Reject</button>
+                                <button class="uc-link-danger" type="submit"
+                                        data-uc-approve-ask="uc-reject-ask-<?php echo $id; ?>"
+                                        data-uc-ask-title="Reject this event?"
+                                        data-uc-ask-confirm="Reject" data-uc-ask-danger>Reject</button>
                             </form>
                         <?php endif; ?>
                     </div>
                     <?php if ( 'submission' === $shape ) : ?>
                         <?php $this->render_approve_ask( $id, $who ); ?>
+                        <?php $this->render_reject_ask( $id, $who ); ?>
                     <?php endif; ?>
                 </div>
             </div>

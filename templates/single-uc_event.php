@@ -69,7 +69,7 @@ while ( have_posts() ) :
                         <p class="uc-cancelled-why"><?php echo esc_html( $why ); ?></p>
                     <?php endif; ?>
                     <p class="uc-cancelled-note">
-                        It is not going ahead. If you have a place, you do not need to do anything.
+                        It is not going ahead. If you RSVP'd, you do not need to do anything.
                     </p>
                 </div>
             <?php endif; ?>

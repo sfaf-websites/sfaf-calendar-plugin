@@ -57,6 +57,69 @@ class SFAF_Submissions {
     const KIND_STAFF     = 'staff';
     const KIND_COMMUNITY = 'community';
 
+    /**
+     * Where a submission alert goes when nobody has set an address.
+     *
+     * A CONSTANT SO IT IS NOT TYPED INTO A TEMPLATE. The Settings screen shows
+     * it as the field's value and as its placeholder, and alert_recipients()
+     * falls back to it, which is three places reading one string rather than
+     * three copies of an address to keep in step.
+     */
+    const DEFAULT_ALERT_EMAIL = 'websites@sfaf.org';
+
+    /* =====================================================================
+     * Who hears that something arrived
+     * ================================================================== */
+
+    /**
+     * Every address told that a submission has arrived. One answer, both forms.
+     *
+     * WHY THIS STOPPED BEING "EVERYBODY WITH ADMIN" (3.72.0). It was
+     * SFAF_Request::admin_users(), so the audience was a consequence of who had
+     * been given a role rather than a decision anybody took: giving somebody
+     * Admin so they could fix one event signed them up to every submission from
+     * then on, and there was no screen that said so or could undo it. A named
+     * list is a decision, it is visible, and it is one field to change.
+     *
+     * THE FALLBACK IS THE OLD BEHAVIOUR, and it is the right one when the field
+     * is empty: an empty list must not mean nobody is told that a stranger has
+     * submitted an event to a public calendar. Emptying the box widens the
+     * audience rather than silencing it, which is the safe direction for this
+     * particular message.
+     *
+     * RE-CHECKED ON THE WAY OUT. A stored address can predate the rule that
+     * would have refused it, and this one becomes a To line.
+     *
+     * @return string[] Lower-cased, deduplicated, never empty unless the site
+     *                  has no admins and no setting.
+     */
+    public static function alert_recipients() {
+        $settings = get_option( 'uc_settings', array() );
+        $raw      = isset( $settings['submission_alert_emails'] )
+            ? (string) $settings['submission_alert_emails']
+            : self::DEFAULT_ALERT_EMAIL;
+
+        $out = array();
+        foreach ( preg_split( '/[,\r\n]+/', $raw ) as $one ) {
+            $one = strtolower( trim( $one ) );
+            if ( '' !== $one && is_email( $one ) && ! in_array( $one, $out, true ) ) {
+                $out[] = $one;
+            }
+        }
+
+        if ( ! empty( $out ) ) {
+            return $out;
+        }
+
+        foreach ( SFAF_Request::admin_users() as $user ) {
+            $one = strtolower( trim( (string) $user->user_email ) );
+            if ( '' !== $one && is_email( $one ) && ! in_array( $one, $out, true ) ) {
+                $out[] = $one;
+            }
+        }
+        return $out;
+    }
+
     /* =====================================================================
      * What kind of pending event is this
      * ================================================================== */
@@ -271,6 +334,26 @@ class SFAF_Submissions {
             return false;
         }
 
+        /*
+         * COMMUNITY SUBMISSIONS ONLY, CHECKED HERE AS WELL AS ON THE CONTROL
+         * (3.72.0).
+         *
+         * render_approve_ask() no longer draws the tick for a staff request, and
+         * that is not a refusal: a POST is a request anybody can construct, and
+         * a control that is not drawn has never been a permission in this
+         * codebase. The reason for the rule is on that renderer.
+         *
+         * ONLY THE SUBMITTER, AND ONLY EVER THE FIRST ADDRESS. The community
+         * form takes up to SFAF_Submit::MAX_EMAILS, but the others were named by
+         * the submitter as people who should get the registrations, which is a
+         * different request from "tell me what happened to what I sent". This
+         * message speaks to the person who sent it. notify_addresses() already
+         * draws that line for the notification list and this is the same line.
+         */
+        if ( self::KIND_COMMUNITY !== self::kind( $event_id ) ) {
+            return false;
+        }
+
         $title = get_the_title( $event_id );
         $date  = (string) get_post_meta( $event_id, '_uc_event_date', true );
         $start = (string) get_post_meta( $event_id, '_uc_start_time', true );
@@ -312,6 +395,89 @@ class SFAF_Submissions {
             $who['email'],
             'Your event is on the calendar: ' . $title,
             SFAF_Email::shell( 'Your event is published', $html ),
+            $text
+        );
+    }
+
+    /**
+     * Tell somebody outside SFAF that what they sent is not going on.
+     *
+     * THE ONLY MESSAGE IN THIS PLUGIN THAT TELLS SOMEBODY NO, and the wording
+     * is the whole of the work in it.
+     *
+     * WHAT IT DOES NOT DO, and each of these was a sentence that got written
+     * and taken out again:
+     *
+     *   It does not apologise. "We are sorry to say" makes a routine editorial
+     *   decision sound like bad news somebody is breaking gently, and the
+     *   reader then looks for what went wrong.
+     *
+     *   It does not invite an appeal it cannot honour. "Let us know if you
+     *   think this is a mistake" reads as a door somebody can push on, and
+     *   there is nobody behind it: this queue is reviewed once and the row is
+     *   gone. Saying nothing about reversing it is what makes it a decision.
+     *
+     *   It does not explain itself on the calendar's behalf. The reviewer's
+     *   note is the reason, when there is one, and a stock sentence about what
+     *   this calendar is for would be a second reason that might contradict it.
+     *
+     *   It does not thank them for their submission in the first line. That is
+     *   the shape of every rejection anybody has read and it delays the answer
+     *   by a sentence. The thanks are at the end, where they are not standing
+     *   in front of the thing the reader opened the message to find out.
+     *
+     * NO CALENDAR LINK AND NO EVENT PAGE, because there is not one: the row is
+     * trashed in the same request. A button going nowhere is worse than none.
+     *
+     * @param int    $event_id
+     * @param string $note Plain text, already sanitised. May be empty.
+     * @return bool
+     */
+    public static function send_rejected_notice( $event_id, $note = '' ) {
+        $event_id = (int) $event_id;
+        $who      = self::submitter( $event_id );
+        if ( ! $who['usable'] ) {
+            return false;
+        }
+        /* Community only, for the reason on send_published_notice(). */
+        if ( self::KIND_COMMUNITY !== self::kind( $event_id ) ) {
+            return false;
+        }
+
+        $title = get_the_title( $event_id );
+        $date  = (string) get_post_meta( $event_id, '_uc_event_date', true );
+        $note  = trim( (string) $note );
+
+        $rows = array( 'Event' => $title );
+        if ( '' !== $date ) {
+            $rows['Date'] = sfaf_ap_date( $date, 'full' );
+        }
+
+        $html = SFAF_Email::heading( 'This one is not going on the calendar' )
+            . SFAF_Email::para( 'We looked at the event you sent us and it is not being published.' )
+            . SFAF_Email::details( $rows );
+
+        $text = "This one is not going on the calendar.\n\n"
+            . "We looked at the event you sent us and it is not being published.\n\n"
+            . $title . "\n";
+        if ( '' !== $date ) {
+            $text .= sfaf_ap_date( $date, 'full' ) . "\n";
+        }
+
+        if ( '' !== $note ) {
+            $html .= SFAF_Email::para( $note );
+            $text .= "\n" . $note . "\n";
+        }
+
+        $html .= SFAF_Email::rule()
+            . SFAF_Email::small_para( 'Thanks for sending it.' );
+        $text .= "\nThanks for sending it.\n";
+        $text .= "\n" . SFAF_Email::POSTAL;
+
+        return (bool) SFAF_Email::send(
+            $who['email'],
+            'About the event you sent us: ' . $title,
+            SFAF_Email::shell( 'Not going on the calendar', $html ),
             $text
         );
     }

@@ -1465,6 +1465,32 @@
      * removes data-uc-confirm while the manager works. Binding only to the
      * buttons that already had the attribute would have frozen the warning at
      * page load — which is the bug this pair of functions exists to fix. */
+    /* CLICKING THE DIM CLOSES IT, AND THAT IS THE ONE THING <dialog> DOES NOT
+     * GIVE US (3.72.0).
+     *
+     * Every overlay in this file is already a real <dialog> opened with
+     * showModal(), so Escape, the focus trap and the inert page all come from
+     * the browser. Light dismiss does not: a modal <dialog> ignores a click on
+     * its own ::backdrop, which is why the cancel confirmation read as a box
+     * with no way out even though Escape has always closed it.
+     *
+     * THE TEST IS `e.target === dialog`, and it works because the backdrop is
+     * the dialog's own pseudo-element: a click that lands on the dim reports
+     * the dialog itself as the target, while a click on anything inside
+     * reports that child. Every dialog here has `padding: 0` and one child
+     * filling it, so there is no strip of dialog to mis-hit. This is the same
+     * test the public RSVP and follow dialogs have used since 3.70.1, moved
+     * here rather than written a second time.
+     *
+     * close() WITH NO ARGUMENT leaves returnValue as it was, which is '' on a
+     * dialog nobody has answered, so every caller below reads a dismissal
+     * exactly as it reads Escape. Nothing is sent and nothing is submitted. */
+    function ucDismissOnBackdrop(dialog) {
+        dialog.addEventListener('click', function (e) {
+            if (e.target === dialog) { dialog.close(); }
+        });
+    }
+
     /* A REAL DIALOG, NOT window.confirm.
      *
      * Every destructive action behind data-uc-confirm was going through the
@@ -1542,6 +1568,7 @@
             }
         });
 
+        ucDismissOnBackdrop(dialog);
         document.body.classList.add('uc-modal-open');
         dialog.showModal();
     }
@@ -3428,22 +3455,144 @@
         cancel.className = 'uc-btn uc-btn-sm';
         cancel.textContent = opts.cancelLabel;
 
-        var send = document.createElement('button');
-        send.type = 'submit';
-        send.value = 'send';
-        send.className = 'uc-btn uc-btn-sm uc-btn-primary';
-        send.textContent = opts.sendLabel;
+        /*
+         * AN EMPTY sendLabel MEANS THERE IS NO SEND, SO THERE IS ONE ACTION
+         * (3.72.0).
+         *
+         * Cancelling an event nobody has registered for offered two buttons
+         * reading "Cancel the event" and "Cancel the event", because the two
+         * answers this dialog exists to tell apart are "and email them" and
+         * "and do not", and with nobody to email they collapse into the same
+         * sentence. Two buttons with one label is not a choice; it is a
+         * question the screen could not answer being passed to the reader.
+         *
+         * So the caller says there is no send by giving no label for one, and
+         * what is left is the single thing that happens plus the way out. The
+         * one that remains is the SILENT value, which is the truth: nothing is
+         * emailed either way, and 'send' would put a notify_choice on the form
+         * that sfaf_should_notify() would honour.
+         */
+        var send = null;
+        if (opts.sendLabel) {
+            send = document.createElement('button');
+            send.type = 'submit';
+            send.value = 'send';
+            send.className = 'uc-btn uc-btn-sm uc-btn-primary';
+            send.textContent = opts.sendLabel;
+        }
 
         var silent = document.createElement('button');
         silent.type = 'submit';
         silent.value = 'silent';
-        silent.className = 'uc-btn uc-btn-sm';
+        /* With no send beside it this IS the action, so it carries the weight
+         * the send button would have carried. */
+        silent.className = 'uc-btn uc-btn-sm' + (send ? '' : ' uc-btn-danger');
         silent.textContent = opts.silentLabel;
 
         actions.appendChild(cancel);
         actions.appendChild(silent);
-        actions.appendChild(send);
+        if (send) { actions.appendChild(send); }
         form.appendChild(actions);
+
+        /*
+         * THE MESSAGE TO REGISTRANTS IS A SECOND STEP OF THIS DIALOG, AND IT
+         * ONLY EXISTS ONCE SOMEBODY HAS SAID THEY ARE EMAILING (3.72.0).
+         *
+         * The alternative was a box on the form, beside the public "why" line,
+         * and it has a failure this does not: somebody writes a paragraph to
+         * the people who registered, then presses "Cancel without telling
+         * them", and the paragraph is never sent and never shown. Nothing on
+         * the screen would have told them that. Here the box cannot be reached
+         * except through the answer that sends it, so the state does not exist.
+         *
+         * ONE DIALOG STILL. The send button stops being a submit and becomes
+         * the thing that swaps this panel in; the first panel is hidden rather
+         * than destroyed, so Back restores it exactly. A second showModal()
+         * over the first is what 3.48.0 already refused for the approval
+         * prompt, and for the same reason: two boxes in a row is how somebody
+         * learns to press the second without reading it.
+         *
+         * IT IS NOT THE PUBLIC REASON. That one is on the form, it renders on
+         * the event page, and it is written whether anybody is emailed or not.
+         * The labels are what carry the difference and they are written to be
+         * read before anybody types: see render_cancel_card().
+         */
+        var stashed = '';
+        if (send && opts.sendPrompt) {
+            var step = document.createElement('div');
+            step.className = 'uc-notify-step';
+            step.hidden = true;
+
+            var stepLabel = document.createElement('label');
+            stepLabel.className = 'uc-field';
+            var stepName = document.createElement('span');
+            stepName.className = 'uc-field-label';
+            stepName.textContent = opts.sendPrompt.label;
+            var box = document.createElement('textarea');
+            box.rows = 4;
+            box.placeholder = opts.sendPrompt.placeholder || '';
+            stepLabel.appendChild(stepName);
+            stepLabel.appendChild(box);
+            step.appendChild(stepLabel);
+
+            if (opts.sendPrompt.hint) {
+                var stepHint = document.createElement('p');
+                stepHint.className = 'uc-hint';
+                stepHint.textContent = opts.sendPrompt.hint;
+                step.appendChild(stepHint);
+            }
+
+            var stepActions = document.createElement('div');
+            stepActions.className = 'uc-confirm-actions uc-notify-actions';
+
+            var back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'uc-btn uc-btn-sm';
+            back.textContent = 'Go back';
+
+            var confirmSend = document.createElement('button');
+            confirmSend.type = 'submit';
+            confirmSend.value = 'send';
+            confirmSend.className = 'uc-btn uc-btn-sm uc-btn-primary';
+            confirmSend.textContent = opts.sendPrompt.confirmLabel || opts.sendLabel;
+
+            stepActions.appendChild(back);
+            stepActions.appendChild(confirmSend);
+            step.appendChild(stepActions);
+            form.appendChild(step);
+
+            /* Not a submit any more: it opens the second step instead of
+             * answering. Its value is never read, so nothing downstream
+             * changes. */
+            send.type = 'button';
+            send.addEventListener('click', function () {
+                lead.hidden = true;
+                actions.hidden = true;
+                if (opts.changes && opts.changes.length) {
+                    var changeList = form.querySelector('.uc-notify-changes');
+                    if (changeList) { changeList.hidden = true; }
+                }
+                step.hidden = false;
+                box.focus();
+            });
+
+            back.addEventListener('click', function () {
+                step.hidden = true;
+                lead.hidden = false;
+                actions.hidden = false;
+                if (opts.changes && opts.changes.length) {
+                    var backList = form.querySelector('.uc-notify-changes');
+                    if (backList) { backList.hidden = false; }
+                }
+                send.focus();
+            });
+
+            /* Read before the dialog closes, because the element goes with it. */
+            confirmSend.addEventListener('click', function () {
+                stashed = box.value;
+            });
+        }
+
         dialog.appendChild(form);
         document.body.appendChild(dialog);
 
@@ -3451,9 +3600,10 @@
             document.body.classList.remove('uc-modal-open');
             var answer = dialog.returnValue;
             dialog.remove();
-            done(('send' === answer || 'silent' === answer) ? answer : null);
+            done(('send' === answer || 'silent' === answer) ? answer : null, stashed);
         });
 
+        ucDismissOnBackdrop(dialog);
         document.body.classList.add('uc-modal-open');
         dialog.showModal();
     }
@@ -3561,6 +3711,11 @@
         document.querySelectorAll('form[data-uc-confirm-cancel]').forEach(function (form) {
             var field = form.querySelector('[data-uc-notify-choice]');
             var counter = form.querySelector('[data-uc-cancel-count]');
+            /* The registrants-only message the dialog's second step collects.
+             * Starts empty and is only ever filled on a 'send' answer, so the
+             * server never has to decide whether a stored message was meant to
+             * go out. See render_cancel_card() and the handler. */
+            var note = form.querySelector('[data-uc-cancel-message]');
             var people = counter ? (parseInt(counter.getAttribute('data-uc-cancel-count'), 10) || 0) : 0;
             var answered = false;
 
@@ -3578,9 +3733,11 @@
                         lead: 'It keeps its registrations and takes no new ones. Nobody is registered, so there is nobody to tell.',
                         changes: [],
                         sendQuestion: '',
-                        sendLabel: 'Cancel the event',
+                        /* No send: there is nobody to email, so there is one
+                         * action. See the note in ucAskNotify(). */
+                        sendLabel: '',
                         silentLabel: 'Cancel the event',
-                        cancelLabel: 'Leave it alone'
+                        cancelLabel: 'Go back'
                     }, function (answer) {
                         if (null === answer) { return; }
                         answered = true;
@@ -3598,10 +3755,22 @@
                     sendQuestion: 'Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?',
                     sendLabel: 'Cancel and email ' + (1 === people ? 'them' : 'them all'),
                     silentLabel: 'Cancel without telling them',
-                    cancelLabel: 'Leave it alone'
-                }, function (answer) {
+                    /* "Leave it alone" beside two buttons that both cancel the
+                     * event read as a third thing to do to it. This button
+                     * closes the dialog and writes nothing: see the callback,
+                     * which returns on a null answer before touching the
+                     * hidden field or resubmitting. "Go back" is what it does. */
+                    cancelLabel: 'Go back',
+                    sendPrompt: {
+                        label: 'Anything to add, just for the people registered (optional)',
+                        hint: 'This goes in their email and nowhere else. It is not on the event page.',
+                        placeholder: 'We are looking at a new date and will write again.',
+                        confirmLabel: 'Cancel and email ' + (1 === people ? 'them' : 'them all')
+                    }
+                }, function (answer, message) {
                     if (null === answer) { return; }
                     field.value = answer;
+                    if (note) { note.value = ('send' === answer) ? (message || '') : ''; }
                     answered = true;
                     resubmit(form, submitter);
                 });
@@ -3776,8 +3945,14 @@
     }
     if (!supported) { return; }
 
-    /* Only hidden once we know we can show it again. */
-    document.querySelectorAll('.uc-approve-ask').forEach(function (panel) {
+    /* Only hidden once we know we can show it again.
+     *
+     * THE SELECTOR IS THE ATTRIBUTE, NOT THE CLASS (3.72.0). Rejecting now
+     * asks the same way approving does, and its panel is not an approval panel
+     * and does not want approval styling. What the two share is being a block
+     * of controls that belongs inside the confirmation rather than beside it,
+     * so that is what the selector says. */
+    document.querySelectorAll('[data-uc-ask-panel]').forEach(function (panel) {
         panel.hidden = true;
     });
 
@@ -3804,9 +3979,13 @@
             var form = document.createElement('form');
             form.method = 'dialog';
 
+            /* The question and the verb come off the button, so one mechanism
+             * serves Approve and Reject without either one's words being
+             * written here. The defaults are what this said before it had to
+             * serve two. */
             var heading = document.createElement('p');
             heading.className = 'uc-confirm-msg';
-            heading.textContent = 'Publish this event?';
+            heading.textContent = btn.getAttribute('data-uc-ask-title') || 'Publish this event?';
 
             var actions = document.createElement('div');
             actions.className = 'uc-confirm-actions';
@@ -3820,8 +3999,9 @@
             var ok = document.createElement('button');
             ok.type = 'submit';
             ok.value = 'ok';
-            ok.className = 'uc-btn uc-btn-sm uc-btn-primary';
-            ok.textContent = 'Approve';
+            ok.className = 'uc-btn uc-btn-sm '
+                + (btn.hasAttribute('data-uc-ask-danger') ? 'uc-btn-danger' : 'uc-btn-primary');
+            ok.textContent = btn.getAttribute('data-uc-ask-confirm') || 'Approve';
 
             actions.appendChild(cancel);
             actions.appendChild(ok);
@@ -3850,6 +4030,7 @@
                 }
             });
 
+            ucDismissOnBackdrop(dialog);
             document.body.classList.add('uc-modal-open');
             dialog.showModal();
         });
@@ -3987,6 +4168,7 @@
             host.open = false;
         });
 
+        ucDismissOnBackdrop(dialog);
         document.body.classList.add('uc-modal-open');
         dialog.showModal();
     });

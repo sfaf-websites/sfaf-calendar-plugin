@@ -1097,8 +1097,15 @@ class SFAF_Request {
      * @param string $email
      */
     private static function notify_admins( $event_id, $c, $email ) {
-        $admins = self::admin_users();
-        if ( empty( $admins ) ) {
+        /*
+         * THE AUDIENCE IS A SETTING NOW (3.72.0), resolved by
+         * SFAF_Submissions::alert_recipients() so this form and the community
+         * form cannot disagree about who is told. It still falls back to
+         * everybody with Admin, which is what this method used to ask for
+         * directly. See that method for why the fallback goes that way.
+         */
+        $to = SFAF_Submissions::alert_recipients();
+        if ( empty( $to ) ) {
             return;
         }
 
@@ -1139,8 +1146,8 @@ class SFAF_Request {
          * The requester is the reply-to, so answering a question about the
          * request goes to the person who asked rather than to a mailbox.
          */
-        foreach ( $admins as $user ) {
-            SFAF_Email::send( $user->user_email, $subject, $shell, $text, $email );
+        foreach ( $to as $address ) {
+            SFAF_Email::send( $address, $subject, $shell, $text, $email );
         }
     }
 

@@ -820,8 +820,9 @@ class SFAF_Submit {
      * @param WP_Term $series
      */
     private static function notify_admins( $event_id, $c, $series ) {
-        $admins = SFAF_Request::admin_users();
-        if ( empty( $admins ) ) {
+        /* One resolver for both forms. See SFAF_Submissions::alert_recipients(). */
+        $to = SFAF_Submissions::alert_recipients();
+        if ( empty( $to ) ) {
             return;
         }
 
@@ -888,8 +889,8 @@ class SFAF_Submit {
          * question about the submission goes to the person who sent it. That
          * address is internal to this message; it is never on the listing.
          */
-        foreach ( $admins as $user ) {
-            SFAF_Email::send( $user->user_email, $subject, $shell, $text, $c['submitter_email'] );
+        foreach ( $to as $address ) {
+            SFAF_Email::send( $address, $subject, $shell, $text, $c['submitter_email'] );
         }
     }
 
