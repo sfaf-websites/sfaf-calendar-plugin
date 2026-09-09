@@ -1478,6 +1478,34 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
     font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); }
 .uc-help-body[hidden] { display: none; }
 
+/* A HELP PANEL OPENING INSIDE A CARD'S TITLE BAND (3.72.0).
+
+   Series, teams and private events carry their glyph on the card heading rather
+   than on a field label, because the thing being explained is the card. The
+   body is display:block, so it opens INSIDE the band, and the band is a tinted
+   strip with 10px/18px padding and a bottom hairline: dropped in as-is the
+   panel sat hard against the strip's edges and read as the strip having grown a
+   second, paler strip.
+
+   The negative margins cancel the band's own padding so the panel spans the
+   full width of the card, and the top margin restores the gap the heading text
+   needs. The white face and the hairline are the panel's own and are unchanged;
+   what moves is where its edges are.
+
+   TWO CLASSES, WHICH IS WHAT MAKES IT WIN. `.uc-help-body` is one class and
+   this is two, so it outranks the base rule on points without an id or an
+   important, and the base rule stays the one answer for a panel on a field
+   label. */
+.uc-bento-title .uc-help-body {
+    margin: 10px -18px -10px;
+    border-radius: 0;
+    border-left: 0; border-right: 0; border-bottom: 0;
+}
+/* The heading is a heading again once the panel is under it: a bold 14px h2
+   whose second line is a 12px panel needs the two to be separate blocks rather
+   than one run of text. */
+.uc-bento-title:has(.uc-help-body:not([hidden])) { padding-bottom: 0; }
+
 /* ---------- Radio rows ----------
    Control first, label beside it, both hard left.
 
@@ -2999,6 +3027,31 @@ body.uc-modal-open { overflow: hidden; }
    table cell it was written for; a float is ignored on a flex child, so
    without this it would shrink under the row's `gap` and stop being square. */
 .uc-queue-row > .uc-submitted-thumb { flex: 0 0 auto; float: none; margin: 2px 0 0; }
+
+/* ---------------------------------------------------------------------------
+   THE SUBMITTED PICTURE AND ITS BUTTON (3.72.0).
+
+   The thumbnail gained a control under it, so it needed a wrapper to be the
+   flex item instead of being one itself. The float reset moves onto that
+   wrapper's child for the reason above: the float rule is still the one this
+   thumbnail carries everywhere else, and it is still ignored here.
+
+   THE COLUMN IS THE THUMBNAIL'S WIDTH. A button wider than the picture it acts
+   on would drag the whole row's first column out and push the title sideways on
+   every queue item, including the ones with no picture at all. 12px type in a
+   small button fits "Use this image" in that width on two lines, and two lines
+   under a 46px square is the right shape for a caption. */
+.uc-submitted-shot { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 46px; }
+.uc-submitted-shot > .uc-submitted-thumb { float: none; margin: 0; }
+.uc-submitted-shot .uc-inline-form { margin: 0; }
+.uc-submitted-shot .uc-btn {
+    width: 100%; padding: 4px 4px; gap: 0;
+    font-size: 12px; font-weight: 600; line-height: 1.25;
+    text-align: center; justify-content: center;
+}
+/* Already the picture. A statement, not a control, so it takes the muted
+   helper step rather than anything that reads as pressable. */
+.uc-submitted-note { margin: 0; font-size: 12px; font-weight: 400; line-height: 1.25; text-align: center; color: var(--p-muted, #6B6764); }
 
 /* The approval prompt lives in the actions column when JavaScript is off, and
    that column sizes to its content. Unbounded, its two sentences would make

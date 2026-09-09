@@ -380,6 +380,18 @@ $ALLOWED = array(
     // --- Administrator only. ------------------------------------------------
     'POST:approve_event'          => array( 'caladmin' ),
     'POST:reject_event'           => array( 'caladmin' ),
+    /*
+     * "Use this image" on the pending row (3.72.0). Administrator only, and
+     * the same gate as everything else on that queue: it is one of the actions
+     * on a screen only administrators can open, and it changes what appears on
+     * the public calendar.
+     *
+     * IT TAKES NO ATTACHMENT ID FROM THE FORM. The id is read off the event's
+     * own SFAF_Submit::META_IMAGE and checked to be an image attachment, so the
+     * gate is not the only thing standing between this and setting any file on
+     * the site as any event's picture. See the case in dispatch_post().
+     */
+    'POST:use_submitted_image'    => array( 'caladmin' ),
     'POST:fetch_sources'          => array( 'caladmin' ),
     'POST:import_publish'         => array( 'caladmin' ),
     'POST:import_dismiss'         => array( 'caladmin' ),

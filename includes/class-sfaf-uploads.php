@@ -65,6 +65,30 @@ class SFAF_Uploads {
     const MAX_PIXELS = 50000000;
 
     /**
+     * The narrowest picture worth putting on an event.
+     *
+     * WHY THERE IS A FLOOR AT ALL, AND WHY 1200. A submitted picture becomes
+     * the event's own image once somebody presses "Use this image" on the
+     * pending row, and from there it is the card image, the event page's image,
+     * and the picture every share of that link unfurls with. Facebook and
+     * LinkedIn both want 1200 wide for that last one. A 600px photo cannot be
+     * made into a 1200px photo, so the moment to say no is the upload, while
+     * the person who has the original is still at the keyboard.
+     *
+     * WIDTH ONLY, DELIBERATELY. Height is decided by the crop: a card is 16:9
+     * and an event page is not, so a tall picture is usable and a narrow one is
+     * not. Asking for a height as well would refuse a perfectly good panorama.
+     *
+     * THIS IS A CEILING'S OPPOSITE AND NOT A SAFETY CHECK. Everything above it
+     * refuses things that could hurt the server; this refuses something that
+     * would look bad, which is why it is the only one of these constants whose
+     * number is a design decision rather than a resource one. It is in
+     * DESIGN.md's terms and is stated to the submitter before they choose a
+     * file, in SFAF_Submissions::image_field().
+     */
+    const MIN_WIDTH = 1200;
+
+    /**
      * What may be sent: the constant getimagesize() returns, mapped to the MIME
      * type finfo must independently agree on.
      *
@@ -290,6 +314,19 @@ class SFAF_Uploads {
         }
         if ( ( $w * $h ) > self::MAX_PIXELS ) {
             return array( 'id' => 0, 'error' => 'That image is too many pixels. Save it at a smaller size and send it again.' );
+        }
+        /*
+         * AND THE FLOOR, WHICH NAMES THE NUMBER AND WHAT WAS SENT. "That image
+         * is too small" leaves somebody guessing at both, and the usual next
+         * move is to send the same file again. See MIN_WIDTH for why width and
+         * not height.
+         */
+        if ( $w < self::MIN_WIDTH ) {
+            return array(
+                'id'    => 0,
+                'error' => 'That image is ' . (int) $w . ' pixels wide and needs to be at least '
+                    . (int) self::MIN_WIDTH . '. Send the original rather than a resized copy if you have it.',
+            );
         }
 
         $dir = self::dir();

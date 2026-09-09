@@ -1100,6 +1100,60 @@ class SFAF_Portal {
                 $this->redirect( 'pending', array( 'msg' => 'approved' ) );
                 break;
 
+            /*
+             * MAKE THE SUBMITTED FILE THE EVENT'S PICTURE (3.72.0).
+             *
+             * ITS OWN ACTION RATHER THAN A FIELD ON THE MANAGER PANEL. The
+             * panel's image control offers the calendar folder, which is
+             * curated and stays curated; this attachment is in
+             * `calendar-submissions/` and is deliberately not in that list. So
+             * this is not "choose a picture", it is "the one that arrived is
+             * the one", and it is one press on the row where the picture is
+             * already on screen.
+             *
+             * IT SETS THE THUMBNAIL AND NOTHING ELSE. It does not move the file,
+             * copy it into the calendar folder or change the status: the
+             * submissions folder is where raw uploads live and this event now
+             * points at one. Mark moves images between the folders by hand when
+             * one is worth keeping, and an event pointing at a submissions file
+             * goes on working either way, because a thumbnail is an attachment
+             * id and WordPress does not care which folder the file sits in.
+             */
+            case 'use_submitted_image':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                if ( ! $post || 'uc_event' !== $post->post_type ) {
+                    $this->redirect( 'pending', array( 'msg' => 'image_failed' ) );
+                }
+
+                /*
+                 * THE ID COMES FROM THE EVENT, NEVER FROM THE FORM, which is
+                 * what stops this being a way to set any attachment on the site
+                 * as any event's picture. The row's own meta is the only
+                 * source, and it is checked to be a real image attachment
+                 * before it becomes one.
+                 */
+                $shot_id = (int) get_post_meta( $event_id, SFAF_Submit::META_IMAGE, true );
+                if ( $shot_id < 1
+                    || 'attachment' !== get_post_type( $shot_id )
+                    || 0 !== strpos( (string) get_post_mime_type( $shot_id ), 'image/' ) ) {
+                    $this->redirect( 'pending', array( 'msg' => 'image_failed' ) );
+                }
+
+                set_post_thumbnail( $event_id, $shot_id );
+                /*
+                 * AND THE URL FIELD IS CLEARED. sfaf_event_image_url() prefers a
+                 * chosen attachment over a typed URL, so a stale URL underneath
+                 * would be invisible now and would come back the day somebody
+                 * removed the thumbnail. One answer to "what is this event's
+                 * picture" is the point of pressing this.
+                 */
+                delete_post_meta( $event_id, '_uc_image_url' );
+
+                $this->redirect( 'pending', array( 'msg' => 'image_used' ) );
+                break;
+
             case 'reject_event':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
@@ -2963,6 +3017,18 @@ class SFAF_Portal {
             'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
             'rejected'       => 'Event rejected.',
+            /*
+             * THE SHAPE WARNING IS HERE AND NOT ON THE BUTTON, because it is a
+             * thing that will have happened rather than a thing to decide. A
+             * submitted photo is whatever shape the person had; the calendar
+             * folder's pictures are 16:9 because somebody made them that way,
+             * and the card crops to 16:9 either way. So a portrait photo will
+             * lose its top and bottom on a card, and this says so at the moment
+             * it becomes possible rather than leaving it to be found on a
+             * published event.
+             */
+            'image_used'     => 'That is the event\'s picture now. Cards crop to 16:9, so check how a tall or square photo looks before publishing.',
+            'image_failed'   => 'That picture could not be used. It is no longer on the event, or it is not an image.',
             'user_saved'     => 'User permissions updated.',
             'user_added'     => 'User added to the calendar system.',
             'user_removed'   => 'User removed from the calendar system, and taken out of any teams they were in. They organized no events, so nothing needed reassigning.',
@@ -4993,22 +5059,66 @@ class SFAF_Portal {
      * checkbox to tick and nothing for a later change to expose. Setting the
      * date is the reason somebody is here.
      *
+     * THE SELECT IS AT THE TOP ON BOTH, THE OFFER IS ONLY ON A NEW EVENT
+     * (3.72.0).
+     *
+     * The card was rendered on creation only, and an edit carried a second
+     * copy of the same select two thirds of the way down, inside "When and
+     * where". Two screens asking one question in two places is how a manager
+     * learns where a field is on one screen and cannot find it on the other,
+     * and "which series is this one of" is the question that decides what the
+     * event looks like, so it belongs where the eye starts on both.
+     *
+     * WHAT DOES NOT MOVE IS THE PREFILL. Filling an event in from its series is
+     * a convenience for a blank form; arriving on an event with real content
+     * and being offered a panel that writes over it is not a convenience, it is
+     * a hazard, and the 3.3.0 reasoning about a control that discards unsaved
+     * work applies twice as hard to one that discards saved work. So an edit
+     * gets the select and no panel.
+     *
+     * THE PICTURE IS NOT COPIED ON AN EDIT AND DOES NOT NEED TO BE. An event
+     * with no picture of its own already shows its series' one, through
+     * sfaf_event_image_url(), and the image control says so in as many words:
+     * sfaf_event_image_source() returns 'series' and the field is tagged "From
+     * series". That is the never-overwrite rule holding by construction rather
+     * than by care, and it is better than copying because nothing goes stale
+     * when the series photo changes.
+     *
      * @param WP_Term[] $all_series
      * @param int       $cur_series
+     * @param int       $event_id 0 on a new event, which is what decides
+     *                            whether the prefill offer is drawn at all.
      */
-    private function render_series_prefill( $all_series, $cur_series ) {
+    private function render_series_prefill( $all_series, $cur_series, $event_id = 0 ) {
         if ( empty( $all_series ) ) {
             // No series, no choice to make, and no card saying so.
             return;
         }
+        $offer = ! (int) $event_id;
 
+        /* Built only where it is offered. The payload is every series' whole
+         * prefill set, which is not small, and an edit has nothing to do with
+         * it. */
         $payload = array();
-        foreach ( $all_series as $term ) {
-            $payload[ (string) $term->term_id ] = SFAF_Series::prefill_data( $term->term_id );
+        if ( $offer ) {
+            foreach ( $all_series as $term ) {
+                $payload[ (string) $term->term_id ] = SFAF_Series::prefill_data( $term->term_id );
+            }
         }
         ?>
-        <section class="uc-bento-card uc-series-first" data-uc-series-prefill>
-            <h2 class="uc-bento-title">Is this part of a series?</h2>
+        <section class="uc-bento-card uc-series-first"<?php echo $offer ? ' data-uc-series-prefill' : ''; ?>>
+            <h2 class="uc-bento-title">Is this part of a series?
+                <?php
+                /* WHAT BEING IN ONE DOES, rather than what a series is. Both
+                 * are things that will happen to this event and neither is
+                 * visible from this card. */
+                echo sfaf_help(
+                    'uc-help-series-' . (int) $event_id,
+                    'An event with no picture of its own shows its series picture. Repeating dates are added and removed on the series schedule screen, not here.',
+                    'series'
+                );
+                ?>
+            </h2>
 
             <label class="uc-field">
                 <span class="uc-field-label">Series</span>
@@ -5022,6 +5132,20 @@ class SFAF_Portal {
                 </select>
             </label>
 
+            <?php if ( ! $offer ) : ?>
+                <?php
+                /*
+                 * ON AN EDIT, WHAT THE SELECT ACTUALLY DOES, SAID ONCE.
+                 * Moving an event between series is a real change with a
+                 * consequence somebody would otherwise find on the event page,
+                 * and it is the consequence the picture rule turns on.
+                 */
+                ?>
+                <p class="uc-hint">
+                    Moving it changes which series it is listed under. Nothing else about the event changes.
+                    An event with no picture of its own shows its series' picture.
+                </p>
+            <?php else : ?>
             <?php
             /*
              * Rendered hidden and revealed by the script that can actually
@@ -5047,6 +5171,7 @@ class SFAF_Portal {
             <script type="application/json" data-uc-prefill-data><?php
                 echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
             ?></script>
+            <?php endif; ?>
         </section>
         <?php
     }
@@ -5461,7 +5586,28 @@ class SFAF_Portal {
          */
         $fields = array_diff( $fields, array( 'listing_detail' ) );
         if ( $ctx['event_id'] ) {
-            foreach ( array( SFAF_Submit::META_COST, SFAF_Submit::META_AGE, SFAF_Submit::META_CONTACT, SFAF_Submit::META_RSVP_URL ) as $detail_key ) {
+            /*
+             * ALL SEVEN KEYS, AND THE THREE CONTACT ONES WERE THE POINT OF
+             * 3.72.0 TOUCHING THIS LIST.
+             *
+             * The card is offered wherever one of the values it edits exists,
+             * so the list has to be every key it edits. Splitting the contact
+             * into a name, an address and a number and leaving this asking only
+             * about `_uc_public_contact` would have hidden the card from every
+             * community submission made since 3.47.0, which is all of them: the
+             * only event still carrying the old single key is one submitted on
+             * 3.46.0, and those are the ones this list already covered.
+             */
+            $detail_keys = array(
+                SFAF_Submit::META_COST,
+                SFAF_Submit::META_AGE,
+                SFAF_Submit::META_RSVP_URL,
+                SFAF_Submit::META_CONTACT_NAME,
+                SFAF_Submit::META_CONTACT_EMAIL,
+                SFAF_Submit::META_CONTACT_PHONE,
+                SFAF_Submit::META_CONTACT,
+            );
+            foreach ( $detail_keys as $detail_key ) {
                 if ( '' !== (string) get_post_meta( $ctx['event_id'], $detail_key, true ) ) {
                     $fields[] = 'listing_detail';
                     break;
@@ -6137,7 +6283,21 @@ class SFAF_Portal {
                 $is_private = SFAF_Privacy::is_private( $event_id );
                 ?>
                 <div class="uc-field uc-private-field">
-                    <span class="uc-field-label">Who can find this event</span>
+                    <span class="uc-field-label">Who can find this event
+                        <?php
+                        /* THE HINT SAYS WHAT HAPPENS; THIS SAYS THE PART THAT
+                         * IS NOT ABOUT THIS EVENT. Anybody holding the address
+                         * can pass it on, and nothing here can stop them or
+                         * find out, which is the thing to weigh before ticking
+                         * it rather than a description of what ticking it
+                         * does. */
+                        echo sfaf_help(
+                            'uc-help-private-' . (int) $event_id,
+                            'The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.',
+                            'private events'
+                        );
+                        ?>
+                    </span>
                     <?php // Hidden 0 first, same reason as the toggle above: the
                           // pending queue posts this control on its own, so an
                           // absent checkbox has to mean off rather than
@@ -9417,9 +9577,7 @@ class SFAF_Portal {
                  * than a thing that should ever arrive and overwrite work. The
                  * picker stays where it was on an edit.
                  */
-                if ( ! $event_id ) :
-                    $this->render_series_prefill( $all_series, $cur_series );
-                endif;
+                $this->render_series_prefill( $all_series, $cur_series, (int) $event_id );
                 ?>
 
                 <?php
@@ -9526,26 +9684,21 @@ class SFAF_Portal {
                      * render.
                      */
                     /*
-                     * ON AN EDIT ONLY. A new event asks this at the top of the
-                     * form, with the prefill offer beside it. Rendering the
-                     * select in both places would post two values for the same
-                     * field and the second would win, which is the one that is
-                     * not the one somebody chose.
+                     * THE SELECT IS NOT HERE ANY MORE (3.72.0).
+                     *
+                     * It was rendered here on an edit and at the top of the form
+                     * on a new event, so the one question that decides what an
+                     * event looks like was in two different places depending on
+                     * which screen somebody was on. It is at the top on both
+                     * now. See render_series_prefill(), which also explains why
+                     * an edit gets the select and not the prefill offer.
+                     *
+                     * NOTHING MAY RENDER name="series" HERE AGAIN. Two selects
+                     * with one name post two values and the second wins, which
+                     * is not the one somebody chose. .claude/series-control-test.php
+                     * renders this form and counts them.
                      */
-                    if ( $event_id ) :
                     ?>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Series</span>
-                        <select name="series">
-                            <option value="0">Not part of a series</option>
-                            <?php foreach ( $all_series as $term ) : ?>
-                                <option value="<?php echo (int) $term->term_id; ?>" <?php selected( $cur_series, $term->term_id ); ?>>
-                                    <?php echo esc_html( $term->name ); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <?php endif; ?>
 
                     <?php if ( $cur_series && $event_id ) : ?>
                         <?php // ONE SHORT LINK, not a sentence with a link inside
@@ -10999,7 +11152,18 @@ class SFAF_Portal {
         $notified  = SFAF_Teams::for_event( $event_id );
         ?>
         <section class="uc-bento-card">
-            <h2 class="uc-bento-title">Who can edit this</h2>
+            <h2 class="uc-bento-title">Who can edit this
+                <?php
+                /* THE LIVE RESOLUTION IS THE SURPRISE. Naming a team here is
+                 * not a snapshot, so somebody joining that team next month can
+                 * edit this event without anybody touching it. */
+                echo sfaf_help(
+                    'uc-help-teams-' . (int) $event_id,
+                    'A team is resolved every time somebody opens the event, so adding a person to the team gives them this event too, and removing them takes it away. Nothing here has to be changed for that to happen.',
+                    'teams'
+                );
+                ?>
+            </h2>
 
             <p class="uc-access-organizer">
                 <strong><?php echo esc_html( $organizer ? $organizer->display_name : 'Nobody' ); ?></strong>
@@ -12894,9 +13058,48 @@ class SFAF_Portal {
             data-uc-id="<?php echo $id; ?>" data-uc-kind="<?php echo esc_attr( $kind ); ?>">
             <div class="uc-queue-row">
                 <?php if ( '' !== $shot ) : ?>
-                    <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
-                        <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
-                    </a>
+                    <div class="uc-submitted-shot">
+                        <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
+                            <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
+                        </a>
+                        <?php
+                        /*
+                         * "USE THIS IMAGE" (3.72.0).
+                         *
+                         * WHAT IT REPLACES. A submitted file has always been
+                         * shown here and has never been the event's picture: it
+                         * is stored under SFAF_Submit::META_IMAGE and
+                         * set_post_thumbnail() is deliberately not called on it,
+                         * so an approver who wanted to use it had to download it
+                         * from this link and upload it again through the media
+                         * library. That is the whole of the gap this closes: one
+                         * press, no download, no re-upload.
+                         *
+                         * IT IS ONE PRESS AND NOT A DEFAULT, and that has not
+                         * changed. The reason the upload is not the thumbnail
+                         * automatically is that nobody has looked at it yet: it
+                         * arrived from a public form, and a picture on the
+                         * public calendar is a decision somebody takes. This
+                         * control is where they take it, next to the picture.
+                         *
+                         * ALREADY THE PICTURE MEANS NO BUTTON. Pressing it twice
+                         * does nothing the first press did not, and a control
+                         * that is offered when it would change nothing is one
+                         * somebody presses to find out.
+                         */
+                        $is_thumb = ( $shot_id && (int) get_post_thumbnail_id( $id ) === (int) $shot_id );
+                        ?>
+                        <?php if ( $is_thumb ) : ?>
+                            <p class="uc-submitted-note">This is the event's picture.</p>
+                        <?php else : ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form">
+                                <input type="hidden" name="uc_action" value="use_submitted_image" />
+                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_use_submitted_image', 'uc_nonce' ); ?>
+                                <button type="submit" class="uc-btn uc-btn-sm">Use this image</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
 
                 <div class="uc-queue-id">

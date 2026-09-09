@@ -169,6 +169,21 @@ function sfaf_ap_date( $d, $f = 'full' ) { return (string) $d; }
 function sfaf_ap_datetime( $ts ) { return 'a stamped time'; }
 function sfaf_ap_time_range( $a, $b ) { return $a . ' to ' . $b; }
 function sfaf_icon( $n, $a = array() ) { return ''; }
+/*
+ * THE REAL SHAPE, NOT AN EMPTY STRING (3.72.0). The manager panel this queue
+ * renders now carries help glyphs, and a stub returning '' would make every
+ * assertion below pass over a screen that had silently stopped drawing them.
+ * This emits the same button-plus-body pair sfaf_help() emits, so a rule that
+ * depended on the markup would still be exercised, and it is escaped the same
+ * way so a test fixture cannot smuggle markup into the render.
+ */
+function sfaf_help( $id, $text, $what = '' ) {
+    $id   = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $id );
+    $text = trim( (string) $text );
+    if ( '' === $id || '' === $text ) { return ''; }
+    return '<button type="button" class="uc-help-btn" data-uc-help-toggle aria-controls="' . $id . '">?</button>'
+        . '<span class="uc-help-body" id="' . $id . '" data-uc-help-body>' . htmlspecialchars( $text, ENT_QUOTES ) . '</span>';
+}
 function sfaf_favicon_links() { echo "<link rel=\"icon\" data-uc-test-favicon />"; }
 function sfaf_event_image_url( $id, $s = 'large' ) { return ''; }
 function sfaf_event_image_source( $id ) { return 'none'; }

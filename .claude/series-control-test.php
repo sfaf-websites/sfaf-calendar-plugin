@@ -758,6 +758,34 @@ if ( 1 === count( $edit_ctls ) ) {
 expect( 'the prefill card is not on the edit screen',
     false !== strpos( $edit, 'data-uc-series-prefill' ), false );
 
+/* ---------------------------------------------------------------------------
+ * AND IT IS AT THE TOP ON BOTH (3.72.0).
+ *
+ * The selector was at the top on New Event and two thirds of the way down on an
+ * edit, inside the Schedule card, so the one question that decides what an
+ * event looks like was in a different place depending on which screen somebody
+ * had open. Both screens ask it first now.
+ *
+ * THE ANCHOR IS THE SCHEDULE CARD'S HEADING, which is the card the select used
+ * to sit in. Its exact markup, not the bare word, because "schedule" appears in
+ * links and hints all over this form and a substring match would pass on any of
+ * them.
+ *
+ * DECIDED BY POSITION IN THE RENDER, not by which method emitted it. "Is it
+ * before the Schedule card" is the outcome; "render_series_prefill() was
+ * called" is the property believed to imply it, and PROJECT.md 7 has three
+ * releases of that distinction costing a build.
+ * ------------------------------------------------------------------------ */
+function before_schedule_card( $html ) {
+    $sel  = strpos( $html, 'name="series"' );
+    $card = strpos( $html, '>Schedule</h2>' );
+    if ( false === $sel ) { return 'no series control in the render'; }
+    if ( false === $card ) { return 'no Schedule card in the render'; }
+    return ( $sel < $card ) ? 'before' : 'after';
+}
+expect( 'New Event asks which series before the Schedule card', before_schedule_card( $new ), 'before' );
+expect( 'Edit Event asks which series before the Schedule card', before_schedule_card( $edit ), 'before' );
+
 /* ===========================================================================
  * 5. THE HOOKS THE PREFILL WRITES THROUGH ARE ON THE PAGE (3.64.2).
  *

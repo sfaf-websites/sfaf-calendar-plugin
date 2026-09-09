@@ -783,11 +783,25 @@ if ( $args['editor'] ) {
     public static function image_field( $error = '' ) {
         $mb = (int) round( SFAF_Uploads::MAX_BYTES / 1048576 );
         ?>
+        <?php
+        /*
+         * "UPLOAD ONE" RATHER THAN "PICTURE" (3.72.0). This control sits inside
+         * a section whose legend already reads "Event Image", so a label
+         * repeating that noun said nothing; what the field needs to say is that
+         * it is the other way of answering the same question, beside a chooser.
+         *
+         * THE MINIMUM IS SAID BEFORE A FILE IS CHOSEN, not after it is refused.
+         * A number in a message somebody meets only on failure is a rule they
+         * learn by breaking it, and the file they would have to go and find
+         * again is on a phone in another room.
+         */
+        ?>
         <label class="uc-field uc-field-upload">
-            <span class="uc-field-label">Picture</span>
+            <span class="uc-field-label">Or upload one</span>
             <input type="file" name="uc_image" accept="image/jpeg,image/png,image/gif,image/webp" />
             <span class="uc-hint">
-                JPEG, PNG, GIF or WebP, up to <?php echo (int) $mb; ?>MB. Landscape works best.
+                JPEG, PNG, GIF or WebP, up to <?php echo (int) $mb; ?>MB, and at least
+                <?php echo (int) SFAF_Uploads::MIN_WIDTH; ?> pixels wide. Landscape works best.
                 Leave this empty if you do not have one.
             </span>
             <?php self::field_error( $error ); ?>
