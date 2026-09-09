@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 61 items.** Quick 39, needs real conditions 19, blocked on other
+**Outstanding: 76 items.** Quick 53, needs real conditions 20, blocked on other
 people 3.
 
 ---
@@ -566,6 +566,135 @@ Open the staff form and the community form.
 **Then do all of it again at 770px**, which is the width these forms render at
 inside a host page. Narrow is where a field that is sharing a line with a
 heading has least room to hide.
+### 1.40 The cancel dialog on an event nobody has registered for (3.72.0)
+
+Open any event with no registrations and press **Cancel this event**.
+
+- **Two buttons, not three**, and neither of them says the same thing twice.
+- **Escape closes it**, and so does clicking the dim outside it. Both leave the
+  event exactly as it was.
+- The way out reads **Go back**.
+
+The click-outside half is the only genuinely new behaviour; Escape has worked
+since 3.42.0 and was reported as missing, so it is worth pressing to settle
+which of the two was actually the problem.
+
+### 1.41 The cancel dialog on an event that HAS registrations (3.72.0)
+
+Same control, on an event with somebody registered. Press **Cancel and email
+them** and stop at the second step.
+
+- A box appears asking for anything to add **just for the people registered**,
+  with **Go back** beside it.
+- Go back returns to the three buttons with nothing lost.
+- The box cannot be reached at all through **Cancel without telling them**.
+
+Do not send. This is about whether the second step appears and returns; 2.20
+covers what actually arrives.
+
+### 1.42 A cancelled event on the three public surfaces (3.72.0)
+
+Cancel one event, leave it listed, then look at the calendar as a visitor: the
+list, the month grid, and the sidebar if the page carries one.
+
+Each should show the word **Cancelled** above the title. Check the month grid on
+a phone too, where the day panel is a copy of the cell's own markup.
+
+### 1.43 Take a cancelled event off the calendar and put it back (3.72.0)
+
+On a cancelled event, press **Remove from the calendar**. It should leave the
+public listings, keep its own page working and still saying it is cancelled, and
+say plainly that nobody was told. Press the control again to put it back.
+
+**Nothing should arrive in any mailbox from either press.** That is the whole
+point of the control existing, and it is the one thing only a person watching
+mail can confirm.
+
+### 1.44 Remove on the events list, both paths (3.72.0)
+
+On the events list, find an event with registrations that is not cancelled: the
+row should offer **Cancel instead**, not Remove. Find one with none: it should
+offer Remove behind the portal's own dialog, whose wording now says the event
+goes to the WordPress trash and can be restored.
+
+Then check the trash actually holds it.
+
+### 1.45 The publish picker on a real series (3.72.0)
+
+Open a series with several upcoming drafts. Every eligible date should carry a
+ticked box; anything ineligible should carry no box at all and say why.
+
+Untick two and confirm the button's own count follows. Press it, then check that
+exactly the ticked ones went public and the two you unticked are still drafts.
+
+### 1.46 The FAQ set controls, and whether the editors start (3.72.0)
+
+Open an event with FAQs on it, with the browser console open.
+
+- **One** FAQ set control on the screen, not two, with **Manage sets** beside it.
+- The answers should be editors on load rather than raw markup.
+- **If they are still not editors, the console now says why.** Copy whatever it
+  says and send it: that message is the whole reason this release touched the
+  FAQ editors, and without it the fault cannot be diagnosed from here at all.
+
+### 1.47 The three contact boxes on Listing detail (3.72.0)
+
+Open a community submission that carries a public contact. The card should show
+**Name**, **Email** and **Phone** filled in from what was submitted. Change one,
+save, and check the **event page** shows the change.
+
+That last step is the point: the old single box stored what was typed and the
+event page went on showing something else.
+
+### 1.48 Five-minute steps on the time fields (3.72.0)
+
+On New Event and on both request forms, use the up arrow in a time field: it
+should move five minutes at a time. Type a time that is not on a five-minute
+boundary and try to submit: the browser should refuse it and name the two
+nearest valid times.
+
+Then open an imported event whose stored time is off the boundary, if there is
+one, and confirm it can still be saved.
+
+### 1.49 The staff request form's repeat section (3.72.0)
+
+Open the staff request form. The repeat control should be the one caladmin's New
+Event has: a Never/Daily/Weekly/Monthly/Custom switch, day circles, an Ends
+panel and a live summary.
+
+- Choosing **Never** should hide every field under it.
+- Choosing **Weekly** and a day should make the summary say how many dates.
+
+Submit one as a repeating request, then open it in caladmin: **the repeat
+control should already be filled in with what was asked for, and no occurrences
+should exist yet.** If any dates were created before you pressed Save, stop and
+say so: that is the one thing this design must not do.
+
+### 1.50 The series selector, on an edit (3.72.0)
+
+Open an existing event. The series selector should be at the top, in its own
+card, and there should be **no second one** further down in the Schedule card.
+
+### 1.51 Help icons on series, teams and private events (3.72.0)
+
+Open New Event and press each new glyph. Three panels, each opening under its
+card's heading rather than squeezed into the tinted band.
+
+### 1.52 "Use this image" on the pending row (3.72.0)
+
+Find a community submission that arrived with an uploaded picture. Press **Use
+this image** on the row, then open the event and confirm the picture is now its
+featured image.
+
+**Then look at how it crops on a card.** A submitted photo is whatever shape the
+person had, and cards crop to 16:9, so a tall one loses its top and bottom. That
+is expected and is worth seeing once before it happens on a published event.
+
+### 1.53 An upload under 1200 pixels wide (3.72.0)
+
+Submit the community form with a small image. It should be refused with a
+message naming both the minimum and the width that arrived, and the form should
+say the minimum before a file is chosen.
 
 ---
 
@@ -574,58 +703,59 @@ heading has least room to hide.
 Waiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
-### 2.15 Run the import's report mode and read it before clearing anything (3.69.0)
+### 2.20 A real cancellation, with a message for the registrants (3.72.0)
 
-`.../sfaf-tec-import.php?mode=report` writes nothing and is **the half of the
-dry run that could not happen in the build environment**, because it is the half
-that reads the live site. Four things in it have to be read rather than skimmed:
+**Register a real address for a test event, then cancel it**, filling in both
+boxes: the public **Why, in one line** on the form, and the registrants-only
+message in the confirmation's second step.
 
-- **Which organizers it found and under what name.** It tries Mark's name first
-  and then the longer forms the same organizer has been called. A line reading
-  "would create" for anything other than Aging Services, PWUD Health and Onyx
-  Northwest means an existing organizer was not recognised, and importing then
-  would leave a near-duplicate.
-- **Which categories resolved.** It creates none, ever. Every "NOT FOUND" line
-  is an event that will be created with no category.
-- **Which series it found.** An existing series keeps its description, its image
-  and its FAQ set, and 32 names are matched into. Anything reported as "would
-  create" that Mark believes already exists is a name that differs.
-- **The event count before clearing.** Compare it with what caladmin shows.
+Then read what arrives, and open the event page beside it.
 
-### 2.16 Clear, import, and count (3.69.0)
+- The **email** carries both, the public reason first.
+- The **event page** carries the reason and **not** the second message.
 
-`&mode=clear&confirm=CLEAR`, then `&mode=import&confirm=IMPORT`. Clear **trashes
-and does not delete**, so the first thing to check is that the trash holds
-exactly what the count said and that nothing outside `uc_event` moved. Then the
-import: **287 draft event posts across 32 series**, none published, and the
-report's own failure list empty.
+That separation is the whole reason they are two fields, and it lives in two
+places at once, a mail builder and a page template, so only a person with both
+in front of them can settle it. `.claude/email-render-test.php` proves the mail
+half and can say nothing about the page.
 
-**THE CHECK THAT MATTERS MOST IS THE PENDING AND DISMISSED QUEUES, BEFORE AND
-AFTER THE CLEAR.** Open both, write down what is in them, run the clear, open
-them again. **Nothing may have moved**, including any row sitting in an ordinary
-`draft` or `pending` status that came from a source or a submission. A trashed
-import does not come back on a re-fetch, so this is the one step in the whole
-run that could lose data rather than inconvenience somebody.
+**This cannot be undone.** Use an address you own.
 
-### 2.17 Open six of the imported drafts and check what only a screen can show (3.69.0)
+### 2.21 The rejection notice, wording first (3.72.0)
 
-Not the count, which the report gives. What a browser has to answer:
+**Read the copy before anybody sends one.** It is the only message this calendar
+sends that tells somebody no, it goes to a member of the public with no account,
+and it has not been approved. It is in `SFAF_Submissions::send_rejected_notice()`
+and the hand-off quotes it in full.
 
-- **A featured image resolved to the media library** rather than falling back to
-  a URL. Damn, Daddy!, Transformaciones, Trans Galaxy and El Salon each carry
-  one. The files are already on this site, so a fallback means the export's URL
-  no longer matches a media row.
-- **The two online events** (Damn, Daddy!, Virtual Check-In) show as online with
-  **no meeting link**, and carry no venue and no address.
-- **An event with no date is in the caladmin list at all.** Fourteen of them
-  have none; they are written with an empty `_uc_event_date` for exactly this
-  reason, and if they are missing from the list the reasoning was wrong.
-- **The Spanish descriptions render as they were written**, accents included.
-- **The four two-ordinal groups show both ordinals.** Transformaciones and
-  Trans Galaxy are the first and third Wednesday, seven dates each; HUES Sista
-  Circles is the second and fourth Saturday and Soul Sessions the second and
-  fourth Thursday, eight each. The schedule screen should offer to change the
-  pattern without offering to move the dates that arrived as chosen ones.
+What it deliberately does not do: apologise, invite an appeal it cannot honour,
+explain what this calendar is for, or open with thanks. Each of those was
+written and taken out again, and each is a reasonable thing to want back.
+
+Once the wording is settled, reject one real test submission with the tick on
+and a note filled in, and read what arrives.
+
+### 2.22 The published notice, on a community submission only (3.72.0)
+
+Approve a real community submission with **Email ... that this event is
+published** ticked, and confirm it arrives at the submitter and at nobody else,
+even where the submitter named several addresses for RSVPs.
+
+Then approve a **staff request** and confirm that tick is not on the screen at
+all. A staff requester already has a confirmation saying the team will look at
+it and can open caladmin; the notice exists for somebody who has neither.
+
+### 2.23 Who is told a submission arrived (3.72.0)
+
+**This changes who gets an existing email**, so it wants checking on the day it
+installs rather than the first time somebody submits.
+
+Open **Settings, Email, Submissions**. It defaults to `websites@sfaf.org`.
+Before 3.72.0 that message went to everybody holding Admin on the calendar, so
+anybody used to receiving it will stop unless their address is in that box.
+
+Submit one test event through each form and confirm the alert lands where the
+setting says and nowhere else. Emptying the box restores the old behaviour.
 
 ### 2.19 Open the notification card on an imported event and an imported occurrence (3.69.0)
 

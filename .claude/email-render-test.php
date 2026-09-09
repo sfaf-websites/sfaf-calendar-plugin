@@ -141,6 +141,13 @@ require $root . '/includes/class-sfaf-email.php';
  * block is empty and the five shapes below are unchanged; whether the block
  * itself is right is asserted in .claude/online-events-test.php. */
 require $root . '/includes/class-sfaf-online.php';
+/*
+ * THE REAL SFAF_Cancellation (3.72.0), because build_cancelled() reads the
+ * registrants-only message through it. A stub would be a second answer to
+ * "which key is that message in", and the whole point of the key being
+ * separate from the public reason is that the two must not be confused.
+ */
+require $root . '/includes/class-sfaf-cancellation.php';
 require $root . '/includes/class-sfaf-notifications.php';
 
 /* The event under test. */
@@ -187,6 +194,30 @@ $cases = array(
      * held to that by the same check as the rest.
      */
     'cancel_alert' => array( 'person' => $person, 'cancel' => false, 'context' => array( 'count' => 11 ) ),
+    /*
+     * THE CANCELLATION ITSELF, WHICH WAS NEVER IN THIS LIST. Its alert was
+     * added in 3.56.0 and the message telling REGISTRANTS was not, so the one
+     * email that goes to the public half of the audience has been building
+     * unrendered since 3.36.0.
+     *
+     * TWICE, because 3.72.0 gave it a second paragraph that only sometimes
+     * exists: an organizer emailing the people registered may add a message
+     * for them and nobody else. One case has it and one does not, so both the
+     * presence and the ABSENCE are rendered rather than assumed.
+     *
+     * `meta` is merged over the event for the case and put back afterwards.
+     */
+    'cancelled' => array(
+        'person' => $person, 'cancel' => false,
+        'meta'   => array( '_uc_cancelled_reason' => 'The room is not available.' ),
+    ),
+    'cancelled-with-message' => array(
+        'type' => 'cancelled', 'person' => $person, 'cancel' => false,
+        'meta' => array(
+            '_uc_cancelled_reason'  => 'The room is not available.',
+            '_uc_cancelled_message' => 'We are looking at a new date and will write again next week.',
+        ),
+    ),
 );
 
 /*
@@ -207,7 +238,14 @@ $built = array();
 foreach ( $cases as $name => $case ) {
     $type = isset( $case['type'] ) ? $case['type'] : $name;
     $ctx  = isset( $case['context'] ) ? $case['context'] : array();
+    /* Merged over the shared event and put back, so one case cannot leak a
+     * meta value into the next one and quietly make it pass. */
+    $meta_was = $GLOBALS['sfaf_meta'];
+    if ( ! empty( $case['meta'] ) ) {
+        $GLOBALS['sfaf_meta'] = array_merge( $GLOBALS['sfaf_meta'], $case['meta'] );
+    }
     $out  = SFAF_Notifications::build( $type, 42, $case['person'], $ctx );
+    $GLOBALS['sfaf_meta'] = $meta_was;
 
     if ( ! is_array( $out ) ) {
         $fails[] = "$name: built nothing";
@@ -471,6 +509,61 @@ if ( '' === $confirmation ) {
     }
 }
 
+/* ---------------------------------------------------------------------------
+ * THE TWO CANCELLATION MESSAGES ARE TWO AUDIENCES (3.72.0).
+ *
+ * `_uc_cancelled_reason` is PUBLIC: it renders on the event page for anybody
+ * who arrives at the address, and it is in the email as well.
+ * `_uc_cancelled_message` is for the people who registered and NOBODY ELSE.
+ *
+ * That distinction is the whole of why they are two keys, and it lives in two
+ * places at once, a renderer and a template, so nothing but a rendered check
+ * can hold it. All four directions are asserted: each one present where it
+ * belongs, in both parts, and the private one ABSENT from the message that was
+ * built without it, which is the half that would go unnoticed if a builder
+ * started reading the wrong key.
+ * ------------------------------------------------------------------------ */
+if ( isset( $built['cancelled'], $built['cancelled-with-message'] ) ) {
+    $plain = $built['cancelled'];
+    $extra = $built['cancelled-with-message'];
+    $note  = 'We are looking at a new date and will write again next week.';
+    $why   = 'The room is not available.';
+
+    foreach ( array( 'html', 'text' ) as $part ) {
+        if ( false === strpos( $plain[ $part ], $why ) ) {
+            $fails[] = "cancelled: the public reason is missing from the $part part";
+        }
+        if ( false !== strpos( $plain[ $part ], $note ) ) {
+            $fails[] = "cancelled: a message nobody wrote is in the $part part";
+        }
+        if ( false === strpos( $extra[ $part ], $why ) ) {
+            $fails[] = "cancelled-with-message: the public reason is missing from the $part part";
+        }
+        if ( false === strpos( $extra[ $part ], $note ) ) {
+            $fails[] = "cancelled-with-message: the registrants' message is missing from the $part part";
+        }
+    }
+
+    /* The reason first, then the message. That is the order they were written
+     * in and the order the questions come in: why it is off, then anything the
+     * organizer wanted to add. */
+    $r_at = strpos( $extra['html'], $why );
+    $n_at = strpos( $extra['html'], $note );
+    if ( false !== $r_at && false !== $n_at && $r_at > $n_at ) {
+        $fails[] = 'cancelled-with-message: the private message is above the public reason';
+    }
+
+    /* AND IT IS IN NO OTHER MESSAGE. The key is set on the event for the whole
+     * of the case that uses it, so any builder reading it would be caught here
+     * rather than by somebody receiving one. */
+    foreach ( $built as $name => $out ) {
+        if ( 'cancelled-with-message' === $name ) { continue; }
+        if ( false !== strpos( $out['html'] . $out['text'], $note ) ) {
+            $fails[] = "$name: carries the registrants-only cancellation message, which is for one audience";
+        }
+    }
+}
+
 /*
  * NO PLATFORM MARK IN ANY MESSAGE.
  *
@@ -497,7 +590,9 @@ foreach ( $built as $name => $out ) {
 
 echo "Email render test\n";
 echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, the alert and\n";
-echo "       the summary in both of their recipient versions, and the cancellation alert)
+echo "       the summary in both of their recipient versions, the cancellation alert, and the
+";
+echo "       cancellation itself with and without a message for the people registered)
 ";
 echo "checked per message: subject, text alternative, table layout, 600px, banner and its alt text,\n";
 echo "                     postal address in both parts, no modern CSS, closed palette, no em dash,\n";

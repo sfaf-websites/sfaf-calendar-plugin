@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.71.0
+Stable tag: 3.72.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,44 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.72.0 =
+
+**The cancel dialog offered two buttons reading "Cancel the event" and "Cancel the event".** With nobody registered, the two answers that dialog exists to tell apart, "and email them" and "and do not", are the same sentence. There is one action now, and the way out beside it is called **Go back** rather than "Leave it alone", which read as a third thing to do to the event.
+
+**No overlay in caladmin was ever bespoke, and what they were missing was not Escape.** Every one has been a real `<dialog>` opened with `showModal()` since 3.42.0, so Escape, the focus trap and the inert page have always been the browser's. What a modal `<dialog>` does not give is light dismiss: a click on its own backdrop does nothing at all. That is added, on the same test the public dialogs have used since 3.70.1. The recurrence scope dialog is deliberately left out, because it treats dismissal as "leave the editor" and a stray click outside would navigate somebody away mid-edit.
+
+**Remove on the events list promised something the code has never done.** It read "Nothing else changes and nothing brings it back". The action is `wp_trash_post()`, which is one click to undo, and it is refused outright on a live event with registrations. That refusal has existed since 3.36.0 and the row did not know about it, so the flow was: agree to a deletion, arrive somewhere else, read that it did not happen. The row asks the same question the server does now and offers **Cancel instead**, pointing at the event page. The test costs no extra query.
+
+**"Cancel this event" is a destructive control and now looks like one**, solid #c0392b with white ink, which is the DESTRUCTIVE weight in the control standard. 3.42.1's closed disclosure stays: being reached deliberately is bought by the fold, not by the ink, and there was never a reason both could not be had.
+
+**A cancelled event said so on its own page and nowhere else.** The exclusion rule only removes the ones somebody chose to hide, so the default answer, and the recommended one, rendered exactly like a live event on the list card, the month grid and the sidebar. All three carry the word **Cancelled** above the title. The word, never the colour: six of this calendar's ten category hues are already reds, so a red card is not reliably distinguishable from a card in the Red category beside it. Not the closure treatment, which says the office is shut on a day and is a fact about the day.
+
+**A second message box, for the people registered and nobody else.** The box that existed is public: it renders on the event page for anybody who arrives at the address. The new one is in the email and nowhere else, and it is a **second step of the confirmation** rather than a field on the form, so "I wrote a message for the registrants and then chose not to tell them" cannot happen. The box cannot be reached except through the answer that sends it, and the handler asks that answer again before storing anything.
+
+**"Remove from the calendar", beside "Put it back on".** The visibility question was asked once, at the moment of cancelling, and never again, so somebody who left an event listed for the people who registered and wanted it gone three weeks later had one route: reinstate it and cancel it a second time, which runs back through the prompt offering to email everybody. The new control writes one meta key, cannot send anything, and refuses on an event that is not cancelled. **It is not the private setting.** A private event is unlisted and still reachable because the URL is the credential and somebody was given it; this is unlisted and still answering at its address with the cancellation notice, which is what somebody arriving from an old email needs to see.
+
+**Tick boxes on the bulk publish, all ticked.** Publishing everything is still one press. Ineligible rows carry no tick at all and say which of the four rules they met, because a disabled checkbox still reads as something that could be ticked if you found the right way. Individual selection can only narrow: the posted set is intersected with what the rule says is publishable, in that order, so it can never become a route to publishing a past date or a submission.
+
+**Two FAQ set controls, one of them an empty box with a title.** The card above the form was the no-script fallback's wrapper, and the script hid the form inside it and left the heading and its "Manage sets" link on screen with nothing under them. The form stays, because it is the whole no-script path; the card is gone, and "Manage sets" moved beside the live picker.
+
+**caladmin's public contact box stored what was typed and nothing read it.** It wrote `_uc_public_contact`, the single open box the community form had before 3.47.0, and the reader prefers the three-part answer that form has written ever since. So on every community submission from 3.47.0 onwards, a manager could type in that box, save, reload, and see their own text still in the box while the event page showed something else. It is three boxes now, writing the three keys. The old value is shown read-only, and only where it is still the one being used.
+
+**The FAQ editors, and what is and is not claimed.** The exception that stops them starting is still not named: there is no browser here, and until now the catch swallowed it with no output at all. It logs through the same channel every other initialiser uses, which is what makes the next attempt possible. The load pass goes through the same deferred task the Add pass uses and retries on a short backoff rather than guessing at one turn. **This is not asserted as the fix.**
+
+**Five-minute steps on the time fields.** A time off the boundary is refused by the browser, before the form posts, which is what the attribute means; rounding would change somebody's answer without telling them. A control already holding such a time does not get the attribute, so an imported event at 6:07 stays editable instead of becoming a form nobody can submit.
+
+**The staff request form asks the same repeat question caladmin does.** The five-option select could not say "every Wednesday", because "Every week" names no day, and could not say "Tuesdays and Thursdays" at all. Both screens share one renderer and one reader now. **The pattern is captured and not armed:** it is stored under keys of its own, never under the key the generator reads, and nothing on that path creates a post. The approver sees it filled in on the editor and presses the button there. Hiding the fields on "it happens once" needed no code at all, which is itself the answer to why the old select did not.
+
+**The series is asked first on every screen.** caladmin asked at the top on a new event and two thirds of the way down on an edit. The prefill offer does not move: filling a blank form in from a series is a convenience, and offering to write over an event that already has content is not.
+
+**"Use this image" on the pending row.** A submitted picture has always been shown there and has never been the event's own, so using it meant downloading it and uploading it again. The attachment id is read off the event and never from the form. Cards crop to 16:9 and the outcome message says so, rather than leaving it to be found on a published event.
+
+**Uploads under 1200 pixels wide are refused**, naming the minimum and the width that arrived, and the minimum is on the form before a file is chosen rather than only in the refusal.
+
+**Three things about submissions.** Who is told that one has arrived is a setting now, rather than everybody who happens to have Admin on the calendar, which was a consequence of who had been given a role rather than a decision anybody took. The "your event is published" notice is community submissions only, checked in the sender as well as on the control. And there is a rejection notice, with an optional note, **unticked by default**, because a message that goes out because nobody untangled a default is not a decision anybody took.
+
+**Help icons on series, teams and private events**, extending the six that already existed rather than adding a second style.
 
 = 3.71.0 =
 

@@ -438,6 +438,57 @@ Admin, and removing them means taking it away. A separate list of approvers
 would be a second answer to the same question, free to disagree with the first
 and certain to fall out of date.
 
+### The repeat control is one control, and a request captures it without arming it
+
+**BOTH FORMS THAT ASK "DOES THIS REPEAT" ASK IT THE SAME WAY** from 3.72.0.
+`SFAF_Recurrence::render_control()` draws it and `SFAF_Recurrence::from_post()`
+reads it back, and caladmin's New Event and the public staff request form both
+call those two. Neither owns a copy.
+
+**WHAT THE REQUEST FORM HAD INSTEAD, AND WHY IT WAS NOT ENOUGH.** Five options in
+a select: it happens once, every week, every two weeks, every month, something
+else. **"Every week" names no day.** So a requester picked a frequency, then an
+end date sitting under a frequency that had not said what it was repeating on,
+and whoever approved it read the notes to find out. "Tuesdays and Thursdays"
+could not be said at all, and "the first Monday of the month" fell into
+"something else".
+
+**WHY IT IS ONE RENDERER RATHER THAN TWO THAT AGREE.** Two copies of a control
+that writes a recurrence pattern would differ in **what somebody is ALLOWED TO
+SAY**, and nothing would notice until a request arrived expressing a schedule
+caladmin cannot store. That is the reasoning `SFAF_Rich_Text` was made a class
+for, applied to the one other control in this plugin with its own grammar. The
+reader moved with the renderer and had to: a second parser for the same field
+names is free to disagree about what `repeat_mode=weekly` with no days ticked
+means, and the disagreement surfaces as wrong dates at approval.
+
+**THE PATTERN IS CAPTURED AND NOT ARMED. THIS IS THE PART TO PROTECT.**
+
+A request stores what `from_post()` produced under **four keys of its own**,
+`_uc_request_pattern`, `_uc_request_pattern_until`, `_uc_request_pattern_limit`
+and `_uc_request_pattern_dates`. It **never** writes
+`SFAF_Recurrence::PATTERN_META`, and nothing on that path generates a post.
+
+> **WHY THE KEY NAMES ARE THE GUARANTEE.** Writing the real key would make an
+> unreviewed request indistinguishable from a schedule a manager built. Every
+> reader of `PATTERN_META` would start answering yes about a row nobody has read,
+> and the schedule screen's generate button would be one press from creating a
+> year of posts for an event still awaiting review. **An unapproved request must
+> never put fifty-two events one press away.**
+
+**THE APPROVER MEETS IT AS A STARTING POSITION.** Opening the event in caladmin
+fills the control in from those four keys, with the summary saying how many dates
+it would make, and **pressing Save is what creates them**. The prefill is offered
+**only while the event has no schedule of its own**: the moment it carries a real
+pattern or a recurrence group, it returns nothing. A prefill that kept
+reasserting the requester's answer would silently undo an approver who had
+deliberately changed it, on every reload, which is worse than not prefilling.
+
+**AND HIDING THE FIELDS ON "IT HAPPENS ONCE" NEEDED NO CODE**, which is itself
+the answer to why the old select did not do it. The shared control's script has
+always hidden every panel when the mode is Never. A bare select and a bare date
+input had nothing to hide and nothing hiding them.
+
 ### FAQs on the staff request form, and why the community form has none
 
 **The staff form offers a FAQ set picker and a repeater, and they combine**
@@ -636,7 +687,7 @@ work and silently discards what somebody typed is the worst shape this can
 take**, and it is worse than the pending panel's version of the same fault,
 which 3.67.0 fixed, because that one only failed to show.
 
-**The three options.**
+**The three options, and the one that shipped.**
 
 1. **Make it edit the three fields.** One box in, three keys out, which means
    parsing a line back into a name, an address and a phone number. Guessing
@@ -644,25 +695,50 @@ which 3.67.0 fixed, because that one only failed to show.
    Rejected.
 2. **Make it three boxes.** Honest and unambiguous: Name, Email, Phone in the
    card, writing the three keys, with `_uc_public_contact` kept read-only as the
-   pre-3.47.0 fallback. Costs three controls on a card that already has four,
-   on the screen with a queued job to simplify it.
+   pre-3.47.0 fallback. **BUILT IN 3.72.0**, which is the state described below.
 3. **Take the box out and show the contact instead.** The three fields are
    already visible on the pending panel from 3.67.0, so removing this box loses
    the ability to CORRECT them, which is the reason the card exists.
 
-**The recommendation is 2.** The card's whole purpose is that a public value
+**Why 2 rather than the others.** The card's whole purpose is that a public value
 somebody outside SFAF wrote can be corrected, and the contact is the line most
 likely to need it. 1 cannot be done correctly and 3 gives up the purpose. The
 cost is one card row becoming three, which the simplification job can take up
-later; the alternative is leaving a control that lies. **Not built: Mark
-decides.**
+later.
 
-> **WHICHEVER IS CHOSEN, THE SAVE PATH CARRIES THE `$offered` GUARANTEE.**
-> `uc_listing_detail_present` is the marker that makes an empty box mean empty
-> rather than "this screen did not ask", and an emptied box DELETES the meta
-> rather than storing `''`. Three boxes need three markers or one covering all
-> three, and getting that wrong blanks a public line on every save from a screen
-> that did not carry the control.
+**AS BUILT.** Three boxes writing `_uc_contact_name`, `_uc_contact_email` and
+`_uc_contact_phone`, which are the keys the community form has written since
+3.47.0 and the keys `sfaf_event_public_contact()` prefers. So what a manager
+types is what the event page prints, which is the whole of what was wrong.
+
+**THE OLD KEY IS NEVER WRITTEN AND NEVER DELETED BY THIS SAVE**, and that is not
+timidity. Events submitted on 3.46.0 carry one and there is no migration; a
+manager saving this card without touching the contact must not lose an event's
+only public contact line. It is shown READ-ONLY, and **only where it is still the
+value being read**, which is where the three above it are all empty. Where they
+are filled in, the old value is doing nothing and a box labelled "not in use" is
+an invitation to work out why, so it is not drawn at all. Filling any of the
+three in is what supersedes it, by the reader's own preference rather than by
+anything deleting anything.
+
+**THE EMAIL IS SANITISED AS AN EMAIL**, not as a line. It is printed on a public
+page and it is the one of the three that has a shape; an address that is not one
+is dropped rather than published, which is the answer the community form already
+gives.
+
+> **THE SAVE PATH CARRIES THE `$offered` GUARANTEE, AND IT NOW COVERS SIX
+> FIELDS.** `uc_listing_detail_present` is the marker that makes an empty box
+> mean empty rather than "this screen did not ask", and an emptied box DELETES
+> the meta rather than storing `''`. One marker travels with the whole card, so
+> splitting one box into three added three fields depending on it rather than a
+> new guarantee. A screen that does not render the card posts no marker and its
+> save cannot blank a public line it never showed.
+
+> **AND THE CARD'S OWN TRIGGER LIST HAD TO GROW WITH IT.**
+> `manager_panel_fields()` decides whether to offer the card by looking for a
+> value in the keys it edits, so the list has to BE the keys it edits. Leaving it
+> asking only about `_uc_public_contact` would have hidden the card from every
+> community submission made since 3.47.0, which is all of them.
 
 ### Approving a submission asks two questions, once
 
@@ -1030,6 +1106,47 @@ is the closest achievable thing to catching it.
 > cannot prove that what it called was safe to call.** Those are different
 > questions, the contract check answers the second, and loading the screens for
 > real stays a manual pass.
+
+### The FAQ editors do not start on load, and what is known about it
+
+**STILL NOT DIAGNOSED, AND THIS RECORDS WHY IT COULD NOT BE.** The answers on a
+FAQ row show raw markup as text until somebody presses **Add FAQ**, which then
+turns every box on the screen into an editor including the rows that were already
+there. Investigated in 3.68.0 and worked on in 3.72.0; the underlying exception
+has never been named.
+
+**THE THREE FINDINGS, AND WHAT HAPPENED TO EACH.**
+
+1. **Every FAQ answer takes the browser-started path**, `SFAF_Rich_Text::deferred()`,
+   including rows that exist when the page is built, while the description beside
+   them is a real `wp_editor()` that starts itself. That is why one works and the
+   other does not: they are **not one mechanism**.
+
+   **The docblock said otherwise and was wrong**, not the code. It read "a row
+   that exists when the page is built gets a real `wp_editor()`", and no row ever
+   has: `sfaf_faq_row()` has been the one renderer for a stored row and for the
+   `<template>` since 3.44.0 and calls `deferred()` for both. A rule describing an
+   arrangement the code never had is worse than no rule, and 3.68.0 spent an
+   investigation reading it as a statement of fact. **Corrected in 3.72.0 rather
+   than made true**, because forking that renderer would put the FAQ repeater back
+   to two copies of one control, which is the fault it exists to prevent.
+
+2. **The load pass and the Add pass differed by exactly one thing**, a
+   `setTimeout(..., 0)`, and the one that works is the deferred one. 3.72.0 put
+   the load pass through the same deferred task, with a short retry rather than a
+   single turn, because a bare `setTimeout(0)` is a guess about timing.
+
+3. **`start()` swallowed the exception with no console output.** It logs through
+   the same channel `run()` uses now. **This is the finding that matters**: until
+   it logs, the reason cannot be named from a browser, and `run()` exists
+   precisely so a failed initialiser is never silent. It was the one place in the
+   file quietly doing the opposite, inside `run()`.
+
+> **3.72.0 DOES NOT CLAIM TO HAVE FIXED THIS.** There is no browser in the build
+> environment, so the change is the load pass being made to look like the pass
+> that demonstrably works, plus the exception being made readable. `TESTING.md`
+> 1.46 asks for whatever the console says, and that message is the whole route to
+> a diagnosis.
 
 ### Rich text is a rule, and one control
 
@@ -2544,7 +2661,8 @@ since 3.36.0 **deleting an event that has registrations is refused** and
 cancelling is the operation that exists instead.
 
 `SFAF_Cancellation` stores `_uc_cancelled`, `_uc_cancelled_visibility`
-(`stay`|`hide`) and `_uc_cancelled_at` on the event. **Not a post status**, and
+(`stay`|`hide`) and `_uc_cancelled_at` on the event, plus two pieces of prose
+described below. **Not a post status**, and
 the reason is the one `SFAF_Sources` already writes down in another context:
 this plugin names `post_status => 'publish'` **by hand** in the shortcodes, the
 embed payload, the REST feed, the .ics, the reminder query, the summary query
@@ -2554,6 +2672,62 @@ is cancelled everywhere except the place nobody checked. A meta flag inverts
 that: nothing changes about which queries return the event, the two places that
 must behave differently ask, and everywhere else keeps working. The organizer's
 `stay`/`hide` choice needs a second field anyway, which settles it.
+
+**TWO PIECES OF PROSE, AND THEY ARE TWO AUDIENCES (3.72.0).**
+
+`_uc_cancelled_reason` is **public**. It renders on the event page under "This
+event has been cancelled", for anybody who arrives at the address, and it is
+carried in the email as well. It is written whether anybody is emailed or not.
+
+`_uc_cancelled_message` is for **the people who registered and nobody else**. It
+appears only in the cancellation email. On a calendar carrying HIV, substance use
+and trans health programming, what an organizer wants to say to the twelve people
+who set an evening aside is frequently not a sentence for a public page, and
+before this there was one box and it was the public one.
+
+**THE SECOND IS COLLECTED BY THE CONFIRMATION, NOT BY THE FORM**, and that is
+what makes the state "I wrote a message to the registrants and then chose not to
+tell them" impossible rather than merely unlikely. The box is on the far side of
+the answer that sends it: pressing **Cancel and email them** opens a second step
+of the same dialog, and **Cancel without telling them** never reaches it. The
+handler asks `sfaf_should_notify()` again before storing anything, because a
+POST is a request anybody can construct and a message stored on an event nobody
+was emailed about would sit there until the next cancellation picked it up.
+
+**BOTH ARE DELETED WHEN AN EVENT IS REINSTATED.** Each describes a cancellation
+that is no longer in force, and leaving either behind means the next one inherits
+a sentence somebody wrote about a different one. The public reason was outliving
+its event before 3.72.0.
+
+**THE VISIBILITY ANSWER CAN BE CHANGED WITHOUT RE-CANCELLING.**
+`set_visibility()` writes the one key, refuses on an event that is not cancelled,
+and cannot send. Before it existed the `stay`/`hide` question was asked once, at
+the moment of cancelling, so somebody who left an event listed for the people who
+registered and wanted it gone three weeks later had to reinstate it and cancel it
+again, which runs back through the prompt that offers to email everybody.
+
+> **IT IS NOT THE PRIVATE SETTING AND THE TWO ARE NOT INTERCHANGEABLE.** A
+> private event is unlisted and reachable, deliberately, because the URL is the
+> credential and somebody was given it. A cancelled event hidden from the
+> calendar is unlisted and **still answering at its own address with the
+> cancellation notice**, which is what somebody arriving from an old email or a
+> printed flyer needs to see. An event can be both.
+
+**AND IT SAYS SO ON EVERY SURFACE, NOT JUST ITS OWN PAGE (3.72.0).**
+`SFAF_Cancellation::exclude()` only removes the ones somebody chose to hide, so
+an event cancelled and left listed, which is the default and the recommended
+answer, rendered exactly like a live one on the list card, the month grid and the
+sidebar. All three carry the word **Cancelled** above the title.
+
+> **THE WORD, NEVER THE COLOUR, AND HERE THAT IS MORE THAN THE USUAL RULE.** Six
+> of this calendar's ten category hues are reds and oranges, so a red-tinted card
+> is not reliably distinguishable from a card in the Red category sitting beside
+> it. The colour is a second signal and could not be the only one even if the
+> rule allowed it.
+>
+> **AND IT IS NOT THE CLOSURE TREATMENT.** A closure is a filled block on a day
+> cell saying the office is shut, which is a fact about the day. This is one
+> event being off while everything around it goes ahead.
 
 What cancelling does:
 
@@ -2692,6 +2866,47 @@ mechanism.
 > **`cancel_alert` IS NOT `cancelled`.** `cancelled` tells REGISTRANTS the EVENT
 > is off. `cancel_alert` tells STAFF that one REGISTRANT has dropped out. The
 > keys were deliberately not made near-identical words.
+
+**THE SUBMISSION MESSAGES ARE NOT IN `kinds()`, AND THAT IS THE DISTINCTION THE
+LIST IS FOR.** `kinds()` is the set of **per-event** switches a manager sees on
+one event's notification card. The three messages about a submission are about
+the workflow rather than about an event, they are decided per submission by
+whoever is reviewing it, and there is no event card they could sensibly appear
+on. They use the same builder, the same `SFAF_Email::send()` and the same
+`wp_mail()`; what they do not do is join a list whose meaning is "which of these
+does THIS event send".
+
+| Message | To | Decided by |
+|---|---|---|
+| Somebody submitted an event | `SFAF_Submissions::alert_recipients()` | a setting, not a role |
+| Your event has been published | the submitter, community submissions only | a tick on Approve, off by default |
+| Your event was not published | the submitter, community submissions only | a tick on Reject, off by default |
+
+**WHO IS TOLD A SUBMISSION ARRIVED IS A SETTING FROM 3.72.0.** It was every user
+holding Admin on the calendar, so the audience was a consequence of who had been
+given a role rather than a decision anybody took: giving somebody Admin so they
+could fix one event signed them up to every submission from then on, and no
+screen said so or could undo it. `alert_recipients()` reads a named list from
+`uc_settings`, defaulting to `websites@sfaf.org`, and **falls back to the old
+audience when the field is empty**. Emptying the box widens the audience rather
+than silencing it, which is the safe direction for a message saying a stranger
+has submitted an event to a public calendar.
+
+**THE TWO OUTCOME NOTICES ARE COMMUNITY SUBMISSIONS ONLY**, checked in the sender
+as well as on the control, because a control that is not drawn has never been a
+permission in this codebase. A staff requester already has a confirmation saying
+the team will look at it and can open caladmin to see what happened; somebody
+outside SFAF has neither, and a message is the only thing that can tell them.
+Both go to the **submitter alone**, never to the other addresses a community
+submitter may have named: those were named as people who should receive the
+RSVPs, which is a different request from "tell me what happened to what I sent".
+
+> **THE REJECTION IS THE ONLY MESSAGE THIS PLUGIN SENDS THAT TELLS SOMEBODY NO**,
+> and its tick is **unticked by default**, which is the opposite of the
+> registrations tick beside it on the approval prompt. That one has a useful
+> default because an organizer who does not receive their own registrations has a
+> real problem. A message that goes out because nobody untangled a default is not
+> a decision anybody took, and this one cannot be recalled.
 
 **What `cancel_alert` discloses, and to whom.** The name and email address of
 the person who cancelled, plus the resulting count, to the event's notification
@@ -3159,6 +3374,18 @@ ledger let it through, the 6am timing rule held, and the mail left the server.
 Everything downstream of "does the unattended path work at all" is a
 **reliability** question from here, not an existence one.
 
+**AND TWO MORE WERE SETTLED ON 2026-09-03.**
+
+- **The one-time import RAN.** Not a dry run: 287 drafts across 32 series exist
+  on the site and were read and accepted. It ran out of order and twice,
+  followed by two partial clears, and the outcome was still correct, which is
+  worth recording because it is evidence about the clear's spare rules rather
+  than about the happy path. See §3.
+- **The updater completed a real cycle.** 3.70.1 and 3.71.0 were released, the
+  Plugins screen offered 3.71.0, and it installed. So the whole arrangement,
+  the release asset naming, the version comparison, the twelve-hour cache and
+  WordPress's own update UI, is proved rather than reasoned about.
+
 **Still never run in production:**
 
 - **The pre-event summary has never been seen.** The morning-of reminder is its
@@ -3175,6 +3402,10 @@ Everything downstream of "does the unattended path work at all" is a
   been recorded.
 - **Neither import adapter has been observed running unattended.** GFMP and
   Eventbrite have been exercised by hand; the hourly fetch path has not.
+- **The bulk publish has been seen, and its per-row ticks have not.** The 3.71.0
+  all-or-nothing button was pressed on a real series and read correctly. 3.72.0
+  put a tick on every eligible row, so what is unexercised is now the narrowing:
+  that unticking two publishes the rest and leaves those two alone.
 
 **Tested only by their author, once, by hand:** most `/caladmin` workflows.
 Event creation and editing, the schedule editor, bulk edits across a recurrence
@@ -3579,6 +3810,99 @@ half hour. For hourly data that is fine, and no special handling is needed.
 2. **Does Val's job write atomically** (temp name, then rename), so a fetch
    cannot catch a half-written file? A partial JSON read on the hour is a
    plausible and silent failure mode.
+
+### Three things investigated in 3.72.0 and deliberately not built
+
+Each was asked for as an investigation. They are here rather than in the
+hand-off because the finding is durable even though the decision is not taken.
+
+**1. REINSTATING A CANCELLED EVENT, AND WHAT IT DOES TO REGISTRATIONS.**
+
+Reinstating deletes `_uc_cancelled`, `_uc_cancelled_visibility` and
+`_uc_cancelled_at`, and from 3.72.0 the two pieces of prose with them. It touches
+**nothing else**.
+
+- **Registrations are untouched and still hold.** They live in their own table
+  keyed by event id and nothing on this path writes to it. So a reinstated event
+  carries every registration it had, they are live again because
+  `is_cancelled()` is false, and its reminders resume.
+- **Reinstating unchanged and reinstating on a new date are TWO actions today**,
+  in either order, and **the order changes what is sent**. Reinstate first, then
+  change the date, and the ordinary save's change-notice prompt offers to tell
+  everybody the date moved. Change the date first, then reinstate, and nothing
+  is offered at all, because the reinstate action has no prompt.
+- **What is missing is a message for the case.** The change notice is written for
+  a live event whose date moved. Nobody has been told "the thing you registered
+  for is back on, on a date you did not choose", and the people it would go to
+  are exactly the people who were told it was off. **Not built, and it is a
+  decision rather than a defect:** whether that is one message or two, and
+  whether it should be automatic, is Mark's call.
+
+**2. "USE THIS EVENT'S DETAILS ON ANOTHER DATE" ON A MULTI-EVENT SERIES.**
+
+It **does** take a specific row, so the data model is not the problem. The
+problem is that **the row is chosen for you and never named.** The handler seeds
+from the next upcoming event in the series, or the most recent if nothing is
+upcoming. On a series holding several distinct events, PROP holds four, "this
+event's details" silently means "whichever of the four happens next", which is a
+coin toss to the manager.
+
+> **AND THE TWO SEEDS ARE COMPUTED TWICE, BY DIFFERENT CODE.** The render-side
+> seed prefers the next event **in the recurrence group** and falls back to the
+> series; the handler's seed asks only the series. On a series with several
+> groups those can disagree, so the placeholder shows event A's title and the
+> button copies event B. **That is a defect and not a wording problem**, and it
+> is the half worth fixing first.
+
+The cheap remedy is to name the seed in the control, which the renderer already
+knows: the title placeholder is already built from it. The fuller one is a
+per-row "copy this date" action, which is a bigger change.
+
+**3. THE TWO RSVP CONTROLS ARE TWO QUESTIONS, AND ARE ANDed.**
+
+Not a duplicate. `_uc_rsvp_enabled` ("Accept RSVPs", under Capacity) is the data
+gate: `SFAF_RSVP` refuses a registration when it is not `'1'`. `_uc_show_rsvp`
+("RSVP", under Display) is one of five feature toggles deciding what the event
+page draws. `sfaf_event_takes_rsvps()` is **both**.
+
+**So the combination produces a state nothing warns about:** `rsvp_enabled` on
+and `show_rsvp` off means an event that accepts registrations and shows no
+button. Nothing is broken and nothing says anything.
+
+**The proposal, not built.** Leave them two questions and make the second
+**dependent on the first**, greyed while `rsvp_enabled` is off, which is exactly
+the treatment `show_calendar` already has for the same reason and through the
+same live script. Collapsing them into one tick was considered and rejected:
+"takes registrations" and "shows the button" are genuinely separable, and an
+event taking registrations through a link elsewhere is a real case.
+
+> **WHICHEVER CONTROL CARRIES "TAKES REGISTRATIONS" IS LOAD-BEARING.**
+> `show_calendar` is not read while `sfaf_event_takes_rsvps()` is true, because
+> the calendar file goes out with the confirmation instead. A change here reaches
+> Add to calendar.
+
+### The three jobs queued behind everything else, carried since 3.64.0
+
+**MOVED OUT OF `HANDOVER.md` IN 3.72.0**, because none of it is about today and
+all three had been carried release after release in a file whose whole job is
+what is true right now. Each is a decision already taken about what to do next,
+which is what this section is for.
+
+1. **The `/caladmin` design audit.** 106 findings against `portal.css`, never
+   written down. 3.64.0 took the control chunk and left it enumerated as a build
+   gate rather than a list: `.claude/control-standard-audit.php`. What is left is
+   spacing, density and type on individual screens.
+
+2. **Simplify the event editor.** A parade of checkboxes, and several more cards
+   since 3.35.0. A rendering-order and disclosure problem, not a data-model one.
+   **The control standard went first on purpose:** it is a property of being a
+   control, so moving controls between cards cannot undo it.
+
+3. **Tailwind greys are still in `portal.css`.** `#F3F4F6`, `#6B7280`, `#4B5563`,
+   `#D1D5DB`, `#E5E7EB` carry the locked and disabled states and are in neither
+   the palette nor `DESIGN.md`s derived neutrals. Nothing looks wrong, so 3.64.0
+   left them: a separate sweep with its own arithmetic, and the arithmetic is the
+   work.
 
 ### The image picker stays one calendar folder, weighed 2026-08-21
 

@@ -6,367 +6,151 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-03, at 3.69.0.
+**Last updated:** 2026-09-09, at 3.72.0.
+
+> **THIS FILE SAT THREE RELEASES STALE**, describing 3.69.0 while 3.70.0, 3.70.1
+> and 3.71.0 had shipped. None of those three commits touched it or `TESTING.md`,
+> which is the `CLAUDE.md` 8 rule missed three times running. If you are reading
+> a hand-off that does not name the version in `sfaf-calendar.php`, trust the
+> code.
 
 ---
 
 ## What shipped last
 
-**3.69.0**, built as `sfaf-calendar-3.69.0.zip` in the project root, committed
-and **pushed to `origin/production-2.0`**. The working tree is clean apart from
-one stray PNG and the four export XMLs, none of which are part of the plugin.
-
-> **NO PLUGIN CODE CHANGED IN 3.69.0.** The zip differs from 3.68.1's in the
-> three version strings and nothing else, so installing it changes nothing on
-> the site. What the release carries is the one-time import tooling in
-> `.claude/import/`, which is not in the zip.
-
-> **3.53.0 ADDED A TABLE**, `uc_series_followers`, and took `SFAF_DB_VERSION` to
-> `6`. 3.54.0 adds nothing, but if the site is still on 3.52.0 this still
-> applies. The table is created on load as well as on activation, so overwriting
-> the folder is enough; if anything about following throws "table doesn't
-> exist", that is the check that did not run.
-
-The last four releases, so a fresh chat knows what is recent:
+**3.72.0**, built as `sfaf-calendar-3.72.0.zip` in the project root, committed
+and **pushed to `origin/production-2.0`**. Working tree clean.
 
 | | |
 |---|---|
-| **3.69.0** | **No plugin code changed. The release carries the one-time import of the old Events Calendar**, in `.claude/import/`, which is not in the zip. **There are three sources and they rank:** what Mark supplies directly, then the Stonewall Project's 2026-27 group info sheet, then the export's most recent occurrence. Twelve descriptions come from Mark, nine from the sheet, eight from the export, and ten events have none. **32 series, 39 events, 287 draft posts, nothing published:** 18 events take their dates from a stated schedule, 7 from a rule in the export with no end date, and 14 have none. **Every rule in the export that carries an end date has already passed**, the latest 2026-07-01, which is why the sheet matters. **Nothing has been written to the site yet.** Report mode first, then clear, then import; `TESTING.md` 2.15 to 2.19. |
-| **3.68.1** | **A layout fault 3.68.0 shipped on both request forms, and nothing else.** Every section's heading rendered beside its first field, with Date and Venue squeezed into a roughly 40px column. **The cause was a float that had never run.** The legend float written in 3.66.0 was inert because the fieldsets carrying it were also `display: flex`, and float computes to none on a flex item; 3.68.0 took `.uc-field` off the sections to stop a reset reaching them, and **the class carrying that reset was also the section's layout mode**. A live float and a flex first child cannot share a line. **A section declares its own `display` now** and there is no float in these rules. Structure, headings, tint and hairline are as 3.68.0 left them. |
-| **3.68.0** | **Six changes to the two public forms and the pending queue, and two investigations.** Both forms are **one sequence of sections with a visible boundary**: the fault was a cascade one, `.uc-request-card fieldset.uc-field` at (0,2,1) stripping the border off `.uc-form-section-group` at (0,1,0), and there were three spellings of a section where there is now one neutral panel. The staff form **asks which series first** and the picture chooser shows that series' photo while nothing is chosen. The pending queue **marks an event that arrived with no location**, using the imports' existing state rather than a second one. Location and Event Image are relabelled, the private copy is three sentences, and a cancelled event says "if you have a place". **A private event already emits noindex and nofollow** and always has. **Parts A and H were investigations:** the Listing detail contact box, and the FAQ editors that do not start until Add is pressed. See "Open decisions". |
-| **3.67.0** | **Four changes and an investigation, two of them things 3.66.0 found and stopped short of.** The community form's **About you email takes up to five addresses**, the submitter's own being the first; all five reach the event's notification list at approval and nothing else. The **pending row shows the contact the submitter entered**, which it had rendered empty on every community submission since 3.47.0. **Event links open a new tab** everywhere the calendar renders, `rel="noopener"` and never `noreferrer`, because the back link reads the referrer. The picture picker shows one name per row, and the staff form says **RSVP** rather than register. **Part E was an investigation:** what both public forms require today. Nothing was made required; see "Open decisions". |
+| **3.72.0** | **The cancel and remove cluster, and the batch that was waiting.** The cancel dialog offered two buttons reading "Cancel the event" and "Cancel the event"; there is one action now, and clicking outside a caladmin dialog dismisses it, which was the thing actually missing rather than Escape. **Remove on the events list promised a permanence the code never had** and is refused on a registered event, so the row says so and offers Cancel instead. **A cancelled event now says "Cancelled" on the list card, the month grid and the sidebar**, not just its own page. A second message box in the confirmation, for registrants only. **Remove from the calendar** beside Put it back on, which sends nothing. Tick boxes on the bulk publish. The empty FAQ set card is gone. **The Listing detail contact box wrote a key nothing read**, and is three boxes now. Five-minute time steps. **The staff form asks the real repeat question**, captured and not armed. The series is asked first on every screen. "Use this image" on the pending row, and uploads under 1200 wide refused. Three submission notifications, one of them new. |
+| **3.71.0** | **A series' upcoming drafts publish in one press.** The count and the date range are on the button, four kinds of row are never touched, and the set is re-decided at the press rather than taken from a hidden field. 3.72.0 added the per-row ticks. |
+| **3.70.1** | **The registration dialog opened under the site header, and it was one cause with two symptoms.** Both modals are real `<dialog>` elements in the top layer now, immune to whatever the theme declares. |
+| **3.70.0** | **The plugin updates from inside WordPress**, from GitHub releases on a public repository, no token on the site. `build-zip.sh` refuses to build unless the three version strings agree. Also took GoFundMe Pro's 2.2 MB spec and two personal identifiers out of the tracked tree. |
 
-**Whether it is installed on resources.sfaf.org is not recorded anywhere in the
-repo.** The tell is the Plugins screen: if it does not say 3.69.0, the
-deployment is stale or partial, and that has explained a "fix that did not work"
-before.
+## Three things that are done, and were recorded as pending
 
-> **3.62.0 IS A FIRST PASS TO SHOW A TEAM, NOT A FINISHED WORKFLOW**, and the
-> half that is missing is on purpose. **Everybody who registers gets the meeting
-> link** if the manager ticked the message that carries it. Per-registrant
-> approval before it goes out is still being decided and was deliberately not
-> half built. Nothing in this build assumes every registrant gets the link: the
-> link is a field on the event and the delivery is decided per message, so the
-> gate slots in front of `SFAF_Online::sends_with()` without unpicking anything.
->
-> **Two things about it want saying out loud to the team.** The link is in the
-> confirmation's calendar file, and **a calendar entry is shared more widely
-> than an email**: it syncs to the person's phone, their laptop and any calendar
-> they share with a partner or an assistant. Mark has decided that for the case
-> where the person already holds the link, and it is recorded rather than
-> assumed. And **the link is a credential on a calendar carrying HIV, substance
-> use and trans health programming**, which is why it is on no public surface
-> and why `.claude/online-events-test.php` fails the build if anything new reads
-> it.
-
-> **INSTALL BEFORE ANYBODY EDITS ANOTHER EVENT.** On every release from 3.36.0
-> to 3.40.0, pressing Save in the caladmin event editor cancelled the event and
-> emailed everybody registered that it was off, and the edit was discarded.
-> Fixed in 3.41.0. See "Events cancelled by a save" below for the ones it hit.
+- **THE IMPORT HAS RUN.** 2026-09-03, out of order and twice, followed by two
+  partial clears. The site holds **287 drafts across 32 series** and Mark has
+  confirmed they look accurate. Trash emptied. Nothing pending.
+  **`TESTING.md` 2.18 and 2.19 are deliberately still there:** deleting the
+  import folder from the server and reading a no-mail notification card are
+  separate actions and neither has been reported back on.
+- **THE UPDATER HAS COMPLETED A REAL CYCLE.** 3.70.1 and 3.71.0 were released,
+  the Plugins screen offered 3.71.0, Mark pressed update. **resources.sfaf.org
+  runs 3.71.0** as of this writing. The empty 3.70.0 release is deleted.
+- **3.71.0's BULK PUBLISH HAS BEEN SEEN** on a real series and reads correctly.
 
 **The scheduled path works end to end.** A morning-of reminder went out
-unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here,
-not a "does it work" question.
+unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
 
 ## In flight
 
-**THE IMPORT IS BUILT AND HAS NOT BEEN RUN. NOTHING HAS BEEN WRITTEN TO THE
-SITE.** `.claude/import/README.md` is the run order and `TESTING.md` 2.15 to
-2.19 is what to check. Four things about it are worth knowing cold:
+**FOLLOWING A SERIES IS HALF BUILT AND PART 2 IS NOT STARTED.** 3.53.0
+established who the followers are; **nothing sends them anything**. Somebody can
+follow today and hear nothing, which is the expected state, and the whole of the
+design is in `PROJECT.md` 8. Its one dependency was met in 3.64.1;
+`TESTING.md` 1.22 should be done before part 2 is designed on top of it.
 
-- **Report mode first, and read it.** It writes nothing, and it is the half of
-  the dry run that could not happen in the build environment, because it is the
-  half that reads caladmin: which organizers, venues, categories and series are
-  already there. An organizer reported as "would create" that is not one of
-  Aging Services, PWUD Health or Onyx Northwest means a name was not recognised,
-  and importing then leaves a near-duplicate.
-- **Clear trashes, it does not delete, and it clears TEST EVENTS ONLY.** Rows in
-  the Pending and Dismissed queues, submissions awaiting review, and anything
-  carrying source provenance are left exactly where they are. **Status alone
-  does not find them:** an import that vanished at its source is parked as an
-  ordinary `draft` and a submission is an ordinary `pending`, so the provenance
-  meta is what tells them apart. **Trashing a queue row would be data loss.**
-  `all_statuses()` includes trash and `find_existing()` searches with it, so the
-  next fetch matches the trashed row, finds trash is not updatable and counts it
-  untouched rather than creating a new one. It does not come back by fetching.
-  Report mode names every kept row with its id and reason.
-- **NOTHING IT CREATES CAN CAUSE MAIL, AND THAT TOOK A CHANGE.** The address it
-  would otherwise have added is one nobody typed: `wp_insert_post()` defaults
-  `post_author` to whoever is logged in, and **the creator is on an event's
-  notification list unless the event says otherwise**, so running it from a
-  browser would have put that administrator on all 287 lists. **The opt-out does
-  not travel to an occurrence either**, because `SFAF_Recurrence` copies
-  `post_author` and its `$copied_meta` carries none of the notification keys. So
-  every post is opted out and then asks `notify_list()` who is left.
-  `.claude/import/no-mail-check.php` is the build-time proof. **Mark adds
-  notification addresses himself when the calendar rolls out.**
-- **Ten of the 39 events arrive with a title and nothing else.** Mark supplied
-  real copy and schedules for twelve more, and the Stonewall Project's 2026-27
-  sheet for nine, so what was 26 dateless events is now 14. **Exactly one name
-  on the list matched only a trashed row**, Brothers Who Read, and it no longer
-  needs the export. `.claude/import/trashed-only.php` is the check; the 3.69.0
-  report said five and was wrong.
-
-**Following a series is half built, and the half that is missing is the point of
-it.** 3.53.0 established who the followers are and how somebody becomes one.
-**Nothing sends a follower anything yet**, and nothing fires when a date is
-added to a series.
-
-**Part 2 is the organizer's announcement screen** and is not built: the list of
-events in a series that have been added and not yet announced, an envelope state
-per row, send and dismiss, and the email naming what was added.
-`SFAF_Follow::active_followers()` is the audience it will read, and it is
-uncalled on purpose. The reasoning, including why this is a person pressing a
-button rather than a hook on occurrence creation, is in `PROJECT.md` §8.
-
-**Somebody can follow a series today and will never hear anything until part 2
-ships.** That is the expected state, not a fault. The confirmation email is real
-and the unsubscribe link in it works.
-
-**Part 2's one dependency is met as of 3.64.1.** It needs a single event created
-by hand to be assignable to an existing series, and until that release the
-control for doing so had never rendered. It renders now, and the resulting
-event, in a series and in no recurrence group, is a state the rest of the
-plugin already handles correctly. **Nothing about part 2 is built and nothing
-here should be read as a start on it.** `TESTING.md` 1.22 is the item that
-confirms the assignment behaves on a real screen, and it should be done before
-part 2 is designed on top of it.
-
-**A DECISION FOR MARK'S TEAM, from 3.56.0.** There is now a fifth email: the
-event's notification list is told when somebody cancels a registration, naming
-**who cancelled, their email address, and the resulting count**. That is exactly
-what the registration alert already tells the same list about the same person,
-so it is consistent rather than a new disclosure, **but it is registrant data on
-a calendar carrying HIV, substance use and trans health programming and somebody
-should say out loud that it is wanted.** It is on by default like the other four
-and is switched off per event in the same card. `PROJECT.md` §4 has what it
-contains.
-
-**Part D of that build was an investigation, and its answers are in `PROJECT.md`
-§3** under "What a shared event link produces": what Open Graph and Twitter tags
-an event page emits, what is in the JSON-LD, and at what size the image is
-actually served. **Four of the findings are decisions rather than fixes** and are
-listed under "Open decisions" below. Nothing was changed.
-
-**Events cancelled by a save.** The bug is fixed; the damage is not. Nothing was
-deleted, so each affected event reinstates from its cancel card. Find them two
-ways and use both: anything cancelled that nobody meant to cancel, and asking
-whoever edits events what they touched since 3.36.0. **A second save silently
-un-cancelled it, so the cancelled list is not the whole list**, and
-`_uc_cancelled_at` is the timestamp of the save that did it. **The emails cannot
-be unsent and there is no route for a correction:** each event's registrations
-screen lists who was told, and that has to come from a person.
-
-**Some events may have lost an organizer.** Until 3.40.0 the caladmin editor
-showed only the first and its save replaced the rest. If Eric knows of co-hosted
-events from before then, open them and check. Nothing to do if organizers were
-only ever set in caladmin.
-
-**The external cron ping has not been created yet.** Until it is, the only thing
-driving the runner is visitor traffic and the page-view nudge from sfaf.org.
-`PROJECT.md` §4 has the order it has to be switched on in; getting that order
+**THE EXTERNAL CRON PING DOES NOT EXIST YET.** Until it does, the only things
+driving the runner are visitor traffic and the page-view nudge from sfaf.org.
+`PROJECT.md` 4 has the order it has to be switched on in; getting that order
 wrong leaves the site with no scheduler at all.
 
-**AUTOMATED FETCHING IS ON, AND TWO PLACES STILL SAY IT SHOULD NOT BE.** That
-it is on is what 3.57.0 was built for, and the Pending screen now reports it.
-But the toggle's own copy under **Settings > Scheduled Tasks** reads "Leave this
-off for now ... switch it on by hand once one removal has been seen go through
-correctly", and `TESTING.md` 2.8 says the same thing. **Either that removal has
-been watched and both should be updated, or the switch is ahead of its
-safeguard.** Only Mark can say which, so neither was changed. The risk the
-wording is about is real and unchanged: a fetch can unpublish a live event when
-its source stops returning it, and now it can do so unattended, four times an
-hour.
+**AUTOMATED FETCHING IS ON, AND ITS OWN COPY STILL SAYS IT SHOULD NOT BE.** The
+toggle under **Settings > Scheduled Tasks** reads "Leave this off for now ...
+switch it on by hand once one removal has been seen go through correctly", and
+`TESTING.md` 2.8 says the same. **Either that removal has been watched and both
+should be updated, or the switch is ahead of its safeguard.** Only Mark can say
+which. The risk is real: a fetch can unpublish a live event when its source stops
+returning it, unattended, four times an hour.
 
-**WHAT 3.58.0 REFUSES HAS NEVER BEEN SEEN AGAINST THE REAL CAMPAIGN LIST.** The
-rules and the safeguard are proved in the suite, but which campaigns GoFundMe
-Pro actually returns for this organization is not knowable here. Press **Fetch
-updates** once: the report names every refusal and its reason, and a real event
-refused as "past" would mean `started_at` on a ticketed campaign is the
-ticket-sales opening rather than the event, which is the one thing the
-platform's spec does not settle. `TESTING.md` 2.13.
+**TWO THINGS ABOUT THE QUEUES WERE NEVER REPORTED BACK ON.** What 3.58.0 refuses
+has never been seen against the real campaign list: press **Fetch updates** once
+and read the report (`TESTING.md` 2.13). And 3.59.0 predicted Pending would go
+from 6 rows to 3 and Dismissed would stop showing SFAF Board Impact. **If a row
+with a past start date is still there the diagnosis was wrong**, and the cause is
+something other than the end date.
 
-**CHECK THE QUEUES AGAINST THIS PREDICTION AFTER 3.59.0 INSTALLS.** The sweep
-runs within 15 minutes. **Pending should lose the three rows** The Agenda Event
-2026, SFAF Giving Appeal – June 2026 Multi-Channel and SFAF Giving Appeal – June
-2026, going from 6 to 3. **Dismissed should stop showing SFAF Board Impact.**
-Anything with a future or missing date stays exactly where it is.
+**3.62.0 IS A FIRST PASS AT ONLINE EVENTS.** Everybody who registers gets the
+meeting link if the manager ticked the message carrying it; per-registrant
+approval was deliberately not half built. **Two things about it want saying to
+the team**, both in `PROJECT.md` 2 under "Online events, and a meeting link that
+is a credential".
 
-**If a row with a past start date is still there afterwards, the diagnosis was
-wrong** and the cause is something other than the end date — say so rather than
-assuming it needs another pass. The diagnosis was never confirmed against the
-database: the probe cannot run from the build environment and the query was not
-available, so this fix rests on a deduction from the code. It is a safe deduction
-— nothing but a source writes that field, and no other branch of the predicate
-can produce the observed result — but it is a deduction.
+**Events cancelled by a save.** The 3.36.0 to 3.40.0 bug is fixed and the damage
+is not. Each affected event reinstates from its cancel card, but **a second save
+silently un-cancelled it, so the cancelled list is not the whole list**;
+`_uc_cancelled_at` is the timestamp of the save that did it. The emails cannot
+be unsent.
 
-Four smaller things waiting on somebody here:
-
-- **The GFMP campaign image is deliberately unmapped**, so campaigns show the
-  branded placeholder. Run the `[PROBE]` in `class-sfaf-gfmp.php` against a real
-  campaign, fix it live through `sfaf_gfmp_image_fields`, delete the probe.
-- **The Turnstile keys are not in.** Both, or no widget is drawn at all and
-  nothing says so except that panel. Before the community form is shared.
-- **The Cycle to Zero series does not exist.** The form's address is
-  `/?uc_event_submit=<series-slug>` and its banner is that series' image, so it
-  needs a picture before anybody gets the link.
-- **One test event is live:** post 60379, `pending`, badged Community
-  submission. Reject it once it has been seen.
+Four smaller things waiting on somebody: the **GFMP campaign image** is unmapped,
+so campaigns show the placeholder (run the `[PROBE]` in `class-sfaf-gfmp.php`);
+the **Turnstile keys** are not in, and without both there is no widget at all;
+the **Cycle to Zero series does not exist** and the community form's address is
+that series' slug; and **one test event is live**, post 60379, `pending`, badged
+Community submission.
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 61 items.** Quick 39, needs
-real conditions 19, blocked on other people 3. Nothing in the build can settle
-any of them.
+**`TESTING.md` holds the manual testing backlog, 76 items.** Quick 53, needs real
+conditions 20, blocked on other people 3. Nothing in the build can settle any of
+them. **Fourteen are new in 3.72.0**, and two want doing on the day it installs:
+1.46, because the FAQ editors' console message is the only route to diagnosing
+that fault, and 2.23, because 3.72.0 changes who receives an existing email.
 
 ## Open decisions
 
-**222 PUBLISHED EVENT ADDRESSES DIE WITH THE EVENTS CALENDAR, AND NOTHING
-CREATES REDIRECTS.** They are live today at `resources.sfaf.org/event/<slug>/`
-and at `/event/<slug>/<date>/` for each occurrence of a recurring one. When TEC
-is removed they stop resolving. The import does not address this and was not
-asked to: it creates events at this plugin's own addresses under different
-slugs, so nothing maps one to the other automatically. **Whether that matters is
-a decision about what links to those URLs**, which is not knowable from the
-repository: printed material, the sfaf.org theme, mail already sent, and
-whatever search engines hold. If it does matter, the cheapest answer is a
-redirect table built from the export, which lists every old slug and its
-`_wp_old_slug` history.
+**THE REJECTION NOTICE'S WORDING HAS NOT BEEN READ BY MARK.** It is built and
+unticked by default, so nothing sends without an explicit choice, but it is the
+only message this calendar sends that tells somebody no and it goes to a member
+of the public. `TESTING.md` 2.21 and the 3.72.0 hand-off quote it in full.
 
-**MARK HAS TO FILL IN THE CALENDAR HOME URL SETTING**, and until he does,
-"All Events" on an event page still does not land anywhere useful. 3.66.0 fixed
-the code half: a cross-origin referrer arrives as an origin with no path, and
-that is now treated as no referrer rather than as the site root. What answers
-instead is **Settings, Display, Calendar home URL**, which is empty. Empty means
-the fall-through is the event archive on resources.sfaf.org, which is not a
-public surface. `PROJECT.md` §1 has the whole of it.
+**222 PUBLISHED EVENT ADDRESSES DIE WITH THE EVENTS CALENDAR.** They are live at
+`resources.sfaf.org/event/<slug>/` and stop resolving when TEC is removed; the
+import creates events at different slugs and nothing maps one to the other.
+Whether that matters depends on what links to them, which the repository cannot
+say. The cheapest answer is a redirect table built from the export.
 
-**TWO FAQ CONTROLS ON THE EVENT EDITOR, AND ONE OF THEM IS AN EMPTY SHELL.**
-Found in 3.68.0, reported and not removed. The **FAQ sets** card above the form
-is the no-script fallback: `initFaqSetPicker()` reveals the live picker inside
-the FAQs card and then hides that card's **form**, which leaves the card's
-heading and its "Manage sets" link on screen with nothing under them. So with
-JavaScript working there are two FAQ set controls visible and one of them does
-nothing. **The fix is a decision, not a defect with an obvious answer:** hide
-the whole card when the picker goes live, or delete the card and move "Manage
-sets" beside the live picker, which is what I would do. `PROJECT.md` §1.
+**MARK HAS TO FILL IN THE CALENDAR HOME URL SETTING.** Until he does, "All
+Events" on an event page lands on the event archive, which is not a public
+surface. Settings, Display, Calendar home URL. `PROJECT.md` 1.
 
-**THE FAQ EDITORS DO NOT START ON PAGE LOAD, and it is at least two faults.**
-Reproduced twice on a GoFundMe Pro event opened from Pending: the answers show
-raw markup as text until somebody presses **Add FAQ**, which turns every box on
-the screen into an editor including the rows that were already there.
-**Investigated in 3.68.0 and deliberately not fixed**, because the third finding
-is that the code hides the reason. See the report and `PROJECT.md` §1 under
-"Rich text is a rule". The three findings:
+**WHAT THE TWO PUBLIC FORMS REQUIRE IS STILL MARK'S CALL.** The location half is
+answered: both forms land in Pending either way and 3.68.0 marks a request that
+arrived with no location. The rest of the inventory is in `PROJECT.md` 8. The
+constraint is that a field somebody cannot answer means an abandoned form.
 
-1. **Every FAQ answer takes the browser-started path**, `deferred()`, even rows
-   that exist when the page is built, while the description beside them is a
-   real `wp_editor()` that starts itself. That is why one works and the other
-   does not; they are not one mechanism.
-2. **The load pass and the Add pass differ by exactly one thing**, a
-   `setTimeout(..., 0)`, and the one that works is the deferred one.
-3. **`start()` swallows the exception with no console output.** Until that logs,
-   the underlying reason cannot be named from a browser, and `run()` exists
-   precisely so a failure is never silent.
+**THE COMMUNITY FORM'S TWO EMAIL FIELDS STILL NEED NAMING.** Both do unrelated
+jobs. `PROJECT.md` 8 has the table.
 
-**caladmin's "Listing detail" contact box is still the one that discards what
-somebody types.** 3.67.0 found it, 3.68.0 described the whole card and the three
-options, and **Mark has not chosen**. The recommendation is to make it three
-boxes writing the three keys, keeping the old single key read-only as the
-pre-3.47.0 fallback. `PROJECT.md` §1, "The Listing detail card, and its contact
-box", has the field table and why the other two options were rejected.
+**Four things the calendar publicly asserts that are untrue or incomplete**, from
+reading `SFAF_Seo`: shared images go out at 1024 rather than 1200 on the
+featured-image path, no image dimensions are declared, **a cancelled event's
+structured data still says `EventScheduled`**, and the address falls back to San
+Francisco and CA. `PROJECT.md` 3. The third of those is worth taking now that
+3.72.0 has made cancellation visible everywhere else.
 
-**THE COMMUNITY FORM'S TWO EMAIL FIELDS STILL NEED NAMING.** Half of what this
-blocked in 3.66.0 has shipped: **About you, Your email** takes up to five
-addresses as of 3.67.0 and they all reach the notification list, and the pending
-row shows what was submitted. What is undecided is what the two are CALLED.
-3.67.0 ships **"Your email, and anybody else who should get RSVPs"** on the
-first, which says what the field does and is longer than a label wants to be;
-**Contact for the event, Email** is still just "Email" under a legend carrying
-the whole of its meaning. `PROJECT.md` §8 has the table.
+**Should saving an imported event keep it in the queue?** Today **Save Draft**
+takes it out of the queue it was being reviewed on. The fix is one line and was
+deliberately not made. Workaround: use **Save these fields** on the queue itself.
 
-**WHAT THE TWO PUBLIC FORMS REQUIRE IS MARK'S CALL, AND NOTHING WAS CHANGED.**
-The full field-by-field inventory was the 3.67.0 hand-off. The shape of it:
-
-- **Community form, optional today:** venue choice, street/city/state/ZIP (the
-  street is required only when no venue is picked), venue website, capacity,
-  age restriction, registration link, contact email OR phone (one of the two is
-  required, neither on its own), picture, FAQs, notes.
-- **Staff form, optional today:** categories, series, repeat and repeat-until,
-  venue AND the "somewhere else" box (so a request can arrive with **no
-  location at all**, which the community form refuses), picture, upload, RSVP
-  and capacity, FAQ set, own FAQs, teams, notes.
-- **The constraint on the decision:** a field somebody cannot answer means an
-  abandoned form rather than an incomplete submission, and an image is often
-  the thing an external organizer does not have.
-- **The location half is answered for now.** Mark's call was that both forms
-  land in Pending either way, so nothing was made required and 3.68.0 instead
-  **marks an event that arrived with no location on the pending row**, using
-  the imports' existing state. The rest of the list is still open.
-
-**Four things the calendar publicly asserts that are untrue or incomplete.**
-Found by reading `SFAF_Seo` during 3.56.0, and deliberately not changed: each is
-a decision rather than a defect with an obvious fix. The full detail, including
-exactly which tags and fields, is in `PROJECT.md` §3 under "What a shared event
-link produces".
-
-- **Shared images go out at 1024 wide, not 1200.** Only on the featured-image
-  path, which passes through WordPress's `large` size. That is under Facebook's
-  and LinkedIn's 1200 recommendation, and every other image source returns its
-  URL untouched, so the width an unfurl gets depends on where the picture came
-  from. **This is separate from the 16:9 question** and worth settling first.
-- **No image dimensions are declared in the sharing tags.** No `og:image:width`
-  or `og:image:height`, so Facebook and LinkedIn fetch the image to work them
-  out, which is why a first share sometimes unfurls with no picture.
-- **A cancelled event still says it is going ahead.** `eventStatus` is always
-  `EventScheduled` in the structured data, including on an event
-  `SFAF_Cancellation` has marked cancelled, where schema.org has
-  `EventCancelled`.
-- **The address falls back to San Francisco and CA**, by splitting the location
-  on commas, so an event elsewhere with a one-part location is asserted to be in
-  San Francisco. `postalCode` is hardcoded empty.
-
-**Should saving an imported event keep it in the queue? Mark has not made this
-call.** Today the left button on an imported event is **Save Draft**, which sets
-the status to `draft` and takes the event **out of the pending queue it was
-being reviewed on**; the other button publishes it. There is no third option and
-no warning. The fix is one line, adding `uc_imported` to `$keep_status`, and it
-was deliberately not made in 3.49.1 because it changes which events stay in the
-queue after a save. **Workaround until then:** fill an imported event in one
-sitting, or use the **Save these fields** panel on the Pending queue itself,
-which writes those fields without touching the status. `PROJECT.md` §1.
-
-**Are ticketed events worth building at all?** GFMP already handles payment and
-a paid event can be a campaign imported here. Building it would mean money
-handling, refunds and PCI questions this plugin has never had.
-
-**Should "open events at their source" be the default?** Opt-in per block today.
-Switching it changes where every imported event's card sends a visitor on every
-existing embed, which is why it has not simply been done.
+**Are ticketed events worth building at all?** GFMP already handles payment.
+**Should "open events at their source" be the default?** Opt-in per block today,
+and switching it changes where every imported card sends a visitor.
 
 ## Queued work
 
-1. **The `/caladmin` design audit.** 106 findings against `portal.css`, never
-   written down. **3.64.0 took the control chunk** and left it enumerated as a
-   build gate rather than a list: `.claude/control-standard-audit.php`. What is
-   left is spacing, density and type on individual screens.
-2. **Simplify the event editor.** A parade of checkboxes, and four more cards
-   since 3.35.0. A rendering-order and disclosure problem, not a data-model one.
-   The control standard went first on purpose: it is a property of being a
-   control, so moving controls between cards cannot undo it.
-3. **Tailwind greys are still in `portal.css`.** `#F3F4F6`, `#6B7280`,
-   `#4B5563`, `#D1D5DB`, `#E5E7EB` carry the locked and disabled states and are
-   in neither the palette nor `DESIGN.md`'s derived neutrals. Nothing looks
-   wrong, so 3.64.0 left them: a separate sweep with its own arithmetic.
+**The three standing jobs moved to `PROJECT.md` 8 in 3.72.0**, under "The
+three jobs queued behind everything else": the rest of the caladmin design
+audit, simplifying the event editor, and the Tailwind greys still in
+`portal.css`. None of them is about today, and carrying them here release after
+release is what kept this file at twice its cap.
 
 ## Before touching anything
 
-**Read `PROJECT.md` §7.** It opens with the four standing hazards that used to
-be listed here (what Approve sends and to whom, no unsaved-work warning anywhere
-in caladmin, a cancelled event still being `publish`, and why the confirm and
-unsubscribe pages can have no stylesheet enqueued onto them), and continues with
-the lessons that each cost more than one build. They moved in 3.54.0 because
-none of them is about today.
+**Read `PROJECT.md` 7.** It opens with the four standing hazards and continues
+with the lessons that each cost more than one build.
 
 ---
 
@@ -374,5 +158,4 @@ none of them is about today.
 ships moves something out of "in flight". A decision moves out of "open". An
 answer from Aaron or Val, and a finished test, are both deletions from
 `TESTING.md`, and its count at the top of that file moves with them. If what you
-are writing would still be true in six months, it belongs in `PROJECT.md`
-instead.*
+are writing would still be true in six months, it belongs in `PROJECT.md`.*
