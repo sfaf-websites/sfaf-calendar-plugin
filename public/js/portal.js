@@ -1,6 +1,50 @@
 /**
  * SFAF Calendar — /caladmin portal (standalone, vanilla JS).
+ *
+ * THIS FILE IS FOUR TOP-LEVEL IIFEs, NOT ONE, and anything shared between them
+ * has to live out here. That is not a style note: 3.72.0 added
+ * ucDismissOnBackdrop() inside the first one and called it from the third and
+ * the fourth, which are its SIBLINGS and cannot see into it. Both calls threw
+ * ReferenceError, and because each throws after preventDefault() and after the
+ * panel has been moved into a not-yet-shown <dialog>, the visible result was a
+ * control that did nothing at all: "Get a form link" on the dashboard, and
+ * Approve and Reject on the pending queue.
+ *
+ * NEITHER BUILD GATE COULD SEE IT. `node --check` proves the file parses and a
+ * ReferenceError is a runtime fact. `.claude/js-scope-test.js` is the check that
+ * closes it: it reads every top-level scope, and every call to a name this file
+ * itself declares must be made from a scope that can see the declaration.
  */
+
+/* CLICKING THE DIM CLOSES IT, AND THAT IS THE ONE THING <dialog> DOES NOT GIVE
+ * US (3.72.0).
+ *
+ * Every overlay in this file is already a real <dialog> opened with
+ * showModal(), so Escape, the focus trap and the inert page all come from the
+ * browser. Light dismiss does not: a modal <dialog> ignores a click on its own
+ * ::backdrop, which is why the cancel confirmation read as a box with no way
+ * out even though Escape has always closed it.
+ *
+ * THE TEST IS `e.target === dialog`, and it works because the backdrop is the
+ * dialog's own pseudo-element: a click that lands on the dim reports the dialog
+ * itself as the target, while a click on anything inside reports that child.
+ * Every dialog here has `padding: 0` and one child filling it, so there is no
+ * strip of dialog to mis-hit. This is the same test the public RSVP and follow
+ * dialogs have used since 3.70.1, moved here rather than written a second time.
+ *
+ * close() WITH NO ARGUMENT leaves returnValue as it was, which is empty on a
+ * dialog nobody has answered, so every caller reads a dismissal exactly as it
+ * reads Escape. Nothing is sent and nothing is submitted.
+ *
+ * IT LIVES AT FILE SCOPE BECAUSE FOUR IIFEs CALL IT. See the header above for
+ * what happened when it did not.
+ */
+function ucDismissOnBackdrop(dialog) {
+    dialog.addEventListener('click', function (e) {
+        if (e.target === dialog) { dialog.close(); }
+    });
+}
+
 (function () {
     'use strict';
 
@@ -1593,11 +1637,9 @@
      * close() WITH NO ARGUMENT leaves returnValue as it was, which is '' on a
      * dialog nobody has answered, so every caller below reads a dismissal
      * exactly as it reads Escape. Nothing is sent and nothing is submitted. */
-    function ucDismissOnBackdrop(dialog) {
-        dialog.addEventListener('click', function (e) {
-            if (e.target === dialog) { dialog.close(); }
-        });
-    }
+    /* THE DECLARATION IS AT FILE SCOPE, ABOVE THIS IIFE. See the note there:
+     * three of the four dialogs that call it are in OTHER top-level IIFEs and
+     * could not see it here. */
 
     /* A REAL DIALOG, NOT window.confirm.
      *

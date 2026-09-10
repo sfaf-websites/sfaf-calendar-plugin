@@ -5315,10 +5315,52 @@ class SFAF_Portal {
                 <?php if ( empty( $imported ) ) : ?>
                     <p class="uc-muted"><?php echo esc_html( $label ); ?> has no FAQs on this campaign yet.</p>
                 <?php else : ?>
+                    <?php
+                    /*
+                     * THE LOCKED ANSWER GOES THROUGH THE LOCKED RENDERER NOW
+                     * (3.73.0).
+                     *
+                     * WHAT WAS ON SCREEN. Raw markup, as literal text: an
+                     * imported answer is stored as HTML, because
+                     * SFAF_Sources::sync_faqs() sanitises it with
+                     * SFAF_Rich_Text::sanitize() and that is wp_kses_post(),
+                     * which keeps the tags. This block then hand-wrote its own
+                     * <textarea> and put that HTML through esc_textarea(),
+                     * which escapes it so the browser shows the tags.
+                     *
+                     * EVERY OTHER LOCKED RICH TEXT FIELD IN THE PLUGIN ALREADY
+                     * DID THE RIGHT THING, and this was the one that did not.
+                     * SFAF_Rich_Text::render() with locked => true runs the
+                     * value through to_plain(), which is sfaf_flatten_html():
+                     * a space where a block tag was, then the tags removed. So
+                     * the reader gets the prose.
+                     *
+                     * IT WAS THREE RELEASES OF LOOKING IN THE WRONG PLACE. The
+                     * symptom reads as "the FAQ editors do not start", and
+                     * these rows are not editors and are not meant to be: they
+                     * are locked because a fetch owns them and an edit here
+                     * would be overwritten within the hour. What was wrong was
+                     * only ever how they were DISPLAYED.
+                     *
+                     * NOT A CONTROL, SO NOT A CONTROL'S MARKUP. It stays a
+                     * disabled textarea rather than becoming a paragraph,
+                     * because it sits in a row beside a disabled question input
+                     * and the pair has to read as one row of the same list.
+                     */
+                    ?>
                     <?php foreach ( $imported as $f ) : ?>
                         <div class="uc-repeater-row uc-faq-row uc-faq-row-locked">
                             <input type="text" value="<?php echo esc_attr( $f['question'] ); ?>" disabled aria-label="Question, from <?php echo esc_attr( $label ); ?>, not editable here" />
-                            <textarea rows="2" disabled aria-label="Answer, from <?php echo esc_attr( $label ); ?>, not editable here"><?php echo esc_textarea( $f['answer'] ); ?></textarea>
+                            <?php SFAF_Rich_Text::render(
+                                '',
+                                '',
+                                (string) $f['answer'],
+                                array(
+                                    'rows'       => 2,
+                                    'locked'     => true,
+                                    'aria_label' => 'Answer, from ' . $label . ', not editable here',
+                                )
+                            ); ?>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>

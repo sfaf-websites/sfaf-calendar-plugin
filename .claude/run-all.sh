@@ -94,6 +94,19 @@ echo "=== the updater ==="
 run "updater --self-test" php .claude/updater-test.php --self-test
 
 echo
+# JAVASCRIPT SCOPE. portal.js is four top-level IIFEs and a helper declared in
+# one is invisible to the others. 3.72.0 did exactly that and killed Approve,
+# Reject and Get a form link; node --check proves a file parses and a
+# ReferenceError is a runtime fact, so nothing else here could see it.
+echo "=== javascript scope ==="
+run "js-scope --self-test" node .claude/js-scope-test.js --self-test
+
+echo
+# The FAQ answers, at page load rather than after Add FAQ.
+echo "=== rich text at load ==="
+run "rich-text-start --self-test" node .claude/rich-text-start-test.js --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

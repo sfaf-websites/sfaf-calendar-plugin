@@ -139,20 +139,28 @@ class SFAF_Rich_Text {
      *                        lowercase letters, numbers and dashes only.
      * @param string $name    The POST field name.
      * @param string $content Stored value.
-     * @param array  $args    'rows', 'locked'.
+     * @param array  $args    'rows', 'locked', 'aria_label'.
      */
     public static function render( $id, $name, $content, $args = array() ) {
-        $args = array_merge( array( 'rows' => 8, 'locked' => false ), $args );
+        $args = array_merge( array( 'rows' => 8, 'locked' => false, 'aria_label' => '' ), $args );
 
         /*
          * A LOCKED FIELD IS A TEXTAREA, because a disabled TinyMCE is not a
          * thing: the toolbar stays live and only the fallback carries the
          * attribute. A source-owned description is shown, not edited.
+         *
+         * IT TAKES AN aria-label FROM 3.73.0, because the locked FAQ answers
+         * moved onto this path and they sit in a row with no visible label of
+         * their own: a question input beside an answer box, both disabled. The
+         * description does have a visible label and passes nothing, so it is
+         * unchanged. A locked field with neither is the one case worth
+         * refusing to produce, and this is the argument that stops it.
          */
         if ( $args['locked'] ) {
             printf(
-                '<textarea rows="%d" disabled>%s</textarea>',
+                '<textarea rows="%d" disabled%s>%s</textarea>',
                 (int) $args['rows'],
+                ( '' !== $args['aria_label'] ) ? ' aria-label="' . esc_attr( $args['aria_label'] ) . '"' : '',
                 esc_textarea( self::to_plain( $content ) )
             );
             return;
