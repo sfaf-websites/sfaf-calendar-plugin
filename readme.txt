@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.72.0
+Stable tag: 3.73.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.73.0 =
+
+**3.72.0 was released correctly and the site did not offer it.** Every static question passed: the release was real, the tag was right, the asset was named correctly, `asset_url()` accepted it, and `inject()` would have offered it. What was wrong is that `inject()` never saw any of it.
+
+**`latest()` has taken a `$force` argument since 3.70.0 and nothing has ever passed `true`.** Both call sites ask without it, so every answer this plugin has ever given about whether an update exists came out of a twelve-hour cache that only an install could clear. **A dead parameter is invisible to every check this project had:** the linter proves it parses, the callable audit proves the arity matches, and neither can ask whether anybody ever uses it.
+
+**WordPress's own "Check again" could never have worked, and both build scripts said it would.** It calls `wp_clean_update_cache()`, which deletes `update_core`, `update_plugins` and `update_themes` and does not touch `sfaf_updater_release`. So the forced check fires our filter, our filter answers from its own cache, and WordPress is told what it was told twelve hours ago. The closing line of `publish.sh` and `build-zip.sh` promised "or at once from Dashboard > Updates". That was false and somebody acted on it.
+
+**There is a control now, on the Plugins screen.** **Check for updates**, beside Deactivate, gated on `update_plugins` and behind a nonce. It asks GitHub whatever the cache says, clears WordPress's own transient so its check cannot short-circuit on `last_checked`, re-runs that check, and returns to the Plugins screen saying what it found. It is on the Plugins screen and not in caladmin because updating the plugin is an administrator concern, which is the 3.27.0 rule.
+
+**It names both versions, and it tells "no update" apart from "the check failed".** Those are different facts: one means wait, the other means look at the network, and a control that answers both with silence is the thing that made this hard to diagnose in the first place.
+
+**Installing a plugin clears the cache now, not only updating it.** `forget()` asked for `'update' === $options['action']` and nothing else, and **uploading a zip on the Plugins screen is `install`**. That is how every release before 3.70.0 reached this site and how 3.72.0 reached it in the end, so the route used most often was the one route that left a stale answer behind. It no longer asks whether the upgrade succeeded either: a half finished install is exactly when the cached answer is least trustworthy, and clearing costs one request on the next check.
+
+**The forced check has no `delete()` in front of its fetch, and that is deliberate.** It had one, and it had to come out: clearing the cache first makes an unforced `latest()` fetch anyway, so the `true` became decoration and a regression that dropped it changed nothing observable. The checker below plants exactly that, and it went uncaught until the force carried the whole job. Nothing is lost, because every path through `latest( true )` writes the cache back.
+
+**`.claude/updater-test.php` runs the updater rather than reading it.** WordPress and the network are stubbed and the class is the real file; the transients are an array the test reads back afterwards, so "the cache was cleared" is observed. It plants six regressions and requires all six caught, including the one that is this fault exactly. Two of the six were missed by the first version of the checker and both assertions were rewritten until they failed on purpose.
 
 = 3.72.0 =
 

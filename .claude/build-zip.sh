@@ -74,5 +74,6 @@ To publish this as an update, from the PUBLIC repository clone:
         --title "$VERSION" \\
         --notes-file <(sed -n '/^= $VERSION =\$/,/^= /p' "$ROOT/readme.txt" | sed '\$d')
 
-Sites see it within twelve hours, or at once from Dashboard > Updates.
+Sites see it within twelve hours on their own.
+To install it now: Plugins > SFAF Calendar > Check for updates.
 RELEASE

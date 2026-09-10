@@ -3811,6 +3811,59 @@ half hour. For hourly data that is fine, and no special handling is needed.
    cannot catch a half-written file? A partial JSON read on the hour is a
    plausible and silent failure mode.
 
+### A parameter nothing passes is a feature nothing has (3.73.0)
+
+**WHAT HAPPENED.** 3.72.0 was released correctly and resources.sfaf.org did not
+offer it. The release was real, the tag right, the asset correctly named,
+`asset_url()` accepted it, and `inject()` would have offered it. Every one of
+those was checked and every one passed.
+
+**`inject()` never saw any of it.** `SFAF_Updater::latest()` has taken a
+`$force` argument since 3.70.0, and **nothing in the codebase ever passed
+`true`**. Both call sites, `inject()` and `details()`, ask without it. So every
+answer this plugin has given about whether an update exists came from a
+twelve-hour cache that only an install could clear.
+
+**THIS IS THE 3.64.1 SHAPE AGAIN, ONE LEVEL ALONG.** There, the series prefill
+card was rendered by a method whose arguments were undefined at the call, so the
+card never drew: the call existed, the method existed, the arity matched, the
+file parsed. Here the escape hatch existed, was correct, and was never reached.
+
+> **NEITHER BUILD GATE CAN SEE THIS AND NEITHER EVER WILL.** The linter proves a
+> file PARSES. The callable audit proves what it CALLS exists and that the
+> arity matches. **"Does anything ever pass this argument" is a third question**,
+> and it is not a variant of either: an unused parameter is valid PHP with a
+> matching arity at every call site. The only thing that finds it is running the
+> feature and observing the outcome, which is what `.claude/updater-test.php`
+> does.
+
+**AND THE TOOLING TOLD THE OPERATOR THE OPPOSITE.** `publish.sh` and
+`build-zip.sh` both ended with "Sites see it within twelve hours, or at once
+from Dashboard > Updates". WordPress's **Check again** calls
+`wp_clean_update_cache()`, which deletes `update_core`, `update_plugins` and
+`update_themes` and **does not touch `sfaf_updater_release`**. Our filter fires
+and answers from our own cache. Pressing it could never work.
+
+**THE LESSON, WHICH IS NOT "ADD A CONTROL".** A cache with no override is a
+decision to be wrong for up to its TTL, and that is defensible right up to the
+day somebody has just released and wants to install. **Every cache this plugin
+adds from here needs the answer to "how does a person force it" written down at
+the same time as the TTL**, and needs something that actually calls it.
+
+**A SECOND ONE CAME OUT OF THE SAME READING.** `forget()` cleared the cache on
+`'update' === $options['action']` and nothing else, and **uploading a zip on the
+Plugins screen is `install`**. That is how every release before 3.70.0 reached
+this site, so the route used most often was the route that left the cache stale.
+
+**AND A THIRD, FROM THE CHECKER ITSELF.** The first version of
+`updater-test.php` planted the loss of `$force` and did not catch it, because
+`run_check()` deleted the cache before fetching, which makes an unforced
+`latest()` fetch anyway. **The redundancy masked the regression.** The delete
+came out so the force carries the whole job, and the plant then failed as it
+should. Two of six plants were missed on the first run; both assertions were
+rewritten until they failed on purpose. **A checker that has never failed is not
+evidence**, which is the rule this project already had and which paid again here.
+
 ### Three things investigated in 3.72.0 and deliberately not built
 
 Each was asked for as an investigation. They are here rather than in the

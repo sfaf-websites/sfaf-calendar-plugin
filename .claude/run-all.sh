@@ -85,6 +85,15 @@ echo "=== the modal reader ==="
 run "modal-toplayer --self-test" php .claude/modal-toplayer-test.php --self-test
 
 echo
+# THE UPDATER, which is the one subsystem whose failure is invisible on the
+# site: a release goes out, nothing offers it, and every static check passes.
+# 3.72.0 shipped correctly and was not offered for exactly that reason, so this
+# runs the forced check and reads the transients afterwards rather than reading
+# the source and believing it.
+echo "=== the updater ==="
+run "updater --self-test" php .claude/updater-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

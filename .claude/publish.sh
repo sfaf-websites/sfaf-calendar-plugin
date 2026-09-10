@@ -206,4 +206,13 @@ fi
 
 echo
 echo "Released: $HTML"
-echo "Sites see it within twelve hours, or at once from Dashboard > Updates."
+echo
+# WHAT THIS LINE USED TO SAY WAS FALSE, and somebody acted on it (3.73.0).
+# "or at once from Dashboard > Updates" was wrong: WordPress's own Check again
+# calls wp_clean_update_cache(), which deletes update_core, update_plugins and
+# update_themes and does NOT touch sfaf_updater_release. So the forced check
+# fired our filter and our filter answered from its own twelve-hour cache.
+# Pressing it could never work. The plugin has a control that does now, and
+# this says where it is rather than pointing at WordPress's.
+echo "Sites see it within twelve hours on their own."
+echo "To install it now: Plugins > SFAF Calendar > Check for updates."

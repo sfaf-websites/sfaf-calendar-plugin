@@ -6,7 +6,7 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-09, at 3.72.0.
+**Last updated:** 2026-09-10, at 3.73.0.
 
 > **THIS FILE SAT THREE RELEASES STALE**, describing 3.69.0 while 3.70.0, 3.70.1
 > and 3.71.0 had shipped. None of those three commits touched it or `TESTING.md`,
@@ -18,11 +18,17 @@ here that is still true in six months belongs in one of those instead.
 
 ## What shipped last
 
-**3.72.0**, built as `sfaf-calendar-3.72.0.zip` in the project root, committed
+**3.73.0**, built as `sfaf-calendar-3.73.0.zip` in the project root, committed
 and **pushed to `origin/production-2.0`**. Working tree clean.
+
+> **3.72.0 IS ON THE SITE, INSTALLED BY HAND.** It was released correctly and
+> never offered, for the reason 3.73.0 fixes. So the site is on 3.72.0 and
+> **3.73.0 has not been released**: releasing is a separate word, and the
+> hand-off below says what wants doing first.
 
 | | |
 |---|---|
+| **3.73.0** | **The updater could not be told to look, and nothing ever told it.** `latest()` has taken a `$force` argument since 3.70.0 and **no call site has ever passed `true`**, so every answer came from a twelve-hour cache only an install could clear. WordPress's own **Check again** cannot help: it clears its own transients and not ours. There is a **Check for updates** link on the Plugins screen now, and both build scripts stop claiming Dashboard > Updates would do it. `forget()` clears on **install** as well as update, because uploading a zip is `install` and that is how most releases have reached this site. `.claude/updater-test.php` runs the thing and plants six regressions. |
 | **3.72.0** | **The cancel and remove cluster, and the batch that was waiting.** The cancel dialog offered two buttons reading "Cancel the event" and "Cancel the event"; there is one action now, and clicking outside a caladmin dialog dismisses it, which was the thing actually missing rather than Escape. **Remove on the events list promised a permanence the code never had** and is refused on a registered event, so the row says so and offers Cancel instead. **A cancelled event now says "Cancelled" on the list card, the month grid and the sidebar**, not just its own page. A second message box in the confirmation, for registrants only. **Remove from the calendar** beside Put it back on, which sends nothing. Tick boxes on the bulk publish. The empty FAQ set card is gone. **The Listing detail contact box wrote a key nothing read**, and is three boxes now. Five-minute time steps. **The staff form asks the real repeat question**, captured and not armed. The series is asked first on every screen. "Use this image" on the pending row, and uploads under 1200 wide refused. Three submission notifications, one of them new. |
 | **3.71.0** | **A series' upcoming drafts publish in one press.** The count and the date range are on the button, four kinds of row are never touched, and the set is re-decided at the press rather than taken from a hidden field. 3.72.0 added the per-row ticks. |
 | **3.70.1** | **The registration dialog opened under the site header, and it was one cause with two symptoms.** Both modals are real `<dialog>` elements in the top layer now, immune to whatever the theme declares. |
@@ -36,9 +42,11 @@ and **pushed to `origin/production-2.0`**. Working tree clean.
   **`TESTING.md` 2.18 and 2.19 are deliberately still there:** deleting the
   import folder from the server and reading a no-mail notification card are
   separate actions and neither has been reported back on.
-- **THE UPDATER HAS COMPLETED A REAL CYCLE.** 3.70.1 and 3.71.0 were released,
-  the Plugins screen offered 3.71.0, Mark pressed update. **resources.sfaf.org
-  runs 3.71.0** as of this writing. The empty 3.70.0 release is deleted.
+- **THE UPDATER COMPLETED ONE REAL CYCLE AND THEN STOPPED WORKING.** 3.70.1 and
+  3.71.0 were released, the Plugins screen offered 3.71.0, Mark pressed update.
+  **3.72.0 was released correctly and never offered**, and went on by hand. It
+  worked once *because* an install had just cleared the cache, which was the
+  only thing that could. Fixed in 3.73.0; see `PROJECT.md` 7.
 - **3.71.0's BULK PUBLISH HAS BEEN SEEN** on a real series and reads correctly.
 
 **The scheduled path works end to end.** A morning-of reminder went out
@@ -91,13 +99,27 @@ the **Cycle to Zero series does not exist** and the community form's address is
 that series' slug; and **one test event is live**, post 60379, `pending`, badged
 Community submission.
 
+**THE CACHE DIAGNOSIS WAS NEVER CONFIRMED ON THIS SITE AND NOW CANNOT BE.**
+3.72.0 was installed by hand, which fires `upgrader_process_complete` and, from
+3.73.0, clears the cache. So the stale value that would have proved it is gone,
+and the prediction it made, that the site would offer 3.72.0 on its own within
+twelve hours, can no longer be observed either way. **It is a deduction from the
+code that fits every symptom and it was not tested.** The one alternative that
+would produce the same symptom is a GitHub rate limit on the host's IP, which
+would have cleared within an hour rather than twelve; nothing distinguishes them
+now. Treat 3.73.0 as the fix for a diagnosed cause, not a confirmed one, and if
+a future release is again not offered, **say so rather than assuming this was
+it**: `TESTING.md` 1.54 is the control that would settle it in one press.
+
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 76 items.** Quick 53, needs real
+**`TESTING.md` holds the manual testing backlog, 77 items.** Quick 54, needs real
 conditions 20, blocked on other people 3. Nothing in the build can settle any of
-them. **Fourteen are new in 3.72.0**, and two want doing on the day it installs:
-1.46, because the FAQ editors' console message is the only route to diagnosing
-that fault, and 2.23, because 3.72.0 changes who receives an existing email.
+them. **Fifteen are new since 3.71.0**, and three want doing on the day 3.73.0
+installs: **1.54**, the forced update check, which is the control this whole
+release exists for; **1.46**, because the FAQ editors' console message is the
+only route to diagnosing that fault; and **2.23**, because 3.72.0 changed who
+receives an existing email.
 
 ## Open decisions
 
