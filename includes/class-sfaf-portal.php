@@ -644,6 +644,75 @@ class SFAF_Portal {
              * and a deleted occurrence came back on the next save unless the
              * date was recorded as cancelled. Nothing regenerates any more, so
              * deleting an event deletes an event and nothing brings it back. */
+            /*
+             * ADD ONE CATEGORY TO EVERY TICKED EVENT (3.73.0).
+             *
+             * ADDS, NEVER REPLACES. wp_set_post_terms() with $append = true,
+             * which is the whole of the promise the control makes twice on
+             * screen. Categories have been multi-select since 3.8.0, so this
+             * is not fighting the data model.
+             *
+             * PERMISSION IS ASKED PER ID, AT THE WRITE. The events list draws
+             * only what the viewer can see, and that is a render rather than a
+             * refusal: a POST is a request anybody can construct, and this one
+             * takes a list of ids. can_edit_event() is the same gate every
+             * other route asks, and an id it refuses is dropped rather than
+             * failing the whole run, because the other forty are legitimate.
+             *
+             * NO STATUS RULE, AND THAT IS DELIBERATE. See
+             * render_bulk_categorize() for why the bulk publish exclusions
+             * were asked about rather than copied: publishing reaches the
+             * public and filing does not.
+             *
+             * THE MARKER TELLS "NONE TICKED" FROM "NO PICKER". Without it an
+             * empty bulk_ids[] is byte-identical to a form that never carried
+             * the control, and the honest answer to unticking everything is to
+             * do nothing.
+             */
+            case 'bulk_categorize':
+                if ( ! isset( $_POST['uc_bulk_cat_present'] ) ) {
+                    $this->redirect( 'events', array( 'msg' => 'bulk_cat_none' ) );
+                }
+
+                $term_id = isset( $_POST['bulk_category'] ) ? intval( $_POST['bulk_category'] ) : 0;
+                if ( ! $term_id || ! SFAF_Categories::exists( $term_id ) ) {
+                    $this->redirect( 'events', array( 'msg' => 'bulk_cat_failed' ) );
+                }
+
+                $wanted = isset( $_POST['bulk_ids'] )
+                    ? array_map( 'intval', (array) wp_unslash( $_POST['bulk_ids'] ) )
+                    : array();
+                if ( empty( $wanted ) ) {
+                    $this->redirect( 'events', array( 'msg' => 'bulk_cat_none' ) );
+                }
+
+                $did     = 0;
+                $refused = 0;
+                foreach ( array_unique( $wanted ) as $bulk_id ) {
+                    $bulk_post = get_post( $bulk_id );
+                    if ( ! $bulk_post || 'uc_event' !== $bulk_post->post_type ) {
+                        continue;
+                    }
+                    if ( ! $this->can_edit_event( $user, $bulk_post ) ) {
+                        $refused++;
+                        continue;
+                    }
+                    /* $append = true. The third argument is the whole rule. */
+                    $set = wp_set_post_terms( $bulk_id, array( $term_id ), SFAF_Categories::TAXONOMY, true );
+                    if ( ! is_wp_error( $set ) ) {
+                        $did++;
+                    }
+                }
+
+                $bulk_term = SFAF_Categories::get( $term_id );
+                $this->redirect( 'events', array(
+                    'msg'     => 'bulk_cat_done',
+                    'did'     => $did,
+                    'refused' => $refused,
+                    'cat'     => $bulk_term ? $bulk_term->name : '',
+                ) );
+                break;
+
             case 'trash_event':
                 $event_id = intval( $_POST['event_id'] );
                 $post     = get_post( $event_id );
@@ -3006,6 +3075,8 @@ class SFAF_Portal {
         $map = array(
             'saved'          => 'Event saved.',
             'trashed'        => 'Event removed.',
+            'bulk_cat_none'  => 'Nothing was changed. Tick the events you want the category added to, then press the button.',
+            'bulk_cat_failed' => 'That category could not be applied. Choose one from the list and try again.',
             'delete_needs_cancel' => 'This event has people registered, so it cannot be deleted. Cancel it instead: that keeps the registrations, closes new ones, stops the reminders, and offers to tell everybody who signed up. Once it is cancelled you can delete it.',
             'series_needs_cancel' => 'Some events in this series have people registered, so deleting them is refused. Cancel them instead, below. Once they are cancelled and the people who signed up have been told, the series can be deleted.',
             'cancelled'      => 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it.',
@@ -3191,6 +3262,43 @@ class SFAF_Portal {
             $said .= ' Past dates were not touched.';
             echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
             return;
+        }
+
+        /*
+         * THE BULK CATEGORY OUTCOME NAMES THE CATEGORY AND THE COUNT
+         * (3.73.0), because "Done" over a list of 259 rows is not an
+         * answer: the whole risk of a bulk action is doing it to the wrong
+         * set, and the only thing that settles it is being told what
+         * happened.
+         *
+         * REFUSALS ARE SAID SEPARATELY AND ONLY WHEN THERE WERE ANY. A
+         * contributor who ticks Select all on a page holding somebody
+         * else's events gets the ones they may edit and a count of the
+         * ones they may not, rather than a silent partial success.
+         */
+        if ( 'bulk_cat_done' === $key ) {
+            $did     = isset( $_GET['did'] ) ? (int) $_GET['did'] : 0;
+            $refused = isset( $_GET['refused'] ) ? (int) $_GET['refused'] : 0;
+            $cat     = isset( $_GET['cat'] ) ? sanitize_text_field( wp_unslash( $_GET['cat'] ) ) : '';
+
+            $said = sprintf(
+                /* translators: 1: how many events, 2: event or events, 3: the category name. */
+                _n( 'Added to %1\$d %2\$s.', 'Added to %1\$d %2\$s.', $did ),
+                $did,
+                _n( 'event', 'events', $did )
+            );
+            if ( '' !== $cat ) {
+                $said = sprintf( '%s added to %d %s.', $cat, $did, _n( 'event', 'events', $did ) );
+            }
+            $said .= ' They kept the categories they already had.';
+            if ( $refused > 0 ) {
+                $said .= sprintf(
+                    /* translators: %d: how many events were skipped. */
+                    _n( ' %d was not yours to change and was skipped.', ' %d were not yours to change and were skipped.', $refused ),
+                    $refused
+                );
+            }
+            return $said;
         }
 
         if ( 'schedule_published' === $key ) {
@@ -3714,6 +3822,22 @@ class SFAF_Portal {
                 $date = get_post_meta( $id, '_uc_event_date', true );
                 $st   = get_post_status( $id ); ?>
                 <tr>
+                    <?php if ( ! $plain ) : ?>
+                        <td class="uc-col-tick">
+                            <?php
+                            /*
+                             * ASSOCIATED BY THE form ATTRIBUTE, NOT BY BEING
+                             * INSIDE ONE. These rows already contain their own
+                             * forms for Duplicate and Remove, and forms cannot
+                             * nest. form.elements is what portal.js reads,
+                             * which is exactly what the association is for.
+                             */
+                            ?>
+                            <input type="checkbox" name="bulk_ids[]" value="<?php echo (int) $id; ?>"
+                                   form="uc-bulk-cat" data-uc-tick-one
+                                   aria-label="<?php echo esc_attr( 'Select ' . ( get_the_title( $id ) ?: 'this event' ) ); ?>" />
+                        </td>
+                    <?php endif; ?>
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                     <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php
@@ -4450,6 +4574,7 @@ class SFAF_Portal {
             if ( $public ) {
                 $this->public_events_table( $ids );
             } else {
+                $this->render_bulk_categorize( $user, $ids );
                 $this->events_table( $ids, $user, $sort, $filters );
             }
             ?>
@@ -4674,6 +4799,115 @@ class SFAF_Portal {
         <?php
     }
 
+    /**
+     * Add one category to every ticked event.
+     *
+     * WHY IT EXISTS. WordPress's own bulk edit does this and contributors and
+     * editors never see wp-admin, so for most of the people who maintain this
+     * calendar it is not available at all. Categorising a term's worth of
+     * imported drafts one event at a time is not a thing anybody is going to
+     * do.
+     *
+     * IT ADDS. It does not replace, and the control says so twice: on the
+     * button and in the confirmation. wp_set_post_terms() with $append = true
+     * is the whole of that guarantee, and categories have been multi-select
+     * since 3.8.0 so there is nothing here fighting the data model.
+     *
+     * WHICH ROWS IT MAY REACH: EVERY ROW THE VIEWER CAN ALREADY EDIT, and
+     * that is deliberately NOT the bulk publish's list of exclusions.
+     *
+     * Publishing is refused on a past date, an event with no date, an import,
+     * an event that vanished at its source and a submission awaiting review.
+     * Every one of those rules exists because publishing puts an event on the
+     * PUBLIC CALENDAR, which is irreversible in the way that matters: somebody
+     * may see it. Adding a category changes how an event is filed. It changes
+     * no status, publishes nothing, and on an event that is not public it
+     * reaches nobody at all.
+     *
+     * So each exclusion was asked about rather than copied:
+     *
+     *   . A PAST EVENT. Filing last March's workshop under Workshops is
+     *     useful and harmless. Allowed.
+     *   . A SUBMISSION AWAITING REVIEW. The reviewer wants it categorised
+     *     BEFORE approving, which is the moment it goes public. Refusing here
+     *     would mean doing it one at a time on the queue instead. Allowed.
+     *   . AN IMPORTED EVENT. Category is a manager-owned field on every
+     *     adapter: no source declares it, the manager panel offers it, and a
+     *     fetch never overwrites it. This is the same write that panel makes,
+     *     in bulk. Allowed, and the $offered guarantee is untouched.
+     *   . THE QUEUES. `uc_imported` and `uc_dismissed` are not in
+     *     editable_statuses(), so they have never been in $ids and need no
+     *     rule. Not excluded, because they cannot arrive.
+     *
+     * WHAT IS ENFORCED IS PERMISSION, and it is enforced at the write rather
+     * than by drawing fewer boxes: can_edit_event() for every id, which is the
+     * same gate every other route asks. A contributor sees only their own
+     * events here, and a posted id naming somebody else's is dropped.
+     *
+     * NOTHING RENDERS WITH NO CATEGORIES TO CHOOSE, because a picker over an
+     * empty list is a control that cannot do anything.
+     *
+     * @param WP_User $user
+     * @param int[]   $ids The rows on this page, which is what a tick can reach.
+     */
+    private function render_bulk_categorize( $user, $ids ) {
+        $cats = SFAF_Categories::all();
+        if ( empty( $cats ) || empty( $ids ) ) {
+            return;
+        }
+        $n = count( $ids );
+        ?>
+        <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>"
+              class="uc-bulk-cat" id="uc-bulk-cat" data-uc-tick-picker>
+            <input type="hidden" name="uc_action" value="bulk_categorize" />
+            <?php
+            /*
+             * THE MARKER, so an empty list of ticks means "none of them"
+             * rather than "this form did not ask". Same discipline as every
+             * other shared control on these screens.
+             */
+            ?>
+            <input type="hidden" name="uc_bulk_cat_present" value="1" />
+            <?php wp_nonce_field( 'uc_portal_bulk_categorize', 'uc_nonce' ); ?>
+
+            <label class="uc-field uc-bulk-cat-pick">
+                <span class="uc-field-label">Add a category to the ticked events</span>
+                <select name="bulk_category" required>
+                    <option value="">Choose a category</option>
+                    <?php foreach ( $cats as $term ) : ?>
+                        <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <div class="uc-bulk-cat-go">
+                <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                        data-uc-tick-submit
+                        data-uc-confirm="<?php echo esc_attr( sprintf(
+                            'Add that category to %d %s? They keep the categories they already have.',
+                            $n,
+                            _n( 'event', 'events', $n )
+                        ) ); ?>"
+                        data-uc-tick-confirm="Add that category to {n} {noun}? They keep the categories they already have."
+                        data-uc-tick-word="events"
+                        data-uc-tick-word-one="event">
+                    Add to <span data-uc-tick-count><?php echo (int) $n; ?></span>
+                    <span data-uc-tick-noun><?php echo esc_html( _n( 'event', 'events', $n ) ); ?></span>
+                </button>
+                <?php
+                /*
+                 * SAID ON THE SCREEN AND NOT ONLY IN THE CONFIRMATION. The
+                 * one thing somebody needs to know before ticking 40 boxes is
+                 * that this is not a replace, and a sentence they meet only
+                 * after pressing is a sentence they meet too late.
+                 */
+                ?>
+                <span class="uc-hint">Adds it. Nothing already on an event is removed or changed.</span>
+            </div>
+        </form>
+        <?php
+    }
+
     private function events_table( $ids, $user, $sort = null, $filters = null ) {
         if ( empty( $ids ) ) {
             echo '<p class="uc-empty">No events found.</p>';
@@ -4689,6 +4923,28 @@ class SFAF_Portal {
         ?>
         <table class="uc-table">
             <thead><tr>
+                <?php
+                /*
+                 * THE TICK COLUMN IS ON THE EVENTS LIST ONLY (3.73.0).
+                 *
+                 * $plain is every other screen that borrows this table, and
+                 * none of them carries the bulk form the boxes would post to.
+                 * A checkbox associated with a form that is not on the page is
+                 * a control that cannot do anything.
+                 *
+                 * SELECT-ALL IS HIDDEN UNTIL THE SCRIPT REVEALS IT, because a
+                 * box that cannot select anything is a control that lies. Same
+                 * reason the image picker keeps its search box hidden.
+                 */
+                ?>
+                <?php if ( ! $plain ) : ?>
+                    <th class="uc-col-tick">
+                        <label class="uc-tick-all" hidden data-uc-tick-all-row>
+                            <input type="checkbox" data-uc-tick-all form="uc-bulk-cat" />
+                            <span class="uc-visually-hidden">Select every event on this page</span>
+                        </label>
+                    </th>
+                <?php endif; ?>
                 <?php if ( $plain ) : ?>
                     <th>Event</th><th>Date</th><th>Category</th><th>RSVPs</th><th>Status</th>
                 <?php else :
@@ -4858,8 +5114,49 @@ class SFAF_Portal {
                      */
                     ?>
                     <td class="uc-row-actions">
-                        <div class="uc-actions">
-                            <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>">Edit</a>
+                        <?php
+                        /*
+                         * ICONS ON ONE LINE, FROM 3.73.0.
+                         *
+                         * WHAT WAS HERE. Edit, Duplicate and Remove as three
+                         * text links, in two similar colours, at one weight,
+                         * across 259 rows. The common action did not stand out,
+                         * the destructive one did not either, and the column was
+                         * wide enough that some rows wrapped onto two lines and
+                         * some did not, so the edge of the table looked broken.
+                         *
+                         * THE ICONS COME FROM sfaf_icon(), which is the one
+                         * source. 'duplicate' was added for this and follows the
+                         * same spec as the rest of the set.
+                         *
+                         * EVERY ONE CARRIES BOTH A title AND A CLIPPED LABEL,
+                         * and that pairing is the whole accessibility answer:
+                         *
+                         *   title            the hover text, for a mouse.
+                         *   .uc-visually-hidden  the accessible name, for a
+                         *                    screen reader and for the keyboard
+                         *                    focus ring's announcement.
+                         *
+                         * SHAPE IS NEVER THE ONLY CARRIER. A pencil, two panels
+                         * and a cross are three shapes AND three names, and the
+                         * red on Remove is a third signal rather than the first.
+                         *
+                         * ON A TOUCH DEVICE THERE IS NO HOVER, and that is not
+                         * left to chance: the clipped label is what a screen
+                         * reader reads out on a phone, and the icons are drawn
+                         * at a 44px target with visible spacing between them, so
+                         * the failure mode of a mis-tap is a miss rather than
+                         * the wrong action. Anybody who cannot tell them apart
+                         * has Edit one tap away, which is the same screen every
+                         * one of these rows already links to from its title.
+                         */
+                        ?>
+                        <div class="uc-actions uc-actions-icons">
+                            <a class="uc-icon-action" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"
+                               title="Edit this event">
+                                <?php echo sfaf_icon( 'pencil', array( 'size' => '17px' ) ); ?>
+                                <span class="uc-visually-hidden">Edit this event</span>
+                            </a>
                             <?php
                             /*
                              * DUPLICATE LIVES HERE AND NOT IN THE EDITOR.
@@ -4882,8 +5179,11 @@ class SFAF_Portal {
                                 <input type="hidden" name="uc_action" value="duplicate_event" />
                                 <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
                                 <?php wp_nonce_field( 'uc_portal_duplicate_event', 'uc_nonce' ); ?>
-                                <button type="submit" class="uc-action-link uc-action-btn"
-                                        title="Create a new draft from this event. No date, no registrations, and this event is not changed.">Duplicate</button>
+                                <button type="submit" class="uc-icon-action"
+                                        title="Duplicate. Makes a new draft with no date and no registrations. This event is not changed.">
+                                    <?php echo sfaf_icon( 'duplicate', array( 'size' => '17px' ) ); ?>
+                                    <span class="uc-visually-hidden">Duplicate this event</span>
+                                </button>
                             </form>
                             <?php
                             /*
@@ -4899,9 +5199,6 @@ class SFAF_Portal {
                              * had. And "nothing else changes" is only true of
                              * the removals that go through: trash_event refuses
                              * outright on a live event with registrations.
-                             * Somebody who read that sentence and pressed OK
-                             * either destroyed less than they were told, or was
-                             * refused after agreeing to something.
                              *
                              * THE REFUSAL WAS ALREADY THERE AND THE ROW DID NOT
                              * KNOW. The handler has redirected such an event to
@@ -4910,16 +5207,6 @@ class SFAF_Portal {
                              * What was missing is that this row offered the
                              * button anyway, so the flow was: confirm a deletion,
                              * arrive somewhere else, read that it did not happen.
-                             *
-                             * WHICH OF THE TWO CHOICES THIS IS. Not "the same
-                             * flow": rebuilding the cancel confirmation in a
-                             * table row would be a second place that decides who
-                             * gets emailed when an event is called off, and
-                             * PROJECT.md 4 has one place for that on purpose.
-                             * This is the refusal, moved forward to where the
-                             * decision is taken, and it sends the person to the
-                             * event page, which is where the flow that DOES
-                             * handle registrations lives.
                              *
                              * THE TEST COSTS NOTHING. sfaf_get_rsvp_count() and
                              * SFAF_Announce::has_registrations() count the same
@@ -4930,14 +5217,92 @@ class SFAF_Portal {
                              * request anybody can construct.
                              */
                             $blocked = ( $rsvp_n > 0 && ! SFAF_Cancellation::is_cancelled( $id ) );
+
+                            /*
+                             * AND WHETHER CANCELLING IS EVEN OFFERED HERE.
+                             *
+                             * render_cancel_card() returns early on an imported
+                             * event, because a platform owns it and cancelling
+                             * is done at the source: cancel_event refuses one
+                             * outright. So a Cancel link on such a row would
+                             * land on a page with no cancel card on it, which
+                             * is the fault this release is fixing, rebuilt one
+                             * row along.
+                             *
+                             * THE THIRD CASE IS A STATE AND NOT A CONTROL. An
+                             * imported event with registrations can be neither
+                             * removed nor cancelled from here, so what the row
+                             * shows is a padlock saying so, rather than a
+                             * control that would be refused.
+                             */
+                            $row_imported = ( '' !== (string) get_post_meta( $id, SFAF_Sources::META_SOURCE, true ) );
                             ?>
-                            <?php if ( $blocked ) : ?>
-                                <a class="uc-action-link" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"
+                            <?php if ( $blocked && $row_imported ) : ?>
+                                <span class="uc-icon-action uc-icon-action-locked"
+                                      title="<?php echo esc_attr(
+                                          $rsvp_n . ( 1 === $rsvp_n ? ' person is' : ' people are' )
+                                          . ' registered, and this event came from ' . $row_prov['label']
+                                          . '. It is cancelled or removed there, not here.'
+                                      ); ?>">
+                                    <?php echo sfaf_icon( 'lock', array( 'size' => '17px' ) ); ?>
+                                    <span class="uc-visually-hidden">Registered people, and owned by <?php echo esc_html( $row_prov['label'] ); ?>. Removed at its source.</span>
+                                </span>
+                            <?php elseif ( $blocked ) : ?>
+                                <?php
+                                /*
+                                 * CANCEL, AND IT LANDS ON THE CANCEL CARD
+                                 * (3.73.0).
+                                 *
+                                 * IT USED TO SAY "Cancel instead" AND GO TO THE
+                                 * EDITOR. Both halves were wrong. "Instead"
+                                 * pointed at a Remove link the reader never saw,
+                                 * because on this row it had been replaced by
+                                 * this one; and the editor asked which
+                                 * occurrences an EDIT should touch and then
+                                 * opened a form, so somebody who pressed
+                                 * something about cancelling got a question
+                                 * about editing and landed on the wrong screen.
+                                 *
+                                 * `cancel=1` OPENS THE CANCEL CARD, which is
+                                 * rendered outside the event form and is its own
+                                 * control. See render_cancel_card().
+                                 *
+                                 * AND `edit_scope=this` COMES WITH IT, which is
+                                 * how the scope question is skipped. It is not
+                                 * suppressed, it is ANSWERED, and answered
+                                 * truthfully: cancel_event takes one event id
+                                 * and acts on one event, so "this event" is what
+                                 * a cancellation from here is. A modal asking
+                                 * which occurrences to edit, in front of
+                                 * somebody who came to cancel one date, is a
+                                 * question about a different operation.
+                                 *
+                                 * A DIFFERENT ACTION, NOT A VARIANT OF REMOVE.
+                                 * It takes the 'bell' glyph with a slash rather
+                                 * than a second cross: two crosses side by side
+                                 * on the same row would read as two ways of
+                                 * doing the same thing, and cancelling is the
+                                 * opposite of removing. It keeps its own colour,
+                                 * which is the ordinary action ink rather than
+                                 * the destructive red, because cancelling is
+                                 * reversible and removing is the one that is not
+                                 * offered here at all.
+                                 */
+                                ?>
+                                <a class="uc-icon-action uc-icon-action-cancel"
+                                   href="<?php echo esc_url( add_query_arg(
+                                       array( 'cancel' => 1, 'edit_scope' => 'this' ),
+                                       $this->url( 'events/edit/' . $id )
+                                   ) . '#uc-cancel-this' ); ?>"
                                    title="<?php echo esc_attr(
-                                       $rsvp_n . ( 1 === $rsvp_n ? ' person is' : ' people are' )
-                                       . ' registered, so this cannot be removed. Cancel it on the event page: that keeps'
-                                       . ' the registrations and offers to tell everybody who signed up.'
-                                   ); ?>">Cancel instead</a>
+                                       'Cancel this event. '
+                                       . $rsvp_n . ( 1 === $rsvp_n ? ' person is' : ' people are' )
+                                       . ' registered, so it cannot be removed: cancelling keeps the registrations'
+                                       . ' and offers to tell everybody who signed up.'
+                                   ); ?>">
+                                    <?php echo sfaf_icon( 'bell-off', array( 'size' => '17px' ) ); ?>
+                                    <span class="uc-visually-hidden">Cancel this event</span>
+                                </a>
                             <?php else : ?>
                                 <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
                                     <input type="hidden" name="uc_action" value="trash_event" />
@@ -4946,8 +5311,12 @@ class SFAF_Portal {
                                     <?php // The styled dialog every other destructive control here
                                           // uses, rather than a browser box that cannot say which
                                           // row it belongs to. See ucConfirm(). ?>
-                                    <button type="submit" class="uc-link-danger"
-                                            data-uc-confirm="Remove &ldquo;<?php echo esc_attr( get_the_title( $id ) ?: 'this event' ); ?>&rdquo;? It goes to the WordPress trash, where it can be restored until the trash is emptied. Nothing else changes.">Remove</button>
+                                    <button type="submit" class="uc-icon-action uc-icon-action-danger"
+                                            title="Remove this event. It goes to the WordPress trash and can be restored."
+                                            data-uc-confirm="Remove &ldquo;<?php echo esc_attr( get_the_title( $id ) ?: 'this event' ); ?>&rdquo;? It goes to the WordPress trash, where it can be restored until the trash is emptied. Nothing else changes.">
+                                        <?php echo sfaf_icon( 'x', array( 'size' => '17px' ) ); ?>
+                                        <span class="uc-visually-hidden">Remove this event</span>
+                                    </button>
                                 </form>
                             <?php endif; ?>
                         </div>
@@ -8883,6 +9252,23 @@ class SFAF_Portal {
         if ( $left ) {
             $confirm .= ' Nothing else is touched: ' . implode( ', ', $left ) . '.';
         }
+
+        /*
+         * THE SAME SENTENCE WITH THE COUNT LEFT OUT (3.73.0).
+         *
+         * data-uc-confirm carries the real one, which is right on arrival and is
+         * what a browser with no script would use. This is the template
+         * portal.js rewrites it from as ticks change, so the number on the
+         * button and the number in the confirmation cannot disagree. Rewriting
+         * the live attribute by regex was the first attempt and it is wrong on
+         * the other screen that now shares this control: a category name can
+         * hold a digit.
+         */
+        $confirm_tpl = sprintf( 'Publish {n} upcoming {noun} in this series?' );
+        $confirm_tpl .= ' They go on the public calendar straight away.';
+        if ( $left ) {
+            $confirm_tpl .= ' Nothing else is touched: ' . implode( ', ', $left ) . '.';
+        }
         ?>
         <div class="uc-schedule-publish">
             <h4 class="uc-schedule-head">Publish</h4>
@@ -8899,7 +9285,7 @@ class SFAF_Portal {
                     Not included: <?php echo esc_html( implode( ', ', $left ) ); ?>.
                 <?php endif; ?>
             </p>
-            <form method="post" class="uc-form uc-publish-picker" data-uc-publish-picker>
+            <form method="post" class="uc-form uc-publish-picker" id="uc-publish-picker" data-uc-tick-picker>
                 <input type="hidden" name="uc_action" value="schedule_publish" />
                 <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
                 <?php
@@ -8923,8 +9309,8 @@ class SFAF_Portal {
                  * the image picker's search box starts hidden.
                  */
                 ?>
-                <label class="uc-check uc-publish-all" hidden data-uc-publish-all-row>
-                    <input type="checkbox" checked data-uc-publish-all />
+                <label class="uc-check uc-publish-all" hidden data-uc-tick-all-row>
+                    <input type="checkbox" checked data-uc-tick-all />
                     <span>Select all</span>
                 </label>
 
@@ -8939,7 +9325,7 @@ class SFAF_Portal {
                         <li class="uc-publish-row">
                             <label class="uc-check">
                                 <input type="checkbox" name="publish_ids[]" value="<?php echo (int) $rid; ?>"
-                                       checked data-uc-publish-one />
+                                       checked data-uc-tick-one />
                                 <span class="uc-publish-when">
                                     <?php echo esc_html( sfaf_ap_date( $r_date, 'short_year' ) ); ?>
                                     <?php if ( '' !== $r_time ) : ?>
@@ -8987,11 +9373,12 @@ class SFAF_Portal {
                     ?>
                     <button type="submit" class="uc-btn uc-btn-primary"
                             data-uc-confirm="<?php echo esc_attr( $confirm ); ?>"
-                            data-uc-publish-submit
-                            data-uc-publish-word="<?php echo esc_attr( _n( 'draft', 'drafts', $ready ) ); ?>"
-                            data-uc-publish-word-one="draft">
-                        Publish <span data-uc-publish-count><?php echo (int) $ready; ?></span> upcoming
-                        <span data-uc-publish-noun><?php echo esc_html( _n( 'draft', 'drafts', $ready ) ); ?></span>
+                            data-uc-tick-submit
+                            data-uc-tick-confirm="<?php echo esc_attr( $confirm_tpl ); ?>"
+                            data-uc-tick-word="drafts"
+                            data-uc-tick-word-one="draft">
+                        Publish <span data-uc-tick-count><?php echo (int) $ready; ?></span> upcoming
+                        <span data-uc-tick-noun><?php echo esc_html( _n( 'draft', 'drafts', $ready ) ); ?></span>
                     </button>
                 </div>
             </form>
@@ -10995,9 +11382,31 @@ class SFAF_Portal {
          * the moment it applies, which is where it means something.
          */
         ?>
-        <section class="uc-danger-zone" aria-label="Cancelling this event">
-            <details class="uc-danger-disclosure" data-uc-disclosure>
-                <summary class="uc-danger-toggle" aria-expanded="false">
+        <?php
+        /*
+         * ARRIVED HERE TO CANCEL (3.73.0).
+         *
+         * The events list offers Cancel on any row whose event has
+         * registrations, because Remove is refused on those, and that link
+         * carries `cancel=1`. It used to go to the bare editor, so somebody who
+         * pressed something about cancelling landed on a form and had to find
+         * this disclosure at the bottom of it.
+         *
+         * OPEN, AND SCROLLED TO. The `open` attribute is the whole of the first
+         * half and needs no script. The id is the anchor the browser jumps to,
+         * and it is on the section rather than the details so the heading is not
+         * flush against the top of the window.
+         *
+         * IT IS A REQUEST TO SHOW, NOT A REQUEST TO DO. Nothing is cancelled by
+         * arriving; the confirmation still asks, and still asks about mail. A
+         * query string that CANCELLED something would be a link anybody could
+         * put in an email.
+         */
+        $came_to_cancel = ! empty( $_GET['cancel'] );
+        ?>
+        <section class="uc-danger-zone" id="uc-cancel-this" aria-label="Cancelling this event">
+            <details class="uc-danger-disclosure" data-uc-disclosure<?php echo $came_to_cancel ? ' open' : ''; ?>>
+                <summary class="uc-danger-toggle" aria-expanded="<?php echo $came_to_cancel ? 'true' : 'false'; ?>">
                     <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
                     <span>Cancel this event</span>
                 </summary>

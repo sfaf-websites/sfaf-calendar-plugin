@@ -336,6 +336,18 @@ $ALLOWED = array(
     // knows it is not happening.
     'POST:cancel_event'           => array( 'event' ),
     'POST:duplicate_event'        => array( 'event' ),
+    /*
+     * Bulk add a category (3.73.0). THE EVENT GATE, ASKED PER ID rather than
+     * once for the request: it takes a LIST, and the list is a thing anybody
+     * can construct. An id the gate refuses is skipped and the rest of the run
+     * continues, because the other forty are legitimate.
+     *
+     * NOT admin-only. Filing an event under a category is an edit to that
+     * event, and a contributor who may edit their own events may file them.
+     * It publishes nothing: see render_bulk_categorize() for why the bulk
+     * publish exclusions were asked about rather than copied.
+     */
+    'POST:bulk_categorize'         => array( 'event' ),
     'POST:save_rsvp_settings'     => array( 'event' ),
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),
     'POST:refresh_source_event'   => array( 'event' ),

@@ -111,7 +111,7 @@ function ucDismissOnBackdrop(dialog) {
         // the trigger renderer this one reuses is bound.
         run('requestSeriesImage', initRequestSeriesImage);
         run('calendarTick', initCalendarTick);
-        run('publishPicker', initPublishPicker);
+        run('tickPickers', initTickPickers);
     });
 
     /* ---------------------------------------------------------------------
@@ -133,36 +133,54 @@ function ucDismissOnBackdrop(dialog) {
      * INELIGIBLE ROWS CARRY NO CHECKBOX AT ALL, so there is nothing here that
      * has to remember not to tick them. See render_schedule_publish_form().
      * ------------------------------------------------------------------ */
-    function initPublishPicker() {
-        document.querySelectorAll('[data-uc-publish-picker]').forEach(function (form) {
-            var boxes = form.querySelectorAll('[data-uc-publish-one]');
+    function initTickPickers() {
+        document.querySelectorAll('[data-uc-tick-picker]').forEach(function (form) {
+            /* form.elements, NOT querySelectorAll, and that is the whole reason
+             * this works on both screens. The events list keeps its ticks in
+             * table rows that already contain their own <form> elements, and
+             * forms cannot nest, so those boxes are associated by the `form=`
+             * attribute instead. They are not descendants of the form and a
+             * selector would never see them. form.elements does, because that
+             * is what the association is for. */
+            var boxes = Array.prototype.filter.call(form.elements, function (el) {
+                return el.hasAttribute && el.hasAttribute('data-uc-tick-one');
+            });
             if (!boxes.length) { return; }
 
-            var all = form.querySelector('[data-uc-publish-all]');
-            var allRow = form.querySelector('[data-uc-publish-all-row]');
-            var btn = form.querySelector('[data-uc-publish-submit]');
-            var countEl = form.querySelector('[data-uc-publish-count]');
-            var nounEl = form.querySelector('[data-uc-publish-noun]');
+            var all = form.querySelector('[data-uc-tick-all]')
+                || document.querySelector('[data-uc-tick-all][form="' + form.id + '"]');
+            var allRow = all ? (all.closest('[data-uc-tick-all-row]') || all.parentNode) : null;
+            var btn = form.querySelector('[data-uc-tick-submit]');
+            var countEl = form.querySelector('[data-uc-tick-count]');
+            var nounEl = form.querySelector('[data-uc-tick-noun]');
+
             /* The plural and the singular, off the server, so the words are
              * WordPress's answer rather than an "s" glued on here. */
-            var many = btn ? (btn.getAttribute('data-uc-publish-word') || 'drafts') : 'drafts';
-            var one = btn ? (btn.getAttribute('data-uc-publish-word-one') || 'draft') : 'draft';
-            /* The confirmation as the server wrote it, so the count can be
-             * swapped without the rest of the sentence being rebuilt here. */
-            var confirmTpl = btn ? (btn.getAttribute('data-uc-confirm') || '') : '';
+            var many = btn ? (btn.getAttribute('data-uc-tick-word') || '') : '';
+            var one = btn ? (btn.getAttribute('data-uc-tick-word-one') || '') : '';
+
+            /* THE CONFIRMATION IS A TEMPLATE, NOT THE SENTENCE ITSELF.
+             * data-uc-confirm holds a real sentence for the no-script path and
+             * is what ucConfirm() reads; this is the same sentence with {n} and
+             * {noun} left in it, so the count can be swapped without this file
+             * knowing how either screen phrases its question. Rewriting by
+             * regex over the live attribute was tried and is wrong: a category
+             * name can hold a digit. */
+            var confirmTpl = btn ? (btn.getAttribute('data-uc-tick-confirm') || '') : '';
             var total = boxes.length;
 
             function ticked() {
                 var n = 0;
-                Array.prototype.forEach.call(boxes, function (b) { if (b.checked) { n++; } });
+                boxes.forEach(function (b) { if (b.checked) { n++; } });
                 return n;
             }
 
             function sync() {
                 var n = ticked();
+                var noun = (1 === n) ? one : many;
 
                 if (countEl) { countEl.textContent = String(n); }
-                if (nounEl) { nounEl.textContent = (1 === n) ? one : many; }
+                if (nounEl) { nounEl.textContent = noun; }
 
                 if (all) {
                     all.checked = (n === total);
@@ -176,31 +194,22 @@ function ucDismissOnBackdrop(dialog) {
                      * message. It is a button with nothing to do, so it says
                      * so and cannot be pressed. */
                     btn.disabled = (0 === n);
-
                     if (confirmTpl) {
-                        /* Only the leading count moves. Everything after it,
-                         * including the list of what is not included, is the
-                         * server's sentence and is still true. */
                         btn.setAttribute(
                             'data-uc-confirm',
-                            confirmTpl.replace(
-                                /^Publish \d+ upcoming (draft|drafts)/,
-                                'Publish ' + n + ' upcoming ' + ((1 === n) ? one : many)
-                            )
+                            confirmTpl.split('{n}').join(String(n)).split('{noun}').join(noun)
                         );
                     }
                 }
             }
 
-            Array.prototype.forEach.call(boxes, function (b) {
-                b.addEventListener('change', sync);
-            });
+            boxes.forEach(function (b) { b.addEventListener('change', sync); });
 
             if (all && allRow) {
                 allRow.hidden = false;
                 all.addEventListener('change', function () {
                     var on = all.checked;
-                    Array.prototype.forEach.call(boxes, function (b) { b.checked = on; });
+                    boxes.forEach(function (b) { b.checked = on; });
                     sync();
                 });
             }

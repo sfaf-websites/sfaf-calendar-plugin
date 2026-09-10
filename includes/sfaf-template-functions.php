@@ -291,8 +291,50 @@ function sfaf_icon_paths() {
         'cross'     => '<path d="M9.8 3.5h4.4v6.3h6.3v4.4h-6.3v6.3H9.8v-6.3H3.5V9.8h6.3z"/>',
         'community' => '<circle cx="8" cy="8" r="2.6"/><circle cx="16" cy="8" r="2.6"/><circle cx="8" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/>',
         'arrow'     => '<path d="M4.5 12h14"/><path d="m12.5 6 6 6-6 6"/>',
-        // "Edit this one date", on every upcoming row of a series schedule.
+        // "Edit this one date", on every upcoming row of a series schedule, and
+        // Edit on every row of the events list from 3.73.0.
         'pencil'    => '<path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5l3 3"/>',
+
+        /*
+         * ONE SHEET BEHIND ANOTHER (3.73.0). The events list's Duplicate.
+         *
+         * NOT THE 'copy' METAPHOR OF A CLIPBOARD, which means "take this text",
+         * and not 'repeat', which on this calendar means "this happens again on
+         * a schedule" and sits on the same screen. Two overlapping panels is the
+         * one shape that reads as "make another of these" without colliding with
+         * either.
+         */
+        'duplicate' => '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 5.5H6A2.5 2.5 0 0 0 3.5 8v9.5"/>',
+
+        /*
+         * THE BELL, STRUCK THROUGH (3.73.0). "Cancel this event", on a row
+         * whose event has registrations and therefore cannot be removed.
+         *
+         * IT MUST NOT BE A SECOND CROSS. Remove is 'x', and two crosses side by
+         * side on one row would read as two ways of doing the same thing.
+         * Cancelling is close to the opposite: the event stays, its
+         * registrations stay, and the people who signed up get told. The bell
+         * is this plugin's own glyph for "somebody is notified about this", so
+         * a struck bell is "it is off, and they will hear".
+         *
+         * The slash runs corner to corner across the live area so it still
+         * reads at 17px, which is the size the actions column draws it at.
+         */
+        'bell-off'  => '<path d="M18 10.5a6 6 0 0 0-9.3-5"/><path d="M6.2 8.4A6 6 0 0 0 6 10.5c0 4.5-2 6-2 6h12"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/><path d="M3.5 3.5l17 17"/>',
+
+        /*
+         * A PADLOCK, FOR A ROW THAT CAN DO NEITHER (3.73.0). An imported event
+         * with registrations is removed and cancelled at its source, so the
+         * events list shows this as a STATE rather than offering a control that
+         * would be refused.
+         *
+         * SFAF_Portal::icon_lock() draws a filled padlock of its own for the
+         * locked FIELD badge. That one is 14px, solid, and lives inside a
+         * sentence; this is the 2px stroked family member that sits in a row of
+         * interface icons. Two glyphs, two contexts, and neither is a candidate
+         * for the other's place.
+         */
+        'lock'      => '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2"/>',
 
         /*
          * A CLOSED LOOP WITH ONE ARROWHEAD, not the two-arrow 'repeat' above.

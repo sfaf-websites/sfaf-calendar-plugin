@@ -846,6 +846,106 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-row-actions { white-space: nowrap; }
 .uc-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .uc-actions form { display: inline; margin: 0; line-height: 1; }
+
+/* ---------------------------------------------------------------------------
+   THE EVENTS LIST'S ACTIONS ARE ICONS (3.73.0).
+
+   WHAT WAS THERE. Edit, Duplicate and Remove as three text links, one weight,
+   two similar colours, across 259 rows. The common action did not stand out and
+   the destructive one did not either, and the column was wide enough that some
+   rows wrapped and some did not, so the edge of the table looked broken.
+
+   NEVER WRAPS, BY CONSTRUCTION. `flex-wrap: nowrap` and three fixed-width
+   targets: the column's width is now the same on every row whatever the row
+   holds, which is the half of the complaint that was about the table rather
+   than about the controls.
+
+   44px IS THE TOUCH TARGET and it is the reason for the padding rather than the
+   glyph size. The icons are 17px; the box around them is what a finger has to
+   hit. WCAG 2.5.5 asks for 44 and a phone is a real way to reach caladmin.
+
+   SHAPE IS NEVER THE ONLY CARRIER. Each control has a `title` for a mouse and a
+   `.uc-visually-hidden` name for a screen reader, and the destructive one has a
+   colour on top of both. See the note in the events table for what a touch
+   device gets, which is the clipped name, not the title.
+   ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   BULK ADD A CATEGORY (3.73.0).
+
+   ABOVE THE TABLE, NOT BELOW IT. The ticks are in the rows and the control
+   acts on them, so it reads top to bottom: choose a category, tick the rows,
+   press. Below the table it would be found after the scrolling rather than
+   before it, on a list that runs to 259 rows.
+
+   IT IS NOT A CARD. A second panel above a table that is already inside one
+   would be a box in a box; this is a row of controls on the card it belongs
+   to, separated by the same hairline the table uses.
+   ------------------------------------------------------------------------- */
+.uc-bulk-cat {
+    display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px;
+    margin: 0 0 14px; padding: 0 0 14px;
+    border-bottom: 1px solid var(--p-border);
+}
+.uc-bulk-cat-pick { flex: 0 1 320px; margin: 0; }
+.uc-bulk-cat-go { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-bottom: 2px; }
+.uc-bulk-cat-go .uc-hint { margin: 0; }
+.uc-bulk-cat button[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* The tick column. Narrow, and the box centred in it so a column of them
+   reads as a column rather than as a ragged left edge. */
+.uc-col-tick { width: 34px; text-align: center; padding-right: 0; }
+.uc-col-tick input[type="checkbox"] { margin: 0; width: auto; }
+.uc-tick-all { display: inline-flex; margin: 0; }
+
+.uc-actions-icons { gap: 2px; flex-wrap: nowrap; }
+.uc-actions-icons form { display: inline-flex; }
+
+.uc-icon-action {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; padding: 0;
+    border: 1px solid transparent; border-radius: 8px;
+    background: none; color: var(--p-muted, #6B6764);
+    cursor: pointer; line-height: 0;
+}
+/* THE HIT AREA IS LARGER THAN THE BOX THAT IS DRAWN, so three icons can sit two
+   pixels apart and still be 44px to a finger. Centred on the control rather
+   than anchored to its corner, or it would overhang one side by ten pixels and
+   the leftmost icon would steal taps from the table's edge. */
+.uc-icon-action::before {
+    content: "";
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px;
+}
+
+.uc-icon-action:hover {
+    color: var(--p-text);
+    background: var(--p-surface-2, #f6f7f8);
+    border-color: var(--p-border);
+    text-decoration: none;
+}
+.uc-icon-action:focus-visible {
+    outline: 2px solid var(--uc-accent-text); outline-offset: 1px;
+}
+
+/* THE DESTRUCTIVE ONE CARRIES ITS COLOUR AT REST, not only on hover, because a
+   row of three identical grey glyphs is the thing this replaced. #c0392b on
+   white is 5.44:1, which is the DESTRUCTIVE ink in the control standard. */
+.uc-icon-action-danger { color: var(--p-danger-text); }
+.uc-icon-action-danger:hover { color: #fff; background: var(--p-danger-text); border-color: var(--p-danger-text); }
+
+/* CANCEL IS NOT A VARIANT OF REMOVE and does not take its red. It is
+   reversible, it keeps the registrations, and it is the action offered when
+   removing is refused. Ordinary action ink, and a different glyph. */
+.uc-icon-action-cancel { color: var(--uc-accent-text); }
+.uc-icon-action-cancel:hover { color: var(--uc-accent-text); background: var(--p-surface-2, #f6f7f8); border-color: var(--uc-accent-text); }
+
+/* A STATE, NOT A CONTROL. No hover, no pointer, no focus ring: an imported
+   event with registrations is removed at its source and there is nothing here
+   to press. */
+.uc-icon-action-locked { color: var(--p-muted, #6B6764); cursor: default; opacity: 0.75; }
+.uc-icon-action-locked:hover { background: none; border-color: transparent; color: var(--p-muted, #6B6764); }
 /* 14px, up from 13px. A row of actions is not helper text: Publish, Dismiss,
    Approve and Reject are the only things on this screen that DO anything, and
    they were being drawn one step below body size. Body size is the floor. */
