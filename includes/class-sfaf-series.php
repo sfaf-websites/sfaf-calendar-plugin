@@ -499,6 +499,98 @@ class SFAF_Series {
      * ================================================================== */
 
     /**
+     * The event "use this event's details on another date" copies FROM.
+     *
+     * ONE SEED, COMPUTED ONCE (3.73.0), AND IT WAS TWO.
+     *
+     * The schedule screen worked it out one way and the handler behind the
+     * button worked it out another. The screen preferred the next event IN
+     * THE RECURRENCE GROUP, because a series can hold several groups and a
+     * pattern read off the wrong one describes a schedule that does not
+     * exist. The handler asked only for the next event in the SERIES.
+     *
+     * ON A SERIES HOLDING ONE GROUP THEY AGREE AND ALWAYS DID. On one
+     * holding several they can disagree, and then the placeholder shows
+     * event A's title while the button copies event B. Four series hold
+     * several distinct events, so this is not hypothetical: PROP holds
+     * four, Coffee Social two, Mobile Health Sites two, and the Strut
+     * community events three.
+     *
+     * THE GROUP-AWARE ANSWER IS THE RIGHT ONE and is the one kept. The
+     * fallback, a series with no recurrence group at all, is a plain
+     * container of hand-made dates whose soonest event is exactly what a
+     * new date should be copied from.
+     *
+     * IT TAKES THE LISTS RATHER THAN RE-QUERYING, because the screen has
+     * them already and a second query is a second chance to disagree about
+     * which events are even in the series. The handler has no lists, so it
+     * asks for them by the same arguments the screen used: see
+     * seed_for_series().
+     *
+     * @param string $group    The recurrence group, or empty.
+     * @param int[]  $upcoming Upcoming event ids, soonest first.
+     * @param int[]  $past     Past event ids, most recent first.
+     * @return int 0 when the series holds nothing.
+     */
+    public static function seed_from_lists( $group, $upcoming, $past ) {
+        $group    = (string) $group;
+        $upcoming = array_values( array_map( 'intval', (array) $upcoming ) );
+        $past     = array_values( array_map( 'intval', (array) $past ) );
+
+        if ( '' !== $group ) {
+            // Upcoming first, then the most recent past one, which is the
+            // order the two lists are already in.
+            foreach ( array( $upcoming, $past ) as $list ) {
+                foreach ( $list as $eid ) {
+                    if ( SFAF_Recurrence::group_of( $eid ) === $group ) {
+                        return (int) $eid;
+                    }
+                }
+            }
+        }
+
+        if ( ! empty( $upcoming ) ) {
+            return (int) $upcoming[0];
+        }
+        return ! empty( $past ) ? (int) $past[0] : 0;
+    }
+
+    /**
+     * The same seed, for a caller with no lists in hand.
+     *
+     * THE HANDLER USES THIS AND THE SCREEN DOES NOT, which is the whole
+     * shape of the fix: the rule lives in seed_from_lists() and is asked
+     * once, and this is only the two queries that put the same lists in
+     * front of it. A handler that recomputed the RULE is what went wrong.
+     *
+     * @param int $term_id
+     * @return int
+     */
+    public static function seed_for_series( $term_id ) {
+        $term_id = (int) $term_id;
+        $upcoming = self::events( $term_id, array(
+            'upcoming' => true,
+            'status'   => self::editable_statuses(),
+            'limit'    => -1,
+        ) );
+        $all = self::events( $term_id, array(
+            'status' => self::editable_statuses(),
+            'limit'  => -1,
+        ) );
+
+        /* The past ones, most recent first, which is the order the screen
+         * hands over. events() returns soonest first, so what is not
+         * upcoming is reversed. */
+        $past = array_values( array_reverse( array_diff( $all, $upcoming ) ) );
+
+        return self::seed_from_lists(
+            self::recurrence_group( $term_id ),
+            $upcoming,
+            $past
+        );
+    }
+
+    /**
      * The drafts in this series that a bulk publish may touch, and what it
      * would leave behind.
      *

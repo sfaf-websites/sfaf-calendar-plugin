@@ -218,6 +218,20 @@ $cases = array(
             '_uc_cancelled_message' => 'We are looking at a new date and will write again next week.',
         ),
     ),
+    /*
+     * THE FIFTH THING THAT CAN HAPPEN TO A REGISTRATION (3.73.0): told it
+     * was off, and now it is on.
+     *
+     * TWICE, because it goes out whether or not the date moved and the two
+     * read differently. The one that did not move must NOT talk about a
+     * move, and that absence is the half a builder reading the wrong key
+     * would get wrong silently.
+     */
+    'reinstated' => array( 'person' => $person, 'cancel' => true ),
+    'reinstated-moved' => array(
+        'type' => 'reinstated', 'person' => $person, 'cancel' => true,
+        'context' => array( 'was' => '2026-08-05' ),
+    ),
 );
 
 /*
@@ -564,6 +578,50 @@ if ( isset( $built['cancelled'], $built['cancelled-with-message'] ) ) {
     }
 }
 
+/* ---------------------------------------------------------------------------
+ * PUTTING AN EVENT BACK ON (3.73.0).
+ *
+ * FOUR RULES, and each of them is a thing somebody could plausibly get
+ * wrong while the message still built and still looked fine.
+ * ------------------------------------------------------------------------ */
+if ( isset( $built['reinstated'], $built['reinstated-moved'] ) ) {
+    $back  = $built['reinstated'];
+    $moved = $built['reinstated-moved'];
+
+    /* 1. IT LEADS ON THE EVENT BEING ON, not on a change. Somebody who
+     *    thinks this is not happening cannot act on "the date moved". */
+    foreach ( array( $back, $moved ) as $m ) {
+        if ( false === strpos( $m['html'], 'is back on' ) ) {
+            $fails[] = 'reinstated: the message does not say it is back on';
+        }
+    }
+
+    /* 2. THE ONE THAT DID NOT MOVE SAYS NOTHING ABOUT MOVING. */
+    foreach ( array( 'html', 'text' ) as $part ) {
+        if ( false !== strpos( $back[ $part ], 'has also moved' ) ) {
+            $fails[] = "reinstated: an event on its original date claims it moved, in the $part part";
+        }
+        if ( false === strpos( $moved[ $part ], 'has also moved' ) ) {
+            $fails[] = "reinstated-moved: a moved event does not say so, in the $part part";
+        }
+    }
+
+    /* 3. THE CANCEL LINK IS IN BOTH. Somebody registered for a Wednesday and
+     *    moved to a Thursday needs a way out, and so does somebody whose
+     *    fortnight has filled up while the thing was off. */
+    foreach ( array( 'reinstated', 'reinstated-moved' ) as $name ) {
+        if ( false === strpos( $built[ $name ]['html'], 'uc_rsvp_cancel' ) ) {
+            $fails[] = "$name: no cancel link, and this is the message that most needs one";
+        }
+    }
+
+    /* 4. IT SAYS THE REGISTRATION SURVIVED. The whole reason somebody can do
+     *    nothing is that their place is still theirs. */
+    if ( false === strpos( $back['html'], 'still holds' ) ) {
+        $fails[] = 'reinstated: does not say the registration still holds';
+    }
+}
+
 /*
  * NO PLATFORM MARK IN ANY MESSAGE.
  *
@@ -589,20 +647,41 @@ foreach ( $built as $name => $out ) {
 }
 
 echo "Email render test\n";
-echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, the alert and\n";
-echo "       the summary in both of their recipient versions, the cancellation alert, and the
+echo 'built: ' . count( $built ) . " messages (confirmation, reminder, reminder to staff, the alert and
 ";
-echo "       cancellation itself with and without a message for the people registered)
+echo "       the summary in both of their recipient versions, the cancellation alert, the
 ";
-echo "checked per message: subject, text alternative, table layout, 600px, banner and its alt text,\n";
-echo "                     postal address in both parts, no modern CSS, closed palette, no em dash,\n";
-echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links\n";
-echo "checked across them: no message links into caladmin except the two that route per recipient,\n";
-echo "                     the alert's link matches the recipient's access, the confirmation greets by\n";
-echo "                     first name only, and a registration with no surname still renders a name\n";
-echo "add to calendar:     a heading, two equal-width buttons that fill their cells, a generic glyph on\n";
-echo "                     each, no platform logo in any message, and both buttons still read with the\n";
-echo "                     images actually stripped out\n\n";
+echo "       cancellation itself with and without a message for the people registered, and
+";
+echo "       an event put back on, with and without its date having moved)
+";
+echo "checked per message: subject, text alternative, table layout, 600px, banner and its alt text,
+";
+echo "                     postal address in both parts, no modern CSS, closed palette, no em dash,
+";
+echo "                     cancel link only where it belongs, HTML facts present in the text, absolute links
+";
+echo "checked across them: no message links into caladmin except the two that route per recipient,
+";
+echo "                     the alert's link matches the recipient's access, the confirmation greets by
+";
+echo "                     first name only, and a registration with no surname still renders a name
+";
+echo "reinstated:          leads on the event being on, mentions a move only where there was one,
+";
+echo "                     carries a cancel link in both, and says the registration still holds
+";
+echo "cancellation:        the public reason and the registrants-only message each present where they
+";
+echo "                     belong, in both parts, in that order, and the private one in no other message
+";
+echo "add to calendar:     a heading, two equal-width buttons that fill their cells, a generic glyph on
+";
+echo "                     each, no platform logo in any message, and both buttons still read with the
+";
+echo "                     images actually stripped out
+
+";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

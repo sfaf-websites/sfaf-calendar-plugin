@@ -207,6 +207,12 @@ class SFAF_Notifications {
                 return self::build_cancelled( $event_id, $person );
             case 'changed':
                 return self::build_changed( $event_id, $person, $context );
+            /*
+             * THE FIFTH THING THAT CAN HAPPEN TO A REGISTRATION (3.73.0).
+             * Told it was off, and now it is on. See build_reinstated().
+             */
+            case 'reinstated':
+                return self::build_reinstated( $event_id, $person, $context );
         }
         return null;
     }
@@ -768,6 +774,142 @@ class SFAF_Notifications {
         return array(
             'subject' => sprintf( 'Changed: %s', $f['title'] ),
             'html'    => SFAF_Email::shell( sprintf( 'Now %s, %s', $f['date'], $f['time'] ? $f['time'] : 'time to be confirmed' ), $html ),
+            'text'    => $text,
+        );
+    }
+
+    /**
+     * (g) IT IS BACK ON.
+     *
+     * WHY THIS EXISTS. Cancelling tells everybody registered that the event
+     * is off. Reinstating told them nothing at all, so somebody who had
+     * been written to and had crossed it out of their week had no way of
+     * learning it was on again except by going back to look.
+     *
+     * IT GOES OUT WHETHER OR NOT THE DATE CHANGED, and that is the whole
+     * difference between this and `changed`. `changed` is for a live event
+     * whose details moved, and it opens on the move, which is meaningless
+     * to somebody who thinks the thing is not happening. What they need to
+     * be told first is that it IS happening.
+     *
+     * WHERE THE DATE HAS MOVED, IT SAYS SO IN THE SAME MESSAGE rather than
+     * sending two. `$context['was']` carries what the date used to be, and
+     * the reader gets one sentence about the change under the headline
+     * about the event being back.
+     *
+     * IT CARRIES A CANCEL LINK, ALWAYS, and that is not a courtesy. A
+     * registration made for a Wednesday and reinstated onto a Thursday is a
+     * commitment nobody re-made; the machinery is the same token the
+     * confirmation and the reminder already use, so there is nothing new
+     * here except offering it at the moment it is most needed.
+     *
+     * NOTHING ABOUT THE REGISTRATION ITSELF CHANGES. It survived the
+     * cancellation untouched, it survives this untouched, and the message
+     * says so: somebody who is happy with the new date does nothing.
+     *
+     * @param int    $event_id
+     * @param object $person
+     * @param array  $context {
+     *     @type string $was The previous date, Y-m-d, when it moved.
+     * }
+     */
+    private static function build_reinstated( $event_id, $person, $context = array() ) {
+        $f      = self::facts( $event_id );
+        $was    = isset( $context['was'] ) ? trim( (string) $context['was'] ) : '';
+        $moved  = ( '' !== $was && $was !== (string) get_post_meta( $event_id, '_uc_event_date', true ) );
+        $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+
+        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
+        if ( '' === $first && $person && ! empty( $person->name ) ) {
+            $first = trim( (string) $person->name );
+        }
+
+        $head = sprintf( '%s is back on.', $f['title'] );
+
+        /*
+         * THE OPENING SENTENCE IS THE SAME EITHER WAY, and the date change
+         * is a second sentence rather than a different message. Somebody
+         * reading this was told it was cancelled; "it is happening after
+         * all" is the fact, and "on a different day" is the qualification.
+         */
+        $lead = ( '' !== $first ? $first . ', this' : 'This' )
+            . ' event was cancelled and is happening after all.';
+
+        $html  = SFAF_Email::heading( $head );
+        $html .= SFAF_Email::para( $lead );
+        if ( $moved ) {
+            $html .= SFAF_Email::para( sprintf(
+                'It has also moved: it was %s and it is now %s.',
+                sfaf_ap_date( $was, 'full' ),
+                $f['date']
+            ) );
+        }
+        $html .= SFAF_Email::para( 'Your registration was kept and still holds, so there is nothing to do if the new details suit you.' );
+        $html .= SFAF_Email::details( self::detail_rows( $f ) );
+
+        /*
+         * THE CALENDAR BUTTONS, for the reason build_changed() has them:
+         * whatever is in somebody's calendar for this event is wrong now,
+         * either because they deleted it when it was cancelled or because
+         * the date moved under it.
+         */
+        $gcal = sfaf_google_calendar_url( $event_id );
+        $ics  = sfaf_ics_url( $event_id );
+        $buttons = array();
+        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Google', 'primary', true, true ); }
+        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Apple or Outlook', 'outline', true, true ); }
+        if ( $buttons ) {
+            $html .= SFAF_Email::label( 'Put it back in your calendar' );
+            $html .= SFAF_Email::button_row( $buttons );
+        }
+
+        if ( $f['url'] ) {
+            $html .= SFAF_Email::link_para( $f['url'], 'See the event page' );
+        }
+
+        /*
+         * ALWAYS OFFERED, and the wording changes with the reason. A moved
+         * date is the case where somebody most likely cannot come any more,
+         * so it is named; on the original date the offer is quieter but it
+         * is still there, because a fortnight has passed and plans move.
+         */
+        if ( $cancel ) {
+            $html .= SFAF_Email::rule();
+            $html .= SFAF_Email::small_para(
+                ( $moved
+                    ? 'Cannot make the new date? '
+                    : 'No longer able to come? ' )
+                . '<a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a>'
+                . ' so somebody else can take your place. We will ask you to confirm.'
+            );
+        }
+
+        $text  = $head . "\n\n" . $lead . "\n\n";
+        if ( $moved ) {
+            $text .= sprintf(
+                "It has also moved: it was %s and it is now %s.\n\n",
+                sfaf_ap_date( $was, 'full' ),
+                $f['date']
+            );
+        }
+        $text .= "Your registration was kept and still holds, so there is nothing to do if the new\ndetails suit you.\n\n";
+        $text .= self::detail_text( $f ) . "\n\n";
+        if ( $gcal || $ics ) { $text .= "Put it back in your calendar\n"; }
+        if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
+        if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
+        if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
+        if ( $cancel ) {
+            $text .= "\n" . ( $moved ? 'Cannot make the new date?' : 'No longer able to come?' )
+                . " Cancel your registration so somebody else can\ntake your place. We will ask you to confirm: " . $cancel . "\n";
+        }
+        $text .= "\n" . SFAF_Email::POSTAL;
+
+        return array(
+            'subject' => sprintf( 'Back on: %s', $f['title'] ),
+            'html'    => SFAF_Email::shell(
+                sprintf( 'Back on, %s', $f['date'] ),
+                $html
+            ),
             'text'    => $text,
         );
     }

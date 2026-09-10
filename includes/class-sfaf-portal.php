@@ -775,6 +775,55 @@ class SFAF_Portal {
                 $undo = isset( $_POST['uncancel'] );
 
                 if ( $undo ) {
+                    /*
+                     * TELLING THEM IT IS BACK ON (3.73.0).
+                     *
+                     * WHAT WAS HERE. Nothing. Everybody registered had been
+                     * written to and told the event was off, and putting it
+                     * back told them nothing at all, so the only way to find
+                     * out was to go and look at a page they had no reason to
+                     * open again.
+                     *
+                     * SUBJECT TO THE CONSENT RULE LIKE EVERY OTHER
+                     * MANAGER-CAUSED MESSAGE. sfaf_should_notify() reads the
+                     * confirmation's answer and an absent answer means no, so
+                     * an organizer reinstating quietly mails nobody. It fails
+                     * closed, which is the whole of PROJECT.md 4 on this.
+                     *
+                     * IT GOES OUT WHETHER OR NOT THE DATE MOVED, because
+                     * somebody told an event was cancelled needs telling it is
+                     * back even on the original day. Where it HAS moved, the
+                     * message says what it is now, in the same message rather
+                     * than a second one.
+                     *
+                     * AND THIS SETTLES THE ORDERING THAT WAS TWO PATHS.
+                     * Reinstate-then-change-date offered the ordinary save's
+                     * change notice; change-date-then-reinstate offered
+                     * nothing, because reinstating had no prompt. Now
+                     * reinstating always asks, so the second order is covered,
+                     * and it asks about the RIGHT thing: "this is back on, and
+                     * here is when" rather than "the date moved", which is
+                     * meaningless to somebody who thinks it is not happening.
+                     *
+                     * THE FIRST ORDER IS STILL TWO MESSAGES AND THAT IS
+                     * CORRECT, not a leftover: reinstate first and the person
+                     * is told it is back on the old date, which was true when
+                     * it was sent; change the date afterwards and the change
+                     * notice tells them it moved, which is also true. Two
+                     * things happened and they were told about both. What is
+                     * gone is the case where NEITHER was sent.
+                     *
+                     * THE DATE IS READ BEFORE THE STATE CHANGES, because a
+                     * cancellation carries no record of what the date was when
+                     * it was cancelled: nothing stores it, and reading it after
+                     * an ordinary save in the same request would read the new
+                     * one. On this path nothing moves the date, so this is the
+                     * date the event has had all along and $moved is false;
+                     * the argument exists for the caller that reinstates and
+                     * moves in one action, which the schedule screen may grow.
+                     */
+                    $was_on = (string) get_post_meta( $event_id, '_uc_event_date', true );
+
                     SFAF_Cancellation::set( $event_id, false );
                     /*
                      * THE TWO MESSAGES GO WITH IT (3.72.0). Both describe a
@@ -786,7 +835,19 @@ class SFAF_Portal {
                      */
                     delete_post_meta( $event_id, '_uc_cancelled_reason' );
                     delete_post_meta( $event_id, SFAF_Cancellation::MESSAGE_META );
-                    $this->redirect( 'events/edit/' . $event_id, array( 'msg' => 'uncancelled' ) );
+
+                    $told_back = array( 'sent' => 0 );
+                    if ( sfaf_should_notify( $_POST ) ) {
+                        $told_back = SFAF_Announce::reinstated(
+                            array( $event_id ),
+                            array( $event_id => $was_on )
+                        );
+                    }
+
+                    $this->redirect( 'events/edit/' . $event_id, array(
+                        'msg'  => 'uncancelled',
+                        'told' => (int) $told_back['sent'],
+                    ) );
                 }
 
                 $visibility = ( isset( $_POST['cancel_visibility'] ) && 'hide' === $_POST['cancel_visibility'] )
@@ -1949,6 +2010,24 @@ class SFAF_Portal {
             if ( 'show_calendar' === $field && sfaf_event_takes_rsvps( $event_id ) ) {
                 continue;
             }
+            /*
+             * AND show_rsvp IS SKIPPED WHILE THE EVENT ACCEPTS NOTHING
+             * (3.73.0), for the identical reason one line up. The editor
+             * greys that tick, a disabled input posts nothing, and this
+             * loop would write '0' and quietly forget the manager's own
+             * setting. The next person to switch Accept RSVPs back on
+             * would find the button unticked without having unticked it.
+             *
+             * ORDER MATTERS AND IS SAFE. save_rsvp_settings_from_post()
+             * has already written _uc_rsvp_enabled, so this reads THIS
+             * save's answer rather than the previous one, and show_rsvp
+             * is written before show_calendar in $toggles so that test
+             * reads this save too.
+             */
+            if ( 'show_rsvp' === $field
+                && '1' !== (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) ) {
+                continue;
+            }
             update_post_meta( $event_id, $key, isset( $_POST[ $field ] ) ? '1' : '0' );
         }
 
@@ -3080,7 +3159,7 @@ class SFAF_Portal {
             'delete_needs_cancel' => 'This event has people registered, so it cannot be deleted. Cancel it instead: that keeps the registrations, closes new ones, stops the reminders, and offers to tell everybody who signed up. Once it is cancelled you can delete it.',
             'series_needs_cancel' => 'Some events in this series have people registered, so deleting them is refused. Cancel them instead, below. Once they are cancelled and the people who signed up have been told, the series can be deleted.',
             'cancelled'      => 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it.',
-            'uncancelled'    => 'Event is on again. Registrations are open and its reminders will go out as usual. Nobody has been told automatically: if you told people it was cancelled, tell them it is back.',
+            'uncancelled'    => 'Event is on again. Registrations are open and its reminders will go out as usual.',
             'cancel_hidden'  => 'Off the public calendar. It is still cancelled, its page still opens and still says so, and the registrations are kept. Nobody has been told.',
             'cancel_listed'  => 'Back on the public calendar, marked cancelled. Nobody has been told.',
             'cancel_failed'  => 'That could not be changed. The event is not cancelled.',
@@ -3171,6 +3250,25 @@ class SFAF_Portal {
                 _n( 'event stays', 'events stay', $n ),
                 _n( 'is', 'are', $n )
             ) ) . '</div>';
+            return;
+        }
+
+        /*
+         * PUTTING IT BACK ON SAYS WHETHER ANYBODY WAS TOLD (3.73.0), for the
+         * reason cancelling has said so since 3.42.0: the question is asked in
+         * a dialog, a dialog is a thing somebody can mis-click, and the screen
+         * they land on has to state which of the two answers actually happened.
+         */
+        if ( 'uncancelled' === $key ) {
+            $told = isset( $_GET['told'] ) ? max( 0, intval( $_GET['told'] ) ) : 0;
+            echo '<div class="uc-flash uc-flash-ok">'
+                . esc_html(
+                    'Event is on again. Registrations are open and its reminders will go out as usual. '
+                    . ( $told
+                        ? sprintf( '%d %s told it is back on.', $told, _n( 'person was', 'people were', $told ) )
+                        : 'Nobody was emailed.' )
+                )
+                . '</div>';
             return;
         }
 
@@ -8467,17 +8565,20 @@ class SFAF_Portal {
         }
 
         /*
-         * THE SEED IS THE NEXT OCCURRENCE, or the most recent one when there is
-         * nothing upcoming. The next one is what the event looks like NOW:
-         * current location, current times, current capacity, rather than what
-         * it looked like when the group was first set up.
+         * THE SEED, ASKED FOR RATHER THAN WORKED OUT (3.73.0).
+         *
+         * This used to compute its own: the next upcoming event in the
+         * SERIES, or the most recent past one. The screen that draws the
+         * control computed a different one, preferring the next event in the
+         * recurrence GROUP, and on a series holding several groups the two
+         * disagree. The placeholder showed one event's title and this copied
+         * another's details. Four series hold several distinct events.
+         *
+         * SFAF_Series::seed_for_series() is the one rule now, and the screen
+         * asks the same one through seed_from_lists(). Neither has an answer
+         * of its own left to drift.
          */
-        $upcoming = SFAF_Series::events( $term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
-        $seed_id  = ! empty( $upcoming ) ? (int) $upcoming[0] : 0;
-        if ( ! $seed_id ) {
-            $all     = SFAF_Series::events( $term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => -1 ) );
-            $seed_id = ! empty( $all ) ? (int) end( $all ) : 0;
-        }
+        $seed_id = SFAF_Series::seed_for_series( $term_id );
         if ( ! $seed_id ) {
             $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_no_seed' ) );
         }
@@ -8662,22 +8763,10 @@ class SFAF_Portal {
          * should be copied from.
          * ---------------------------------------------------------------------
          */
-        $seed_id = 0;
-        if ( '' !== $group ) {
-            // Upcoming first, then the most recent past one, which is the order
-            // the two lists are already in.
-            foreach ( array( $upcoming, $past ) as $list ) {
-                foreach ( $list as $eid ) {
-                    if ( SFAF_Recurrence::group_of( $eid ) === $group ) {
-                        $seed_id = $eid;
-                        break 2;
-                    }
-                }
-            }
-        }
-        if ( ! $seed_id ) {
-            $seed_id = ! empty( $upcoming ) ? $upcoming[0] : ( ! empty( $past ) ? $past[0] : 0 );
-        }
+        /* THE SHARED RULE (3.73.0). The reasoning above is unchanged and now
+         * lives with it, in SFAF_Series::seed_from_lists(), so the handler
+         * behind the button reaches the same answer. It used not to. */
+        $seed_id = SFAF_Series::seed_from_lists( $group, $upcoming, $past );
 
         /*
          * IMPORTED EVENTS HAVE NO SCHEDULE OF OURS TO EDIT. Recurrence has been
@@ -9903,16 +9992,67 @@ class SFAF_Portal {
                      */
                     $takes_rsvps = $event_id ? sfaf_event_takes_rsvps( $event_id ) : false;
 
+                    /*
+                     * AND THE RSVP TICK FOLLOWS "Accept RSVPs" THE SAME WAY
+                     * (3.73.0).
+                     *
+                     * TWO CONTROLS, TWO QUESTIONS, AND THEY ARE ANDed.
+                     * `_uc_rsvp_enabled` decides whether the event takes
+                     * registrations at all and SFAF_RSVP refuses a write
+                     * without it; `_uc_show_rsvp` decides whether the page
+                     * draws the button. sfaf_event_takes_rsvps() is both.
+                     *
+                     * THE STATE THIS CLOSES is an event that ACCEPTS
+                     * registrations and SHOWS NO BUTTON. Nothing was broken
+                     * about it and nothing said anything: the REST route
+                     * would still take a registration, so the event was
+                     * open and invisible at the same time.
+                     *
+                     * THEY STAY TWO QUESTIONS. Collapsing them into one
+                     * tick was considered and rejected: an event that takes
+                     * registrations through a link somewhere else is a real
+                     * case, and that is exactly "accepts them, shows no
+                     * button of ours".
+                     *
+                     * SO THE SECOND IS DEPENDENT RATHER THAN GONE, which is
+                     * the treatment show_calendar has had since 3.64.2 and
+                     * for the same reason: it keeps the manager's own
+                     * stored value, so switching Accept RSVPs back on gives
+                     * them the setting they chose rather than a default.
+                     *
+                     * THE SAVE SKIPS IT ON ITS OWN TEST, not on the browser
+                     * withholding a disabled input. See save_event_from_post().
+                     */
+                    $accepts = $event_id
+                        ? ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) )
+                        : false;
+
                     foreach ( $feat as $f => $lbl ) :
                         $on   = $event_id ? sfaf_show_feature( $event_id, str_replace( 'show_', '', $f ) ) : true;
-                        $lock = ( 'show_calendar' === $f && $takes_rsvps );
+                        $lock = ( 'show_calendar' === $f && $takes_rsvps )
+                            || ( 'show_rsvp' === $f && $event_id && ! $accepts );
                         ?>
                         <label class="uc-check<?php echo $lock ? ' uc-check-locked' : ''; ?>"<?php
-                            echo 'show_calendar' === $f ? ' data-uc-calendar-check' : ''; ?>>
+                            echo 'show_calendar' === $f ? ' data-uc-calendar-check' : ''; ?><?php
+                            echo 'show_rsvp' === $f ? ' data-uc-rsvp-show-check' : ''; ?>>
                             <input type="checkbox" name="<?php echo esc_attr( $f ); ?>" value="1" <?php checked( $on ); ?><?php
                                 echo $lock ? ' disabled' : ''; ?> />
                             <?php echo esc_html( $lbl ); ?>
                         </label>
+                        <?php if ( 'show_rsvp' === $f ) : ?>
+                            <?php
+                            /*
+                             * NAMES THE CAUSE FIRST, and names the control
+                             * that fixes it by the words on it. Somebody
+                             * who is not in this calendar every day should
+                             * not have to connect a greyed tick to another
+                             * card on their own.
+                             */
+                            ?>
+                            <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note<?php echo $lock ? '' : ' hidden'; ?>>
+                                This event is not accepting RSVPs, so there is no button to show. Turn on <strong>Accept RSVPs</strong> under Capacity.
+                            </p>
+                        <?php endif; ?>
                         <?php if ( 'show_calendar' === $f ) : ?>
                             <p class="uc-hint uc-calendar-note" data-uc-calendar-note<?php echo $lock ? '' : ' hidden'; ?>>
                                 Because this event takes RSVPs, the calendar link goes out with the registration confirmation instead.
@@ -11283,15 +11423,46 @@ class SFAF_Portal {
                     kept as the record that people signed up.
                 </p>
                 <div class="uc-cancel-actions">
-                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form">
+                    <?php
+                    /*
+                     * PUTTING IT BACK ON ASKS ABOUT MAIL NOW (3.73.0), and
+                     * it asks through the same confirmation cancelling uses.
+                     *
+                     * THE HINT UNDER IT USED TO BE THE WHOLE ANSWER, and it
+                     * was an instruction to go and do something by hand:
+                     * "Nobody is told automatically. If you emailed people
+                     * that it was cancelled, tell them it is back." Everybody
+                     * who needed telling is in a table this plugin owns, so
+                     * that was work being handed to a person that the
+                     * software was already able to do.
+                     *
+                     * data-uc-confirm-cancel IS THE SAME ATTRIBUTE the
+                     * cancel form carries, so initCancelConsent() binds this
+                     * one too and there is no second dialog. What differs is
+                     * the wording, which comes off the data attributes below.
+                     */
+                    $back_people = (int) $counts['people'];
+                    ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form"
+                          <?php echo $back_people > 0 ? 'data-uc-confirm-cancel data-uc-confirm-reinstate' : ''; ?>>
                         <input type="hidden" name="uc_action" value="cancel_event" />
                         <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                         <input type="hidden" name="uncancel" value="1" />
                         <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
+                        <?php if ( $back_people > 0 ) : ?>
+                            <input type="hidden" name="notify_choice" value="" data-uc-notify-choice />
+                            <p class="uc-notice-count" data-uc-cancel-count="<?php echo (int) $back_people; ?>">
+                                <strong><?php echo (int) $back_people; ?></strong>
+                                <?php echo esc_html( 1 === $back_people ? 'person was' : 'people were' ); ?>
+                                told this was cancelled. You will be asked whether to tell them it is back.
+                            </p>
+                        <?php endif; ?>
                         <button type="submit" class="uc-btn">Put it back on</button>
-                        <p class="uc-hint">
-                            Nobody is told automatically. If you emailed people that it was cancelled, tell them it is back.
-                        </p>
+                        <?php if ( $back_people < 1 ) : ?>
+                            <p class="uc-hint">
+                                Nobody is registered, so there is nobody to tell.
+                            </p>
+                        <?php endif; ?>
                     </form>
 
                     <?php

@@ -258,6 +258,29 @@ function ucDismissOnBackdrop(dialog) {
         rsvp.addEventListener('change', sync);
         if (show) { show.addEventListener('change', sync); }
         sync();
+
+        /* AND THE RSVP TICK FOLLOWS Accept RSVPs (3.73.0), which is the
+         * same arrangement one field along: an event accepting nothing has
+         * no button to show, so the tick says so rather than looking
+         * settable. Bound here rather than in a second initialiser because
+         * it is the same two controls and the same event.
+         *
+         * IT IS NOT WHAT MAKES IT TRUE. save_event_from_post() skips
+         * show_rsvp on its own reading of the stored value, so with
+         * scripting off, or the attribute removed by hand, nothing about
+         * what gets saved changes. */
+        var showLabel = document.querySelector('[data-uc-rsvp-show-check]');
+        var showNote = document.querySelector('[data-uc-rsvp-show-note]');
+        if (showLabel && show) {
+            var syncShow = function () {
+                var off = !rsvp.checked;
+                show.disabled = off;
+                showLabel.classList.toggle('uc-check-locked', off);
+                if (showNote) { showNote.hidden = !off; }
+            };
+            rsvp.addEventListener('change', syncShow);
+            syncShow();
+        }
     }
 
     /* ---------------------------------------------------------------------
@@ -3868,6 +3891,12 @@ function ucDismissOnBackdrop(dialog) {
      */
     function initCancelConsent() {
         document.querySelectorAll('form[data-uc-confirm-cancel]').forEach(function (form) {
+            /* THE SAME DIALOG SERVES PUTTING IT BACK ON (3.73.0). Both are
+             * one manager action that may email everybody registered, and
+             * a second confirmation with its own wording would be a second
+             * place for the consent rule to be got wrong. Only the words
+             * differ, and they are chosen here rather than by the caller. */
+            var back = form.hasAttribute('data-uc-confirm-reinstate');
             var field = form.querySelector('[data-uc-notify-choice]');
             var counter = form.querySelector('[data-uc-cancel-count]');
             /* The registrants-only message the dialog's second step collects.
@@ -3887,6 +3916,13 @@ function ucDismissOnBackdrop(dialog) {
                 var submitter = e.submitter || null;
 
                 if (people < 1 || !field) {
+                    if (back) {
+                        /* Nobody was told it was off, so there is nobody to
+                         * tell it is back, and nothing to confirm. */
+                        answered = true;
+                        resubmit(form, submitter);
+                        return;
+                    }
                     ucAskNotify({
                         title: 'Cancel this event?',
                         lead: 'It keeps its registrations and takes no new ones. Nobody is registered, so there is nobody to tell.',
@@ -3906,21 +3942,33 @@ function ucDismissOnBackdrop(dialog) {
                 }
 
                 ucAskNotify({
-                    title: 'Cancel this event?',
-                    lead: people + (1 === people ? ' person is' : ' people are') + ' registered. '
-                        + 'The event keeps its registrations and takes no new ones. '
-                        + 'Emailing them cannot be undone.',
+                    title: back ? 'Put this event back on?' : 'Cancel this event?',
+                    lead: back
+                        ? (people + (1 === people ? ' person was' : ' people were')
+                            + ' told this was cancelled. Their registrations were kept and still hold. '
+                            + 'Emailing them cannot be undone.')
+                        : (people + (1 === people ? ' person is' : ' people are') + ' registered. '
+                            + 'The event keeps its registrations and takes no new ones. '
+                            + 'Emailing them cannot be undone.'),
                     changes: [],
-                    sendQuestion: 'Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?',
-                    sendLabel: 'Cancel and email ' + (1 === people ? 'them' : 'them all'),
-                    silentLabel: 'Cancel without telling them',
+                    sendQuestion: back
+                        ? ('Tell the ' + people + (1 === people ? ' person' : ' people') + ' it is back on?')
+                        : ('Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?'),
+                    sendLabel: back
+                        ? ('Put it back on and tell ' + (1 === people ? 'them' : 'them all'))
+                        : ('Cancel and email ' + (1 === people ? 'them' : 'them all')),
+                    silentLabel: back ? 'Put it back on without telling them' : 'Cancel without telling them',
                     /* "Leave it alone" beside two buttons that both cancel the
                      * event read as a third thing to do to it. This button
                      * closes the dialog and writes nothing: see the callback,
                      * which returns on a null answer before touching the
                      * hidden field or resubmitting. "Go back" is what it does. */
                     cancelLabel: 'Go back',
-                    sendPrompt: {
+                    /* NO SECOND STEP ON A REINSTATE. The cancellation message
+                     * exists because an organizer calling something off often
+                     * has something to say about why; "it is back on" is the
+                     * whole message, and a box nobody fills in is a step. */
+                    sendPrompt: back ? null : {
                         label: 'Anything to add, just for the people registered (optional)',
                         hint: 'This goes in their email and nowhere else. It is not on the event page.',
                         placeholder: 'We are looking at a new date and will write again.',

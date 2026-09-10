@@ -57,9 +57,30 @@ class SFAF_Announce {
     }
 
     /**
+     * Tell everybody registered that a cancelled event is happening again.
+     *
+     * THE THIRD THING THIS CLASS ANNOUNCES, and it groups by person across
+     * events exactly as the other two do, so somebody registered for three
+     * reinstated dates gets one message.
+     *
+     * `$was_by_event` IS SHAPED LIKE $changes_by_event on purpose, so run()
+     * needs no third parameter and no branch: it is a map from event id to
+     * whatever that event's builder wants, and here what it wants is the
+     * date the event used to be on. An event whose date did not move simply
+     * has no entry.
+     *
+     * @param int[] $event_ids
+     * @param array $was_by_event event_id => previous Y-m-d, where it moved
+     * @return array{people:int,sent:int,failed:int,events:int}
+     */
+    public static function reinstated( $event_ids, $was_by_event = array() ) {
+        return self::run( 'reinstated', $event_ids, $was_by_event );
+    }
+
+    /**
      * The shared machinery.
      *
-     * @param string $type 'cancelled'|'changed'
+     * @param string $type 'cancelled'|'changed'|'reinstated'
      * @param int[]  $event_ids
      * @param array  $changes_by_event
      * @return array
@@ -154,6 +175,15 @@ class SFAF_Announce {
         if ( 'changed' === $type ) {
             $context['changes'] = isset( $changes_by_event[ $event_id ] ) ? $changes_by_event[ $event_id ] : array();
         }
+        /*
+         * REINSTATED CARRIES THE DATE THE EVENT USED TO BE ON (3.73.0), and
+         * only where it moved. An event put back on its original date has no
+         * entry, the builder finds none, and the message simply does not
+         * mention a move, which is the truth about that event.
+         */
+        if ( 'reinstated' === $type ) {
+            $context['was'] = isset( $changes_by_event[ $event_id ] ) ? (string) $changes_by_event[ $event_id ] : '';
+        }
         return SFAF_Notifications::build( $type, $event_id, $person, $context );
     }
 
@@ -178,6 +208,16 @@ class SFAF_Announce {
         if ( 'cancelled' === $type ) {
             $head = sprintf( '%d dates are cancelled.', $n );
             $lead = $hello . 'you were registered for these, and they are not going ahead. You do not need to do anything.';
+        } elseif ( 'reinstated' === $type ) {
+            /*
+             * A THIRD HEADLINE, NOT THE "changed" ONE (3.73.0). Without this
+             * branch a person registered for two reinstated dates would be
+             * told they "have changed", which is the wrong fact: they were
+             * told these were off, and what they need to read first is that
+             * they are on.
+             */
+            $head = sprintf( '%d dates are back on.', $n );
+            $lead = $hello . 'these were cancelled and are happening after all. Your registrations were kept and still hold.';
         } else {
             $head = sprintf( '%d dates have changed.', $n );
             $lead = $hello . 'you were registered for these, and they have moved.';
@@ -212,6 +252,16 @@ class SFAF_Announce {
 
         if ( 'cancelled' === $type ) {
             $html .= SFAF_Email::small_para( 'Your registrations have been kept as a record that you signed up. Nothing else will be sent about these dates.' );
+        } elseif ( 'reinstated' === $type ) {
+            /* THE WAY OUT IS OFFERED HERE TOO. Several dates coming back at
+             * once is more likely to clash with something, not less. */
+            $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+            if ( $cancel ) {
+                $html .= SFAF_Email::rule();
+                $html .= SFAF_Email::small_para(
+                    'No longer able to come to one of them? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
+                );
+            }
         } else {
             $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
             if ( $cancel ) {
@@ -225,6 +275,11 @@ class SFAF_Announce {
         $text  = $head . "\n\n" . $lead . "\n\n" . $text_rows . "\n";
         if ( 'cancelled' === $type ) {
             $text .= "Your registrations have been kept as a record that you signed up. Nothing else will be\nsent about these dates.\n";
+        } elseif ( 'reinstated' === $type ) {
+            $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+            if ( $cancel ) {
+                $text .= "\nNo longer able to come to one of them? Cancel your registration so somebody else can\ntake your place. We will ask you to confirm: " . $cancel . "\n";
+            }
         } else {
             $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
             if ( $cancel ) {
