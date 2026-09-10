@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 77 items.** Quick 54, needs real conditions 20, blocked on other
+**Outstanding: 83 items.** Quick 60, needs real conditions 20, blocked on other
 people 3.
 
 ---
@@ -714,6 +714,84 @@ point and cannot be checked until there is a newer release to find.
 
 **Also worth one look:** as a user who is not an administrator, the link should
 not be on the row at all.
+
+### 1.55 Approve and Reject on the pending queue (3.73.0)
+
+**THESE WERE DEAD FROM 3.72.0 UNTIL THIS RELEASE** and nobody reported it, so
+this is the first item to do.
+
+Open Pending on a community submission or a staff request and press **Approve**.
+The two-tick dialog should open. Press **Reject** on another: its dialog should
+open, with the note box and the tick.
+
+Then check the other two dialogs the same fault killed: **Get a form link** on
+the dashboard, and a destructive control anywhere with a confirmation on it.
+
+**Click the dim outside each one.** It should close and do nothing. That is what
+3.72.0 was trying to add and never reached.
+
+### 1.56 The events list actions, and the same list on a phone (3.73.0)
+
+Three icons per row now: a pencil, two panels, and a red cross. Hover each and
+read the tooltip.
+
+- **No row wraps onto two lines**, whatever is in it.
+- A row whose event has people registered shows a **bell with a line through
+  it** instead of the cross. Press it: it should open the event **with the
+  cancel panel already open and scrolled to**, and it should NOT ask which
+  occurrences to edit.
+- An **imported** event with registrations shows a **padlock** and nothing to
+  press.
+
+**Then open the same list on a phone or tablet.** There is no hover there, so
+what matters is that the three icons are far enough apart to hit one at a time.
+Try Edit on a middle row and confirm you do not land on Duplicate.
+
+### 1.57 Bulk add a category (3.73.0)
+
+On the events list, tick three events, choose a category, press the button.
+
+- The button's count follows the ticks, and unticking everything disables it.
+- **The events keep the categories they already had.** Check one that already
+  had two.
+- **Select all** ticks the page.
+
+Then try it on a page that includes **a submission awaiting review and an
+imported event**, which are both allowed on purpose, and confirm neither is
+published or otherwise changed by it.
+
+**As a contributor**, if there is an account to hand: ticking Select all should
+add the category to your own events and report how many were skipped.
+
+### 1.58 The Display RSVP tick greys (3.73.0)
+
+Open an event. Under **Capacity**, untick **Accept RSVPs**. The **RSVP** tick
+under Display should grey immediately, with a line saying why, and Add to
+calendar should ungrey.
+
+Tick Accept RSVPs again and confirm the RSVP tick comes back **as it was**
+rather than unticked. Then save and reload and confirm it is still as it was:
+that is the half a disabled control quietly posting nothing would have broken.
+
+### 1.59 The FAQ answers on an event whose questions came from a set (3.73.0)
+
+**This is the case three releases of investigation never looked at.** Open an
+event that is NOT imported and apply a FAQ set to it, or type two questions by
+hand, then save and reload with the console open.
+
+The answers should be **editors on load**, not raw markup and not plain boxes.
+
+**If they are not, copy whatever the console says.** It now names the element.
+That message is the whole route to a diagnosis and there is no browser in the
+build environment to get it any other way.
+
+### 1.60 The locked FAQ answers on a GoFundMe Pro event (3.73.0)
+
+Open a GoFundMe Pro event from Pending and look at the questions under the
+padlock line.
+
+They should read as **prose**, not as HTML tags. They are still not editable and
+still say so, which is correct: a fetch owns them.
 
 ---
 

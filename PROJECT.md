@@ -2856,6 +2856,7 @@ this existed behaves like one created after.
 | `cancel_alert` | the event's notification list | one per cancellation, as it happens |
 | `reminder` | everybody registered, list copied in | 6am on the day (midnight if the event starts earlier) |
 | `summary` | the notification list | two hours before; nothing sent if nobody registered |
+| `reinstated` | everybody registered | when a cancelled event is put back on, and only on an explicit yes |
 
 **`kinds()` is a shared field list**, so adding a key to it is the whole of the
 wiring: `on()` reads it, `set_off()` intersects against `array_keys( kinds() )`
@@ -2866,6 +2867,28 @@ mechanism.
 > **`cancel_alert` IS NOT `cancelled`.** `cancelled` tells REGISTRANTS the EVENT
 > is off. `cancel_alert` tells STAFF that one REGISTRANT has dropped out. The
 > keys were deliberately not made near-identical words.
+
+**`reinstated` IS NOT IN `kinds()` EITHER, AND FOR A DIFFERENT REASON FROM
+THE SUBMISSION ONES (3.73.0).** `kinds()` is the set of per-event switches a
+manager can turn off in advance. This one is not a standing preference: it is
+a decision taken at the moment of putting an event back on, in the same
+confirmation that asks about cancelling, and it defaults to NOT sending. A
+switch that could pre-authorise it would be the opposite of the consent rule.
+
+**IT LEADS ON THE EVENT BEING ON, WHICH IS WHY IT IS NOT `changed`.**
+`changed` opens on what moved, and "the date moved" means nothing to somebody
+who believes the thing is not happening. The reinstate message says it is
+back, then says what the date is now if it moved, then says the registration
+still holds. It carries a cancel link in both cases, because a registration
+made for a Wednesday and reinstated onto a Thursday is a commitment nobody
+re-made.
+
+**AND IT CLOSES AN ORDERING THAT WAS TWO PATHS.** Reinstating and then
+changing the date offered the ordinary save's change notice; changing the
+date and then reinstating offered nothing, because reinstating had no prompt.
+Reinstating always asks now. The first order is still two messages, and that
+is correct rather than a leftover: two things happened and the person is told
+about both. What is gone is the case where NEITHER was sent.
 
 **THE SUBMISSION MESSAGES ARE NOT IN `kinds()`, AND THAT IS THE DISTINCTION THE
 LIST IS FOR.** `kinds()` is the set of **per-event** switches a manager sees on
@@ -3864,10 +3887,60 @@ should. Two of six plants were missed on the first run; both assertions were
 rewritten until they failed on purpose. **A checker that has never failed is not
 evidence**, which is the rule this project already had and which paid again here.
 
-### Three things investigated in 3.72.0 and deliberately not built
+### A name that does not resolve is the same defect as a name nothing calls (3.73.0)
+
+**THIS IS THE JAVASCRIPT TWIN OF THE DEAD `$force` PARAMETER ABOVE**, found
+one release later, and the pair is why both are written down together.
+
+**WHAT HAPPENED.** `portal.js` is FOUR top-level IIFEs, not one. 3.72.0
+declared `ucDismissOnBackdrop()` inside the first and called it from the
+third and the fourth, which are its SIBLINGS and cannot see into it. Both
+calls threw `ReferenceError`.
+
+**IT DID NOT LOOK LIKE AN ERROR, WHICH IS THE PART WORTH KEEPING.** Each
+call site throws AFTER `preventDefault()` and AFTER the panel has been moved
+into a `<dialog>` that has not been shown yet, and a `<dialog>` with no
+`open` attribute is `display: none`. So the click was cancelled, the panel
+left the page into an invisible box, and nothing appeared. **Three controls
+did nothing at all:** Get a form link on the dashboard, and Approve and
+Reject on the pending queue, which is the main action of the screen every
+submission and all 287 imported drafts pass through.
+
+> **ONLY ONE OF THE THREE WAS REPORTED.** A control that does nothing is
+> reported when somebody needs it that week. Approve had been dead for a
+> release and the queue was not being worked through at the time, so the
+> more serious failure was the quieter one. **Do not treat one reported
+> symptom as the extent of a shared cause**: the instruction that found
+> this said so, and it was right.
+
+**NEITHER BUILD GATE COULD SEE IT AND NEITHER EVER WILL.** `node --check`
+proves a file PARSES. The callable audit is PHP. "Does this name resolve
+from here" is a third question, and it is the same shape as "does anything
+ever pass this argument": both are valid, parseable, correctly-spelled code
+that does not work.
+
+**`.claude/js-scope-test.js` IS THE CHECK.** It reads every top-level scope
+and requires that every call to a name THE FILE ITSELF DECLARES is made from
+a scope that can see the declaration. Only our own names, so a browser global
+is never flagged and there is no allow-list to keep in step with the
+platform. It is deliberately an over-approximation on nesting, so it can miss
+a fault and cannot invent one.
+
+**THE RULE, WHICH IS NOT "ADD A CHECK".** Anything two of those IIFEs share
+lives at file scope, and the file header now says so at the top where
+somebody adding a fifth will read it. A shared helper is the one kind of
+thing that cannot be written where it is first needed.
+
+### Three things investigated in 3.72.0, two of them now built
 
 Each was asked for as an investigation. They are here rather than in the
 hand-off because the finding is durable even though the decision is not taken.
+
+> **TWO OF THESE SHIPPED IN 3.73.0** and are kept here rather than deleted,
+> because what each says about the SHAPE of the problem is what a later
+> reader needs and the build note is one line. The RSVP pair and the seed
+> defect were built; the wording half of the duplicate control is still a
+> proposal.
 
 **1. REINSTATING A CANCELLED EVENT, AND WHAT IT DOES TO REGISTRATIONS.**
 
@@ -3887,9 +3960,9 @@ Reinstating deletes `_uc_cancelled`, `_uc_cancelled_visibility` and
 - **What is missing is a message for the case.** The change notice is written for
   a live event whose date moved. Nobody has been told "the thing you registered
   for is back on, on a date you did not choose", and the people it would go to
-  are exactly the people who were told it was off. **Not built, and it is a
-  decision rather than a defect:** whether that is one message or two, and
-  whether it should be automatic, is Mark's call.
+  are exactly the people who were told it was off. **BUILT IN 3.73.0.** It is one message, `reinstated`, it goes out whether
+  or not the date moved, it carries a cancel link, and it is subject to the
+  consent rule like every other manager-caused message. See PROJECT.md 4.
 
 **2. "USE THIS EVENT'S DETAILS ON ANOTHER DATE" ON A MULTI-EVENT SERIES.**
 
@@ -3900,7 +3973,10 @@ upcoming. On a series holding several distinct events, PROP holds four, "this
 event's details" silently means "whichever of the four happens next", which is a
 coin toss to the manager.
 
-> **AND THE TWO SEEDS ARE COMPUTED TWICE, BY DIFFERENT CODE.** The render-side
+> **FIXED IN 3.73.0: `SFAF_Series::seed_from_lists()` is the one rule and
+> both callers ask it.** What it was:
+>
+> **THE TWO SEEDS WERE COMPUTED TWICE, BY DIFFERENT CODE.** The render-side
 > seed prefers the next event **in the recurrence group** and falls back to the
 > series; the handler's seed asks only the series. On a series with several
 > groups those can disagree, so the placeholder shows event A's title and the
@@ -3922,10 +3998,11 @@ page draws. `sfaf_event_takes_rsvps()` is **both**.
 and `show_rsvp` off means an event that accepts registrations and shows no
 button. Nothing is broken and nothing says anything.
 
-**The proposal, not built.** Leave them two questions and make the second
-**dependent on the first**, greyed while `rsvp_enabled` is off, which is exactly
-the treatment `show_calendar` already has for the same reason and through the
-same live script. Collapsing them into one tick was considered and rejected:
+**BUILT IN 3.73.0.** They stay two questions and the second is **dependent on
+the first**, greyed while `rsvp_enabled` is off, which is exactly the treatment
+`show_calendar` already had for the same reason and through the same live
+script. The save skips it on its own reading of the stored value, because a
+disabled input posts nothing and the toggle loop would otherwise write `0`. Collapsing them into one tick was considered and rejected:
 "takes registrations" and "shows the button" are genuinely separable, and an
 event taking registrations through a link elsewhere is a real case.
 
