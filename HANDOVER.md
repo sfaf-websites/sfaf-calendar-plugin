@@ -6,28 +6,32 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.74.0, built and not released.
+**Last updated:** 2026-09-11, at 3.74.0, released.
 
 ---
 
 ## What shipped last
 
-**3.74.0**, built as `sfaf-calendar-3.74.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean.
+**3.74.0**, built as `sfaf-calendar-3.74.0.zip` in the project root, committed,
+**pushed to both repositories** and **released** on 2026-09-11. Working tree
+clean. The asset on the release is that zip, 1,279,283 bytes, and its name
+matches the pattern `asset_url()` looks for.
 
-> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
-> separate press: `bash .claude/publish.sh --release`. Nothing on any site will
-> be offered 3.74.0 until it is run.
-
-> **THE SITE DID NOT OFFER 3.73.0 EITHER, AND THAT IS TWO IN A ROW.** 3.72.0 and
-> 3.73.0 both went on by hand. **The cache diagnosis is now doubtful rather than
-> unconfirmed:** the fix for it shipped IN 3.73.0, so it could not have helped
-> 3.73.0 be offered, but 3.74.0 is the first release the forced check could
-> reach. **Press Check for updates on the Plugins screen the day this is
-> released** (`TESTING.md` 1.54). If it reports 3.74.0, the cache was the cause
-> and the loop is closed. **If it reports nothing while a release exists, the
-> cause is something else entirely** and a GitHub rate limit on the host's IP is
-> the next thing to look at. Say which happened rather than assuming.
+> **THIS IS THE RELEASE THAT SETTLES THE UPDATER, AND NOBODY HAS PRESSED THE
+> BUTTON YET.** 3.72.0 and 3.73.0 were both released correctly and neither was
+> offered; both went on by hand. The forced check shipped IN 3.73.0, so it could
+> not help 3.73.0 be offered, and **3.74.0 is the first release it can reach**.
+>
+> **Plugins > SFAF Calendar > Check for updates** (`TESTING.md` 1.54).
+>
+> - **It reports 3.74.0:** the cache was the cause, the fix works, and the loop
+>   is closed. Record that and delete 1.54.
+> - **It reports no update while a release exists:** the cache was NOT the cause
+>   and the diagnosis was wrong twice. A GitHub rate limit on the host's IP is
+>   the next thing to look at, then whether the host can reach api.github.com at
+>   all. **Say which happened rather than assuming this was it.**
+> - **It reports that the check failed:** that is a third answer and a useful
+>   one. It means the network, not the cache.
 
 | | |
 |---|---|
