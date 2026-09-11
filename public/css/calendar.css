@@ -3643,6 +3643,23 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
         object-fit: cover;
     }
 
+    /* THE WHOLE PANEL IS ONE LINK (3.77.0), so the anchor is the layout box and
+       the panel is only the frame round it. Everything inside is a span, which
+       is why this needs display: block rather than inheriting inline from the
+       reset at the top of this file. */
+    .uc-mp .uc-mp-link {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    /* The whole panel lifts on hover, not the pill, because the whole panel is
+       what gets pressed. A pill that highlighted alone would say the pill was
+       the only target, which is the thing 3.76.0 got wrong in the other
+       direction. */
+    .uc-mp .uc-mp-link:hover .uc-mp-go { background: var(--uc-text); }
+    .uc-mp .uc-mp-link:hover .uc-mp-title { text-decoration: underline; }
+
     .uc-mp .uc-mp-body {
         display: block;
         padding: 12px 14px 14px;

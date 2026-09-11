@@ -1708,18 +1708,51 @@
            is decoration to a screen reader: the tile's own link already carries
            the title, the time and the date. */
         panel.setAttribute('aria-hidden', 'true');
+        /*
+         * THE WHOLE PANEL IS ONE LINK (3.77.0), AND "View Event Details" WAS A
+         * SPAN WITH NOTHING BEHIND IT.
+         *
+         * THE ADDRESS WAS NEVER MISSING. The tile this previews IS an <a> with
+         * the event's href on it, so the URL has always been on the element
+         * fill() is handed. What was missing is that nothing read it and the
+         * panel was built entirely out of spans: a pill that looked like a
+         * button, was not one, and had no destination behind it.
+         *
+         * ONE LINK ROUND EVERYTHING, RATHER THAN THREE. The picture, the title
+         * and the pill are all things somebody aims at when they want the
+         * event, and the tile underneath is already exactly this: one link over
+         * its whole area. A panel that is an expansion of that tile should
+         * behave like it. Three separate links would be three places for the
+         * target and the rel to drift apart, and three cursors that change on
+         * some parts of the panel and not others.
+         *
+         * WHAT IT COSTS IS TEXT SELECTION, and that is worth naming rather than
+         * discovering. Nobody can select the date out of a panel that closes
+         * when the pointer leaves it, and every line in it is on the tile and
+         * on the event page as well.
+         *
+         * tabindex="-1" AND THE PANEL STAYS aria-hidden. A focusable element
+         * inside an aria-hidden container is the worst of both: invisible to a
+         * screen reader and still a tab stop. A keyboard user tabs to the TILE,
+         * which opens this and carries the same destination, so a stop in here
+         * would be a second stop per event and sixty extra on a busy month.
+         * The mouse gets a target; the keyboard already had one.
+         */
         panel.innerHTML =
-            '<span class="uc-mp-media"><img alt="" decoding="async" /></span>' +
-            '<span class="uc-mp-body">' +
-                '<span class="uc-mp-off"></span>' +
-                '<span class="uc-mp-title"></span>' +
-                '<span class="uc-mp-date"></span>' +
-                '<span class="uc-mp-time"></span>' +
-                '<span class="uc-mp-place"></span>' +
-                '<span class="uc-mp-go">View Event Details</span>' +
-            '</span>';
+            '<a class="uc-mp-link" tabindex="-1" href="#">' +
+                '<span class="uc-mp-media"><img alt="" decoding="async" /></span>' +
+                '<span class="uc-mp-body">' +
+                    '<span class="uc-mp-off"></span>' +
+                    '<span class="uc-mp-title"></span>' +
+                    '<span class="uc-mp-date"></span>' +
+                    '<span class="uc-mp-time"></span>' +
+                    '<span class="uc-mp-place"></span>' +
+                    '<span class="uc-mp-go">View Event Details</span>' +
+                '</span>' +
+            '</a>';
         document.body.appendChild(panel);
 
+        var link   = panel.querySelector('.uc-mp-link');
         var img    = panel.querySelector('.uc-mp-media img');
         var media  = panel.querySelector('.uc-mp-media');
         var off    = panel.querySelector('.uc-mp-off');
@@ -1728,6 +1761,17 @@
         var current = null;
 
         function fill(a) {
+            /*
+             * THE DESTINATION AND HOW IT OPENS BOTH COME OFF THE TILE, never
+             * from anything this file decides. The tile carries target and rel
+             * from sfaf_new_tab_attrs(), and a panel that opened in the same
+             * tab while the tile opened a new one would be two answers to one
+             * question. Copied rather than re-derived for that reason.
+             */
+            link.setAttribute('href', a.getAttribute('href') || '#');
+            copyAttr(a, link, 'target');
+            copyAttr(a, link, 'rel');
+
             var src = a.getAttribute('data-uc-pv-img') || '';
             if (src) {
                 img.src = src;
@@ -1753,6 +1797,19 @@
         function fillLine(el, text) {
             el.textContent = text || '';
             el.hidden = !text;
+        }
+
+        /* Copy an attribute, or take it off when the source has none. The
+           second half matters: without it a tile that opens in a new tab would
+           leave target="_blank" behind on the panel for the next tile that does
+           not. */
+        function copyAttr(from, to, name) {
+            var value = from.getAttribute(name);
+            if (null === value) {
+                to.removeAttribute(name);
+            } else {
+                to.setAttribute(name, value);
+            }
         }
 
         /*

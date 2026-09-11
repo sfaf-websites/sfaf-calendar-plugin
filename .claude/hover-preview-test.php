@@ -146,6 +146,37 @@ if ( '' !== $slice ) {
         hp_fail( 'the preview decides what a device can do from its WIDTH; a wide touch screen still cannot hover' );
     }
 
+    /* 6. THE PANEL GOES SOMEWHERE (3.77.0).
+     *
+     * 3.76.0 shipped it with "View Event Details" as a <span>: a pill that
+     * looked like a button, was not one, and had nothing behind it. The address
+     * was never missing, because the tile it previews IS the link, so the fault
+     * was entirely that nothing read the href and nothing in the panel was
+     * clickable.
+     *
+     * SO THE ASSERTION IS ABOUT THE DESTINATION, not about the markup. There
+     * has to be an anchor, its href has to come off the tile, and the target
+     * and rel have to be copied rather than invented, or the panel could open
+     * in the same tab while the tile opens a new one. */
+    if ( false === strpos( $slice, "panel.querySelector('.uc-mp-link')" ) ) {
+        hp_fail( 'the preview panel has no link element, so nothing in it is clickable' );
+    }
+    if ( ! preg_match( "/setAttribute\(\s*'href'\s*,\s*a\.getAttribute\(\s*'href'\s*\)/", $slice ) ) {
+        hp_fail( "the panel's link does not take its href from the tile, so it goes nowhere or somewhere of its own" );
+    }
+    foreach ( array( 'target', 'rel' ) as $attr ) {
+        if ( false === strpos( $slice, "copyAttr(a, link, '" . $attr . "')" ) ) {
+            hp_fail( 'the panel does not copy ' . $attr . ' from the tile, so it can open differently from the tile it previews' );
+        }
+    }
+    /* AND IT IS NOT A TAB STOP. The panel is aria-hidden and the tile already
+     * carries the same destination; a focusable element inside an aria-hidden
+     * container is invisible to a screen reader and still a stop, which on a
+     * sixty-event month is sixty extra. */
+    if ( false === strpos( $slice, 'tabindex="-1"' ) ) {
+        hp_fail( "the panel's link is a tab stop inside an aria-hidden panel, which is a stop a screen reader cannot see" );
+    }
+
     /* 5. A delay, and a real one. */
     if ( ! preg_match( '/PREVIEW_OPEN_DELAY/', $slice ) ) {
         hp_fail( 'the preview opens with no named delay, so crossing a month fires one per tile' );
@@ -224,6 +255,15 @@ if ( $self ) {
     $planted = preg_replace( '#/\*.*?\*/#s', '', $planted );
     $caught['jQuery slipping into the shared block'] = (bool) preg_match( '/(^|[^A-Za-z0-9_$])\$\(/', $planted );
 
+    /* THE 3.76.0 FAULT: the pill back to a span with nothing behind it. */
+    $planted = str_replace( "panel.querySelector('.uc-mp-link')", "panel.querySelector('.uc-mp-none')", $slice );
+    $caught['the panel losing its link'] = ( false === strpos( $planted, "panel.querySelector('.uc-mp-link')" ) );
+
+    /* And the panel deciding its own destination instead of taking the tile's. */
+    $planted = str_replace( "a.getAttribute('href')", "'/events/'", $slice );
+    $caught['the panel inventing its own href'] =
+        ! preg_match( "/setAttribute\(\s*'href'\s*,\s*a\.getAttribute\(\s*'href'\s*\)/", $planted );
+
     foreach ( $caught as $what => $ok ) {
         printf( "  %-56s%s\n", $what, $ok ? 'caught' : 'MISSED' );
     }
@@ -263,6 +303,9 @@ printf( "  delay     %sms before it opens, so crossing a month does not fire one
 echo "  the box   the UA sheet's inset:0 and margin:auto are both overridden, or the\n";
 echo "            panel would centre itself and ignore where it was placed\n";
 echo "  the tile  carries the title, image, date, time and place the panel reads\n";
+echo "  the link  the whole panel is one anchor taking its href, target and rel off\n";
+echo "            the tile, so it cannot open differently from what it previews, and\n";
+echo "            it is not a tab stop: the tile is the keyboard's one stop per event\n";
 echo "\n";
 echo "Whether it LOOKS right, and whether a bottom-row tile flips above the fold, are\n";
 echo "browser facts this cannot reach. TESTING.md has them.\n";
