@@ -1215,16 +1215,35 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-image-picker { margin: 12px 0; }
 /* Its trigger carries a thumbnail, and a picture has no baseline to sit on. */
 .uc-image-picker > .uc-picker-toggle { align-items: center; }
-.uc-image-current { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* BIGGER, TWICE OVER (3.76.0). 48x27 and 64x36 are the sizes these were
-   built at, and at those sizes a photograph is a smudge: somebody choosing
-   between six pictures of people in a room cannot tell them apart, which is
-   the whole job of the control. The trigger is what you look at after
-   choosing and the rows are what you choose from, so both go up and the row
-   goes up further. 16:9 in both cases, matching every other place this
-   calendar shows an event picture. */
-.uc-image-current-thumb { flex: 0 0 auto; width: 96px; height: 54px; object-fit: cover;
-    border-radius: 6px; border: 1px solid var(--p-border); }
+/* The picture and its name, top-aligned now that the picture is 113px tall:
+   centred, the name floated in the middle of a large image and read as a
+   caption rather than as the answer to "which one". */
+.uc-image-current { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+/* BIGGER, TWICE OVER (3.76.0), AND THEN THE WRONG WAY ROUND (3.78.0).
+   ---------------------------------------------------------------------------
+   48x27 and 64x36 were the sizes these were built at, and at those sizes a
+   photograph is a smudge: somebody choosing between six pictures of people in
+   a room cannot tell them apart, which is the whole job of the control. 3.76.0
+   raised both, the trigger to 96 and the row to 132.
+
+   RAISING THEM SEPARATELY INVERTED THEM, which is the fault and is not a rule
+   living somewhere else. The TRIGGER is the picture somebody looks at to
+   decide: it is what the form shows once the panel is shut and it is the
+   answer to "which one did I choose". The ROW is what gets scanned past. The
+   trigger ended up SMALLER than the rows it chooses from, which is backwards,
+   and neither number was wrong on its own.
+
+   SO THE TRIGGER IS THE BIGGEST PICTURE IN THE CONTROL, and the ordering is
+   now the thing to preserve rather than either number: trigger, then row, then
+   anything else. 16:9 throughout, matching every other place this calendar
+   shows an event picture. */
+.uc-image-current-thumb { flex: 0 0 auto; width: 200px; height: 113px; object-fit: cover;
+    border-radius: 8px; border: 1px solid var(--p-border); }
+/* It gets its own line at narrow widths rather than squeezing the name to
+   nothing beside it. The toggle is already flex-wrap: wrap. */
+@media (max-width: 600px) {
+    .uc-image-current-thumb { width: 100%; max-width: 260px; height: auto; aspect-ratio: 16 / 9; }
+}
 .uc-image-current-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* THE SEARCH BOX IS NOT THERE UNTIL IT CAN WORK. portal.js reveals it. Without
@@ -2837,60 +2856,72 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker-options > .uc-picker-group-head:first-child { margin-top: 2px; }
 
 /* ---------------------------------------------------------------------------
-   THE IMAGES SCREEN (3.74.0)
+   THE IMAGES SCREEN (3.74.0, rebuilt 3.78.0)
 
-   A GRID THAT WRAPS RATHER THAN A FIXED COLUMN COUNT. The sidebar takes a
-   fixed width and the rest is the window, so a column count chosen here would
-   be right at one width and wrong at every other. auto-fill with a floor lets
-   the browser answer it, and 150px is a thumbnail somebody can recognise a
-   photograph in.
+   WHAT IT LOOKED LIKE AND WHY. auto-fill at minmax(150px, 1fr) put six cards
+   across, each holding a tick, a thumbnail, a name box, a Save, a series
+   dropdown and an Add. Six controls in a 150px column, thirty controls on a
+   screen. The dropdown clipped after the word "Add", so the one thing it
+   exists to show, a series name, was the thing it could not show.
+
+   THE FLOOR IS THE CONTROL, NOT THE PICTURE. 150px was chosen as "a thumbnail
+   somebody can recognise a photograph in", which was the wrong question: the
+   widest thing in the card is a select that has to render "Mobile Health
+   Sites" without clipping, and that is what sets the minimum. 300px.
+
+   FEWER, WIDER, AND THE CARD READS AS ONE THING. Three across on a normal
+   window rather than six, one form per card rather than two, and both fields
+   labelled rather than placeholder-only, which is the pattern that made it
+   read as a wall of boxes.
 
    THE TICK IS ON THE PICTURE, not in a column beside it. There is no row to
-   put a column in, and a box floating above the corner of the image it selects
+   put a column in, and a box floating over the corner of the image it selects
    is what every photo library does, so it is what a person looks for.
    ------------------------------------------------------------------------ */
 .uc-media-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
-    margin: 14px 0 0; padding: 0;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+    margin: 16px 0 0; padding: 0;
     list-style: none;
 }
 .uc-media-item {
     position: relative;
-    display: flex; flex-direction: column; gap: 6px;
-    padding: 8px;
-    border: 1px solid var(--p-border); border-radius: 10px;
-    background: var(--p-surface-2, #f6f7f8);
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--p-border); border-radius: 12px;
+    background: var(--p-surface, #fff);
 }
+/* A WHITE CARD ON THE PAGE TINT, WHICH IS THE OTHER WAY ROUND FROM BEFORE.
+   These were tinted cards on a white card, so thirty of them read as one grey
+   field with boxes in it. Every other card in this portal is white on the
+   tint; this is that, and the grid sits directly on the page rather than
+   inside a second card. */
 .uc-media-thumb {
     width: 100%; aspect-ratio: 16 / 9;
     object-fit: cover;
-    border-radius: 6px;
-    background: var(--p-surface, #fff);
+    border-radius: 8px;
+    background: var(--p-surface-2, #f6f7f8);
 }
 .uc-media-tick {
-    position: absolute; top: 14px; left: 14px;
-    display: inline-flex; margin: 0; padding: 3px;
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.92);
+    position: absolute; top: 18px; left: 18px;
+    display: inline-flex; margin: 0; padding: 4px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 1px 3px rgba(26, 29, 33, 0.18);
 }
 .uc-media-tick input[type="checkbox"] { margin: 0; width: auto; }
 .uc-media-name {
     margin: 0;
-    font-size: 12px; line-height: 1.35;
-    /* Two lines, then an ellipsis. A file name is often long and a card that
-       grows to fit one makes the whole row of cards grow with it. */
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden;
+    font-size: 13px; line-height: 1.4;
     word-break: break-word;
 }
-.uc-media-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+.uc-media-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; }
 .uc-media-tag {
-    display: inline-flex; align-items: center; gap: 3px;
-    padding: 2px 6px;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
     border-radius: 999px;
-    background: var(--p-surface, #fff);
+    background: var(--p-surface-2, #f6f7f8);
     border: 1px solid var(--p-border);
     font-size: 12px; line-height: 1.4;
 }
@@ -2900,17 +2931,73 @@ body.uc-modal-open { overflow: hidden; }
    would say the opposite. */
 .uc-media-tag-off {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 16px; height: 16px; padding: 0;
+    width: 18px; height: 18px; padding: 0;
     border: 0; border-radius: 4px;
     background: none; color: var(--p-muted, #6B6764);
     cursor: pointer; line-height: 0;
 }
-.uc-media-tag-off:hover { color: var(--p-text); background: var(--p-surface-2, #f6f7f8); }
-.uc-media-one { display: flex; align-items: center; gap: 6px; margin-top: auto; }
-.uc-media-one .uc-field { margin: 0; flex: 1 1 auto; min-width: 0; }
-.uc-media-one select { width: 100%; }
-.uc-media-filter { margin: 0; flex: 0 1 260px; }
+.uc-media-tag-off:hover { color: var(--p-text); background: var(--p-surface, #fff); }
+
+/* ONE FORM, TWO LABELLED FIELDS AND ONE SAVE. margin-top: auto on the form
+   pushes it to the foot of the card, so a card with two tag chips and one with
+   none still line their Save buttons up across a row. */
+.uc-media-edit {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--p-border);
+}
+.uc-media-edit .uc-field { margin: 0; }
+.uc-media-edit select, .uc-media-edit input[type="text"] { width: 100%; }
+.uc-media-edit-go { display: flex; justify-content: flex-end; }
+
+/* ---------------------------------------------------------------------------
+   THE UPLOAD PANEL AND THE GRID WERE TWO DENSITIES (3.78.0)
+
+   A full card with a 20px-padded field row, sitting above a grid of tight
+   cards. It is a folded disclosure now, shut by default: adding a picture is
+   something an admin does occasionally and looking at the library is what
+   everybody does every time, so the occasional one should not be the first
+   thing on the screen taking the most space.
+
+   Same native <details> as the Series and Categories lists, and the same
+   summary-is-the-card-head arrangement. No scripted show and hide.
+   ------------------------------------------------------------------------ */
+.uc-media-upload { margin-bottom: 18px; }
 .uc-media-upload .uc-field-row { align-items: flex-end; }
+/* The grid's own card carries the tint, so a white .uc-media-item reads as a
+   card ON something rather than a box IN nothing. That is the one-white-card
+   rule this portal already uses everywhere, restored: it was tinted cards on a
+   white card, which made thirty of them one grey field. */
+.uc-media-library { background: var(--p-surface-2, #f6f7f8); }
+/* "no name yet", beside the label and only on a card that has none. Helper
+   step, muted, so it reads as a state rather than as a second label. */
+.uc-media-unnamed { margin-left: 6px; font-weight: 400; color: var(--p-muted, #6B6764); }
+.uc-media-filter { margin: 0; flex: 0 1 280px; }
+.uc-media-filter select { width: 100%; }
+
+/* ---------------------------------------------------------------------------
+   A PRIMARY BUTTON THAT CANNOT DO ANYTHING STOPS BEING PRIMARY (3.78.0)
+
+   "Tag 0 images" rendered in brand Yellow while disabled. Yellow appears once
+   on a screen and means "this is the thing to act on", and DESIGN.md is
+   explicit that it is for actions; a control that is inert must not wear it,
+   because the one thing a person scans for is then pointing at something that
+   does nothing.
+
+   Opacity alone was what it had, and 55% yellow is still yellow. This drops
+   the treatment entirely: a disabled primary is a plain disabled control, and
+   it goes back to yellow the moment something is ticked.
+
+   SCOPED TO THE TICK PICKERS, which is every screen that has one: the events
+   list, the schedule's bulk publish and this. One answer for all three.
+   ------------------------------------------------------------------------ */
+.uc-bulk-cat .uc-btn-primary[disabled],
+.uc-publish-picker .uc-btn-primary[disabled] {
+    background: var(--p-surface-2, #f6f7f8);
+    border-color: var(--p-border);
+    color: var(--p-muted, #6B6764);
+}
 
 /* ---------------------------------------------------------------------------
    TEAMS (Users screen).

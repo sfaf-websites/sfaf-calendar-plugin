@@ -752,24 +752,40 @@ class SFAF_Portal {
                 $this->redirect( 'media', array( 'msg' => 'tagged', 'n' => (int) $done['did'] ) );
                 break;
 
-            case 'media_rename':
+            case 'media_save':
                 if ( ! SFAF_Media::can_tag( $user ) ) { wp_die( 'Denied' ); }
                 /*
-                 * IT WRITES post_title ON AN ATTACHMENT AND NOTHING ELSE. The
-                 * file does not move, the id does not change, and every event
-                 * pointing at this picture goes on pointing at it: a title is
-                 * what a picker SHOWS, not what anything resolves by.
+                 * ONE PRESS, TWO WRITES, AND NEITHER IS DESTRUCTIVE (3.78.0).
+                 * The card had a name form and a tag form with a submit each,
+                 * which is two controls for what is one act at one moment:
+                 * naming a picture and filing it.
                  *
-                 * EMPTYING IT IS A REAL ANSWER. Clearing the box puts the row
-                 * back to its file name, which is what looks_like_a_filename()
-                 * would have done anyway, so there is nothing to undo and no
+                 * THE NAME IS REPLACED AND THE SERIES IS ADDED, and the two
+                 * verbs are different on purpose. A name is one value and the
+                 * box holds all of it; a series is one of several an image may
+                 * carry, and appending is what the bulk control promises too.
+                 * Taking one off is the chip's own x.
+                 *
+                 * rename() WRITES post_title AND NOTHING ELSE. The file does
+                 * not move, the id does not change, and every event pointing at
+                 * this picture goes on pointing at it: a title is what a picker
+                 * SHOWS, not what anything resolves by.
+                 *
+                 * EMPTYING THE BOX IS A REAL ANSWER. It puts the row back to
+                 * its file name, which is what looks_like_a_filename() would
+                 * have done anyway, so there is nothing to undo and no
                  * confirmation to ask for.
                  */
+                $media_id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
                 SFAF_Media::rename(
-                    isset( $_POST['id'] ) ? (int) $_POST['id'] : 0,
+                    $media_id,
                     isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : ''
                 );
-                $this->redirect( 'media', array( 'msg' => 'renamed' ) );
+                $media_term = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
+                if ( $media_term ) {
+                    SFAF_Media::add_tag( array( $media_id ), $media_term );
+                }
+                $this->redirect( 'media', array( 'msg' => $media_term ? 'saved_tagged' : 'renamed' ) );
                 break;
 
             case 'media_untag':
@@ -8345,8 +8361,27 @@ class SFAF_Portal {
          * otherwise have to work out from what is missing.
          */
         ?>
+        <?php
+        /*
+         * WHY SOME CARDS SHOW A FILE NAME (3.78.0), SAID ON THE SCREEN.
+         *
+         * A card reading `dsc_0043.jpg` beside one reading "Cycle To Zero"
+         * looks like a fault, and was reported as one twice. It is not: a
+         * picture uploaded without a title gets one from WordPress made out of
+         * the file, which is not a name anybody chose, so it is refused and the
+         * file name shows instead.
+         *
+         * THE SENTENCE POINTS AT THE REMEDY RATHER THAN EXPLAINING THE RULE.
+         * Nobody needs to know about looks_like_a_filename(); they need to know
+         * that the box under the picture is where a name goes. One line, in the
+         * place somebody is standing when they wonder.
+         */
+        ?>
         <p class="uc-view-hint">
             The pictures in the calendar folder. Tag one with a series to make it easy to find later.
+            <?php if ( $can_tag ) : ?>
+                A picture showing its file name has no name yet; type one in the box under it.
+            <?php endif; ?>
         </p>
 
         <form method="get" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-filters-bar">
@@ -8377,8 +8412,25 @@ class SFAF_Portal {
              * site, which is the state this screen exists to prevent.
              */
             ?>
+            <?php
+            /*
+             * FOLDED, AND SHUT (3.78.0). It was a full card with a padded field
+             * row sitting above a grid of tight cards, which is two densities
+             * arguing on one screen. Adding a picture is something an admin
+             * does occasionally; looking at the library is what everybody does
+             * every time, so the occasional one should not be the first thing
+             * on the screen taking the most space.
+             *
+             * Native <details>, like the Series and Categories lists and the
+             * picture chooser, so it works with nothing running.
+             */
+            ?>
             <div class="uc-card uc-media-upload">
-                <div class="uc-card-head"><h2>Add an image</h2></div>
+                <details>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                    <h2>Add an image</h2>
+                </summary>
                 <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
                       enctype="multipart/form-data" class="uc-form">
                     <input type="hidden" name="uc_action" value="media_upload" />
@@ -8407,10 +8459,11 @@ class SFAF_Portal {
                         <button type="submit" class="uc-btn uc-btn-primary">Upload</button>
                     </div>
                 </form>
+                </details>
             </div>
         <?php endif; ?>
 
-        <div class="uc-card">
+        <div class="uc-card uc-media-library">
             <div class="uc-card-head">
                 <h2><?php echo (int) $found['total']; ?> <?php echo esc_html( 1 === (int) $found['total'] ? 'image' : 'images' ); ?></h2>
             </div>
@@ -8479,48 +8532,6 @@ class SFAF_Portal {
 
                             <img class="uc-media-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
 
-                            <?php
-                            /*
-                             * THE NAME IS EDITABLE HERE, AND THAT IS THE ANSWER
-                             * TO "THE PICKER SHOWS FILE NAMES" (3.76.0).
-                             *
-                             * It is not a regression and nothing was lost in a
-                             * merge. `SFAF_Media::row()` runs every title
-                             * through `looks_like_a_filename()`, which blanks a
-                             * title WordPress derived from the file on upload,
-                             * and the picker then falls back to the file name.
-                             * That is 3.65.0's rule working exactly as built:
-                             * "Dsc 0043" is not a name anybody chose and is
-                             * worse than showing `dsc_0043.jpg`.
-                             *
-                             * WHAT WAS MISSING IS ANYWHERE TO TYPE A REAL ONE.
-                             * Every image in the folder was uploaded without a
-                             * title, so every one falls back, on every picker,
-                             * and the only place to fix it was wp-admin, which
-                             * is the screen most of these people never see.
-                             * A picture named "Strut clinic, waiting room" is
-                             * one somebody can pick on purpose.
-                             */
-                            ?>
-                            <?php if ( $can_tag ) : ?>
-                                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-media-rename">
-                                    <input type="hidden" name="uc_action" value="media_rename" />
-                                    <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_media_rename', 'uc_nonce' ); ?>
-                                    <label class="uc-field">
-                                        <span class="uc-visually-hidden">Name for this picture</span>
-                                        <input type="text" name="title" maxlength="120"
-                                               value="<?php echo esc_attr( $row['title'] ); ?>"
-                                               placeholder="<?php echo esc_attr( $row['file'] ); ?>" />
-                                    </label>
-                                    <button type="submit" class="uc-btn uc-btn-sm">Save</button>
-                                </form>
-                            <?php else : ?>
-                                <p class="uc-media-name"><?php
-                                    echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
-                                ?></p>
-                            <?php endif; ?>
-
                             <?php if ( ! empty( $row['tags'] ) ) : ?>
                                 <p class="uc-media-tags">
                                     <?php foreach ( $row['tags'] as $term ) : ?>
@@ -8528,12 +8539,15 @@ class SFAF_Portal {
                                         if ( $can_tag ) : ?>
                                             <?php
                                             /*
-                                             * TAKING ONE OFF IS PER IMAGE AND
-                                             * THERE IS NO BULK UNTAG. A bulk
-                                             * one is a way to undo an
-                                             * afternoon's work with one press,
-                                             * and nothing here is urgent enough
-                                             * to be worth that.
+                                             * TAKING ONE OFF KEEPS ITS OWN x,
+                                             * and it is the one control on this
+                                             * card that is not part of the Save
+                                             * below. It is an undo, it is per
+                                             * image on purpose, and it must not
+                                             * wait for a press it has nothing
+                                             * to do with. There is no bulk
+                                             * untag: that is a way to lose an
+                                             * afternoon's work in one press.
                                              */
                                             ?>
                                             <button type="submit" class="uc-media-tag-off"
@@ -8547,23 +8561,74 @@ class SFAF_Portal {
                                 </p>
                             <?php endif; ?>
 
-                            <?php if ( $can_tag && ! empty( $series ) ) : ?>
-                                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-media-one">
-                                    <input type="hidden" name="uc_action" value="media_tag" />
-                                    <input type="hidden" name="uc_media_tick_present" value="1" />
-                                    <input type="hidden" name="ids[]" value="<?php echo (int) $row['id']; ?>" />
-                                    <?php wp_nonce_field( 'uc_portal_media_tag', 'uc_nonce' ); ?>
+                            <?php
+                            /*
+                             * ONE FORM PER CARD, AND IT WAS TWO (3.78.0).
+                             *
+                             * A card held a name box with its own Save, a
+                             * series dropdown with its own Add, a tick, a
+                             * thumbnail and the tag chips: five controls and
+                             * two submit buttons, in a column 150px wide, six
+                             * across. The dropdown clipped after the word
+                             * "Add", so the one thing it exists to show, a
+                             * series name, was the thing it could not.
+                             *
+                             * NAMING A PICTURE AND FILING IT ARE THE SAME ACT
+                             * AT THE SAME MOMENT, so one Save does both: the
+                             * name is replaced and the series, if one is
+                             * chosen, is ADDED. Two submits per card and thirty
+                             * on a screen was the density, rather than the
+                             * wording of any one of them.
+                             *
+                             * BOTH FIELDS ARE LABELLED NOW. They were
+                             * placeholder-only with a clipped span for a
+                             * screen reader, which is the pattern that reads as
+                             * a wall of boxes: a card wide enough to carry a
+                             * label is a card somebody can read without
+                             * guessing.
+                             */
+                            ?>
+                            <?php if ( $can_tag ) : ?>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-media-edit">
+                                    <input type="hidden" name="uc_action" value="media_save" />
+                                    <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_media_save', 'uc_nonce' ); ?>
+
                                     <label class="uc-field">
-                                        <span class="uc-visually-hidden">Add a series to this image</span>
-                                        <select name="term_id" required>
-                                            <option value="">Add a series</option>
-                                            <?php foreach ( $series as $term ) : ?>
-                                                <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <span class="uc-field-label">Name<?php
+                                            /* ONLY WHERE IT IS TRUE, which is what keeps it from
+                                             * being noise on thirty cards. A named picture says
+                                             * nothing; an unnamed one says what the box is for,
+                                             * beside the box. */
+                                            if ( '' === $row['title'] ) :
+                                            ?><span class="uc-media-unnamed">no name yet</span><?php
+                                            endif;
+                                        ?></span>
+                                        <input type="text" name="title" maxlength="120"
+                                               value="<?php echo esc_attr( $row['title'] ); ?>"
+                                               placeholder="<?php echo esc_attr( $row['file'] ); ?>" />
                                     </label>
-                                    <button type="submit" class="uc-btn uc-btn-sm">Add</button>
+
+                                    <?php if ( ! empty( $series ) ) : ?>
+                                        <label class="uc-field">
+                                            <span class="uc-field-label">Add a series</span>
+                                            <select name="term_id">
+                                                <option value="">None</option>
+                                                <?php foreach ( $series as $term ) : ?>
+                                                    <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                    <?php endif; ?>
+
+                                    <div class="uc-media-edit-go">
+                                        <button type="submit" class="uc-btn uc-btn-sm">Save</button>
+                                    </div>
                                 </form>
+                            <?php else : ?>
+                                <p class="uc-media-name"><?php
+                                    echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                                ?></p>
                             <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
@@ -8698,6 +8763,9 @@ class SFAF_Portal {
                 break;
             case 'renamed':
                 $said = 'Name saved. Every picker shows it now.';
+                break;
+            case 'saved_tagged':
+                $said = 'Name saved and the series added.';
                 break;
             case 'untagged':
                 $said = 'Series taken off that image. The image itself is untouched.';

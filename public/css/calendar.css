@@ -3643,22 +3643,38 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
         object-fit: cover;
     }
 
-    /* THE WHOLE PANEL IS ONE LINK (3.77.0), so the anchor is the layout box and
-       the panel is only the frame round it. Everything inside is a span, which
-       is why this needs display: block rather than inheriting inline from the
-       reset at the top of this file. */
-    .uc-mp .uc-mp-link {
+    /* -----------------------------------------------------------------------
+       TWO TARGETS, AND THE PANEL IS NOT ONE OF THEM (3.78.0)
+
+       3.77.0 wrapped the whole panel in an <a>, and the consequence was
+       visible: everything inside took the anchor's computed colour, so the
+       theme's link teal tinted the entire box and the date, the time and the
+       place all read as links.
+
+       THE PICTURE AND THE PILL ARE THE TWO, and the title is deliberately
+       neither: a title that is a link in a panel where the date beside it is
+       not is the same confusion in miniature.
+
+       WHAT INHERITS A LINK COLOUR NOW, CHECKED RATHER THAN ASSUMED. Nothing.
+       The only text inside an anchor is the pill's own label, which states its
+       colour below; .uc-mp-title, the three fact lines and the cancelled line
+       have always stated theirs; and .uc-mp-shot holds an image and no text at
+       all. What WAS inheriting was every one of those, from the wrapper, and
+       the wrapper is gone.
+       -------------------------------------------------------------------- */
+    .uc-mp .uc-mp-shot {
         display: block;
-        color: inherit;
-        text-decoration: none;
         cursor: pointer;
     }
-    /* The whole panel lifts on hover, not the pill, because the whole panel is
-       what gets pressed. A pill that highlighted alone would say the pill was
-       the only target, which is the thing 3.76.0 got wrong in the other
-       direction. */
-    .uc-mp .uc-mp-link:hover .uc-mp-go { background: var(--uc-text); }
-    .uc-mp .uc-mp-link:hover .uc-mp-title { text-decoration: underline; }
+    /* EACH TARGET SHOWS ITS OWN HOVER, which is the honest affordance once
+       there are two: the picture lifts slightly and the pill darkens, and the
+       lines between them do nothing, because they do nothing. */
+    .uc-mp .uc-mp-shot:hover .uc-mp-media img { transform: scale(1.03); }
+    .uc-mp .uc-mp-media img { transition: transform 160ms ease-out; }
+    @media (prefers-reduced-motion: reduce) {
+        .uc-mp .uc-mp-media img { transition: none; }
+        .uc-mp .uc-mp-shot:hover .uc-mp-media img { transform: none; }
+    }
 
     .uc-mp .uc-mp-body {
         display: block;
@@ -3710,12 +3726,15 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
         text-overflow: ellipsis;
     }
 
-    /* THE BUTTON IS A LABEL, NOT A CONTROL, and that is the one thing about
-       this panel worth reading twice. The whole tile is already a link to the
-       event; a second, focusable control floating in the top layer over it
-       would be a tab stop that appears and disappears with the pointer. So
-       this is what the tile does, said in the shape of a button, and pressing
-       the tile is what does it. */
+    /* THE BUTTON IS A REAL LINK AND STATES ITS OWN COLOURS (3.78.0). White on
+       --uc-teal-text is 5.35:1, which is the measured pair the whole portal
+       uses for a chosen control; neither half is inherited, so a host theme
+       has nothing here to reach.
+
+       IT IS NOT A TAB STOP, and that is in the markup rather than here:
+       tabindex="-1", because the panel is aria-hidden and the tile underneath
+       already carries the same destination. A stop inside an aria-hidden
+       container is invisible to a screen reader and still a stop. */
     .uc-mp .uc-mp-go {
         display: inline-block;
         margin: 10px 0 0;
@@ -3726,5 +3745,10 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
         font-size: 13px;
         font-weight: 600;
         line-height: 1.2;
+        cursor: pointer;
     }
+    /* Darker, not lighter: the resting state is already the dark teal, and
+       #0B666F on white is 6.0:1, so the hover gains contrast rather than
+       spending it. */
+    .uc-mp .uc-mp-go:hover { background: #0B666F; color: #fff; }
 }

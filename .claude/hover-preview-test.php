@@ -158,16 +158,30 @@ if ( '' !== $slice ) {
      * has to be an anchor, its href has to come off the tile, and the target
      * and rel have to be copied rather than invented, or the panel could open
      * in the same tab while the tile opens a new one. */
-    if ( false === strpos( $slice, "panel.querySelector('.uc-mp-link')" ) ) {
-        hp_fail( 'the preview panel has no link element, so nothing in it is clickable' );
+    /* TWO TARGETS SINCE 3.78.0, and both have to be there. 3.77.0 wrapped the
+     * whole panel in one anchor, which tinted every line in it with the
+     * theme's link colour; the picture and the pill are the two things
+     * somebody aims at, and the title is deliberately neither. */
+    foreach ( array( 'uc-mp-shot', 'uc-mp-go' ) as $target ) {
+        if ( false === strpos( $slice, "panel.querySelector('." . $target . "')" ) ) {
+            hp_fail( 'the preview panel has no .' . $target . ' link, so one of its two targets is not clickable' );
+        }
+    }
+    if ( false !== strpos( $slice, 'uc-mp-link' ) ) {
+        hp_fail( 'the panel is wrapped in one anchor again, which tints every line in it with the theme\'s link colour' );
     }
     if ( ! preg_match( "/setAttribute\(\s*'href'\s*,\s*a\.getAttribute\(\s*'href'\s*\)/", $slice ) ) {
-        hp_fail( "the panel's link does not take its href from the tile, so it goes nowhere or somewhere of its own" );
+        hp_fail( "the panel's links do not take their href from the tile, so they go nowhere or somewhere of their own" );
     }
     foreach ( array( 'target', 'rel' ) as $attr ) {
         if ( false === strpos( $slice, "copyAttr(a, link, '" . $attr . "')" ) ) {
             hp_fail( 'the panel does not copy ' . $attr . ' from the tile, so it can open differently from the tile it previews' );
         }
+    }
+    /* AND BOTH GET THEM, from one loop rather than two hand-written blocks, so
+     * the picture and the pill cannot drift apart. */
+    if ( ! preg_match( '/links\.forEach\(/', $slice ) ) {
+        hp_fail( 'the two targets are filled in separately rather than from one list, so one can be given a destination and the other forgotten' );
     }
     /* AND IT IS NOT A TAB STOP. The panel is aria-hidden and the tile already
      * carries the same destination; a focusable element inside an aria-hidden
@@ -256,8 +270,13 @@ if ( $self ) {
     $caught['jQuery slipping into the shared block'] = (bool) preg_match( '/(^|[^A-Za-z0-9_$])\$\(/', $planted );
 
     /* THE 3.76.0 FAULT: the pill back to a span with nothing behind it. */
-    $planted = str_replace( "panel.querySelector('.uc-mp-link')", "panel.querySelector('.uc-mp-none')", $slice );
-    $caught['the panel losing its link'] = ( false === strpos( $planted, "panel.querySelector('.uc-mp-link')" ) );
+    $planted = str_replace( "panel.querySelector('.uc-mp-go')", "panel.querySelector('.uc-mp-none')", $slice );
+    $caught['the panel losing one of its two targets'] =
+        ( false === strpos( $planted, "panel.querySelector('.uc-mp-go')" ) );
+
+    /* AND THE 3.77.0 FAULT: one anchor round everything, which tints the box. */
+    $planted = str_replace( 'uc-mp-shot', 'uc-mp-link', $slice );
+    $caught['the whole panel becoming one link again'] = ( false !== strpos( $planted, 'uc-mp-link' ) );
 
     /* And the panel deciding its own destination instead of taking the tile's. */
     $planted = str_replace( "a.getAttribute('href')", "'/events/'", $slice );
@@ -303,9 +322,10 @@ printf( "  delay     %sms before it opens, so crossing a month does not fire one
 echo "  the box   the UA sheet's inset:0 and margin:auto are both overridden, or the\n";
 echo "            panel would centre itself and ignore where it was placed\n";
 echo "  the tile  carries the title, image, date, time and place the panel reads\n";
-echo "  the link  the whole panel is one anchor taking its href, target and rel off\n";
-echo "            the tile, so it cannot open differently from what it previews, and\n";
-echo "            it is not a tab stop: the tile is the keyboard's one stop per event\n";
+echo "  targets   two, the picture and the pill, both taking href, target and rel off\n";
+echo "            the tile in one loop, so they cannot disagree with each other or with\n";
+echo "            it. The panel itself is NOT a link: one anchor round everything tinted\n";
+echo "            every line in it with the theme's link colour. Neither is a tab stop\n";
 echo "\n";
 echo "Whether it LOOKS right, and whether a bottom-row tile flips above the fold, are\n";
 echo "browser facts this cannot reach. TESTING.md has them.\n";

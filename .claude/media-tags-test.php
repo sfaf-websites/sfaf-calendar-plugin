@@ -71,9 +71,13 @@ function checked( $a, $b = true, $e = true ) { return __checked_selected_helper(
 function sfaf_icon( $n, $a = array() ) { return ''; }
 function get_post_type( $id ) { return isset( $GLOBALS['library'][ (int) $id ] ) ? 'attachment' : ''; }
 function get_post_meta( $id, $k, $single = false ) {
+    /* The named mark and the attached file are the two keys row() asks for. */
+    if ( '_uc_media_named' === $k ) {
+        return isset( $GLOBALS['named'][ (int) $id ] ) ? $GLOBALS['named'][ (int) $id ] : '';
+    }
     return isset( $GLOBALS['library'][ (int) $id ] ) ? $GLOBALS['library'][ (int) $id ]['file'] : '';
 }
-function get_the_title( $id = 0 ) { return ''; }
+function get_the_title( $id = 0 ) { return isset( $GLOBALS['titles'][ (int) $id ] ) ? $GLOBALS['titles'][ (int) $id ] : ''; }
 function wp_get_attachment_image_url( $id, $size = 'thumbnail' ) { return 'https://example.org/x.jpg'; }
 function get_the_terms( $id, $tax ) { return isset( $GLOBALS['terms'][ (int) $id ] ) ? $GLOBALS['terms'][ (int) $id ] : array(); }
 function get_term( $id, $tax = '' ) { return isset( $GLOBALS['series'][ (int) $id ] ) ? $GLOBALS['series'][ (int) $id ] : null; }
@@ -102,6 +106,8 @@ $GLOBALS['library']  = array(
     73 => array( 'file' => '2026/09/elsewhere.jpg' ), // NOT in the folder
 );
 $GLOBALS['terms']  = array();
+$GLOBALS['titles'] = array();
+$GLOBALS['named']  = array();
 $GLOBALS['series'] = array( 9 => (object) array( 'term_id' => 9, 'name' => 'Strut' ) );
 
 class WP_Query {
@@ -321,6 +327,33 @@ foreach ( $GLOBALS['writes'] as $w ) {
 
 $done = SFAF_Media::add_tag( array( 71 ), 404 );
 expect( 'a series that does not exist tags nothing', $done['did'], 0 );
+
+/* =========================================================================
+ * 4b. A NAME SOMEBODY TYPED STICKS, EVEN WHEN IT MATCHES THE FILE (3.78.0).
+ *
+ * looks_like_a_filename() blanks a title that matches the file it came from,
+ * which is right about WordPress's derived titles and is a GUESS about
+ * everybody else's. The guess is wrong in the commonest case: a well-named
+ * file is usually named after the picture. "Cycle To Zero" on
+ * cycle-to-zero.jpg was thrown away, so somebody could type a name on the
+ * Images screen, save it, and watch every picker go on showing the file name.
+ *
+ * THE MARK IS WHAT MAKES IT KNOWN RATHER THAN GUESSED, and these assert both
+ * halves: a marked title is trusted, and clearing the box clears the mark.
+ * ====================================================================== */
+$GLOBALS['library'][74] = array( 'file' => 'calendar/cycle-to-zero.jpg' );
+$GLOBALS['titles'][74]  = 'Cycle To Zero';
+
+expect( 'unmarked, a title that matches its file is still refused',
+    SFAF_Media::looks_like_a_filename( 'Cycle To Zero', 'cycle-to-zero.jpg' ), true );
+
+$GLOBALS['named'][74] = 1;
+$row = SFAF_Media::row( 74 );
+expect( 'marked, the same title is kept', $row['title'], 'Cycle To Zero' );
+
+unset( $GLOBALS['named'][74] );
+$row = SFAF_Media::row( 74 );
+expect( 'and without the mark it falls back to the file name', $row['title'], '' );
 
 /* =========================================================================
  * 5. THE THREE PERMISSIONS ARE THREE DIFFERENT ANSWERS.

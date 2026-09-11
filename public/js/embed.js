@@ -1614,52 +1614,61 @@
            the title, the time and the date. */
         panel.setAttribute('aria-hidden', 'true');
         /*
-         * THE WHOLE PANEL IS ONE LINK (3.77.0), AND "View Event Details" WAS A
-         * SPAN WITH NOTHING BEHIND IT.
+         * TWO TARGETS: THE PICTURE AND THE BUTTON (3.78.0).
          *
          * THE ADDRESS WAS NEVER MISSING. The tile this previews IS an <a> with
          * the event's href on it, so the URL has always been on the element
-         * fill() is handed. What was missing is that nothing read it and the
+         * fill() is handed. 3.76.0's fault was that nothing read it and the
          * panel was built entirely out of spans: a pill that looked like a
          * button, was not one, and had no destination behind it.
          *
-         * ONE LINK ROUND EVERYTHING, RATHER THAN THREE. The picture, the title
-         * and the pill are all things somebody aims at when they want the
-         * event, and the tile underneath is already exactly this: one link over
-         * its whole area. A panel that is an expansion of that tile should
-         * behave like it. Three separate links would be three places for the
-         * target and the rel to drift apart, and three cursors that change on
-         * some parts of the panel and not others.
+         * 3.77.0 THEN MADE THE WHOLE PANEL ONE LINK, WHICH WAS THE WRONG
+         * ANSWER AND IS WHY THIS NOTE IS LONGER THAN THE CODE. Wrapping
+         * everything in an <a> meant the panel inherited link styling, and on
+         * this theme that tinted the entire box teal: the date, the time and
+         * the place all read as links because they were inside one. A preview
+         * whose every line looks clickable says less than one with two things
+         * that are.
          *
-         * WHAT IT COSTS IS TEXT SELECTION, and that is worth naming rather than
-         * discovering. Nobody can select the date out of a panel that closes
-         * when the pointer leaves it, and every line in it is on the tile and
-         * on the event page as well.
+         * SO IT IS TWO, AND ONLY THOSE TWO. The picture is what somebody aims
+         * at without thinking and the pill is what somebody aims at having
+         * read it. The TITLE is not one, because a title that is a link in a
+         * panel where the date beside it is not is the same confusion in
+         * miniature, and the tile underneath is already a link on the title.
          *
-         * tabindex="-1" AND THE PANEL STAYS aria-hidden. A focusable element
-         * inside an aria-hidden container is the worst of both: invisible to a
-         * screen reader and still a tab stop. A keyboard user tabs to the TILE,
-         * which opens this and carries the same destination, so a stop in here
-         * would be a second stop per event and sixty extra on a busy month.
-         * The mouse gets a target; the keyboard already had one.
+         * WHAT SURVIVES FROM THE ONE-LINK VERSION IS ITS REASONING, AND ALL OF
+         * IT STILL HOLDS:
+         *
+         *   BOTH DESTINATIONS COME OFF THE TILE, copied rather than
+         *   re-derived, so two links cannot disagree with each other or with
+         *   the tile about where they go or how they open.
+         *
+         *   NEITHER IS A TAB STOP. The panel is aria-hidden, and a focusable
+         *   element inside an aria-hidden container is the worst of both:
+         *   invisible to a screen reader and still a stop. A keyboard user tabs
+         *   to the TILE, which opens this and carries the same destination, so
+         *   a stop in here would be a second per event and sixty extra on a
+         *   busy month. tabindex="-1" on both.
          */
         panel.innerHTML =
-            '<a class="uc-mp-link" tabindex="-1" href="#">' +
+            '<a class="uc-mp-shot" tabindex="-1" href="#">' +
                 '<span class="uc-mp-media"><img alt="" decoding="async" /></span>' +
-                '<span class="uc-mp-body">' +
-                    '<span class="uc-mp-off"></span>' +
-                    '<span class="uc-mp-title"></span>' +
-                    '<span class="uc-mp-date"></span>' +
-                    '<span class="uc-mp-time"></span>' +
-                    '<span class="uc-mp-place"></span>' +
-                    '<span class="uc-mp-go">View Event Details</span>' +
-                '</span>' +
-            '</a>';
+            '</a>' +
+            '<span class="uc-mp-body">' +
+                '<span class="uc-mp-off"></span>' +
+                '<span class="uc-mp-title"></span>' +
+                '<span class="uc-mp-date"></span>' +
+                '<span class="uc-mp-time"></span>' +
+                '<span class="uc-mp-place"></span>' +
+                '<a class="uc-mp-go" tabindex="-1" href="#">View Event Details</a>' +
+            '</span>';
         document.body.appendChild(panel);
 
-        var link   = panel.querySelector('.uc-mp-link');
+        /* The two targets, kept in one list so nothing can fill one and forget
+           the other. */
+        var links  = [ panel.querySelector('.uc-mp-shot'), panel.querySelector('.uc-mp-go') ];
         var img    = panel.querySelector('.uc-mp-media img');
-        var media  = panel.querySelector('.uc-mp-media');
+        var media  = panel.querySelector('.uc-mp-shot');
         var off    = panel.querySelector('.uc-mp-off');
         var openT  = null;
         var closeT = null;
@@ -1671,11 +1680,16 @@
              * from anything this file decides. The tile carries target and rel
              * from sfaf_new_tab_attrs(), and a panel that opened in the same
              * tab while the tile opened a new one would be two answers to one
-             * question. Copied rather than re-derived for that reason.
+             * question. Copied rather than re-derived for that reason, and
+             * BOTH TARGETS GET THE SAME THREE in one loop, so the picture and
+             * the pill cannot go to different places or open differently.
              */
-            link.setAttribute('href', a.getAttribute('href') || '#');
-            copyAttr(a, link, 'target');
-            copyAttr(a, link, 'rel');
+            links.forEach(function (link) {
+                if (!link) { return; }
+                link.setAttribute('href', a.getAttribute('href') || '#');
+                copyAttr(a, link, 'target');
+                copyAttr(a, link, 'rel');
+            });
 
             var src = a.getAttribute('data-uc-pv-img') || '';
             if (src) {

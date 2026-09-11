@@ -64,6 +64,32 @@ class SFAF_Media {
     /** The filter value meaning "images with no series on them at all". */
     const UNTAGGED = 'none';
 
+    /**
+     * Post meta: a person typed this picture's name, on the Images screen.
+     *
+     * WHY THIS EXISTS, AND IT IS A DEFECT 3.76.0 SHIPPED WITHOUT SEEING.
+     * `looks_like_a_filename()` blanks a title that matches the file it came
+     * from, which is right about WordPress's own derived titles and is a GUESS
+     * about everybody else's. The guess is wrong in the commonest case there
+     * is: a well-named file is usually named after the picture, so
+     *
+     *     "Cycle To Zero"  on  cycle-to-zero.jpg
+     *     "Strut SFAF San Francisco"  on  strut-sfaf-san-francisco.jpg
+     *
+     * were both thrown away. **Somebody could type a name on the Images screen,
+     * save it, and watch every picker go on showing the file name**, which
+     * makes the remedy 3.76.0 added for exactly that complaint not work.
+     *
+     * THE ANSWER IS TO KNOW RATHER THAN GUESS. A title saved here was typed by
+     * a person, and that is a fact rather than a shape: it is recorded at the
+     * write and trusted at the read. The heuristic stays and still covers every
+     * picture nobody has named, which is what it was written for.
+     *
+     * CLEARING THE BOX CLEARS THE MARK, so emptying a name really does go back
+     * to the file name rather than leaving an empty title that is trusted.
+     */
+    const META_NAMED = '_uc_media_named';
+
     public static function register() {
         /*
          * AFTER SFAF_Series::register_taxonomy(), which is what creates the
@@ -240,7 +266,17 @@ class SFAF_Media {
 
         $file  = basename( (string) get_post_meta( $id, '_wp_attached_file', true ) );
         $title = trim( (string) get_the_title( $id ) );
-        if ( '' !== $title && self::looks_like_a_filename( $title, $file ) ) {
+
+        /*
+         * A NAME SOMEBODY TYPED IS TRUSTED WITHOUT BEING ASKED ABOUT (3.78.0).
+         * The heuristic below is for titles nobody chose; a title saved on the
+         * Images screen was chosen, and it is kept even when it matches the
+         * file, which is the commonest case for a well-named file. See
+         * META_NAMED for the defect this closes.
+         */
+        $named = ( '' !== $title ) && get_post_meta( $id, self::META_NAMED, true );
+
+        if ( ! $named && '' !== $title && self::looks_like_a_filename( $title, $file ) ) {
             $title = '';
         }
         if ( '' === $file ) {
@@ -624,7 +660,24 @@ class SFAF_Media {
         }
         $clean = sanitize_text_field( (string) $title );
         $done  = wp_update_post( array( 'ID' => $id, 'post_title' => $clean ), true );
-        return ! is_wp_error( $done );
+        if ( is_wp_error( $done ) ) {
+            return false;
+        }
+
+        /*
+         * AND THE MARK GOES ON OR COMES OFF WITH IT. A name typed here is
+         * trusted by row() without being put through looks_like_a_filename(),
+         * which is what makes "Cycle To Zero" stick on cycle-to-zero.jpg.
+         * Clearing the box clears the mark, so emptying a name really does put
+         * the row back to its file name rather than leaving an empty title
+         * that is trusted.
+         */
+        if ( '' !== $clean ) {
+            update_post_meta( $id, self::META_NAMED, 1 );
+        } else {
+            delete_post_meta( $id, self::META_NAMED );
+        }
+        return true;
     }
 
     /**
