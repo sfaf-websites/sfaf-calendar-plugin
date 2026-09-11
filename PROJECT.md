@@ -1412,9 +1412,29 @@ setting only `top` and `left` leaves right and bottom pinned and the auto
 margins centre the panel in the viewport, ignoring where it was placed. Same
 shape as the note on the modal's own UA box.
 
-**AND THE BUTTON IN IT IS A LABEL, NOT A CONTROL.** The whole tile is already a
-link to the event; a second focusable control floating in the top layer would be
-a tab stop that appears and disappears with the pointer.
+**THE WHOLE PANEL IS ONE LINK, AND IT WAS NONE (3.77.0).** It shipped with
+"View Event Details" as a `<span>`: a pill that looked like a button, was not
+one, and had nothing behind it. **The address was never missing** and no
+attribute was needed, because the tile the panel describes IS the `<a>`; what
+was missing is that nothing read its `href` and nothing in the panel was
+clickable.
+
+**One anchor round everything, not three.** The picture, the title and the pill
+are all things somebody aims at, and the tile underneath is already one link
+over its whole area, so the panel behaves like the thing it expands. Three
+anchors would be three places for `target` and `rel` to drift apart. **Both come
+off the tile**, copied rather than re-derived, so the panel cannot open in this
+tab while the tile opens a new one.
+
+**It costs text selection**, which is worth naming: nobody selects a date out of
+a panel that closes when the pointer leaves, and every line in it is on the tile
+and the event page too.
+
+**`tabindex="-1"`, AND THE PANEL STAYS `aria-hidden`.** A focusable element
+inside an `aria-hidden` container is invisible to a screen reader and still a
+tab stop. A keyboard user reaches the TILE, which opens this and carries the
+same destination, so a stop in here would be a second per event and sixty extra
+on a busy month. The mouse gets a target; the keyboard already had one.
 
 ### The event page on a phone
 
@@ -1434,6 +1454,50 @@ moves, and there is still exactly one of everything on it.
 **IT STACKS AT 860px, NOT 601px.** The grid is `1fr 320px` with a 32px gap, so
 at 601px the content column is 249px and every paragraph is reading at about
 thirty characters a line.
+
+### Filling a form in from the last event in a series
+
+**THE SAME OFFER ON TWO SCREENS: ONE DATA SOURCE, TWO APPLIERS.** caladmin's
+prefill card has existed since 3.64.0 and the staff request form got the same
+control in 3.77.0. Both read `SFAF_Series::prefill_data()`, which is pure
+server-side PHP with no logged-in user and no media library in it, so the data
+half costs the form nothing.
+
+**WHAT DIFFERS IS THE WRITING, AND IT GENUINELY DIFFERS.** caladmin has a
+location-mode radio group, a wp.media hidden id, a rich text editor it controls
+and several organizers; the request form has a venue select and a text box,
+radios over the calendar folder, a deferred editor and one organizer. So
+`initSeriesPrefill()` and `initRequestPrefill()` are two functions with the same
+shape and different field maps.
+
+> **A FLAG INSIDE ONE OF THEM WOULD HAVE BEEN THE OTHER WAY, and it is the
+> arrangement this project refuses on permission-sensitive renders for the same
+> reason.** A function with two field maps in it is two functions sharing a
+> body, and the one nobody is looking at is the one that rots. Where two screens
+> share the QUESTION and not the CONTROLS, share the data and split the applier.
+
+**NOTHING POSTS, ON EITHER.** Every write lands in a field already on the page.
+A control that applied by posting and redirecting discards every unsaved answer
+on the form, which is the 3.3.0 fault that taught people not to press the FAQ
+set picker. `request-prefill-test.js` asserts there is no submit, no navigation
+and no fetch anywhere in the function.
+
+**THE DATE IS NEVER FILLED IN**, on either, and neither is the title. Setting
+the date is the reason somebody is on the form, and a prefilled one is a past
+date pretending to be a new event.
+
+**A FIELD ALREADY ANSWERED IS MARKED, NOT SKIPPED.** The row stays ticked and
+says it would replace what is there. The information is the point and the
+decision is the requester's; skipping it silently would be the software deciding
+that what they typed was more correct than what they just asked for.
+
+**AND IT IS PROVED BY RUNNING IT.** The caladmin card sat dead for twenty-six
+releases because a variable was used before it was assigned: the call was
+present, the file parsed, the callable audit matched, and nothing drew.
+`.claude/request-prefill-test.js` executes the real function against a document
+and reads back both what it rendered and what it wrote, and
+`request-form-test.php` holds that document to the shape the form actually
+renders. **Neither is worth much alone.**
 
 ### The featured image picker offers one folder, matched on the file path
 

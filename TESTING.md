@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 102 items.** Quick 76, needs real conditions 23, blocked on other
+**Outstanding: 104 items.** Quick 78, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1010,6 +1010,41 @@ the select, read-only, and change when a different set is chosen.
 **With JavaScript off** they should all be listed, each under a heading naming
 its set. That is deliberate: the fold is an enhancement and the complete list is
 the fallback.
+
+### 1.78 The preview goes somewhere (3.77.0)
+
+**The panel works and had nothing behind it.** Hover a tile on the month grid
+and click, in turn, **the picture**, **the title** and **the View Event Details
+pill**. All three should open the event, and open it the same way the tile does:
+if the tile opens a new tab, all three should too.
+
+**Then tab through the grid with the keyboard.** The preview follows focus as
+before, and pressing Enter opens the event. **There must be no extra tab stop
+inside the panel**: one press of Tab moves to the next tile, not into the
+preview.
+
+### 1.79 Fill this in from the last one, on the staff request form (3.77.0)
+
+**Open the staff request form and choose a series that has run before.** A panel
+appears under the select offering the location, the times, the description, the
+organizer, the picture and the FAQ set, each naming what it would fill in.
+
+- **Press "Fill these in".** Every ticked field should be filled, and the form
+  should say how many. Check the venue, the times and the description in
+  particular.
+- **Type something into the location first, then choose a series.** That row
+  should say it would replace what you typed, and should still be ticked: the
+  decision is yours.
+- **Untick a row and press it.** That field must be left exactly as it was.
+- **The date must never be filled in**, and neither must the title.
+- **Press "Start from scratch".** The panel goes and nothing is written.
+
+**Then send one.** The point of the control is the request that arrives: confirm
+the pending event carries the location, times, description, organizer and FAQ
+set that were filled in.
+
+**This is the control whose caladmin twin sat dead for twenty-six releases**
+without anybody noticing, so it is worth pressing rather than glancing at.
 
 ---
 

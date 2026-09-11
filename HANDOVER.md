@@ -6,28 +6,28 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.76.0, released.
+**Last updated:** 2026-09-11, at 3.77.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.76.0**, built as `sfaf-calendar-3.76.0.zip` in the project root, committed,
-**pushed to both repositories** and **released** on 2026-09-11. Working tree
-clean. The asset on the release is that zip, 1,308,351 bytes.
+**3.77.0**, built as `sfaf-calendar-3.77.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean.
 
-> **IT GOES ON FROM THE PLUGINS SCREEN**: SFAF Calendar > Check for updates,
-> then Update now.
+> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
+> separate press: `bash .claude/publish.sh --release`. It goes on from the
+> Plugins screen afterwards: Check for updates, then Update now.
 
-> **THE PREVIEW IN 3.75.0 NEVER RAN, AND THAT IS THE THING TO KNOW ABOUT THIS
-> RELEASE.** It went into `calendar.js`, which is the shortcode's script, and
-> **this calendar has no front end on resources: it is only ever an embed on
-> sfaf.org**, which runs `embed.js`. The markup was right the whole time. It is
-> in both scripts now, byte for byte, with the build comparing them. Anything
-> touching the public calendar is an EMBED feature by default; `PROJECT.md` 7.
+> **THE HOVER PREVIEW WORKS ON sfaf.org**, confirmed 2026-09-11: it appears, it
+> positions itself and it clears the site header, so the top layer is reached
+> and the embed copy runs. That settles the whole 3.76.0 diagnosis on the only
+> surface that exists. What did not work was the button in it, which had
+> nothing behind it; 3.77.0 is that.
 
 | | |
 |---|---|
+| **3.77.0** | **The preview's button went nowhere and now the whole panel is one link.** The address was never missing: the tile it describes IS the anchor, and nothing read its href. Also **Fill this in from the last one on the staff request form**, which caladmin has had since 3.64.0: one data source, two appliers, nothing posts, the date never filled in, and proved by RUNNING it rather than by the call being present. |
 | **3.76.0** | **The hover preview reaches the embed**, which is the only surface that exists. Also: the Images screen can **name a picture**, which is what "the picker shows file names" actually needed; the chooser's thumbnails are **twice the size**; the community form knows about the **series default picture**; the picture section sits **under the series**; the staff form has an **organizer selector, first**; the community form **derives its organizer from the series**; the **FAQ set shows its questions**; the **icon picker draws the icons**; and the Series and Categories lists **fold**. |
 | **3.75.0** | **SIX SHADES JOIN THE PALETTE**, all measured by `.claude/palette-audit.php`; **the icon set goes from sixteen offered to thirty**, because Español and Program Groups were drawing the same one. **A block opens on the month grid**, which it did in none of the four places that decide it. And **four mobile faults**, three reported and one found on the way. Confirmed working by Mark, except the preview. |
 | **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, a third path nobody had counted. Also **Approve and Reject on the event editor**, the buttons following the event's state, a **Delete** card, the search box no longer tearing itself down, one set of details on the community form, and **caladmin's Images screen**. |
@@ -35,11 +35,11 @@ clean. The asset on the release is that zip, 1,308,351 bytes.
 
 ## What has actually been seen on the site
 
-- **3.75.0 IS INSTALLED, THROUGH THE UPDATER**, and the palette, the icon set,
-  calendar-as-default and the mobile fixes are all confirmed working. **The
-  hover preview is the one thing in it that was not**, for the reason above.
-- **3.74.0 INSTALLED THROUGH THE UPDATER TOO**, in one click, which is what
-  closed that loop.
+- **THE HOVER PREVIEW WORKS ON sfaf.org.** It appears, positions itself, clears
+  the site header, and stays open while the pointer moves onto it. The top
+  layer, the positioning and the embed copy are all settled.
+- **3.75.0 AND 3.76.0 ARE INSTALLED, THROUGH THE UPDATER.** The palette, the
+  icon set, calendar-as-default and the mobile fixes are all confirmed working.
 - **THE WHOLE SUBMISSION PATH IS CONFIRMED END TO END.** Submit, alert to the
   submissions address, approve with both ticks, publish, published notice to the
   submitter, event live on the public calendar. **Registration is confirmed
@@ -111,16 +111,17 @@ that file and moves with it. Nothing in the build can settle any of them.
 **TWO WANT DOING FIRST AND THEY ARE IN ORDER**, because the second is what makes
 most of the picture work visible at all:
 
-- **1.73**, the hover preview, **on the embed**. 1.68 and 1.69 were written for
-  a build that never ran, so everything they asked for is still unseen. The two
-  things the build cannot check are whether a bottom-row tile flips above the
-  fold and whether the panel clears the site header.
+- **1.78**, that the preview now goes somewhere. The panel and its positioning
+  are confirmed; what has never been pressed is the picture, the title and the
+  pill, which until 3.77.0 were not links at all.
 - **1.74**, Mark naming and tagging the six pictures. Until that is done the
   chooser correctly shows one ungrouped list of file names, which is what has
   been reported twice as a fault and is the empty state of two rules working.
 
-Then **1.76** (the organizer on the staff form, which writes a term), **1.66**
-(the Images screen, still never run) and **1.62** (the FAQ set answers).
+Then **1.79** (the new prefill control on the staff form, whose caladmin twin sat
+dead for twenty-six releases, so it is worth pressing rather than glancing at),
+**1.76** (the organizer on that form, which writes a term), **1.66** (the Images
+screen, still never run) and **1.62** (the FAQ set answers).
 
 **Assume unverified rather than assuming the reported faults were the only
 ones.** What 3.73.0 and 3.74.0 have confirmed is listed above and is genuinely

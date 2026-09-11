@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.76.0
+Stable tag: 3.77.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.77.0 =
+
+**THE PREVIEW'S BUTTON WENT NOWHERE, AND THE ADDRESS WAS NEVER MISSING.** The tile a preview describes IS an `<a>` with the event's href on it, so the URL has been sitting on the element the panel is handed since 3.75.0. What was missing is that nothing read it and the panel was built entirely out of spans: "View Event Details" looked like a button, was not one, and had nothing behind it.
+
+**THE WHOLE PANEL IS ONE LINK NOW, NOT THREE.** The picture, the title and the pill are all things somebody aims at when they want the event, and the tile underneath is already exactly this: one link over its whole area. A panel that is an expansion of that tile should behave like it. Three separate anchors would be three places for the target and the rel to drift apart, and three cursors that change on some parts of the panel and not others.
+
+**What it costs is text selection**, and that is named rather than discovered: nobody selects the date out of a panel that closes when the pointer leaves it, and every line in it is on the tile and on the event page as well.
+
+**The destination and how it opens both come off the tile**, copied rather than re-derived, so the panel cannot open in this tab while the tile opens a new one. **It is not a tab stop**: the panel is `aria-hidden`, a focusable element inside one is invisible to a screen reader and still a stop, and a keyboard user already reaches the tile, which carries the same destination. Sixty tiles would have been sixty extra stops.
+
+**FILL THIS IN FROM THE LAST ONE, ON THE STAFF REQUEST FORM.** caladmin has offered this since 3.64.0 and the request form has not, so a requester retyped the location, the times and the description for an event that has run eleven times.
+
+**One data source, two appliers**, which is the honest shape rather than a flag inside one function. The payload is `SFAF_Series::prefill_data()` unchanged, the same function caladmin reads, and it is pure server-side PHP with no logged-in user and no media library in it. What differs is the writing, because the two forms genuinely have different controls: a venue select and a text box rather than a location-mode radio group, radios for the picture rather than a hidden attachment id, one organizer rather than several. A function with two field maps in it is two functions sharing a body, and the one nobody is looking at is the one that rots.
+
+**Nothing posts.** Every write lands in a field already on the page. A control that applied by posting and redirecting would discard every unsaved answer on the form, which is the 3.3.0 fault that taught people not to press the FAQ set picker.
+
+**A tick per field, all ticked, each naming the value it would write**, and a field somebody has already answered is **marked as one this would replace** rather than silently taken: the row stays ticked and the decision stays theirs. **The date is never filled in**, and neither is the title, because setting the date is the reason somebody is filling the form in.
+
+**AND IT IS PROVED BY RUNNING IT, WHICH IS THE WHOLE POINT.** The caladmin twin of this control sat dead for twenty-six releases because a variable was used before it was assigned: the call was present, the file parsed, the callable audit was happy, and the card simply never drew. `.claude/request-prefill-test.js` executes the real function out of `portal.js` against a document, presses the button, and reads back both what it rendered and what it wrote. Its self-test plants the panel never revealing, and a write aimed at a field this form does not have.
+
+**Two things that test found rather than confirmed**, both in its own stub: `type` was a plain property while a browser reflects it to the attribute, and a radio group was not exclusive, so the test was about to assert something the code neither does nor should do. The stub's own rule, that it must never answer a question differently from a browser, is what caught both.
+
+**The hand-off gives up its two most durable blocks** to `PROJECT.md`: the events a save cancelled between 3.36.0 and 3.40.0, where the damage outlives the fix because a second save silently un-cancelled one and the cancelled list is therefore not the whole list, and the four things waiting on somebody outside the code.
 
 = 3.76.0 =
 
