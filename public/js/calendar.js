@@ -39,6 +39,11 @@
         run('faq', initFAQ);
         run('pagination', initPagination);
         run('views', initViews);
+        // After views, which is what puts a month grid on the screen. It is
+        // delegated, so the order does not actually matter, and it is here
+        // rather than earlier because nothing about the page's first paint
+        // depends on it.
+        run('monthPreview', initMonthPreview);
         // No initMaps. The event map is server-rendered as an ordinary iframe
         // since 3.26.1, so there is nothing here to initialise and the map does
         // not depend on this file running at all.
@@ -1589,6 +1594,246 @@
         $(document).on('click', function() {
             $('.uc-addcal').removeClass('open');
         });
+    }
+
+    /* -----------------------------------------------------------------------
+     * THE MONTH GRID'S HOVER PREVIEW (3.75.0).
+     *
+     * A tile in the grid is a thumbnail, a title and a time. Hovering one shows
+     * the rest: the picture, the date, the times and where it is, with a button
+     * to the event itself.
+     *
+     * ---------------------------------------------------------------------
+     * THE TOP LAYER, AND WHY NOT A NUMBER
+     * ---------------------------------------------------------------------
+     * 3.70.1 spent a release on this exact question for the registration
+     * dialog. A div with `position: fixed` and a large z-index rendered UNDER
+     * the theme's header on resources.sfaf.org, and no number we could write
+     * would have fixed it: an ancestor had a transform, which makes it the
+     * containing block for fixed descendants and traps every z-index inside its
+     * own stacking context. The fix was to stop competing and use the browser's
+     * top layer, which no stacking context can reach into.
+     *
+     * SO THIS USES THE TOP LAYER TOO, THROUGH THE POPOVER API rather than
+     * showModal(). They are the two doors into the same layer and only one of
+     * them is right here:
+     *
+     *   showModal()    top layer, but MODAL. Focus moves into it, the rest of
+     *                  the page goes inert, and Escape closes it. Correct for
+     *                  a registration form. Absurd for something that appears
+     *                  because a mouse passed over a tile.
+     *   showPopover()  top layer, NOT modal. The page stays live, focus stays
+     *                  where it was, nothing goes inert.
+     *
+     * `popover="manual"` rather than "auto", because auto popovers light-dismiss
+     * and close each other, and this one is opened and closed by pointer
+     * intent rather than by clicks.
+     *
+     * NO FALLBACK, DELIBERATELY. A browser without showPopover() gets no
+     * preview at all and keeps a tile that is still a link to the event. The
+     * alternative is a z-index we already know can lose, on the one theme that
+     * matters, in a way nobody would notice until somebody complained that the
+     * preview was behind the header. An enhancement that is absent is honest;
+     * one that renders underneath the page is not.
+     *
+     * ---------------------------------------------------------------------
+     * DESKTOP ONLY, AND THAT IS A DECISION
+     * ---------------------------------------------------------------------
+     * There is no hover on a touch screen. A "hover" preview there fires on
+     * tap, which means the first tap shows a panel and the second opens the
+     * event, and a control that needs two taps where it used to need one is
+     * worse than no control. So the whole thing is behind
+     * `(hover: hover) and (pointer: fine)`, which asks the device what it can
+     * do rather than guessing from the width, and a phone keeps exactly the
+     * behaviour it has: tap a tile, open the event.
+     *
+     * ---------------------------------------------------------------------
+     * THE DELAY
+     * ---------------------------------------------------------------------
+     * Moving a mouse diagonally across a month crosses a dozen tiles. Without a
+     * delay that is a dozen previews, each fetching an image. OPEN_DELAY is the
+     * pause before one appears, and CLOSE_DELAY is a shorter one before it goes,
+     * so moving the pointer from the tile onto the panel itself does not close
+     * the thing being reached for.
+     * -------------------------------------------------------------------- */
+    var PREVIEW_OPEN_DELAY  = 260;
+    var PREVIEW_CLOSE_DELAY = 140;
+
+    function initMonthPreview() {
+        /* The device, asked rather than guessed. matchMedia is old enough to
+           assume; if it is missing, so is any device this would suit. */
+        if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            return;
+        }
+
+        var probe = document.createElement('div');
+        if (typeof probe.showPopover !== 'function') {
+            return; // See "NO FALLBACK, DELIBERATELY" above.
+        }
+
+        /* ONE PANEL FOR THE WHOLE PAGE, built once and refilled. A panel per
+           tile would be sixty panels and sixty images on a busy month. */
+        var panel = document.createElement('div');
+        panel.className = 'uc-mp';
+        panel.setAttribute('popover', 'manual');
+        /* It describes the tile the pointer is on and is never focused, so it
+           is decoration to a screen reader: the tile's own link already carries
+           the title, the time and the date. */
+        panel.setAttribute('aria-hidden', 'true');
+        panel.innerHTML =
+            '<span class="uc-mp-media"><img alt="" decoding="async" /></span>' +
+            '<span class="uc-mp-body">' +
+                '<span class="uc-mp-off"></span>' +
+                '<span class="uc-mp-title"></span>' +
+                '<span class="uc-mp-date"></span>' +
+                '<span class="uc-mp-time"></span>' +
+                '<span class="uc-mp-place"></span>' +
+                '<span class="uc-mp-go">View Event Details</span>' +
+            '</span>';
+        document.body.appendChild(panel);
+
+        var img    = panel.querySelector('.uc-mp-media img');
+        var media  = panel.querySelector('.uc-mp-media');
+        var off    = panel.querySelector('.uc-mp-off');
+        var openT  = null;
+        var closeT = null;
+        var current = null;
+
+        function fill(a) {
+            var src = a.getAttribute('data-uc-pv-img') || '';
+            if (src) {
+                img.src = src;
+                media.hidden = false;
+            } else {
+                /* No src at all rather than an empty one: setting src="" makes
+                   a browser re-request the current document. */
+                img.removeAttribute('src');
+                media.hidden = true;
+            }
+            var cancelled = a.getAttribute('data-uc-pv-off') || '';
+            off.textContent = cancelled;
+            off.hidden = !cancelled;
+
+            panel.querySelector('.uc-mp-title').textContent = a.getAttribute('data-uc-pv-title') || '';
+            fillLine(panel.querySelector('.uc-mp-date'), a.getAttribute('data-uc-pv-date'));
+            fillLine(panel.querySelector('.uc-mp-time'), a.getAttribute('data-uc-pv-time'));
+            fillLine(panel.querySelector('.uc-mp-place'), a.getAttribute('data-uc-pv-place'));
+        }
+
+        /* An empty line is removed rather than left as an empty row, or an
+           online event with no place would render a gap where an address goes. */
+        function fillLine(el, text) {
+            el.textContent = text || '';
+            el.hidden = !text;
+        }
+
+        /*
+         * WHERE IT GOES. Below the tile by default; above when there is not
+         * room below; and pinned inside the viewport horizontally either way.
+         *
+         * THE BOTTOM ROW IS THE CASE THIS EXISTS FOR. A tile on the last week
+         * of the month has the fold a few pixels under it, and a panel that
+         * only ever opened downward would be off screen exactly where the
+         * month is busiest.
+         *
+         * MEASURED AFTER THE PANEL IS SHOWN, NOT BEFORE. A popover has no size
+         * until it is in the top layer, so it is shown first, measured, then
+         * placed. It carries a class that keeps it invisible for that one
+         * frame, or the first paint would be a flash in the corner.
+         */
+        function place(a) {
+            var tile = a.getBoundingClientRect();
+            var box  = panel.getBoundingClientRect();
+            var gap  = 10;
+            var edge = 8;
+
+            var below = window.innerHeight - tile.bottom;
+            var above = tile.top;
+            var top;
+            if (below >= box.height + gap + edge) {
+                top = tile.bottom + gap;
+                panel.classList.remove('is-above');
+            } else if (above >= box.height + gap + edge) {
+                top = tile.top - box.height - gap;
+                panel.classList.add('is-above');
+            } else {
+                /* Neither side fits, which is a short window rather than a
+                   bottom row. Sit it against the top edge and let it be beside
+                   the tile rather than off screen. */
+                top = Math.max(edge, Math.min(tile.top, window.innerHeight - box.height - edge));
+                panel.classList.add('is-above');
+            }
+
+            var left = tile.left + (tile.width / 2) - (box.width / 2);
+            left = Math.max(edge, Math.min(left, window.innerWidth - box.width - edge));
+
+            panel.style.top  = Math.round(top) + 'px';
+            panel.style.left = Math.round(left) + 'px';
+        }
+
+        function show(a) {
+            current = a;
+            fill(a);
+            panel.classList.add('is-measuring');
+            try {
+                if (!panel.matches(':popover-open')) { panel.showPopover(); }
+            } catch (e) {
+                return; // Already open, or refused. Either way, nothing to do.
+            }
+            place(a);
+            panel.classList.remove('is-measuring');
+            panel.classList.add('is-open');
+        }
+
+        function hide() {
+            current = null;
+            panel.classList.remove('is-open');
+            try {
+                if (panel.matches(':popover-open')) { panel.hidePopover(); }
+            } catch (e) { /* already closed */ }
+        }
+
+        function clearTimers() {
+            if (openT) { window.clearTimeout(openT); openT = null; }
+            if (closeT) { window.clearTimeout(closeT); closeT = null; }
+        }
+
+        function wantOpen(a) {
+            clearTimers();
+            if (current === a) { return; }
+            openT = window.setTimeout(function () { show(a); }, PREVIEW_OPEN_DELAY);
+        }
+
+        function wantClose() {
+            clearTimers();
+            closeT = window.setTimeout(hide, PREVIEW_CLOSE_DELAY);
+        }
+
+        /* DELEGATED, so a month fetched by the view toggle or the arrows gets
+           the behaviour without anything being rebound. mouseover rather than
+           mouseenter for the same reason: mouseenter does not bubble. */
+        $(document)
+            .on('mouseover', '.uc-day-event a[data-uc-preview]', function () { wantOpen(this); })
+            .on('mouseout', '.uc-day-event a[data-uc-preview]', wantClose)
+            /* The keyboard gets it too. Tabbing through a month is how somebody
+               not using a mouse reads it, and there is no reason for them to
+               have less. Focus is immediate: they asked for this tile. */
+            .on('focus', '.uc-day-event a[data-uc-preview]', function () {
+                clearTimers();
+                show(this);
+            })
+            .on('blur', '.uc-day-event a[data-uc-preview]', wantClose);
+
+        /* Moving onto the panel keeps it; leaving it closes it. Without this,
+           the panel closes as the pointer crosses the gap toward it. */
+        panel.addEventListener('mouseover', clearTimers);
+        panel.addEventListener('mouseout', wantClose);
+
+        /* A scroll moves the tile out from under the panel, and a resize moves
+           everything. Close rather than chase: the pointer is already somewhere
+           else by the time either finishes. */
+        window.addEventListener('scroll', function () { clearTimers(); hide(); }, true);
+        window.addEventListener('resize', function () { clearTimers(); hide(); });
     }
 
 })(jQuery);

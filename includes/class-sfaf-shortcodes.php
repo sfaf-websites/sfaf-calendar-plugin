@@ -1407,7 +1407,42 @@ class SFAF_Shortcodes {
                                                  * See sfaf_day_event_thumb().
                                                  */
                                                 ?>
+                                                <?php
+                                                /*
+                                                 * WHAT THE HOVER PREVIEW READS (3.75.0).
+                                                 *
+                                                 * ATTRIBUTES ON THE LINK, NOT A HIDDEN BLOCK PER TILE.
+                                                 * A busy month here runs to sixty events, and sixty
+                                                 * hidden panels with sixty images in them is sixty
+                                                 * images the browser may decide to fetch for a preview
+                                                 * nobody opens. One shared panel filled from these on
+                                                 * hover fetches exactly the image being looked at.
+                                                 *
+                                                 * EVERY VALUE IS ALREADY ON THE PAGE SOMEWHERE, so
+                                                 * nothing here is a second source of truth: the title
+                                                 * is the title beside it, the image is the one
+                                                 * sfaf_day_event_thumb() drew, and the date, time and
+                                                 * place are the same helpers the event page uses.
+                                                 *
+                                                 * THE PREVIEW IS AN ENHANCEMENT AND THESE ARE INERT
+                                                 * WITHOUT IT. With no script, or on a touch device
+                                                 * where nothing hovers, this is a link with some
+                                                 * data attributes on it and behaves exactly as it
+                                                 * did.
+                                                 */
+                                                $pv_time = sfaf_ap_time_range(
+                                                    $start,
+                                                    (string) get_post_meta( $id, '_uc_end_time', true )
+                                                );
+                                                ?>
                                                 <a href="<?php echo esc_url( sfaf_event_link( $id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
+                                                   data-uc-preview
+                                                   data-uc-pv-title="<?php echo esc_attr( get_the_title( $id ) ); ?>"
+                                                   data-uc-pv-img="<?php echo esc_url( sfaf_event_image_url( $id ) ); ?>"
+                                                   data-uc-pv-date="<?php echo esc_attr( sfaf_ap_date( (string) get_post_meta( $id, '_uc_event_date', true ), 'full' ) ); ?>"
+                                                   data-uc-pv-time="<?php echo esc_attr( $pv_time ); ?>"
+                                                   data-uc-pv-place="<?php echo esc_attr( sfaf_event_location_short( $id ) ); ?>"
+                                                   <?php echo $ev_off ? ' data-uc-pv-off="Cancelled"' : ''; ?>
                                                    style="--cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>; --cat-media: <?php echo esc_attr( $shades['media'] ); ?>">
                                                     <?php echo sfaf_day_event_thumb( $id ); ?>
                                                     <span class="uc-day-event-text">

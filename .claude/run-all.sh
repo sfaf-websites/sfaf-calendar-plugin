@@ -107,6 +107,11 @@ echo "=== rich text at load ==="
 run "rich-text-start --self-test" node .claude/rich-text-start-test.js --self-test
 
 echo
+# The month grid's hover preview: the top layer, desktop only, and no z-index.
+echo "=== the hover preview ==="
+run "hover-preview --self-test" php .claude/hover-preview-test.php --self-test
+
+echo
 # The category palette: every colour can carry its icon, and no two are a coin
 # toss in the picker.
 echo "=== the palette ==="

@@ -179,10 +179,32 @@ if ( preg_match( '/\.(uc-search|uc-organizer-select)[^{}]*\{[^{}]*background-ima
  * rather than a note: this button is not optional, so if it cannot be located
  * the test has stopped testing and must say so rather than pass quietly.
  */
-if ( ! preg_match( '/<button\b(?:(?!<button\b).)*?data-category="all".*?<\/button>/s', $php, $m ) ) {
+/*
+ * FOUND BY OFFSET RATHER THAN BY A REGEX ACROSS THE WHOLE FILE (3.75.0).
+ *
+ * The pattern this replaces worked and then stopped, without the thing it
+ * checks changing at all: `(?:(?!<button\b).)*?` followed by `.*?</button>`
+ * over a five-thousand-line file exhausts PCRE's JIT stack once the file grows
+ * past some size nobody can predict, and preg_match() returns FALSE. The test
+ * read that as "not found" and failed, correctly by its own rules and for
+ * entirely the wrong reason.
+ *
+ * SO THE SEARCH IS STRING WORK, WHICH CANNOT BACKTRACK. Find the attribute,
+ * walk back to the `<button` that opens it and forward to the `</button>` that
+ * closes it. The question is unchanged and the answer no longer depends on how
+ * long the file happens to be.
+ */
+$all_at = strpos( $php, 'data-category="all"' );
+if ( false === $all_at ) {
 	$fail[] = 'the All Events button could not be located, so the dot check is not running';
-} elseif ( false !== strpos( $m[0], 'uc-filter-dot' ) ) {
-	$fail[] = 'the All Events button carries a category dot, and it is not a category';
+} else {
+	$open  = strrpos( substr( $php, 0, $all_at ), '<button' );
+	$close = strpos( $php, '</button>', $all_at );
+	if ( false === $open || false === $close ) {
+		$fail[] = 'the All Events button is not inside a <button> element, so the dot check is not running';
+	} elseif ( false !== strpos( substr( $php, $open, $close - $open ), 'uc-filter-dot' ) ) {
+		$fail[] = 'the All Events button carries a category dot, and it is not a category';
+	}
 }
 if ( ! preg_match( '/style="--cat-color.*?uc-filter-dot/s', $php ) ) {
 	$fail[] = 'the category buttons do not carry a dot reading --cat-color';

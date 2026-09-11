@@ -218,7 +218,7 @@
  * drop the reset into :where() where it is only meant to be a floor.
  * ======================================================================== */
 
-.uc-calendar, .uc-sidebar, .uc-upcoming-widget, .uc-single, .uc-rsvp-modal-overlay {
+.uc-calendar, .uc-sidebar, .uc-upcoming-widget, .uc-single, .uc-rsvp-modal-overlay, .uc-mp {
     font-family: var(--uc-font-heading);
     font-size: 15px;
     line-height: 1.5;
@@ -227,11 +227,11 @@
     box-sizing: border-box;
 }
 .uc-calendar *, .uc-sidebar *, .uc-upcoming-widget *,
-.uc-single *, .uc-rsvp-modal-overlay * { box-sizing: border-box; }
+.uc-single *, .uc-rsvp-modal-overlay *, .uc-mp * { box-sizing: border-box; }
 
 /* Links. The host's underline-everything rule was the most visible bleed. */
 .uc-calendar a, .uc-sidebar a, .uc-upcoming-widget a,
-.uc-single a, .uc-rsvp-modal-overlay a {
+.uc-single a, .uc-rsvp-modal-overlay a, .uc-mp a {
     text-decoration: none;
     box-shadow: none;
     border-bottom: 0;
@@ -447,6 +447,41 @@
     outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px;
 }
 .uc-single .uc-single-body img { border-radius: 10px; }
+
+/* ---------------------------------------------------------------------------
+   WHAT A MANAGER CAN PASTE, AND WHAT IT DOES TO A PHONE (3.75.0)
+
+   Found while walking the event page at 360px rather than reported. This island
+   covers paragraphs, lists, headings, links and images, which is everything the
+   editor's own toolbar produces. It does not cover the two things that arrive
+   by PASTE, and both of them push the page sideways on a phone: a TABLE copied
+   out of a document, and an IFRAME copied out of a video site.
+
+   A page that scrolls horizontally is the worst mobile failure there is,
+   because every other thing on it is then in the wrong place too, and neither
+   of these has ever been styled at all.
+
+   THE TABLE SCROLLS INSIDE ITSELF rather than being squeezed. `display: block`
+   with `overflow-x: auto` is the standard answer and the honest one: a table
+   with six columns cannot be read at 360px however it is styled, and letting it
+   scroll in its own box keeps the rest of the page where it belongs.
+
+   AND A LONG UNBROKEN TOKEN BREAKS. A pasted URL with no spaces in it is one
+   word as far as the browser is concerned, and one word wider than the column
+   takes the whole page with it. `overflow-wrap: anywhere` is the same remedy
+   .uc-sidebar-title already carries for the same reason.
+   ------------------------------------------------------------------------ */
+.uc-single .uc-single-body, .uc-single .uc-faq-a { overflow-wrap: anywhere; }
+.uc-single .uc-single-body table, .uc-single .uc-faq-a table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+}
+.uc-single .uc-single-body iframe, .uc-single .uc-faq-a iframe {
+    display: block;
+    max-width: 100%;
+}
 
 
 /* ---------------------------------------------------------------------------
@@ -1679,14 +1714,44 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-single-card .uc-share { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--uc-border); }
 .uc-single-card .uc-donate-block { margin-top: 16px; }
 
+/* ---------------------------------------------------------------------------
+   THE EVENT PAGE STACKS AT 860px, AND THE CARD GOES ON TOP (3.75.0)
+
+   TWO THINGS WERE WRONG AND THEY HAVE THE SAME CAUSE: the page was treated as
+   desktop right down to 601px.
+
+   WHERE IT STACKS. The grid is `1fr 320px` with a 32px gap, so at 601px the
+   content column is 249px and every paragraph in the description is reading at
+   about thirty characters a line. It collapses at 860px now, which is where
+   the content column drops under 500px.
+
+   WHAT ORDER IT STACKS IN, WHICH IS THE REPORTED FAULT. The sidebar is the
+   card holding the date, the time, the place and REGISTER. Stacked after the
+   body it lands under the whole description and the FAQ, so on a phone the
+   primary action on the page was the last thing anybody reached.
+
+   `order: -1` PUTS IT BACK WHERE IT ALREADY IS ON DESKTOP, and that is the
+   whole of the argument: the two-column layout puts this card beside the TOP of
+   the content, so a visitor sees when, where and register before they read
+   anything. One column was the only place that disagreed. This is not a new
+   design, it is the same reading order expressed in one dimension.
+
+   AND IT IS NOT A SECOND BUTTON. A sticky bar with its own Register was the
+   other option and it would be a second control that has to stay in step with
+   the first: the same event, two places to say "full", two places to disable.
+   The card moves, and there is still exactly one of everything on it.
+   ------------------------------------------------------------------------ */
+@media (max-width: 860px) {
+    .uc-single-grid { grid-template-columns: 1fr; }
+    .uc-single-sidebar { position: static; order: -1; }
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .uc-calendar .uc-lc-md { font-size: 22px; }
     /* No media override here any more. The box is a ratio now, so it shrinks
        with the card on its own; a height here would only put the old
        shape-changes-with-width problem back at one breakpoint. */
-    .uc-single-grid { grid-template-columns: 1fr; }
-    .uc-single-sidebar { position: static; }
     /* Two classes here as well. A media query changes when a rule applies,
        never how strongly, so an unscoped .uc-single-title would be (0,1,0)
        against the heading reset's (0,1,1) and the phone would keep the 34px
@@ -2336,6 +2401,19 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        this is not one. -webkit-line-clamp comes off too, because there is room
        for the whole title. */
     .uc-calendar .uc-month-day-panel .uc-de-thumb { display: block; }
+    /* AND THE GAP COMES BACK WITH IT (3.75.0). The rule that hides the
+       thumbnail in a 40px cell also sets `gap: 0` on every .uc-day-event a,
+       because with no thumbnail the 8px would be dead space at the start of
+       the line. That rule is right about the cell and reaches the panel, where
+       this one has just put the thumbnail back: the picture ended up flush
+       against the title, which is what a phone actually showed.
+
+       THE SAME SHAPE AS THE CASCADE FAULTS IN PROJECT.md 7, from the other
+       direction. Nothing here lost on specificity and nothing was missing: a
+       rule written for one context was correct there and wrong one selector
+       along, and the only way to see it is to look at the context where the
+       thing it assumes is false. (0,3,1) against that rule's (0,2,1). */
+    .uc-calendar .uc-month-day-panel .uc-day-event a { gap: 8px; }
     .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; -webkit-line-clamp: none; display: block; }
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
@@ -2954,6 +3032,19 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        this is not one. -webkit-line-clamp comes off too, because there is room
        for the whole title. */
     .uc-calendar .uc-month-day-panel .uc-de-thumb { display: block; }
+    /* AND THE GAP COMES BACK WITH IT (3.75.0). The rule that hides the
+       thumbnail in a 40px cell also sets `gap: 0` on every .uc-day-event a,
+       because with no thumbnail the 8px would be dead space at the start of
+       the line. That rule is right about the cell and reaches the panel, where
+       this one has just put the thumbnail back: the picture ended up flush
+       against the title, which is what a phone actually showed.
+
+       THE SAME SHAPE AS THE CASCADE FAULTS IN PROJECT.md 7, from the other
+       direction. Nothing here lost on specificity and nothing was missing: a
+       rule written for one context was correct there and wrong one selector
+       along, and the only way to see it is to look at the context where the
+       thing it assumes is false. (0,3,1) against that rule's (0,2,1). */
+    .uc-calendar .uc-month-day-panel .uc-day-event a { gap: 8px; }
     .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; -webkit-line-clamp: none; display: block; }
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
@@ -3452,4 +3543,171 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
     font-weight: 600;
     line-height: 1.45;
     color: var(--uc-text);
+}
+
+/* ===========================================================================
+   THE MONTH GRID'S HOVER PREVIEW (3.75.0)
+
+   IN THE TOP LAYER, THROUGH THE POPOVER API. The same layer showModal() puts
+   the registration dialog in and for the same reason: an ancestor on
+   resources.sfaf.org has a transform, which makes it the containing block for
+   fixed descendants and traps every z-index inside its own stacking context.
+   No number written here could have cleared the theme's header. See the block
+   above dialog.uc-rsvp-modal-overlay for the full account.
+
+   SO THERE IS NO z-index IN THIS BLOCK, and that is deliberate rather than an
+   omission. The top layer is above every stacking context by definition, and a
+   number here would be a thing somebody later raises in the belief that it is
+   doing something.
+
+   IT IS A RESET ROOT, for the same reason the modal is: the panel is appended
+   to <body> and sits outside .uc-calendar, so nothing else in this file
+   reaches it and the host theme's own rules do. Every component rule below is
+   therefore written as `.uc-mp .uc-mp-thing`, two classes, which outranks both
+   the reset at (0,1,1) and a theme's typical (0,1,0).
+
+   DESKTOP ONLY, AND THE MEDIA QUERY IS BELT AND BRACES. calendar.js already
+   refuses to build any of this unless the device reports hover and a fine
+   pointer, so on a phone these rules match nothing. They are guarded anyway
+   because a stylesheet that can only be right when a script agrees with it is
+   a stylesheet with a second dependency nobody can see.
+   ======================================================================== */
+@media (hover: hover) and (pointer: fine) {
+
+    .uc-mp {
+        position: fixed;
+        /* Placed by script after it is shown, because a popover has no size
+           until it is in the top layer. These are the pre-measurement values
+           and are replaced within the frame.
+
+           right AND bottom ARE EXPLICITLY auto, WHICH IS NOT TIDINESS. The UA
+           stylesheet gives every [popover] `inset: 0` and `margin: auto`, so
+           setting only top and left leaves right and bottom pinned at 0 and
+           the auto margins centre the panel in the viewport instead of putting
+           it where it was told. The same shape as the modal's own note about
+           inheriting a UA rule nobody wrote. */
+        top: 0;
+        left: 0;
+        right: auto;
+        bottom: auto;
+        margin: 0;
+        width: 300px;
+        max-width: calc(100vw - 16px);
+        padding: 0;
+        border: 1px solid var(--uc-border-strong);
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 32px rgba(26, 29, 33, 0.18);
+        overflow: hidden;
+        /* The panel is not a click target. The tile under it is the link, and
+           the pointer has to be able to travel back out. Its own mouseover
+           still fires, which is what keeps it open while the pointer is on it,
+           because pointer-events: none would stop that too: so it stays
+           interactive and simply has nothing inside it that navigates. */
+        text-align: left;
+    }
+
+    /* THE OPENING, AND THE FRAME BEFORE IT. is-measuring is the one frame
+       where the panel is in the top layer, has a size, and has not been
+       positioned yet. Without it the first paint is a flash in the corner of
+       the viewport. Same shape as the modal's display-then-opacity note. */
+    .uc-mp.is-measuring { opacity: 0; }
+    .uc-mp.is-open {
+        opacity: 1;
+        transition: opacity 120ms ease-out, transform 120ms ease-out;
+        transform: translateY(0);
+    }
+    .uc-mp:not(.is-open) { opacity: 0; transform: translateY(-4px); }
+    .uc-mp.is-above:not(.is-open) { transform: translateY(4px); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .uc-mp.is-open { transition: none; }
+        .uc-mp:not(.is-open), .uc-mp.is-above:not(.is-open) { transform: none; }
+    }
+
+    /* 16:9, matching every other place this calendar shows an event picture,
+       so a photograph cropped for a card is cropped the same way here. */
+    .uc-mp .uc-mp-media {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        max-width: 100%;
+        background: var(--uc-bg);
+        overflow: hidden;
+    }
+    .uc-mp .uc-mp-media img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        object-fit: cover;
+    }
+
+    .uc-mp .uc-mp-body {
+        display: block;
+        padding: 12px 14px 14px;
+    }
+
+    /* Cancelled says so first, in the destructive ink this calendar already
+       uses, because everything under it is about an event that is not
+       happening. */
+    .uc-mp .uc-mp-off {
+        display: block;
+        margin: 0 0 4px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #AD1C0D;
+    }
+
+    .uc-mp .uc-mp-title {
+        /* Two lines then an ellipsis: a long title must not make the panel
+           taller than the space the script measured it against. -webkit-box
+           IS the display value here, so there is no second `display: block`
+           above it to be overridden and quietly wondered about. */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin: 0 0 6px;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.3;
+        color: var(--uc-text);
+    }
+
+    .uc-mp .uc-mp-date,
+    .uc-mp .uc-mp-time,
+    .uc-mp .uc-mp-place {
+        display: block;
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--uc-secondary);
+    }
+    .uc-mp .uc-mp-place {
+        /* One line. An address is the longest thing here and the least useful
+           when it wraps to three. */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* THE BUTTON IS A LABEL, NOT A CONTROL, and that is the one thing about
+       this panel worth reading twice. The whole tile is already a link to the
+       event; a second, focusable control floating in the top layer over it
+       would be a tab stop that appears and disappears with the pointer. So
+       this is what the tile does, said in the shape of a button, and pressing
+       the tile is what does it. */
+    .uc-mp .uc-mp-go {
+        display: inline-block;
+        margin: 10px 0 0;
+        padding: 7px 12px;
+        border-radius: 8px;
+        background: var(--uc-teal-text);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.2;
+    }
 }
