@@ -49,15 +49,24 @@ $js  = file_get_contents( $root . '/public/js/calendar.js' );
 $css = file_get_contents( $root . '/public/css/calendar.css' );
 $php = file_get_contents( $root . '/includes/class-sfaf-shortcodes.php' );
 
-/** The preview's own slice of calendar.js, so a match elsewhere cannot pass this. */
+/**
+ * The preview's own slice of a file, between its markers.
+ *
+ * MARKERS RATHER THAN "FROM THE FUNCTION TO THE NEXT ONE", which is what this
+ * did first and which cannot answer the question that now matters: the block
+ * exists in TWO files and has to be identical in both, so the boundary has to
+ * be the same boundary in each rather than whatever happens to follow it.
+ *
+ * @param string $js
+ * @return string '' when the file has no marked block.
+ */
 function hp_slice( $js ) {
-    $at = strpos( $js, 'function initMonthPreview()' );
-    if ( false === $at ) {
+    $a = strpos( $js, '/* SFAF-PREVIEW-START' );
+    $b = strpos( $js, '/* SFAF-PREVIEW-END */' );
+    if ( false === $a || false === $b || $b < $a ) {
         return '';
     }
-    /* To the next top-level function, which is where this one ends. */
-    $next = strpos( $js, "\n    function ", $at + 10 );
-    return substr( $js, $at, ( false === $next ? 12000 : $next - $at ) );
+    return substr( $js, $a, $b - $a + strlen( '/* SFAF-PREVIEW-END */' ) );
 }
 
 /** The preview's own block of calendar.css. */
@@ -66,14 +75,55 @@ function hp_css_block( $css ) {
     return ( false === $at ) ? '' : substr( $css, $at );
 }
 
+$ejs   = file_get_contents( $root . '/public/js/embed.js' );
 $slice = hp_slice( $js );
+$eslice = hp_slice( $ejs );
 $block = hp_css_block( $css );
 
 if ( '' === $slice ) {
-    hp_fail( 'initMonthPreview() is not in calendar.js, so nothing below checks anything' );
+    hp_fail( 'calendar.js has no marked preview block, so nothing below checks anything' );
 }
 if ( '' === $block ) {
     hp_fail( 'the preview has no block in calendar.css, so nothing below checks anything' );
+}
+
+/* =========================================================================
+ * IT HAS TO BE IN BOTH SCRIPTS, AND THIS IS THE ASSERTION 3.75.0 NEEDED.
+ *
+ * The calendar has no front end on resources.sfaf.org: it exists only as an
+ * embed on sfaf.org, which runs embed.js. 3.75.0 shipped the preview in
+ * calendar.js alone, so it was correct, tested by this very file, and never
+ * executed anywhere anybody could see it. Every assertion below passed while
+ * the feature did not exist on the only surface that matters.
+ *
+ * SO THE FIRST QUESTION IS NOT "IS IT RIGHT" BUT "IS IT THERE, TWICE". The two
+ * copies are compared byte for byte, because a block that is nearly the same
+ * in two files is the drift this project has paid for before.
+ * ====================================================================== */
+if ( '' === $eslice ) {
+    hp_fail( 'embed.js has no marked preview block. The calendar exists ONLY as an embed, '
+        . 'so a preview that is only in calendar.js never runs anywhere a visitor can see it' );
+} elseif ( $eslice !== $slice ) {
+    hp_fail( 'the preview block differs between calendar.js and embed.js. It is one block in two '
+        . 'files and they have to be identical; copy whichever is right over the other' );
+}
+if ( false === strpos( $ejs, 'initMonthPreview()' ) || 1 === substr_count( $ejs, 'initMonthPreview' ) ) {
+    hp_fail( 'embed.js defines the preview and never calls it, which is the same outcome as not having it' );
+}
+if ( false === strpos( $js, "run('monthPreview'" ) ) {
+    hp_fail( 'calendar.js defines the preview and never calls it' );
+}
+
+/* AND IT CANNOT DEPEND ON jQUERY, because embed.js has none by design and the
+ * host page is somebody else's.
+ *
+ * THE COMMENTS COME OUT FIRST, and the first draft of this check did not do
+ * that and failed on the block's own note SAYING it uses no jQuery. A check
+ * that reads prose as code is the grep trap this project keeps paying for. */
+$code_only = preg_replace( '#/\*.*?\*/#s', '', $slice );
+$code_only = preg_replace( '#//[^\n]*#', '', $code_only );
+if ( preg_match( '/(^|[^A-Za-z0-9_$])\$\(/', $code_only ) || false !== strpos( $code_only, 'jQuery' ) ) {
+    hp_fail( 'the preview block uses jQuery, which embed.js does not have and the host page may not either' );
 }
 
 if ( '' !== $slice ) {
@@ -165,6 +215,15 @@ if ( $self ) {
     $planted = str_replace( 'right: auto;', '', $block );
     $caught['the UA inset being left in place'] = ! preg_match( '/right\s*:\s*auto/', $planted );
 
+    /* THE 3.75.0 FAULT ITSELF: the block in one script and not the other. */
+    $caught['the block missing from embed.js'] = ( '' === hp_slice( 'nothing marked in here' ) );
+    $caught['the two copies drifting apart']   = ( str_replace( '260', '300', $slice ) !== $slice );
+
+    /* And a jQuery call slipping in, which embed.js cannot run. */
+    $planted = str_replace( 'document.addEventListener(', '$(document).on(', $slice );
+    $planted = preg_replace( '#/\*.*?\*/#s', '', $planted );
+    $caught['jQuery slipping into the shared block'] = (bool) preg_match( '/(^|[^A-Za-z0-9_$])\$\(/', $planted );
+
     foreach ( $caught as $what => $ok ) {
         printf( "  %-56s%s\n", $what, $ok ? 'caught' : 'MISSED' );
     }
@@ -190,6 +249,9 @@ if ( $fails ) {
 }
 
 echo "The month grid's hover preview\n";
+echo "  where     in BOTH calendar.js and embed.js, byte for byte, because the calendar\n";
+echo "            has no front end on resources and exists only as an embed. 3.75.0\n";
+echo "            shipped it in calendar.js alone and it never ran anywhere\n";
 echo "  layer     a popover, which is the non-modal door into the same top layer\n";
 echo "            showModal() uses. No z-index anywhere in its stylesheet, because in\n";
 echo "            the top layer one is inert and out of it one loses: 3.70.1\n";

@@ -1656,6 +1656,34 @@
      * so moving the pointer from the tile onto the panel itself does not close
      * the thing being reached for.
      * -------------------------------------------------------------------- */
+    /* SFAF-PREVIEW-START
+     *
+     * EVERYTHING BETWEEN THESE TWO MARKERS EXISTS TWICE, BYTE FOR BYTE, IN
+     * calendar.js AND embed.js, AND `.claude/hover-preview-test.php` FAILS IF
+     * THE TWO COPIES DIVERGE BY A SINGLE CHARACTER.
+     *
+     * WHY IT HAS TO BE IN BOTH. 3.75.0 shipped this in calendar.js only, and
+     * calendar.js is the shortcode's script. **The calendar has no front end on
+     * resources.sfaf.org: it exists only as an embed on sfaf.org**, which runs
+     * embed.js, a deliberately jQuery-free reimplementation of the handful of
+     * interactions an embed needs. So the preview was correct, tested, and
+     * never once executed anywhere anybody could see it. The month grid markup
+     * was right the whole time, because both routes call the same
+     * render_month_grid(); only the behaviour was missing.
+     *
+     * WHY A DUPLICATED BLOCK RATHER THAN A THIRD FILE. A shared file means a
+     * second network request from a third-party page, injected by a script
+     * that is already deriving one URL from its own src, with an ordering
+     * question attached. This project has solved the same problem once before,
+     * for the recurrence engine, which exists in PHP and in JavaScript and is
+     * kept honest by a cross-check that slices the JS between markers. This is
+     * that arrangement: one logical copy, enforced by the build rather than by
+     * anybody remembering.
+     *
+     * SO IT USES NO jQUERY AND NOTHING FROM EITHER FILE'S SCOPE. Plain
+     * addEventListener, plain closest(), and two constants of its own. If you
+     * edit it here, the build will tell you to paste it there.
+     */
     var PREVIEW_OPEN_DELAY  = 260;
     var PREVIEW_CLOSE_DELAY = 140;
 
@@ -1811,18 +1839,34 @@
 
         /* DELEGATED, so a month fetched by the view toggle or the arrows gets
            the behaviour without anything being rebound. mouseover rather than
-           mouseenter for the same reason: mouseenter does not bubble. */
-        $(document)
-            .on('mouseover', '.uc-day-event a[data-uc-preview]', function () { wantOpen(this); })
-            .on('mouseout', '.uc-day-event a[data-uc-preview]', wantClose)
-            /* The keyboard gets it too. Tabbing through a month is how somebody
-               not using a mouse reads it, and there is no reason for them to
-               have less. Focus is immediate: they asked for this tile. */
-            .on('focus', '.uc-day-event a[data-uc-preview]', function () {
-                clearTimers();
-                show(this);
-            })
-            .on('blur', '.uc-day-event a[data-uc-preview]', wantClose);
+           mouseenter because mouseenter does not bubble, and focusin/focusout
+           rather than focus/blur for exactly the same reason.
+
+           PLAIN addEventListener AND NO jQUERY, WHICH IS WHAT LETS THIS BLOCK
+           EXIST IN BOTH SCRIPTS. embed.js has no jQuery on purpose, and the
+           host page is somebody else's. See the marker note at the top. */
+        function tileFrom(e) {
+            var t = e.target;
+            if (!t || typeof t.closest !== 'function') { return null; }
+            return t.closest('.uc-day-event a[data-uc-preview]');
+        }
+        document.addEventListener('mouseover', function (e) {
+            var tile = tileFrom(e);
+            if (tile) { wantOpen(tile); }
+        });
+        document.addEventListener('mouseout', function (e) {
+            if (tileFrom(e)) { wantClose(); }
+        });
+        /* The keyboard gets it too. Tabbing through a month is how somebody not
+           using a mouse reads it, and there is no reason for them to have less.
+           Focus is immediate: they asked for this tile. */
+        document.addEventListener('focusin', function (e) {
+            var tile = tileFrom(e);
+            if (tile) { clearTimers(); show(tile); }
+        });
+        document.addEventListener('focusout', function (e) {
+            if (tileFrom(e)) { wantClose(); }
+        });
 
         /* Moving onto the panel keeps it; leaving it closes it. Without this,
            the panel closes as the pointer crosses the gap toward it. */
@@ -1835,5 +1879,6 @@
         window.addEventListener('scroll', function () { clearTimers(); hide(); }, true);
         window.addEventListener('resize', function () { clearTimers(); hide(); });
     }
+    /* SFAF-PREVIEW-END */
 
 })(jQuery);

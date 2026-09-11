@@ -1561,7 +1561,250 @@
         idle(nudgeCron, { timeout: 5000 });
     }
 
+/* SFAF-PREVIEW-START
+     *
+     * EVERYTHING BETWEEN THESE TWO MARKERS EXISTS TWICE, BYTE FOR BYTE, IN
+     * calendar.js AND embed.js, AND `.claude/hover-preview-test.php` FAILS IF
+     * THE TWO COPIES DIVERGE BY A SINGLE CHARACTER.
+     *
+     * WHY IT HAS TO BE IN BOTH. 3.75.0 shipped this in calendar.js only, and
+     * calendar.js is the shortcode's script. **The calendar has no front end on
+     * resources.sfaf.org: it exists only as an embed on sfaf.org**, which runs
+     * embed.js, a deliberately jQuery-free reimplementation of the handful of
+     * interactions an embed needs. So the preview was correct, tested, and
+     * never once executed anywhere anybody could see it. The month grid markup
+     * was right the whole time, because both routes call the same
+     * render_month_grid(); only the behaviour was missing.
+     *
+     * WHY A DUPLICATED BLOCK RATHER THAN A THIRD FILE. A shared file means a
+     * second network request from a third-party page, injected by a script
+     * that is already deriving one URL from its own src, with an ordering
+     * question attached. This project has solved the same problem once before,
+     * for the recurrence engine, which exists in PHP and in JavaScript and is
+     * kept honest by a cross-check that slices the JS between markers. This is
+     * that arrangement: one logical copy, enforced by the build rather than by
+     * anybody remembering.
+     *
+     * SO IT USES NO jQUERY AND NOTHING FROM EITHER FILE'S SCOPE. Plain
+     * addEventListener, plain closest(), and two constants of its own. If you
+     * edit it here, the build will tell you to paste it there.
+     */
+    var PREVIEW_OPEN_DELAY  = 260;
+    var PREVIEW_CLOSE_DELAY = 140;
+
+    function initMonthPreview() {
+        /* The device, asked rather than guessed. matchMedia is old enough to
+           assume; if it is missing, so is any device this would suit. */
+        if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            return;
+        }
+
+        var probe = document.createElement('div');
+        if (typeof probe.showPopover !== 'function') {
+            return; // See "NO FALLBACK, DELIBERATELY" above.
+        }
+
+        /* ONE PANEL FOR THE WHOLE PAGE, built once and refilled. A panel per
+           tile would be sixty panels and sixty images on a busy month. */
+        var panel = document.createElement('div');
+        panel.className = 'uc-mp';
+        panel.setAttribute('popover', 'manual');
+        /* It describes the tile the pointer is on and is never focused, so it
+           is decoration to a screen reader: the tile's own link already carries
+           the title, the time and the date. */
+        panel.setAttribute('aria-hidden', 'true');
+        panel.innerHTML =
+            '<span class="uc-mp-media"><img alt="" decoding="async" /></span>' +
+            '<span class="uc-mp-body">' +
+                '<span class="uc-mp-off"></span>' +
+                '<span class="uc-mp-title"></span>' +
+                '<span class="uc-mp-date"></span>' +
+                '<span class="uc-mp-time"></span>' +
+                '<span class="uc-mp-place"></span>' +
+                '<span class="uc-mp-go">View Event Details</span>' +
+            '</span>';
+        document.body.appendChild(panel);
+
+        var img    = panel.querySelector('.uc-mp-media img');
+        var media  = panel.querySelector('.uc-mp-media');
+        var off    = panel.querySelector('.uc-mp-off');
+        var openT  = null;
+        var closeT = null;
+        var current = null;
+
+        function fill(a) {
+            var src = a.getAttribute('data-uc-pv-img') || '';
+            if (src) {
+                img.src = src;
+                media.hidden = false;
+            } else {
+                /* No src at all rather than an empty one: setting src="" makes
+                   a browser re-request the current document. */
+                img.removeAttribute('src');
+                media.hidden = true;
+            }
+            var cancelled = a.getAttribute('data-uc-pv-off') || '';
+            off.textContent = cancelled;
+            off.hidden = !cancelled;
+
+            panel.querySelector('.uc-mp-title').textContent = a.getAttribute('data-uc-pv-title') || '';
+            fillLine(panel.querySelector('.uc-mp-date'), a.getAttribute('data-uc-pv-date'));
+            fillLine(panel.querySelector('.uc-mp-time'), a.getAttribute('data-uc-pv-time'));
+            fillLine(panel.querySelector('.uc-mp-place'), a.getAttribute('data-uc-pv-place'));
+        }
+
+        /* An empty line is removed rather than left as an empty row, or an
+           online event with no place would render a gap where an address goes. */
+        function fillLine(el, text) {
+            el.textContent = text || '';
+            el.hidden = !text;
+        }
+
+        /*
+         * WHERE IT GOES. Below the tile by default; above when there is not
+         * room below; and pinned inside the viewport horizontally either way.
+         *
+         * THE BOTTOM ROW IS THE CASE THIS EXISTS FOR. A tile on the last week
+         * of the month has the fold a few pixels under it, and a panel that
+         * only ever opened downward would be off screen exactly where the
+         * month is busiest.
+         *
+         * MEASURED AFTER THE PANEL IS SHOWN, NOT BEFORE. A popover has no size
+         * until it is in the top layer, so it is shown first, measured, then
+         * placed. It carries a class that keeps it invisible for that one
+         * frame, or the first paint would be a flash in the corner.
+         */
+        function place(a) {
+            var tile = a.getBoundingClientRect();
+            var box  = panel.getBoundingClientRect();
+            var gap  = 10;
+            var edge = 8;
+
+            var below = window.innerHeight - tile.bottom;
+            var above = tile.top;
+            var top;
+            if (below >= box.height + gap + edge) {
+                top = tile.bottom + gap;
+                panel.classList.remove('is-above');
+            } else if (above >= box.height + gap + edge) {
+                top = tile.top - box.height - gap;
+                panel.classList.add('is-above');
+            } else {
+                /* Neither side fits, which is a short window rather than a
+                   bottom row. Sit it against the top edge and let it be beside
+                   the tile rather than off screen. */
+                top = Math.max(edge, Math.min(tile.top, window.innerHeight - box.height - edge));
+                panel.classList.add('is-above');
+            }
+
+            var left = tile.left + (tile.width / 2) - (box.width / 2);
+            left = Math.max(edge, Math.min(left, window.innerWidth - box.width - edge));
+
+            panel.style.top  = Math.round(top) + 'px';
+            panel.style.left = Math.round(left) + 'px';
+        }
+
+        function show(a) {
+            current = a;
+            fill(a);
+            panel.classList.add('is-measuring');
+            try {
+                if (!panel.matches(':popover-open')) { panel.showPopover(); }
+            } catch (e) {
+                return; // Already open, or refused. Either way, nothing to do.
+            }
+            place(a);
+            panel.classList.remove('is-measuring');
+            panel.classList.add('is-open');
+        }
+
+        function hide() {
+            current = null;
+            panel.classList.remove('is-open');
+            try {
+                if (panel.matches(':popover-open')) { panel.hidePopover(); }
+            } catch (e) { /* already closed */ }
+        }
+
+        function clearTimers() {
+            if (openT) { window.clearTimeout(openT); openT = null; }
+            if (closeT) { window.clearTimeout(closeT); closeT = null; }
+        }
+
+        function wantOpen(a) {
+            clearTimers();
+            if (current === a) { return; }
+            openT = window.setTimeout(function () { show(a); }, PREVIEW_OPEN_DELAY);
+        }
+
+        function wantClose() {
+            clearTimers();
+            closeT = window.setTimeout(hide, PREVIEW_CLOSE_DELAY);
+        }
+
+        /* DELEGATED, so a month fetched by the view toggle or the arrows gets
+           the behaviour without anything being rebound. mouseover rather than
+           mouseenter because mouseenter does not bubble, and focusin/focusout
+           rather than focus/blur for exactly the same reason.
+
+           PLAIN addEventListener AND NO jQUERY, WHICH IS WHAT LETS THIS BLOCK
+           EXIST IN BOTH SCRIPTS. embed.js has no jQuery on purpose, and the
+           host page is somebody else's. See the marker note at the top. */
+        function tileFrom(e) {
+            var t = e.target;
+            if (!t || typeof t.closest !== 'function') { return null; }
+            return t.closest('.uc-day-event a[data-uc-preview]');
+        }
+        document.addEventListener('mouseover', function (e) {
+            var tile = tileFrom(e);
+            if (tile) { wantOpen(tile); }
+        });
+        document.addEventListener('mouseout', function (e) {
+            if (tileFrom(e)) { wantClose(); }
+        });
+        /* The keyboard gets it too. Tabbing through a month is how somebody not
+           using a mouse reads it, and there is no reason for them to have less.
+           Focus is immediate: they asked for this tile. */
+        document.addEventListener('focusin', function (e) {
+            var tile = tileFrom(e);
+            if (tile) { clearTimers(); show(tile); }
+        });
+        document.addEventListener('focusout', function (e) {
+            if (tileFrom(e)) { wantClose(); }
+        });
+
+        /* Moving onto the panel keeps it; leaving it closes it. Without this,
+           the panel closes as the pointer crosses the gap toward it. */
+        panel.addEventListener('mouseover', clearTimers);
+        panel.addEventListener('mouseout', wantClose);
+
+        /* A scroll moves the tile out from under the panel, and a resize moves
+           everything. Close rather than chase: the pointer is already somewhere
+           else by the time either finishes. */
+        window.addEventListener('scroll', function () { clearTimers(); hide(); }, true);
+        window.addEventListener('resize', function () { clearTimers(); hide(); });
+    }
+    /* SFAF-PREVIEW-END */
+
     window.sfafCalendarEmbed = { scan: scan };
+
+    /* THE PREVIEW IS BUILT ONCE FOR THE PAGE, NOT ONCE PER BLOCK, and not
+     * inside scan(). Its listeners are delegated on the document and its panel
+     * is appended to <body>, so a second block, a month fetched by the arrows
+     * and a view swapped by the toggle are all already covered. Building it
+     * per block would give a host page with two embeds two panels.
+     *
+     * It refuses to build itself where the device cannot hover, so on a phone
+     * this costs one matchMedia call and nothing else. */
+    try {
+        initMonthPreview();
+    } catch (e) {
+        /* Same contract as everything else here: a failed enhancement must not
+         * take the calendar with it. The tiles are still links. */
+        if (window.console && window.console.error) {
+            window.console.error('SFAF calendar: the hover preview failed to start.', e);
+        }
+    }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', scan);
