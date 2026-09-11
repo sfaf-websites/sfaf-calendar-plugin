@@ -595,6 +595,20 @@ class SFAF_Request {
             }
         }
 
+        /* ---- Who is putting it on (3.76.0). ----
+         *
+         * CHECKED AGAINST THE TAXONOMY, never trusted. It is a select on the
+         * form and an integer in a POST, and this page is reached by a link, so
+         * the only thing that makes an id an organizer is asking. 0 is the
+         * "Not sure" answer and is a real one: it stores nothing. */
+        $clean['organizer'] = 0;
+        if ( ! empty( $post['organizer'] ) ) {
+            $oid = (int) $post['organizer'];
+            if ( $oid && SFAF_Organizers::exists( $oid ) ) {
+                $clean['organizer'] = $oid;
+            }
+        }
+
         $clean['venue']       = 0;
         $clean['venue_other'] = '';
         if ( ! empty( $post['venue'] ) ) {
@@ -999,6 +1013,12 @@ class SFAF_Request {
         }
         if ( $c['series'] ) {
             SFAF_Series::set_for_event( $event_id, $c['series'] );
+        }
+        /* Who is putting it on, when the requester said. "Not sure" is 0 and
+         * writes nothing, which leaves the event exactly as it arrived before
+         * this field existed. */
+        if ( ! empty( $c['organizer'] ) ) {
+            wp_set_object_terms( $event_id, array( (int) $c['organizer'] ), 'uc_organizer' );
         }
 
         /*
@@ -1502,6 +1522,50 @@ class SFAF_Request {
                  */
                 $all_series = SFAF_Series::all();
                 ?>
+
+                <?php
+                /*
+                 * WHO IS PUTTING IT ON (3.76.0), AND IT GOES FIRST.
+                 *
+                 * THE FORM HAD NO ORGANIZER FIELD AT ALL, and nothing anywhere
+                 * recorded that as a decision: it was simply never added, so
+                 * every staff request arrived with no organizer and whoever
+                 * approved it had to know or ask. The requester is the one
+                 * person who certainly knows.
+                 *
+                 * FIRST, ABOVE THE SERIES, because organizer then series then
+                 * picture is the order these three depend on each other: the
+                 * series decides the default picture, and the organizer is the
+                 * one of the three that depends on nothing.
+                 *
+                 * A CLOSED LIST AND AN ESCAPE THAT IS NOT A TEXT BOX. "Not
+                 * sure" is a real answer from somebody booking a room for a
+                 * colleague, and it posts nothing rather than a name that would
+                 * have to be matched against the taxonomy by hand. Creating an
+                 * organizer is a caladmin decision and stays one: see
+                 * "Create-from-the-editor is a field, never a button".
+                 */
+                $all_orgs = SFAF_Organizers::all();
+                ?>
+                <?php if ( ! empty( $all_orgs ) ) : ?>
+                    <fieldset class="uc-form-section-group">
+                        <legend class="uc-field-group-title">Organizer</legend>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Who is putting this on?</span>
+                            <select name="organizer">
+                                <option value="0">Not sure</option>
+                                <?php foreach ( $all_orgs as $o ) : ?>
+                                    <option value="<?php echo (int) $o->term_id; ?>"
+                                        <?php selected( (int) $v( 'organizer' ), (int) $o->term_id ); ?>>
+                                        <?php echo esc_html( $o->name ); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="uc-hint">Shown on the event page as who is running it. Leave it at Not sure and somebody here will set it.</span>
+                        </label>
+                    </fieldset>
+                <?php endif; ?>
+
                 <?php if ( ! empty( $all_series ) ) : ?>
                     <fieldset class="uc-form-section-group">
                         <legend class="uc-field-group-title">Series</legend>
@@ -1529,6 +1593,22 @@ class SFAF_Request {
                         </label>
                     </fieldset>
                 <?php endif; ?>
+
+                <?php
+                /*
+                 * THE PICTURE SITS DIRECTLY UNDER THE SERIES (3.76.0).
+                 *
+                 * It was six sections further down, after Location, and the
+                 * series is the thing that decides its default: the "nothing
+                 * chosen" row fills in with the series photo the moment the
+                 * select changes, and a change nobody witnesses is a change
+                 * that has to be explained in a hint instead of seen.
+                 *
+                 * Organizer, then series, then picture, which is the order
+                 * these three actually depend on each other.
+                 */
+                self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ), (int) $v( 'series' ) );
+                ?>
 
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">About the event</legend>
@@ -1657,8 +1737,6 @@ class SFAF_Request {
                 </label>
                 </fieldset>
 
-                <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ), (int) $v( 'series' ) ); ?>
-
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">RSVP</legend>
 
@@ -1718,6 +1796,46 @@ class SFAF_Request {
                             </select>
                             <span class="uc-hint">Its questions are copied in, ahead of any you add below. Editing the set later does not change this event.</span>
                         </label>
+
+                        <?php
+                        /*
+                         * WHAT IS ACTUALLY IN THE SET (3.76.0).
+                         *
+                         * The select named a set and a count and showed nothing
+                         * else, so a requester picked blind and had to remember
+                         * what "Clinic basics (4)" contains. caladmin has never
+                         * had that problem: applying a set there drops the
+                         * questions into editable rows where they can be read.
+                         *
+                         * EVERY SET IS RENDERED AND THE SCRIPT HIDES THE REST,
+                         * which is the progressive-enhancement rule this form
+                         * already follows everywhere: start from visible and
+                         * hide, never start hidden and show. With no script a
+                         * requester sees all of them under a heading naming
+                         * each, which is longer and complete; with script they
+                         * see the one they chose.
+                         *
+                         * READ-ONLY, AND NOT A SECOND SET OF FIELDS. The rows
+                         * are copied server-side by faqs_for() at validate
+                         * time, exactly as before. Making them editable here
+                         * would be a second place the set's text can be
+                         * changed, and it would post a copy of the set that
+                         * could disagree with the set.
+                         */
+                        ?>
+                        <div class="uc-faq-set-peek" data-uc-faq-set-lists>
+                            <?php foreach ( $faq_sets as $set ) : ?>
+                                <?php if ( empty( $set['rows'] ) ) { continue; } ?>
+                                <div class="uc-faq-set-list" data-uc-faq-set-list="<?php echo esc_attr( $set['id'] ); ?>">
+                                    <p class="uc-field-label">In &ldquo;<?php echo esc_html( $set['name'] ); ?>&rdquo;</p>
+                                    <ul>
+                                        <?php foreach ( $set['rows'] as $row ) : ?>
+                                            <li><?php echo esc_html( isset( $row['question'] ) ? $row['question'] : '' ); ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endif; ?>
 
                     <div class="uc-repeater" data-repeater>

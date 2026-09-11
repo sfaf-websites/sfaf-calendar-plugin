@@ -1216,8 +1216,15 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 /* Its trigger carries a thumbnail, and a picture has no baseline to sit on. */
 .uc-image-picker > .uc-picker-toggle { align-items: center; }
 .uc-image-current { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.uc-image-current-thumb { flex: 0 0 auto; width: 48px; height: 27px; object-fit: cover;
-    border-radius: 4px; border: 1px solid var(--p-border); }
+/* BIGGER, TWICE OVER (3.76.0). 48x27 and 64x36 are the sizes these were
+   built at, and at those sizes a photograph is a smudge: somebody choosing
+   between six pictures of people in a room cannot tell them apart, which is
+   the whole job of the control. The trigger is what you look at after
+   choosing and the rows are what you choose from, so both go up and the row
+   goes up further. 16:9 in both cases, matching every other place this
+   calendar shows an event picture. */
+.uc-image-current-thumb { flex: 0 0 auto; width: 96px; height: 54px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--p-border); }
 .uc-image-current-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* THE SEARCH BOX IS NOT THERE UNTIL IT CAN WORK. portal.js reveals it. Without
@@ -1229,10 +1236,11 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 
 /* Taller than the people list, because each row is a picture rather than a
    line of text, and the whole point is being able to see enough of them. */
-.uc-image-options { max-height: 320px; }
+/* Taller again with the rows, or the panel shows two and a half of them. */
+.uc-image-options { max-height: 420px; }
 .uc-image-option { gap: 10px; }
-.uc-image-option-thumb { flex: 0 0 auto; width: 64px; height: 36px; object-fit: cover;
-    border-radius: 4px; border: 1px solid var(--p-border); background: var(--p-bg); }
+.uc-image-option-thumb { flex: 0 0 auto; width: 132px; height: 74px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--p-border); background: var(--p-bg); }
 .uc-image-option-blank { border-style: dashed; }
 /* THE SAME BOX, CARRYING THE SERIES PHOTO (3.68.0). The "nothing chosen" row is
    a <span> rather than an <img>, so the picture arrives as a background and
@@ -1248,6 +1256,32 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    long and has no spaces. */
 .uc-image-option-name { display: block; font-size: 13px; font-weight: 600; line-height: 1.3;
     overflow-wrap: anywhere; }
+/* One line under the name, on the "nothing chosen" row only, saying what that
+   row actually means once a series photo is in it. Helper step, 12/400 muted,
+   which is the ladder's own. */
+.uc-image-option-note { display: block; font-size: 12px; font-weight: 400; line-height: 1.4;
+    color: var(--p-muted, #6B6764); }
+
+/* ---------------------------------------------------------------------------
+   WHAT IS IN THE CHOSEN FAQ SET (3.76.0)
+
+   A read-only list under the set picker on the staff request form. Not fields:
+   the rows are copied server-side at validate time, and a second editable copy
+   here would be a second place the set's text can be changed.
+
+   Boxed in the page tint so it reads as "here is what that is" rather than as
+   more of the form. Every list is in the markup and portal.js hides all but
+   the chosen one, so with no script this is several boxes and not none.
+   ------------------------------------------------------------------------ */
+.uc-faq-set-peek { margin: -4px 0 14px; }
+.uc-faq-set-list {
+    margin: 0 0 8px; padding: 10px 12px;
+    border: 1px solid var(--p-border); border-radius: 8px;
+    background: var(--p-surface-2, #f6f7f8);
+}
+.uc-faq-set-list:last-child { margin-bottom: 0; }
+.uc-faq-set-list ul { margin: 4px 0 0; padding-left: 18px; }
+.uc-faq-set-list li { font-size: 13px; line-height: 1.5; }
 
 /* ---------------------------------------------------------------------------
    A REQUEST IN THE QUEUE, AND ON THE EVENT IT BECAME
@@ -1841,6 +1875,95 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
     box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--uc-accent-text); }
 .uc-swatch input:focus-visible + .uc-swatch-dot {
     outline: 2px solid var(--uc-accent-text); outline-offset: 3px; }
+
+/* ---------------------------------------------------------------------------
+   CHOOSING AN ICON BY LOOKING AT IT (3.76.0)
+
+   The same arrangement as the swatches above, for the same reason: a closed set
+   of things somebody has to SEE to choose between. The radio is the control and
+   is visually hidden; the face beside it is what gets drawn and what carries
+   the chosen and focused states.
+
+   THE NAME STAYS UNDER THE GLYPH rather than becoming a tooltip. Thirty
+   pictograms with no words is a memory test, and the title attribute is a
+   mouse affordance a keyboard and a phone never see. Both, and the glyph
+   leads.
+   ------------------------------------------------------------------------ */
+.uc-icon-choice { margin-top: 4px; }
+.uc-icon-choice-head {
+    margin: 12px 0 6px;
+    font-size: 13px; font-weight: 600;
+    color: var(--p-muted, #6B6764);
+}
+.uc-icon-choice-head:first-child { margin-top: 0; }
+.uc-icon-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 6px;
+}
+.uc-icon-pick { position: relative; display: block; margin: 0; }
+.uc-icon-pick input {
+    position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer;
+}
+.uc-icon-pick-face {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px;
+    border: 1px solid var(--p-border); border-radius: 8px;
+    background: var(--p-surface, #fff);
+    color: var(--p-text);
+    cursor: pointer;
+    text-align: center;
+}
+.uc-icon-pick input:hover + .uc-icon-pick-face { background: var(--p-surface-2, #f6f7f8); }
+/* Ringed and tinted, which is the chosen state the swatches use one of and the
+   segmented control uses the other. Both here because a glyph is a shape rather
+   than a colour: a ring alone reads as focus, and a tint alone is easy to miss
+   in a grid of thirty. */
+.uc-icon-pick input:checked + .uc-icon-pick-face {
+    border-color: var(--uc-accent-text);
+    box-shadow: inset 0 0 0 1px var(--uc-accent-text);
+    color: var(--uc-accent-text);
+}
+.uc-icon-pick input:focus-visible + .uc-icon-pick-face {
+    outline: 2px solid var(--uc-accent-text); outline-offset: 2px;
+}
+.uc-icon-pick-name { font-size: 12px; line-height: 1.25; }
+
+/* ---------------------------------------------------------------------------
+   A LIST THAT FOLDS AWAY (3.76.0)
+
+   The Series and Categories lists, so the form under them is reachable without
+   scrolling past twenty-five rows. A native <details>, so it works with nothing
+   running; sfaf_fold_open() decides which way it starts, from the row count
+   rather than from a decision per screen.
+
+   THE SUMMARY IS THE CARD HEAD, which is why it takes that class as well: the
+   band was already there and this is the same band with a chevron in it and a
+   press attached. A second head above the real one would be two titles.
+
+   list-style: none AND the ::-webkit-details-marker rule, because the default
+   triangle is drawn by two different mechanisms depending on the browser and
+   removing one leaves the other.
+   ------------------------------------------------------------------------ */
+.uc-list-fold { display: block; }
+.uc-list-fold-head {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    list-style: none;
+}
+.uc-list-fold-head::-webkit-details-marker { display: none; }
+.uc-list-fold-head:focus-visible {
+    outline: 2px solid var(--uc-accent-text); outline-offset: -2px;
+}
+/* The chevron points down when shut and up when open, which is the direction
+   every other disclosure in this file uses. */
+.uc-list-fold > .uc-list-fold-head .uc-disclosure-chevron {
+    display: inline-flex; transition: transform 120ms ease-out;
+}
+.uc-list-fold[open] > .uc-list-fold-head .uc-disclosure-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .uc-list-fold > .uc-list-fold-head .uc-disclosure-chevron { transition: none; }
+}
 
 /* ---------- Series schedule: the past, folded away ---------- */
 .uc-schedule-pastfold { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--p-border); }

@@ -1018,6 +1018,30 @@ class SFAF_Series {
         return $out;
     }
 
+    /**
+     * The organizers a series lends a new event, or an empty array.
+     *
+     * A SERIES DOES NOT CARRY AN ORGANIZER AND THIS IS NOT AN OVERSIGHT. The
+     * term holds a description, an image and a default FAQ set; an organizer is
+     * a property of the EVENTS in it, like the location and the times, which is
+     * why prefill_data() reads it off the most recent one. This is that same
+     * read with nothing else attached, for a caller that wants only this.
+     *
+     * SO IT IS DERIVED AND NOT STORED, AND THE CALLER HAS TO COPE WITH EMPTY.
+     * A series whose events have no organizer, and a series with no events at
+     * all, both answer with nothing. That is a real state: a series created
+     * this morning for a campaign starting next month has no event to read
+     * from. Anything deriving an organizer this way needs an answer for it
+     * that is not a guess.
+     *
+     * @param int $term_id
+     * @return int[] Organizer term ids, newest event first.
+     */
+    public static function organizers_for( $term_id ) {
+        $data = self::prefill_data( (int) $term_id );
+        return isset( $data['organizers'] ) ? array_map( 'intval', (array) $data['organizers'] ) : array();
+    }
+
     public static function set_for_event( $post_id, $term_id ) {
         $term_id = (int) $term_id;
         wp_set_object_terms(

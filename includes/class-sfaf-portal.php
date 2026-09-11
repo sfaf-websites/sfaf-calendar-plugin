@@ -752,6 +752,26 @@ class SFAF_Portal {
                 $this->redirect( 'media', array( 'msg' => 'tagged', 'n' => (int) $done['did'] ) );
                 break;
 
+            case 'media_rename':
+                if ( ! SFAF_Media::can_tag( $user ) ) { wp_die( 'Denied' ); }
+                /*
+                 * IT WRITES post_title ON AN ATTACHMENT AND NOTHING ELSE. The
+                 * file does not move, the id does not change, and every event
+                 * pointing at this picture goes on pointing at it: a title is
+                 * what a picker SHOWS, not what anything resolves by.
+                 *
+                 * EMPTYING IT IS A REAL ANSWER. Clearing the box puts the row
+                 * back to its file name, which is what looks_like_a_filename()
+                 * would have done anyway, so there is nothing to undo and no
+                 * confirmation to ask for.
+                 */
+                SFAF_Media::rename(
+                    isset( $_POST['id'] ) ? (int) $_POST['id'] : 0,
+                    isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : ''
+                );
+                $this->redirect( 'media', array( 'msg' => 'renamed' ) );
+                break;
+
             case 'media_untag':
                 if ( ! SFAF_Media::can_tag( $user ) ) { wp_die( 'Denied' ); }
                 SFAF_Media::remove_tag(
@@ -7269,10 +7289,33 @@ class SFAF_Portal {
         </p>
 
         <div class="uc-card">
-            <div class="uc-card-head">
-                <?php // "series" is the same word either way, so no plural test. ?>
-                <h2><?php echo count( $series ); ?> series</h2>
-            </div>
+            <?php
+            /*
+             * THE LIST FOLDS AWAY (3.76.0), AND THE DEFAULT IS A RULE RATHER
+             * THAN A NUMBER SOMEBODY CHOSE.
+             *
+             * Twenty-five series is a long scroll to reach the form under them,
+             * and seven categories is not. The obvious answer is "collapse
+             * series, open categories", and it is the wrong shape: it is two
+             * decisions taken against today's counts, and the seventh category
+             * becomes the fortieth without anybody revisiting them.
+             *
+             * SO IT IS ONE THRESHOLD, ASKED OF THE LIST. Short lists open, long
+             * ones fold, and both screens use the same number. Today that means
+             * categories open and series folded, which is the behaviour asked
+             * for, and it goes on being right when the counts move.
+             *
+             * A NATIVE <details>, so it works with nothing running. Same as the
+             * schedule's past dates, the picture chooser and the form-link
+             * disclosure. No scripted show and hide anywhere near it.
+             */
+            ?>
+            <details class="uc-list-fold"<?php echo sfaf_fold_open( count( $series ) ) ? ' open' : ''; ?>>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                    <?php // "series" is the same word either way, so no plural test. ?>
+                    <h2><?php echo count( $series ); ?> series</h2>
+                </summary>
             <?php if ( empty( $series ) ) : ?>
                 <p class="uc-empty">No series yet. Set a repeat on a new event and one is made for it.</p>
             <?php else : ?>
@@ -7338,6 +7381,7 @@ class SFAF_Portal {
                     </tbody>
                 </table>
             <?php endif; ?>
+            </details>
 
             <?php
             /*
@@ -7411,9 +7455,12 @@ class SFAF_Portal {
             </div>
 
             <div class="uc-card">
-                <div class="uc-card-head">
+                <?php // The same fold and the same threshold as the series list above. ?>
+                <details class="uc-list-fold"<?php echo sfaf_fold_open( count( $cats ) ) ? ' open' : ''; ?>>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
                     <h2><?php echo count( $cats ); ?> <?php echo esc_html( 1 === count( $cats ) ? 'category' : 'categories' ); ?></h2>
-                </div>
+                </summary>
 
                 <?php if ( $err ) : ?>
                     <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
@@ -7470,6 +7517,7 @@ class SFAF_Portal {
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>
+                </details>
 
                 <?php if ( $can_edit ) : ?>
                     <div class="uc-cat-new">
@@ -7538,15 +7586,49 @@ class SFAF_Portal {
                 <span class="uc-hint">The approved brand colors and shades of them. Nothing outside this list can be saved here.</span>
             </div>
 
-            <label class="uc-field uc-cat-icon">
+            <?php
+            /*
+             * THE ICON IS DRAWN, NOT NAMED (3.76.0).
+             *
+             * It was a `<select>` of thirty words, and choosing between thirty
+             * glyphs by their names is guessing: "Bolt" and "Star" and "Flag"
+             * tell you what the word is and nothing about what the picture
+             * looks like at 20px on a card.
+             *
+             * SO IT IS RADIOS, WHICH IS WHAT THE COLOUR ABOVE ALREADY IS. A
+             * `<select>` cannot hold an SVG, and the swatch grid on this same
+             * form is the pattern for "choose one of a closed set of things you
+             * have to see". Same shape, same no-script behaviour: radios post
+             * whether anything ran or not.
+             *
+             * THE GROUPING HAD TO BECOME DATA TO SURVIVE. It was `// General`
+             * and friends in the source, which reads well and cannot be
+             * rendered, and a grid of thirty unlabelled glyphs would be worse
+             * than the list it replaced. SFAF_Categories::icon_groups() is the
+             * one list now and icons() is built from it.
+             */
+            ?>
+            <div class="uc-field uc-cat-icon">
                 <span class="uc-field-label">Icon</span>
-                <select name="category_icon">
-                    <?php foreach ( $icons as $key => $label ) : ?>
-                        <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $icon, $key ); ?>><?php echo esc_html( $label ); ?></option>
+                <div class="uc-icon-choice" role="radiogroup" aria-label="Category icon">
+                    <?php foreach ( SFAF_Categories::icon_groups() as $group_label => $group ) : ?>
+                        <p class="uc-icon-choice-head"><?php echo esc_html( $group_label ); ?></p>
+                        <div class="uc-icon-choice-grid">
+                            <?php foreach ( $group as $key => $label ) : ?>
+                                <label class="uc-icon-pick" title="<?php echo esc_attr( $label ); ?>">
+                                    <input type="radio" name="category_icon" value="<?php echo esc_attr( $key ); ?>"
+                                           <?php checked( $icon, $key ); ?> />
+                                    <span class="uc-icon-pick-face">
+                                        <?php echo sfaf_icon( $key, array( 'size' => '22px' ) ); ?>
+                                        <span class="uc-icon-pick-name"><?php echo esc_html( $label ); ?></span>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endforeach; ?>
-                </select>
+                </div>
                 <span class="uc-hint">Drawn on an event that has no picture of its own, which is most imported ones.</span>
-            </label>
+            </div>
 
             <div class="uc-cat-form-actions">
                 <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"><?php echo $cat ? 'Save category' : 'Create category'; ?></button>
@@ -8397,9 +8479,47 @@ class SFAF_Portal {
 
                             <img class="uc-media-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
 
-                            <p class="uc-media-name"><?php
-                                echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
-                            ?></p>
+                            <?php
+                            /*
+                             * THE NAME IS EDITABLE HERE, AND THAT IS THE ANSWER
+                             * TO "THE PICKER SHOWS FILE NAMES" (3.76.0).
+                             *
+                             * It is not a regression and nothing was lost in a
+                             * merge. `SFAF_Media::row()` runs every title
+                             * through `looks_like_a_filename()`, which blanks a
+                             * title WordPress derived from the file on upload,
+                             * and the picker then falls back to the file name.
+                             * That is 3.65.0's rule working exactly as built:
+                             * "Dsc 0043" is not a name anybody chose and is
+                             * worse than showing `dsc_0043.jpg`.
+                             *
+                             * WHAT WAS MISSING IS ANYWHERE TO TYPE A REAL ONE.
+                             * Every image in the folder was uploaded without a
+                             * title, so every one falls back, on every picker,
+                             * and the only place to fix it was wp-admin, which
+                             * is the screen most of these people never see.
+                             * A picture named "Strut clinic, waiting room" is
+                             * one somebody can pick on purpose.
+                             */
+                            ?>
+                            <?php if ( $can_tag ) : ?>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-media-rename">
+                                    <input type="hidden" name="uc_action" value="media_rename" />
+                                    <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_media_rename', 'uc_nonce' ); ?>
+                                    <label class="uc-field">
+                                        <span class="uc-visually-hidden">Name for this picture</span>
+                                        <input type="text" name="title" maxlength="120"
+                                               value="<?php echo esc_attr( $row['title'] ); ?>"
+                                               placeholder="<?php echo esc_attr( $row['file'] ); ?>" />
+                                    </label>
+                                    <button type="submit" class="uc-btn uc-btn-sm">Save</button>
+                                </form>
+                            <?php else : ?>
+                                <p class="uc-media-name"><?php
+                                    echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                                ?></p>
+                            <?php endif; ?>
 
                             <?php if ( ! empty( $row['tags'] ) ) : ?>
                                 <p class="uc-media-tags">
@@ -8575,6 +8695,9 @@ class SFAF_Portal {
             case 'tag_failed':
                 $said = 'That series could not be found, so nothing was tagged.';
                 $tone = ' uc-flash-error';
+                break;
+            case 'renamed':
+                $said = 'Name saved. Every picker shows it now.';
                 break;
             case 'untagged':
                 $said = 'Series taken off that image. The image itself is untouched.';

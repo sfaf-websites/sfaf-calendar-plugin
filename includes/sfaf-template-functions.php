@@ -1615,6 +1615,30 @@ function sfaf_brand_palette() {
 }
 
 /**
+ * Should a foldable list of this many rows start open?
+ *
+ * ONE THRESHOLD, ASKED OF THE LIST, RATHER THAN A DECISION PER SCREEN. The
+ * caladmin Series and Categories sections both fold, and the obvious answer to
+ * "which default" was "collapse series at twenty-five, open categories at
+ * seven". That is two judgements taken against today's counts, and the seventh
+ * category becomes the fortieth without anybody revisiting either.
+ *
+ * TEN IS WHERE A LIST STOPS BEING SOMETHING YOU TAKE IN AT A GLANCE and starts
+ * being something you scroll past to reach what is under it. Below it the fold
+ * costs a press and saves nothing; above it the form beneath is off screen.
+ *
+ * THE FOLD ITSELF IS A NATIVE <details> EVERYWHERE IT IS USED, so this decides
+ * an attribute and nothing else: with no script the list still opens and closes
+ * and this is only which way it starts.
+ *
+ * @param int $count How many rows the list holds.
+ * @return bool
+ */
+function sfaf_fold_open( $count ) {
+    return ( (int) $count <= 10 );
+}
+
+/**
  * The default category color when none is set.
  */
 function sfaf_default_category_color() {

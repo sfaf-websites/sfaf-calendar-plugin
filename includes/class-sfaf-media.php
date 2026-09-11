@@ -415,6 +415,11 @@ class SFAF_Media {
             'series' => 0,
             'label'  => 'Choose a picture',
             'limit'  => 60,
+            /* The series' own photo. Empty means ask SFAF_Series for it, which
+             * is what a form with a FIXED series wants; a form where the series
+             * is a question passes '' as well and lets portal.js overwrite the
+             * row as somebody changes the select. */
+            'series_thumb' => '',
         ), $args );
 
         $chosen = (int) $args['chosen'];
@@ -481,14 +486,56 @@ class SFAF_Media {
                 </label>
 
                 <div class="uc-picker-options uc-image-options" data-uc-filter-list>
+                    <?php
+                    /*
+                     * "NO PICTURE" IS NOT WHAT HAPPENS WHEN THE SERIES HAS ONE
+                     * (3.76.0).
+                     *
+                     * An event with no picture of its own already falls back to
+                     * its series' photo at display time, and this row is what
+                     * says so. On the STAFF form portal.js has filled it in
+                     * since 3.68.0, reading the photo off the series `<select>`
+                     * as somebody changes it.
+                     *
+                     * THE COMMUNITY FORM HAS NO SUCH SELECT. Its series is
+                     * fixed by the URL, so there is no option element to read a
+                     * photo from, `initRequestSeriesImage()` returns at its
+                     * first guard, and the row said "No picture chosen" on a
+                     * series with a perfectly good default. **The form did not
+                     * know about the series photo at all**, rather than knowing
+                     * and showing the wrong state.
+                     *
+                     * SO THE SERVER FILLS IT IN, which is the right half to fix
+                     * either way: a form whose series cannot change has nothing
+                     * to wait for a script to tell it, and the staff form gets
+                     * a correct first paint instead of a correct second one.
+                     * The script still overrides on change and has to: there
+                     * the series IS a question.
+                     */
+                    $fallback = ( $series && '' === $args['series_thumb'] )
+                        ? SFAF_Series::image_url( $series, 'medium' )
+                        : (string) $args['series_thumb'];
+                    ?>
                     <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture"
                            data-uc-image-default>
                         <input type="radio" name="<?php echo esc_attr( $args['name'] ); ?>" value="0" <?php checked( 0, $chosen ); ?>
-                               data-uc-image-option data-uc-image-name="No picture" />
-                        <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>
-                        <span class="uc-image-option-text">
-                            <span class="uc-image-option-name">No picture</span>
-                        </span>
+                               data-uc-image-option data-uc-image-name="<?php
+                                   echo esc_attr( '' !== $fallback ? 'The series picture' : 'No picture' );
+                               ?>" />
+                        <?php if ( '' !== $fallback ) : ?>
+                            <?php // Same box, carrying the photo as a background. See the 3.68.0 note in portal.css. ?>
+                            <span class="uc-image-option-thumb uc-image-option-thumb-series" aria-hidden="true"
+                                  style="background-image: url('<?php echo esc_url( $fallback ); ?>');"></span>
+                            <span class="uc-image-option-text">
+                                <span class="uc-image-option-name">The series picture</span>
+                                <span class="uc-image-option-note">Used when you do not choose one</span>
+                            </span>
+                        <?php else : ?>
+                            <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>
+                            <span class="uc-image-option-text">
+                                <span class="uc-image-option-name">No picture</span>
+                            </span>
+                        <?php endif; ?>
                     </label>
                     <?php foreach ( $groups as $group ) : ?>
                         <?php if ( empty( $group['rows'] ) ) { continue; } ?>
@@ -547,6 +594,37 @@ class SFAF_Media {
             <?php endif; ?>
         </span>
         <?php
+    }
+
+    /**
+     * Give one picture a name a person chose.
+     *
+     * WHY THIS EXISTS. Every picker in this plugin shows a picture's TITLE where
+     * it has a real one and its FILE NAME where it does not, and `row()` decides
+     * which through `looks_like_a_filename()`. An image uploaded without a title
+     * gets one from WordPress made out of the file, which is not a name anybody
+     * chose, so it is blanked and the file name shows instead. Correct, and
+     * useless until somebody can type the real name somewhere.
+     *
+     * THE FILE DOES NOT MOVE AND THE ID DOES NOT CHANGE. A title is what a
+     * picker shows; every event pointing at this attachment goes on pointing at
+     * it, and nothing resolves a picture by its name.
+     *
+     * THE FOLDER IS CHECKED, so this cannot be used to rename an arbitrary
+     * attachment somewhere else in the media library.
+     *
+     * @param int    $id
+     * @param string $title Empty puts the row back to its file name.
+     * @return bool
+     */
+    public static function rename( $id, $title ) {
+        $id = (int) $id;
+        if ( $id < 1 || 'attachment' !== get_post_type( $id ) || ! SFAF_Media_Folder::holds( $id ) ) {
+            return false;
+        }
+        $clean = sanitize_text_field( (string) $title );
+        $done  = wp_update_post( array( 'ID' => $id, 'post_title' => $clean ), true );
+        return ! is_wp_error( $done );
     }
 
     /**

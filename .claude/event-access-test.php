@@ -365,6 +365,7 @@ $ALLOWED = array(
      */
     'POST:media_tag'              => array( 'role' ),
     'POST:media_untag'            => array( 'role' ),
+    'POST:media_rename'           => array( 'role' ),
     'POST:media_upload'           => array( 'role' ),
     'POST:save_rsvp_settings'     => array( 'event' ),
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),

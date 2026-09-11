@@ -110,6 +110,7 @@ function ucDismissOnBackdrop(dialog) {
         // After imageChoice, which is what makes the picker live and is where
         // the trigger renderer this one reuses is bound.
         run('requestSeriesImage', initRequestSeriesImage);
+        run('faqSetPeek', initFaqSetPeek);
         run('calendarTick', initCalendarTick);
         run('tickPickers', initTickPickers);
     });
@@ -406,6 +407,39 @@ function ucDismissOnBackdrop(dialog) {
      * still posts, the hint above it still says what choosing a series does,
      * and the event still gets the series photo.
      * ------------------------------------------------------------------ */
+
+    /* ---------------------------------------------------------------------
+     * WHAT IS IN THE FAQ SET SOMEBODY JUST CHOSE (3.76.0).
+     *
+     * The staff form's set picker named a set and a count and showed nothing
+     * else, so a requester picked blind. Every set's questions are now in the
+     * markup, and this narrows it to the chosen one.
+     *
+     * IT HIDES, IT NEVER SHOWS. With this function missing or thrown, all of
+     * them are on the page under headings naming each set, which is longer and
+     * complete; nothing is hidden that a script has to come back and reveal.
+     * Same rule as the reveal initialiser at the foot of this file, and the
+     * same reason: a form reached by a link on somebody's phone has to be
+     * completable whatever ran.
+     * ------------------------------------------------------------------ */
+    function initFaqSetPeek() {
+        var box = document.querySelector('[data-uc-faq-set-lists]');
+        var select = document.querySelector('select[name="faq_set"]');
+        if (!box || !select) { return; }
+
+        var lists = box.querySelectorAll('[data-uc-faq-set-list]');
+        if (!lists.length) { return; }
+
+        function apply() {
+            var chosen = select.value || '';
+            Array.prototype.forEach.call(lists, function (el) {
+                el.hidden = (el.getAttribute('data-uc-faq-set-list') !== chosen);
+            });
+        }
+
+        apply();
+        select.addEventListener('change', apply);
+    }
     function initRequestSeriesImage() {
         var select = document.querySelector('[data-uc-request-series]');
         var picker = document.querySelector('[data-uc-image-picker]');

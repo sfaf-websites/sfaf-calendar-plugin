@@ -86,75 +86,99 @@ class SFAF_Categories {
     }
 
     /**
-     * The icons a category may use.
+     * The icons a category may use, in the groups the picker draws them in.
      *
      * A CURATED SUBSET of sfaf_icon_paths(), not all of it: the interface icons
-     * (menu, arrow, pencil, x) and the social ones are not things an event
-     * category is, and offering them would be offering a way to make the
-     * calendar look broken. Every key here is checked against sfaf_icon_paths()
-     * at the point of use, so a rename there cannot leave this pointing at
-     * nothing.
+     * (menu, arrow, pencil, x, chevron, search, refresh, check, lock) and the
+     * social marks are not things an event category is, and offering them would
+     * be offering a way to make the calendar look broken. Every key here is
+     * checked against sfaf_icon_paths() at the point of use, so a rename there
+     * cannot leave this pointing at nothing.
+     *
+     * THE LIST GREW IN 3.75.0 because of a collision rather than a shortage:
+     * Espanol and Program Groups both drew 'community', so two kinds of event
+     * were indistinguishable on every placeholder they produced.
+     *
+     * GROUPED BY WHAT SOMEBODY IS LOOKING FOR rather than alphabetically,
+     * because a person picking an icon is thinking "what is this event", not
+     * "what letter does it start with".
+     *
+     * THE GROUPING WAS A COMMENT AND IS NOW DATA (3.76.0). icons() had the
+     * groups written as `// General`, `// People and talking` and so on, which
+     * reads well in the source and cannot be rendered. The picker is a grid of
+     * glyphs now rather than a list of names, and a grid of thirty unlabelled
+     * glyphs is worse than the list it replaced, so the headings have to reach
+     * the screen.
+     *
+     * icons() IS BUILT FROM THIS AND NOT BESIDE IT, so there is one list. A
+     * second flat copy would be the drift this class already documents from the
+     * other direction, where two name maps disagreed about what a category was.
+     *
+     * @return array<string,array<string,string>> group label => icon key => label.
+     */
+    public static function icon_groups() {
+        return array(
+            'General' => array(
+                'calendar'  => 'Calendar',
+                'star'      => 'Star',
+                'bell'      => 'Bell',
+                'clock'     => 'Clock',
+                'repeat'    => 'Repeating',
+            ),
+            'People and talking' => array(
+                'users'     => 'People',
+                'community' => 'Community',
+                'speech'    => 'Conversation',
+                'globe'     => 'Globe',
+                'handshake' => 'Handshake',
+                'hand'      => 'Hand',
+                'heart'     => 'Heart',
+            ),
+            'Health and support' => array(
+                'cross'     => 'Health',
+                'shield'    => 'Prevention',
+                'help'      => 'Question',
+            ),
+            'What the event does' => array(
+                'book'      => 'Learning',
+                'meal'      => 'Food',
+                'music'     => 'Music',
+                'bike'      => 'Cycling',
+                'bolt'      => 'Bolt',
+                'palette'   => 'Arts',
+                'flag'      => 'Campaign',
+                'ticket'    => 'Ticketed',
+                'video'     => 'Online',
+                'image'     => 'Picture',
+            ),
+            'Where and how to reach it' => array(
+                'venue'     => 'Building',
+                'home'      => 'House',
+                'pin'       => 'Location pin',
+                'mail'      => 'Mail',
+                'link'      => 'Link',
+            ),
+        );
+    }
+
+    /**
+     * The same icons, flat, for everything that only needs "is this a real key".
+     *
+     * BUILT FROM icon_groups() AND NOT BESIDE IT. A second hand-written copy is
+     * the drift this class already documents from the other direction, where
+     * two name maps disagreed about what a category was. The validator, the
+     * save routine and anything checking a stored key ask this one.
      *
      * @return array<string,string> icon key => human label.
      */
     public static function icons() {
-        /*
-         * THE LIST GREW IN 3.75.0, and the reason was a collision
-         * rather than a shortage. Espanol and Program Groups both drew
-         * 'community', so two kinds of event were indistinguishable on every
-         * placeholder they produced, and more categories are coming.
-         *
-         * NINE ARE NEW GLYPHS and four were already in sfaf_icon_paths() and
-         * simply not offered here: a video camera, a ticket, a picture and a
-         * house are all things an event can be about, and leaving them out was
-         * an oversight rather than a decision.
-         *
-         * STILL A CURATED SUBSET. The interface icons (menu, arrow, pencil, x,
-         * chevron, search, refresh, check, lock) and the social marks are not
-         * things an event category IS, and offering them would be offering a
-         * way to make the calendar look broken.
-         *
-         * Grouped by what somebody is looking for rather than alphabetically,
-         * because a person picking an icon is thinking "what is this event",
-         * not "what letter does it start with".
-         */
-        return array(
-            // General
-            'calendar'  => 'Calendar',
-            'star'      => 'Star',
-            'bell'      => 'Bell',
-            'clock'     => 'Clock',
-            'repeat'    => 'Repeating',
-            // People and talking
-            'users'     => 'People',
-            'community' => 'Community',
-            'speech'    => 'Conversation',
-            'globe'     => 'Globe',
-            'handshake' => 'Handshake',
-            'hand'      => 'Hand',
-            'heart'     => 'Heart',
-            // Health and support
-            'cross'     => 'Health',
-            'shield'    => 'Prevention',
-            'help'      => 'Question',
-            // Things an event does
-            'book'      => 'Learning',
-            'meal'      => 'Food',
-            'music'     => 'Music',
-            'bike'      => 'Cycling',
-            'bolt'      => 'Bolt',
-            'palette'   => 'Arts',
-            'flag'      => 'Campaign',
-            'ticket'    => 'Ticketed',
-            'video'     => 'Online',
-            'image'     => 'Picture',
-            // Where and how to reach it
-            'venue'     => 'Building',
-            'home'      => 'House',
-            'pin'       => 'Location pin',
-            'mail'      => 'Mail',
-            'link'      => 'Link',
-        );
+        $flat = array();
+        foreach ( self::icon_groups() as $group ) {
+            foreach ( $group as $key => $label ) {
+                $flat[ $key ] = $label;
+            }
+        }
+        return $flat;
     }
 
     /** The default icon when a category has none and its name is not a legacy one. */

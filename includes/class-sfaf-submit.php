@@ -804,6 +804,34 @@ class SFAF_Submit {
             update_post_meta( $event_id, sfaf_faq_meta_key(), $c['faqs'] );
         }
 
+        /*
+         * THE ORGANIZER COMES FROM THE SERIES, NOT FROM THE SUBMITTER (3.76.0).
+         *
+         * This form is only ever reached at a series' own address, so the
+         * series is known before a field is filled in, and a stranger is in no
+         * position to say which SFAF programme is putting an event on. Asking
+         * would be asking somebody to guess at an internal list, and offering
+         * that list is the disclosure this form already refuses to make about
+         * FAQ sets.
+         *
+         * IT IS DERIVED AND NOT STORED, AND THAT IS WORTH KNOWING. A series
+         * carries a description, an image and a default FAQ set; it does NOT
+         * carry an organizer, because an organizer is a property of the EVENTS
+         * in it. SFAF_Series::organizers_for() reads it off the most recent
+         * event, which is the same rule the caladmin prefill card uses.
+         *
+         * SO IT CAN BE EMPTY AND THAT IS A REAL STATE, not a failure: a series
+         * created for a campaign that has not run yet has no event to read
+         * from. **Nothing is invented when it is empty.** The submission
+         * arrives with no organizer, exactly as every submission did before
+         * this existed, and whoever approves it sets one. A guessed organizer
+         * on a public page is worse than none.
+         */
+        foreach ( SFAF_Series::organizers_for( (int) $series->term_id ) as $org_id ) {
+            wp_set_object_terms( $event_id, array( (int) $org_id ), 'uc_organizer' );
+            break; // The series' own most recent answer, not a merge of several.
+        }
+
         if ( $image_id ) {
             update_post_meta( $event_id, self::META_IMAGE, $image_id );
         }
