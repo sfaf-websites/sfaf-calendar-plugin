@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 83 items.** Quick 60, needs real conditions 20, blocked on other
+**Outstanding: 85 items.** Quick 61, needs real conditions 21, blocked on other
 people 3.
 
 ---
@@ -793,6 +793,23 @@ padlock line.
 They should read as **prose**, not as HTML tags. They are still not editable and
 still say so, which is correct: a fetch owns them.
 
+### 1.61 "Use this event's details on another date" on a series with several groups (3.73.0)
+
+**The half of this that was fixed can only be confirmed on the site**, because
+the disagreement needs a series holding more than one recurrence group and
+there is no database here. PROP holds four distinct events, Coffee Social two,
+Mobile Health Sites two, and the Strut community events three.
+
+Open the schedule screen on one of those. Read the **Title for this date**
+placeholder, which names the event the copy is taken from. Then add a date and
+open the event it made.
+
+**The event it copied must be the event the placeholder named**: same location,
+description, times, category, organizer and questions. Before 3.73.0 the screen
+preferred the next event in the recurrence group and the button took the next in
+the series, so on these four series the placeholder could name one event while
+the button copied another.
+
 ---
 
 ## 2. Needs real conditions
@@ -853,6 +870,44 @@ anybody used to receiving it will stop unless their address is in that box.
 
 Submit one test event through each form and confirm the alert lands where the
 setting says and nowhere else. Emptying the box restores the old behaviour.
+
+### 2.24 The "back on" message, wording first (3.73.0)
+
+**Mark has not read this copy and it goes to people outside the calendar team.**
+It cannot send without an explicit yes, like every other message in the
+confirmation, so nothing is at risk while it waits. It is quoted in full in the
+3.73.0 hand-off; this is what it says on an event whose date also moved.
+
+```
+Subject:  Back on: <event title>
+
+<Event title> is back on.
+
+<First name>, this event was cancelled and is happening after all.
+
+It has also moved: it was Wednesday, September 16, 2026 and it is now
+Thursday, September 17, 2026.
+
+Your registration was kept and still holds, so there is nothing to do if the
+new details suit you.
+
+<date, time, place>
+
+Put it back in your calendar   [ Google ]  [ Apple or Outlook ]
+
+See the event page
+
+Cannot make the new date? Cancel your registration so somebody else can take
+your place. We will ask you to confirm.
+```
+
+On an event put back on its original date the third paragraph is absent and the
+last one opens "No longer able to come?" instead. Nothing else changes.
+
+**Then send one.** Cancel a test event with a test address registered, put it
+back on, and tick the box. Confirm the message arrives, that the cancel link in
+it cancels that registration, and that the calendar buttons carry the date it is
+on now rather than the one it was cancelled from.
 
 ### 2.19 Open the notification card on an imported event and an imported occurrence (3.69.0)
 

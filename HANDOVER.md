@@ -6,7 +6,7 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-10, at 3.73.0.
+**Last updated:** 2026-09-11, at 3.73.0, released.
 
 > **THIS FILE SAT THREE RELEASES STALE**, describing 3.69.0 while 3.70.0, 3.70.1
 > and 3.71.0 had shipped. None of those three commits touched it or `TESTING.md`,
@@ -18,21 +18,24 @@ here that is still true in six months belongs in one of those instead.
 
 ## What shipped last
 
-**3.73.0**, built as `sfaf-calendar-3.73.0.zip` in the project root, committed
-and **pushed to `origin/production-2.0`**. Working tree clean.
+**3.73.0**, built as `sfaf-calendar-3.73.0.zip` in the project root, committed,
+**pushed to `origin/production-2.0`** and **released**. Working tree clean.
 
-> **3.72.0 IS ON THE SITE, INSTALLED BY HAND.** It was released correctly and
-> never offered, for the reason 3.73.0 fixes. So the site is on 3.72.0 and
-> **3.73.0 has not been released**: releasing is a separate word, and the
-> hand-off below says what wants doing first.
+> **3.73.0 IS RELEASED AND THE SITE IS STILL ON 3.72.0.** The release was cut on
+> 2026-09-10 and the asset on it is the zip in this folder, byte for byte. What
+> is on the site is 3.72.0, installed by hand, and **3.72.0 carries the broken
+> updater**: its `latest()` is never forced and its cache was written when the
+> zip went on, so the site may not offer 3.73.0 until that twelve-hour window
+> passes. **The forced check ships IN 3.73.0, so it cannot help 3.73.0 get
+> installed.** If the site does not offer it, upload the zip by hand as before;
+> from 3.73.0 onward **Check for updates** on the Plugins screen settles it in
+> one press. `TESTING.md` 1.54.
 
 | | |
 |---|---|
 | **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE.** One cause: a helper declared inside one of portal.js's four top-level IIFEs and called from two others, which cannot see into it. Approve and Reject on the pending queue, and Get a form link. **Only Get a form link was reported.** Also: the locked FAQ answers showed HTML as literal text and now read as prose; the events list is three icons on one line with hover text, a clipped name and a 44px touch target; **Cancel** replaces "Cancel instead" and lands on the cancel card with the scope question answered rather than asked; **bulk add a category** on the events list; the Display RSVP tick greys while Accept RSVPs is off; **a fifth message, "this event is back on"**, subject to the consent rule; and the duplicate-to-another-date seed is computed once instead of twice. |
 | **3.73.0 (updater)** | **The updater could not be told to look, and nothing ever told it.** `latest()` has taken a `$force` argument since 3.70.0 and **no call site has ever passed `true`**, so every answer came from a twelve-hour cache only an install could clear. WordPress's own **Check again** cannot help: it clears its own transients and not ours. There is a **Check for updates** link on the Plugins screen now, and both build scripts stop claiming Dashboard > Updates would do it. `forget()` clears on **install** as well as update, because uploading a zip is `install` and that is how most releases have reached this site. `.claude/updater-test.php` runs the thing and plants six regressions. |
 | **3.72.0** | **The cancel and remove cluster, and the batch that was waiting.** The cancel dialog offered two buttons reading "Cancel the event" and "Cancel the event"; there is one action now, and clicking outside a caladmin dialog dismisses it, which was the thing actually missing rather than Escape. **Remove on the events list promised a permanence the code never had** and is refused on a registered event, so the row says so and offers Cancel instead. **A cancelled event now says "Cancelled" on the list card, the month grid and the sidebar**, not just its own page. A second message box in the confirmation, for registrants only. **Remove from the calendar** beside Put it back on, which sends nothing. Tick boxes on the bulk publish. The empty FAQ set card is gone. **The Listing detail contact box wrote a key nothing read**, and is three boxes now. Five-minute time steps. **The staff form asks the real repeat question**, captured and not armed. The series is asked first on every screen. "Use this image" on the pending row, and uploads under 1200 wide refused. Three submission notifications, one of them new. |
-| **3.71.0** | **A series' upcoming drafts publish in one press.** The count and the date range are on the button, four kinds of row are never touched, and the set is re-decided at the press rather than taken from a hidden field. 3.72.0 added the per-row ticks. |
-| **3.70.1** | **The registration dialog opened under the site header, and it was one cause with two symptoms.** Both modals are real `<dialog>` elements in the top layer now, immune to whatever the theme declares. |
 
 ## What has actually been seen on the site
 
@@ -44,9 +47,8 @@ and **pushed to `origin/production-2.0`**. Working tree clean.
 - **3.71.0's BULK PUBLISH READS CORRECTLY** on a real series. 3.72.0 put
   per-row ticks on it and those have not been seen.
 - **THE UPDATER COMPLETED ONE CYCLE AND THEN STOPPED.** 3.71.0 installed
-  through it; 3.72.0 was released correctly, never offered, and went on by
-  hand. It worked once *because* an install had just cleared the cache, which
-  was the only thing that could. Fixed in 3.73.0; `PROJECT.md` 7.
+  through it, because an install had just cleared the cache. 3.72.0 was not
+  offered and went on by hand. `PROJECT.md` 7.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
@@ -107,9 +109,9 @@ again not offered, **say so rather than assuming this was it**: `TESTING.md`
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 83 items.** Quick 60, needs real
-conditions 20, blocked on other people 3. Nothing in the build can settle any of
-them. **Twenty-one are new since 3.71.0.** Four want doing on the day 3.73.0 installs,
+**`TESTING.md` holds the manual testing backlog, 85 items.** Quick 61, needs real
+conditions 21, blocked on other people 3. Nothing in the build can settle any of
+them. **Twenty-three are new since 3.71.0.** Four want doing on the day 3.73.0 installs,
 in this order: **1.55**, because Approve and Reject have been dead for a release
 and that is the screen the import's 287 drafts pass through; **1.54**, the forced
 update check, which is what makes the next release installable on demand;
@@ -126,15 +128,20 @@ unverified** rather than assuming the reported fault was the only one.
 
 ## Open decisions
 
-**TWO PIECES OF COPY HAVE NOT BEEN READ BY MARK.** The **rejection notice**,
-and the **"this event is back on"** message added in 3.73.0. Both go to people
-outside the calendar team, both are quoted in full in their release hand-offs,
-and neither can send without an explicit yes. `TESTING.md` 2.21 holds the first.
+**TWO PIECES OF COPY HAVE NOT BEEN READ BY MARK, AND BOTH GO TO THE PUBLIC.**
+The **rejection notice**, which is the only message this calendar sends that
+tells somebody no, and the **"this event is back on"** message added in 3.73.0.
+Both are built, both are unticked by default, and neither can send without an
+explicit yes, so nothing is at risk while they wait. Each is quoted in full:
+`TESTING.md` 2.21 for the first, `TESTING.md` 2.24 for the second.
 
-**THE REJECTION NOTICE'S WORDING HAS NOT BEEN READ BY MARK.** It is built and
-unticked by default, so nothing sends without an explicit choice, but it is the
-only message this calendar sends that tells somebody no and it goes to a member
-of the public. `TESTING.md` 2.21 and the 3.72.0 hand-off quote it in full.
+**THE DUPLICATE CONTROL STILL DOES NOT NAME THE EVENT IT COPIES.** The seed
+defect behind it was fixed in 3.73.0, so the placeholder and the button now
+agree, but the summary still reads **"Use this event's details on another
+date"** and on a series holding several distinct events "this event" names
+nothing the reader can see. Four series are in that position. Three wordings
+were put to Mark and none is chosen; the 3.73.0 hand-off carries them. Changing
+it is one line and it is a copy decision, not a build.
 
 **222 PUBLISHED EVENT ADDRESSES DIE WITH THE EVENTS CALENDAR.** They are live at
 `resources.sfaf.org/event/<slug>/` and stop resolving when TEC is removed; the
