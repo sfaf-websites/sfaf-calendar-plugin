@@ -8547,15 +8547,20 @@ class SFAF_Portal {
         }
         $n    = isset( $_GET['n'] ) ? (int) $_GET['n'] : 0;
         $said = '';
+        /* .uc-flash is the green one and is this portal's message band.
+         * A failure takes .uc-flash-error, which is the same band in red. */
+        $tone = '';
         switch ( $msg ) {
             case 'tagged':
                 $said = sprintf( '%d %s tagged.', $n, _n( 'image', 'images', $n ) );
                 break;
             case 'tag_none':
                 $said = 'Nothing was ticked, so nothing was tagged.';
+                $tone = ' uc-flash-warn';
                 break;
             case 'tag_failed':
                 $said = 'That series could not be found, so nothing was tagged.';
+                $tone = ' uc-flash-error';
                 break;
             case 'untagged':
                 $said = 'Series taken off that image. The image itself is untouched.';
@@ -8565,12 +8570,13 @@ class SFAF_Portal {
                 break;
             case 'upload_failed':
                 $said = isset( $_GET['why'] ) ? sanitize_text_field( wp_unslash( $_GET['why'] ) ) : 'That file could not be uploaded.';
+                $tone = ' uc-flash-error';
                 break;
         }
         if ( '' === $said ) {
             return;
         }
-        printf( '<div class="uc-notice"><p>%s</p></div>', esc_html( $said ) );
+        printf( '<div class="uc-flash%s">%s</div>', esc_attr( $tone ), esc_html( $said ) );
     }
 
     /**
@@ -8591,19 +8597,23 @@ class SFAF_Portal {
         $base = $this->url( 'media' );
         $args = ( '' !== $tag ) ? array( 'tag' => $tag ) : array();
         ?>
-        <nav class="uc-pagination" aria-label="Pages of images">
-            <?php if ( $paged > 1 ) : ?>
-                <a class="uc-btn uc-btn-sm" href="<?php
-                    echo esc_url( add_query_arg( array_merge( $args, array( 'paged' => $paged - 1 ) ), $base ) );
-                ?>">&larr; Newer</a>
-            <?php endif; ?>
-            <span class="uc-muted">Page <?php echo (int) $paged; ?> of <?php echo (int) $pages; ?></span>
-            <?php if ( $paged < $pages ) : ?>
-                <a class="uc-btn uc-btn-sm" href="<?php
-                    echo esc_url( add_query_arg( array_merge( $args, array( 'paged' => $paged + 1 ) ), $base ) );
-                ?>">Older &rarr;</a>
-            <?php endif; ?>
-        </nav>
+        <?php // The events list's own pagination shell, so a pager reads the
+              // same on both screens and neither needs a rule of its own. ?>
+        <div class="uc-list-pagination">
+            <p class="uc-hint uc-list-total">Page <?php echo (int) $paged; ?> of <?php echo (int) $pages; ?></p>
+            <div class="uc-list-pages">
+                <?php if ( $paged > 1 ) : ?>
+                    <a class="uc-btn uc-btn-sm" rel="prev" href="<?php
+                        echo esc_url( add_query_arg( array_merge( $args, array( 'paged' => $paged - 1 ) ), $base ) );
+                    ?>">&larr; Newer</a>
+                <?php endif; ?>
+                <?php if ( $paged < $pages ) : ?>
+                    <a class="uc-btn uc-btn-sm" rel="next" href="<?php
+                        echo esc_url( add_query_arg( array_merge( $args, array( 'paged' => $paged + 1 ) ), $base ) );
+                    ?>">Older &rarr;</a>
+                <?php endif; ?>
+            </div>
+        </div>
         <?php
     }
 
