@@ -107,6 +107,12 @@ echo "=== rich text at load ==="
 run "rich-text-start --self-test" node .claude/rich-text-start-test.js --self-test
 
 echo
+# "Fill this in from the last one" on the staff form, run rather than read.
+# Its caladmin twin sat dead for twenty-six releases because nothing ran it.
+echo "=== the request form's prefill ==="
+run "request-prefill --self-test" node .claude/request-prefill-test.js --self-test
+
+echo
 # The month grid's hover preview: the top layer, desktop only, and no z-index.
 echo "=== the hover preview ==="
 run "hover-preview --self-test" php .claude/hover-preview-test.php --self-test

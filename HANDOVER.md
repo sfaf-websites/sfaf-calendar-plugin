@@ -96,18 +96,12 @@ approval was deliberately not half built. **Two things about it want saying to
 the team**, both in `PROJECT.md` 2 under "Online events, and a meeting link that
 is a credential".
 
-**Events cancelled by a save.** The 3.36.0 to 3.40.0 bug is fixed and the damage
-is not. Each affected event reinstates from its cancel card, but **a second save
-silently un-cancelled it, so the cancelled list is not the whole list**;
-`_uc_cancelled_at` is the timestamp of the save that did it. The emails cannot
-be unsent.
-
-Four smaller things waiting on somebody: the **GFMP campaign image** is unmapped,
-so campaigns show the placeholder (run the `[PROBE]` in `class-sfaf-gfmp.php`);
-the **Turnstile keys** are not in, and without both there is no widget at all;
-the **Cycle to Zero series does not exist** and the community form's address is
-that series' slug; and **one test event is live**, post 60379, `pending`, badged
-Community submission.
+**Two things that were here and are now in `PROJECT.md` 6**, because neither is
+about the current situation and both will still be true in a year: **the events
+a save cancelled between 3.36.0 and 3.40.0**, where the damage outlives the fix
+because a second save silently un-cancelled one, and **the four things waiting
+on somebody** (the GFMP campaign image, the Turnstile keys, the Cycle to Zero
+series, and the live test event).
 
 ## Outstanding testing
 

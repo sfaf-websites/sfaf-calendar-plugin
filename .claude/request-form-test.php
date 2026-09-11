@@ -1004,6 +1004,30 @@ if ( false === strpos( $picker_src, 'data-uc-image-default' ) ) {
 if ( false === strpos( $src, 'SFAF_Media::picker(' ) ) {
     $fails[] = 'the staff form no longer calls the one picker, so it has a second copy of the chooser';
 }
+
+/* THE OTHER HALF OF THE PREFILL CLAIM (3.77.0).
+ *
+ * `.claude/request-prefill-test.js` RUNS initRequestPrefill() against a
+ * document built by hand, so it could pass over markup this form does not
+ * render. This is the half that holds it to the real render: the panel, the
+ * payload block and the select the script hangs off all have to be here, with
+ * the names that file looks for. Rename one and that test goes on passing over
+ * a shape nothing emits, and this one fails. Neither is worth much alone. */
+foreach ( array(
+    'data-uc-request-prefill'      => 'the panel the prefill script reveals',
+    'data-uc-request-prefill-data' => 'the payload block it reads the series data out of',
+    'data-uc-prefill-opts'         => 'the box it builds the rows into',
+    'data-uc-prefill-apply'        => 'the button that applies them',
+    'data-uc-request-series'       => 'the select it hangs off',
+) as $hook => $what ) {
+    if ( false === strpos( $src, $hook ) ) {
+        $fails[] = 'the staff form does not render ' . $hook . ', which is ' . $what;
+    }
+}
+if ( false === strpos( $src, 'SFAF_Series::prefill_data(' ) ) {
+    $fails[] = 'the staff form builds its prefill payload from something other than SFAF_Series::prefill_data(), '
+        . 'so caladmin and the form can offer different things from the same series';
+}
 if ( preg_match( '/set_post_thumbnail\(\s*\$event_id,\s*\$c\[.series.\]/', $src ) ) {
     $fails[] = 'the series image is copied onto the event, which is a value that goes stale when the series photo changes';
 }

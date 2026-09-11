@@ -111,6 +111,7 @@ function ucDismissOnBackdrop(dialog) {
         // the trigger renderer this one reuses is bound.
         run('requestSeriesImage', initRequestSeriesImage);
         run('faqSetPeek', initFaqSetPeek);
+        run('requestPrefill', initRequestPrefill);
         run('calendarTick', initCalendarTick);
         run('tickPickers', initTickPickers);
     });
@@ -439,6 +440,294 @@ function ucDismissOnBackdrop(dialog) {
 
         apply();
         select.addEventListener('change', apply);
+
+    /* ---------------------------------------------------------------------
+     * FILL THE STAFF REQUEST FORM IN FROM THE LAST EVENT IN A SERIES (3.77.0).
+     *
+     * caladmin has had this since 3.64.0 through initSeriesPrefill(), and this
+     * is the same offer against a different form. ONE DATA SOURCE, TWO
+     * APPLIERS: the payload is SFAF_Series::prefill_data() in both cases, and
+     * what differs is the writing, because the two forms genuinely have
+     * different controls. A venue select and a text box here rather than a
+     * location-mode radio group; radios for the picture rather than wp.media's
+     * hidden id; one organizer rather than several.
+     *
+     * A FLAG INSIDE initSeriesPrefill() WOULD HAVE BEEN THE OTHER WAY, and it
+     * is the arrangement this project refuses on permission-sensitive renders
+     * for the same reason: a function with two field maps in it is two
+     * functions sharing a body, and the one nobody is looking at is the one
+     * that rots.
+     *
+     * NOTHING POSTS. Every write lands in a field already on the page, so an
+     * answer somebody has already typed is theirs to keep: see the overwrite
+     * rule below, which is why each option asks whether its field is empty
+     * before offering to fill it.
+     *
+     * THE DATE IS NEVER OFFERED, and neither is the title. Setting the date is
+     * the reason somebody is filling this form in.
+     * ------------------------------------------------------------------ */
+    function initRequestPrefill() {
+        var panel = document.querySelector('[data-uc-request-prefill]');
+        var select = document.querySelector('[data-uc-request-series]');
+        var dataNode = document.querySelector('[data-uc-request-prefill-data]');
+        if (!panel || !select || !dataNode) { return; }
+
+        var data;
+        try {
+            data = JSON.parse(dataNode.textContent || '{}');
+        } catch (e) {
+            return; // Without the payload there is nothing to offer.
+        }
+
+        var form = select.form || document.querySelector('form.uc-form');
+        if (!form) { return; }
+
+        var optsBox = panel.querySelector('[data-uc-prefill-opts]');
+        var nameOut = panel.querySelector('[data-uc-prefill-name]');
+        var applyBtn = panel.querySelector('[data-uc-prefill-apply]');
+        var noneBtn = panel.querySelector('[data-uc-prefill-none]');
+        var said = panel.querySelector('[data-uc-prefill-said]');
+        if (!optsBox || !applyBtn) { return; }
+
+        function field(name) { return form.querySelector('[name="' + name + '"]'); }
+
+        function textOf(el) { return el ? String(el.value || '').trim() : ''; }
+
+        /* The description is the one field that may be a rich text editor by
+           the time this runs. Writing the textarea and telling TinyMCE, in that
+           order, so the value is right whether or not an editor started. */
+        function setDescription(html) {
+            var area = field('description');
+            if (!area) { return; }
+            area.value = html;
+            if (window.tinymce && area.id) {
+                var ed = window.tinymce.get(area.id);
+                if (ed) { ed.setContent(html); }
+            }
+        }
+
+        function descriptionValue() {
+            var area = field('description');
+            if (!area) { return ''; }
+            if (window.tinymce && area.id) {
+                var ed = window.tinymce.get(area.id);
+                if (ed) { return ed.getContent(); }
+            }
+            return area.value || '';
+        }
+
+        function stripTags(html) { return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
+
+        function trimWords(text, n) {
+            var words = String(text).split(' ');
+            return words.length <= n ? text : words.slice(0, n).join(' ') + '...';
+        }
+
+        /*
+         * EACH OPTION KEEPS ITS READ AND ITS WRITE TOGETHER, which is what
+         * makes the "already filled" check honest: the thing that decides
+         * whether a field is empty is the same thing that will write to it.
+         */
+        var OPTIONS = [
+            {
+                key: 'location', label: 'Location',
+                has: function (d) { return d.location_mode !== ''; },
+                preview: function (d) { return d.venue_name || d.location; },
+                filled: function () {
+                    var venue = field('venue');
+                    return textOf(field('venue_other')) !== ''
+                        || (venue && venue.value && venue.value !== '0');
+                },
+                write: function (d) {
+                    var venue = field('venue');
+                    var other = field('venue_other');
+                    if ('venue' === d.location_mode && venue && d.venue) {
+                        venue.value = String(d.venue);
+                        venue.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else if (other) {
+                        other.value = d.location;
+                    }
+                }
+            },
+            {
+                key: 'times', label: 'Start and end time',
+                has: function (d) { return d.start_time !== '' || d.end_time !== ''; },
+                preview: function (d) { return d.start_time + (d.end_time ? ' to ' + d.end_time : ''); },
+                filled: function () { return textOf(field('start_time')) !== '' || textOf(field('end_time')) !== ''; },
+                write: function (d) {
+                    var s = field('start_time');
+                    var e = field('end_time');
+                    if (s) { s.value = d.start_time; }
+                    if (e) { e.value = d.end_time; }
+                }
+            },
+            {
+                key: 'description', label: 'Description',
+                has: function (d) { return String(d.description).trim() !== ''; },
+                preview: function (d) { return trimWords(stripTags(d.description), 8); },
+                filled: function () { return descriptionValue().trim() !== ''; },
+                write: function (d) { setDescription(d.description); }
+            },
+            {
+                key: 'organizer', label: 'Organizer',
+                has: function (d) { return d.organizers && d.organizers.length > 0; },
+                preview: function (d) { return d.organizer_name; },
+                filled: function () {
+                    var el = field('organizer');
+                    return !!(el && el.value && el.value !== '0');
+                },
+                /* ONE, NOT ALL OF THEM. The payload carries every organizer a
+                   co-hosted series lends, and this form asks a single question
+                   with a single select. The first is the one the most recent
+                   event names first. */
+                write: function (d) {
+                    var el = field('organizer');
+                    if (el && d.organizers.length) { el.value = String(d.organizers[0]); }
+                }
+            },
+            {
+                key: 'image', label: 'Picture',
+                /* ONLY AN ATTACHMENT, NEVER A URL. This form's picture control
+                   is radios over the calendar folder, so there is a radio to
+                   check only where the series photo IS one of those pictures. A
+                   series whose photo is a typed URL has nothing here to select,
+                   and the "no picture" row already shows that photo and says it
+                   is what will be used. */
+                has: function (d) { return d.image_id > 0 && !!radioFor(d.image_id); },
+                preview: function (d) { return nameFor(d.image_id); },
+                filled: function () {
+                    var chosen = form.querySelector('[name="image_id"]:checked');
+                    return !!(chosen && chosen.value && chosen.value !== '0');
+                },
+                write: function (d) {
+                    var radio = radioFor(d.image_id);
+                    if (radio) {
+                        radio.checked = true;
+                        radio.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            },
+            {
+                key: 'faq', label: 'FAQ set',
+                has: function (d) { return d.faq_set !== ''; },
+                preview: function (d) { return d.faq_set_name; },
+                filled: function () {
+                    var el = field('faq_set');
+                    return !!(el && el.value);
+                },
+                write: function (d) {
+                    var el = field('faq_set');
+                    if (el) {
+                        el.value = String(d.faq_set);
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }
+        ];
+
+        function radioFor(id) {
+            return form.querySelector('[name="image_id"][value="' + String(id) + '"]');
+        }
+
+        function nameFor(id) {
+            var radio = radioFor(id);
+            return radio ? (radio.getAttribute('data-uc-image-name') || '') : '';
+        }
+
+        var shown = [];
+
+        function build() {
+            var d = data[String(select.value)] || null;
+            shown = [];
+            optsBox.innerHTML = '';
+
+            if (!d || !select.value || '0' === String(select.value)) {
+                panel.hidden = true;
+                return;
+            }
+
+            OPTIONS.forEach(function (opt) {
+                if (!opt.has(d)) { return; }
+
+                var row = document.createElement('label');
+                row.className = 'uc-check uc-prefill-opt';
+
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                /* ALL TICKED. Somebody who pressed a button called "fill this
+                   in from the last one" has already said yes; the ticks are for
+                   taking one back out, not for opting each one in. */
+                box.checked = true;
+                row.appendChild(box);
+
+                var text = document.createElement('span');
+                text.className = 'uc-prefill-opt-text';
+
+                var label = document.createElement('span');
+                label.className = 'uc-prefill-opt-label';
+                label.textContent = opt.label;
+                text.appendChild(label);
+
+                var value = document.createElement('span');
+                value.className = 'uc-prefill-opt-value';
+                value.textContent = opt.preview(d) || '';
+                text.appendChild(value);
+
+                /* WHAT IT WILL OVERWRITE, SAID BEFORE IT DOES IT. A field the
+                   requester has already answered is one this must not take back
+                   without telling them, so the row says so and stays ticked:
+                   the decision is theirs and the information is the point. */
+                if (opt.filled()) {
+                    var warn = document.createElement('span');
+                    warn.className = 'uc-prefill-opt-warn';
+                    warn.textContent = 'replaces what you have typed';
+                    text.appendChild(warn);
+                }
+
+                row.appendChild(text);
+                optsBox.appendChild(row);
+                shown.push({ opt: opt, box: box });
+            });
+
+            if (!shown.length) {
+                panel.hidden = true;
+                return;
+            }
+
+            if (nameOut) {
+                var chosen = select.options[select.selectedIndex];
+                nameOut.textContent = chosen ? chosen.textContent.trim() : '';
+            }
+            if (said) { said.hidden = true; }
+            panel.hidden = false;
+        }
+
+        applyBtn.addEventListener('click', function () {
+            var d = data[String(select.value)] || null;
+            if (!d) { return; }
+
+            var n = 0;
+            shown.forEach(function (row) {
+                if (!row.box.checked) { return; }
+                row.opt.write(d);
+                n++;
+            });
+
+            if (said) {
+                said.textContent = n
+                    ? (n + (1 === n ? ' field filled in.' : ' fields filled in.') + ' Check them before you send.')
+                    : 'Nothing was ticked, so nothing was filled in.';
+                said.hidden = false;
+            }
+        });
+
+        if (noneBtn) {
+            noneBtn.addEventListener('click', function () { panel.hidden = true; });
+        }
+
+        select.addEventListener('change', build);
+        build();
+    }
     }
     function initRequestSeriesImage() {
         var select = document.querySelector('[data-uc-request-series]');

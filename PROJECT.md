@@ -3791,7 +3791,46 @@ build (see `CLAUDE.md` §2), and the committed test scripts in `.claude/`: the
 recurrence cross-check, the email render test, the private-events whitelist, the
 date sweep, the rendered parity tests, the embed width probe.
 
----
+### The events a save cancelled, and why the list of them is short
+
+**THE BUG IS FIXED AND THE DAMAGE IS NOT, WHICH IS WHY THIS IS HERE RATHER THAN
+IN THE HAND-OFF.** Between 3.36.0 and 3.40.0 a save could cancel an event on its
+own, and each affected event reinstates from its cancel card. That part is
+ordinary.
+
+**THE PART THAT OUTLIVES THE FIX IS THAT THE CANCELLED LIST IS NOT THE WHOLE
+LIST.** A second save silently un-cancelled an event, so an event that was
+wrongly cancelled, mailed its registrants, and was then saved again looks
+untouched today. **`_uc_cancelled_at` is the timestamp of the save that did
+it**, which is the only handle on the set: an event whose cancellation
+timestamp falls in that window and which is not currently cancelled is one of
+these.
+
+**The emails cannot be unsent.** Whoever was registered was told the event was
+off, and reinstating it now sends the "back on" message from 3.73.0, which is
+the right thing and is not a correction of the original.
+
+**Why this is durable.** It is a property of the data this calendar holds, not a
+thing in flight: it will still be true in a year, it will still be true after
+every affected event is found, and anybody auditing cancellations needs to know
+that a clean cancelled list does not mean a clean history.
+
+### Four things that need somebody outside the code
+
+**Kept here rather than in the hand-off because none of them is about the
+current situation.** Each has been true for several releases and will go on
+being true until a person does something that no build can do.
+
+| | What is needed | What happens meanwhile |
+|---|---|---|
+| **The GFMP campaign image** | The field name that carries it, found by running the `[PROBE]` in `class-sfaf-gfmp.php` against a real response | Every imported campaign shows the category placeholder instead of its own picture |
+| **The Turnstile keys** | Both the site key and the secret, in Settings | There is no widget at all on either public form, so neither has a bot check |
+| **The Cycle to Zero series** | Somebody to create it | The community form's address is that series' slug, so the link a submitter is given resolves to nothing |
+| **The test event** | A decision about post 60379 | It is live, `pending`, and badged Community submission |
+
+**The first two are pairs and neither half is useful alone.** A Turnstile site
+key with no secret is a widget that cannot verify; the probe's answer with
+nobody to map it is a field name in a log.
 
 ## 7. The lessons that cost time
 

@@ -3706,6 +3706,31 @@ body.uc-modal-open { overflow: hidden; }
 .uc-prefill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .uc-prefill-said { margin: 10px 0 0; font-size: 12.5px; }
 
+/* ---------------------------------------------------------------------------
+   THE SAME PANEL ON THE STAFF REQUEST FORM (3.77.0)
+
+   initRequestPrefill() builds its rows with named classes rather than a <strong>
+   and a .uc-muted, because it has a third line the caladmin card does not: what
+   the row would overwrite. The three below give it the same look the card has,
+   so the two panels are one thing on two screens rather than two that resemble
+   each other.
+   ------------------------------------------------------------------------ */
+.uc-prefill-opt-label { display: block; font-size: 13px; font-weight: 600; line-height: 1.45; }
+.uc-prefill-opt-value { display: block; font-size: 12px; line-height: 1.4; margin-top: 1px;
+    color: var(--p-muted, #6B6764); overflow-wrap: anywhere; }
+/* WHAT IT WOULD TAKE BACK, IN ATTENTION INK AND NOT IN RED. Overwriting an
+   answer somebody typed is worth saying and is not destructive: the row stays
+   ticked, the decision stays theirs, and red here would be the only red on a
+   form nobody is about to break anything on. Same ink as
+   .uc-field-note-attention above.
+
+   AND IT IS THE HELPER STEP, 12/400, NOT A BOLDER ONE. It was 12/600 and the
+   type sweep was right to refuse it: the sentence itself says what happens, so
+   the ink is reinforcement rather than the carrier, and a weight between two
+   steps buys nothing the words do not already have. */
+.uc-prefill-opt-warn { display: block; font-size: 12px; line-height: 1.4; margin-top: 2px;
+    color: #92400e; }
+
 /* The rich text editor, inside a bento card (3.38.0). TinyMCE brings its own
    chrome; this only stops it overflowing a card that has a radius. */
 .uc-field .wp-editor-wrap { margin-top: 4px; }

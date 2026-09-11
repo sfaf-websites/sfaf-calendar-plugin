@@ -1589,8 +1589,67 @@ class SFAF_Request {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <span class="uc-hint">Choosing one uses that series' photo unless you pick a picture below. It fills in nothing else.</span>
+                            <span class="uc-hint">Choosing one uses that series' photo unless you pick a picture below.</span>
                         </label>
+
+                        <?php
+                        /*
+                         * FILL THIS IN FROM THE LAST ONE (3.77.0).
+                         *
+                         * caladmin has offered this since 3.64.0 and this form
+                         * has not, so a requester retyped the location, the
+                         * times and the description for an event that has run
+                         * eleven times. The reason it was not here was that the
+                         * caladmin card writes into caladmin's field names and
+                         * its wp.media picker, neither of which this form has.
+                         *
+                         * ONE DATA SOURCE, TWO APPLIERS, and that is the honest
+                         * shape rather than a flag inside one. The payload is
+                         * SFAF_Series::prefill_data() unchanged, which is the
+                         * same function the caladmin card reads and is pure
+                         * server-side PHP with no logged-in user and no media
+                         * library in it. What differs is the writing, because
+                         * the two forms genuinely have different controls: a
+                         * venue select and a text box here, radios for the
+                         * picture, one organizer rather than several.
+                         *
+                         * NOTHING POSTS. It writes into the fields already on
+                         * this page. A control that applied by posting and
+                         * redirecting would discard every unsaved answer on the
+                         * form, which is the 3.3.0 fault that taught people not
+                         * to press the FAQ set picker.
+                         *
+                         * HIDDEN UNTIL THE SCRIPT REVEALS IT, because without
+                         * the script there is nothing that can apply it and a
+                         * button that does nothing is worse than no button. The
+                         * select above still works and still saves the series.
+                         *
+                         * THE DATE IS NEVER FILLED IN. Setting the date is the
+                         * reason somebody is filling this form in, and a
+                         * prefilled one is a past date pretending to be a new
+                         * event. Neither is the title.
+                         */
+                        $prefill = array();
+                        foreach ( $all_series as $s ) {
+                            $prefill[ (string) $s->term_id ] = SFAF_Series::prefill_data( (int) $s->term_id );
+                        }
+                        ?>
+                        <div class="uc-prefill" data-uc-request-prefill hidden>
+                            <p class="uc-prefill-head">
+                                Fill this in from <strong data-uc-prefill-name></strong>?
+                            </p>
+                            <div class="uc-prefill-opts" data-uc-prefill-opts></div>
+                            <div class="uc-prefill-actions">
+                                <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
+                                <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
+                            </div>
+                            <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
+                            <p class="uc-hint">The date is never filled in.</p>
+                        </div>
+
+                        <script type="application/json" data-uc-request-prefill-data><?php
+                            echo wp_json_encode( $prefill, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+                        ?></script>
                     </fieldset>
                 <?php endif; ?>
 
