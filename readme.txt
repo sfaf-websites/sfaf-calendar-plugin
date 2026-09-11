@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.75.0
+Stable tag: 3.76.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,38 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.76.0 =
+
+**THE HOVER PREVIEW WAS ONLY EVER WIRED FOR THE SHORTCODE, AND THIS CALENDAR HAS NO SHORTCODE.** 3.75.0 put it in `calendar.js` and nowhere else. `calendar.js` is the script a shortcode page loads; the calendar has no front end on resources.sfaf.org and exists only as an embed on sfaf.org, which runs `embed.js`, a deliberately jQuery-free reimplementation that says so in its own header. So the preview was correct, covered by a test, and **never executed anywhere anybody could see it**.
+
+**Nothing else was wrong, and each was ruled out by trace rather than by assumption.** The markup was there the whole time: the embed calls the same `render_month_grid()` the shortcode does, so every tile in its payload carried every attribute. `showPopover()` was never reached, because the function that calls it was not on the page. Edge was never the issue; it has supported the Popover API since 114.
+
+**The block now exists in both scripts, byte for byte**, between markers, and the build fails if the two copies differ by a character. That is the arrangement the recurrence engine already uses for the same problem: one logical copy, enforced by the build rather than by somebody remembering. A shared third file was the alternative and was rejected, because it means a second network request from a third-party page with an ordering question attached.
+
+**And the test that passed throughout is the lesson.** Every assertion in `hover-preview-test.php` was true of `calendar.js` while the feature did not exist on the only surface that matters. A test that checks the right thing in the wrong file reports a feature as fine when nobody can use it.
+
+**THE TAG LAYER AND THE MEDIA SCREEN WERE ALREADY THERE**, shipped in 3.74.0 and not rebuilt: the series taxonomy registered for attachments, the grid, bulk tagging, the per-image dropdown, the series filter, the untagged filter, and the three permissions. **The picker is filtered too.** What it does when NOTHING IS TAGGED is show one ungrouped list of everything, which is correct and is indistinguishable from broken. There are six pictures in the folder and none carries a series yet.
+
+**THE FILE NAMES ARE NOT A REGRESSION EITHER.** `SFAF_Media::row()` runs every title through the check 3.65.0 built, which blanks a title WordPress derived from the file on upload, and the picker then falls back to the file name. "Dsc 0043" is not a name anybody chose and is worse than showing `dsc_0043.jpg`. **What was missing is anywhere to type a real one**: every picture in the folder was uploaded without a title, and the only screen that could fix that was wp-admin, which most of these people never see. The Images screen has a name box per picture now. It writes the title and nothing else: the file does not move, the id does not change, and every event pointing at the picture goes on pointing at it.
+
+**THE THUMBNAILS WERE 48x27 AND 64x36**, and at that size a photograph is a smudge. Somebody choosing between six pictures of people in a room cannot tell them apart, which is the whole job of the control. 96x54 on the trigger, 132x74 in the rows, and the panel is taller to match.
+
+**"NO PICTURE CHOSEN" ON A SERIES THAT HAS A DEFAULT was the first of the two possibilities: the form did not know about the series photo at all.** The staff form's row has been filled in since 3.68.0 by reading the photo off the series `<select>` as somebody changes it, and **the community form has no such select**, because its series comes from the URL. The server fills the row in now, which is the right half either way: a form whose series cannot change has nothing to wait for a script to tell it, and the staff form gets a correct first paint instead of a correct second one.
+
+**The picture section moved directly under the series**, which is what decides its default. It was six sections below, so choosing a series updated a control nobody could see.
+
+**THE STAFF FORM HAD NO ORGANIZER FIELD AT ALL**, and nothing anywhere recorded that as a decision. Every staff request arrived with no organizer and whoever approved it had to know or ask, when the requester is the one person who certainly knows. There is one now, **first, above the series**, because organizer then series then picture is the order these three depend on each other. A closed list with **Not sure** as a real answer that stores nothing; creating an organizer stays a caladmin decision.
+
+**THE COMMUNITY FORM DERIVES ITS ORGANIZER FROM THE SERIES**, because that form is only ever reached at a series' own address and a stranger is in no position to say which SFAF programme is putting an event on.
+
+**The link is derived and not stored, and that is worth knowing.** A series carries a description, an image and a default FAQ set; it does **not** carry an organizer, because an organizer is a property of the EVENTS in it. So this reads it off the most recent event, exactly as the caladmin prefill card does. **A series with no events, or whose events have no organizer, answers with nothing, and nothing is invented:** the submission arrives with no organizer, as every submission did before, and whoever approves it sets one. A guessed organizer on a public page is worse than none.
+
+**THE FAQ SET NOW SHOWS ITS QUESTIONS.** Choosing one named a set and a count and showed nothing else, so a requester picked blind and had to remember what "Clinic basics (4)" contains. Every set's questions are in the markup and the script narrows it to the chosen one, which is the start-visible-and-hide rule this form follows everywhere: with nothing running a requester sees all of them under headings naming each. **Read-only**, because the rows are copied server-side at validate time and a second editable copy here would be a second place the set's text can change.
+
+**THE ICON PICKER DRAWS THE ICONS.** It was a `<select>` of thirty words, and choosing between thirty glyphs by name is guessing: "Bolt" and "Star" tell you what the word is and nothing about what the picture looks like at 20px on a card. It is radios now, the same arrangement the colour swatches on that form already use. **The grouping had to become data to survive**: it was a comment in the source, which reads well and cannot be rendered, and a grid of thirty unlabelled glyphs would be worse than the list it replaced.
+
+**THE SERIES AND CATEGORIES LISTS FOLD AWAY**, so the form under them is reachable without scrolling past twenty-five rows. **One threshold, asked of the list, rather than two defaults chosen against today's counts.** "Collapse series, open categories" is the obvious answer and the wrong shape: it is two judgements taken against the numbers on one afternoon, and the seventh category becomes the fortieth without anybody revisiting them. Ten rows is where a list stops being something you take in at a glance. Today that means categories open and series folded, which is what was asked for, and it goes on being right when the counts move. A native `<details>` in both cases, so it works with nothing running.
 
 = 3.75.0 =
 

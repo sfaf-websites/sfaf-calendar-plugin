@@ -6,45 +6,51 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.75.0, released.
+**Last updated:** 2026-09-11, at 3.76.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.75.0**, built as `sfaf-calendar-3.75.0.zip` in the project root, committed,
-**pushed to both repositories** and **released** on 2026-09-11. Working tree
-clean. The asset on the release is that zip, 1,292,879 bytes.
+**3.76.0**, built as `sfaf-calendar-3.76.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean.
 
-> **THE UPDATER LOOP IS CLOSED, AND THIS IS THE FIRST RELEASE THAT USES IT.**
-> Mark pressed Check for updates on 3.73.0, it offered 3.74.0, and 3.74.0
-> installed in one click. The cache WAS the cause and the 3.73.0 fix works, so
-> **3.75.0 goes on from the Plugins screen rather than by hand**: Plugins >
-> SFAF Calendar > Check for updates, then Update now. `PROJECT.md` 7 has the
-> diagnosis and what it cost.
+> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
+> separate press: `bash .claude/publish.sh --release`. It goes on from the
+> Plugins screen afterwards: Check for updates, then Update now.
+
+> **THE PREVIEW IN 3.75.0 NEVER RAN, AND THAT IS THE THING TO KNOW ABOUT THIS
+> RELEASE.** It went into `calendar.js`, which is the shortcode's script, and
+> **this calendar has no front end on resources: it is only ever an embed on
+> sfaf.org**, which runs `embed.js`. The markup was right the whole time. It is
+> in both scripts now, byte for byte, with the build comparing them. Anything
+> touching the public calendar is an EMBED feature by default; `PROJECT.md` 7.
 
 | | |
 |---|---|
-| **3.75.0** | **SIX SHADES JOIN THE PALETTE**, all measured, with `.claude/palette-audit.php` now the thing that stops the next one being added blind; **the icon set goes from sixteen offered to thirty**, because Español and Program Groups were drawing the same one. **A block opens on the month grid**, which it did in none of the four places that decide it. **A hover preview on the month grid**, in the top layer through the Popover API, desktop only. And **three mobile faults**: the registration card was the last thing on the page, the day panel's thumbnail was flush against its title, and the page stayed two columns down to 601px. A fourth found on the way: a pasted table or iframe in a description pushed the page sideways. |
-| **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, a third path nobody had counted. Also: **Approve and Reject are on the event editor**, and they are the queue's own two forms, because Publish from there told the submitter nothing; the buttons follow the event's state and there is a **Delete** card under the cancel card; **the search box stopped tearing itself down**; the community form asks for one set of details and has a **picture chooser**; **caladmin has an Images screen** tagged by series. |
-| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE**, from a helper declared in one of portal.js's four top-level IIFEs and called from two others. Also the locked FAQ answers as prose, the events list as icons, **bulk add a category**, and **a fifth message, "this event is back on"**. |
-| **3.73.0 (updater)** | `latest()` had taken a `$force` argument since 3.70.0 and no call site had ever passed `true`. **Check for updates** on the Plugins screen, and `forget()` clearing on install as well as update. Confirmed working, above. |
+| **3.76.0** | **The hover preview reaches the embed**, which is the only surface that exists. Also: the Images screen can **name a picture**, which is what "the picker shows file names" actually needed; the chooser's thumbnails are **twice the size**; the community form knows about the **series default picture**; the picture section sits **under the series**; the staff form has an **organizer selector, first**; the community form **derives its organizer from the series**; the **FAQ set shows its questions**; the **icon picker draws the icons**; and the Series and Categories lists **fold**. |
+| **3.75.0** | **SIX SHADES JOIN THE PALETTE**, all measured by `.claude/palette-audit.php`; **the icon set goes from sixteen offered to thirty**, because Español and Program Groups were drawing the same one. **A block opens on the month grid**, which it did in none of the four places that decide it. And **four mobile faults**, three reported and one found on the way. Confirmed working by Mark, except the preview. |
+| **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, a third path nobody had counted. Also **Approve and Reject on the event editor**, the buttons following the event's state, a **Delete** card, the search box no longer tearing itself down, one set of details on the community form, and **caladmin's Images screen**. |
+| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE**, from a helper declared in one of portal.js's four top-level IIFEs and called from two others. The **updater** work is in this release too, and is confirmed working. |
 
 ## What has actually been seen on the site
 
-- **3.74.0 IS INSTALLED, THROUGH THE UPDATER.** Confirmed 2026-09-11, in one
-  click, which is what closed the loop above.
-- **THE WHOLE SUBMISSION PATH IS CONFIRMED END TO END, for the first time.**
-  Submit, alert to the submissions address, approve with both ticks, publish,
-  published notice to the submitter, event live on the public calendar.
-  **Registration is confirmed too**, both the attendee's confirmation and the
-  organizer's alert.
-- **Approve works.** The dialog appears, names the submitter and offers two
-  ticks. It had been dead for the whole of 3.72.0's life on the site.
-- **The locked FAQ rows read as prose.**
+- **3.75.0 IS INSTALLED, THROUGH THE UPDATER**, and the palette, the icon set,
+  calendar-as-default and the mobile fixes are all confirmed working. **The
+  hover preview is the one thing in it that was not**, for the reason above.
+- **3.74.0 INSTALLED THROUGH THE UPDATER TOO**, in one click, which is what
+  closed that loop.
+- **THE WHOLE SUBMISSION PATH IS CONFIRMED END TO END.** Submit, alert to the
+  submissions address, approve with both ticks, publish, published notice to the
+  submitter, event live on the public calendar. **Registration is confirmed
+  too**, both the attendee's confirmation and the organizer's alert.
 - **On a phone the calendar shows with the list below it, and tapping a date
-  updates that list.** Confirmed 2026-09-11, and it is the thing 3.75.0's
-  mobile work must not have broken.
+  updates that list.**
+- **THE IMAGE FOLDER HOLDS SIX PICTURES AND NONE IS TAGGED OR NAMED.** That is
+  why the chooser shows one ungrouped list of file names: the filter has nothing
+  to filter on and the title rule has nothing to prefer. Both are correct and
+  both read as broken. `TESTING.md` 1.74 is Mark naming and tagging the six,
+  which is the thing that makes 3.74.0's and 3.76.0's picture work visible.
 - **THE IMPORT HAS RUN.** 2026-09-03. The site holds **287 drafts across 32
   series** and Mark has confirmed they look accurate. Trash emptied.
   **`TESTING.md` 2.18 and 2.19 are deliberately still open:** deleting the
@@ -108,20 +114,19 @@ Community submission.
 **`TESTING.md` holds the manual testing backlog.** The count is at the top of
 that file and moves with it. Nothing in the build can settle any of them.
 
-**3.74.0 IS ON THE SITE AND MOST OF IT IS STILL UNEXERCISED**, and none of
-3.75.0 is. Four want doing first, and two of them are new:
+**TWO WANT DOING FIRST AND THEY ARE IN ORDER**, because the second is what makes
+most of the picture work visible at all:
 
-- **1.68**, the hover preview, and specifically **a tile on the bottom row**.
-  Whether the panel flips above the fold and whether it clears the site header
-  are the two things the build cannot check and the two that would make it
-  useless.
-- **1.69**, that the preview is ABSENT on a phone. It is a deliberate omission,
-  and if it fires on tap then every tile on the calendar has become a two-tap
-  control.
-- **1.62**, the FAQ set answers, because that is the fault Mark reported and
-  3.74.0 is the release that claims to fix it.
-- **1.66**, the Images screen, because it is entirely new and nothing in it has
-  ever run.
+- **1.73**, the hover preview, **on the embed**. 1.68 and 1.69 were written for
+  a build that never ran, so everything they asked for is still unseen. The two
+  things the build cannot check are whether a bottom-row tile flips above the
+  fold and whether the panel clears the site header.
+- **1.74**, Mark naming and tagging the six pictures. Until that is done the
+  chooser correctly shows one ungrouped list of file names, which is what has
+  been reported twice as a fault and is the empty state of two rules working.
+
+Then **1.76** (the organizer on the staff form, which writes a term), **1.66**
+(the Images screen, still never run) and **1.62** (the FAQ set answers).
 
 **Assume unverified rather than assuming the reported faults were the only
 ones.** What 3.73.0 and 3.74.0 have confirmed is listed above and is genuinely

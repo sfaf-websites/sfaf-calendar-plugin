@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 97 items.** Quick 71, needs real conditions 23, blocked on other
+**Outstanding: 102 items.** Quick 76, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -950,6 +950,66 @@ the same way now, and four places had to agree for that to be true.
 - **Nothing should scroll sideways.** If an event description has a table or a
   pasted video in it, that is the case to try: the table should scroll inside
   its own box and the page should not.
+
+### 1.73 The hover preview, on the embed this time (3.76.0)
+
+**1.68 and 1.69 were written for a feature that never ran.** 3.75.0 put it in
+the shortcode's script and the calendar is only ever an embed, so everything
+those two items asked for is still unseen. Do them now, on sfaf.org.
+
+- Hover a tile: the panel appears after a short pause with the picture, title,
+  date, times and place.
+- **A tile on the LAST ROW**, with it near the bottom of the window: the panel
+  must flip ABOVE rather than open off screen.
+- **It must clear the site header.** If it appears behind anything, say what:
+  that means the top layer is not being reached, which is the one thing the
+  build cannot check.
+- **On a phone, tapping a tile must open the event on the FIRST tap**, with no
+  panel first.
+
+### 1.74 Name the six pictures, then look at a picker (3.76.0)
+
+**This is the item that turns "the picker shows file names" into a name.**
+caladmin > Images. Each picture has a name box under it now.
+
+Give all six a real name, then open the picture chooser on the staff request
+form. It should show those names rather than `dsc_0043.jpg`.
+
+**Then tag them with a series** from the same screen, and open the chooser on an
+event in one of those series: that series' pictures should lead, under **For
+this series**, with everything else below. Until something is tagged the chooser
+correctly shows one ungrouped list, which is what it has been doing.
+
+### 1.75 The icon picker, and the two folded lists (3.76.0)
+
+**caladmin > Series & Categories.**
+
+- The icon control is a grid of drawn icons in five labelled groups, not a
+  dropdown of words. Choose one, save, and confirm the placeholder on an event
+  in that category uses it.
+- **Categories opens and Series is folded.** One threshold decides it, at ten
+  rows, so a category list that grows past ten folds too.
+- **Press each heading**, and confirm both open and shut with nothing else on
+  the page moving.
+
+### 1.76 The organizer on the staff request form (3.76.0)
+
+Open the staff request form. **Organizer is the first section**, above Series,
+above the picture.
+
+- Choose one and send a request. The pending event should carry that organizer,
+  visible in the editor.
+- Send another leaving it at **Not sure**. That event must arrive with no
+  organizer at all rather than a guessed one.
+
+### 1.77 The FAQ set shows its questions (3.76.0)
+
+On the staff request form, choose a saved set. Its questions should appear under
+the select, read-only, and change when a different set is chosen.
+
+**With JavaScript off** they should all be listed, each under a heading naming
+its set. That is deliberate: the fold is an enhancement and the complete list is
+the fallback.
 
 ---
 

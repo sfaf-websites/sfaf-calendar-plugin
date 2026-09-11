@@ -1360,6 +1360,22 @@ are never overridden.
 **HOVERING A TILE SHOWS THE REST OF THE EVENT**: the picture, the date, the
 times, where it is, and what the tile does.
 
+**IT EXISTS IN BOTH `calendar.js` AND `embed.js`, BYTE FOR BYTE**, between
+`SFAF-PREVIEW-START` and `SFAF-PREVIEW-END`, and the build fails if the two
+copies differ by a character. 3.75.0 shipped it in `calendar.js` alone, which is
+the shortcode's script, and **this calendar has no front end on resources: it is
+only ever an embed**. So it never ran. The markup was never the problem, because
+both routes call the same `render_month_grid()`.
+
+**A shared third file was rejected.** On a third-party page it means a second
+network request, injected by a script already deriving one URL from its own
+`src`, with an ordering question attached. The recurrence engine solved the same
+problem with markers and a cross-check, and this is that arrangement.
+
+**Which is why the block uses no jQuery and nothing from either file's scope**:
+plain `addEventListener` and `closest()`, and `focusin`/`focusout` rather than
+`focus`/`blur`, because neither of the latter bubbles.
+
 **IT IS A POPOVER, WHICH IS THE NON-MODAL DOOR INTO THE TOP LAYER.** 3.70.1
 established that a floating panel on resources.sfaf.org cannot win on z-index,
 because an ancestor has a transform and therefore owns both the containing block
@@ -3820,6 +3836,47 @@ current situation and all four will still be true in six months.
   unscoped rule in either stylesheet would take the switcher off pages that have
   nothing to do with the calendar. Nothing here detects, sets or translates a
   locale, and 3.16.0 is why that sentence is written down.
+
+**A feature built on the surface the product does not have.** 3.75.0's hover
+preview went into `calendar.js`, which is the shortcode's script. **This
+calendar has no front end on resources.sfaf.org: it exists only as an embed on
+sfaf.org**, which runs `embed.js`, a separate jQuery-free implementation. The
+markup was right, both routes call the same renderer, the test passed, and the
+feature never executed anywhere a person could reach it.
+
+> **ASK WHICH SURFACE THE THING ACTUALLY RENDERS ON BEFORE WRITING THE
+> BEHAVIOUR FOR IT.** This plugin has two front-end scripts and one of them is
+> the only one production uses. A feature that touches the public calendar is
+> an embed feature by default, and the shortcode is the copy, not the original.
+> Four of the six past faults in this area were embed-only for the same reason.
+
+**And the test was the wrong kind of green.** `hover-preview-test.php` asserted
+the top layer, the hover gate, the delay and the UA box, all correctly, all
+against `calendar.js`. A test can be right about every property of a file that
+is not the file anybody loads. **Where a behaviour has to exist on two surfaces,
+the FIRST assertion is that it exists on both**, before any assertion about what
+it does; that one is now the first thing that file checks.
+
+**The remedy was the one this project already had.** The recurrence engine lives
+in PHP and in JavaScript and is kept honest by a cross-check that slices the JS
+between markers. The preview is now one block between markers in two files,
+compared byte for byte by the build. A shared third file was rejected: on a
+third-party page it means a second network request, injected by a script already
+deriving one URL from its own src, with an ordering question attached.
+
+**Correct behaviour that is indistinguishable from broken.** The picture chooser
+groups a series' own images above the rest, and with nothing tagged it shows one
+ungrouped list of everything, which is exactly what "the filter does not work"
+looks like. The same shape twice over: every picture in the folder falls back to
+its file name because none has a title a person typed, which is 3.65.0's rule
+working, and reads as a regression.
+
+> **A FEATURE WHOSE EMPTY STATE LOOKS LIKE ITS BROKEN STATE WILL BE REPORTED AS
+> BROKEN.** Neither of these was a defect and both cost a round trip to
+> establish. Where a control's output depends on data somebody has to enter
+> first, either say so on the screen or ship the means to enter it in the same
+> release. The Images screen got a name box in 3.76.0 for exactly that reason:
+> the rule was right and there was nowhere to give it anything to work with.
 
 **A check that could not fail, written the same day as the thing it checks.**
 `.claude/palette-audit.php` was added in 3.75.0 to stop an unusable category
