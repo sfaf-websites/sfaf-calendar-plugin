@@ -6,25 +6,22 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.75.0, built and not released.
+**Last updated:** 2026-09-11, at 3.75.0, released.
 
 ---
 
 ## What shipped last
 
-**3.75.0**, built as `sfaf-calendar-3.75.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean.
+**3.75.0**, built as `sfaf-calendar-3.75.0.zip` in the project root, committed,
+**pushed to both repositories** and **released** on 2026-09-11. Working tree
+clean. The asset on the release is that zip, 1,292,879 bytes.
 
-> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
-> separate press: `bash .claude/publish.sh --release`. Once it is run, the site
-> will offer it: **Check for updates on the Plugins screen now works**, which is
-> the one thing on this page that is finished rather than waiting.
-
-> **THE UPDATER LOOP IS CLOSED.** Mark pressed Check for updates on 3.73.0, it
-> offered 3.74.0, and 3.74.0 installed in one click. The cache WAS the cause,
-> the 3.73.0 fix works, and the cycle runs end to end: build, release, the site
-> offers it, press update. **No release needs to go on by hand again.**
-> `PROJECT.md` 7 has the diagnosis and what it cost.
+> **THE UPDATER LOOP IS CLOSED, AND THIS IS THE FIRST RELEASE THAT USES IT.**
+> Mark pressed Check for updates on 3.73.0, it offered 3.74.0, and 3.74.0
+> installed in one click. The cache WAS the cause and the 3.73.0 fix works, so
+> **3.75.0 goes on from the Plugins screen rather than by hand**: Plugins >
+> SFAF Calendar > Check for updates, then Update now. `PROJECT.md` 7 has the
+> diagnosis and what it cost.
 
 | | |
 |---|---|
