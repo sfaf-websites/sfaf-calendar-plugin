@@ -276,6 +276,38 @@ function sfaf_icon_paths() {
         'image'     => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/>',
 
         /*
+         * NINE MORE FOR CATEGORIES (3.75.0), and the reason is a collision
+         * rather than a shortage. Seven categories were sharing five icons:
+         * Espanol and Program Groups both drew 'community', so two kinds of
+         * event were indistinguishable on every placeholder they produced.
+         *
+         * WHAT THESE ARE FOR, one line each, because an icon set with no
+         * intent behind it grows into a clipart folder:
+         *
+         *   speech   a conversation. Support groups, drop-ins, a language.
+         *   globe    a language or somewhere else. The other half of speech.
+         *   book     something taught. Workshops, training, education.
+         *   meal     food is the event. Community meals, breakfasts.
+         *   music    the arts, and a social night.
+         *   bike     a ride. This calendar runs Cycle to Zero.
+         *   shield   prevention, safety, testing.
+         *   star     a highlight, when nothing else fits and it matters.
+         *   flag     advocacy and a campaign.
+         *
+         * Same 2px stroke, round caps and joins, no fill, on the 24 grid, so
+         * they sit beside the existing ones rather than beside each other.
+         */
+        'speech'    => '<path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/>',
+        'globe'     => '<circle cx="12" cy="12" r="9"/><path d="M3.5 9.5h17M3.5 14.5h17"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
+        'book'      => '<path d="M4 4.5h6a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H4z"/><path d="M20 4.5h-6a3 3 0 0 0-3 3V20a2.5 2.5 0 0 1 2.5-2.5H20z"/>',
+        'meal'      => '<path d="M6 3v8a2.5 2.5 0 0 0 5 0V3"/><path d="M8.5 11v10"/><path d="M17.5 3c-1.7 1-2.5 3-2.5 5.5s.8 3.5 2.5 3.5"/><path d="M17.5 12v9"/>',
+        'music'     => '<path d="M9 18V6.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+        'bike'      => '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 10 8h4"/><path d="m10 8 4.5 9.5M14 8h3.5"/>',
+        'shield'    => '<path d="M12 3 5 6v6c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6z"/>',
+        'star'      => '<path d="m12 3.5 2.7 5.6 6.1.8-4.5 4.2 1.2 6-5.5-3-5.5 3 1.2-6L3.2 9.9l6.1-.8z"/>',
+        'flag'      => '<path d="M5 21V4"/><path d="M5 4.5h10.5l-1.5 3.5 1.5 3.5H5z"/>',
+
+        /*
          * WHERE 'pin' WOULD GO ON AN ONLINE EVENT. A map pin next to the words
          * "Online Event" says the opposite of what the line says, so the fact
          * row swaps the glyph rather than dropping it and leaving the row
@@ -1563,16 +1595,22 @@ function sfaf_series_image_url( $term_id ) {
  */
 function sfaf_brand_palette() {
     return array(
-        '#FFD900' => 'Yellow',     // Pantone 109 CP
-        '#F7921E' => 'Orange',     // Pantone 144 CP
-        '#F04937' => 'Red',        // Pantone 179 CP
-        '#A30C33' => 'Burgundy',   // Pantone 201 CP
-        '#F1668C' => 'Pink',       // Pantone 1915 CP
-        '#8D54A2' => 'Purple',     // Pantone 258 CP
-        '#16BECF' => 'Teal',       // Pantone 7710 UP
-        '#8CC745' => 'Green',      // Pantone 3561 UP
-        '#D1D3D4' => 'Light Gray', // Cool Gray 3 CP
-        '#373433' => 'Dark Gray',  // Cool Gray 11 CP
+        '#FFD900' => 'Yellow',       // Pantone 109 CP
+        '#F7921E' => 'Orange',       // Pantone 144 CP
+        '#FBCE9A' => 'Light Orange', // shade of Orange (3.75.0)
+        '#A16827' => 'Deep Orange',  // shade of Orange (3.75.0)
+        '#F04937' => 'Red',          // Pantone 179 CP
+        '#A30C33' => 'Burgundy',     // Pantone 201 CP
+        '#F1668C' => 'Pink',         // Pantone 1915 CP
+        '#8D54A2' => 'Purple',       // Pantone 258 CP
+        '#C0A1CC' => 'Light Purple', // shade of Purple (3.75.0)
+        '#16BECF' => 'Teal',         // Pantone 7710 UP
+        '#2A686E' => 'Deep Teal',    // shade of Teal (3.75.0)
+        '#8CC745' => 'Green',        // Pantone 3561 UP
+        '#CBE6AB' => 'Light Green',  // shade of Green (3.75.0)
+        '#607B3C' => 'Deep Green',   // shade of Green (3.75.0)
+        '#D1D3D4' => 'Light Gray',   // Cool Gray 3 CP
+        '#373433' => 'Dark Gray',    // Cool Gray 11 CP
     );
 }
 

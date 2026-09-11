@@ -17,21 +17,12 @@ here that is still true in six months belongs in one of those instead.
 clean. The asset on the release is that zip, 1,279,283 bytes, and its name
 matches the pattern `asset_url()` looks for.
 
-> **THIS IS THE RELEASE THAT SETTLES THE UPDATER, AND NOBODY HAS PRESSED THE
-> BUTTON YET.** 3.72.0 and 3.73.0 were both released correctly and neither was
-> offered; both went on by hand. The forced check shipped IN 3.73.0, so it could
-> not help 3.73.0 be offered, and **3.74.0 is the first release it can reach**.
->
-> **Plugins > SFAF Calendar > Check for updates** (`TESTING.md` 1.54).
->
-> - **It reports 3.74.0:** the cache was the cause, the fix works, and the loop
->   is closed. Record that and delete 1.54.
-> - **It reports no update while a release exists:** the cache was NOT the cause
->   and the diagnosis was wrong twice. A GitHub rate limit on the host's IP is
->   the next thing to look at, then whether the host can reach api.github.com at
->   all. **Say which happened rather than assuming this was it.**
-> - **It reports that the check failed:** that is a third answer and a useful
->   one. It means the network, not the cache.
+> **THE UPDATER LOOP IS CLOSED, AND IT IS THE FIRST THING ON THIS PAGE THAT IS
+> FINISHED RATHER THAN WAITING.** Mark pressed **Check for updates** on 3.73.0,
+> it offered 3.74.0, and 3.74.0 installed in one click. So the cache WAS the
+> cause, the 3.73.0 fix works, and the whole cycle is confirmed end to end:
+> build, release, the site offers it, he presses update. No release needs to go
+> on by hand again. `PROJECT.md` 7 carries the diagnosis and what it cost.
 
 | | |
 |---|---|
@@ -60,10 +51,9 @@ matches the pattern `asset_url()` looks for.
   separate actions and neither has been reported back on.
 - **3.71.0's BULK PUBLISH READS CORRECTLY** on a real series. 3.72.0 put
   per-row ticks on it and those have not been seen.
-- **THE UPDATER HAS COMPLETED ONE CYCLE EVER.** 3.71.0 installed through it,
-  because an install had just cleared the cache. 3.72.0 and 3.73.0 were both
-  released correctly, neither was offered, and both went on by hand.
-  `PROJECT.md` 7.
+- **THE UPDATER WORKS, CONFIRMED ON 3.74.0.** Check for updates on the Plugins
+  screen offered it and it installed in one click. 3.72.0 and 3.73.0 both had to
+  go on by hand; nothing does now. `PROJECT.md` 7.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
@@ -115,25 +105,22 @@ the **Cycle to Zero series does not exist** and the community form's address is
 that series' slug; and **one test event is live**, post 60379, `pending`, badged
 Community submission.
 
-**THE CACHE DIAGNOSIS IS NOW DOUBTFUL, NOT MERELY UNCONFIRMED.** Two releases
-in a row were released correctly and never offered. The fix shipped in 3.73.0,
-so it could not have helped 3.73.0 be offered, and 3.74.0 is the first release
-the forced check can reach. **`TESTING.md` 1.54 settles it in one press on the
-day 3.74.0 is released.** If the check reports 3.74.0, the cache was the cause.
-If it reports nothing while a release exists, the cause is something else and a
-GitHub rate limit on the host's IP is the next thing to look at.
+**THE CACHE DIAGNOSIS WAS RIGHT, AND IT IS SETTLED.** It sat unconfirmed for
+three releases and doubtful for one, because two releases in a row were cut
+correctly and never offered. Pressing the forced check on 3.73.0 offered 3.74.0
+and it installed in one click. Nothing here is waiting on it any more.
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 93 items.** Quick 67, needs real
-conditions 23, blocked on other people 3. Nothing in the build can settle any of
-them. **Eight are new in 3.74.0.** Four want doing on the day it installs, in
-this order: **1.62**, because the FAQ set answers are the fault Mark reported and
-this is the release that claims to fix it; **1.54**, the forced update check,
-which is the one press that says whether the updater is fixed or the diagnosis
-was wrong; **1.63**, because the editor's buttons changed on every event and
-Approve there is a route that sends mail; and **1.66**, because the Images
-screen is entirely new and nothing in it has ever run.
+**`TESTING.md` holds the manual testing backlog.** The count is at the top of
+that file and moves with it. Nothing in the build can settle any of them.
+
+**3.74.0 IS ON THE SITE AND MOST OF IT IS STILL UNEXERCISED.** Three want doing
+first: **1.62**, because the FAQ set answers are the fault Mark reported and
+3.74.0 is the release that claims to fix it; **1.63**, because the editor's
+buttons changed on every event and Approve there is a route that sends mail; and
+**1.66**, because the Images screen is entirely new and nothing in it has ever
+run.
 
 **EVERYTHING IN 3.74.0 IS UNEXERCISED**, and so is most of 3.73.0. What 3.73.0
 has confirmed is listed above and is genuinely confirmed; the rest of it, the

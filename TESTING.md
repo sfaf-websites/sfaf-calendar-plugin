@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 93 items.** Quick 67, needs real conditions 23, blocked on other
+**Outstanding: 92 items.** Quick 66, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -695,25 +695,6 @@ is expected and is worth seeing once before it happens on a published event.
 Submit the community form with a small image. It should be refused with a
 message naming both the minimum and the width that arrived, and the form should
 say the minimum before a file is chosen.
-
-### 1.54 The forced update check, on the Plugins screen (3.73.0)
-
-**This is the control 3.72.0 did not have**, and it is the reason that release
-sat uninstalled while WordPress's own Check again did nothing.
-
-Open **Plugins**. The SFAF Calendar row should carry **Check for updates** as
-its first link. Press it.
-
-- It returns to the Plugins screen with a notice **naming the installed version
-  and whatever it found**.
-- With nothing newer released, it should say so plainly rather than going quiet.
-
-Then, when the next release goes out, press it again and confirm **Update now**
-appears in the row without waiting twelve hours. That second half is the whole
-point and cannot be checked until there is a newer release to find.
-
-**Also worth one look:** as a user who is not an administrator, the link should
-not be on the row at all.
 
 ### 1.55 Approve and Reject on the pending queue (3.73.0)
 

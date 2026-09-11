@@ -4089,6 +4089,14 @@ half hour. For hourly data that is fine, and no special handling is needed.
 
 ### A parameter nothing passes is a feature nothing has (3.73.0)
 
+> **CONFIRMED ON 3.74.0, AFTER THREE RELEASES AS A DEDUCTION.** The reasoning
+> below fitted every symptom and could not be tested, because each release that
+> would have proved it went on by hand, which clears the cache. Mark pressed
+> **Check for updates** on 3.73.0, it offered 3.74.0, and 3.74.0 installed in
+> one click. The cache was the cause, the fix works, and the cycle runs end to
+> end. It is recorded because the NEXT cache will want the same question asked
+> of it, not because this one is still open.
+
 **WHAT HAPPENED.** 3.72.0 was released correctly and resources.sfaf.org did not
 offer it. The release was real, the tag right, the asset correctly named,
 `asset_url()` accepted it, and `inject()` would have offered it. Every one of

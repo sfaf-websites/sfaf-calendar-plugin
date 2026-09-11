@@ -2208,11 +2208,27 @@ class SFAF_Shortcodes {
             // or 'none'. Empty falls back to show_filters. See filter_rows().
             'filters'      => '',
             'layout'       => 'cards',
-            // The same four display modes the embed offers, from the same
-            // renderer. view="calendar" opens on the month grid,
-            // view="combined" shows the grid and the list side by side,
-            // view="sidebar" renders the narrow column and count="10" sizes it.
-            'view'         => 'list',
+            /*
+             * THE SAME FOUR DISPLAY MODES THE EMBED OFFERS, from the same
+             * renderer. view="list" opens on the cards, view="combined" shows
+             * the grid and the list side by side, and view="sidebar" renders
+             * the narrow column with count="10" sizing it.
+             *
+             * THE DEFAULT IS THE MONTH GRID SINCE 3.75.0, AND IT WAS THE LIST.
+             * The reason it was the list is written down and is a real one:
+             * "real months have entire weeks with no Friday or Sunday events,
+             * and an empty-looking grid is a poor first impression". That was
+             * an argument about a thin calendar, and the calendar is not thin
+             * any more: the import put 287 events across 32 series on it. A
+             * grid is how people expect to read a month, and the toggle is
+             * still there for anybody who wants the list.
+             *
+             * A VISITOR'S OWN CHOICE STILL WINS. embed.js remembers which view
+             * somebody last pressed, per block, and a remembered choice beats
+             * this. So this changes what a first visit opens on and nothing
+             * about what a returning one does.
+             */
+            'view'         => 'calendar',
             'toggle'       => 'yes',
             /*
              * OPEN EVENTS TO THEIR SOURCE LISTING. Absent means the shipped
@@ -2263,7 +2279,10 @@ class SFAF_Shortcodes {
             'filters'      => '',
             'layout'       => 'cards',
             'page'         => 0,
-            'view'         => 'list',
+            // Same default as the shortcode above, and for the same reason. A
+            // second copy that disagreed would make the same block open one way
+            // through the page and another through the feed.
+            'view'         => 'calendar',
             'toggle'       => 'yes',
             'month'        => '',
             'count'        => 0,

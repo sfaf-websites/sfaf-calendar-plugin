@@ -107,6 +107,12 @@ echo "=== rich text at load ==="
 run "rich-text-start --self-test" node .claude/rich-text-start-test.js --self-test
 
 echo
+# The category palette: every colour can carry its icon, and no two are a coin
+# toss in the picker.
+echo "=== the palette ==="
+run "palette --self-test" php .claude/palette-audit.php --self-test
+
+echo
 # Series as image tags, and the guarantee that deleting a series leaves the
 # images alone.
 echo "=== image tags ==="

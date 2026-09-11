@@ -199,7 +199,10 @@ class SFAF_Embed {
                  * the browser with a CORS error. Same route, more parameters,
                  * same headers: nothing about the cross-origin path changes.
                  */
-                'view'         => array( 'type' => 'string',  'default' => 'list',  'sanitize_callback' => 'sanitize_text_field' ),
+                // The month grid since 3.75.0, matching the shortcode and
+                // embed.js. Three defaults that disagree would make one block
+                // open differently depending on which route drew it.
+                'view'         => array( 'type' => 'string',  'default' => 'calendar',  'sanitize_callback' => 'sanitize_text_field' ),
                 'toggle'       => array( 'type' => 'string',  'default' => 'yes',   'sanitize_callback' => 'sanitize_text_field' ),
                 // Empty default, NOT a yes or a no: absent means "the shipped
                 // default", which is resolved by sfaf_source_links_default().

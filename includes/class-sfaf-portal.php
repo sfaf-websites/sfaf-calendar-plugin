@@ -7374,10 +7374,14 @@ class SFAF_Portal {
      * permanently the default teal. Icon was not stored at all. See the header
      * of class-sfaf-categories.php for the third fault, in the placeholder.
      *
-     * THE COLOUR PICKER IS THE PALETTE, not a colour input. Ten radios, each an
+     * THE COLOUR PICKER IS THE PALETTE, not a colour input. One radio per
      * approved brand colour, because a free hex field is a way to put something
      * off-brand on the public calendar and the guide is explicit that the
-     * palette is the palette. sfaf_sanitize_brand_color() enforces the same
+     * palette is the palette. It was ten and is sixteen since 3.75.0: the six
+     * additions are SHADES of approved colours rather than new hues, every one
+     * measured by .claude/palette-audit.php for the two things that can go
+     * wrong, a colour whose icon cannot be seen and a colour nobody can tell
+     * from its neighbour. sfaf_sanitize_brand_color() enforces the same
      * thing on the way in, so a hand-written POST cannot get past it either.
      *
      * EDITING IS A MODE IN THE URL, exactly as the team rows are: no script
@@ -7521,7 +7525,17 @@ class SFAF_Portal {
                         </label>
                     <?php endforeach; ?>
                 </div>
-                <span class="uc-hint">The ten approved brand colors. Nothing outside them can be saved here.</span>
+                <?php
+                /*
+                 * THE SENTENCE COUNTED AND THE COUNT MOVED (3.75.0). It read
+                 * "the ten approved brand colors", which was true of the guide's
+                 * palette and stopped being true the moment shades of those
+                 * colours were added. A number in copy is a thing that goes
+                 * stale silently, so this says what the rule IS rather than how
+                 * many things it currently admits.
+                 */
+                ?>
+                <span class="uc-hint">The approved brand colors and shades of them. Nothing outside this list can be saved here.</span>
             </div>
 
             <label class="uc-field uc-cat-icon">

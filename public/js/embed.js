@@ -233,12 +233,23 @@
      *
      * Sidebar is a configuration, not a visitor choice, so it is never
      * overridden. Otherwise a remembered choice wins over the configured
-     * default, which itself defaults to list: real months have entire weeks
-     * with no Friday or Sunday events, and an empty-looking grid is a poor
-     * first impression.
+     * default.
+     *
+     * THE DEFAULT IS THE MONTH GRID SINCE 3.75.0, AND IT WAS THE LIST. The
+     * reason it was the list was written here and was a real one: real months
+     * have entire weeks with no Friday or Sunday events, and an empty-looking
+     * grid is a poor first impression. That was an argument about a thin
+     * calendar, and the calendar is not thin any more. The toggle is still
+     * there, and a visitor who presses List keeps it.
+     *
+     * THIS IS THE LAST OF FOUR PLACES THAT HAVE TO AGREE: the shortcode's
+     * attributes, the shortcode's render arguments, the REST route's parameter
+     * and this. A block with no data-view is drawn by whichever of them the
+     * route reaches, so one left behind would make the same block open one way
+     * on the page and another in the feed.
      */
     function viewFor(container) {
-        var configured = container.getAttribute('data-view') || 'list';
+        var configured = container.getAttribute('data-view') || 'calendar';
         if (configured === 'sidebar') {
             return 'sidebar';
         }

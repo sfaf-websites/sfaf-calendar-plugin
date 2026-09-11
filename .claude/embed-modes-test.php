@@ -684,6 +684,52 @@ printf( "          title %.1fpx to %.1fpx once the 32px thumbnail and its %dpx g
 echo "carried:  the generator control, the block attribute, embed.js, the endpoint parameter\n";
 echo "          and the cache identity\n\n";
 
+/* =========================================================================
+ * WHICH VIEW A BLOCK OPENS ON, SAID IN FOUR PLACES THAT HAVE TO AGREE.
+ *
+ * A block with no view of its own is drawn by whichever route reached it, and
+ * there are four: the shortcode's attributes, the shortcode's render
+ * arguments, the REST route's parameter, and embed.js's own fallback. One left
+ * behind on a change would make the same block open as a grid on the page and
+ * as a list in the feed, which is the shape of fault that gets reported as
+ * "the calendar looks different on the other site".
+ *
+ * THE VALUE IS READ, NOT ASSERTED. This does not care whether the default is
+ * the grid or the list; it cares that the four say the same thing. So changing
+ * the default deliberately is one edit in four places and this passes, and
+ * changing it in three does not.
+ * ====================================================================== */
+$defaults = array();
+
+preg_match_all( "/'view'\s*=>\s*'([a-z]+)'/", $src, $sc );
+foreach ( $sc[1] as $i => $v ) {
+    /* 'sidebar' in this file is a renderer's own return value rather than a
+     * default, and it is the only one that is never a default. */
+    if ( 'sidebar' !== $v ) {
+        $defaults[ 'shortcode #' . ( $i + 1 ) ] = $v;
+    }
+}
+if ( preg_match( "/'view'\s*=>\s*array\([^)]*'default'\s*=>\s*'([a-z]+)'/", $embed, $m ) ) {
+    $defaults['REST parameter'] = $m[1];
+}
+if ( preg_match( "/getAttribute\('data-view'\)\s*\|\|\s*'([a-z]+)'/", $ejs, $m ) ) {
+    $defaults['embed.js'] = $m[1];
+}
+
+check( count( $defaults ) >= 4,
+    'only ' . count( $defaults ) . ' view default(s) could be read; this check cannot see what it is meant to compare' );
+
+$agreed = array_unique( array_values( $defaults ) );
+if ( count( $agreed ) > 1 ) {
+    $said = array();
+    foreach ( $defaults as $where => $v ) { $said[] = $where . '=' . $v; }
+    $fails[] = 'the view defaults disagree, so a block with no view of its own opens differently '
+        . 'depending on which route drew it: ' . implode( ', ', $said );
+}
+printf( "default:  %d places agree that a block with no view of its own opens on '%s'\n",
+    count( $defaults ), reset( $agreed ) );
+echo "          (a visitor's remembered choice still wins over it; see viewFor())\n\n";
+
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }
