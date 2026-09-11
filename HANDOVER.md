@@ -6,18 +6,18 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.76.0, built and not released.
+**Last updated:** 2026-09-11, at 3.76.0, released.
 
 ---
 
 ## What shipped last
 
-**3.76.0**, built as `sfaf-calendar-3.76.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean.
+**3.76.0**, built as `sfaf-calendar-3.76.0.zip` in the project root, committed,
+**pushed to both repositories** and **released** on 2026-09-11. Working tree
+clean. The asset on the release is that zip, 1,308,351 bytes.
 
-> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
-> separate press: `bash .claude/publish.sh --release`. It goes on from the
-> Plugins screen afterwards: Check for updates, then Update now.
+> **IT GOES ON FROM THE PLUGINS SCREEN**: SFAF Calendar > Check for updates,
+> then Update now.
 
 > **THE PREVIEW IN 3.75.0 NEVER RAN, AND THAT IS THE THING TO KNOW ABOUT THIS
 > RELEASE.** It went into `calendar.js`, which is the shortcode's script, and
