@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.73.0
+Stable tag: 3.74.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,61 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.74.0 =
+
+**THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A SET PUT THERE, and there is a third path nobody had counted.** A row arrives on that screen three ways: from the server, from + Add FAQ, and from applying a FAQ set. The first two ask for an editor and always did. The set picker clones the same template, fills in the question and the answer and appends the row, and it asked for nothing, so those answers stayed the plain textareas the template holds. They stayed plain until something else swept the document, and pressing + Add FAQ is exactly that: one new row, and every set row on the screen turning into an editor at the same moment. **The sweep was doing that, not the add.**
+
+**The console was silent and the silence was the finding.** The catch added in 3.72.0 names an initialise that threw; nothing on this path ever got as far as initialising, so there was nothing for it to name. The 3.72.0 logging is untouched and is still the route to a diagnosis if anything else is wrong.
+
+**Matched on the document rather than called from the picker**, because initFaqSetPicker() is in another top-level scope of portal.js and calling across it is the fault 3.73.0 closed. `.claude/rich-text-start-test.js` presses both buttons now and plants the 3.73.0 arrangement, in which a set row is appended and never started.
+
+**PUBLISH FROM THE EVENT EDITOR WAS NOT APPROVE FROM THE QUEUE, and on a submission that is the whole difference.** Approve writes the submitter's address onto the notification list and sends the published notice, both behind ticks. Publish set the status and did neither. So somebody reviewing a submission properly, by opening it and reading everything, published it in a way that told the person who sent it nothing at all, and there was no way to reject from that screen because Reject was not on it.
+
+**Approve and Reject are on the editor now, and they are the queue's own two forms:** same action, same nonce, same prompt, same two ticks. The buttons carry `form=` because a form cannot nest inside the event form, which is the same reason the ticks in the prompt already do. There is no second way to approve.
+
+**THE BUTTONS FOLLOW THE EVENT'S STATE**, because on a published event Save and Publish were two labels for one outcome, and two controls that look like a choice and are not teach people to stop reading the pair.
+
+```
+published, scheduled   Save changes
+pending submission     Save changes, Approve, Reject      (calendar admins)
+pending, not a sub     Save changes, Publish
+draft or new           Save draft, Publish
+```
+
+**No Unpublish.** Cancelling is how an event comes off the calendar and it tells the people who registered; a second quiet route to making one disappear is a way to do it by accident. **Delete is a card at the foot of the screen, after the cancel card**, on the same route the events list posts and with the same refusal on an event that has registrations. It is not in the row of actions because Save is pressed dozens of times a day and deleting cannot be undone from that screen, and it is after cancelling rather than before because the two read as a ladder: the reversible answer first, the irreversible one last on the page.
+
+**THE SEARCH ON MY EVENTS WAS NOT SEARCHING TOO EAGERLY. IT WAS NAVIGATING.** It has been debounced at 300ms since it was built, so "it searches on every keystroke" was not the cause; what it did after the debounce was submit the form. A submit tears down the document, so every letter typed while the answer was in flight went into a page that no longer existed, and the refocus mark then put the caret back at the end of whatever the SERVER thought the term was. A longer debounce would not have touched any of that.
+
+It fetches the same URL now and swaps the results card. **The input is never replaced**, so there is no focus to restore and nothing typed mid-flight is lost. The address bar still says what is being searched, through replaceState rather than a history entry per keystroke. A stale answer is discarded by sequence number, so a slow reply for "co" cannot land on top of the results for "coffee", and anything that fails falls back to the page load it replaced, which is also what happens with no script.
+
+**FIVE MINUTE TIME STEPS WERE NEVER LOST.** Every time control in the plugin has carried `sfaf_time_step_attr()` since 3.72.0 and all twelve still do. What was missing is anything that would notice the thirteenth being written without it, so `.claude/time-step-test.php` checks every call site and the one rule that decides where the attribute is deliberately absent: a control already holding a time off the boundary does not get it, which is what keeps an imported 6:07 editable.
+
+**THE COMMUNITY FORM ASKED FOR A NAME AND AN EMAIL TWICE**, thirty fields apart, and for most submitters the two answers are the same answer. There is a tick now: **Use my name and email as the contact on the event page**.
+
+**The direction is what makes it safe and it only runs one way.** "About you" is collected first and is internal: it reaches the notification list and the alert and appears on no public page. This copies it ONTO the public contact when somebody asks for that, and nothing ever copies the other way. The default is off and the separate fields are visible, so nothing anybody typed becomes public because a control was left alone. The copying is done by the validator, so the answer is the same with no script at all.
+
+**"Somewhere else" is "Enter location manually"**, and **"How many places, if there is a limit" is "Capacity"**, which is what caladmin already calls it.
+
+**AND THAT FORM HAD AN UPLOAD AND NO PICKER AT ALL.** It never had one: the chooser was built for the staff request form in 3.67.0 and this form was left with a file input, so somebody submitting a Strut event could not use the Strut photograph that already exists and is already the right shape, and whoever approved it had to go and set one.
+
+**One picker for both forms now**, and it leads with the pictures tagged for the series whose link the submitter was given, with everything else listed under them rather than behind a toggle. A picture chosen from the folder becomes the event's image straight away; an uploaded one still does not, because that is a working copy in a folder meant to be emptied.
+
+**Showing the folder to a stranger is not showing the series list.** The refusal that keeps FAQ sets off this form is about NAMES: a dropdown of set names is a directory of this calendar's programming handed to anybody who opens the form. These are the images already published on the public calendar's own event pages.
+
+**THE IMAGE LIBRARY, IN CALADMIN, TAGGED BY SERIES.** Contributors and editors never see wp-admin, so the WordPress media library is not available to most of the people who maintain this calendar. An organizer who wanted to know what pictures exist for their programme had nowhere at all to look, and WordPress's own tagging asks you to type a tag rather than pick one, which is how a library ends up with "Strut", "strut" and "STRUT".
+
+**The tags ARE the series.** Not a second vocabulary: a new series makes a new tag available the moment it exists, renaming a series renames the tag, and there is no list to keep in step.
+
+**DELETING A SERIES DOES NOT TOUCH THE IMAGES, and that is guaranteed rather than intended.** `wp_delete_term()` deletes the term and its rows in `term_relationships` and does not read, write or delete a single post. The half that a future build could break is ours, so `.claude/media-tags-test.php` reads every term-deletion callback in the plugin with a tokenizer and requires that none of them writes a post. One is registered, the embed cache flush, and it writes none. What is left is an image with no row in the taxonomy at all, which is exactly what the **Untagged** filter asks for, so it surfaces rather than disappearing.
+
+**Upload is admins, tagging is admins and editors, looking is everybody with caladmin access.** An editor can tag images they cannot upload, which is what lets somebody tidy a library they are not adding to. The screen has a grid, tick boxes and a bulk tag using the same pattern the schedule screen's bulk publish uses, a per-image dropdown, and filters for each series and for untagged.
+
+**The picker inside an event opens on that event's series**, with **All calendar images** beside it as the way out, and **wp.media's Upload Files tab is gone for anybody who is not a calendar admin**. The hidden tab is not what refuses: a hidden tab is a hidden tab, so `SFAF_Media_Folder` filters `upload_files` for requests carrying the picker's own flag. It narrows and never widens, touches no other upload on the site, and writes no role.
+
+**`SFAF_Uploads::inspect()`** is the public forms' guard, split out of `store()` unchanged so caladmin's own upload gets exactly the same checks and a different destination. Two copies of "is this really an image, and is it wide enough" is the one duplication worth refusing outright: it is the guard between a form and the server's disk.
+
+**THE DUPLICATE CONTROL NAMES THE EVENT IT COPIES.** It read "Use this event's details on another date", and on a series holding several distinct events "this event" names nothing the reader can see. Four series are in that position. The name comes from the same one rule the button uses, which is what 3.73.0 made true, so the label and the copy cannot disagree.
 
 = 3.73.0 =
 

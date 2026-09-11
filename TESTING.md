@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 85 items.** Quick 61, needs real conditions 21, blocked on other
+**Outstanding: 93 items.** Quick 67, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -810,6 +810,96 @@ preferred the next event in the recurrence group and the button took the next in
 the series, so on these four series the placeholder could name one event while
 the button copied another.
 
+### 1.62 The FAQ answers after applying a set, which is the case that was wrong (3.74.0)
+
+**This is the exact thing Mark reported and the exact thing 3.74.0 changes.**
+Open a pending event that is not imported, with the console open. Apply a FAQ
+set.
+
+The answers should be **editors immediately**, without pressing anything else.
+Before 3.74.0 they were plain boxes until Add a manual question was pressed.
+
+Then press **+ Add FAQ**. The new row should get an editor and **nothing else on
+the screen should change**, which is the other half: if every box on the screen
+still flickers into an editor at that moment, something is still sweeping rather
+than starting one row.
+
+**If a row does not get an editor, copy whatever the console says.** It names
+the element id. Silence now means something different from what it meant before:
+until 3.74.0 silence meant nothing had asked, and asking is what was added.
+
+### 1.63 The editor's buttons on four kinds of event (3.74.0)
+
+Open one of each and read the row of buttons at the foot of the form.
+
+```
+a published event      Save changes                    and nothing else
+a draft                Save draft, Publish
+a pending submission   Save changes, Approve, Reject   (as a calendar admin)
+a pending staff event  Save changes, Publish
+```
+
+**Approve and Reject must open the same prompts the Pending queue opens**, with
+the same two ticks, and must land where approving from the queue lands. If
+Approve opens nothing, or if it publishes without asking, stop and say so: the
+two are meant to be the same forms.
+
+**And there should be no Publish on a published event.** That is the whole point
+of this change.
+
+### 1.64 Delete on the event editor, and what it refuses (3.74.0)
+
+At the foot of the editor, under the cancel card, there is a **Delete this
+event** card.
+
+- On an event with **nobody registered**: Delete asks to confirm, then the event
+  goes and the list comes back without it.
+- On an event **with registrations that has not been cancelled**: there is no
+  button at all, only a line saying to cancel it first. That is the same refusal
+  the events list makes, and the card should not offer a control that bounces.
+
+### 1.65 Searching My events without losing letters (3.74.0)
+
+**Type a whole phrase into the search box at an ordinary speed**, with pauses,
+on the real 259-row list. Nothing typed should be lost, the caret should never
+jump, and the list should update under the box while it stays exactly where it
+is.
+
+**The address bar should follow along**, so reloading lands on the same search
+and the link can be sent to somebody. **Back should leave the list**, not walk
+backwards through the word.
+
+Then press a row's **Remove** icon and tick a box for the bulk category control
+**after** a search has happened. Both are rebound when the results are replaced,
+and if either is dead after searching, say so: that would be worse than what was
+fixed.
+
+### 1.66 The Images screen, as three different people (3.74.0)
+
+**caladmin > Images.** It is new, so everything here is unexercised.
+
+- **As an admin:** the grid shows the calendar folder. Tick two, choose a series,
+  press Tag; both should carry it and keep anything they already had. Use the
+  per-image dropdown on a third. Take a tag off with the small x and confirm the
+  picture is still there. Upload a file and confirm it appears in the grid and,
+  more importantly, **in the picker inside an event**.
+- **As an editor:** the tagging controls are there and **Add an image is not**.
+- **As a contributor:** the grid is there and **no tagging control is**.
+
+**Then Untagged.** It is the filter the screen exists for and the one nobody has
+seen work.
+
+### 1.67 The picker inside an event opens on the event's series (3.74.0)
+
+Open an event that is in a series with at least one tagged image and press
+**Choose Image**. The library should show that series' pictures only. Press
+**All calendar images** beside it and the whole folder should be there.
+
+**On an event with no series, the second button should not be on the screen at
+all**, because the first one already shows everything.
+
+**As an editor or a contributor, the modal should have no Upload Files tab.**
+
 ---
 
 ## 2. Needs real conditions
@@ -908,6 +998,37 @@ last one opens "No longer able to come?" instead. Nothing else changes.
 back on, and tick the box. Confirm the message arrives, that the cancel link in
 it cancels that registration, and that the calendar buttons carry the date it is
 on now rather than the one it was cancelled from.
+
+### 2.25 A real community submission, with the details tick and a chosen picture (3.74.0)
+
+**The form changed in four places at once and only a real submission exercises
+them together.** Open the community form at a real series' address.
+
+- **Leave the new tick alone.** The three contact fields are visible; fill them
+  in with something different from your own details. Submit, then read the
+  pending row and the event page: the public contact must be what you typed, and
+  your own address must be nowhere on the page.
+- **Submit a second one with the tick ON.** The three fields disappear, and the
+  event page must show your name and your email as the contact. **No phone**,
+  because the form never asked you for one.
+- **Choose a picture from the chooser** rather than uploading. The event should
+  arrive already carrying it as its image, which an uploaded file deliberately
+  does not do.
+- **Read the labels while you are there.** "Enter location manually" and
+  "Capacity" are new, and so is the tick's wording.
+
+### 2.26 An upload from the Images screen, on the real server (3.74.0)
+
+**The one thing in this release that writes a file, and the folder rule is the
+part that can quietly be wrong.** Upload an image from caladmin > Images.
+
+It must land in **`wp-content/uploads/calendar/`**, not in a dated directory. If
+the screen says it went into the general media library, that message is the
+check working and something is wrong with the folder filter: say so rather than
+uploading more.
+
+Then confirm the same file appears in the picker inside an event, which is the
+outcome that matters and the reason the folder rule exists.
 
 ### 2.19 Open the notification card on an imported event and an imported occurrence (3.69.0)
 

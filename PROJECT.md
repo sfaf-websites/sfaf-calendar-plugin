@@ -611,6 +611,20 @@ place to put the picture is a second place for it to be wrong.
 - **The event contact is three fields and is public. The submitter's own name
   and address are two fields and are not.** Different keys, different labels,
   and only the first is readable from a template.
+- **One tick joins them, and it copies in one direction only.** "Use my name
+  and email as the contact on the event page" hides the three fields and makes
+  the submitter's own details the public ones, which is the truthful answer for
+  most submitters. **The default is off**, so nothing anybody typed becomes
+  public because a control was left alone, and **nothing ever copies the other
+  way**: the public contact is what prints on the page, the submitter is who we
+  reply to and who gets the registrations, and the second must never be set from
+  the first. The copying is done by `validate()` rather than by the browser,
+  because a hidden field posts nothing and because the answer then has to be the
+  same with no script at all. No phone comes with it: the form never asked the
+  submitter for one.
+- **The picture chooser is on this form too, from 3.74.0**, filtered to the
+  series the URL already names. See "One picture chooser". A chosen folder image
+  becomes the event's thumbnail; an upload still does not.
 - **The About you email takes up to five addresses, and the submitter's own is
   the FIRST of them rather than additional to them.** An external organizer
   wanting colleagues told when somebody RSVPs says so here. The first address
@@ -1107,46 +1121,57 @@ is the closest achievable thing to catching it.
 > questions, the contract check answers the second, and loading the screens for
 > real stays a manual pass.
 
-### The FAQ editors do not start on load, and what is known about it
+### The FAQ editors, and the third way a row arrives
 
-**STILL NOT DIAGNOSED, AND THIS RECORDS WHY IT COULD NOT BE.** The answers on a
-FAQ row show raw markup as text until somebody presses **Add FAQ**, which then
-turns every box on the screen into an editor including the rows that were already
-there. Investigated in 3.68.0 and worked on in 3.72.0; the underlying exception
-has never been named.
+**SOLVED IN 3.74.0, AND THE ANSWER WAS NOT WHERE THREE RELEASES LOOKED.** The
+symptom reported from 3.68.0 onward was "the FAQ answers show raw markup until
+somebody presses Add FAQ, which then turns every box on the screen into an
+editor including the ones that were already there".
 
-**THE THREE FINDINGS, AND WHAT HAPPENED TO EACH.**
+**A ROW ARRIVES ON THAT SCREEN THREE WAYS, AND ONLY TWO OF THEM ASKED FOR AN
+EDITOR.**
+
+```
+from the server   the load pass in initRichText() covers it
++ Add FAQ         `.uc-repeater-add`, matched by initRichText()'s listener
+a FAQ set         `[data-uc-faq-apply]`, matched by NOTHING until 3.74.0
+```
+
+`initFaqSetPicker()` clones the same `<template>`, fills in the question and the
+answer and appends the row. It never asked for an editor, so those answers were
+the plain textareas the template holds, and they stayed plain until something
+else happened to run `startAll()` over the whole document. **Pressing Add FAQ is
+exactly that**, which is why one new row turned every set row into an editor at
+the same moment: the SWEEP was doing it, not the add.
+
+**THE CONSOLE WAS SILENT AND THE SILENCE WAS THE FINDING.** The catch added in
+3.72.0 names an initialise that threw. Nothing on this path ever got as far as
+initialising, so there was nothing for it to name, and the absence of a message
+was the evidence that the exception theory was the wrong theory.
+
+**MATCHED ON THE DOCUMENT RATHER THAN CALLED FROM THE PICKER.**
+`initFaqSetPicker()` is in another of portal.js's four top-level scopes and
+cannot see `startAll()`; calling across is the 3.72.0 fault exactly. A listener
+on the document is what the two scopes already share.
+
+**WHAT THE EARLIER WORK GOT RIGHT AND IS KEPT.**
 
 1. **Every FAQ answer takes the browser-started path**, `SFAF_Rich_Text::deferred()`,
    including rows that exist when the page is built, while the description beside
-   them is a real `wp_editor()` that starts itself. That is why one works and the
-   other does not: they are **not one mechanism**.
+   them is a real `wp_editor()` that starts itself. The docblock used to claim
+   otherwise and was corrected in 3.72.0 rather than made true, because forking
+   `sfaf_faq_row()` would put the FAQ repeater back to two copies of one control.
 
-   **The docblock said otherwise and was wrong**, not the code. It read "a row
-   that exists when the page is built gets a real `wp_editor()`", and no row ever
-   has: `sfaf_faq_row()` has been the one renderer for a stored row and for the
-   `<template>` since 3.44.0 and calls `deferred()` for both. A rule describing an
-   arrangement the code never had is worse than no rule, and 3.68.0 spent an
-   investigation reading it as a statement of fact. **Corrected in 3.72.0 rather
-   than made true**, because forking that renderer would put the FAQ repeater back
-   to two copies of one control, which is the fault it exists to prevent.
+2. **The load pass goes through the same deferred task the add pass uses**, with
+   a short retry rather than a single turn, because a bare `setTimeout(0)` is a
+   guess about timing.
 
-2. **The load pass and the Add pass differed by exactly one thing**, a
-   `setTimeout(..., 0)`, and the one that works is the deferred one. 3.72.0 put
-   the load pass through the same deferred task, with a short retry rather than a
-   single turn, because a bare `setTimeout(0)` is a guess about timing.
+3. **`start()` logs rather than swallowing.** Kept exactly as it is. It is still
+   the only route to a diagnosis if a row is ever asked for an editor and does
+   not get one, which is a different fault from this one and has not been seen.
 
-3. **`start()` swallowed the exception with no console output.** It logs through
-   the same channel `run()` uses now. **This is the finding that matters**: until
-   it logs, the reason cannot be named from a browser, and `run()` exists
-   precisely so a failed initialiser is never silent. It was the one place in the
-   file quietly doing the opposite, inside `run()`.
-
-> **3.72.0 DOES NOT CLAIM TO HAVE FIXED THIS.** There is no browser in the build
-> environment, so the change is the load pass being made to look like the pass
-> that demonstrably works, plus the exception being made readable. `TESTING.md`
-> 1.46 asks for whatever the console says, and that message is the whole route to
-> a diagnosis.
+**`.claude/rich-text-start-test.js` presses both buttons now** and plants the
+3.73.0 arrangement, in which a set row is appended and never started.
 
 ### Rich text is a rule, and one control
 
@@ -1294,6 +1319,167 @@ Uploads made from caladmin land in the folder, deliberately overriding the
 year-and-month setting: the folder IS the organisation for these, and a date
 directory underneath would scatter the same pictures across twelve places a
 year. Without it an upload would be invisible to the picker that made it.
+
+### The image library, and tags that are series
+
+**WHY IT EXISTS.** Contributors and editors never see wp-admin, so the WordPress
+media library is not available to most of the people who maintain this calendar.
+An organizer who wanted to know what pictures already exist for their programme
+had nowhere at all to look, and the only route to an image was the picker inside
+an event, which shows the whole folder and cannot say which programme anything
+belongs to.
+
+**THE TAGS ARE THE SERIES TAXONOMY, NOT A SECOND VOCABULARY.** `uc_series` is
+registered for attachments as well as for events, so an image carries the same
+terms an event does. There is no tag to create, no list to keep in step and no
+way for the two to disagree about what a programme is called: a new series makes
+a new tag available the moment it exists, and renaming a series renames the tag.
+An image may carry several, because a photograph of a group at a clinic is
+genuinely the picture for two programmes.
+
+**DELETING A SERIES DOES NOT TOUCH THE IMAGES, AND THIS IS HOW THAT IS
+GUARANTEED RATHER THAN INTENDED.** `wp_delete_term()` deletes the term and its
+rows in `term_relationships`. It does not read, write or delete a single post,
+and an image is a post. That is core's half.
+
+**Our half is that nothing in this plugin may hook a term deletion and go
+looking for attachments**, which is the half a future build could break, by
+adding a tidy-up that deletes "orphaned" images. `.claude/media-tags-test.php`
+reads every term-deletion callback in the plugin with a tokenizer and requires
+that none of them calls anything that writes a post. One IS registered,
+`SFAF_Embed::flush_cache_for_term()`, and it writes none.
+
+**What is left is an image with no row in the taxonomy at all**, which is exactly
+what the **Untagged** filter asks for, so it surfaces rather than disappearing.
+That filter is the one that matters most: a library gets organised by somebody
+being shown what has not been done yet.
+
+**AND THE SERIES ARCHIVE STAYS EVENTS ONLY.** `uc_series` is public and has a
+rewrite, so attaching a second object type to it would put images into whatever
+the theme renders at `/event-series/<slug>/`. `SFAF_Media::keep_archive_to_events()`
+sets `post_type` back to `uc_event` on that archive's main query, and only on
+the main query, because a `tax_query` somebody else built is theirs.
+
+**THREE PERMISSIONS, DELIBERATELY NOT THE SAME SHAPE.**
+
+```
+UPLOAD   administrators
+TAG      administrators and editors
+PICK     everybody with caladmin access
+```
+
+An editor can tag images they cannot upload. That is intended: organising a
+library and adding to it are different jobs, tagging is reversible and changes
+nothing on any page, and an upload puts a file on the server forever.
+
+**THE UPLOAD GATE IS A CAPABILITY FILTER, NOT A HIDDEN TAB.** portal.js hides
+wp.media's Upload Files tab for anybody who is not a calendar admin, and a hidden
+tab is a hidden tab: the upload endpoint is a URL and a POST to it is a request
+anybody can construct. `SFAF_Media_Folder::gate_upload()` is the refusal, and it
+is narrow in two directions. It only answers when the request carries the
+picker's own flag, so an upload made anywhere else on the site is untouched, and
+it only ever REMOVES the capability, so it cannot hand `upload_files` to somebody
+who does not have it. **It is not a role write**: nothing calls `add_cap`,
+`set_role` or touches `wp_capabilities`, and the answer is gone when the request
+ends.
+
+### One picture chooser, and where each kind of file lives
+
+**THE SELF-BUILT PICKER IS `SFAF_Media::picker()` AND BOTH PUBLIC FORMS CALL
+IT.** It is a `<details>` of radios with a search box portal.js reveals, built
+for the staff request form in 3.67.0 and moved here in 3.74.0 when the community
+form needed the same control. Neither public form has a logged-in user, so there
+is no wp.media to open and no capability to open it with; radios in a `<details>`
+work with no script at all, which on a page reached by a link on somebody's phone
+is the difference between a control and a decoration.
+
+**IT LEADS WITH THE EVENT'S OWN SERIES AND LISTS EVERYTHING ELSE UNDER IT.** Two
+groups in one list rather than a toggle, because a toggle needs script and hides
+half the library behind a control somebody has to discover. The series names are
+part of what the search matches.
+
+**THE CALADMIN PICKER IS STILL wp.media**, because there IS a logged-in user
+there and the library's own search and upload are worth having. It opens on the
+event's series, with **All calendar images** beside it as the way out; the term
+id rides the library query the way the folder flag already does, and
+`SFAF_Media_Folder::restrict_query()` reads both off the raw request for the same
+reason.
+
+**WHICH FOLDER A FILE LANDS IN IS THE WHOLE DECISION.**
+
+```
+calendar/               curated, approved, offered by every picker
+calendar-submissions/   working copies from people with no account
+```
+
+**A picture chosen from the calendar folder becomes the event's thumbnail
+straight away**, on both public forms, because it is already approved and already
+the right shape. **An uploaded one does not**, because it is a working copy in a
+folder meant to be emptied, and nothing may point at it permanently. "Use this
+image" on the pending row is how one gets promoted.
+
+**`SFAF_Uploads::inspect()` is the one guard between a form and the disk.** Is
+there a file, did PHP finish it, is it really an upload, is it small enough, do
+two readers agree it is an image, and is it wide enough for a card. It was split
+out of `store()` unchanged in 3.74.0 so caladmin's own upload gets exactly the
+same checks and a different destination. **Two copies of that is the one
+duplication worth refusing outright.**
+
+**What differs between the two callers, and only this:** where the file goes,
+what it is called and who it belongs to. A stranger's file name is discarded and
+replaced; a name somebody typed in caladmin is kept, because it is what the
+picker's search matches and what tells two photographs of the same event apart
+at 64px.
+
+### The event editor's actions follow the event's state
+
+**EVERY EVENT USED TO GET THE SAME TWO BUTTONS**, Save and Publish, in every
+state. On something already published those are two labels for one outcome,
+because `keep` keeps `publish` and `publish` sets `publish`. Two controls that
+look like a choice and are not teach people to stop reading the pair, and the
+pair is what a draft genuinely needs.
+
+```
+published, scheduled   Save changes
+pending submission     Save changes, Approve, Reject      (calendar admins)
+pending, not a sub     Save changes, Publish
+draft or new           Save draft, Publish
+```
+
+**ON A PENDING SUBMISSION THE OLD PAIR WAS WORSE THAN REDUNDANT.** Publish took
+the route a draft takes and put the event on the public calendar, and that is
+**not** the route the queue's Approve takes: no address joined the notification
+list and no published notice was sent. Somebody who reviewed a submission
+properly, by opening it and reading everything, published it in a way that told
+the person who sent it nothing at all, and could not reject from that screen
+because Reject was not on it.
+
+**THE EDITOR POSTS THE QUEUE'S OWN TWO FORMS.** Same action, same nonce, same
+prompt, same two ticks. The buttons carry `form=` because a form may not nest
+inside the event form, which is the same reason the ticks in the prompt already
+do. **There is no second way to approve**, which is the point rather than a
+detail.
+
+**WHO DECIDES A SUBMISSION IS WHO DECIDES ONE ON THE QUEUE**, and that is a
+calendar admin. Both routes `wp_die()` on anybody else, so offering the decision
+to somebody the route would refuse is a button that fails. An editor still saves
+and still reads everything. A pending event that is NOT a submission is a
+different thing, a contributor's own event waiting for review with nobody outside
+to tell, and it keeps the Publish it has always had.
+
+**NO UNPUBLISH.** Cancelling is how an event comes off the calendar and it tells
+the people who registered. A second quiet route to making one disappear is a way
+to do that by accident. Weighed and decided against; if the need arises it gets
+built deliberately.
+
+**DELETE IS A CARD AT THE FOOT OF THE SCREEN, AFTER THE CANCEL CARD.** Not in the
+row of actions, because Save is pressed dozens of times a day and deleting cannot
+be undone from that screen. After cancelling rather than before, because the two
+read as a ladder in the order somebody should try them: cancelling keeps the
+registrations, closes new ones and offers to tell everybody who signed up;
+deleting keeps nothing and tells nobody. It posts the same route the events list
+posts, so it inherits the same refusal on an event with registrations that has
+not been cancelled, and says why rather than offering a button that bounces.
 
 ### Descriptions are rich text, with a deliberately short toolbar
 
@@ -3490,6 +3676,34 @@ current situation and all four will still be true in six months.
   nothing to do with the calendar. Nothing here detects, sets or translates a
   locale, and 3.16.0 is why that sentence is written down.
 
+**Three ways in, and the investigation only knew about two.** The FAQ answers
+were reported as "the editors do not start", and three releases were spent on
+the two paths anybody could name: rows that come from the server, and rows the
+repeater's Add button clones. The rows that were actually plain came from a
+THIRD control nobody had counted, the FAQ set picker, which builds rows from the
+same template and asks for nothing. Every finding about the other two paths was
+correct and none of them was the fault.
+
+> **Count the ways a thing can arrive before deciding which one is broken.** The
+> question "why does this row have no editor" has as many answers as there are
+> controls that can create a row, and a screen accumulates those one release at
+> a time. Enumerate them from the code that CREATES, not from the code that
+> consumes: `startAll()` could not have told anybody that a third caller
+> existed, and neither could any amount of reading it.
+
+**And the silence was the evidence.** 3.72.0 added logging to the catch around
+`wp.editor.initialize()` precisely so the exception could be named, and nothing
+appeared in the console. That was read as "the logging did not reach the site"
+and was in fact the finding: an initialise that never happens throws nothing.
+**A check that stays quiet has told you something**, and the thing it told us
+was that the exception theory was the wrong theory.
+
+**A fix that "looks like the path that works" is not a diagnosis, and 3.72.0
+said so at the time.** It put the load pass through the same deferred task the
+add pass used and wrote down, in the code, that this was not a claim to have
+fixed anything. That honesty is what made 3.74.0's investigation start from the
+right place instead of assuming the matter was closed.
+
 **A correct rule that never reached the screen. Six times.** A component rule
 written as one class, `(0,1,0)`, sitting under a host-proofing base rule written
 as class plus element, `(0,1,1)`. One class does not beat one class plus one
@@ -3734,6 +3948,45 @@ lives only in geometry reaches Mark's screen with the suite green.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### The community form's age restriction options, awaiting Mark
+
+**Raised in 3.74.0 with an instruction to report the set before renaming any of
+it**, because one of the five opens a required field and two were named in
+isolation. Nothing was changed; this is what is there.
+
+| Value stored | Label on the control | What it does |
+|---|---|---|
+| `''` | Not saying | The default, and the first entry. Stores nothing. `choice_phrase()` returns an empty string, so **the event page shows no age line at all**. |
+| `all` | All ages | Prints **All ages** on the event page. |
+| `18` | 18+ | Prints **18+**. |
+| `21` | 21+ | Prints **21+**. |
+| `other` | Something else | **Reveals a companion box and that box is REQUIRED.** Whatever is typed prints verbatim, so this is the escape for "trans and non-binary people 18 and over" and anything else a closed list cannot hold. |
+
+**Two of the five were named as reading badly.** "Not saying" reads as terse for
+a default nobody chose, and "Something else" says nothing about what happens
+next, which on the one entry that opens a required field is the entry that most
+needs to.
+
+**What the replacement has to keep.** The empty value must stay first and stay
+the default, because a required-looking list with a real answer at the top
+pre-selects that answer, and this control is not required. And whatever `other`
+becomes has to signal that a box follows, since somebody choosing it and not
+filling the box is refused.
+
+**A set to take with the pair in front of you**, offered rather than applied:
+
+```
+''       No age restriction given
+all      All ages
+18       18+
+21       21+
+other    Something else, and I will say what
+```
+
+Renaming these is one array, `SFAF_Submit::age_options()`, read by the control
+and the validator alike, so the stored values do not move and no event changes.
+It is a copy decision and not a build.
 
 ### Naming the community form's two email fields, still open
 

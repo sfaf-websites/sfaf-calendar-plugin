@@ -9546,9 +9546,34 @@ class SFAF_Portal {
                     <h4 class="uc-schedule-head">Add a date</h4>
 
                     <details class="uc-schedule-add">
-                        <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>Use this event's details on another date</summary>
+                        <?php
+                        /*
+                         * IT NAMES THE EVENT IT COPIES (3.74.0).
+                         *
+                         * It read "Use this event's details on another date",
+                         * and on a series holding several distinct events
+                         * "this event" names nothing the reader can see: four
+                         * series are in that position, PROP with four, Coffee
+                         * Social with two, Mobile Health Sites with two and the
+                         * Strut community events with three.
+                         *
+                         * THE NAME COMES FROM THE SAME ONE RULE THE BUTTON
+                         * USES, which is what 3.73.0 made true.
+                         * SFAF_Series::seed_from_lists() decides the seed, the
+                         * placeholder below reads it and so does this, so the
+                         * label and the copy cannot name two different events.
+                         * Before that fix they could, and did.
+                         */
+                        $seed_name = $seed_id ? trim( (string) get_the_title( $seed_id ) ) : '';
+                        ?>
+                        <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span><?php
+                            echo ( '' !== $seed_name )
+                                ? 'Copy &ldquo;' . esc_html( $seed_name ) . '&rdquo; onto another date'
+                                : 'Use this event&rsquo;s details on another date';
+                        ?></summary>
                         <p class="uc-hint">
-                            Copies this event onto a date you choose: same location, description, times, category,
+                            Copies <?php echo ( '' !== $seed_name ) ? '&ldquo;' . esc_html( $seed_name ) . '&rdquo;' : 'this event'; ?>
+                            onto a date you choose: same location, description, times, category,
                             organizer and questions. It starts with nobody registered, because registrations belong to
                             the date they were made for. A time change to the group reaches it; a change to the pattern
                             leaves it where you put it.

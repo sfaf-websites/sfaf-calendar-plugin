@@ -6,39 +6,49 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.73.0, released.
-
-> **THIS FILE SAT THREE RELEASES STALE**, describing 3.69.0 while 3.70.0, 3.70.1
-> and 3.71.0 had shipped. None of those three commits touched it or `TESTING.md`,
-> which is the `CLAUDE.md` 8 rule missed three times running. If you are reading
-> a hand-off that does not name the version in `sfaf-calendar.php`, trust the
-> code.
+**Last updated:** 2026-09-11, at 3.74.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.73.0**, built as `sfaf-calendar-3.73.0.zip` in the project root, committed,
-**pushed to `origin/production-2.0`** and **released**. Working tree clean.
+**3.74.0**, built as `sfaf-calendar-3.74.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean.
 
-> **3.73.0 IS RELEASED AND THE SITE IS STILL ON 3.72.0.** The release was cut on
-> 2026-09-10 and the asset on it is the zip in this folder, byte for byte. What
-> is on the site is 3.72.0, installed by hand, and **3.72.0 carries the broken
-> updater**: its `latest()` is never forced and its cache was written when the
-> zip went on, so the site may not offer 3.73.0 until that twelve-hour window
-> passes. **The forced check ships IN 3.73.0, so it cannot help 3.73.0 get
-> installed.** If the site does not offer it, upload the zip by hand as before;
-> from 3.73.0 onward **Check for updates** on the Plugins screen settles it in
-> one press. `TESTING.md` 1.54.
+> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
+> separate press: `bash .claude/publish.sh --release`. Nothing on any site will
+> be offered 3.74.0 until it is run.
+
+> **THE SITE DID NOT OFFER 3.73.0 EITHER, AND THAT IS TWO IN A ROW.** 3.72.0 and
+> 3.73.0 both went on by hand. **The cache diagnosis is now doubtful rather than
+> unconfirmed:** the fix for it shipped IN 3.73.0, so it could not have helped
+> 3.73.0 be offered, but 3.74.0 is the first release the forced check could
+> reach. **Press Check for updates on the Plugins screen the day this is
+> released** (`TESTING.md` 1.54). If it reports 3.74.0, the cache was the cause
+> and the loop is closed. **If it reports nothing while a release exists, the
+> cause is something else entirely** and a GitHub rate limit on the host's IP is
+> the next thing to look at. Say which happened rather than assuming.
 
 | | |
 |---|---|
-| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE.** One cause: a helper declared inside one of portal.js's four top-level IIFEs and called from two others, which cannot see into it. Approve and Reject on the pending queue, and Get a form link. **Only Get a form link was reported.** Also: the locked FAQ answers showed HTML as literal text and now read as prose; the events list is three icons on one line with hover text, a clipped name and a 44px touch target; **Cancel** replaces "Cancel instead" and lands on the cancel card with the scope question answered rather than asked; **bulk add a category** on the events list; the Display RSVP tick greys while Accept RSVPs is off; **a fifth message, "this event is back on"**, subject to the consent rule; and the duplicate-to-another-date seed is computed once instead of twice. |
-| **3.73.0 (updater)** | **The updater could not be told to look, and nothing ever told it.** `latest()` has taken a `$force` argument since 3.70.0 and **no call site has ever passed `true`**, so every answer came from a twelve-hour cache only an install could clear. WordPress's own **Check again** cannot help: it clears its own transients and not ours. There is a **Check for updates** link on the Plugins screen now, and both build scripts stop claiming Dashboard > Updates would do it. `forget()` clears on **install** as well as update, because uploading a zip is `install` and that is how most releases have reached this site. `.claude/updater-test.php` runs the thing and plants six regressions. |
-| **3.72.0** | **The cancel and remove cluster, and the batch that was waiting.** The cancel dialog offered two buttons reading "Cancel the event" and "Cancel the event"; there is one action now, and clicking outside a caladmin dialog dismisses it, which was the thing actually missing rather than Escape. **Remove on the events list promised a permanence the code never had** and is refused on a registered event, so the row says so and offers Cancel instead. **A cancelled event now says "Cancelled" on the list card, the month grid and the sidebar**, not just its own page. A second message box in the confirmation, for registrants only. **Remove from the calendar** beside Put it back on, which sends nothing. Tick boxes on the bulk publish. The empty FAQ set card is gone. **The Listing detail contact box wrote a key nothing read**, and is three boxes now. Five-minute time steps. **The staff form asks the real repeat question**, captured and not armed. The series is asked first on every screen. "Use this image" on the pending row, and uploads under 1200 wide refused. Three submission notifications, one of them new. |
+| **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, and that was a third path nobody had counted: the set picker clones the same template and never asked for an editor, so pressing Add FAQ afterwards swept the whole document and turned every set row into one at once. The console was silent because nothing ever got as far as initialising. Also: **Approve and Reject are on the event editor**, and they are the queue's own two forms, because Publish from there set the status and told the submitter nothing; **the buttons follow the event's state** and there is a **Delete** card under the cancel card; **the search box stopped tearing itself down** (it was navigating, not searching too eagerly); **the community form asks for one set of details**, has a **picture chooser** at last, and says "Enter location manually" and "Capacity"; **caladmin has an Images screen** tagged by series; and the duplicate control names the event it copies. |
+| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE.** One cause: a helper declared inside one of portal.js's four top-level IIFEs and called from two others, which cannot see into it. Also: the locked FAQ answers read as prose; the events list is three icons on one line; **Cancel** lands on the cancel card; **bulk add a category**; the Display RSVP tick greys while Accept RSVPs is off; **a fifth message, "this event is back on"**; and the duplicate seed is computed once. |
+| **3.73.0 (updater)** | **The updater could not be told to look, and nothing ever told it.** `latest()` has taken a `$force` argument since 3.70.0 and no call site had ever passed `true`. There is a **Check for updates** link on the Plugins screen now, and `forget()` clears on install as well as update. `.claude/updater-test.php` runs the thing and plants six regressions. |
+| **3.72.0** | **The cancel and remove cluster, and the batch that was waiting.** One action in the cancel dialog, a backdrop that dismisses, Remove refused on a registered event, "Cancelled" on every surface, the Listing detail contact box as three boxes, five-minute time steps, the real repeat question on the staff form, and three submission notifications. |
 
 ## What has actually been seen on the site
 
+- **3.73.0 IS INSTALLED, BY HAND.** Confirmed 2026-09-11. **Approve works**: the
+  dialog appears, names the submitter and offers two ticks. It had been dead for
+  the whole of 3.72.0's life on the site.
+- **THE WHOLE SUBMISSION PATH IS CONFIRMED END TO END, for the first time.**
+  Submit, alert to the submissions address, approve with both ticks, publish,
+  published notice to the submitter, event live on the public calendar.
+  **Registration is confirmed too**, both the attendee's confirmation and the
+  organizer's alert.
+- **The forced update check works.** Mark pressed it and it correctly reported
+  the installed version as current.
+- **The locked FAQ rows read as prose.**
 - **THE IMPORT HAS RUN.** 2026-09-03. The site holds **287 drafts across 32
   series** and Mark has confirmed they look accurate. Trash emptied.
   **`TESTING.md` 2.18 and 2.19 are deliberately still open:** deleting the
@@ -46,9 +56,10 @@ here that is still true in six months belongs in one of those instead.
   separate actions and neither has been reported back on.
 - **3.71.0's BULK PUBLISH READS CORRECTLY** on a real series. 3.72.0 put
   per-row ticks on it and those have not been seen.
-- **THE UPDATER COMPLETED ONE CYCLE AND THEN STOPPED.** 3.71.0 installed
-  through it, because an install had just cleared the cache. 3.72.0 was not
-  offered and went on by hand. `PROJECT.md` 7.
+- **THE UPDATER HAS COMPLETED ONE CYCLE EVER.** 3.71.0 installed through it,
+  because an install had just cleared the cache. 3.72.0 and 3.73.0 were both
+  released correctly, neither was offered, and both went on by hand.
+  `PROJECT.md` 7.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
@@ -100,31 +111,31 @@ the **Cycle to Zero series does not exist** and the community form's address is
 that series' slug; and **one test event is live**, post 60379, `pending`, badged
 Community submission.
 
-**THE CACHE DIAGNOSIS WAS NEVER CONFIRMED AND NOW CANNOT BE.** 3.72.0 went on
-by hand, which clears the cache, so the stale value that would have proved it is
-gone. **It is a deduction that fits every symptom and it was not tested**; a
-GitHub rate limit on the host's IP would look identical. If a future release is
-again not offered, **say so rather than assuming this was it**: `TESTING.md`
-1.54 settles it in one press.
+**THE CACHE DIAGNOSIS IS NOW DOUBTFUL, NOT MERELY UNCONFIRMED.** Two releases
+in a row were released correctly and never offered. The fix shipped in 3.73.0,
+so it could not have helped 3.73.0 be offered, and 3.74.0 is the first release
+the forced check can reach. **`TESTING.md` 1.54 settles it in one press on the
+day 3.74.0 is released.** If the check reports 3.74.0, the cache was the cause.
+If it reports nothing while a release exists, the cause is something else and a
+GitHub rate limit on the host's IP is the next thing to look at.
 
 ## Outstanding testing
 
-**`TESTING.md` holds the manual testing backlog, 85 items.** Quick 61, needs real
-conditions 21, blocked on other people 3. Nothing in the build can settle any of
-them. **Twenty-three are new since 3.71.0.** Four want doing on the day 3.73.0 installs,
-in this order: **1.55**, because Approve and Reject have been dead for a release
-and that is the screen the import's 287 drafts pass through; **1.54**, the forced
-update check, which is what makes the next release installable on demand;
-**1.59**, because the FAQ editors' console message is the only route to a
-diagnosis and nobody has yet looked at the case that matters; and **2.23**,
-because 3.72.0 changed who receives an existing email.
+**`TESTING.md` holds the manual testing backlog, 93 items.** Quick 67, needs real
+conditions 23, blocked on other people 3. Nothing in the build can settle any of
+them. **Eight are new in 3.74.0.** Four want doing on the day it installs, in
+this order: **1.62**, because the FAQ set answers are the fault Mark reported and
+this is the release that claims to fix it; **1.54**, the forced update check,
+which is the one press that says whether the updater is fixed or the diagnosis
+was wrong; **1.63**, because the editor's buttons changed on every event and
+Approve there is a route that sends mail; and **1.66**, because the Images
+screen is entirely new and nothing in it has ever run.
 
-**NOTHING IN 3.72.0 OR 3.73.0 HAS BEEN SEEN ON THE SITE.** 3.72.0 went on by
-hand and 3.73.0 has not been installed at all, so every screen either release
-touched is unexercised. The one thing that IS known is what broke: Approve,
-Reject and Get a form link stopped working in 3.72.0 and were dead for the
-whole of its life on the site. **Assume the rest of that release is equally
-unverified** rather than assuming the reported fault was the only one.
+**EVERYTHING IN 3.74.0 IS UNEXERCISED**, and so is most of 3.73.0. What 3.73.0
+has confirmed is listed above and is genuinely confirmed; the rest of it, the
+icon actions, the bulk category control, the cancel landing and the RSVP tick,
+has not been reported back on. **Assume unverified rather than assuming the
+reported faults were the only ones.**
 
 ## Open decisions
 
@@ -135,13 +146,11 @@ Both are built, both are unticked by default, and neither can send without an
 explicit yes, so nothing is at risk while they wait. Each is quoted in full:
 `TESTING.md` 2.21 for the first, `TESTING.md` 2.24 for the second.
 
-**THE DUPLICATE CONTROL STILL DOES NOT NAME THE EVENT IT COPIES.** The seed
-defect behind it was fixed in 3.73.0, so the placeholder and the button now
-agree, but the summary still reads **"Use this event's details on another
-date"** and on a series holding several distinct events "this event" names
-nothing the reader can see. Four series are in that position. Three wordings
-were put to Mark and none is chosen; the 3.73.0 hand-off carries them. Changing
-it is one line and it is a copy decision, not a build.
+**THE COMMUNITY FORM'S AGE RESTRICTION OPTIONS ARE MARK'S CALL.** Reported and
+deliberately not changed, because two of the five were named in isolation and
+one of them opens a required field. The five, what each does, and a proposed
+replacement set are in `PROJECT.md` 8. It is one array, read by the control and
+the validator alike, so the stored values do not move and no event changes.
 
 **222 PUBLISHED EVENT ADDRESSES DIE WITH THE EVENTS CALENDAR.** They are live at
 `resources.sfaf.org/event/<slug>/` and stop resolving when TEC is removed; the
