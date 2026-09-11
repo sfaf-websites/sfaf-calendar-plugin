@@ -107,6 +107,12 @@ echo "=== rich text at load ==="
 run "rich-text-start --self-test" node .claude/rich-text-start-test.js --self-test
 
 echo
+# Five minute steps on every time control, and the one rule that decides
+# where they are deliberately absent.
+echo "=== time controls ==="
+run "time-step --self-test" php .claude/time-step-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

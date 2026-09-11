@@ -4659,7 +4659,23 @@ class SFAF_Portal {
             <button class="uc-btn" type="submit">Filter</button>
         </form>
 
-        <div class="uc-card">
+        <?php
+        /*
+         * THE ONE THING A SEARCH CHANGES (3.74.0).
+         *
+         * Everything a search can alter is inside this card: the count, the
+         * bulk picker, the rows and the pagination. portal.js fetches the same
+         * URL this form would have navigated to, lifts this element out of the
+         * answer and swaps what is inside it, which is what stops the search
+         * box being torn down and rebuilt under somebody's hands mid-word.
+         *
+         * SO THE MARKER IS ON THE CARD AND NOT ON THE TABLE. A search that
+         * changes the count and leaves the heading saying the old number is a
+         * worse answer than no search at all, and the pagination has to move
+         * with the rows it pages.
+         */
+        ?>
+        <div class="uc-card" data-uc-live-search-results>
             <div class="uc-card-head">
                 <h2><?php echo (int) $total; ?> <?php echo esc_html( 1 === (int) $total ? "event" : "events" ); ?></h2>
             </div>
@@ -10449,6 +10465,55 @@ class SFAF_Portal {
              */
             $live        = $event_id ? get_post_status( $event_id ) : '';
             $keep_status = ( 'publish' === $live || 'pending' === $live || 'future' === $live );
+
+            /*
+             * WHAT THIS EVENT CAN BE TOLD TO DO, WHICH IS NOT THE SAME ON
+             * EVERY EVENT (3.74.0).
+             *
+             * WHAT WAS WRONG. Every event, in every state, got the same two
+             * buttons: Save and Publish. On something already published those
+             * are two labels for one outcome, because 'keep' keeps 'publish'
+             * and 'publish' sets 'publish'. Two controls that look like a
+             * choice and are not teach people to stop reading the pair, and
+             * the pair is what a draft genuinely needs.
+             *
+             * ON A PENDING SUBMISSION THEY WERE WORSE THAN REDUNDANT. Publish
+             * here took the same route a draft takes and put the event on the
+             * public calendar, and it is NOT the route the queue's Approve
+             * takes: no address joined the notification list and no published
+             * notice was sent. So somebody who reviewed a submission properly,
+             * by opening it and reading it, published it in a way that told
+             * the person who sent it nothing at all. Approve and Reject are on
+             * this screen now, and they are the same two forms the queue posts.
+             *
+             * NO UNPUBLISH, DELIBERATELY. Cancelling is how an event comes off
+             * the calendar, and it tells the people who registered. A second
+             * quiet route to making one disappear is a way to do that by
+             * accident. Mark weighed it and decided against.
+             */
+            $is_pending  = ( 'pending' === $live );
+            $who_sent    = $is_pending
+                ? SFAF_Submissions::submitter( $event_id )
+                : array( 'is_submission' => false, 'usable' => false, 'name' => '', 'email' => '' );
+            $is_sub      = ! empty( $who_sent['is_submission'] );
+
+            /*
+             * WHO DECIDES A SUBMISSION IS WHO DECIDES ONE ON THE QUEUE, and
+             * that is an admin. The Pending screen is admin-only and both
+             * routes behind it wp_die() on anybody else, so offering the
+             * decision here to somebody the route would refuse is a button
+             * that fails. An editor still saves and still reads everything;
+             * what they do not get is the decision.
+             *
+             * A PENDING EVENT THAT IS NOT A SUBMISSION IS A DIFFERENT THING:
+             * a contributor's own event waiting for review, with nobody
+             * outside to tell. It keeps the Publish it has always had.
+             */
+            $can_decide  = ( $is_pending && $is_sub && $this->is_admin_role( $user ) );
+            $held        = ( $is_pending && $is_sub && ! $this->is_admin_role( $user ) );
+            $show_publish = ( ! $keep_status ) || ( $is_pending && ! $is_sub );
+            $ask_id      = 'uc-approve-' . (int) $event_id;
+            $reject_id   = 'uc-reject-' . (int) $event_id;
             ?>
             <?php
             /*
@@ -10468,9 +10533,15 @@ class SFAF_Portal {
             ?>
             <div class="uc-form-actions uc-form-actions-primary">
                 <p class="uc-form-actions-note"><?php
-                    echo $keep_status
-                        ? 'Saving keeps this event exactly as public as it is now.'
-                        : 'Saving keeps this a draft. Publishing puts it on the public calendar.';
+                    if ( $can_decide ) {
+                        echo 'Approving puts this on the public calendar. Rejecting removes it, and can tell whoever sent it.';
+                    } elseif ( $held ) {
+                        echo 'A calendar admin approves or rejects this one. Saving keeps your changes and leaves it waiting.';
+                    } elseif ( $keep_status ) {
+                        echo 'Saving keeps this event exactly as public as it is now.';
+                    } else {
+                        echo 'Saving keeps this a draft. Publishing puts it on the public calendar.';
+                    }
                 ?></p>
                 <?php
                 /*
@@ -10495,7 +10566,7 @@ class SFAF_Portal {
                  * button somebody reaches for to save a typo.
                  */
                 ?>
-                <button type="submit" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn"><?php echo $keep_status ? 'Save' : 'Save Draft'; ?></button>
+                <button type="submit" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -10524,12 +10595,40 @@ class SFAF_Portal {
                     : '';
                 $watched = $event_id ? SFAF_Sources::completeness_payload( $event_id ) : array();
                 ?>
-                <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
-                    <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
-                <?php else : ?>
-                    <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"
-                            <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
-                            <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
+                <?php
+                /*
+                 * THE TWO DECISIONS THE QUEUE HAS, ON THE SCREEN WHERE THE
+                 * SUBMISSION IS ACTUALLY READ (3.74.0).
+                 *
+                 * THE BUTTONS ARE HERE AND THE FORMS ARE NOT, because a form
+                 * may not be nested inside another one and this row is inside
+                 * the event form. `form=` is how HTML says which form a button
+                 * submits, the two forms are emitted after this one closes,
+                 * and the ticks in the ask panel already associate themselves
+                 * the same way for the same reason.
+                 *
+                 * SO THIS IS THE QUEUE'S ROUTE, NOT A SECOND ONE. Same action,
+                 * same nonce, same prompt, same two ticks. There is nothing
+                 * here that could approve differently from the way the Pending
+                 * screen approves, which is the whole point: Publish was a
+                 * second route and it silently told nobody.
+                 */
+                ?>
+                <?php if ( $can_decide ) : ?>
+                    <button type="submit" form="<?php echo esc_attr( $ask_id ); ?>" class="uc-btn uc-btn-primary"
+                            <?php echo $who_sent['is_submission'] ? ' data-uc-approve-ask="uc-approve-ask-' . (int) $event_id . '"' : ''; ?>>Approve</button>
+                    <button type="submit" form="<?php echo esc_attr( $reject_id ); ?>" class="uc-btn uc-btn-danger"
+                            data-uc-approve-ask="uc-reject-ask-<?php echo (int) $event_id; ?>"
+                            data-uc-ask-title="Reject this event?"
+                            data-uc-ask-confirm="Reject" data-uc-ask-danger>Reject</button>
+                <?php elseif ( $show_publish ) : ?>
+                    <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
+                        <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
+                    <?php else : ?>
+                        <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"
+                                <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
+                                <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <?php
                 // The list the live check watches, straight off
@@ -10549,6 +10648,30 @@ class SFAF_Portal {
 
         <?php
         /*
+         * THE FORMS THE TWO BUTTONS ABOVE SUBMIT, AND THE PROMPTS THEY OPEN.
+         *
+         * Outside the event form because forms do not nest, and after it
+         * because `form=` is an association by id and not by position. Same
+         * markup the Pending screen renders, from the same two methods, so
+         * "the queue asks this and the editor asks that" cannot happen.
+         */
+        if ( $can_decide ) : ?>
+            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" id="<?php echo esc_attr( $ask_id ); ?>">
+                <input type="hidden" name="uc_action" value="approve_event" />
+                <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                <?php wp_nonce_field( 'uc_portal_approve_event', 'uc_nonce' ); ?>
+            </form>
+            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" id="<?php echo esc_attr( $reject_id ); ?>">
+                <input type="hidden" name="uc_action" value="reject_event" />
+                <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                <?php wp_nonce_field( 'uc_portal_reject_event', 'uc_nonce' ); ?>
+            </form>
+            <?php $this->render_approve_ask( $event_id, $who_sent ); ?>
+            <?php $this->render_reject_ask( $event_id, $who_sent ); ?>
+        <?php endif; ?>
+
+        <?php
+        /*
          * CANCELLING, BELOW THE FORM AND OUTSIDE IT.
          *
          * Its own form, so it must not be nested inside the event form, which
@@ -10561,8 +10684,77 @@ class SFAF_Portal {
          * screen and should not be the first control somebody meets.
          */
         $this->render_cancel_card( $user, $event_id );
+        $this->render_delete_card( $user, $event_id );
 
         $this->chrome_close();
+    }
+
+    /**
+     * Delete, at the bottom of the editor and after the cancel card.
+     *
+     * WHY IT IS NOT IN THE ROW OF ACTIONS AT THE TOP (3.74.0). Because of what
+     * it is next to there. Save and Publish are pressed dozens of times a day
+     * and Delete cannot be undone from this screen; putting an irreversible
+     * control in the row somebody's hand already goes to is how an event gets
+     * deleted by muscle memory. The events list learned the same thing in
+     * 3.73.0, which is why Remove there is the third icon and carries its red
+     * at rest.
+     *
+     * AND WHY IT IS AFTER THE CANCEL CARD RATHER THAN BEFORE IT. The two read
+     * as a ladder in the order somebody should try them: cancelling keeps the
+     * registrations, closes new ones, and offers to tell everybody who signed
+     * up; deleting keeps nothing and tells nobody. The reversible answer to
+     * "this event is not happening" is the one somebody meets first, and the
+     * irreversible one is last on the page.
+     *
+     * IT IS THE SAME ROUTE THE LIST POSTS, so it inherits the same refusal:
+     * an event with registrations that has not been cancelled cannot be
+     * deleted, and says why here rather than offering a button that bounces.
+     * See the trash_event case in dispatch_post().
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_delete_card( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            // Nothing to delete before the first save.
+            return;
+        }
+        $post = get_post( $event_id );
+        if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+            return;
+        }
+
+        $blocked = ( ! SFAF_Cancellation::is_cancelled( $event_id )
+            && SFAF_Announce::has_registrations( $event_id ) );
+        ?>
+        <div class="uc-card uc-delete-card">
+            <div class="uc-card-head">
+                <h2>Delete this event</h2>
+            </div>
+            <?php if ( $blocked ) : ?>
+                <p class="uc-hint">
+                    People are registered for this one, so it cannot be deleted. Cancel it above:
+                    that keeps the registrations, closes new ones, and offers to tell everybody who signed up.
+                    Once it is cancelled you can delete it.
+                </p>
+            <?php else : ?>
+                <p class="uc-hint">
+                    The event, its questions and its settings go. Nothing puts them back.
+                </p>
+                <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
+                    <input type="hidden" name="uc_action" value="trash_event" />
+                    <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                    <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
+                    <div class="uc-form-actions">
+                        <button type="submit" class="uc-btn uc-btn-danger"
+                                data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
+                    </div>
+                </form>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     /**

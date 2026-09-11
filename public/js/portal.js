@@ -135,6 +135,14 @@ function ucDismissOnBackdrop(dialog) {
      * ------------------------------------------------------------------ */
     function initTickPickers() {
         document.querySelectorAll('[data-uc-tick-picker]').forEach(function (form) {
+            /* RUN TWICE, BIND ONCE (3.74.0). The events list swaps its results
+             * region in place when somebody searches, so this runs again to
+             * pick up the new rows; the picker form itself is outside that
+             * region and survives, and binding a second set of listeners to it
+             * would double every count. */
+            if (form.getAttribute('data-uc-tick-on')) { return; }
+            form.setAttribute('data-uc-tick-on', '1');
+
             /* form.elements, NOT querySelectorAll, and that is the whole reason
              * this works on both screens. The events list keeps its ticks in
              * table rows that already contain their own <form> elements, and
@@ -745,17 +753,38 @@ function ucDismissOnBackdrop(dialog) {
     /* ---------------------------------------------------------------------
      * The events list search, as you type.
      *
-     * SUBMITS THE REAL FORM, DEBOUNCED. The search is a server query, so this
-     * cannot filter rows already on screen; and it should not fire a request
-     * per keystroke either. 300ms after typing stops, the form goes, which
-     * means the answer lands at a real URL with the term in it: shareable,
-     * back-buttonable, and carrying the sort and filters that were already in
-     * the form's own fields.
+     * IT USED TO SUBMIT THE FORM, AND THAT IS WHAT WAS DROPPING LETTERS
+     * (3.74.0).
      *
-     * THE CARET COMES BACK. A submit is a page load, so the server marks the
-     * box for refocus when a term is present and the caret is put at the end of
-     * it. Without that, every pause mid-word would drop focus and the next
-     * letter would go nowhere.
+     * The complaint was that the box fights the person typing. It was already
+     * debounced at 300ms, so "it searches on every keystroke" was not the
+     * cause; what it did after the debounce was NAVIGATE. A submit tears down
+     * the document, so every letter typed between the request going out and
+     * the new page arriving went into a page that no longer exists, and
+     * `data-uc-refocus` then put the caret back at the end of whatever the
+     * SERVER thought the term was. On a 259-row list over a slow connection
+     * that is a word and a half gone, and a longer debounce would not have
+     * fixed any of it. Both halves of the complaint were the same half.
+     *
+     * SO IT DOES NOT NAVIGATE ANY MORE. It fetches the same URL it used to
+     * submit to, takes the results region out of the response, and swaps that
+     * one element. The input is never touched, so there is no focus to
+     * restore, no caret to put back, and nothing typed mid-flight is lost.
+     *
+     * THE URL STILL SAYS WHAT IS BEING SEARCHED. history.replaceState(), so
+     * the address bar is shareable and a reload lands on the same list.
+     * REPLACE rather than push: one history entry per keystroke would make the
+     * back button walk backwards through a word.
+     *
+     * A STALE ANSWER IS DISCARDED, not rendered. Each fetch takes a sequence
+     * number and only the newest one may write, or a slow response for "co"
+     * would land on top of the results for "coffee".
+     *
+     * AND IT FALLS BACK TO THE PAGE LOAD IT REPLACED. No fetch, no DOMParser,
+     * no results region in the answer, or a request that failed: the form is
+     * submitted, which is exactly what this did before and still what happens
+     * with no script at all. `data-uc-refocus` stays for that path and for the
+     * Filter button.
      * ------------------------------------------------------------------- */
     function initLiveSearch() {
         var refocus = document.querySelector('[data-uc-refocus]');
@@ -772,18 +801,78 @@ function ucDismissOnBackdrop(dialog) {
             }
             var timer = null;
             var last = input.value;
+            var seq = 0;
 
-            function go() {
-                if (input.value === last) {
-                    return; // nothing changed: a stray keyup, or arrow keys
-                }
-                last = input.value;
+            /* The results region, which is the only thing on the page a search
+             * changes. Looked up per search rather than held, because the swap
+             * below replaces what is inside it. */
+            function region() {
+                return document.querySelector('[data-uc-live-search-results]');
+            }
+
+            /* What this did before, kept as the fallback and as the no-script
+             * path's behaviour. */
+            function navigate() {
                 form.classList.add('uc-searching');
                 if (typeof form.requestSubmit === 'function') {
                     form.requestSubmit();
                 } else {
                     form.submit();
                 }
+            }
+
+            function urlNow() {
+                var base = form.getAttribute('action') || window.location.pathname;
+                var query = new URLSearchParams(new FormData(form)).toString();
+                return base + (base.indexOf('?') >= 0 ? '&' : '?') + query;
+            }
+
+            function go() {
+                if (input.value === last) {
+                    return; // nothing changed: a stray keyup, or arrow keys
+                }
+                last = input.value;
+
+                var target = region();
+                if (!target || !window.fetch || !window.DOMParser || !window.URLSearchParams
+                    || !window.history || !window.history.replaceState) {
+                    navigate();
+                    return;
+                }
+
+                var url = urlNow();
+                var mine = ++seq;
+                form.classList.add('uc-searching');
+
+                window.fetch(url, { credentials: 'same-origin' }).then(function (res) {
+                    if (!res.ok) { throw new Error('HTTP ' + res.status); }
+                    return res.text();
+                }).then(function (html) {
+                    if (mine !== seq) {
+                        return; // a later keystroke has already answered
+                    }
+                    var fresh = new DOMParser()
+                        .parseFromString(html, 'text/html')
+                        .querySelector('[data-uc-live-search-results]');
+                    if (!fresh) { throw new Error('no results region in the answer'); }
+
+                    target.innerHTML = fresh.innerHTML;
+                    window.history.replaceState({}, '', url);
+                    form.classList.remove('uc-searching');
+
+                    /* THE CONTROLS INSIDE THE REGION ARE NEW ELEMENTS, and
+                     * both of these bind per element rather than delegating.
+                     * Without this the tick boxes and the Remove confirmation
+                     * would be dead on every row after the first search, which
+                     * is a worse fault than the one being fixed. Both are
+                     * idempotent, so the controls outside the region that were
+                     * already bound are left alone. */
+                    run('tickPickers', initTickPickers);
+                    run('confirmButtons', initConfirmButtons);
+                }).catch(function () {
+                    if (mine !== seq) { return; }
+                    navigate();
+                });
             }
 
             input.addEventListener('input', function () {
@@ -1758,6 +1847,13 @@ function ucDismissOnBackdrop(dialog) {
     function initConfirmButtons() {
         var sel = '[data-uc-confirm], [data-uc-confirm-template]';
         document.querySelectorAll(sel).forEach(function (btn) {
+            /* RUN TWICE, BIND ONCE (3.74.0). The events list swaps its results
+             * region after a search and runs this again for the new rows'
+             * Remove buttons. A button that was already bound must not get a
+             * second listener, or the confirmation would ask twice. */
+            if (btn.getAttribute('data-uc-confirm-bound')) { return; }
+            btn.setAttribute('data-uc-confirm-bound', '1');
+
             btn.addEventListener('click', function (e) {
                 // The replay after the manager said yes. Cleared immediately so
                 // a second press asks again.
@@ -4120,12 +4216,42 @@ function ucDismissOnBackdrop(dialog) {
          * editor taken down or TinyMCE keeps an instance pointed at an element
          * that is no longer in the document, and the next row with that id
          * silently fails to start.
+         *
+         * THERE ARE THREE WAYS A ROW GETS ONTO THIS SCREEN AND ONLY TWO OF
+         * THEM ASKED FOR AN EDITOR (3.74.0).
+         *
+         *   from the server   the load pass above covers it
+         *   + Add FAQ         `.uc-repeater-add`, covered here
+         *   a FAQ set         `[data-uc-faq-apply]`, covered by NOTHING
+         *
+         * initFaqSetPicker() builds its rows from the same <template>, fills
+         * in the question and the answer, and appends them. It never asked for
+         * an editor, so those answers stayed the plain textareas the template
+         * holds, and they stayed plain until something else happened to run
+         * startAll() over the whole document. Pressing + Add FAQ afterwards is
+         * exactly that: one new row, and every set row already on the screen
+         * turning into an editor at the same moment. That is the reported
+         * symptom, and it is the SWEEP doing it rather than the add.
+         *
+         * THE CONSOLE WAS SILENT AND THE SILENCE WAS CORRECT. The catch in
+         * start() names an initialise that threw; nothing here ever got as far
+         * as initialising, so there was nothing for it to name.
+         *
+         * MATCHED HERE RATHER THAN CALLED FROM THE PICKER. initFaqSetPicker()
+         * is in another top-level scope of this file and cannot see startAll(),
+         * which is the 3.72.0 fault exactly. A listener on the document is what
+         * the two scopes already share.
          */
         document.addEventListener('click', function (e) {
-            var add = e.target.closest ? e.target.closest('.uc-repeater-add') : null;
+            var add = e.target.closest
+                ? e.target.closest('.uc-repeater-add, [data-uc-faq-apply]')
+                : null;
             if (add) {
-                /* After initRepeaters() has appended the clone. Same startAll()
-                 * the load pass runs, rather than a second copy of the loop. */
+                /* After initRepeaters() or the set picker has appended its
+                 * rows. This listener is on the capture phase and both of
+                 * theirs are on the target, so the rows are in the document by
+                 * the time a deferred task runs. Same startAll() the load pass
+                 * runs, rather than a second copy of the loop. */
                 window.setTimeout(startAll, 0);
                 return;
             }
