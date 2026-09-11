@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.74.0
+Stable tag: 3.75.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,46 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.75.0 =
+
+**THE UPDATER LOOP IS CLOSED AND THIS IS THE RELEASE THAT RECORDS IT.** Check for updates on 3.73.0 offered 3.74.0 and it installed in one click. The cache was the cause, the fix works, and the cycle runs end to end: build, release, the site offers it, press update. Two releases had to go on by hand; nothing does now.
+
+**SIX MORE CATEGORY COLOURS, AND THEY ARE SHADES RATHER THAN NEW HUES.** Seven categories against ten colours left three, and more categories are coming. Light Orange and Deep Orange, Light Purple, Deep Teal, Light Green and Deep Green: sixteen now, every one recognisably the brand's.
+
+**EVERY ONE IS MEASURED AND THE MEASUREMENTS ARE IN THE BUILD.** `.claude/palette-audit.php` checks the two things that can go wrong when a palette grows, on every colour and every pair. Can this colour carry its own icon: the placeholder fills a rectangle with the raw colour and draws the icon and the label on whichever neutral wins, so a colour with no neutral over 4.5:1 is one where both are washed out. And can anybody tell it from its neighbour: CIE76 in Lab, floor 25, measured against the 28px swatch the picker actually renders at rather than against a hex comparison, because two hexes differing in every digit can look identical.
+
+**AND THE FIRST DRAFT OF THAT AUDIT HAD A CHECK THAT COULD NEVER FAIL.** It asked whether each colour had a neutral over 3:1, which is arithmetically guaranteed with these two neutrals: clearing 3:1 against Dark Gray needs a luminance under 0.2155, clearing it against white needs over 0.30, and nothing can be in both bands. The worst any colour can do is **3.44:1** at the crossover. So the check was a statement about arithmetic rather than about the palette and would have passed any shade anybody ever added. The floor is 4.5 now, which a real colour can fail, with Red and Pink exempt by name as brand colours that predate the rule and are already documented as large-text-only. **Its own self-test is what caught it.**
+
+**THE ICON SET GREW FROM SIXTEEN OFFERED TO THIRTY**, and the reason is a collision rather than a shortage: **Español and Program Groups both drew the same icon**, so two kinds of event were indistinguishable on every placeholder they produced. Nine new glyphs, in the same 2px stroke as the rest, for the things this calendar actually runs: a conversation, a globe, a book, a meal, music, a bicycle, a shield, a star and a flag. Four more were already drawn and had simply never been offered.
+
+**The swatch copy no longer counts.** It read "the ten approved brand colors", which was true of the guide and stopped being true here. A number in copy goes stale silently, so it says what the rule is instead.
+
+**CALENDAR VIEW IS WHAT A BLOCK OPENS ON.** It was the list, and it was the list in **four places that all agreed**: the shortcode's attributes, the shortcode's render arguments, the REST route's parameter and embed.js's own fallback. The reason was written down and was a real one, that a thin calendar looks empty as a grid. The calendar is not thin any more.
+
+All four say the grid now, and the build compares them rather than asserting a value, so changing the default deliberately passes and changing it in three of four does not. **A visitor's own choice still wins**: embed.js remembers which view somebody last pressed, per block, so this changes what a first visit opens on and nothing about a returning one.
+
+**A HOVER PREVIEW ON THE MONTH GRID.** Hovering a tile shows the picture, the date, the times and where it is, with the event's own link under it.
+
+**IT IS IN THE TOP LAYER, AND THAT IS THE WHOLE OF THE STACKING ANSWER.** 3.70.1 spent a release proving a number cannot win here: an ancestor on resources.sfaf.org has a transform, which makes it the containing block for fixed descendants and traps every z-index inside its own stacking context. `showPopover()` is the non-modal door into the same top layer `showModal()` uses for the registration dialog, and the non-modal one is the right door: a preview that moved focus and made the rest of the page inert because a mouse passed over a tile would be absurd. **There is no z-index in its stylesheet at all**, and the build fails if one appears.
+
+**NO FALLBACK, DELIBERATELY.** A browser without `showPopover()` gets no preview and keeps a tile that is still a link to the event. The alternative is a number we already know loses, on the one theme that matters, in a way nobody would notice until somebody said the preview was behind the header.
+
+**IT APPEARS BELOW THE TILE, ABOVE IT WHERE THERE IS NO ROOM BELOW**, and pinned inside the viewport either way, which is what a tile on the last week of the month needs. Measured after it is shown, because a popover has no size until it is in the top layer, and kept invisible for that one frame so the first paint is not a flash in the corner.
+
+**MOBILE GETS NOTHING, AND THAT IS THE DECISION RATHER THAN AN OMISSION.** There is no hover on a touch screen; a hover preview there fires on tap, so the first tap would show a panel and the second would open the event. The whole thing is behind `(hover: hover) and (pointer: fine)`, which asks the device what it can do rather than guessing from the width, because a wide touch screen still cannot hover. **260ms before it opens**, because moving a mouse diagonally across a month passes a dozen tiles.
+
+**THE REGISTRATION BOX WAS THE LAST THING ON A PHONE.** On desktop the card holding the date, the time, the place and **Register** sits beside the top of the content. Stacked into one column it landed after the entire description and the FAQ, so the primary action on the page was the furthest thing from the top of it.
+
+The card goes first on one column now, which is **where the desktop layout already puts it**: when, where, register, then read. Not a sticky bar with its own Register, which would be a second control to keep in step with the first for one event: the card moves, and there is still exactly one of everything on it.
+
+**And the page stayed two columns down to 601px**, where the content column is 249px and a paragraph reads at about thirty characters a line. It stacks at 860px.
+
+**THE DAY PANEL'S THUMBNAIL WAS FLUSH AGAINST ITS TITLE.** The rule that hides the thumbnail in a 40px grid cell also sets `gap: 0` on every entry, which is correct about the cell and reaches the panel below the grid, where the thumbnail is deliberately put back. Nothing lost on specificity and nothing was missing: a rule that was right in one context, one selector along. It is the same fault family as the cascade defects and wants looking at from the context where the thing it assumes is false.
+
+**A FOURTH, FOUND AT 360px RATHER THAN REPORTED.** A **table** or an **iframe** pasted into an event description had never been styled at all, and either pushes the whole page sideways on a phone. The table scrolls inside its own box, because six columns cannot be read at 360px however they are styled, and a pasted URL with no spaces in it now breaks instead of taking the page with it.
+
+**AND A TEST BROKE WITHOUT ANYTHING IT CHECKS CHANGING.** `filter-bar-test.php` located a button with a nested-quantifier regex across the whole shortcodes file; adding forty lines to that file exhausted PCRE's JIT stack, `preg_match()` returned false rather than 0, and the test read that as "the button is missing". It is string work now, which cannot backtrack, and the question it asks is unchanged.
 
 = 3.74.0 =
 

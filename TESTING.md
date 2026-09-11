@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 92 items.** Quick 66, needs real conditions 23, blocked on other
+**Outstanding: 97 items.** Quick 71, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -880,6 +880,76 @@ Open an event that is in a series with at least one tagged image and press
 all**, because the first one already shows everything.
 
 **As an editor or a contributor, the modal should have no Upload Files tab.**
+
+### 1.68 The hover preview, including a tile on the bottom row (3.75.0)
+
+**Nothing about this has run in a browser.** Open the calendar on a desktop,
+month view, and hover an event tile.
+
+- A panel appears after a short pause, holding the picture, the title, the
+  date, the times and the place.
+- **Move the mouse across a whole week without stopping.** No preview should
+  appear at all until the pointer rests on one.
+- **Hover a tile on the LAST ROW of the month**, with the grid scrolled so the
+  tile is near the bottom of the window. The panel must flip ABOVE the tile
+  rather than opening off screen. That is the case the positioning exists for.
+- **Hover a tile in the leftmost and rightmost columns.** The panel must stay
+  inside the window on both sides.
+- **It must be over everything**, including the site header. If it appears
+  behind anything at all, say so and say what: that would mean the top layer is
+  not being reached, which is the one thing the build cannot check.
+- **Tab through the grid with the keyboard.** The preview should follow focus.
+
+**An event with no picture** should show the panel with no image band and no
+gap where one would be.
+
+### 1.69 The preview is absent on a phone and a tablet (3.75.0)
+
+**This is the deliberate omission and it wants confirming rather than assuming.**
+On a phone and on a touch tablet, tap an event tile in the month grid.
+
+It must open the event **on the first tap**, with no panel appearing first. If a
+panel appears, the hover gate is not doing its job and every tile on the
+calendar has just become a two-tap control.
+
+### 1.70 The new colours and icons on the category screen (3.75.0)
+
+**caladmin > Series & Categories.** Edit a category.
+
+- The swatches are **sixteen** now. Confirm the six new ones read as clearly
+  different from the colours they are shades of, at the size they are drawn.
+  They are measured to be, and it is worth one look.
+- The icon list is **thirty**, grouped rather than alphabetical.
+- **Give Español and Program Groups different icons**, which is the thing that
+  prompted this: they have been drawing the same one.
+- Save, then look at the category's placeholder on an event with no picture of
+  its own: the colour and the icon should both be what was chosen.
+
+### 1.71 What a block opens on, on the site and in an embed (3.75.0)
+
+**In a browser that has never opened the calendar**, or a private window,
+because a remembered choice beats the default and that is correct.
+
+The calendar should open on the **month grid**, not the list. Press **List**,
+reload, and it should still be the list: the choice is remembered per block.
+
+**Then check an embed on another site** the same way. Both are supposed to open
+the same way now, and four places had to agree for that to be true.
+
+### 1.72 The event page on a phone (3.75.0)
+
+**Open an event with registration on, on a phone.**
+
+- **Register is near the top**, under the title and the picture, with the date,
+  time and place. Not under the description and not under the FAQ.
+- **The thumbnail in the list under the calendar has space against its title.**
+  Tap a date in the month grid and read the panel below it.
+- **Turn the phone sideways, and try a small tablet.** The page should be one
+  column up to about 860px and two above it, and the switch should not leave a
+  240px column of text at any width.
+- **Nothing should scroll sideways.** If an event description has a table or a
+  pasted video in it, that is the case to try: the table should scroll inside
+  its own box and the page should not.
 
 ---
 

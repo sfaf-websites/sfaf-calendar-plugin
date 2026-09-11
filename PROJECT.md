@@ -1274,6 +1274,151 @@ rather than restating them, asserts they are emitted in exactly one place,
 asserts every wrapper carries the folder attributes, and walks the call graph so
 that a sub-renderer is not asked to enqueue what its caller already did.
 
+### The category palette is closed, and how a colour joins it
+
+**SIXTEEN COLOURS: THE GUIDE'S TEN, AND SIX SHADES OF THEM ADDED IN 3.75.0.**
+Shades rather than new hues, because the brand guide is explicit that the
+palette is the palette and p.18 permits darker and lighter variations of what
+is already there. `sfaf_sanitize_brand_color()` is enforced on save, so an
+off-palette hex cannot be stored from any screen of ours.
+
+**TWO FLOORS, AND EACH PROTECTS A DIFFERENT SURFACE.**
+
+**The icon floor, 4.5:1.** `sfaf_event_placeholder_svg()` fills a rectangle with
+the RAW category colour and draws the icon and the label on whichever neutral
+wins, which is `sfaf_on_color()`. A colour with no neutral over 4.5:1 is one
+where both are washed out. **Red and Pink are exempt by name**: they are the
+guide's own colours, they predate the rule, and they are already documented as
+large-text-only, which the 92px bold label is. A new shade has no such standing.
+
+**The ink floor.** The chip, the ring and the small tile never use the raw
+colour; they use the ink from `sfaf_category_shades()`, which has to clear
+4.5:1 on white, on the page, and **on its own chip tint**. That last one is the
+contrast the shades table exists for: a pair that clears 4.5:1 on white can
+still fail on its own tint, which is exactly what the old 12% chip did at
+2.05:1.
+
+**AND A DISTINCTNESS FLOOR, WHICH IS NOT A CONTRAST QUESTION.** CIE76 in Lab,
+floor 25, every pair against every other pair. Two hexes can differ in every
+digit and look identical; a shade nobody can tell from its parent is a choice
+nobody can make in a swatch picker and nobody can read on a card. The floor is
+chosen against the 28px swatch the picker actually renders at.
+
+> **A 3:1 NEUTRAL CHECK IS UNFAILABLE AND THE FIRST DRAFT OF THIS AUDIT HAD
+> ONE.** Clearing 3:1 against Dark Gray needs a luminance under 0.2155;
+> clearing it against white needs over 0.30; nothing can be in both bands. The
+> worst any colour can do is **3.44:1** at the crossover, so "every colour
+> clears 3:1" was a statement about arithmetic rather than about the palette,
+> and it would have passed any shade anybody ever added. Caught by the audit's
+> own self-test, which is the whole reason a checker gets one. See §7.
+
+**`.claude/palette-audit.php` is where all of this lives**, including a
+`--propose` mode that generates candidate shades of each approved hue and
+measures them, so the next addition starts from numbers rather than from a
+screenshot.
+
+**THE FIRST CATEGORY ALPHABETICALLY SUPPLIES THE COLOUR AND THE ICON.**
+`sfaf_event_categories()` sorts by name with `strcasecmp` and
+`sfaf_event_primary_category()` takes the first, so an event in two categories
+is drawn in the earlier one's colour. This is worth knowing because **Español
+sorts before every other category this calendar has** (Fundraising, Health
+Services, Program Groups, Support Groups, Volunteer), so a Spanish-language
+support group is drawn as Español and not as a support group. That is a real
+consequence of a real rule and not a defect; whether a LANGUAGE belongs as a
+category at all is an open question and is in §8.
+
+### Which view a block opens on, said in four places
+
+**THE MONTH GRID SINCE 3.75.0, AND IT WAS THE LIST.** The reason it was the list
+is recorded and was a real one: real months have entire weeks with no Friday or
+Sunday events, and an empty-looking grid is a poor first impression. That was an
+argument about a thin calendar, and the calendar is not thin any more.
+
+**FOUR PLACES DECIDE IT AND ALL FOUR HAVE TO AGREE**, because a block with no
+view of its own is drawn by whichever route reached it:
+
+```
+class-sfaf-shortcodes.php   the shortcode's attributes
+class-sfaf-shortcodes.php   the shortcode's render arguments
+class-sfaf-embed.php        the REST route's parameter
+public/js/embed.js          the fallback in viewFor()
+```
+
+One left behind would make the same block open as a grid on the page and as a
+list in the feed. `embed-modes-test.php` READS all four and requires them equal
+rather than asserting a value, so changing the default deliberately is one edit
+in four places and passes, and changing it in three does not.
+
+**A VISITOR'S OWN CHOICE STILL WINS.** embed.js remembers which view somebody
+last pressed, keyed per block, and a remembered choice beats the configured
+default. So this decides what a FIRST visit opens on and nothing about a
+returning one. Sidebar and combined are configurations rather than choices and
+are never overridden.
+
+### The month grid's hover preview, and the top layer again
+
+**HOVERING A TILE SHOWS THE REST OF THE EVENT**: the picture, the date, the
+times, where it is, and what the tile does.
+
+**IT IS A POPOVER, WHICH IS THE NON-MODAL DOOR INTO THE TOP LAYER.** 3.70.1
+established that a floating panel on resources.sfaf.org cannot win on z-index,
+because an ancestor has a transform and therefore owns both the containing block
+and the stacking context. `showModal()` and `showPopover()` are the two doors
+into the layer that is above every stacking context by definition, and only one
+of them is right here: `showModal()` moves focus, makes the rest of the page
+inert and closes on Escape, all of which is correct for a registration form and
+absurd for something that appears because a mouse passed over a tile.
+
+**SO THERE IS NO z-index IN ITS STYLESHEET**, and `.claude/hover-preview-test.php`
+fails if one appears. In the top layer a number is inert; out of it, a number
+loses. A z-index here would be a thing somebody later RAISES in the belief that
+it is doing something.
+
+**NO FALLBACK.** A browser without `showPopover()` gets no preview and keeps a
+tile that is still a link. An enhancement that is absent is honest; one that
+renders underneath the theme's header is not.
+
+**DESKTOP ONLY, ASKED OF THE DEVICE.** `(hover: hover) and (pointer: fine)`,
+never a width: a wide touch screen still cannot hover, and a hover preview on a
+touch device fires on tap, which turns a one-tap link into a two-tap one. The
+script refuses to build any of it and the stylesheet is guarded as well, because
+a stylesheet that is only right when a script agrees with it has a second
+dependency nobody can see.
+
+**ONE PANEL FOR THE PAGE, FILLED FROM ATTRIBUTES ON THE TILE.** A busy month
+runs to sixty events, and sixty hidden panels is sixty images a browser may
+decide to fetch for a preview nobody opens. Every value on the tile is already
+on the page somewhere, so nothing there is a second source of truth.
+
+**THE UA POPOVER BOX HAS TO BE OVERRIDDEN IN BOTH DIRECTIONS.** Every
+`[popover]` carries `inset: 0` and `margin: auto` from the user-agent sheet, so
+setting only `top` and `left` leaves right and bottom pinned and the auto
+margins centre the panel in the viewport, ignoring where it was placed. Same
+shape as the note on the modal's own UA box.
+
+**AND THE BUTTON IN IT IS A LABEL, NOT A CONTROL.** The whole tile is already a
+link to the event; a second focusable control floating in the top layer would be
+a tab stop that appears and disappears with the pointer.
+
+### The event page on a phone
+
+**THE CARD GOES FIRST, WHICH IS WHERE THE DESKTOP LAYOUT ALREADY PUTS IT.** The
+sidebar holds the date, the time, the place and **Register**. The two-column
+layout puts it beside the TOP of the content, so a visitor sees when, where and
+register before reading anything; stacked into one column it landed after the
+whole description and the FAQ, and the primary action on the page was the
+furthest thing from the top of it. `order: -1` is the whole fix, and it is the
+same reading order expressed in one dimension rather than a new design.
+
+**NOT A STICKY BAR WITH ITS OWN REGISTER.** That was the other option and it is
+a second control that has to stay in step with the first: the same event, two
+places to say "full", two places to disable, two places to get wrong. The card
+moves, and there is still exactly one of everything on it.
+
+**IT STACKS AT 860px, NOT 601px.** The grid is `1fr 320px` with a 32px gap, so
+at 601px the content column is 249px and every paragraph is reading at about
+thirty characters a line.
+
 ### The featured image picker offers one folder, matched on the file path
 
 Event photographs live in `wp-content/uploads/calendar/`, a folder made with WP
@@ -3676,6 +3821,56 @@ current situation and all four will still be true in six months.
   nothing to do with the calendar. Nothing here detects, sets or translates a
   locale, and 3.16.0 is why that sentence is written down.
 
+**A check that could not fail, written the same day as the thing it checks.**
+`.claude/palette-audit.php` was added in 3.75.0 to stop an unusable category
+colour being added, and its first draft asked whether every colour had a neutral
+over 3:1. Against Dark Gray and white that is arithmetically guaranteed:
+clearing 3:1 against the first needs a luminance under 0.2155, against the
+second needs over 0.30, and nothing is in both bands, so the worst any colour
+can do is 3.44:1 at the crossover. **The check was a statement about arithmetic
+and would have passed any shade anybody ever added**, while reporting in its
+own summary that the palette had been verified.
+
+> **A FLOOR HAS TO BE ONE A REAL VALUE CAN FALL BELOW.** Before writing a
+> threshold, work out what the WORST possible input scores against it. If
+> nothing can fail, the check is decoration and a confident summary under it is
+> worse than no check, because it is what stops the next person looking.
+
+**What caught it was the self-test, exactly as intended.** The plant was "a
+colour with no neutral over 3:1", and there is no such colour to plant: the
+self-test reported MISSED, which is how a checker says its own floor is
+unreachable. That is the third time a self-test has found a fault in the checker
+rather than in the code, after the possessive quantifier in 3.20.0 and the two
+assertions `updater-test.php` had to have rewritten in 3.73.0.
+
+**A regex that worked until the file grew.** `filter-bar-test.php` located a
+button with `<button\b(?:(?!<button\b).)*?data-category="all".*?</button>` over
+the whole five-thousand-line shortcodes file. Adding forty lines to that file
+exhausted PCRE's JIT stack, `preg_match()` returned **false** rather than 0, and
+the test read a false as "not found" and failed. Nothing it checks had changed.
+
+> **preg_match() HAS THREE ANSWERS AND MOST CODE TREATS IT AS TWO.** 1, 0 and
+> false, and false means the pattern gave up rather than the subject not
+> matching. Any nested quantifier over a whole source file is a pattern that
+> will eventually give up, at a size nobody can predict, and the failure arrives
+> as a confident assertion that something is missing. Where the question is
+> "find this literal and look at what encloses it", `strpos()` and `strrpos()`
+> cannot backtrack and cannot lie.
+
+**A rule that was right in one context, one selector along.** The month grid
+hides the thumbnail in a 40px cell on a phone and sets `gap: 0` with it, because
+with no thumbnail the gap is dead space at the start of the line. Both halves
+are correct about the cell. The day panel below the grid puts the thumbnail
+BACK, and inherited the `gap: 0`, so the picture sat flush against the title on
+every phone.
+
+> **THE TWIN OF THE CASCADE FAULTS, AND IT NEEDS THE OPPOSITE SEARCH.** Nothing
+> lost on specificity and nothing was missing, so neither the cascade arithmetic
+> nor the padding audit could have found it. A rule whose correctness depends on
+> a condition (here, "there is no thumbnail") has to be checked in every context
+> it reaches where that condition is FALSE. Ask what a rule assumes, then go
+> looking for the place that assumption does not hold.
+
 **Three ways in, and the investigation only knew about two.** The FAQ answers
 were reported as "the editors do not start", and three releases were spent on
 the two paths anybody could name: rows that come from the server, and rows the
@@ -3948,6 +4143,42 @@ lives only in geometry reaches Mark's screen with the suite green.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Whether a language belongs as a category, still open
+
+**REPORTED IN 3.75.0, NOT ACTED ON**, because it is a decision about what the
+calendar's categories ARE rather than a defect.
+
+**SIX OF THE SEVEN DESCRIBE WHAT AN EVENT IS.** Fundraising, Health Services,
+Program Groups, Support Groups, Volunteer and one more say what kind of thing is
+happening. **Español says what language it happens in**, which is a different
+question about the same event, and an event can be both.
+
+**AND THE FIRST CATEGORY ALPHABETICALLY SUPPLIES THE COLOUR AND THE ICON.**
+`sfaf_event_categories()` sorts with `strcasecmp` and
+`sfaf_event_primary_category()` takes `[0]`. **Español sorts before every other
+category this calendar has**, so a Spanish-language support group is drawn in
+Español's colour, with Español's icon, on its card, its placeholder, its month
+tile and its chip. It is a support group everywhere except in how it looks.
+
+**THAT IS THE RULE WORKING, NOT FAILING.** One category has to win or a card has
+two colours, alphabetical is the only order that does not require somebody to
+maintain a ranking, and 3.40.0 settled deliberately that there is no "primary
+organizer" field to keep in step. Nothing here is a bug to fix.
+
+**THE THREE ANSWERS, AND THE COST OF EACH.**
+
+| | What it means | Cost |
+|---|---|---|
+| **Leave it** | Spanish-language events are drawn as Español | The kind of event is invisible on every surface that shows one category |
+| **A field, not a category** | Language becomes its own meta, with its own badge | A build, and a decision about what the badge says and where |
+| **Rename it so it sorts late** | "Programs in Spanish", say | A rename, and it still wins wherever it pairs with something later still |
+
+**What cannot be recommended from here is which one.** It depends on whether
+somebody browsing wants to filter by language, which is a question about the
+people using the calendar rather than about the code. The filter bar already
+offers categories, so today Español IS a language filter, and that is the thing
+the first option quietly keeps.
 
 ### The community form's age restriction options, awaiting Mark
 

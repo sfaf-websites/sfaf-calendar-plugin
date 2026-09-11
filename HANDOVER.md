@@ -6,44 +6,48 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.74.0, released.
+**Last updated:** 2026-09-11, at 3.75.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.74.0**, built as `sfaf-calendar-3.74.0.zip` in the project root, committed,
-**pushed to both repositories** and **released** on 2026-09-11. Working tree
-clean. The asset on the release is that zip, 1,279,283 bytes, and its name
-matches the pattern `asset_url()` looks for.
+**3.75.0**, built as `sfaf-calendar-3.75.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean.
 
-> **THE UPDATER LOOP IS CLOSED, AND IT IS THE FIRST THING ON THIS PAGE THAT IS
-> FINISHED RATHER THAN WAITING.** Mark pressed **Check for updates** on 3.73.0,
-> it offered 3.74.0, and 3.74.0 installed in one click. So the cache WAS the
-> cause, the 3.73.0 fix works, and the whole cycle is confirmed end to end:
-> build, release, the site offers it, he presses update. No release needs to go
-> on by hand again. `PROJECT.md` 7 carries the diagnosis and what it cost.
+> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
+> separate press: `bash .claude/publish.sh --release`. Once it is run, the site
+> will offer it: **Check for updates on the Plugins screen now works**, which is
+> the one thing on this page that is finished rather than waiting.
+
+> **THE UPDATER LOOP IS CLOSED.** Mark pressed Check for updates on 3.73.0, it
+> offered 3.74.0, and 3.74.0 installed in one click. The cache WAS the cause,
+> the 3.73.0 fix works, and the cycle runs end to end: build, release, the site
+> offers it, press update. **No release needs to go on by hand again.**
+> `PROJECT.md` 7 has the diagnosis and what it cost.
 
 | | |
 |---|---|
-| **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, and that was a third path nobody had counted: the set picker clones the same template and never asked for an editor, so pressing Add FAQ afterwards swept the whole document and turned every set row into one at once. The console was silent because nothing ever got as far as initialising. Also: **Approve and Reject are on the event editor**, and they are the queue's own two forms, because Publish from there set the status and told the submitter nothing; **the buttons follow the event's state** and there is a **Delete** card under the cancel card; **the search box stopped tearing itself down** (it was navigating, not searching too eagerly); **the community form asks for one set of details**, has a **picture chooser** at last, and says "Enter location manually" and "Capacity"; **caladmin has an Images screen** tagged by series; and the duplicate control names the event it copies. |
-| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE.** One cause: a helper declared inside one of portal.js's four top-level IIFEs and called from two others, which cannot see into it. Also: the locked FAQ answers read as prose; the events list is three icons on one line; **Cancel** lands on the cancel card; **bulk add a category**; the Display RSVP tick greys while Accept RSVPs is off; **a fifth message, "this event is back on"**; and the duplicate seed is computed once. |
-| **3.73.0 (updater)** | **The updater could not be told to look, and nothing ever told it.** `latest()` has taken a `$force` argument since 3.70.0 and no call site had ever passed `true`. There is a **Check for updates** link on the Plugins screen now, and `forget()` clears on install as well as update. `.claude/updater-test.php` runs the thing and plants six regressions. |
-| **3.72.0** | **The cancel and remove cluster, and the batch that was waiting.** One action in the cancel dialog, a backdrop that dismisses, Remove refused on a registered event, "Cancelled" on every surface, the Listing detail contact box as three boxes, five-minute time steps, the real repeat question on the staff form, and three submission notifications. |
+| **3.75.0** | **SIX SHADES JOIN THE PALETTE**, all measured, with `.claude/palette-audit.php` now the thing that stops the next one being added blind; **the icon set goes from sixteen offered to thirty**, because Español and Program Groups were drawing the same one. **A block opens on the month grid**, which it did in none of the four places that decide it. **A hover preview on the month grid**, in the top layer through the Popover API, desktop only. And **three mobile faults**: the registration card was the last thing on the page, the day panel's thumbnail was flush against its title, and the page stayed two columns down to 601px. A fourth found on the way: a pasted table or iframe in a description pushed the page sideways. |
+| **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, a third path nobody had counted. Also: **Approve and Reject are on the event editor**, and they are the queue's own two forms, because Publish from there told the submitter nothing; the buttons follow the event's state and there is a **Delete** card under the cancel card; **the search box stopped tearing itself down**; the community form asks for one set of details and has a **picture chooser**; **caladmin has an Images screen** tagged by series. |
+| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE**, from a helper declared in one of portal.js's four top-level IIFEs and called from two others. Also the locked FAQ answers as prose, the events list as icons, **bulk add a category**, and **a fifth message, "this event is back on"**. |
+| **3.73.0 (updater)** | `latest()` had taken a `$force` argument since 3.70.0 and no call site had ever passed `true`. **Check for updates** on the Plugins screen, and `forget()` clearing on install as well as update. Confirmed working, above. |
 
 ## What has actually been seen on the site
 
-- **3.73.0 IS INSTALLED, BY HAND.** Confirmed 2026-09-11. **Approve works**: the
-  dialog appears, names the submitter and offers two ticks. It had been dead for
-  the whole of 3.72.0's life on the site.
+- **3.74.0 IS INSTALLED, THROUGH THE UPDATER.** Confirmed 2026-09-11, in one
+  click, which is what closed the loop above.
 - **THE WHOLE SUBMISSION PATH IS CONFIRMED END TO END, for the first time.**
   Submit, alert to the submissions address, approve with both ticks, publish,
   published notice to the submitter, event live on the public calendar.
   **Registration is confirmed too**, both the attendee's confirmation and the
   organizer's alert.
-- **The forced update check works.** Mark pressed it and it correctly reported
-  the installed version as current.
+- **Approve works.** The dialog appears, names the submitter and offers two
+  ticks. It had been dead for the whole of 3.72.0's life on the site.
 - **The locked FAQ rows read as prose.**
+- **On a phone the calendar shows with the list below it, and tapping a date
+  updates that list.** Confirmed 2026-09-11, and it is the thing 3.75.0's
+  mobile work must not have broken.
 - **THE IMPORT HAS RUN.** 2026-09-03. The site holds **287 drafts across 32
   series** and Mark has confirmed they look accurate. Trash emptied.
   **`TESTING.md` 2.18 and 2.19 are deliberately still open:** deleting the
@@ -51,9 +55,6 @@ matches the pattern `asset_url()` looks for.
   separate actions and neither has been reported back on.
 - **3.71.0's BULK PUBLISH READS CORRECTLY** on a real series. 3.72.0 put
   per-row ticks on it and those have not been seen.
-- **THE UPDATER WORKS, CONFIRMED ON 3.74.0.** Check for updates on the Plugins
-  screen offered it and it installed in one click. 3.72.0 and 3.73.0 both had to
-  go on by hand; nothing does now. `PROJECT.md` 7.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
@@ -105,28 +106,30 @@ the **Cycle to Zero series does not exist** and the community form's address is
 that series' slug; and **one test event is live**, post 60379, `pending`, badged
 Community submission.
 
-**THE CACHE DIAGNOSIS WAS RIGHT, AND IT IS SETTLED.** It sat unconfirmed for
-three releases and doubtful for one, because two releases in a row were cut
-correctly and never offered. Pressing the forced check on 3.73.0 offered 3.74.0
-and it installed in one click. Nothing here is waiting on it any more.
-
 ## Outstanding testing
 
 **`TESTING.md` holds the manual testing backlog.** The count is at the top of
 that file and moves with it. Nothing in the build can settle any of them.
 
-**3.74.0 IS ON THE SITE AND MOST OF IT IS STILL UNEXERCISED.** Three want doing
-first: **1.62**, because the FAQ set answers are the fault Mark reported and
-3.74.0 is the release that claims to fix it; **1.63**, because the editor's
-buttons changed on every event and Approve there is a route that sends mail; and
-**1.66**, because the Images screen is entirely new and nothing in it has ever
-run.
+**3.74.0 IS ON THE SITE AND MOST OF IT IS STILL UNEXERCISED**, and none of
+3.75.0 is. Four want doing first, and two of them are new:
 
-**EVERYTHING IN 3.74.0 IS UNEXERCISED**, and so is most of 3.73.0. What 3.73.0
-has confirmed is listed above and is genuinely confirmed; the rest of it, the
-icon actions, the bulk category control, the cancel landing and the RSVP tick,
-has not been reported back on. **Assume unverified rather than assuming the
-reported faults were the only ones.**
+- **1.68**, the hover preview, and specifically **a tile on the bottom row**.
+  Whether the panel flips above the fold and whether it clears the site header
+  are the two things the build cannot check and the two that would make it
+  useless.
+- **1.69**, that the preview is ABSENT on a phone. It is a deliberate omission,
+  and if it fires on tap then every tile on the calendar has become a two-tap
+  control.
+- **1.62**, the FAQ set answers, because that is the fault Mark reported and
+  3.74.0 is the release that claims to fix it.
+- **1.66**, the Images screen, because it is entirely new and nothing in it has
+  ever run.
+
+**Assume unverified rather than assuming the reported faults were the only
+ones.** What 3.73.0 and 3.74.0 have confirmed is listed above and is genuinely
+confirmed; the rest of both, the icon actions, the bulk category control, the
+cancel landing and the RSVP tick, has not been reported back on.
 
 ## Open decisions
 
@@ -136,6 +139,14 @@ tells somebody no, and the **"this event is back on"** message added in 3.73.0.
 Both are built, both are unticked by default, and neither can send without an
 explicit yes, so nothing is at risk while they wait. Each is quoted in full:
 `TESTING.md` 2.21 for the first, `TESTING.md` 2.24 for the second.
+
+**ESPAÑOL IS A LANGUAGE AND THE OTHER SIX SAY WHAT AN EVENT IS**, and because
+the first category alphabetically supplies the colour and the icon, and Español
+sorts before every other category this calendar has, **a Spanish-language
+support group is drawn as Español everywhere**: card, placeholder, month tile
+and chip. That is the rule working rather than failing. Whether a language
+belongs as a category at all is Mark's call, and the three answers with the cost
+of each are in `PROJECT.md` 8. Nothing was changed.
 
 **THE COMMUNITY FORM'S AGE RESTRICTION OPTIONS ARE MARK'S CALL.** Reported and
 deliberately not changed, because two of the five were named in isolation and
