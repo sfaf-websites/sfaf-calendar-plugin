@@ -994,8 +994,15 @@ if ( false === $series_at || false === $name_at ) {
 if ( false === strpos( $src, 'data-uc-series-thumb' ) ) {
     $fails[] = 'the series options carry no picture, so nothing can say what choosing one does to the image';
 }
-if ( false === strpos( $src, 'data-uc-image-default' ) ) {
+/* THE PICKER MOVED TO SFAF_Media IN 3.74.0, so the mark is read where the
+ * markup now lives. The question is unchanged: the row that means "no picture"
+ * has to be findable, because that is the row the series photo is shown in. */
+$picker_src = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-media.php' );
+if ( false === strpos( $picker_src, 'data-uc-image-default' ) ) {
     $fails[] = 'the "nothing chosen" image row is unmarked, so the series picture has nowhere to be shown';
+}
+if ( false === strpos( $src, 'SFAF_Media::picker(' ) ) {
+    $fails[] = 'the staff form no longer calls the one picker, so it has a second copy of the chooser';
 }
 if ( preg_match( '/set_post_thumbnail\(\s*\$event_id,\s*\$c\[.series.\]/', $src ) ) {
     $fails[] = 'the series image is copied onto the event, which is a value that goes stale when the series photo changes';

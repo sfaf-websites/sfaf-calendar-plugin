@@ -1060,8 +1060,12 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     function bindImageField(field) {
-        var chooseBtn = field.querySelector('.uc-choose-image');
-        if (!chooseBtn) {
+        /* TWO TRIGGERS SINCE 3.74.0: the one that opens on this event's series
+         * and the one that opens on everything. Each keeps its own frame,
+         * because a frame remembers the library it was built with and reusing
+         * one would make the second button show the first one's list. */
+        var triggers = field.querySelectorAll('.uc-choose-image');
+        if (!triggers.length) {
             return;
         }
         var idInput    = field.querySelector('[data-uc-image-id]');
@@ -1069,7 +1073,6 @@ function ucDismissOnBackdrop(dialog) {
         var preview    = field.querySelector('[data-uc-image-preview]');
         var previewImg = field.querySelector('[data-uc-image-preview-img]');
         var removeBtn  = field.querySelector('.uc-remove-image');
-        var frame;
 
         if (!idInput || !preview || !previewImg) {
             return;
@@ -1077,6 +1080,21 @@ function ucDismissOnBackdrop(dialog) {
 
         function show(src) { showImagePreview(field, src); }
         function hide() { hideImagePreview(field); }
+
+        /* THE ESCAPE IS ONLY WORTH OFFERING WHEN SOMETHING IS BEING NARROWED.
+         * On an event with no series the first button already shows the whole
+         * folder, and a second one beside it saying "all" would be two buttons
+         * that do the same thing. */
+        var hasSeries = field.getAttribute('data-uc-media-series');
+        hasSeries = !!(hasSeries && hasSeries !== '0');
+
+        Array.prototype.forEach.call(triggers, function (chooseBtn) {
+        var frame;
+        var isAll = chooseBtn.hasAttribute('data-uc-media-all');
+        if (isAll && !hasSeries) {
+            chooseBtn.hidden = true;
+            return;
+        }
 
         chooseBtn.addEventListener('click', function (e) {
             e.preventDefault();
@@ -1106,12 +1124,45 @@ function ucDismissOnBackdrop(dialog) {
             var library = { type: 'image' };
             if (flag) { library[flag] = '1'; }
 
+            /*
+             * OPEN ON THIS EVENT'S SERIES (3.74.0), when it has one and this
+             * trigger is not the "everything" one. The term id rides the
+             * library query the same way the folder flag does, and
+             * SFAF_Media_Folder reads both off the request: one key narrows to
+             * the folder, the other to the series tagged on the picture.
+             *
+             * THE WAY OUT IS A SECOND TRIGGER, NOT A CONTROL INSIDE THE MODAL.
+             * wp.media's own chrome is WordPress's, and adding a dropdown to it
+             * is a thing that breaks quietly on a core update. Two buttons that
+             * open the same frame with different arguments cannot.
+             */
+            var series = field.getAttribute('data-uc-media-series');
+            if (series && series !== '0' && !isAll) {
+                library.uc_series = series;
+            }
+
             frame = wp.media({
                 title: 'Select Featured Image',
                 button: { text: 'Use this image' },
                 multiple: false,
                 library: library
             });
+
+            /*
+             * UPLOADING IS ADMINS ONLY (3.74.0), and the tab goes for everybody
+             * else. THIS IS NOT WHAT REFUSES THE UPLOAD: SFAF_Media_Folder does
+             * that when the file arrives, because a hidden tab is a hidden tab
+             * and not a permission. What this stops is offering somebody a
+             * control that is going to fail.
+             */
+            if ('0' === field.getAttribute('data-uc-media-upload')) {
+                frame.on('ready', function () {
+                    var tab = frame.$el && frame.$el[0]
+                        ? frame.$el[0].querySelector('#menu-item-upload')
+                        : null;
+                    if (tab) { tab.hidden = true; }
+                });
+            }
 
             /* The uploader is built with the frame, so its params are set once
              * the frame exists rather than on every open. */
@@ -1130,6 +1181,7 @@ function ucDismissOnBackdrop(dialog) {
                 if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
             });
             frame.open();
+        });
         });
 
         if (urlInput) {
@@ -4282,8 +4334,16 @@ function ucDismissOnBackdrop(dialog) {
    in a box they cannot see, and is then refused for leaving it empty.
 
    The trigger names its target by id and says which value reveals it, so the
-   venue select (reveal when "Somewhere else", value 0) and the two choice
-   selects (reveal on "other") are the same mechanism rather than three.
+   venue select (reveal when the location is entered by hand, value 0) and the
+   two choice selects (reveal on "other") are the same mechanism rather than
+   three.
+
+   A TICK BOX IS THE FOURTH, AND ITS VALUE DOES NOT MOVE (3.74.0). "Use my
+   details as the public contact" reveals the separate contact fields when it is
+   OFF, and a checkbox's `value` is the same string whether it is ticked or not,
+   so the comparison below cannot answer for one. It reads `checked` instead,
+   and `data-uc-reveal-when="unchecked"` is how a trigger says which way round
+   it runs.
    --------------------------------------------------------------------------- */
 (function () {
     var triggers = document.querySelectorAll('[data-uc-reveal]');
@@ -4294,7 +4354,12 @@ function ucDismissOnBackdrop(dialog) {
         if (!target) { return; }
         var when = trigger.getAttribute('data-uc-reveal-when');
         if (when === null) { when = 'other'; }
-        var on = (String(trigger.value) === String(when));
+        var on;
+        if ('checkbox' === trigger.type) {
+            on = ('unchecked' === when) ? !trigger.checked : !!trigger.checked;
+        } else {
+            on = (String(trigger.value) === String(when));
+        }
         target.hidden = !on;
         /* A hidden field must not be submitted as an empty answer, and must not
            be reachable by keyboard while it is off screen. `hidden` alone does

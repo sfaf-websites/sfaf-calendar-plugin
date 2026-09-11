@@ -575,6 +575,7 @@ class SFAF_Portal {
                 wp_safe_redirect( SFAF_Cron::admin_url(), 301 );
                 exit;
             case 'users':      $this->render_users( $user ); break;
+            case 'media':      $this->render_media( $user ); break;
             case 'venues':     $this->render_venues( $user ); break;
             case 'organizers': $this->render_organizers( $user ); break;
             case 'faq-sets':   $this->render_faq_sets( $user ); break;
@@ -711,6 +712,58 @@ class SFAF_Portal {
                     'refused' => $refused,
                     'cat'     => $bulk_term ? $bulk_term->name : '',
                 ) );
+                break;
+
+            /* ---- The image library. ---------------------------------------
+             *
+             * THREE ROUTES AND THREE DIFFERENT GATES, asked here and not only
+             * at the render. A control that is not drawn is not a refusal: a
+             * POST is a request anybody can construct, and defect one in
+             * PROJECT.md 5 was a screen that relied on not being linked to.
+             *
+             *   media_tag     add one series to one or many images   admin, editor
+             *   media_untag   take one series off one image          admin, editor
+             *   media_upload  put a new file in the folder           admin
+             *
+             * NONE OF THEM TOUCHES A FILE except the upload, which creates one.
+             * Tagging writes a term relationship and nothing else, which is
+             * what makes it safe to give an editor.
+             */
+            case 'media_tag':
+                if ( ! SFAF_Media::can_tag( $user ) ) { wp_die( 'Denied' ); }
+
+                /* The marker tells "none ticked" from "no picker", the same
+                 * way the bulk category control does. Without it an empty
+                 * ids[] is byte-identical to a form that never carried one. */
+                if ( ! isset( $_POST['uc_media_tick_present'] ) ) {
+                    $this->redirect( 'media', array( 'msg' => 'tag_none' ) );
+                }
+
+                $term_id = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
+                $ids     = isset( $_POST['ids'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['ids'] ) ) : array();
+                if ( empty( $ids ) ) {
+                    $this->redirect( 'media', array( 'msg' => 'tag_none' ) );
+                }
+
+                $done = SFAF_Media::add_tag( $ids, $term_id );
+                if ( ! $done['did'] ) {
+                    $this->redirect( 'media', array( 'msg' => 'tag_failed' ) );
+                }
+                $this->redirect( 'media', array( 'msg' => 'tagged', 'n' => (int) $done['did'] ) );
+                break;
+
+            case 'media_untag':
+                if ( ! SFAF_Media::can_tag( $user ) ) { wp_die( 'Denied' ); }
+                SFAF_Media::remove_tag(
+                    isset( $_POST['id'] ) ? (int) $_POST['id'] : 0,
+                    isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0
+                );
+                $this->redirect( 'media', array( 'msg' => 'untagged' ) );
+                break;
+
+            case 'media_upload':
+                if ( ! SFAF_Media::can_upload( $user ) ) { wp_die( 'Denied' ); }
+                $this->handle_media_upload( $user );
                 break;
 
             case 'trash_event':
@@ -3000,6 +3053,18 @@ class SFAF_Portal {
             'events'    => array( 'Events', 'events', 'calendar' ),
             'series'    => array( 'Series & Categories', 'series', 'repeat' ),
             'faq-sets'  => array( 'FAQ Sets', 'faq-sets', 'help' ),
+            /*
+             * IMAGES, FOR EVERYBODY WITH CALADMIN ACCESS (3.74.0).
+             *
+             * Not gated, because looking is what most people come here to do:
+             * an organizer wanting to know what pictures exist for their
+             * programme had nowhere at all to find out, since contributors and
+             * editors never see wp-admin and the WordPress media library is
+             * therefore not available to them. What IS gated is doing
+             * something: tagging is admins and editors, uploading is admins,
+             * and the screen draws neither control for anybody else.
+             */
+            'media'     => array( 'Images', 'media', 'image' ),
         );
         if ( $this->can_view_all( $user ) ) {
             // Venues moved here from the WordPress admin in 3.9.0. Deciding
@@ -6290,9 +6355,30 @@ class SFAF_Portal {
      * @param bool $folder_has_any
      * @return string
      */
-    private function image_picker_atts( $folder_has_any ) {
+    private function image_picker_atts( $folder_has_any, $series_id = 0, $can_upload = null ) {
+        /*
+         * TWO MORE SINCE 3.74.0, AND BOTH ARE REQUESTS RATHER THAN RULES.
+         *
+         *   data-uc-media-series  opens the library on this event's series,
+         *                         with an "All calendar images" trigger beside
+         *                         Choose Image as the way out of it.
+         *   data-uc-media-upload  0 hides wp.media's Upload Files tab.
+         *
+         * NEITHER IS WHAT ENFORCES ANYTHING, and that is worth being explicit
+         * about because both look like they do. The series filter is a query
+         * argument SFAF_Media_Folder reads server-side; the upload gate is a
+         * capability filter on the same class, checked when the file actually
+         * arrives. If this markup were removed the server would still narrow
+         * and still refuse. What these do is stop a control being offered that
+         * the server is going to turn down, which is a different job.
+         */
+        if ( null === $can_upload ) {
+            $can_upload = SFAF_Media::can_upload( wp_get_current_user() );
+        }
         return ' data-uc-media-folder="' . esc_attr( SFAF_Media_Folder::FOLDER ) . '"'
             . ' data-uc-media-flag="' . esc_attr( SFAF_Media_Folder::FLAG ) . '"'
+            . ' data-uc-media-series="' . (int) $series_id . '"'
+            . ' data-uc-media-upload="' . ( $can_upload ? '1' : '0' ) . '"'
             . ( $folder_has_any ? '' : ' data-uc-media-folder-empty="1"' );
     }
 
@@ -6354,6 +6440,16 @@ class SFAF_Portal {
 
         <div class="uc-image-buttons">
             <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
+            <?php
+            /*
+             * THE WAY OUT OF THE SERIES FILTER (3.74.0). Rendered always and
+             * hidden by portal.js when there is no series to be narrowed to,
+             * because the whole control is JavaScript: a button that only makes
+             * sense once a frame exists cannot usefully be decided by PHP, and
+             * with no script neither button does anything at all.
+             */
+            ?>
+            <button type="button" class="uc-btn uc-btn-sm uc-choose-image" data-uc-media-all hidden>All calendar images</button>
             <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
         </div>
         <?php echo $a['after_buttons']; // Already-built markup from the caller. ?>
@@ -6434,9 +6530,15 @@ class SFAF_Portal {
                  * Media Folder's own API.
                  */
                 $folder_has_any = SFAF_Media_Folder::has_any();
+                /* THE EVENT'S OWN SERIES, so the library opens on the pictures
+                 * most likely to be the right one, with everything else one
+                 * press away. 0 on a new event, which is the whole-folder list
+                 * this has always shown. */
+                $picker_series = ! empty( $ctx['event_id'] ) ? SFAF_Series::for_event( (int) $ctx['event_id'] ) : null;
+                $picker_tag    = ( $picker_series && ! is_wp_error( $picker_series ) ) ? (int) $picker_series->term_id : 0;
                 ?>
                 <div class="uc-field uc-image-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"
-                     <?php echo $this->image_picker_atts( $folder_has_any ); ?>
+                     <?php echo $this->image_picker_atts( $folder_has_any, $picker_tag ); ?>
                      <?php echo $this->field_watch_attr( 'image', $state ); ?>>
                     <span class="uc-field-label">Featured Image
                         <?php
@@ -7519,7 +7621,8 @@ class SFAF_Portal {
                  * render_image_picker().
                  */
                 ?>
-                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any() ); ?>>
+                <?php // This screen IS a series, so the picker opens on its own pictures. ?>
+                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), (int) $term_id ); ?>>
                     <span class="uc-field-label">Image</span>
                     <?php $this->render_image_picker( array(
                         'uid'         => 'series',
@@ -8074,6 +8177,434 @@ class SFAF_Portal {
 
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * The calendar's images, tagged by series.
+     *
+     * WHY IT EXISTS. Contributors and editors never see wp-admin, so the
+     * WordPress media library is not available to most of the people who
+     * maintain this calendar. An organizer who wants to know what pictures
+     * already exist for their programme had nowhere to look at all, and the
+     * only route to an image was the picker inside an event, which shows the
+     * whole folder and cannot say which programme anything belongs to.
+     *
+     * THREE THINGS, GATED SEPARATELY. Looking is everybody with caladmin
+     * access. Tagging is admins and editors, because organising a library and
+     * adding to it are different jobs and an editor who can tidy is worth
+     * having. Uploading is admins. See SFAF_Media for the three answers; this
+     * screen asks them rather than deciding anything itself.
+     *
+     * THE FILTER THAT MATTERS MOST IS UNTAGGED. A library gets organised by
+     * somebody being shown what has not been done yet, and a filter that can
+     * only show what is already sorted is a filter for a library that is
+     * already sorted.
+     *
+     * @param WP_User $user
+     */
+    private function render_media( $user ) {
+        $can_tag    = SFAF_Media::can_tag( $user );
+        $can_upload = SFAF_Media::can_upload( $user );
+
+        /* The controls, read from the URL and validated against the one list
+         * each of them has. An unknown value is not an error page. */
+        $raw      = isset( $_GET['tag'] ) ? sanitize_text_field( wp_unslash( $_GET['tag'] ) ) : '';
+        $untagged = ( SFAF_Media::UNTAGGED === $raw );
+        $tag      = ( ! $untagged && '' !== $raw ) ? (int) $raw : 0;
+        $paged    = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+
+        $series = SFAF_Series::all();
+        if ( $tag ) {
+            $known = false;
+            foreach ( $series as $term ) {
+                if ( (int) $term->term_id === $tag ) {
+                    $known = true;
+                    break;
+                }
+            }
+            if ( ! $known ) {
+                $tag = 0;
+            }
+        }
+
+        $found = SFAF_Media::pictures( array(
+            'series'   => $tag,
+            'untagged' => $untagged,
+            'paged'    => $paged,
+        ) );
+        $rows = SFAF_Media::rows( $found['ids'] );
+
+        $this->chrome_open( $user, 'media' );
+        ?>
+        <div class="uc-page-head">
+            <h1>Images</h1>
+        </div>
+
+        <?php $this->media_notice(); ?>
+
+        <?php
+        /*
+         * WHAT THIS SCREEN IS, IN ONE SENTENCE, because the answer to "why are
+         * only some of the site's images here" is a rule somebody would
+         * otherwise have to work out from what is missing.
+         */
+        ?>
+        <p class="uc-view-hint">
+            The pictures in the calendar folder. Tag one with a series to make it easy to find later.
+        </p>
+
+        <form method="get" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-filters-bar">
+            <label class="uc-field uc-media-filter">
+                <span class="uc-visually-hidden">Show</span>
+                <select name="tag">
+                    <option value="">All images</option>
+                    <option value="<?php echo esc_attr( SFAF_Media::UNTAGGED ); ?>" <?php selected( $untagged ); ?>>Untagged</option>
+                    <?php foreach ( $series as $term ) : ?>
+                        <option value="<?php echo (int) $term->term_id; ?>" <?php selected( $tag, (int) $term->term_id ); ?>>
+                            <?php echo esc_html( $term->name ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <button class="uc-btn" type="submit">Show</button>
+        </form>
+
+        <?php if ( $can_upload ) : ?>
+            <?php
+            /*
+             * UPLOAD, ADMINS ONLY, AND IT LANDS IN THE FOLDER.
+             *
+             * SFAF_Media_Folder::upload_to_folder() reads the flag off the
+             * request, so the hidden field below is what sends the file to
+             * uploads/calendar/ rather than into this month's directory.
+             * Without it the file would be invisible to every picker on the
+             * site, which is the state this screen exists to prevent.
+             */
+            ?>
+            <div class="uc-card uc-media-upload">
+                <div class="uc-card-head"><h2>Add an image</h2></div>
+                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
+                      enctype="multipart/form-data" class="uc-form">
+                    <input type="hidden" name="uc_action" value="media_upload" />
+                    <input type="hidden" name="<?php echo esc_attr( SFAF_Media_Folder::FLAG ); ?>" value="1" />
+                    <?php wp_nonce_field( 'uc_portal_media_upload', 'uc_nonce' ); ?>
+                    <div class="uc-field-row">
+                        <label class="uc-field">
+                            <span class="uc-field-label">File</span>
+                            <input type="file" name="uc_media" accept="image/jpeg,image/png,image/gif,image/webp" required />
+                            <span class="uc-hint">
+                                JPEG, PNG, GIF or WebP, at least <?php echo (int) SFAF_Uploads::MIN_WIDTH; ?> pixels wide.
+                                Landscape works best: an event card crops to 16:9.
+                            </span>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Series <span class="uc-muted">(optional)</span></span>
+                            <select name="term_id">
+                                <option value="0">No series</option>
+                                <?php foreach ( $series as $term ) : ?>
+                                    <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="uc-form-actions">
+                        <button type="submit" class="uc-btn uc-btn-primary">Upload</button>
+                    </div>
+                </form>
+            </div>
+        <?php endif; ?>
+
+        <div class="uc-card">
+            <div class="uc-card-head">
+                <h2><?php echo (int) $found['total']; ?> <?php echo esc_html( 1 === (int) $found['total'] ? 'image' : 'images' ); ?></h2>
+            </div>
+
+            <?php if ( $can_tag && ! empty( $rows ) && ! empty( $series ) ) : ?>
+                <?php
+                /*
+                 * THE SAME TICK PATTERN THE SCHEDULE AND THE EVENTS LIST USE,
+                 * down to the attribute names, because initTickPickers() in
+                 * portal.js drives all three. The boxes are in the grid and the
+                 * form is above it, so they associate by form= rather than by
+                 * being descendants: a card carries its own form for the
+                 * per-image control, and forms cannot nest.
+                 */
+                ?>
+                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
+                      class="uc-bulk-cat" id="uc-bulk-tag" data-uc-tick-picker>
+                    <input type="hidden" name="uc_action" value="media_tag" />
+                    <input type="hidden" name="uc_media_tick_present" value="1" />
+                    <?php wp_nonce_field( 'uc_portal_media_tag', 'uc_nonce' ); ?>
+
+                    <label class="uc-field uc-bulk-cat-pick">
+                        <span class="uc-field-label">Add a series to the ticked images</span>
+                        <select name="term_id" required>
+                            <option value="">Choose a series</option>
+                            <?php foreach ( $series as $term ) : ?>
+                                <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <div class="uc-bulk-cat-go">
+                        <label class="uc-tick-all uc-check" hidden data-uc-tick-all-row>
+                            <input type="checkbox" data-uc-tick-all form="uc-bulk-tag" />
+                            Select every image on this page
+                        </label>
+                        <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-tick-submit
+                                data-uc-tick-word="images" data-uc-tick-word-one="image">
+                            Tag <span data-uc-tick-count>0</span>
+                            <span data-uc-tick-noun>images</span>
+                        </button>
+                        <span class="uc-hint">Adds it. Any series already on an image stays.</span>
+                    </div>
+                </form>
+            <?php endif; ?>
+
+            <?php if ( empty( $rows ) ) : ?>
+                <p class="uc-empty"><?php
+                    echo $untagged
+                        ? 'Every image in the folder carries a series.'
+                        : 'No images here yet.';
+                ?></p>
+            <?php else : ?>
+                <ul class="uc-media-grid">
+                    <?php foreach ( $rows as $row ) : ?>
+                        <li class="uc-media-item">
+                            <?php if ( $can_tag ) : ?>
+                                <label class="uc-media-tick">
+                                    <input type="checkbox" name="ids[]" value="<?php echo (int) $row['id']; ?>"
+                                           form="uc-bulk-tag" data-uc-tick-one />
+                                    <span class="uc-visually-hidden">Select <?php
+                                        echo esc_attr( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                                    ?></span>
+                                </label>
+                            <?php endif; ?>
+
+                            <img class="uc-media-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
+
+                            <p class="uc-media-name"><?php
+                                echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                            ?></p>
+
+                            <?php if ( ! empty( $row['tags'] ) ) : ?>
+                                <p class="uc-media-tags">
+                                    <?php foreach ( $row['tags'] as $term ) : ?>
+                                        <span class="uc-media-tag"><?php echo esc_html( $term->name ); ?><?php
+                                        if ( $can_tag ) : ?>
+                                            <?php
+                                            /*
+                                             * TAKING ONE OFF IS PER IMAGE AND
+                                             * THERE IS NO BULK UNTAG. A bulk
+                                             * one is a way to undo an
+                                             * afternoon's work with one press,
+                                             * and nothing here is urgent enough
+                                             * to be worth that.
+                                             */
+                                            ?>
+                                            <button type="submit" class="uc-media-tag-off"
+                                                    form="uc-untag-<?php echo (int) $row['id']; ?>-<?php echo (int) $term->term_id; ?>"
+                                                    title="Take <?php echo esc_attr( $term->name ); ?> off this image">
+                                                <span class="uc-visually-hidden">Take <?php echo esc_html( $term->name ); ?> off this image</span>
+                                                <?php echo sfaf_icon( 'x', array( 'size' => '11px' ) ); ?>
+                                            </button>
+                                        <?php endif; ?></span>
+                                    <?php endforeach; ?>
+                                </p>
+                            <?php endif; ?>
+
+                            <?php if ( $can_tag && ! empty( $series ) ) : ?>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-media-one">
+                                    <input type="hidden" name="uc_action" value="media_tag" />
+                                    <input type="hidden" name="uc_media_tick_present" value="1" />
+                                    <input type="hidden" name="ids[]" value="<?php echo (int) $row['id']; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_media_tag', 'uc_nonce' ); ?>
+                                    <label class="uc-field">
+                                        <span class="uc-visually-hidden">Add a series to this image</span>
+                                        <select name="term_id" required>
+                                            <option value="">Add a series</option>
+                                            <?php foreach ( $series as $term ) : ?>
+                                                <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <button type="submit" class="uc-btn uc-btn-sm">Add</button>
+                                </form>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+
+                <?php
+                /* The untag forms, outside the grid, because a form inside a
+                 * list item that already holds one would nest. Each button
+                 * above names the one it posts. */
+                ?>
+                <?php if ( $can_tag ) : ?>
+                    <?php foreach ( $rows as $row ) : ?>
+                        <?php foreach ( $row['tags'] as $term ) : ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
+                                  id="uc-untag-<?php echo (int) $row['id']; ?>-<?php echo (int) $term->term_id; ?>" hidden>
+                                <input type="hidden" name="uc_action" value="media_untag" />
+                                <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>" />
+                                <input type="hidden" name="term_id" value="<?php echo (int) $term->term_id; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_media_untag', 'uc_nonce' ); ?>
+                            </form>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+
+                <?php $this->media_pagination( $paged, (int) $found['pages'], $raw ); ?>
+            <?php endif; ?>
+        </div>
+
+        <?php
+        $this->chrome_close();
+    }
+
+    /**
+     * Put a file in the calendar folder, from caladmin.
+     *
+     * THE SAME INSPECTION THE PUBLIC FORMS GET, AND A DIFFERENT DESTINATION.
+     * SFAF_Uploads::inspect() is the guard between a form and the disk: is
+     * there a file, did PHP finish it, is it really an upload, is it small
+     * enough, do two readers agree it is an image, and is it wide enough for a
+     * card. None of that is weaker because an administrator pressed the button,
+     * so none of it is skipped. What differs is where the file lands, what it
+     * is called and who it belongs to.
+     *
+     * THE FOLDER COMES FROM THE FLAG IN THE FORM. SFAF_Media_Folder filters
+     * upload_dir when that flag is on the request, which is the same route the
+     * wp.media picker's own uploads take. So there is one rule for where a
+     * calendar image goes and it is not repeated here.
+     *
+     * THE SUBMITTED NAME IS KEPT, and that is the opposite of what the public
+     * handler does. A stranger's file name is untrusted and is discarded; a
+     * name Mark typed is the thing the picker's search matches and the thing
+     * that tells two photographs of the same event apart at 64px. sanitize_
+     * file_name() is what makes keeping it safe.
+     *
+     * @param WP_User $user
+     */
+    private function handle_media_upload( $user ) {
+        $seen = SFAF_Uploads::inspect( 'uc_media' );
+        if ( ! $seen['ok'] ) {
+            $this->redirect( 'media', array(
+                'msg' => 'upload_failed',
+                'why' => ( '' !== $seen['error'] ) ? $seen['error'] : 'Choose a file first.',
+            ) );
+        }
+
+        if ( ! function_exists( 'media_handle_upload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+
+        /*
+         * post_parent 0: a calendar image belongs to the folder and is used by
+         * however many events want it. Attaching it to one would make it look
+         * like that event's own file on every screen WordPress draws.
+         */
+        $id = media_handle_upload( 'uc_media', 0, array(), array( 'test_form' => false ) );
+
+        if ( is_wp_error( $id ) ) {
+            $this->redirect( 'media', array(
+                'msg' => 'upload_failed',
+                'why' => $id->get_error_message(),
+            ) );
+        }
+        $id = (int) $id;
+
+        /*
+         * AND IT HAS TO BE IN THE FOLDER, CHECKED RATHER THAN ASSUMED. If the
+         * upload_dir filter did not fire, the file is in this month's directory
+         * and invisible to every picker on the site, which is exactly the state
+         * this screen exists to prevent. Better to say so than to leave
+         * somebody hunting for an image that uploaded successfully and cannot
+         * be found.
+         */
+        if ( ! SFAF_Media_Folder::holds( $id ) ) {
+            $this->redirect( 'media', array(
+                'msg' => 'upload_failed',
+                'why' => 'That went into the general media library rather than the calendar folder, so no picker will offer it. Tell whoever looks after the site.',
+            ) );
+        }
+
+        $term_id = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
+        if ( $term_id ) {
+            SFAF_Media::add_tag( array( $id ), $term_id );
+        }
+
+        $this->redirect( 'media', array( 'msg' => 'uploaded' ) );
+    }
+
+    /** What the last action did, said once, at the top of the screen. */
+    private function media_notice() {
+        $msg = isset( $_GET['msg'] ) ? sanitize_key( wp_unslash( $_GET['msg'] ) ) : '';
+        if ( '' === $msg ) {
+            return;
+        }
+        $n    = isset( $_GET['n'] ) ? (int) $_GET['n'] : 0;
+        $said = '';
+        switch ( $msg ) {
+            case 'tagged':
+                $said = sprintf( '%d %s tagged.', $n, _n( 'image', 'images', $n ) );
+                break;
+            case 'tag_none':
+                $said = 'Nothing was ticked, so nothing was tagged.';
+                break;
+            case 'tag_failed':
+                $said = 'That series could not be found, so nothing was tagged.';
+                break;
+            case 'untagged':
+                $said = 'Series taken off that image. The image itself is untouched.';
+                break;
+            case 'uploaded':
+                $said = 'Uploaded, and it is in the folder every picker offers.';
+                break;
+            case 'upload_failed':
+                $said = isset( $_GET['why'] ) ? sanitize_text_field( wp_unslash( $_GET['why'] ) ) : 'That file could not be uploaded.';
+                break;
+        }
+        if ( '' === $said ) {
+            return;
+        }
+        printf( '<div class="uc-notice"><p>%s</p></div>', esc_html( $said ) );
+    }
+
+    /**
+     * Pages of images.
+     *
+     * ITS OWN PAGER RATHER THAN THE EVENTS ONE, which carries a sort and four
+     * filters this screen does not have. Two links and a position is the whole
+     * of what a grid needs.
+     *
+     * @param int    $paged
+     * @param int    $pages
+     * @param string $tag   The filter as it arrived, so it rides the links.
+     */
+    private function media_pagination( $paged, $pages, $tag ) {
+        if ( $pages < 2 ) {
+            return;
+        }
+        $base = $this->url( 'media' );
+        $args = ( '' !== $tag ) ? array( 'tag' => $tag ) : array();
+        ?>
+        <nav class="uc-pagination" aria-label="Pages of images">
+            <?php if ( $paged > 1 ) : ?>
+                <a class="uc-btn uc-btn-sm" href="<?php
+                    echo esc_url( add_query_arg( array_merge( $args, array( 'paged' => $paged - 1 ) ), $base ) );
+                ?>">&larr; Newer</a>
+            <?php endif; ?>
+            <span class="uc-muted">Page <?php echo (int) $paged; ?> of <?php echo (int) $pages; ?></span>
+            <?php if ( $paged < $pages ) : ?>
+                <a class="uc-btn uc-btn-sm" href="<?php
+                    echo esc_url( add_query_arg( array_merge( $args, array( 'paged' => $paged + 1 ) ), $base ) );
+                ?>">Older &rarr;</a>
+            <?php endif; ?>
+        </nav>
+        <?php
     }
 
     private function render_venues( $user ) {

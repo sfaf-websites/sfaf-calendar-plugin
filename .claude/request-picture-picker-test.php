@@ -130,6 +130,36 @@ function get_posts( $args ) {
     }
     return $out;
 }
+
+/*
+ * THE PICKER ASKS THROUGH WP_Query NOW (3.74.0), because the media screen it
+ * shares its query builder with has to page and a bare get_posts() does not
+ * hand back a total. The arguments are the same arguments and are recorded the
+ * same way, so section 6 below still decides the folder restriction by reading
+ * what was ASKED rather than by trusting what came back.
+ */
+class WP_Query {
+    public $posts = array();
+    public $found_posts = 0;
+    public $max_num_pages = 1;
+    public function __construct( $args ) {
+        $GLOBALS['queries'][] = $args;
+        foreach ( $GLOBALS['library'] as $id => $row ) {
+            $this->posts[] = (object) array( 'ID' => $id );
+        }
+        $this->found_posts = count( $this->posts );
+    }
+}
+function wp_list_pluck( $list, $field ) {
+    $out = array();
+    foreach ( (array) $list as $item ) {
+        $out[] = is_object( $item ) ? $item->$field : $item[ $field ];
+    }
+    return $out;
+}
+/* No series on anything, which is the staff form's ordinary case: the picker
+ * groups only when the event has a series AND something carries it. */
+function get_the_terms( $id, $tax ) { return array(); }
 function get_post_meta( $id, $k, $single = false ) {
     if ( '_wp_attached_file' === $k && isset( $GLOBALS['library'][ $id ] ) ) {
         return $GLOBALS['library'][ $id ]['file'];
@@ -153,6 +183,8 @@ function sfaf_icon( $name, $args = array() ) {
 class SFAF_Media_Folder {
     const FOLDER = 'calendar';
     public static function prefix() { return 'calendar/'; }
+    public static function has_any() { return ! empty( $GLOBALS['library'] ); }
+    public static function holds( $id ) { return isset( $GLOBALS['library'][ (int) $id ] ); }
 }
 class SFAF_Reminders {
     public static function new_token() { return str_repeat( 'a', 32 ); }
@@ -205,6 +237,7 @@ class SFAF_FAQ_Sets {
     public static function get( $id ) { return null; }
 }
 
+require_once $root . '/includes/class-sfaf-media.php';
 require_once $root . '/includes/class-sfaf-request.php';
 
 /* ---------------------------------------------------------------------------
@@ -439,10 +472,9 @@ expect( 'and no row carries a separate file line', count( nodes( $html,
  * has nine letters against five digits and no extension, so neither guess
  * caught it. Given the file it is exact.
  */
-$looks = new ReflectionMethod( 'SFAF_Request', 'looks_like_a_filename' );
-$looks->setAccessible( true );
-$is_file = function ( $title, $file = '' ) use ( $looks ) {
-    return $looks->invoke( null, $title, $file );
+/* PUBLIC ON SFAF_Media SINCE 3.74.0, so no reflection is needed to ask it. */
+$is_file = function ( $title, $file = '' ) {
+    return SFAF_Media::looks_like_a_filename( $title, $file );
 };
 expect( "WordPress' fallback is not a title",
     $is_file( 'harm reduction 2026 a', 'harm-reduction-2026-a.jpg' ), true );

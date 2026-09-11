@@ -102,6 +102,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-optins.php',
     'includes/class-sfaf-privacy.php',
     'includes/class-sfaf-media-folder.php',
+    // The calendar's images, tagged by series. After the folder rule it reads.
+    'includes/class-sfaf-media.php',
     // Files sent by people with no account, and what the two public forms
     // share. Both load before the forms that call them.
     'includes/class-sfaf-uploads.php',
@@ -200,6 +202,12 @@ function sfaf_init() {
     // sends its own uploads there. Filters on core's own _wp_attached_file, so
     // it does not depend on WP Media Folder staying installed.
     SFAF_Media_Folder::register();
+
+    // Series as image tags, which is what the caladmin media screen and the
+    // picker on both public forms read. It attaches attachments to uc_series on
+    // a later init than SFAF_Series registers it, so the taxonomy exists by the
+    // time anything is added to it.
+    SFAF_Media::register();
 
     // The public event request form. A front-end query var, like the cancel
     // link, so no rewrite rule and no REST route: see the note in the class.

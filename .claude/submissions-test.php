@@ -409,6 +409,47 @@ expect( 'an empty box between two filled ones is skipped rather than stored',
     ) ) ) )['clean']['submitter_emails'],
     array( 'dana@example.org', 'lee@example.org' ) );
 
+/* ---------------------------------------------------------------------------
+ * "USE MY DETAILS AS THE PUBLIC CONTACT" (3.74.0)
+ *
+ * The direction is the whole of what is worth testing here. The submitter's
+ * details are internal; the contact prints on the event page. Copying the
+ * wrong way, or copying when nobody asked, would put somebody's address on a
+ * public page because a control was left alone.
+ * ------------------------------------------------------------------------ */
+$out = SFAF_Submit::validate( good( array( 'contact_same' => '1' ) ) );
+expect( 'ticked, the public name is the submitter\'s', $out['clean']['contact_name'], 'Dana Reyes' );
+expect( 'ticked, the public email is the submitter\'s', $out['clean']['contact_email'], 'dana@example.org' );
+expect( 'ticked, no phone is invented', $out['clean']['contact_phone'], '' );
+expect( 'ticked, the submitter is unchanged', $out['clean']['submitter_email'], 'dana@example.org' );
+if ( ! empty( $out['errors'] ) ) {
+    fail( 'a ticked form with no contact fields was refused: ' . implode( ', ', array_keys( $out['errors'] ) ) );
+}
+
+/* WITH NO SCRIPT the three fields are visible and whatever is in them is
+ * overwritten, because the tick is what was answered. */
+$out = SFAF_Submit::validate( good( array(
+    'contact_same'  => '1',
+    'contact_name'  => 'Somebody else',
+    'contact_email' => 'someone@example.org',
+    'contact_phone' => '555-0000',
+) ) );
+expect( 'ticked beats what is in the boxes', $out['clean']['contact_name'], 'Dana Reyes' );
+expect( 'and the phone goes with them', $out['clean']['contact_phone'], '' );
+
+/* UNTICKED IS THE DEFAULT AND CHANGES NOTHING. */
+$out = SFAF_Submit::validate( good() );
+expect( 'unticked, the public contact is what was typed', $out['clean']['contact_name'], 'Ride desk' );
+expect( 'unticked, nothing of the submitter leaks into it', $out['clean']['contact_email'], 'rides@example.org' );
+
+/* AND NOTHING EVER COPIES THE OTHER WAY. */
+$out = SFAF_Submit::validate( good( array(
+    'contact_name'  => 'Ride desk',
+    'contact_email' => 'rides@example.org',
+) ) );
+expect( 'the submitter is never overwritten by the public contact',
+    $out['clean']['submitter_name'], 'Dana Reyes' );
+
 /* A NESTED ARRAY NAMES NO ADDRESS. Casting one to a string is a PHP warning
  * and an empty key, which is the shape a hand-built post body arrives in. */
 $out = SFAF_Submit::validate( good( array(
@@ -527,9 +568,19 @@ foreach ( array_keys( $GLOBALS['transients'] ) as $key ) {
  * credulous happens to a file that was never going to be accepted.
  * ====================================================================== */
 $src = code_without_comments( $root . '/includes/class-sfaf-uploads.php' );
-$body_at = strpos( $src, 'public static function store(' );
+/*
+ * THE HANDLER IS TWO METHODS SINCE 3.74.0 AND THE ORDER IS STILL ONE ORDER.
+ * inspect() holds everything decided before a file moves and store() holds the
+ * move; inspect() is written first, so reading from there covers both in the
+ * order they run. Reading from store() alone would have silently skipped every
+ * guard and reported the remaining pairs as fine.
+ */
+$body_at = strpos( $src, 'public static function inspect(' );
 if ( false === $body_at ) {
-    fail( 'store() is not in SFAF_Uploads, so the whole of section 6 checks nothing' );
+    $body_at = strpos( $src, 'public static function store(' );
+}
+if ( false === $body_at ) {
+    fail( 'neither inspect() nor store() is in SFAF_Uploads, so the whole of section 6 checks nothing' );
 } else {
     $body = substr( $src, $body_at );
 
@@ -644,8 +695,19 @@ if ( false !== strpos( $submit_src, 'register_rest_route' ) ) {
 if ( false === strpos( $submit_src, "'post_status'  => 'pending'" ) ) {
     fail( 'the submission form does not name pending as the status, so a form value could decide it' );
 }
-if ( false !== strpos( $submit_src, 'set_post_thumbnail' ) ) {
-    fail( 'a submitted file is set as the event image; it is a working copy and the folder is meant to be emptied' );
+/*
+ * THE RULE IS ABOUT THE UPLOADED FILE, NOT ABOUT THUMBNAILS (3.74.0).
+ *
+ * It was written as "no set_post_thumbnail in this file at all", which was a
+ * true statement of the code and a wider statement than the reason. The reason
+ * is that a SUBMITTED file is a working copy in a folder meant to be emptied,
+ * so nothing may point at it permanently. A picture chosen from the calendar
+ * folder is the opposite case in every respect: approved, right shape, already
+ * on the public calendar, and checked by clean_image_choice() before it is
+ * stored. The check now asks the question the reason asks.
+ */
+if ( preg_match( '/set_post_thumbnail\(\s*\$event_id,\s*\$image_id/', $submit_src ) ) {
+    fail( 'the submitted file is set as the event image; it is a working copy and the folder is meant to be emptied' );
 }
 if ( false === strpos( $submit_src, 'SFAF_Submissions::trapped' ) ) {
     fail( 'the submission form has no honeypot' );

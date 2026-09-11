@@ -2696,6 +2696,100 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker-empty { margin: 8px 0 0; }
 
 /* ---------------------------------------------------------------------------
+   THE PICKER'S GROUP HEADINGS (3.74.0)
+
+   "For this series" and "Everything else". A LABEL, NOT AN OPTION: it carries
+   no data-uc-filter-text, so a search narrows the pictures and leaves the
+   headings with their rows rather than floating over an empty group.
+
+   Set at the Caption step and in muted ink, because the thing to read here is
+   the pictures. A heading competing with them would be the decoration rule in
+   DESIGN.md the other way round.
+   ------------------------------------------------------------------------ */
+.uc-picker-group-head {
+    margin: 12px 0 4px;
+    font-size: 13px; font-weight: 600;
+    color: var(--p-muted, #6B6764);
+}
+.uc-picker-options > .uc-picker-group-head:first-child { margin-top: 2px; }
+
+/* ---------------------------------------------------------------------------
+   THE IMAGES SCREEN (3.74.0)
+
+   A GRID THAT WRAPS RATHER THAN A FIXED COLUMN COUNT. The sidebar takes a
+   fixed width and the rest is the window, so a column count chosen here would
+   be right at one width and wrong at every other. auto-fill with a floor lets
+   the browser answer it, and 150px is a thumbnail somebody can recognise a
+   photograph in.
+
+   THE TICK IS ON THE PICTURE, not in a column beside it. There is no row to
+   put a column in, and a box floating above the corner of the image it selects
+   is what every photo library does, so it is what a person looks for.
+   ------------------------------------------------------------------------ */
+.uc-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+    margin: 14px 0 0; padding: 0;
+    list-style: none;
+}
+.uc-media-item {
+    position: relative;
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--p-border); border-radius: 10px;
+    background: var(--p-surface-2, #f6f7f8);
+}
+.uc-media-thumb {
+    width: 100%; aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 6px;
+    background: var(--p-surface, #fff);
+}
+.uc-media-tick {
+    position: absolute; top: 14px; left: 14px;
+    display: inline-flex; margin: 0; padding: 3px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.92);
+}
+.uc-media-tick input[type="checkbox"] { margin: 0; width: auto; }
+.uc-media-name {
+    margin: 0;
+    font-size: 12px; line-height: 1.35;
+    /* Two lines, then an ellipsis. A file name is often long and a card that
+       grows to fit one makes the whole row of cards grow with it. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+.uc-media-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+.uc-media-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--p-surface, #fff);
+    border: 1px solid var(--p-border);
+    font-size: 12px; line-height: 1.4;
+}
+/* The x is a control on a chip, so it takes the chip's ink rather than the
+   destructive red: taking a tag off is reversible in one press and puts the
+   image back where it was. Red here would be the only red on the screen and
+   would say the opposite. */
+.uc-media-tag-off {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; padding: 0;
+    border: 0; border-radius: 4px;
+    background: none; color: var(--p-muted, #6B6764);
+    cursor: pointer; line-height: 0;
+}
+.uc-media-tag-off:hover { color: var(--p-text); background: var(--p-surface-2, #f6f7f8); }
+.uc-media-one { display: flex; align-items: center; gap: 6px; margin-top: auto; }
+.uc-media-one .uc-field { margin: 0; flex: 1 1 auto; min-width: 0; }
+.uc-media-one select { width: 100%; }
+.uc-media-filter { margin: 0; flex: 0 1 260px; }
+.uc-media-upload .uc-field-row { align-items: flex-end; }
+
+/* ---------------------------------------------------------------------------
    TEAMS (Users screen).
 
    A TEAM IS A DISCLOSURE THAT CONTAINS ITS OWN MEMBERS. The closed list is

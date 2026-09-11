@@ -247,55 +247,75 @@ class SFAF_Uploads {
      *                               things.
      * @return array{id:int,error:string} id 0 with error '' means none sent.
      */
-    public static function store( $field, $limiter = null ) {
-        $none = array( 'id' => 0, 'error' => '' );
+    /**
+     * Everything that can be decided BEFORE a file is moved anywhere.
+     *
+     * SPLIT OUT OF store() IN 3.74.0, UNCHANGED, because caladmin's own upload
+     * needs exactly these checks and a different destination. Two copies of
+     * "is this really an image, and is it small enough, and is it wide enough"
+     * is the one duplication worth refusing outright: it is the guard between
+     * a public form and the server's disk, and a second copy would be the one
+     * that quietly falls behind.
+     *
+     * IT MOVES NOTHING AND CREATES NOTHING. The caller decides where the file
+     * goes, what it is called and who it belongs to, which is the only part
+     * the two callers disagree about.
+     *
+     * @param string        $field   The $_FILES key.
+     * @param callable|null $limiter Returns false when the caller is over its rate limit.
+     * @return array{ok:bool,error:string,type:int,mime:string,width:int,height:int}
+     */
+    public static function inspect( $field, $limiter = null ) {
+        $no = function ( $error ) {
+            return array( 'ok' => false, 'error' => $error, 'type' => 0, 'mime' => '', 'width' => 0, 'height' => 0 );
+        };
 
-        /* 1. Is there a file at all. */
+        /* 1. Is there a file at all. An empty field is not an error. */
         if ( empty( $_FILES[ $field ] ) || ! is_array( $_FILES[ $field ] ) ) {
-            return $none;
+            return $no( '' );
         }
         $file = $_FILES[ $field ];
         if ( ! isset( $file['error'] ) || is_array( $file['error'] ) ) {
-            return $none;
+            return $no( '' );
         }
         $code = (int) $file['error'];
         if ( UPLOAD_ERR_NO_FILE === $code ) {
-            return $none;
+            return $no( '' );
         }
 
         /* 2. What PHP says went wrong. */
         if ( UPLOAD_ERR_OK !== $code ) {
             if ( UPLOAD_ERR_INI_SIZE === $code || UPLOAD_ERR_FORM_SIZE === $code ) {
-                return array( 'id' => 0, 'error' => self::too_big() );
+                return $no( self::too_big() );
             }
-            return array( 'id' => 0, 'error' => 'That image did not finish uploading. Try it again.' );
+            return $no( 'That image did not finish uploading. Try it again.' );
         }
 
         /* 3. Rate limit, before the file is touched. */
         if ( null !== $limiter && is_callable( $limiter ) && ! call_user_func( $limiter ) ) {
-            return array( 'id' => 0, 'error' => 'That is several uploads in a short time. Give it a few minutes, then try again.' );
+            return $no( 'That is several uploads in a short time. Give it a few minutes, then try again.' );
         }
 
         /* 4. Is it really an upload. */
         $tmp = ( isset( $file['tmp_name'] ) && is_string( $file['tmp_name'] ) ) ? $file['tmp_name'] : '';
         if ( '' === $tmp || ! is_uploaded_file( $tmp ) ) {
-            return array( 'id' => 0, 'error' => 'That image did not arrive. Try it again.' );
+            return $no( 'That image did not arrive. Try it again.' );
         }
 
         /* 5. The size ceiling, from the file rather than from the browser. */
         $bytes = @filesize( $tmp );
         if ( false === $bytes || $bytes <= 0 ) {
-            return array( 'id' => 0, 'error' => 'That image arrived empty. Try it again.' );
+            return $no( 'That image arrived empty. Try it again.' );
         }
         if ( $bytes > self::MAX_BYTES ) {
-            return array( 'id' => 0, 'error' => self::too_big() );
+            return $no( self::too_big() );
         }
 
         /* 6. What is inside it. */
         $info    = @getimagesize( $tmp );
         $allowed = self::allowed_types();
         if ( ! is_array( $info ) || empty( $info[2] ) || ! isset( $allowed[ (int) $info[2] ] ) ) {
-            return array( 'id' => 0, 'error' => self::wrong_kind() );
+            return $no( self::wrong_kind() );
         }
         $type = (int) $info[2];
         $mime = $allowed[ $type ];
@@ -303,17 +323,17 @@ class SFAF_Uploads {
         /* 7. And finfo agrees, reading the bytes for itself. */
         $sniffed = self::sniff( $tmp );
         if ( '' === $sniffed || $sniffed !== $mime ) {
-            return array( 'id' => 0, 'error' => self::wrong_kind() );
+            return $no( self::wrong_kind() );
         }
 
         /* 8. The dimensions are sane. */
         $w = isset( $info[0] ) ? (int) $info[0] : 0;
         $h = isset( $info[1] ) ? (int) $info[1] : 0;
         if ( $w < 1 || $h < 1 ) {
-            return array( 'id' => 0, 'error' => self::wrong_kind() );
+            return $no( self::wrong_kind() );
         }
         if ( ( $w * $h ) > self::MAX_PIXELS ) {
-            return array( 'id' => 0, 'error' => 'That image is too many pixels. Save it at a smaller size and send it again.' );
+            return $no( 'That image is too many pixels. Save it at a smaller size and send it again.' );
         }
         /*
          * AND THE FLOOR, WHICH NAMES THE NUMBER AND WHAT WAS SENT. "That image
@@ -322,12 +342,26 @@ class SFAF_Uploads {
          * not height.
          */
         if ( $w < self::MIN_WIDTH ) {
-            return array(
-                'id'    => 0,
-                'error' => 'That image is ' . (int) $w . ' pixels wide and needs to be at least '
-                    . (int) self::MIN_WIDTH . '. Send the original rather than a resized copy if you have it.',
+            return $no(
+                'That image is ' . (int) $w . ' pixels wide and needs to be at least '
+                . (int) self::MIN_WIDTH . '. Send the original rather than a resized copy if you have it.'
             );
         }
+
+        return array( 'ok' => true, 'error' => '', 'type' => $type, 'mime' => $mime, 'width' => $w, 'height' => $h );
+    }
+
+    public static function store( $field, $limiter = null ) {
+        /* Steps 1 to 8 are inspect(), which decides everything that can be
+         * decided before anything moves. Unchanged: this method used to hold
+         * them inline. */
+        $seen = self::inspect( $field, $limiter );
+        if ( ! $seen['ok'] ) {
+            return array( 'id' => 0, 'error' => $seen['error'] );
+        }
+        $file = $_FILES[ $field ];
+        $type = (int) $seen['type'];
+        $mime = (string) $seen['mime'];
 
         $dir = self::dir();
         if ( is_wp_error( $dir ) ) {

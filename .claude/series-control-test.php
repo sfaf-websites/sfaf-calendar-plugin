@@ -435,6 +435,15 @@ function sanitize_html_class( $c, $f = '' ) { return preg_replace( '/[^A-Za-z0-9
 
 /* The image picker asks whether the calendar folder holds anything, to decide
    which of two notes to print. Neither note is a form control. */
+/* The image tags class, which image_picker_atts() asks whether this viewer
+ * may upload. Tagging is not exercised here; what is needed is an answer. */
+class SFAF_Media {
+    const TAXONOMY = 'uc_series';
+    const UNTAGGED = 'none';
+    public static function can_upload( $user ) { return true; }
+    public static function can_tag( $user ) { return true; }
+    public static function tags_of( $id ) { return array(); }
+}
 class SFAF_Media_Folder {
     const FOLDER = 'sfaf-calendar';
     const FLAG   = 'uc_in_calendar_folder';

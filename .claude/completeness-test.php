@@ -216,6 +216,15 @@ class SFAF_Series {
 }
 /* Enough of the neighbours for the four manager controls to render. None of
  * them decides whether a field counts as filled, which is all this file asks. */
+/* The image tags class, which image_picker_atts() asks whether this viewer
+ * may upload. Tagging is not exercised here; what is needed is an answer. */
+class SFAF_Media {
+    const TAXONOMY = 'uc_series';
+    const UNTAGGED = 'none';
+    public static function can_upload( $user ) { return true; }
+    public static function can_tag( $user ) { return true; }
+    public static function tags_of( $id ) { return array(); }
+}
 class SFAF_Media_Folder {
     const FOLDER = 'calendar';
     const FLAG = 'uc_calendar_media';

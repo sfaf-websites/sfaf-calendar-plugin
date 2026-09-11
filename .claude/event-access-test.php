@@ -348,6 +348,24 @@ $ALLOWED = array(
      * publish exclusions were asked about rather than copied.
      */
     'POST:bulk_categorize'         => array( 'event' ),
+    /*
+     * THE IMAGE LIBRARY (3.74.0). NONE OF THESE IS AN EVENT ROUTE, and that is
+     * the thing to be deliberate about: they act on ATTACHMENTS, which no event
+     * gate has anything to say about. An image is not owned by an organizer and
+     * is not in a team's events; it is in the calendar folder or it is not.
+     *
+     * So the gate is SFAF_Media's own, which is a calendar ROLE and nothing
+     * else: tagging is admins and editors, uploading is admins. Both are asked
+     * at the route as well as at the render, because a control that is not
+     * drawn is not a refusal.
+     *
+     * TAGGING IS NOT ADMIN-ONLY ON PURPOSE. It writes a term relationship and
+     * touches no file, no event and no page, so an editor who tidies the
+     * library can do so without being able to add to it.
+     */
+    'POST:media_tag'              => array( 'role' ),
+    'POST:media_untag'            => array( 'role' ),
+    'POST:media_upload'           => array( 'role' ),
     'POST:save_rsvp_settings'     => array( 'event' ),
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),
     'POST:refresh_source_event'   => array( 'event' ),
@@ -469,6 +487,15 @@ function gate_keys( $code ) {
     if ( preg_match( '#\b(can_view_all|user_can_view_all)\s*\(#', $code ) )       { $out[] = 'viewall'; }
     if ( preg_match( '#\bis_admin_role\s*\(#', $code ) )                          { $out[] = 'caladmin'; }
     if ( preg_match( '#\bcan_create\s*\(#', $code ) )                             { $out[] = 'create'; }
+    /*
+     * THE CALENDAR ROLE, ASKED DIRECTLY (3.74.0). The image library's three
+     * routes act on attachments, which no event gate has anything to say
+     * about: an image is not owned by an organizer and is not in a team's
+     * events. SFAF_Media::can_tag() and can_upload() each resolve
+     * SFAF_Portal::get_role() and compare it, which is the same question
+     * is_admin_role() asks and a different answer.
+     */
+    if ( preg_match( '#\bSFAF_Media::(can_tag|can_upload)\s*\(#', $code ) )       { $out[] = 'role'; }
     return $out;
 }
 

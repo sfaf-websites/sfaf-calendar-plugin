@@ -679,23 +679,12 @@ class SFAF_Request {
             }
         }
 
-        /* ---- The picture. ---- */
-        $clean['image'] = 0;
-        if ( ! empty( $post['image_id'] ) ) {
-            $id = (int) $post['image_id'];
-            /*
-             * THREE CHECKS, NOT ONE. It must be an attachment, it must be an
-             * image, and it must already be in the calendar folder. An id is
-             * the easiest thing in the world to change in a form, and without
-             * the last check this field would attach any file in the media
-             * library, including a private PDF, to a public event.
-             */
-            if ( $id && 'attachment' === get_post_type( $id )
-                && 0 === strpos( (string) get_post_mime_type( $id ), 'image/' )
-                && SFAF_Media_Folder::holds( $id ) ) {
-                $clean['image'] = $id;
-            }
-        }
+        /* ---- The picture. ----
+         *
+         * The three checks moved to SFAF_Submissions::clean_image_choice() in
+         * 3.74.0, when the community form gained the same picker. One rule for
+         * what a form may attach to a public page. */
+        $clean['image'] = SFAF_Submissions::clean_image_choice( $post );
 
         /* ---- Who should be able to edit it. ----
          *
@@ -1668,7 +1657,7 @@ class SFAF_Request {
                 </label>
                 </fieldset>
 
-                <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ) ); ?>
+                <?php self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ), (int) $v( 'series' ) ); ?>
 
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">RSVP</legend>
@@ -1777,152 +1766,6 @@ class SFAF_Request {
     }
 
     /**
-     * Is this "title" just the file it came from?
-     *
-     * WordPress sets an attachment's title from its filename on upload, with
-     * the extension dropped and separators turned into spaces. So a picture
-     * nobody titled comes back as "img 2847 final v3", which reads as a caption
-     * and tells a person nothing. Two shapes are enough to catch it: something
-     * with no lower-case letters and no spaces, or something that is mostly
-     * digits and separators.
-     *
-     * DELIBERATELY CONSERVATIVE. A real title that trips this is shown as no
-     * title, which loses a little; a filename that slips through is shown as a
-     * caption, which is the thing worth avoiding.
-     *
-     * ASK THE FILE, NOT ONLY THE TITLE (3.65.0). The two shapes below are
-     * guesses, and the docblock's own example, "img 2847 final v3", is one this
-     * function did not actually catch: nine letters against five digits, and no
-     * extension. What WordPress does on upload is not a guess, though. It takes
-     * the file, drops the extension and turns dashes and underscores into
-     * spaces, so given the file this is an EXACT question rather than a
-     * heuristic, and it is asked first. The two guesses stay as the net for a
-     * title somebody typed that reads like a file anyway.
-     *
-     * @param string $title
-     * @param string $file  The attachment's file name, when the caller has it.
-     * @return bool
-     */
-    private static function looks_like_a_filename( $title, $file = '' ) {
-        $title = trim( (string) $title );
-        if ( '' === $title ) {
-            return true;
-        }
-
-        $file = trim( (string) $file );
-        if ( '' !== $file ) {
-            $derived = preg_replace( '/\.[a-z0-9]+$/i', '', $file );
-            $derived = trim( preg_replace( '/\s+/', ' ', str_replace( array( '-', '_' ), ' ', $derived ) ) );
-            if ( '' !== $derived && 0 === strcasecmp( $derived, $title ) ) {
-                return true;
-            }
-        }
-
-        /* An extension still on it, or a word with no vowels and a number. */
-        if ( preg_match( '/\.(jpe?g|png|gif|webp|tiff?|bmp)$/i', $title ) ) {
-            return true;
-        }
-        /* Mostly digits, dashes and underscores: dsc_0043, 20260814-1200x675. */
-        $letters = preg_match_all( '/[a-z]/i', $title );
-        $digits  = preg_match_all( '/[0-9]/', $title );
-        if ( $digits > 0 && $letters <= $digits ) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Every calendar-folder picture, as rows ready to render.
-     *
-     * ONE PASS, BECAUSE THE LIST IS READ TWICE. The panel draws every row and
-     * the closed trigger draws whichever one is chosen. Asking WordPress again
-     * for the chosen one would be a second query and a second chance for the
-     * two to describe the same picture differently.
-     *
-     * @return array<int,array<string,mixed>>
-     */
-    private static function folder_pictures() {
-        $images = get_posts( array(
-            'post_type'      => 'attachment',
-            'post_status'    => 'inherit',
-            'post_mime_type' => 'image',
-            'posts_per_page' => 60,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-            'meta_query'     => array(
-                array(
-                    'key'     => '_wp_attached_file',
-                    'value'   => '^' . preg_quote( SFAF_Media_Folder::prefix() ),
-                    'compare' => 'REGEXP',
-                ),
-            ),
-        ) );
-
-        $rows = array();
-        foreach ( $images as $img ) {
-            $thumb = wp_get_attachment_image_url( $img->ID, 'medium' );
-            if ( ! $thumb ) {
-                continue;
-            }
-
-            /*
-             * ONE NAME PER ROW: THE TITLE, OR THE FILE NAME (3.67.0).
-             *
-             * A title says what a picture is FOR, which is the question
-             * somebody choosing is actually asking, so it leads where there is
-             * a real one. Where there is not, the file name is what tells two
-             * photographs of the same event apart at 64px, and it is shown in
-             * the title's place rather than under it. Both were drawn between
-             * 3.65.0 and now, which made a titled picture two lines and an
-             * untitled one a line with a gap above it.
-             *
-             * BOTH ARE STILL WHAT SEARCH MATCHES, because somebody who knows
-             * the file name of an untitled picture should still find it by
-             * typing the file name, whichever of the two the row is showing.
-             */
-            $file  = basename( (string) get_post_meta( $img->ID, '_wp_attached_file', true ) );
-            $title = trim( (string) get_the_title( $img->ID ) );
-            if ( '' !== $title && self::looks_like_a_filename( $title, $file ) ) {
-                $title = '';
-            }
-            if ( '' === $file ) {
-                // The folder query matches on this meta key, so it is always
-                // there. Falling back to the title keeps a row readable rather
-                // than rendering a nameless one if that ever stops being true.
-                $file = ( '' !== $title ) ? $title : 'Untitled picture';
-            }
-
-            $rows[] = array(
-                'id'    => (int) $img->ID,
-                'thumb' => $thumb,
-                'file'  => $file,
-                'title' => $title,
-            );
-        }
-        return $rows;
-    }
-
-    /**
-     * What the closed trigger says: the picture chosen, or that none is.
-     *
-     * @param array $row A row from folder_pictures(), or null.
-     */
-    private static function image_choice_summary( $row ) {
-        ?>
-        <span class="uc-picker-count uc-image-current" data-uc-image-current>
-            <?php if ( $row ) : ?>
-                <img class="uc-image-current-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" />
-                <span class="uc-image-current-name"><?php
-                    echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
-                ?></span>
-            <?php else : ?>
-                <span class="uc-image-current-name">No picture chosen</span>
-            <?php endif; ?>
-        </span>
-        <?php
-    }
-
-    /**
      * Which team should be able to work on this event.
      *
      * WHY A TEAM AND NOT A PERSON. Membership resolves at read time, so adding
@@ -2008,140 +1851,24 @@ class SFAF_Request {
      * @param int    $chosen
      * @param string $upload_error
      */
-    private static function render_image_choice( $chosen, $upload_error = '' ) {
-        $rows    = self::folder_pictures();
-        $chosen  = (int) $chosen;
-        $current = null;
-        foreach ( $rows as $row ) {
-            if ( $row['id'] === $chosen ) {
-                $current = $row;
-                break;
-            }
-        }
+    private static function render_image_choice( $chosen, $upload_error = '', $series = 0 ) {
+        $any = SFAF_Media_Folder::has_any();
         ?>
         <?php // NO .uc-field ON A SECTION, for the reason given on the team
               // section above. ?>
         <fieldset class="uc-form-section-group uc-request-images">
             <legend class="uc-field-group-title">Event Image</legend>
-            <?php if ( empty( $rows ) ) : ?>
+            <?php if ( ! $any ) : ?>
                 <p class="uc-hint">
                     There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for
                     your event, or send this without a picture and say so in the notes.
                 </p>
             <?php else : ?>
-                <?php
-                /*
-                 * A <details>, WHICH IS THE WHOLE REASON THIS WORKS UNLOGGED.
-                 *
-                 * The grid this replaced drew every picture in the folder at
-                 * once. That is fine at a dozen and unusable at two hundred,
-                 * and the folder only grows.
-                 *
-                 * The browser opens and closes a <details> on its own, and the
-                 * radios inside one post whether it is open or shut. So with no
-                 * script at all this is still a complete control: the trigger
-                 * says what is chosen, opening it shows every picture, and
-                 * clicking one and submitting works. That matters here more
-                 * than anywhere else in the plugin, because this page is
-                 * reached by a link, by somebody with no WordPress account, on
-                 * whatever browser they have. It is the shape the dashboard's
-                 * form-link disclosure and the notification picker already use.
-                 *
-                 * SCRIPT ADDS TWO THINGS AND CREATES NONE. It filters the list
-                 * as you type, and it closes the panel when you choose. The
-                 * search box is hidden until portal.js reveals it, because a
-                 * box that cannot filter is a control that lies; that is the
-                 * same reason the notification picker's tabs stay hidden until
-                 * they can be switched.
-                 */
-                ?>
-                <details class="uc-picker uc-image-picker" data-uc-image-picker>
-                    <summary class="uc-picker-toggle">
-                        <span class="uc-picker-label">Choose a picture</span>
-                        <?php self::image_choice_summary( $current ); ?>
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php
-                            echo sfaf_icon( 'chevron', array( 'size' => '16px' ) );
-                        ?></span>
-                    </summary>
-
-                    <div class="uc-picker-panel" data-uc-filter-scope>
-                        <label class="uc-picker-filter uc-image-search">
-                            <span class="uc-visually-hidden">Search pictures</span>
-                            <?php
-                            /*
-                             * NO name, SO IT POSTS NOTHING. It narrows the list
-                             * under it and does not touch the request, the same
-                             * as the notification and team filters.
-                             */
-                            ?>
-                            <input type="search" placeholder="Search pictures&hellip;"
-                                   data-uc-filter autocomplete="off" />
-                        </label>
-
-                        <div class="uc-picker-options uc-image-options" data-uc-filter-list>
-                            <?php
-                            /*
-                             * THE ROW THE SERIES FILLS IN (3.68.0).
-                             *
-                             * data-uc-image-default marks the "nothing chosen"
-                             * option so portal.js can say what that actually
-                             * means once a series has been picked, which is the
-                             * series' own photo rather than nothing at all.
-                             * Choosing any picture below leaves this row alone
-                             * and the trigger untouched: a picture somebody
-                             * chose is never overwritten.
-                             *
-                             * IT STILL POSTS 0. Nothing is copied onto the
-                             * event, because an event in a series with no
-                             * picture of its own already resolves to the series
-                             * photo at display time, and a copy is a value that
-                             * goes stale when the series photo changes. See
-                             * create_event().
-                             */
-                            ?>
-                            <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture"
-                                   data-uc-image-default>
-                                <input type="radio" name="image_id" value="0" <?php checked( 0, $chosen ); ?>
-                                       data-uc-image-option data-uc-image-name="No picture" />
-                                <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>
-                                <span class="uc-image-option-text">
-                                    <span class="uc-image-option-name">No picture</span>
-                                </span>
-                            </label>
-                            <?php foreach ( $rows as $row ) : ?>
-                                <label class="uc-check uc-picker-option uc-image-option"
-                                       data-uc-filter-text="<?php echo esc_attr( strtolower( trim( $row['file'] . ' ' . $row['title'] ) ) ); ?>">
-                                    <input type="radio" name="image_id" value="<?php echo (int) $row['id']; ?>"
-                                           <?php checked( $row['id'], $chosen ); ?>
-                                           data-uc-image-option
-                                           data-uc-image-thumb="<?php echo esc_url( $row['thumb'] ); ?>"
-                                           data-uc-image-name="<?php echo esc_attr( '' !== $row['title'] ? $row['title'] : $row['file'] ); ?>" />
-                                    <img class="uc-image-option-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
-                                    <span class="uc-image-option-text">
-                                        <?php
-                                        /*
-                                         * ONE NAME, NOT TWO (3.67.0). The title
-                                         * where the picture has a real one, the
-                                         * file name where it does not, decided
-                                         * by looks_like_a_filename() in
-                                         * folder_pictures(): a title WordPress
-                                         * made from the file is not a title, and
-                                         * that row has already had it blanked.
-                                         * So this is the same choice the closed
-                                         * trigger makes, and the two cannot
-                                         * describe one picture differently.
-                                         */
-                                        ?>
-                                        <span class="uc-image-option-name"><?php
-                                            echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
-                                        ?></span>
-                                    </span>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>
-                    </div>
-                </details>
+                <?php SFAF_Media::picker( array(
+                    'name'   => 'image_id',
+                    'chosen' => (int) $chosen,
+                    'series' => (int) $series,
+                ) ); ?>
                 <p class="uc-hint">
                     Nothing here suitable? Ask <strong>Roxane Chicoine</strong> for an image for your event.
                 </p>

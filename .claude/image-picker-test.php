@@ -120,8 +120,13 @@ foreach ( $guards as $guard ) {
         }
     }
 }
-/* The button is required too: no button, no listener, and it returns first. */
-if ( preg_match( "#querySelector\('\.(uc-choose-image)'\)#", $bind ) ) {
+/* The button is required too: no button, no listener, and it returns first.
+ *
+ * TWO TRIGGERS SINCE 3.74.0, so this reads querySelectorAll as well as
+ * querySelector. The series filter added an "All calendar images" button beside
+ * Choose Image, and both carry the same class; what the markup has to provide
+ * is unchanged, which is why the answer this feeds is unchanged. */
+if ( preg_match( "#querySelectorAll?\('\.(uc-choose-image)'\)#", $bind ) ) {
     $required[] = 'class:uc-choose-image';
 }
 

@@ -772,6 +772,37 @@ if ( $args['editor'] ) {
     }
 
     /**
+     * The picked picture, checked the way both forms have to check it.
+     *
+     * THREE CHECKS, NOT ONE. It must be an attachment, it must be an image, and
+     * it must already be in the calendar folder. An id is the easiest thing in
+     * the world to change in a form, and without the last check this field
+     * would attach any file in the media library, including a private PDF, to
+     * a public event.
+     *
+     * ONE RULE FOR BOTH FORMS (3.74.0). The staff form has checked this since
+     * 3.65.0 and the community form gained a picker in 3.74.0, so the choice
+     * was about to be validated in two places. Two copies of a rule about what
+     * a stranger may attach to a public page is one copy too many.
+     *
+     * @param array $post The raw form values.
+     * @return int 0 when nothing usable was chosen.
+     */
+    public static function clean_image_choice( $post ) {
+        if ( empty( $post['image_id'] ) ) {
+            return 0;
+        }
+        $id = (int) $post['image_id'];
+        if ( $id < 1 || 'attachment' !== get_post_type( $id ) ) {
+            return 0;
+        }
+        if ( 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) {
+            return 0;
+        }
+        return SFAF_Media_Folder::holds( $id ) ? $id : 0;
+    }
+
+    /**
      * The image field both forms carry.
      *
      * ONE CONTROL, so the accepted formats and the size ceiling are stated

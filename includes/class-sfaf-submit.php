@@ -490,21 +490,55 @@ class SFAF_Submit {
          * line on a listing that helps nobody, and requiring both would refuse
          * an organizer who only wants to give a phone number.
          */
-        $clean['contact_name'] = $line( 'contact_name', 120 );
-        if ( '' === $clean['contact_name'] ) {
-            $errors['contact_name'] = 'Give the name people should ask for.';
-        }
+        /*
+         * "USE MY DETAILS" IS ANSWERED HERE AND NOT IN THE BROWSER (3.74.0).
+         *
+         * The tick hides three fields, and a hidden field posts nothing, so the
+         * copy has to happen on this side or a ticked form would arrive with no
+         * contact name and be refused for it. Doing it here also means the
+         * answer is the same with no script at all, where the three fields are
+         * visible and the tick is inert: whatever is in them is overwritten by
+         * the submitter's own details, which is what the tick says.
+         *
+         * IT COPIES ONE WAY AND ONLY ONE WAY. The submitter's name and email
+         * become the public contact. Nothing ever writes a public contact back
+         * onto the submitter, because those two do different jobs: one is who
+         * we reply to and who gets the registrations, the other is what prints
+         * on the event page.
+         *
+         * NO PHONE COMES WITH IT. The form never asked the submitter for one,
+         * and inventing an empty value would be the only way to pretend it did.
+         */
+        $clean['contact_same'] = ! empty( $post['contact_same'] );
 
-        $c_email = isset( $post['contact_email'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $post['contact_email'] ) ) ) ) : '';
-        $clean['contact_email'] = ( '' !== $c_email && is_email( $c_email ) ) ? $c_email : '';
-        if ( '' === $clean['contact_email'] && '' !== $c_email ) {
-            $errors['contact_email'] = 'That does not look like an email address.';
-        }
+        if ( $clean['contact_same'] ) {
+            $clean['contact_name']  = $clean['submitter_name'];
+            $clean['contact_email'] = $clean['submitter_email'];
+            $clean['contact_phone'] = '';
 
-        $clean['contact_phone'] = $line( 'contact_phone', 40 );
+            /*
+             * AND THE ERRORS ARE NOT DOUBLED. The two boxes are one box now,
+             * so an empty name is already reported against the field somebody
+             * can see, up under "About you". Reporting it twice would mark a
+             * field that is not on the screen.
+             */
+        } else {
+            $clean['contact_name'] = $line( 'contact_name', 120 );
+            if ( '' === $clean['contact_name'] ) {
+                $errors['contact_name'] = 'Give the name people should ask for.';
+            }
 
-        if ( '' === $clean['contact_email'] && '' === $clean['contact_phone'] && ! isset( $errors['contact_email'] ) ) {
-            $errors['contact_email'] = 'Give an email address or a phone number, so people can ask about the event.';
+            $c_email = isset( $post['contact_email'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $post['contact_email'] ) ) ) ) : '';
+            $clean['contact_email'] = ( '' !== $c_email && is_email( $c_email ) ) ? $c_email : '';
+            if ( '' === $clean['contact_email'] && '' !== $c_email ) {
+                $errors['contact_email'] = 'That does not look like an email address.';
+            }
+
+            $clean['contact_phone'] = $line( 'contact_phone', 40 );
+
+            if ( '' === $clean['contact_email'] && '' === $clean['contact_phone'] && ! isset( $errors['contact_email'] ) ) {
+                $errors['contact_email'] = 'Give an email address or a phone number, so people can ask about the event.';
+            }
         }
 
         /*
@@ -518,6 +552,14 @@ class SFAF_Submit {
          * at approval by somebody who can see both answers. Storing the number
          * records what was asked for without deciding that.
          */
+        /* ---- The picture chosen from the calendar folder (3.74.0). ----
+         *
+         * The same three checks the staff form makes, from the same method,
+         * because this is a form a stranger fills in and the id in it decides
+         * what gets attached to a public page. An upload is a different field
+         * and a different folder; see create_event(). */
+        $clean['image'] = SFAF_Submissions::clean_image_choice( $post );
+
         $clean['capacity'] = 0;
         if ( isset( $post['capacity'] ) && '' !== trim( (string) $post['capacity'] ) ) {
             $cap = (int) $post['capacity'];
@@ -764,6 +806,22 @@ class SFAF_Submit {
 
         if ( $image_id ) {
             update_post_meta( $event_id, self::META_IMAGE, $image_id );
+        }
+
+        /*
+         * A PICTURE CHOSEN FROM THE FOLDER IS THE EVENT'S PICTURE (3.74.0),
+         * and an uploaded one still is not. The two are different in the one
+         * way that matters: a folder image is already approved, already the
+         * right shape and already on the public calendar, so it can be the
+         * thumbnail the moment it is chosen. An upload is a working copy in
+         * another folder that somebody has to look at first, which is why
+         * "Use this image" on the pending row exists.
+         *
+         * validate() has already checked that this id is an attachment, is an
+         * image, and is in the calendar folder. See clean_image_choice().
+         */
+        if ( ! empty( $c['image'] ) ) {
+            set_post_thumbnail( $event_id, (int) $c['image'] );
         }
 
         update_post_meta( $event_id, SFAF_Submissions::META_KIND, SFAF_Submissions::KIND_COMMUNITY );
@@ -1179,14 +1237,14 @@ class SFAF_Submit {
                         <label class="uc-field">
                             <span class="uc-field-label">Venue</span>
                             <select name="venue" data-uc-reveal="uc-address" data-uc-reveal-when="0">
-                                <option value="0">Somewhere else</option>
+                                <option value="0">Enter location manually</option>
                                 <?php foreach ( (array) $venues as $venue ) : ?>
                                     <option value="<?php echo (int) $venue->term_id; ?>" <?php selected( (int) $v( 'venue' ), (int) $venue->term_id ); ?>>
                                         <?php echo esc_html( $venue->name ); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <span class="uc-hint">Pick one of these, or choose Somewhere else and give the address.</span>
+                            <span class="uc-hint">Pick one of these, or enter the location manually and give the address below.</span>
                         </label>
                     <?php endif; ?>
 
@@ -1288,7 +1346,7 @@ class SFAF_Submit {
                 <legend class="uc-field-group-title">Signing up</legend>
 
                 <label class="uc-field">
-                    <span class="uc-field-label">How many places, if there is a limit</span>
+                    <span class="uc-field-label">Capacity</span>
                     <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
                     <span class="uc-hint">Leave it blank if there is no limit.</span>
                     <?php SFAF_Submissions::field_error( $err( 'capacity' ) ); ?>
@@ -1315,32 +1373,102 @@ class SFAF_Submit {
                 ?>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Contact for the event</legend>
-                    <p class="uc-hint">
-                        <strong>This one appears on the public listing</strong>, including the phone number if you give one.
-                        Give the details people should use to ask about the event, which may not be yours.
-                    </p>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Name</span>
-                        <input type="text" name="contact_name" required maxlength="120" value="<?php echo esc_attr( $v( 'contact_name' ) ); ?>" />
-                        <?php SFAF_Submissions::field_error( $err( 'contact_name' ) ); ?>
+                    <p class="uc-hint"><strong>This appears on the public listing.</strong></p>
+                    <?php
+                    /*
+                     * ONE SET OF DETAILS FOR MOST PEOPLE (3.74.0).
+                     *
+                     * The form asked for a name and an email twice, thirty
+                     * fields apart, and for most submitters the two answers are
+                     * the same answer. This is the tick that says so.
+                     *
+                     * THE DIRECTION IS WHAT MAKES IT SAFE, AND IT ONLY RUNS ONE
+                     * WAY. "About you" is collected first and is internal: it
+                     * reaches the notification list and the alert, and appears
+                     * on no public page. This copies it ONTO the public contact
+                     * when somebody asks for that, and nothing ever copies the
+                     * other way. So the default is off, the separate fields are
+                     * visible, and nothing anybody typed becomes public because
+                     * a control was left alone.
+                     *
+                     * IT REVEALS RATHER THAN HIDES, like every other reveal on
+                     * this form: with no script the tick is inert and all three
+                     * fields are on the page, which is the form as it was.
+                     * validate() does the copying, so the answer is the same
+                     * whether the browser ran anything or not.
+                     */
+                    ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="contact_same" value="1"
+                               data-uc-reveal="uc-contact-own" data-uc-reveal-when="unchecked"
+                               <?php checked( (bool) $v( 'contact_same' ) ); ?> />
+                        Use my name and email as the contact on the event page
                     </label>
-                    <div class="uc-field-row">
+                    <div class="uc-reveal-target" id="uc-contact-own">
+                        <p class="uc-hint">
+                            Give the details people should use to ask about the event, which may not be yours.
+                        </p>
                         <label class="uc-field">
-                            <span class="uc-field-label">Email</span>
-                            <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $v( 'contact_email' ) ); ?>" />
-                            <?php SFAF_Submissions::field_error( $err( 'contact_email' ) ); ?>
+                            <span class="uc-field-label">Name</span>
+                            <input type="text" name="contact_name" required maxlength="120" value="<?php echo esc_attr( $v( 'contact_name' ) ); ?>" />
+                            <?php SFAF_Submissions::field_error( $err( 'contact_name' ) ); ?>
                         </label>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Phone</span>
-                            <input type="tel" name="contact_phone" maxlength="40" value="<?php echo esc_attr( $v( 'contact_phone' ) ); ?>" />
-                        </label>
+                        <div class="uc-field-row">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Email</span>
+                                <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $v( 'contact_email' ) ); ?>" />
+                                <?php SFAF_Submissions::field_error( $err( 'contact_email' ) ); ?>
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Phone</span>
+                                <input type="tel" name="contact_phone" maxlength="40" value="<?php echo esc_attr( $v( 'contact_phone' ) ); ?>" />
+                            </label>
+                        </div>
+                        <span class="uc-hint">Give an email address, a phone number, or both. The phone number is shown too.</span>
                     </div>
-                    <span class="uc-hint">Give an email address, a phone number, or both.</span>
                 </fieldset>
 
-                <fieldset class="uc-form-section-group">
+                <fieldset class="uc-form-section-group uc-request-images">
                     <legend class="uc-field-group-title">Event Image</legend>
-                    <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
+                    <?php
+                    /*
+                     * THE PICKER, ON THIS FORM AT LAST (3.74.0).
+                     *
+                     * WHAT WAS HERE. An upload and nothing else, so the only
+                     * answer to "what picture should this event have" was a
+                     * file from the submitter's own computer. Somebody
+                     * submitting a Strut event had no way to use the Strut
+                     * photograph that already exists and is already the right
+                     * shape, and whoever approved it had to go and set one.
+                     *
+                     * FILTERED TO THIS EVENT'S SERIES, WHICH THE URL ALREADY
+                     * NAMES. This form is only ever reached at a series' own
+                     * address, so the series is known before a single field is
+                     * filled in; the picker leads with that programme's
+                     * pictures and lists everything else under them.
+                     *
+                     * SHOWING THE FOLDER TO A STRANGER IS NOT SHOWING THE
+                     * SERIES LIST. The refusal that keeps FAQ sets off this
+                     * form is about NAMES: a dropdown of set names is a
+                     * directory of this calendar's programming handed to
+                     * anybody who opens the form, and this calendar carries
+                     * HIV, substance use and trans health programming. The
+                     * pictures are different in kind. They are the images
+                     * already published on the public calendar's own event
+                     * pages, so nothing here is visible that a visitor to the
+                     * calendar cannot already see, and the group heading names
+                     * only the series whose link they were given.
+                     */
+                    SFAF_Media::picker( array(
+                        'name'   => 'image_id',
+                        'chosen' => (int) $v( 'image' ),
+                        'series' => ( $series && ! is_wp_error( $series ) ) ? (int) $series->term_id : 0,
+                    ) );
+                    ?>
+                    <div class="uc-request-upload">
+                        <p class="uc-hint">Or send your own, and somebody will size it for the calendar.</p>
+                        <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
+                    </div>
                 </fieldset>
 
                 <?php

@@ -61,6 +61,47 @@ class SFAF_Media_Folder {
     public static function register() {
         add_filter( 'ajax_query_attachments_args', array( __CLASS__, 'restrict_query' ) );
         add_filter( 'upload_dir', array( __CLASS__, 'upload_to_folder' ) );
+        add_filter( 'map_meta_cap', array( __CLASS__, 'gate_upload' ), 10, 3 );
+    }
+
+    /**
+     * Who may upload THROUGH THIS PICKER.
+     *
+     * WHY THIS IS A CAPABILITY FILTER AND NOT A HIDDEN TAB (3.74.0). portal.js
+     * hides wp.media's Upload Files tab for anybody who is not a calendar
+     * admin, and a hidden tab is a hidden tab: the upload endpoint is a URL and
+     * a POST to it is a request anybody can construct. This is the refusal, and
+     * it happens where the file arrives.
+     *
+     * IT IS NARROW ON PURPOSE, IN TWO DIRECTIONS. It only answers when the
+     * request carries our own flag, which the picker sets and nothing else
+     * does, so an upload made anywhere else on the site, in the WordPress media
+     * library or by another plugin, is untouched. And it only ever REMOVES the
+     * capability: it cannot hand `upload_files` to somebody who does not have
+     * it, which would be a plugin quietly widening what a WordPress role means.
+     *
+     * NOT A ROLE WRITE. Nothing here calls add_cap, set_role or touches
+     * wp_capabilities. It answers one question about one request and the answer
+     * is gone when the request ends. See CLAUDE.md 7.
+     *
+     * @param string[] $caps The primitive capabilities required.
+     * @param string   $cap  The capability being asked about.
+     * @param int      $user_id
+     * @return string[]
+     */
+    public static function gate_upload( $caps, $cap, $user_id ) {
+        if ( 'upload_files' !== $cap ) {
+            return $caps;
+        }
+        if ( ! self::asked_for() ) {
+            return $caps;
+        }
+        if ( class_exists( 'SFAF_Media' ) && SFAF_Media::can_upload( (int) $user_id ) ) {
+            return $caps;
+        }
+        // do_not_allow is WordPress's own way of saying no, and it is what
+        // every core map_meta_cap branch returns for a refusal.
+        return array( 'do_not_allow' );
     }
 
     /**
@@ -183,7 +224,57 @@ class SFAF_Media_Folder {
             $args['meta_query'] = array( $clause );
         }
 
+        /*
+         * AND THE SERIES, WHEN THE PICKER ASKED FOR ONE (3.74.0).
+         *
+         * The event editor opens the library on the event's own series, with an
+         * "All calendar images" trigger beside it that asks without this. The
+         * term id arrives inside wp.media's `query`, which is where the folder
+         * flag arrives too, so both are read the same way and the same note
+         * above about array_intersect_key applies to both.
+         *
+         * A TERM THAT DOES NOT EXIST NARROWS TO NOTHING, which is correct: the
+         * request asked for a series and there is no such series, so there are
+         * no pictures in it. Widening back to the whole folder would answer a
+         * different question from the one asked.
+         */
+        $series = self::asked_series();
+        if ( $series > 0 ) {
+            $clause = array(
+                'taxonomy' => 'uc_series',
+                'field'    => 'term_id',
+                'terms'    => $series,
+            );
+            if ( ! empty( $args['tax_query'] ) && is_array( $args['tax_query'] ) ) {
+                $args['tax_query'] = array(
+                    'relation' => 'AND',
+                    $args['tax_query'],
+                    array( $clause ),
+                );
+            } else {
+                $args['tax_query'] = array( $clause );
+            }
+        }
+
         return $args;
+    }
+
+    /**
+     * Which series the picker asked for, if any.
+     *
+     * Read off the raw request for the reason asked_for() gives: core strips
+     * unknown keys out of the query before the filter sees its argument.
+     *
+     * @return int 0 when none was asked for.
+     */
+    private static function asked_series() {
+        if ( isset( $_REQUEST['query'] ) && is_array( $_REQUEST['query'] ) && ! empty( $_REQUEST['query']['uc_series'] ) ) {
+            return (int) $_REQUEST['query']['uc_series'];
+        }
+        if ( ! empty( $_REQUEST['uc_series'] ) ) {
+            return (int) $_REQUEST['uc_series'];
+        }
+        return 0;
     }
 
     /**

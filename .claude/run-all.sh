@@ -107,6 +107,12 @@ echo "=== rich text at load ==="
 run "rich-text-start --self-test" node .claude/rich-text-start-test.js --self-test
 
 echo
+# Series as image tags, and the guarantee that deleting a series leaves the
+# images alone.
+echo "=== image tags ==="
+run "media-tags --self-test" php .claude/media-tags-test.php --self-test
+
+echo
 # Five minute steps on every time control, and the one rule that decides
 # where they are deliberately absent.
 echo "=== time controls ==="
