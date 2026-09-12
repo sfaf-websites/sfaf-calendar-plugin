@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 104 items.** Quick 78, needs real conditions 23, blocked on other
+**Outstanding: 106 items.** Quick 80, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1011,18 +1011,6 @@ the select, read-only, and change when a different set is chosen.
 its set. That is deliberate: the fold is an enhancement and the complete list is
 the fallback.
 
-### 1.78 The preview goes somewhere (3.77.0)
-
-**The panel works and had nothing behind it.** Hover a tile on the month grid
-and click, in turn, **the picture**, **the title** and **the View Event Details
-pill**. All three should open the event, and open it the same way the tile does:
-if the tile opens a new tab, all three should too.
-
-**Then tab through the grid with the keyboard.** The preview follows focus as
-before, and pressing Enter opens the event. **There must be no extra tab stop
-inside the panel**: one press of Tab moves to the next tile, not into the
-preview.
-
 ### 1.79 Fill this in from the last one, on the staff request form (3.77.0)
 
 **Open the staff request form and choose a series that has run before.** A panel
@@ -1045,6 +1033,51 @@ set that were filled in.
 
 **This is the control whose caladmin twin sat dead for twenty-six releases**
 without anybody noticing, so it is worth pressing rather than glancing at.
+
+### 1.80 The preview's two targets, and the tint (3.78.0)
+
+**This replaces 1.78, which described the panel as one link with a clickable
+title. 3.78.0 made it two targets and the title is not one, so that item was
+deleted rather than left describing behaviour nobody built.** Hover
+a tile on the month grid.
+
+- **The panel must not be tinted.** The date, the time and the place should read
+  as ordinary text, not as teal links. That was the visible consequence of the
+  whole panel being an anchor.
+- **Click the picture.** It opens the event.
+- **Click the View Event Details pill.** It opens the event, the same way.
+- **Click the title, or the date.** Nothing should happen: they are not targets.
+- **Tab through the grid.** One stop per tile, and no stop inside the panel.
+
+### 1.81 Naming a picture after its own file (3.78.0)
+
+**This is the case that did not work and is the reason to check rather than
+assume.** caladmin > Images.
+
+Find a picture whose file is named after what it is, `cycle-to-zero.jpg` for
+instance. Type that same name into its Name box, **"Cycle To Zero"**, and Save.
+
+**It must stick.** The card should show it, and so should the picture chooser on
+the staff request form. Before this release the title was saved and then refused
+on the way out, so the file name went on showing and the box looked broken.
+
+**Then clear the box and Save again.** It should go back to the file name, which
+is what an unnamed picture shows.
+
+### 1.82 The Images screen, laid out (3.78.0)
+
+**caladmin > Images**, on a normal desktop window.
+
+- **Three cards across, not six**, each wide enough that the series dropdown
+  shows a full name. "Mobile Health Sites" is the one to look for.
+- **One Save per card**, not two. The name and the series are one form: choose a
+  series, type a name, press Save once, and both should take.
+- **Tag 0 images must not be yellow.** With nothing ticked it should read as a
+  plain disabled button; tick one and it should turn primary and say "Tag 1
+  image".
+- **Add an image is folded shut** at the top. Press it to open.
+- **A picture with no name says "no name yet"** beside its Name label, and one
+  with a name does not.
 
 ---
 

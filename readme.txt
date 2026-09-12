@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.77.0
+Stable tag: 3.78.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,39 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.78.0 =
+
+**THE PREVIEW IS TWO TARGETS, THE PICTURE AND THE BUTTON.** 3.77.0 wrapped the whole panel in one anchor and explained the reasoning rather than doing what was asked, and the consequence was visible: everything inside took the anchor's computed colour, so the theme's link teal tinted the entire box and the date, the time and the place all read as links. A preview whose every line looks clickable says less than one with two things that are.
+
+**The title is deliberately not a target either.** A title that is a link in a panel where the date beside it is not is the same confusion in miniature, and the tile underneath is already a link on the title.
+
+**What survives is the reasoning, and all of it still holds.** Both destinations come off the tile, copied rather than re-derived, and from **one loop**, so the picture and the pill cannot disagree with each other or with the tile about where they go or how they open. **Neither is a tab stop**: the panel is `aria-hidden`, a focusable element inside one is invisible to a screen reader and still a stop, and a keyboard user reaches the tile which already carries the same destination.
+
+**Nothing else was inheriting link styling, checked rather than assumed.** The title, the three fact lines and the cancelled line have always stated their own colour; the pill states its own pair, white on the dark teal at 5.35:1; and the picture's link holds no text at all. What **was** inheriting was every one of those, from the wrapper, and the wrapper is gone.
+
+**THE SERIES PREVIEW ON THE STAFF FORM WAS SMALLER THAN THE ROWS IT CHOOSES FROM.** Not missed in 3.76.0 and not a rule living somewhere else: that release raised both in one edit, the trigger 48 to 96 and the row 64 to 132, which **inverted** them. The picture somebody looks at to decide ended up smaller than the ones they scan past, and neither number was wrong on its own. It is 200 by 113 now, and the ORDERING is the thing to preserve from here rather than either number.
+
+**THE IMAGES SCREEN IS REBUILT.** The grid's floor was 150px, chosen as "a thumbnail somebody can recognise a photograph in", which was the wrong question: the widest thing in a card is a select that has to render "Mobile Health Sites" without clipping, and that is what sets the minimum. **300px, so three across rather than six.**
+
+**One form per card, and it was two.** A card held a tick, a thumbnail, a name box with its own Save, a series dropdown with its own Add, and the tag chips: six controls and two submit buttons in a 150px column, thirty controls on a screen, with the dropdown clipping after the word "Add" so the one thing it exists to show was the thing it could not. **Naming a picture and filing it are the same act at the same moment**, so one Save does both: the name is replaced and the series, if one is chosen, is added. Both fields are labelled now rather than placeholder-only, which is the pattern that made it read as a wall of boxes. The chips keep their own x, because taking a series off is an undo and must not wait for a press it has nothing to do with.
+
+**A primary button that cannot do anything stops being primary.** "Tag 0 images" rendered in brand Yellow at 55% opacity, and 55% yellow is still yellow. Yellow appears once on a screen and means "this is the thing to act on"; a control that is inert must not wear it. A disabled primary is a plain disabled control now, on all three screens that use the tick pattern.
+
+**The upload panel folds, shut**, because adding a picture is something an admin does occasionally and looking at the library is what everybody does every time. A native `<details>`, like the Series and Categories lists.
+
+**AND THE FILENAME RULE WAS TOO AGGRESSIVE.** `looks_like_a_filename()` compares a title against the file it came from with separators turned to spaces, which is right about WordPress's own derived titles and is a **guess** about everybody else's. The guess is wrong in the commonest case there is, because a well-named file is usually named after the picture:
+
+```
+"Cycle To Zero"             on  cycle-to-zero.jpg             thrown away
+"Strut SFAF San Francisco"  on  strut-sfaf-san-francisco.jpg  thrown away
+```
+
+So somebody could type a name on the Images screen, save it, and watch every picker go on showing the file name. **The remedy 3.76.0 added for exactly that complaint did not work for the case it was most likely to meet.**
+
+**A name typed here is known rather than guessed at now.** Saving one marks the picture, and the reader trusts a marked title without putting it through the heuristic. **Clearing the box clears the mark**, so emptying a name really does put the row back to its file name. The heuristic stays and still covers every picture nobody has named, which is what it was written for.
+
+**And the screen says why.** One line pointing at the box rather than explaining the rule, plus "no name yet" beside the label on the cards where it is true. A card showing a file name beside one showing a name looks like a fault, and was reported as one twice.
 
 = 3.77.0 =
 

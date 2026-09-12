@@ -1412,23 +1412,32 @@ setting only `top` and `left` leaves right and bottom pinned and the auto
 margins centre the panel in the viewport, ignoring where it was placed. Same
 shape as the note on the modal's own UA box.
 
-**THE WHOLE PANEL IS ONE LINK, AND IT WAS NONE (3.77.0).** It shipped with
+**THE PANEL HAD NOTHING BEHIND IT (3.76.0).** It shipped with
 "View Event Details" as a `<span>`: a pill that looked like a button, was not
 one, and had nothing behind it. **The address was never missing** and no
 attribute was needed, because the tile the panel describes IS the `<a>`; what
 was missing is that nothing read its `href` and nothing in the panel was
 clickable.
 
-**One anchor round everything, not three.** The picture, the title and the pill
-are all things somebody aims at, and the tile underneath is already one link
-over its whole area, so the panel behaves like the thing it expands. Three
-anchors would be three places for `target` and `rel` to drift apart. **Both come
-off the tile**, copied rather than re-derived, so the panel cannot open in this
-tab while the tile opens a new one.
+**TWO TARGETS: THE PICTURE AND THE PILL (3.78.0), AND ONE ANCHOR ROUND
+EVERYTHING WAS THE WRONG ANSWER.** 3.77.0 wrapped the whole panel, and the
+consequence was visible: every line inside took the anchor's computed colour, so
+the theme's link teal tinted the box and the date, the time and the place all
+read as links. **A preview whose every line looks clickable says less than one
+with two things that are.**
 
-**It costs text selection**, which is worth naming: nobody selects a date out of
-a panel that closes when the pointer leaves, and every line in it is on the tile
-and the event page too.
+**The title is not a target either**, deliberately: a title that is a link in a
+panel where the date beside it is not is the same confusion in miniature, and
+the tile underneath is already a link on the title.
+
+**Both destinations come off the tile**, copied rather than re-derived and
+applied from ONE loop, so the two cannot disagree with each other or with the
+tile about where they go or how they open.
+
+**Nothing else in the panel inherits a link colour**, checked rather than
+assumed: the title, the three fact lines and the cancelled line have always
+stated their own, the pill states its own pair, and the picture's link holds no
+text at all.
 
 **`tabindex="-1"`, AND THE PANEL STAYS `aria-hidden`.** A focusable element
 inside an `aria-hidden` container is invisible to a screen reader and still a
@@ -1544,6 +1553,37 @@ Uploads made from caladmin land in the folder, deliberately overriding the
 year-and-month setting: the folder IS the organisation for these, and a date
 directory underneath would scatter the same pictures across twelve places a
 year. Without it an upload would be invisible to the picker that made it.
+
+### A picture's name, and when the heuristic is not consulted
+
+**EVERY PICKER SHOWS A PICTURE'S TITLE WHERE IT HAS A REAL ONE AND ITS FILE NAME
+WHERE IT DOES NOT.** `SFAF_Media::row()` decides which, and 3.65.0's
+`looks_like_a_filename()` is what refuses a title WordPress derived from the
+file on upload: "Dsc 0043" is not a name anybody chose and is worse than showing
+`dsc_0043.jpg`.
+
+**A NAME TYPED ON THE IMAGES SCREEN IS TRUSTED WITHOUT BEING ASKED ABOUT.**
+`rename()` writes `META_NAMED` and `row()` skips the heuristic for a marked
+title. Clearing the box clears the mark, so emptying a name really does put the
+row back to its file name.
+
+**WHY THAT MARK EXISTS, because it looks like belt and braces and is not.** The
+heuristic compares the title against the file with separators turned to spaces,
+so a name somebody typed that MATCHES its file was thrown away:
+
+```
+"Cycle To Zero"             on  cycle-to-zero.jpg             thrown away
+"Strut SFAF San Francisco"  on  strut-sfaf-san-francisco.jpg  thrown away
+```
+
+A well-named file is usually named after the picture, so that is the commonest
+case rather than an edge. Without the mark, the name box added in 3.76.0 could
+be used, saved, and have no effect, which is the remedy for a complaint not
+working on the complaint. See §7.
+
+**THE SCREEN SAYS WHY A CARD SHOWS A FILE NAME**, in one line pointing at the
+box rather than explaining the rule, plus a marker on the cards where it is
+true. It had been reported as a fault twice.
 
 ### The image library, and tags that are series
 
@@ -3883,7 +3923,7 @@ that a clean cancelled list does not mean a clean history.
 
 **Kept here rather than in the hand-off because none of them is about the
 current situation.** Each has been true for several releases and will go on
-being true until a person does something that no build can do.
+
 
 | | What is needed | What happens meanwhile |
 |---|---|---|
@@ -3939,6 +3979,48 @@ current situation and all four will still be true in six months.
   unscoped rule in either stylesheet would take the switcher off pages that have
   nothing to do with the calendar. Nothing here detects, sets or translates a
   locale, and 3.16.0 is why that sentence is written down.
+
+**A heuristic that was right about its own case and wrong about everybody
+else's.** `looks_like_a_filename()` blanks a picture's title when it matches the
+file it came from, which is exactly right about the titles WordPress derives on
+upload and is a GUESS about titles a person typed. The guess fails in the
+commonest case there is, because a well-named file is usually named after the
+picture: "Cycle To Zero" on `cycle-to-zero.jpg` was thrown away.
+
+**The cost was that the remedy did not work.** 3.76.0 answered "the picker shows
+file names" by adding a name box to the Images screen, and somebody could type a
+name there, save it, and watch every picker go on showing the file name. Two
+releases of a correct diagnosis and a remedy that could not take effect.
+
+> **WHERE A HEURISTIC GUESSES AT INTENT, RECORD THE INTENT INSTEAD.** The
+> question was never "does this string look derived", it was "did a person
+> choose this", and that is a fact available at the moment somebody types it.
+> `rename()` marks the attachment and the reader trusts a marked title without
+> asking the heuristic at all. The heuristic stays for everything nobody has
+> named, which is what it was written for. **A guess is the right tool only
+> where the answer cannot be known**, and the moment a screen exists that could
+> know, the guess should stop being consulted about what it produced.
+
+**And an empty state that reads as a fault will be reported as one.** A card
+showing `dsc_0043.jpg` beside one showing "Cycle To Zero" looks broken. It was
+reported twice, and both times the answer was "that is the rule working". The
+screen says it now, in one line pointing at the box rather than explaining the
+rule, plus a marker on the cards where it is true. Same lesson as the picture
+chooser showing an ungrouped list when nothing is tagged, and this is the second
+time this feature has produced it.
+
+**A layout floor set from the wrong element.** The Images grid used
+`minmax(150px, 1fr)`, chosen and written down as "a thumbnail somebody can
+recognise a photograph in". The widest thing in the card is not the photograph:
+it is a `<select>` that has to render "Mobile Health Sites" without clipping.
+Six cards across, the dropdown clipped after the word "Add", and the one thing
+that control exists to show was the thing it could not.
+
+> **A GRID'S MINIMUM IS SET BY ITS WIDEST CONTROL, NOT ITS LARGEST PICTURE.**
+> A picture scales; a select, a date input and a button do not. Ask what the
+> least compressible thing in the cell is before choosing the floor, and if the
+> answer is "a control", the floor is whatever that control needs to be
+> readable at.
 
 **A feature built on the surface the product does not have.** 3.75.0's hover
 preview went into `calendar.js`, which is the shortcode's script. **This
