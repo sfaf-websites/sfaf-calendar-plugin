@@ -1146,13 +1146,28 @@ class SFAF_Shortcodes {
             $at_floor = $this->is_floor_month( $prefix );
             ?>
             <div class="uc-month-head<?php echo $at_floor ? ' is-floor' : ''; ?>">
-                <div class="uc-month-nav-side uc-month-nav-back">
-                    <?php if ( ! $at_floor ) : ?>
-                        <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
-                                aria-label="Previous month"><span aria-hidden="true">&lsaquo;</span></button>
-                    <?php endif; ?>
-                </div>
-
+                <?php
+                /*
+                 * THE THREE CONTROLS ARE ONE GROUP (3.80.0).
+                 *
+                 * 3.45.0 put previous at the far left and Today and next at the
+                 * far right so the month name could be centred between them. On
+                 * a 1200px block that is 900px of travel between the two
+                 * buttons somebody uses alternately, and paging back and forth
+                 * through a schedule means crossing the calendar every time.
+                 *
+                 * They are one segmented control now, kept together, with the
+                 * month name to their left. The centring goes with it, and that
+                 * is the trade: a name that sits left is read just as easily,
+                 * and the three controls being reachable without moving the
+                 * pointer is worth more than symmetry.
+                 *
+                 * THE EMPTY BACK CELL IS GONE WITH IT. It existed so the
+                 * heading would not jump sideways on the floor month, and there
+                 * is nothing to jump now: the group is anchored right whether
+                 * or not it holds two buttons or three.
+                 */
+                ?>
                 <div class="uc-month-heading">
                     <?php
                     /*
@@ -1173,12 +1188,45 @@ class SFAF_Shortcodes {
                     <h3 class="uc-month-label" aria-live="polite"><?php echo esc_html( $grid['label'] ); ?></h3>
                 </div>
 
-                <div class="uc-month-nav-side uc-month-nav-fwd">
+                <?php
+                /*
+                 * PREVIOUS, TODAY, NEXT, IN THAT ORDER, which is the order they
+                 * mean: back, here, forward. Today is between them rather than
+                 * beside them, so the group reads as one axis.
+                 *
+                 * NO PREVIOUS BUTTON ON THE FLOOR MONTH, unchanged from 3.45.0:
+                 * the current month is as far back as a public calendar goes,
+                 * and a dead button is a promise the calendar cannot keep.
+                 * Today goes with it, because on the floor month Today is where
+                 * you already are.
+                 *
+                 * THE CHEVRONS ARE sfaf_icon() PATHS, NOT &lsaquo; AND &rsaquo;
+                 * Those are TEXT: they take the host's font, its weight and its
+                 * line box, so their size and their vertical centring were
+                 * whatever sfaf.org's body font happened to give them. An
+                 * inline SVG is the same shape at the same size on every host,
+                 * which is the whole reason this project has an icon set.
+                 *
+                 * ONE GLYPH, ROTATED, NOT TWO. That is what the icon set's own
+                 * note on 'chevron' says to do, and it is also the reason not
+                 * to add a 'chevron-left': the map is one list and the category
+                 * icon picker is curated from it, so a key added for a
+                 * navigation button would turn up as something a manager could
+                 * choose for a programme.
+                 */
+                ?>
+                <div class="uc-month-nav-group">
                     <?php if ( ! $at_floor ) : ?>
+                        <button type="button" class="uc-month-nav uc-month-prev" data-goto="<?php echo esc_attr( $grid['prev'] ); ?>"
+                                aria-label="Previous month"><?php
+                            echo sfaf_icon( 'chevron', array( 'size' => '18px' ) );
+                        ?></button>
                         <button type="button" class="uc-month-nav uc-month-today" data-goto="<?php echo esc_attr( current_time( 'Y-m' ) ); ?>">Today</button>
                     <?php endif; ?>
                     <button type="button" class="uc-month-nav uc-month-next" data-goto="<?php echo esc_attr( $grid['next'] ); ?>"
-                            aria-label="Next month"><span aria-hidden="true">&rsaquo;</span></button>
+                            aria-label="Next month"><?php
+                        echo sfaf_icon( 'chevron', array( 'size' => '18px' ) );
+                    ?></button>
                 </div>
             </div>
 

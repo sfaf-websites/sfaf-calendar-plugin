@@ -2006,6 +2006,80 @@ it stripped by hand is still refused at the write.
 both against one `$today` so a press that straddles midnight judges every row
 against one date. The ticks narrow; they never widen.
 
+### The picture picker hides by series, and the two forms filter in different places
+
+From 3.80.0 the public forms' picker shows **only** the chosen series' pictures.
+It grouped them before, the series' own first and everything else under a second
+heading, and that was the wrong answer to the question: at forty or fifty
+pictures a heading tells somebody where to stop reading without saving them the
+reading.
+
+**There is no route back to the full list, deliberately.** A route back is the
+grouping again with a click in front of it. The cost is real and was weighed:
+somebody who wants a picture tagged to another programme cannot reach it. The
+remedy for that is the message, not an escape.
+
+> **A SERIES WITH NOTHING TAGGED GETS A SENTENCE, NEVER THE WHOLE FOLDER.** A
+> quiet fallback is indistinguishable from the filter not working and was
+> reported as exactly that twice. The "no picture" row stays either way, so the
+> form can still be sent without one and the approver picks.
+
+**WHERE THE FILTERING HAPPENS DEPENDS ON WHETHER THE SERIES CAN CHANGE**, and
+this is the part not to flatten into one path:
+
+| form | series | filtered by | with no script |
+|---|---|---|---|
+| community | fixed by the URL | the server | correctly filtered |
+| staff | a `<select>` | `portal.js` | the whole folder |
+
+Filtering the staff form on the server would be right on arrival and stale the
+moment somebody changed the select with scripting off. **A list confidently
+showing the wrong series is worse than one showing all of them**, so the server
+writes every row out carrying `data-uc-image-series` and the script hides what
+does not match. Same rule as the FAQ set peek: nothing is hidden that a script
+has to come back and reveal.
+
+**An untagged picture is hidden by every series.** It is not a picture for
+everybody; it is one nobody has filed yet.
+
+**TWO FILTERS, ONE LIST, ONE OWNER OF `hidden`.** The search box and the series
+narrowing act on the same rows. Both assigning the property is two answers to
+"is this row on screen" with the later one winning, so typing in the search box
+would restore every picture the series had just removed. The series filter sets
+`data-uc-off-series` and asks for a re-run; `initFilterLists()` owns the
+property. The same discipline as computing a cascade before rewriting a rule,
+one layer up.
+
+**caladmin is not this picker and does not change.** The event editor, the
+series screen and the pending queue use `render_image_picker()`, which opens the
+WordPress media modal scoped to the calendar folder. There is no series-grouped
+radio list there to hide. **It should not gain one**: an admin or editor can tag
+an image themselves, so the empty state is theirs to fix in one click, and the
+approver of a community submission is precisely the person who needs a picture
+from outside the series when the submitter sent none. Hiding would put a round
+trip through the Images screen in front of the one person fixing everybody
+else's missing pictures.
+
+### The banner is a live preview of the event
+
+The community form has carried the series picture across the top since 3.47.0.
+From 3.80.0 it **follows the picker**, on both public forms, so what is at the
+top is what the event will look like rather than decoration. `render_banner()`
+is one renderer shared by both; what differs is where the picture comes from.
+
+- **No picture means no banner**, and the element is absent rather than empty. A
+  grey box saying nothing is worse than a form starting at its heading.
+- **AN UPLOAD DOES NOT CHANGE IT.** A file attached on these forms is a working
+  copy that lands outside the calendar folder and an approver decides about.
+  Putting it in the banner would say it is already the event's picture, which is
+  the one thing these forms must not say.
+- **So the upload gets a thumbnail of its own and one line.** Somebody who
+  attaches a photograph and sees nothing whatever change will believe it failed.
+  The thumbnail says it arrived; the line says an approver decides, which stops
+  the thumbnail saying more than that.
+- **260ms.** Somebody comparing three programmes changes that dropdown three
+  times, and a reveal that is a pleasure once is an obstruction by the third.
+
 ### The form links are on the dashboard, and they are not a secret
 
 **Nothing in caladmin linked to either public form until 3.49.0**, so sending
@@ -4472,6 +4546,50 @@ question was "is it written in the same table as its header".
 > duly reported as a broken association. Both are the same trap as 3.20.0: **make
 > a new checker fail on purpose before believing it passes**, and give it a floor
 > it must clear so that finding nothing is a failure rather than a pass.
+
+### A comment can assert a declaration that is not there (3.45.0, found 3.80.0)
+
+`.uc-view-panels-combined` carried a paragraph explaining that `overflow: hidden`
+on the container is what lets the panels' square corners sit inside a rounded
+border. The rule did not declare it, for thirty-five releases, and nothing was
+ever reported. The prose is exactly what would have stopped the next person
+checking.
+
+> **IT WAS ADDED AND TAKEN STRAIGHT BACK OUT, which is the more useful half.**
+> `.claude/embed-modes-test.php` refuses any `max-height` or `overflow` on that
+> container, a guard written after 3.31.2 where a height cap above
+> `overflow: hidden` cards squashed them to 40px strips. The guard is broader
+> than that one case on purpose. **The fix was not to widen it**: the property
+> was not needed, which thirty-five quiet releases had already demonstrated, and
+> the one element that reaches a rounded corner carries the matching radius
+> itself. Widening a guard to admit something nothing needs is how the defect it
+> was written for comes back.
+
+**The same release found the other half of the pair.** `.uc-month-nav-side
+.uc-month-nav` declared a 1px border and an 8px radius on the month arrows;
+twenty lines later `.uc-calendar .uc-month-nav` declared `border: 0`. Both are
+(0,2,0), so source order decided it. **The obvious remedy for "the arrows blend
+in" was to darken the border, and that border never rendered.**
+
+> **COMPUTE THE CASCADE, DO NOT READ IT.** `.claude/month-nav-cascade.php`
+> resolves every rule in `calendar.css` that can reach one element, orders them
+> the way a browser does, and prints the winner and the losers per property. It
+> also prints what specificity a host rule would need to beat ours, which is the
+> question the embed actually asks.
+>
+> **Its own first gate was wrong and that is worth keeping.** It failed on
+> `.uc-calendar *`, the scoped box-sizing reset, which is (0,1,0) and is MEANT
+> to be: it declares nothing about a control's appearance. A check that fails on
+> a correct file trains somebody to widen it until it goes green.
+
+**And a control's boundary is not a card's.** `--uc-border-strong` in
+`calendar.css` is `#D7DBE1`, 1.39:1 on white, which is right for a card edge
+because that is decoration. It was also being used for controls, where 3:1
+applies. `--uc-control-edge` is `#8C8D8E` at 3.33:1, the same value portal.css
+has used since 3.64.0. **The month arrows use it; these do not yet**, and the
+list is here rather than left to a search: the filter bar's search field and
+dropdown, the group pills, the groups disclosure, the RSVP modal's cancel and
+its secondary add-to-calendar button, and the month tabs under the sidebar.
 
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not

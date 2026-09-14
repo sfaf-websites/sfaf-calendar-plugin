@@ -1472,6 +1472,29 @@ class SFAF_Request {
         self::page_open( 'Request an event', array( 'editor' => true ) );
         ?>
         <div class="uc-request-card">
+            <?php
+            /*
+             * THE SERIES PICTURE, ACROSS THE TOP (3.80.0).
+             *
+             * THE SAME BANNER THE COMMUNITY FORM HAS, and the same renderer, so
+             * the two forms cannot drift apart about what it is. What differs
+             * is where the picture comes from: there the series is fixed by the
+             * URL, here it is a <select> and portal.js follows it.
+             *
+             * SERVER-RENDERED FOR THE SERIES ALREADY CHOSEN, which is the case
+             * that matters after a rejected submission comes back: the answers
+             * are still filled in and the banner has to come back with them
+             * rather than appearing a moment later.
+             *
+             * ABSENT WHEN THERE IS NOTHING TO SHOW. A requester who has not
+             * chosen a series yet gets a form that starts at its heading, not a
+             * grey band.
+             */
+            $banner_series = (int) $v( 'series' );
+            SFAF_Submit::render_banner(
+                $banner_series ? SFAF_Series::image_url( $banner_series, 'large' ) : ''
+            );
+            ?>
             <h1>Request an event</h1>
             <?php
             /*
@@ -1581,9 +1604,15 @@ class SFAF_Request {
                                      * to this one at display time, so copying it would only
                                      * make a value that can go stale. See create_event(). */
                                     $s_thumb = SFAF_Series::image_url( (int) $s->term_id, 'medium' );
+                                    /* AND THE BANNER SIZE. The row above the picker is a
+                                     * 60px thumbnail and the banner is the width of the
+                                     * card, so one URL cannot serve both without being
+                                     * soft in one place or heavy in the other. */
+                                    $s_band = SFAF_Series::image_url( (int) $s->term_id, 'large' );
                                     ?>
                                     <option value="<?php echo (int) $s->term_id; ?>"
                                             data-uc-series-thumb="<?php echo esc_url( $s_thumb ); ?>"
+                                            data-uc-series-banner="<?php echo esc_url( $s_band ); ?>"
                                             <?php selected( (int) $v( 'series' ), (int) $s->term_id ); ?>>
                                         <?php echo esc_html( $s->name ); ?>
                                     </option>

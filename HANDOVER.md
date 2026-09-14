@@ -6,19 +6,20 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.79.0, built and not released.
+**Last updated:** 2026-09-14, at 3.80.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.79.0**, built as `sfaf-calendar-3.79.0.zip` in the project root, committed
+**3.80.0**, built as `sfaf-calendar-3.80.0.zip` in the project root, committed
 and **pushed to both repositories**. Working tree clean. 3.78.0 was released on
 2026-09-14 and is the version sites are being offered.
 
-> **3.79.0 IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
-> separate press: `bash .claude/publish.sh --release`. It goes on from the
-> Plugins screen afterwards: Check for updates, then Update now.
+> **NEITHER 3.79.0 NOR 3.80.0 IS RELEASED, AND THAT IS WAITING ON MARK'S WORD.**
+> Releasing is a separate press: `bash .claude/publish.sh --release`, which cuts
+> the version currently in the tree. It goes on from the Plugins screen
+> afterwards: Check for updates, then Update now.
 
 > **THE HOVER PREVIEW WORKS ON sfaf.org**, confirmed 2026-09-11: it appears, it
 > positions itself, it clears the site header and it stays open while the
@@ -28,6 +29,7 @@ and **pushed to both repositories**. Working tree clean. 3.78.0 was released on
 
 | | |
 |---|---|
+| **3.80.0** | **The picker hides by series now**, which it did not: it grouped, so a series with two tagged pictures still showed all eight. A series with nothing tagged gets a sentence naming MarCom rather than the whole folder. **The banner is a live preview** on both public forms, and an upload gets its own thumbnail with a line saying an approver decides. **The month arrows had no border at all**, which the stylesheet appeared to declare and a later rule at equal specificity removed; they are one segmented control at the right now, on the 3.64.0 control standard, 44px on touch. **The sidebar card was not overflowing**: in the combined view it has no box by design, and two lone hairlines read as one that closes early. |
 | **3.79.0** | **The bulk category control never had tick boxes**, on any screen, for any viewer. The cell was built into the dashboard's read-only table instead of the events list's, and both tables have carried half a fault since 3.73.0. Also **bulk publish on the events list**, sharing those ticks, asking `SFAF_Series::publish_skip_reason()` rather than restating it, with each button counting only the rows it can reach. |
 | **3.78.0** | **The preview is two targets, the picture and the pill**, and not the whole panel: one anchor round everything tinted every line in it with the theme's link teal. Also **the staff form's chosen picture is bigger than the rows it chooses from**, which 3.76.0 inverted; **the Images screen is rebuilt**, three cards across rather than six, one Save per card rather than two, and a disabled primary that stops wearing yellow; and **a name typed on that screen now sticks even when it matches its own file**, which it did not, so the remedy 3.76.0 added did not work for the commonest case. |
 | **3.77.0** | **The preview's button went nowhere.** The address was never missing: the tile it describes IS the anchor, and nothing read its href. Also **Fill this in from the last one on the staff request form**, which caladmin has had since 3.64.0: one data source, two appliers, nothing posts, the date never filled in, and proved by RUNNING it rather than by the call being present. |
@@ -54,6 +56,15 @@ and **pushed to both repositories**. Working tree clean. 3.78.0 was released on
   to filter on and the title rule has nothing to prefer. Both are correct and
   both read as broken. `TESTING.md` 1.74 is Mark naming and tagging the six,
   which is the thing that makes 3.74.0's and 3.76.0's picture work visible.
+
+  > **AND FROM 3.80.0 THIS CHANGES WHAT THE PUBLIC FORMS SHOW, SO READ IT BEFORE
+  > REPORTING A FAULT.** The picker HIDES by series now instead of grouping. With
+  > none of the six tagged, every series will show **"No images are available for
+  > that series yet. Contact MarCom for an event image to be added."** and no
+  > pictures at all. That is the feature working against an untagged folder, not
+  > a broken picker, and it is the exact state 1.74 clears. **Tag at least one
+  > picture to one series before judging 3.80.0's picker**, or the only path the
+  > screen can take is the empty one.
 - **THE IMPORT HAS RUN.** 2026-09-03. The site holds **287 drafts across 32
   series** and Mark has confirmed they look accurate. Trash emptied.
   **`TESTING.md` 2.18 and 2.19 are deliberately still open:** deleting the

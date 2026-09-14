@@ -157,6 +157,26 @@
        is the same distinction portal.css draws for form controls.
        -------------------------------------------------------------------- */
     --uc-border-strong: #D7DBE1;
+    /* -----------------------------------------------------------------------
+       A CONTROL'S OWN EDGE, WHICH IS NOT A CARD'S (3.80.0).
+
+       --uc-border-strong above is a CARD's boundary. It measures 1.39:1 on
+       white, which is right for it: a card edge is decoration, and what
+       separates a white card from a page is the fill and the shadow.
+
+       A CONTROL IS NOT DECORATION. Its boundary is what says "this can be
+       pressed", so it has to clear 3:1 like any other meaningful graphic, and
+       --uc-border-strong was being used for both. This is portal.css's
+       --p-border-strong, the same #8C8D8E, measured at 3.33:1 on white and
+       3.07:1 on --uc-bg by .claude/month-nav-cascade.php.
+
+       THE MONTH ARROWS USE IT AND THE OTHER CONTROLS IN THIS FILE DO NOT YET.
+       Changing six control families across the public calendar at once is a
+       visual change Mark has not seen; the ones still on the card edge are
+       listed in PROJECT.md so the next pass has the list rather than the
+       search.
+       -------------------------------------------------------------------- */
+    --uc-control-edge: #8C8D8E;
     --uc-lift: 0 1px 2px rgba(16, 20, 24, 0.04), 0 6px 20px rgba(16, 20, 24, 0.07);
     --uc-lift-hover: 0 2px 4px rgba(16, 20, 24, 0.05), 0 14px 34px rgba(16, 20, 24, 0.11);
 
@@ -1970,10 +1990,24 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    888 was a measured number with a note of its own, and this is deliberately a
    different one rather than a number that drifted.
 
-   overflow: hidden on the container is what lets the panels' square corners sit
-   inside a rounded border. It is safe here: nothing in either panel is
-   positioned outside its own box, and the one thing that could be, the
-   add-to-calendar menu, does not appear in either of these panels.
+   THERE IS NO overflow: hidden HERE, AND THIS PARAGRAPH USED TO SAY THERE WAS
+   (3.80.0). It claimed the property was what let the panels' square corners sit
+   inside the rounded border. It was never declared, for thirty-five releases,
+   and nothing was ever reported, which is the evidence that it is not needed:
+   the panels carry no background of their own, so their corners are nothing to
+   see. The one element that reaches a corner is the sidebar's heading band, and
+   that carries the matching radius itself, below.
+
+   IT WAS ADDED IN 3.80.0 AND TAKEN STRAIGHT BACK OUT, because
+   .claude/embed-modes-test.php refuses any max-height or overflow on this
+   container. That guard is from 3.31.2, where a height cap above
+   overflow: hidden cards squashed them to 40px strips, and it is deliberately
+   broader than that one case. Widening a guard to admit a property nothing
+   needs is how the defect it was written for comes back.
+
+   A COMMENT ASSERTING A DECLARATION THAT IS NOT THERE IS WORSE THAN NO COMMENT,
+   because it is what stops the next person looking. That is the whole of what
+   was wrong here.
    ------------------------------------------------------------------------ */
 .uc-calendar .uc-view-panels-combined {
     display: flex; flex-wrap: wrap; align-items: stretch; gap: 0;
@@ -2010,10 +2044,61 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    and its row hover pull out through, or both finish outside the rows they sit
    above. One rule sets all three, which is why they are properties rather than
    numbers written into each child. See the note on .uc-sidebar. */
+/* ---------------------------------------------------------------------------
+   THE SIDEBAR IS A COLUMN OF THE SHARED CARD, AND IT HAD TO LOOK LIKE ONE
+   (3.45.0, corrected 3.80.0)
+
+   WHAT WAS REPORTED: the Upcoming event dates card has square top corners
+   while the rest of it is rounded, and "See all events" sits outside it, below
+   where its border stops.
+
+   WHAT IT ACTUALLY WAS, AND IT IS NOT AN OVERFLOW. Nothing here caps a height,
+   nothing is positioned out of flow and nothing sets overflow on the sidebar or
+   its panel, so the box has always grown with its contents and "See all events"
+   has always been inside it. What is inside it is the point: in this mode the
+   sidebar deliberately has NO box. border: 0, padding: 0, background: none,
+   because the panel around it carries all three.
+
+   So the only edges on screen were the heading band's bottom hairline and the
+   "See all events" top hairline, and between them sat the list. With events in
+   it, the rows' own top hairlines fill that gap and the whole thing reads as a
+   stack. With the list EMPTY, those two hairlines are the only rules on the
+   column, far apart, with a paragraph between them: a box that starts under the
+   band and closes above the link. That is the card somebody saw failing to
+   enclose its last row, and it was never a card.
+
+   THE CAUSE IS PRESENT IN EVERY STATE. The empty list is what makes it
+   visible, which is why it turned up now, with all 287 imported events still
+   drafts.
+
+   THE FIX IS TO MAKE THE COLUMN READ AS A COLUMN. The band escapes the PANEL's
+   padding rather than the sidebar's zero, so it sits flush across the top of
+   the column and against the card's own edge, and it takes the card's inner
+   radius on the corner it actually meets. A band inset on all four sides inside
+   a rounded white card is what read as "a card with square corners"; a band
+   that spans its column reads as that column's heading, which is what it is.
+
+   THE NUMBERS ARE THE PANEL'S OWN PADDING and they have to stay in step with
+   it, so they are written immediately under the rule that sets it.
+   ------------------------------------------------------------------------ */
 .uc-calendar .uc-view-panels-combined .uc-sidebar {
-    --uc-sidebar-pad-x: 0px; --uc-sidebar-pad-t: 0px; --uc-sidebar-head-radius: 0px;
+    --uc-sidebar-pad-x: 18px; --uc-sidebar-pad-t: 16px; --uc-sidebar-head-radius: 0px;
     border: 0; padding: 0; background: none;
 }
+/* Side by side the band's top-right corner is the card's top-right corner, one
+   pixel in from a 14px radius. Its top-left is against the divider and stays
+   square. Stacked, the sidebar is below the grid and the band is mid-card, so
+   both corners are square and this rule does not apply. */
+@media (min-width: 864px) {
+    .uc-calendar .uc-view-panels-combined .uc-sidebar .uc-sidebar-heading {
+        border-radius: 0 13px 0 0;
+    }
+}
+/* The month tabs and "See all events" are the column's floor. Giving the link
+   the panel's bottom padding as its own margin stops the column ending on a
+   hairline with air under it, which is the half of the report that read as the
+   card being drawn short. */
+.uc-calendar .uc-view-panels-combined .uc-sidebar .uc-sidebar-all { margin-bottom: 0; }
 
 /* ---------------------------------------------------------------------------
    EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.
@@ -2161,25 +2246,64 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    space.
    ------------------------------------------------------------------------ */
 .uc-month-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.uc-month-heading { min-width: 0; flex: 0 1 auto; text-align: center; }
-.uc-month-nav-side { flex: 1 1 0; display: flex; align-items: center; gap: 6px; min-width: 0; }
-.uc-month-nav-back { justify-content: flex-start; }
-.uc-month-nav-fwd { justify-content: flex-end; }
-.uc-month-nav-side .uc-month-nav { border: 1px solid var(--uc-border); border-radius: 8px; background: #fff; }
+.uc-month-heading { min-width: 0; flex: 1 1 auto; text-align: left; }
 .uc-calendar .uc-month-label { font-size: 20px; font-weight: 800; line-height: 1.15; color: var(--uc-text); }
 .uc-calendar .uc-month-range { margin: 2px 0 0; font-size: 12px; color: var(--uc-secondary); }
 .uc-month-count { position: relative; margin-left: 10px; padding-left: 11px; }
 .uc-month-count::before { content: ""; position: absolute; left: 0; top: 50%; width: 3px; height: 3px; margin-top: -1px;
     border-radius: 50%; background: var(--uc-secondary); }
 
-/* Previous / Today / Next as one segmented control. */
-.uc-month-nav-group { display: inline-flex; margin-left: auto; border: 1px solid var(--uc-border); border-radius: 8px; overflow: hidden; background: #fff; }
-.uc-calendar .uc-month-nav { display: inline-flex; align-items: center; justify-content: center; height: 32px; min-width: 34px;
-    padding: 0 10px; border: 0; background: #fff; font-size: 13px; font-weight: 700; color: var(--uc-secondary); cursor: pointer; }
-.uc-calendar .uc-month-nav + .uc-month-nav { border-left: 1px solid var(--uc-border); }
+/* ---------------------------------------------------------------------------
+   PREVIOUS, TODAY AND NEXT AS ONE SEGMENTED CONTROL (3.45.0, fixed 3.80.0)
+
+   TWO FAULTS, AND THE FIRST ONE IS WHY THE SECOND WAS NEVER OBVIOUS.
+
+   THE ARROWS HAD NO BOUNDARY AT ALL, and the stylesheet appeared to say they
+   did. `.uc-month-nav-side .uc-month-nav` declared a 1px border and an 8px
+   radius; twenty lines further down `.uc-calendar .uc-month-nav` declared
+   `border: 0`. Both are (0,2,0), so source order decided it and the later one
+   won. Computed rather than read: `.claude/month-nav-cascade.php` prints the
+   winner and the loser for every property on this control, and it was written
+   because the obvious remedy, darkening --uc-border, would have darkened a
+   border that never rendered.
+
+   So what was on screen was a 19px text chevron in --uc-secondary on white,
+   with no edge, no fill and nothing to aim at. "Too small and blending into
+   the colour scheme" is an exact description of a borderless button.
+
+   AND THEY SAT AT OPPOSITE ENDS OF THE HEADER. 3.45.0 centred the month name
+   between them, which on a 1200px block is 900px of travel between the two
+   controls somebody uses alternately. They are one group now, at the right,
+   with the name to their left.
+
+   THE BOUNDARY IS THE 3.64.0 CONTROL STANDARD'S, NOT A NEW COLOUR.
+   --uc-control-edge is #8C8D8E, which is byte for byte portal.css's
+   --p-border-strong, and it clears the 3:1 that a control's own boundary has
+   to clear. This file's --uc-border-strong is #D7DBE1 and measures 1.39:1: it
+   is a CARD's edge, which is decoration and may be that pale, and it was being
+   used for controls as well. See .claude/month-nav-cascade.php for the numbers
+   and PROJECT.md for the other controls that still share it.
+
+   44px ON A TOUCH SCREEN, because these are the only way to move through
+   months. Pointer-coarse rather than a width query: a small laptop with a mouse
+   does not need 44px and a large tablet does, and the width cannot tell them
+   apart.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-month-nav-group { display: inline-flex; flex: 0 0 auto; margin-left: auto;
+    border: 1px solid var(--uc-control-edge); border-radius: 8px; overflow: hidden; background: #fff; }
+.uc-calendar .uc-month-nav { display: inline-flex; align-items: center; justify-content: center; height: 34px; min-width: 38px;
+    padding: 0 10px; border: 0; background: #fff; font-family: var(--uc-font-heading);
+    font-size: 13px; font-weight: 700; color: var(--uc-text); cursor: pointer; }
+.uc-calendar .uc-month-nav + .uc-month-nav { border-left: 1px solid var(--uc-control-edge); }
 .uc-calendar .uc-month-nav:hover { background: var(--uc-bg); color: var(--uc-teal-text); }
 .uc-calendar .uc-month-nav:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: -3px; }
-.uc-calendar .uc-month-prev span, .uc-calendar .uc-month-next span { font-size: 19px; line-height: 1; }
+/* The icon is the same glyph both ways; the left one is turned over. Stated on
+   the element rather than on the svg so a host rule on `svg` cannot take it. */
+.uc-calendar .uc-month-nav .sfaf-icon { display: block; }
+.uc-calendar .uc-month-prev .sfaf-icon { transform: rotate(180deg); }
+@media (pointer: coarse) {
+    .uc-calendar .uc-month-nav { height: 44px; min-width: 44px; padding: 0 14px; }
+}
 
 /* ---------- The grid ----------
  *
@@ -2939,7 +3063,26 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-sidebar .uc-when-sep { margin: 0 3px; }
 /* Raised for the same reason as .uc-series-list: `.uc-sidebar p` declares
    margin, and this rule declares it too. */
-.uc-sidebar .uc-sidebar-empty { margin: 0; padding: 16px 0; font-size: 13px; color: var(--uc-secondary); }
+/* THE EMPTY STATE OCCUPIES THE LIST RATHER THAN FLOATING IN IT (3.80.0).
+
+   THE WORDS AND THE CONTROLS UNDER THEM ARE DELIBERATE and are not changed: a
+   month with nothing on says so, and then offers the three ways on that a full
+   month offers, which are the neighbouring months and everything else. What was
+   wrong is that a 13px muted line with 16px of padding, directly under an 18px
+   heading band, reads as a card that failed to load rather than as an answer.
+
+   So it gets the same vertical rhythm a row has and is centred across the
+   column, which is where somebody's eye already is after a centred band.
+
+   THE AIR BELOW IT IN THE COMBINED VIEW IS ALSO DELIBERATE. The two panels
+   stretch to a shared bottom edge because they are one card, so a short sidebar
+   beside a tall month grid has space under it by construction. Filling it would
+   mean either stretching the list, which invents rows, or letting the column
+   end early, which is two cards again. */
+.uc-sidebar .uc-sidebar-empty {
+    margin: 0; padding: 28px 10px; text-align: center;
+    font-size: 13px; line-height: 1.5; color: var(--uc-secondary);
+}
 .uc-sidebar-all { display: inline-block; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--uc-border);
     width: 100%; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); text-decoration: none; }
 /* TWO CLASSES, NOT ONE, AND FOR THE OPPOSITE REASON TO THE BUTTON FLOOR ABOVE.

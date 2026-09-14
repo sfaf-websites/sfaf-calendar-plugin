@@ -286,6 +286,14 @@ class SFAF_Media {
         return array(
             'id'    => $id,
             'thumb' => $thumb,
+            /*
+             * THE BANNER SIZE (3.80.0). `medium` is a 300px crop and the form's
+             * banner runs the full width of the card, so the thumbnail used in
+             * the list would arrive soft. Falls back to the thumbnail rather
+             * than to nothing: a registration that has no `large` is an image
+             * smaller than large, and showing it is better than showing a gap.
+             */
+            'full'  => wp_get_attachment_image_url( $id, 'large' ) ?: $thumb,
             'file'  => $file,
             'title' => $title,
             'tags'  => self::tags_of( $id ),
@@ -456,6 +464,9 @@ class SFAF_Media {
              * is a question passes '' as well and lets portal.js overwrite the
              * row as somebody changes the select. */
             'series_thumb' => '',
+            /* True where the series cannot change on this page, which is what
+             * lets the server do the hiding on its own. See below. */
+            'series_locked' => false,
         ), $args );
 
         $chosen = (int) $args['chosen'];
@@ -469,22 +480,35 @@ class SFAF_Media {
             return;
         }
 
-        $mine   = array();
-        $others = array();
+        /*
+         * IT HIDES, IT DOES NOT GROUP (3.80.0).
+         *
+         * 3.76.0 built this as two groups, the series' pictures under a heading
+         * and everything else under another. That was the wrong answer to the
+         * question being asked. At the forty or fifty pictures this folder is
+         * heading for, a list that still contains all of them after a series is
+         * chosen is still a long list, and the heading only tells somebody
+         * where to stop reading rather than saving them the reading.
+         *
+         * THE ARGUMENT AGAINST IS REAL AND WAS PUT: a filter nobody can escape
+         * blocks the person who wants a picture tagged to another series. Mark
+         * has weighed that and chosen hiding. The remedy for that case is the
+         * message below and a note to MarCom, not a way back to the full list,
+         * because a way back is the grouping again with an extra click on it.
+         *
+         * AN EVENT WITH NO SERIES SEES EVERYTHING, because there is nothing to
+         * filter on. That is the $series === 0 path and it is unchanged.
+         */
+        $mine = array();
         foreach ( $rows as $row ) {
-            $tagged = false;
-            if ( $series ) {
-                foreach ( $row['tags'] as $term ) {
-                    if ( (int) $term->term_id === $series ) {
-                        $tagged = true;
-                        break;
-                    }
-                }
+            if ( ! $series ) {
+                continue;
             }
-            if ( $tagged ) {
-                $mine[] = $row;
-            } else {
-                $others[] = $row;
+            foreach ( $row['tags'] as $term ) {
+                if ( (int) $term->term_id === $series ) {
+                    $mine[] = $row;
+                    break;
+                }
             }
         }
 
@@ -496,13 +520,31 @@ class SFAF_Media {
             }
         }
 
-        $groups = array();
-        if ( ! empty( $mine ) ) {
-            $groups[] = array( 'head' => 'For this series', 'rows' => $mine );
-            $groups[] = array( 'head' => 'Everything else', 'rows' => $others );
-        } else {
-            $groups[] = array( 'head' => '', 'rows' => $rows );
-        }
+        /*
+         * WHICH ROWS ARE WRITTEN INTO THE PAGE AT ALL, and the two forms differ
+         * because their series differ in kind.
+         *
+         *   LOCKED (the community form). Its series is fixed by the URL and
+         *   cannot change while somebody is on the page, so the server emits
+         *   only that series' pictures. Nothing depends on a script, and there
+         *   is no moment at which the list could be showing the wrong series.
+         *
+         *   NOT LOCKED (the staff form). Its series is a <select>. The server
+         *   cannot know which one will be chosen, so every row is written out
+         *   carrying the series it belongs to and portal.js hides what does not
+         *   match. With no script the list is the full folder, which is longer
+         *   and complete; nothing is hidden that a script has to come back and
+         *   reveal. Same rule as the FAQ set peek and the reveal initialiser.
+         *
+         * THE WRONG WAY ROUND WOULD BE TO FILTER THE STAFF FORM ON THE SERVER
+         * TOO, which would be correct on arrival and then quietly stale the
+         * moment somebody changed the select with scripting off: a list that is
+         * confidently showing the wrong series is worse than one showing all of
+         * them.
+         */
+        $locked  = ! empty( $args['series_locked'] ) && $series;
+        $offered = ( $locked && ! empty( $mine ) ) ? $mine : ( $locked ? array() : $rows );
+        $none    = ( $series && empty( $mine ) );
         ?>
         <details class="uc-picker uc-image-picker" data-uc-image-picker>
             <summary class="uc-picker-toggle">
@@ -573,39 +615,72 @@ class SFAF_Media {
                             </span>
                         <?php endif; ?>
                     </label>
-                    <?php foreach ( $groups as $group ) : ?>
-                        <?php if ( empty( $group['rows'] ) ) { continue; } ?>
-                        <?php if ( '' !== $group['head'] ) : ?>
-                            <?php /* A heading, not an option. It carries no filter text, so
-                                     searching narrows to pictures and the headings go with
-                                     the rows they head rather than floating over nothing. */ ?>
-                            <p class="uc-picker-group-head"><?php echo esc_html( $group['head'] ); ?></p>
-                        <?php endif; ?>
-                        <?php foreach ( $group['rows'] as $row ) : ?>
-                            <?php
-                            $names = array();
-                            foreach ( $row['tags'] as $term ) {
-                                $names[] = $term->name;
-                            }
-                            $hay = strtolower( trim( $row['file'] . ' ' . $row['title'] . ' ' . implode( ' ', $names ) ) );
-                            ?>
-                            <label class="uc-check uc-picker-option uc-image-option"
-                                   data-uc-filter-text="<?php echo esc_attr( $hay ); ?>">
-                                <input type="radio" name="<?php echo esc_attr( $args['name'] ); ?>" value="<?php echo (int) $row['id']; ?>"
-                                       <?php checked( $row['id'], $chosen ); ?>
-                                       data-uc-image-option
-                                       data-uc-image-thumb="<?php echo esc_url( $row['thumb'] ); ?>"
-                                       data-uc-image-name="<?php echo esc_attr( '' !== $row['title'] ? $row['title'] : $row['file'] ); ?>" />
-                                <img class="uc-image-option-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
-                                <span class="uc-image-option-text">
-                                    <span class="uc-image-option-name"><?php
-                                        echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
-                                    ?></span>
-                                </span>
-                            </label>
-                        <?php endforeach; ?>
+                    <?php foreach ( $offered as $row ) : ?>
+                        <?php
+                        $names = array();
+                        $ids   = array();
+                        foreach ( $row['tags'] as $term ) {
+                            $names[] = $term->name;
+                            $ids[]   = (int) $term->term_id;
+                        }
+                        $hay = strtolower( trim( $row['file'] . ' ' . $row['title'] . ' ' . implode( ' ', $names ) ) );
+                        ?>
+                        <label class="uc-check uc-picker-option uc-image-option"
+                               data-uc-filter-text="<?php echo esc_attr( $hay ); ?>"
+                               <?php
+                               /*
+                                * THE SERIES THIS PICTURE BELONGS TO, ALWAYS
+                                * EMITTED, INCLUDING WHEN IT BELONGS TO NONE.
+                                *
+                                * An empty attribute and an absent one have to
+                                * mean the same thing here, so portal.js is
+                                * reading a list rather than asking whether the
+                                * attribute exists. A picture with no series is
+                                * hidden by every series, which is the point:
+                                * an untagged picture is not "for everybody",
+                                * it is one nobody has filed yet.
+                                *
+                                * SPACE PADDED AT BOTH ENDS so a substring test
+                                * cannot match 12 inside 121.
+                                */
+                               ?>
+                               data-uc-image-series="<?php echo esc_attr( $ids ? ' ' . implode( ' ', $ids ) . ' ' : '' ); ?>">
+                            <input type="radio" name="<?php echo esc_attr( $args['name'] ); ?>" value="<?php echo (int) $row['id']; ?>"
+                                   <?php checked( $row['id'], $chosen ); ?>
+                                   data-uc-image-option
+                                   data-uc-image-thumb="<?php echo esc_url( $row['thumb'] ); ?>"
+                                   data-uc-image-full="<?php echo esc_url( $row['full'] ); ?>"
+                                   data-uc-image-name="<?php echo esc_attr( '' !== $row['title'] ? $row['title'] : $row['file'] ); ?>" />
+                            <img class="uc-image-option-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
+                            <span class="uc-image-option-text">
+                                <span class="uc-image-option-name"><?php
+                                    echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                                ?></span>
+                            </span>
+                        </label>
                     <?php endforeach; ?>
                 </div>
+                <?php
+                /*
+                 * NOTHING FOR THIS SERIES, SAID RATHER THAN FALLEN BACK FROM.
+                 *
+                 * A quiet fallback to the whole folder is indistinguishable
+                 * from the filter not working, and it was reported as exactly
+                 * that twice before the filter even existed. So the empty case
+                 * gets a sentence, and the sentence says who to ask.
+                 *
+                 * THE "no picture" ROW ABOVE STAYS VISIBLE THROUGH THIS. It is
+                 * what makes "they can still submit without an image" true, and
+                 * it is not one of the folder's pictures, so no series filter
+                 * has anything to say about it.
+                 *
+                 * Rendered hidden and revealed by portal.js where the series can
+                 * change; rendered plainly where it cannot.
+                 */
+                ?>
+                <p class="uc-muted uc-picker-no-series" data-uc-image-none<?php echo $none && $locked ? '' : ' hidden'; ?>>
+                    No images are available for that series yet. Contact MarCom for an event image to be added.
+                </p>
                 <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>
             </div>
         </details>

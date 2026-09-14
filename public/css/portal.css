@@ -2867,23 +2867,10 @@ body.uc-modal-open { overflow: hidden; }
 .uc-picker-option .uc-muted { margin-left: 6px; font-size: 12px; }
 .uc-picker-empty { margin: 8px 0 0; }
 
-/* ---------------------------------------------------------------------------
-   THE PICKER'S GROUP HEADINGS (3.74.0)
-
-   "For this series" and "Everything else". A LABEL, NOT AN OPTION: it carries
-   no data-uc-filter-text, so a search narrows the pictures and leaves the
-   headings with their rows rather than floating over an empty group.
-
-   Set at the Caption step and in muted ink, because the thing to read here is
-   the pictures. A heading competing with them would be the decoration rule in
-   DESIGN.md the other way round.
-   ------------------------------------------------------------------------ */
-.uc-picker-group-head {
-    margin: 12px 0 4px;
-    font-size: 13px; font-weight: 600;
-    color: var(--p-muted, #6B6764);
-}
-.uc-picker-options > .uc-picker-group-head:first-child { margin-top: 2px; }
+/* THE GROUP HEADINGS ARE GONE WITH THE GROUPING (3.74.0, removed 3.80.0).
+   The picker hides everything outside the chosen series now, so there is no
+   second group to head. A series with nothing tagged gets a sentence instead:
+   see .uc-picker-no-series. */
 
 /* ---------------------------------------------------------------------------
    THE IMAGES SCREEN (3.74.0, rebuilt 3.78.0)
@@ -3892,6 +3879,66 @@ body.uc-modal-open { overflow: hidden; }
    campaign later wants a distinct banner, the honest fix is a wider series
    image, not a second field here. */
 .uc-submit-banner img { width: 100%; height: auto; display: block; }
+
+/* ---------------------------------------------------------------------------
+   THE BANNER IS A LIVE PREVIEW, AND THE ZOOM IS SHORT (3.80.0)
+
+   260ms, AND THAT NUMBER IS THE WHOLE OF THE CARE HERE. Somebody comparing
+   three programmes will change the series select three times, and a reveal that
+   is a pleasure the first time is an obstruction the third. Long enough to read
+   as the picture arriving; short enough that nobody waits for it.
+
+   scale AND opacity TOGETHER, from 1.04. Scaling DOWN to rest means the picture
+   never renders larger than its box, so there is nothing to clip and no moment
+   where it overhangs the card: the overflow: hidden above is a second belt
+   rather than the thing holding it in.
+
+   IT PLAYS ON THE ELEMENT, NOT THE IMAGE, so a picture that is still decoding
+   does not animate an empty box and then pop. portal.js adds the class after
+   setting src, and takes it off and forces a reflow first so the animation
+   restarts on the second and third change rather than playing once.
+
+   NOTHING DEPENDS ON IT. With the class never added the banner is simply
+   there, which is what a browser with reduced motion gets by the rule below
+   and what a browser with no script gets by never reaching initFormBanner(). */
+.uc-submit-banner.is-in { animation: uc-banner-in 260ms cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes uc-banner-in {
+    from { opacity: 0; transform: scale(1.04); }
+    to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .uc-submit-banner.is-in { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   WHAT WAS ATTACHED, AND WHAT IS GOING TO HAPPEN TO IT (3.80.0)
+
+   A thumbnail, small, under the file input. It is not the banner and must not
+   look like it: an uploaded file is a WORKING COPY that an approver decides
+   about, and the event's picture goes on being the series' one until they do.
+
+   THE THUMBNAIL IS THERE TO SAY IT ARRIVED. Somebody who attaches a photograph
+   and sees nothing whatever change will attach it again, or give up and think
+   the form is broken. THE LINE UNDER IT IS THERE TO STOP THE THUMBNAIL SAYING
+   MORE THAN THAT, which is the reason they are one block and not two.
+   ------------------------------------------------------------------------ */
+.uc-upload-preview { margin-top: 10px; }
+.uc-upload-preview img {
+    display: block; width: 100%; max-width: 220px; height: auto;
+    border: 1px solid var(--p-border); border-radius: 8px;
+}
+.uc-upload-preview .uc-hint { margin: 6px 0 0; }
+
+/* ---------------------------------------------------------------------------
+   NOTHING TAGGED TO THIS SERIES YET (3.80.0)
+
+   IT REPLACES A FALLBACK, IT DOES NOT DECORATE ONE. The picker used to show
+   the whole folder when a series had no pictures of its own, which is
+   indistinguishable from the filter not working and was reported as exactly
+   that twice. This is the sentence that says which it is, and it names who to
+   ask, because the person reading it cannot tag an image themselves.
+   ------------------------------------------------------------------------ */
+.uc-picker-no-series { margin: 0; padding: 14px 4px; font-size: 13px; line-height: 1.5; }
 
 /* ---------------------------------------------------------------------------
    ONE SECTION MECHANISM ON BOTH REQUEST FORMS (3.68.0).

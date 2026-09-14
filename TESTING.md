@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 107 items.** Quick 81, needs real conditions 23, blocked on other
+**Outstanding: 111 items.** Quick 85, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1115,6 +1115,91 @@ cell with nothing under it.
 
 **With 287 drafts across 32 series, try this on one page of 25 before reaching
 for Select all.**
+
+### 1.84 The picker hiding by series, on both public forms (3.80.0)
+
+**DO 1.74 FIRST OR THIS TEST CANNOT PASS.** With none of the six pictures
+tagged, every series shows the empty message and nothing else, which is the
+feature working and looks identical to it being broken. Tag at least two
+pictures to one series and one to another before starting.
+
+**On the community form** (a series' own submit URL), the picker should offer
+**only that series' pictures**. Count them against what the Images screen says
+is tagged to it. Nothing else may be in the list, and there must be no "For this
+series" heading and no "Everything else" group: that is what 3.76.0 did and what
+this replaces.
+
+**On the staff request form**, choose a series, then open the picker. Same
+answer. Then **change the series and open it again**: the list must change with
+it. This half runs in the browser rather than on the server, so it is the half
+that can fail on its own.
+
+- **Choose a picture, then change the series to one that does not have it.** The
+  choice should go back to "The series picture", and the banner with it. If a
+  picture from the old series is still chosen, the form would post a picture
+  that is not on screen.
+- **Type in the picker's search box after choosing a series.** The search must
+  narrow **within** that series and must never bring back a picture from
+  another one. This is the specific thing that breaks if the two filters end up
+  fighting over the same rows.
+- **A series with nothing tagged** must show "No images are available for that
+  series yet. Contact MarCom for an event image to be added." and no pictures.
+  The "no picture" row stays, and the form must still submit without an image.
+
+**With JavaScript off**, the community form should still be filtered and the
+staff form should show the whole folder. That is deliberate and the reasoning is
+in `PROJECT.md`.
+
+### 1.85 The banner, and what an upload does not do (3.80.0)
+
+**Both public forms.** The series picture should sit full width across the top.
+
+- **Choose a different picture in the picker.** The banner should change to it,
+  with a short zoom. Change it three or four times: the zoom must play every
+  time, not only the first, and must not feel slow by the third.
+- **On the staff form, change the series.** The banner should follow.
+- **A series with no picture must show no banner at all**, not a grey box.
+- **Now attach a file under "Or send your own".** The banner must **not** change.
+  A thumbnail of what you attached should appear under the field with a line
+  saying it has been sent for review. That is the point of the test: the upload
+  is a working copy an approver decides about, and the banner would otherwise
+  claim it is already the event's picture.
+
+### 1.86 The month arrows, on the embed first (3.80.0)
+
+**Look at the embed on sfaf.org before the calendar site.** These render inside
+the host's page and the host stylesheet has caused six documented faults.
+
+- **Previous, Today and Next are one group at the right**, with the month name
+  to their left. They were at opposite ends of the header.
+- **They have a visible edge.** They had none at all: a rule twenty lines below
+  the one that drew it removed it, so what was there was a bare chevron. If they
+  still look like floating text the host has beaten our border, and that is worth
+  reporting rather than working around.
+- **The chevrons are the same size and centred.** They were text characters
+  taking the host's font; they are drawn icons now.
+- **On a phone or tablet each button is at least 44px.** These are the only way
+  to move through months.
+- **Page back and forth several times.** The grid and the sidebar must move
+  together, which is unchanged and worth confirming after a markup change.
+
+### 1.87 The Upcoming event dates card in the combined view (3.80.0)
+
+**Look at it with the month empty first**, which is the state that showed the
+fault and is still easy to reach: navigate to a month with nothing published.
+
+- **The heading band should span the top of its column** and meet the card's own
+  edge, with the top-right corner rounded to match. It was inset on all four
+  sides with square corners, which read as a card whose top had not been
+  finished.
+- **"See all events" should read as part of the column**, not as something below
+  a box that closed above it.
+- **Then look at a month WITH events.** It should look like the same thing with
+  rows in it. If the band is right when empty and wrong when full, or the other
+  way round, the escape is keyed to the wrong padding.
+- **Then narrow the window until the two halves stack.** The band's top-right
+  corner should go square: down there it is in the middle of the card, not at
+  its corner.
 
 ---
 

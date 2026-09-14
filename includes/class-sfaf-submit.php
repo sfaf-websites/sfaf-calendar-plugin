@@ -1084,13 +1084,45 @@ class SFAF_Submit {
      * @param WP_Term $series
      */
     private static function banner( $series ) {
-        $src = SFAF_Series::image_url( (int) $series->term_id, 'large' );
+        self::render_banner( SFAF_Series::image_url( (int) $series->term_id, 'large' ) );
+    }
+
+    /**
+     * The banner itself, shared by both public forms.
+     *
+     * IT IS A LIVE PREVIEW OF THE EVENT, NOT DECORATION (3.80.0). It starts on
+     * the series picture and follows the image picker, so what is across the
+     * top is what the event will look like. That is the whole reason it is
+     * worth having: a form that shows you what you are making reads as event
+     * creation rather than as a questionnaire.
+     *
+     * NO PICTURE MEANS NO BANNER, AND NOT A PLACEHOLDER. A grey box saying
+     * nothing is worse than the form simply starting at its heading, and a
+     * series with no picture is a real state rather than a missing file.
+     *
+     * SO THE ELEMENT IS ABSENT, NOT EMPTY, when there is nothing to show on
+     * arrival. portal.js creates it if a picture is chosen later; see
+     * initFormBanner(). Rendering an empty one and revealing it would leave a
+     * blank band on every form whose series has no picture and whose visitor
+     * has no script.
+     *
+     * @param string $src
+     */
+    public static function render_banner( $src ) {
+        $src = (string) $src;
         if ( '' === $src ) {
             return;
         }
         ?>
-        <div class="uc-submit-banner">
-            <img src="<?php echo esc_url( $src ); ?>" alt="" />
+        <div class="uc-submit-banner" data-uc-form-banner>
+            <?php
+            /*
+             * alt="", BECAUSE IT SAYS NOTHING A SCREEN READER NEEDS. The series
+             * name is the heading directly under it and the picture carries no
+             * information the form does not already state in words.
+             */
+            ?>
+            <img src="<?php echo esc_url( $src ); ?>" alt="" data-uc-form-banner-img />
         </div>
         <?php
     }
@@ -1472,8 +1504,13 @@ class SFAF_Submit {
                      * FILTERED TO THIS EVENT'S SERIES, WHICH THE URL ALREADY
                      * NAMES. This form is only ever reached at a series' own
                      * address, so the series is known before a single field is
-                     * filled in; the picker leads with that programme's
-                     * pictures and lists everything else under them.
+                     * filled in.
+                     *
+                     * IT HIDES RATHER THAN GROUPING, FROM 3.80.0. It used to
+                     * lead with that programme's pictures and list everything
+                     * else under them, which left the list as long as it was
+                     * before. Only the chosen series' pictures are written out
+                     * now, and a series with none gets a sentence saying so.
                      *
                      * SHOWING THE FOLDER TO A STRANGER IS NOT SHOWING THE
                      * SERIES LIST. The refusal that keeps FAQ sets off this
@@ -1491,6 +1528,15 @@ class SFAF_Submit {
                         'name'   => 'image_id',
                         'chosen' => (int) $v( 'image' ),
                         'series' => ( $series && ! is_wp_error( $series ) ) ? (int) $series->term_id : 0,
+                        /*
+                         * LOCKED, BECAUSE THE URL IS THE SERIES. There is no
+                         * control on this page that can change it, so the
+                         * server writes out that series' pictures and nothing
+                         * else, and the filter cannot be wrong at any point
+                         * during the visit or defeated by a script that did not
+                         * load.
+                         */
+                        'series_locked' => true,
                     ) );
                     ?>
                     <div class="uc-request-upload">

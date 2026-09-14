@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.79.0
+Stable tag: 3.80.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,36 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.80.0 =
+
+**THE PICKER HIDES NOW. IT WAS GROUPING, AND GROUPING IS NOT HIDING.** 3.76.0 put the chosen series' pictures first under a heading and everything else under a second one, so a series with two tagged images still showed all eight. At the forty or fifty this folder is heading for, a heading only tells somebody where to stop reading; it does not save them the reading. Only the chosen series' pictures are offered now, and there is no route back to the full list, because a route back is the grouping again with a click on it.
+
+**A SERIES WITH NOTHING TAGGED GETS A SENTENCE, NOT THE WHOLE FOLDER.** A quiet fallback is indistinguishable from the filter not working, which is what was reported twice: "No images are available for that series yet. Contact MarCom for an event image to be added." The "no picture" row stays, so the form can still be sent without one and the approver picks.
+
+**The two forms filter in different places, and they have to.** The community form's series is fixed by the URL, so the SERVER writes out that series' pictures and nothing else: no script can undo it and there is no moment where the list is wrong. The staff form's series is a dropdown, so every row is written out carrying the series it belongs to and the script hides what does not match. Filtering that one on the server would be right on arrival and quietly stale the moment somebody changed the select with scripting off, and a list confidently showing the wrong series is worse than one showing all of them.
+
+**An untagged picture is hidden by every series.** It is not a picture for everybody; it is one nobody has filed yet.
+
+**AND THE TWO FILTERS OVER ONE LIST DO NOT FIGHT.** The search box and the series narrowing act on the same rows, and both assigning `hidden` is two answers to "is this row on screen" with the later one winning: typing in the search box would have restored every picture the series had just removed. The series filter owns a marker, the search filter owns the property. `.claude/picker-filter-test.php` renders the picker and counts the options, which is the only question anybody was asking, and four planted faults were each caught.
+
+**THE BANNER IS A LIVE PREVIEW OF THE EVENT.** The community form has had the series picture across the top since 3.47.0 and it was decoration. It follows the picker now, on both public forms, so what is at the top is what the event will look like. The staff form gets one too, driven by its series dropdown. No picture means no banner rather than a placeholder, and the zoom is 260ms because somebody comparing three programmes will change that dropdown three times.
+
+**AN UPLOAD DOES NOT CHANGE THE BANNER, AND NOW SAYS SO.** A file attached here is a working copy that an approver decides about, so putting it in the banner would claim it is already the event's picture. But somebody who attaches a photograph and sees nothing whatever change will believe it failed, so there is a thumbnail of it under the field with one line: sent for review, somebody will decide. The thumbnail says it arrived; the line stops the thumbnail saying more than that.
+
+**THE MONTH ARROWS HAD NO BORDER AT ALL, AND THE STYLESHEET APPEARED TO SAY THEY DID.** `.uc-month-nav-side .uc-month-nav` declared a 1px edge and an 8px radius; twenty lines further down `.uc-calendar .uc-month-nav` declared `border: 0`. Both carry two classes, so source order decided it and the later one won. What was on screen was a text chevron in gray on white with nothing to aim at, which is an exact description of "too small and blending into the colour scheme". **Computed rather than read**: `.claude/month-nav-cascade.php` prints the winner and the loser for every property, and it was written because the obvious remedy, darkening the border, would have darkened one that never rendered.
+
+**And they sat at opposite ends of the header.** On a 1200px block that is about 900px of travel between the two buttons somebody uses alternately. Previous, Today and Next are one segmented control at the right now, with the month name to their left.
+
+**The boundary is the 3.64.0 control standard's, not a new colour.** `--uc-control-edge` is `#8C8D8E`, byte for byte what portal.css already uses, measured at 3.33:1 on white and 3.13:1 on the page. This file's `--uc-border-strong` is `#D7DBE1` at 1.39:1, which is right for a CARD edge, since that is decoration, and was being used for controls too. **44px on a touch screen**, because these are the only way to move through months. The chevrons are the icon set's own path rather than `&lsaquo;` and `&rsaquo;`, which are text and took the host's font, weight and line box.
+
+**THE SIDEBAR CARD WAS NOT OVERFLOWING, AND NOTHING WAS DRAWN SHORT.** Nothing caps a height, nothing is positioned out of flow and nothing sets overflow on that card or its panel, so the box has always grown with its contents and "See all events" has always been inside it. In the combined view the sidebar deliberately has **no box at all**: no border, no padding, no background, because the panel around it carries all three. So the only edges on screen were the heading band's bottom hairline and the link's top hairline, and with the list empty those two are far apart with a paragraph between them, which reads as a card that closes above its last row. **The cause is present in every state.** A full list fills the gap with the rows' own hairlines, which is why an empty month is what made it visible, and every one of the 287 imported events is still a draft.
+
+**The fix is to make the column read as a column.** The heading band escapes the panel's padding instead of the sidebar's zero, so it spans the top of its column and meets the card's own edge, taking the card's inner radius on the corner it actually reaches. A band inset on all four sides inside a rounded white card is what read as square corners.
+
+**And the comment on that container claimed an `overflow: hidden` it never had.** Since 3.45.0 it has explained that the property is what lets the panels' square corners sit inside the rounded border. It was never declared, for thirty-five releases, and nothing was ever reported, which is the evidence it is not needed. It was added here and taken straight back out: `.claude/embed-modes-test.php` refuses any height or overflow on that container, a guard from 3.31.2 where a height cap above `overflow: hidden` cards squashed them to 40px strips. **The fix was not to widen the guard.** The one element that reaches a corner carries the matching radius itself, and the comment now says what is actually true. A comment asserting a declaration that is not there is worse than no comment, because it is what stops the next person looking.
+
+**The empty state's words and controls are deliberate and are unchanged**: a month with nothing on says so, then offers the neighbouring months and everything else, which are the same three ways on a full month offers. What was wrong is that a small muted line directly under an 18px band reads as a card that failed to load, so it has a row's vertical rhythm and is centred under a centred band. **The air below it in the combined view is also deliberate**: the two panels share one bottom edge because they are one card, so a short sidebar beside a tall month grid has space under it by construction.
 
 = 3.79.0 =
 

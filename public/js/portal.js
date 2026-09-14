@@ -110,6 +110,14 @@ function ucDismissOnBackdrop(dialog) {
         // After imageChoice, which is what makes the picker live and is where
         // the trigger renderer this one reuses is bound.
         run('requestSeriesImage', initRequestSeriesImage);
+        // After requestSeriesImage, which sets the default row's picture and
+        // name from the chosen series. This narrows the list under it, and it
+        // may reset the choice back to that row, so the row has to be right
+        // before this runs.
+        run('seriesImageFilter', initSeriesImageFilter);
+        // Last of the three: it reads whatever the other two settled on.
+        run('formBanner', initFormBanner);
+        run('uploadPreview', initUploadPreview);
         run('faqSetPeek', initFaqSetPeek);
         run('requestPrefill', initRequestPrefill);
         run('calendarTick', initCalendarTick);
@@ -430,6 +438,232 @@ function ucDismissOnBackdrop(dialog) {
                 });
             }
         });
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE BANNER IS A LIVE PREVIEW OF THE EVENT (3.80.0)
+     *
+     * WHAT IT SHOWS, IN ORDER: the picture chosen in the picker, or failing
+     * that the chosen series' own picture, or nothing at all. Nothing means the
+     * element is REMOVED rather than emptied, because a grey band saying
+     * nothing is worse than a form that starts at its heading.
+     *
+     * AN UPLOAD DOES NOT CHANGE IT, AND THAT IS NOT A LIMITATION. A file
+     * somebody attaches here is a WORKING COPY: it lands outside the calendar
+     * folder and an approver decides whether it becomes the event's picture.
+     * Putting it in the banner would say it already is, which is the one thing
+     * this form must not say. So the banner stays on the series picture and the
+     * upload gets a thumbnail of its own with a line saying what happens next.
+     * Somebody who attaches a file and sees nothing at all change will believe
+     * it failed, which is the reason the thumbnail exists.
+     *
+     * THE ZOOM IS 260ms AND IT IS SHORT ON PURPOSE. Somebody comparing three
+     * programmes will change that select three times; a slow reveal is a
+     * pleasure the first time and an obstruction the third. It is also skipped
+     * entirely under prefers-reduced-motion, in CSS, so this file never asks.
+     * ------------------------------------------------------------------ */
+    function initFormBanner() {
+        var card = document.querySelector('.uc-request-card');
+        var picker = document.querySelector('[data-uc-image-picker]');
+        if (!card) { return; }
+
+        var select = document.querySelector('[data-uc-request-series]');
+        if (!picker && !select) { return; }
+
+        function seriesBanner() {
+            if (!select) {
+                /* The community form: its series cannot change, so whatever the
+                 * server put in the banner is that series' picture and stays
+                 * the fallback for the whole visit. */
+                var had = card.querySelector('[data-uc-form-banner-img]');
+                return had ? (had.getAttribute('data-uc-series-src') || '') : '';
+            }
+            var opt = select.options[select.selectedIndex];
+            return opt ? (opt.getAttribute('data-uc-series-banner') || '') : '';
+        }
+
+        function chosenBanner() {
+            if (!picker) { return ''; }
+            var on = picker.querySelector('[data-uc-image-option]:checked');
+            if (!on) { return ''; }
+            /* The default row posts 0 and carries no full-size picture of its
+             * own: it MEANS the series picture, so that is what it shows. */
+            return on.getAttribute('data-uc-image-full') || '';
+        }
+
+        function apply() {
+            var src = chosenBanner() || seriesBanner();
+            var band = card.querySelector('[data-uc-form-banner]');
+
+            if (!src) {
+                if (band) { band.parentNode.removeChild(band); }
+                return;
+            }
+
+            if (!band) {
+                band = document.createElement('div');
+                band.className = 'uc-submit-banner';
+                band.setAttribute('data-uc-form-banner', '');
+                var fresh = document.createElement('img');
+                fresh.alt = '';
+                fresh.setAttribute('data-uc-form-banner-img', '');
+                band.appendChild(fresh);
+                card.insertBefore(band, card.firstChild);
+            }
+
+            var img = band.querySelector('[data-uc-form-banner-img]');
+            if (!img || img.getAttribute('src') === src) { return; }
+
+            /* Restarting the animation needs the class off, a reflow read, and
+             * the class back on. Without the read the browser coalesces the two
+             * writes and nothing plays from the second change onwards, which is
+             * exactly the case somebody comparing series is in. */
+            band.classList.remove('is-in');
+            void band.offsetWidth;
+            img.src = src;
+            band.classList.add('is-in');
+        }
+
+        if (select) { select.addEventListener('change', apply); }
+        if (picker) {
+            picker.addEventListener('change', function (e) {
+                if (e.target && e.target.hasAttribute('data-uc-image-option')) { apply(); }
+            });
+        }
+
+        /* Remember what the server said the series picture was, so the community
+         * form has a fallback to go back to when somebody unpicks a choice. */
+        var first = card.querySelector('[data-uc-form-banner-img]');
+        if (first && !select) {
+            first.setAttribute('data-uc-series-src', first.getAttribute('src') || '');
+        }
+
+        apply();
+    }
+
+    /* ---------------------------------------------------------------------
+     * WHAT WAS ATTACHED, AND WHAT HAPPENS TO IT (3.80.0)
+     *
+     * A thumbnail of the file somebody just chose, with one line under it. The
+     * thumbnail is there to say IT ARRIVED; the line is there to stop the
+     * thumbnail saying "this is now your event picture", which it is not.
+     *
+     * FileReader, NOT AN UPLOAD. Nothing leaves the browser until the form is
+     * submitted. This reads the file the input already holds.
+     * ------------------------------------------------------------------ */
+    function initUploadPreview() {
+        var input = document.querySelector('.uc-request-upload input[type="file"]');
+        if (!input || !window.FileReader) { return; }
+
+        var box = document.createElement('div');
+        box.className = 'uc-upload-preview';
+        box.hidden = true;
+        var img = document.createElement('img');
+        img.alt = '';
+        var said = document.createElement('p');
+        said.className = 'uc-hint';
+        said.textContent = 'Sent for review. Somebody will decide whether this becomes the event picture.';
+        box.appendChild(img);
+        box.appendChild(said);
+        input.parentNode.insertBefore(box, input.nextSibling);
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            if (!file || file.type.indexOf('image/') !== 0) {
+                box.hidden = true;
+                img.removeAttribute('src');
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+                img.src = reader.result;
+                box.hidden = false;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE PICKER SHOWS ONE SERIES' PICTURES AND HIDES THE REST (3.80.0)
+     *
+     * ONLY ON A FORM WHOSE SERIES CAN CHANGE. Where the series is fixed by the
+     * URL the server has already written out that series' pictures and nothing
+     * else, so this finds no select and returns: the filtering is done, and
+     * done somewhere a script cannot undo it.
+     *
+     * IT MARKS, IT DOES NOT HIDE. Every row it wants gone gets
+     * data-uc-off-series and then initFilterLists() is asked to run, which is
+     * the one function that assigns `hidden` on these rows. Two functions
+     * setting that property is two answers to the same question, and the one
+     * that loses is whichever ran first.
+     *
+     * A PICTURE WITH NO SERIES IS HIDDEN BY EVERY SERIES. An untagged picture
+     * is not one that belongs to everybody; it is one nobody has filed yet, and
+     * offering it here is the ungrouped list coming back through the side door.
+     *
+     * THE CHOSEN PICTURE IS GIVEN UP WHEN IT LEAVES THE LIST. If somebody picks
+     * a Strut photograph and then changes the series to Cycle to Zero, that
+     * radio is still checked and is now invisible: the form would post a
+     * picture that is not on screen and not in the chosen programme. So the
+     * choice goes back to the default row, which is the series' own picture.
+     * The alternative, keeping it visible as an exception, is the grouping
+     * again with one row in the second group.
+     * ------------------------------------------------------------------ */
+    function initSeriesImageFilter() {
+        var select = document.querySelector('[data-uc-request-series]');
+        var picker = document.querySelector('[data-uc-image-picker]');
+        if (!select || !picker) { return; }
+
+        var scope = picker.querySelector('[data-uc-filter-scope]') || picker;
+        var list = picker.querySelector('[data-uc-filter-list]');
+        var note = picker.querySelector('[data-uc-image-none]');
+        var current = picker.querySelector('[data-uc-image-current]');
+        var fallback = picker.querySelector('[data-uc-image-default] input[type="radio"]');
+        if (!list) { return; }
+
+        var rows = list.querySelectorAll('[data-uc-image-series]');
+        if (!rows.length) { return; }
+
+        function apply() {
+            var id = String(select.value || '').trim();
+            var shown = 0;
+            var lost = false;
+
+            Array.prototype.forEach.call(rows, function (opt) {
+                /* No series chosen means nothing to filter on, so everything is
+                 * offered. That is the "an event with no series sees them all"
+                 * rule, and it is this branch. */
+                var keep = !id;
+                if (!keep) {
+                    var mine = opt.getAttribute('data-uc-image-series') || '';
+                    keep = mine.indexOf(' ' + id + ' ') !== -1;
+                }
+                if (keep) {
+                    opt.removeAttribute('data-uc-off-series');
+                    shown++;
+                } else {
+                    opt.setAttribute('data-uc-off-series', '');
+                    var radio = opt.querySelector('input[type="radio"]');
+                    if (radio && radio.checked) { lost = true; }
+                }
+            });
+
+            if (lost && fallback) {
+                fallback.checked = true;
+                showImageChoice(current, fallback);
+                /* So the banner follows the choice back to the series picture
+                 * rather than going on showing one that is no longer chosen. */
+                fallback.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            if (note) { note.hidden = !(id && 0 === shown); }
+
+            /* initFilterLists() owns `hidden`. This is the ask, not the doing. */
+            scope.dispatchEvent(new CustomEvent('uc:refilter'));
+        }
+
+        select.addEventListener('change', apply);
+        apply();
     }
 
     /* ---------------------------------------------------------------------
@@ -889,6 +1123,20 @@ function ucDismissOnBackdrop(dialog) {
             if (!list) { return; }
             var note = scope.querySelector('[data-uc-filter-empty]');
 
+            /* ONE OWNER OF `hidden`, AND THAT IS THIS FUNCTION (3.80.0).
+             *
+             * The image picker now has a SECOND filter over the same list: the
+             * series narrowing in initImageChoice(). Two functions assigning
+             * opt.hidden is two answers to "is this row on screen", and the one
+             * that wins is whichever ran last, so typing in the search box
+             * would have un-hidden every picture the series filter had just
+             * taken away.
+             *
+             * So the series filter owns a MARKER and this owns the property.
+             * It sets data-uc-off-series on the rows it wants gone and asks
+             * this to run again; nothing else ever touches hidden on these
+             * rows. The same shape as the cascade rule on the stylesheet side:
+             * decide where a property is set, once, rather than racing. */
             function apply() {
                 var q = input.value.replace(/\s+/g, ' ').trim().toLowerCase();
                 var shown = 0;
@@ -897,15 +1145,23 @@ function ucDismissOnBackdrop(dialog) {
                     function (opt) {
                         var hay = opt.getAttribute('data-uc-filter-text') || '';
                         var box = opt.querySelector('input[type="checkbox"]');
-                        var keep = !q || hay.indexOf(q) !== -1 || (box && box.checked);
+                        var off = opt.hasAttribute('data-uc-off-series');
+                        var keep = !off && (!q || hay.indexOf(q) !== -1 || (box && box.checked));
                         opt.hidden = !keep;
                         if (keep) { shown++; }
                     }
                 );
+                /* Only about the SEARCH. A list emptied by the series filter is
+                 * a different sentence, said by the series filter's own note,
+                 * and two notes at once would be the screen telling somebody
+                 * off twice for one thing. */
                 if (note) { note.hidden = (shown !== 0 || q === ''); }
             }
 
             input.addEventListener('input', apply);
+            /* The series filter's way of asking for a re-run without reaching
+             * into this closure. */
+            scope.addEventListener('uc:refilter', apply);
             // Escape clears the filter before the browser closes the <details>
             // out from under somebody mid-search.
             input.addEventListener('keydown', function (e) {
