@@ -6,20 +6,24 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.80.0, built and not released.
+**Last updated:** 2026-09-14, at 3.80.0, released.
 
 ---
 
 ## What shipped last
 
-**3.80.0**, built as `sfaf-calendar-3.80.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean. 3.78.0 was released on
-2026-09-14 and is the version sites are being offered.
+**3.80.0**, built as `sfaf-calendar-3.80.0.zip` in the project root, committed,
+**pushed to both repositories** and **released on 2026-09-14**. Working tree
+clean. It is the version sites are being offered.
 
-> **NEITHER 3.79.0 NOR 3.80.0 IS RELEASED, AND THAT IS WAITING ON MARK'S WORD.**
-> Releasing is a separate press: `bash .claude/publish.sh --release`, which cuts
-> the version currently in the tree. It goes on from the Plugins screen
-> afterwards: Check for updates, then Update now.
+> **3.79.0 WAS NEVER RELEASED AND DOES NOT NEED TO BE.** Its work is in 3.80.0,
+> which is a later tag over the same branch, so a site updating from 3.78.0 gets
+> both. There is no 3.79.0 release on GitHub and nothing is missing.
+
+> **WHAT TO PRESS ON THE SITE.** Plugins > SFAF Calendar > **Check for updates**,
+> then Update now. **Not** Dashboard > Updates: WordPress's own "Check again"
+> clears its caches and not `sfaf_updater_release`, so it answers from ours and
+> can never see a new version. That cost a release in 3.73.0.
 
 > **THE HOVER PREVIEW WORKS ON sfaf.org**, confirmed 2026-09-11: it appears, it
 > positions itself, it clears the site header and it stays open while the
