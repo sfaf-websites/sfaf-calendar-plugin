@@ -2966,7 +2966,36 @@ body.uc-modal-open { overflow: hidden; }
 }
 .uc-media-edit .uc-field { margin: 0; }
 .uc-media-edit select, .uc-media-edit input[type="text"] { width: 100%; }
-.uc-media-edit-go { display: flex; justify-content: flex-end; }
+.uc-media-edit-go { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------------------
+   WHAT EACH BOX ON A CARD IS FOR, SAID ONCE (3.81.0)
+
+   ABOVE THE GRID, NOT UNDER EACH CARD. At fifty images a line per card is fifty
+   copies of one paragraph, and the cards are already the dense thing on this
+   screen. One block, read once, by the person who needs it.
+
+   IT IS A CARD BUT IT IS NOT A CONTROL, so it takes the page's quieter ground
+   rather than a white panel competing with the grid below it. Reading measure
+   is capped: three full-width lines across a 1200px screen is a paragraph
+   nobody finishes.
+   ------------------------------------------------------------------------ */
+.uc-media-legend { padding: 14px 16px; background: var(--p-surface-2, #f6f7f8); }
+.uc-media-legend p { margin: 0 0 6px; max-width: 76ch; font-size: 13px; line-height: 1.5; color: var(--p-muted, #6B6764); }
+.uc-media-legend p:last-child { margin-bottom: 0; }
+.uc-media-legend strong { color: var(--p-text); }
+
+/* ---------------------------------------------------------------------------
+   THE ONE CONTROL ON A CARD THAT TAKES SOMETHING AWAY (3.81.0)
+
+   NOT RED AND NOT YELLOW. Red is this portal's destructive treatment and this
+   deletes nothing: the file stays, the attachment stays, and the Removed view
+   puts it back in one press. Yellow means "this is the thing to act on", and
+   Save is that on this card. So Remove is a plain control that reads as
+   secondary to the Save beside it, and the confirmation carries the detail.
+   ------------------------------------------------------------------------ */
+.uc-btn-quiet { color: var(--p-muted, #6B6764); }
+.uc-btn-quiet:hover { color: var(--p-text); border-color: var(--p-border-strong); }
 
 /* ---------------------------------------------------------------------------
    THE UPLOAD PANEL AND THE GRID WERE TWO DENSITIES (3.78.0)

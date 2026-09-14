@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.80.0
+Stable tag: 3.81.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,38 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.81.0 =
+
+**portal.js HAS BEEN THROWING ON EVERY PAGE SINCE 3.77.0, AND IT TOOK THREE FEATURES DOWN WITH IT.** That release closed `initFaqSetPeek()` AFTER `initRequestPrefill()` instead of before it, so the whole of the second function lived inside the first. The braces still balanced, so `node --check` passed. The name was still declared somewhere in the same top-level scope as far as `.claude/js-scope-test.js` could tell, so that passed too, through a hole it names in its own header.
+
+**What it did.** `run('requestPrefill', initRequestPrefill)` evaluates the name BEFORE calling `run()`, so the ReferenceError is thrown in the caller and not inside `run()`'s try/catch. It killed the rest of the startup list: **requestPrefill, calendarTick and tickPickers**. Every tick picker on every screen, from 3.72.0's schedule publish to 3.79.0's bulk publish, has been dead. So has "Fill this in from the last one", since the release that added it.
+
+**This is why "Tag 0 images" did not count.** The ticks were fine: correctly owned by the form, and the form posted the right ids, which is why tagging worked for whatever was ticked. What was missing was the script that keeps the number honest, reveals select-all and disables the button at zero. **Established by loading the real markup and the real script into a real browser** and reading the button, rather than by reading the source: `.claude/media-ticks-live.php`. Reading the source is what let the same class of fault sit for six releases in 3.79.0.
+
+**`.claude/js-nesting.js` closes the hole.** A real scanner, not a regex: the first attempt reported nesting depths of fifteen because line comments, block comments, strings, template literals and **regex literals** all carry braces that are not code. It self-tests against all five, then asserts that every initialiser the startup list names is declared at depth 1. Run against 3.80.0 it reports the fault; against this release it passes.
+
+**THE SIDEBAR: THE DIAGNOSIS WAS RIGHT, THE FIX LANDED, AND IT WAS AIMED AT THE WRONG END.** Measured in a browser this time, at three widths, in `.claude/sidebar-enclosure.php`. Nothing overflows and "See all events" was always inside the card, which is what 3.80.0 said. The band does escape to the card's edge and does take its inner radius, which is what 3.80.0 built. What the measurement then showed is that the link sat **292px above the card's painted bottom**, with its own hairline as the last rule in the column. A rule with 292px of nothing under it is not read as a divider; it is read as the bottom of a box, and the link below it as something that has fallen out.
+
+**So the column fills its panel and the link sits at its foot**, 21px from the card's edge instead of 292px. The air goes above it, where an empty list belongs.
+
+**AND ON sfaf.org THE COMBINED VIEW STACKS, WHICH IS PROBABLY WHAT WAS BEING LOOKED AT.** The block renders at about 770px there, under the 864px the two panels need side by side, so the sidebar sits under the grid. `max-width: 380px` on the panel did not stop applying when it stacked, so the column stayed 380px wide in a 770px card, left aligned, with about 390px of blank white down its right: a tinted band with square corners floating in a much wider rounded card. Both caps are lifted when it stacks.
+
+**Two of these rules ask the BLOCK and not the window.** 3.80.0 wrote the corner rule as `@media (min-width: 864px)`, and the panels do not stack on the viewport: they stack on flex-wrap, at the width the container can no longer fit 576 plus 288. A block in a 700px column inside a 1400px window is stacked while that media query is true.
+
+**TAGGING A PICTURE TO A SERIES AND GIVING A SERIES A PICTURE WERE TWO DIFFERENT THINGS, AND ONLY ONE WAS READ.** `SFAF_Series::image_url()` read term meta; the Images screen writes a term relationship on the attachment. The two never met, so a picture tagged and named against El Grupo de Apoyo Latino produced no banner anywhere.
+
+**It showed up on the imported series and not the others, which is what made it look like a fault in the new banner.** Cycle to Zero and Strut Community Events predate the import and were built by hand, so somebody set their picture on the series screen. The thirty the import created came from `SFAF_Series::create( $name )`, which takes a name and nothing else.
+
+**A tag is a fallback now, not a second setting.** A picture set on the series screen still wins, always. The fallback answers only the case that used to answer nothing, and it is **the earliest picture tagged**, so adding one to the folder never silently changes a programme's picture, its banner and every event fallback across it.
+
+**AN IMAGE CAN BE REMOVED, AND REMOVE IS NOT DELETE.** It takes the picture out of the set this calendar offers: gone from the grid, from every picker, and not eligible to become a series' picture. **The file is not deleted and neither is the attachment.** The thing somebody wants nine times out of ten is "stop offering me this", and a recoverable action that covers the common case beats an irreversible one. A **Removed** view in the filter puts it back.
+
+**It is refused while anything is using it, and the refusal names what.** An event whose own picture it is, or a series it has been given to. A series that merely TAGS it is not using it: a tag is filing, and removing the picture moves that series to the next one tagged or to nothing, which is a change in what is offered rather than a dangling reference.
+
+**ALT TEXT, AND IT IS NOT A SECOND NAME.** The name is how somebody finds a picture in a chooser and is written for the person picking it. Alt text stands in for the picture and is written for the person who cannot see it. **It is never filled in from the series**, because a programme's name is exactly what it must not say: wrong alt text is worse than none, since a screen reader announces it as though it described what is there. What each field is for is said **once, above the grid**, with an example of a good one and a bad one, rather than under fifty cards.
+
+**No caption.** Nothing in this plugin renders one, so it would be a third box on a card that 3.78.0 cut from two forms to one, collecting text nobody would ever read. Name covers being found in the chooser and alt text covers being read out and being indexed, which is the whole of what was asked for.
 
 = 3.80.0 =
 

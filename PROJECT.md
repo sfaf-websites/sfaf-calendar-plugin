@@ -2060,6 +2060,82 @@ from outside the series when the submitter sent none. Hiding would put a round
 trip through the Images screen in front of the one person fixing everybody
 else's missing pictures.
 
+### A series' picture: what is set, and what is inferred
+
+A series' picture is `SFAF_Series::image_id()`, and from 3.81.0 it has two
+sources in a fixed order.
+
+1. **The picture the series was given**, term meta `_sfaf_series_image_id`, set
+   on the series screen. This always wins and nothing about it changed.
+2. **The earliest picture tagged to that series**, if it has none of its own.
+
+**These were two different facts in two different places and only one was read**
+until 3.81.0. Tagging writes a term relationship on the ATTACHMENT, in
+`SFAF_Media`'s taxonomy; the series' picture is term meta. So a picture could be
+tagged and named against a programme and produce no banner, no picker default
+and no event fallback anywhere.
+
+> **It showed on the pre-existing series and not the imported ones**, which is
+> what made it look like a fault in the banner rather than in this. Cycle to Zero
+> and Strut Community Events were built by hand and somebody set their picture.
+> The thirty the import created came from `SFAF_Series::create( $name )`, which
+> takes a name and nothing else, so they have no term meta at all.
+
+**A TAG IS A FALLBACK, NOT A SECOND SETTING.** It answers only the case that used
+to answer nothing. And it is **the earliest** tagged rather than the newest,
+because the fallback has to be stable: "the newest" would mean adding a picture
+to the folder silently changed a programme's banner, its picker default and
+every event fallback across it, from an action nobody would connect to it.
+
+**Removed pictures are never the fallback**, for the same reason they are in no
+picker: a picture the calendar does not offer must not become a programme's
+picture by a route nobody can see.
+
+### Remove takes a picture out of the folder. It is not a delete.
+
+From 3.81.0 the Images screen can remove a picture, and the word is chosen:
+
+- **The file is not deleted and neither is the attachment.** What changes is the
+  set this calendar offers: gone from the grid, from every picker, and not
+  eligible to be a series' fallback. wp-admin's Media Library still has it.
+- **A marker, not a file move.** "Out of the folder" could be literal, and moving
+  a file has permissions, half-done states and a changed URL, which breaks
+  anywhere the URL was copied rather than the id referenced. `META_REMOVED` is
+  atomic and is undone by deleting it.
+- **A Removed view in the filter is the way back**, and it is what makes the
+  action recoverable in practice rather than only in principle.
+- **Refused while anything is using it**, with the refusal naming what: an event
+  whose own picture it is, or a series it has been given to. Same shape as the
+  venue and team deletion rules.
+
+> **A series that merely TAGS it is not using it.** A tag is filing. Removing the
+> picture moves that series on to the next one tagged, or to nothing, which is a
+> change in what is offered rather than a dangling reference.
+
+### Name and alt text are two jobs, and neither is the other
+
+- **Name** is how somebody FINDS the picture in a chooser. Written for the person
+  picking it: "Cycle To Zero".
+- **Alt text** stands in for the picture for somebody who cannot see it, and is
+  what a search engine reads. Written about the PICTURE: "three cyclists on a
+  coastal road".
+
+**ALT TEXT IS NEVER FILLED IN FROM THE SERIES.** A programme's name is precisely
+what it must not say. Wrong alt text is worse than none, because a screen reader
+announces it as though it described what is there, and the page around it
+already says which programme this is. It is stored in WordPress's own
+`_wp_attachment_image_alt`, so a picture described in the Media Library arrives
+here already filled in.
+
+**There is no caption, and that is a decision.** Nothing in this plugin renders
+one, so it would be a third box collecting text no surface reads, on a card
+3.78.0 cut from two forms down to one. The two fields above cover being found in
+the chooser and being read out or indexed, which is the whole of what was asked
+for.
+
+**The definitions live in one block above the grid.** At fifty images a line of
+explanation per card is fifty copies of one paragraph.
+
 ### The banner is a live preview of the event
 
 The community form has carried the series picture across the top since 3.47.0.
@@ -4590,6 +4666,69 @@ has used since 3.64.0. **The month arrows use it; these do not yet**, and the
 list is here rather than left to a search: the filter bar's search field and
 dropdown, the group pills, the groups disclosure, the RSVP modal's cancel and
 its secondary add-to-calendar button, and the month tabs under the sidebar.
+
+### Balance is not validity in JavaScript either (3.77.0, found 3.81.0)
+
+3.77.0 closed `initFaqSetPeek()` **after** `initRequestPrefill()` instead of
+before it, so the whole of the second function lived inside the first. One
+closing brace in the wrong place, and the braces still balanced.
+
+```
+    select.addEventListener('change', build);
+    build();
+}
+}                       <-- this one closed initFaqSetPeek
+function initRequestSeriesImage() {
+```
+
+**`run('requestPrefill', initRequestPrefill)` evaluates the name before calling
+`run()`**, so the ReferenceError landed in the caller rather than inside
+`run()`'s try/catch, which is the thing `run()` exists to provide. It killed the
+rest of the startup list: `requestPrefill`, `calendarTick` and `tickPickers`.
+Every tick picker on every screen was dead for four releases, and so was the
+feature 3.77.0 had just shipped.
+
+**Three gates passed it.** `node --check` proves a file parses, and it did.
+`.claude/js-scope-test.js` passed through a hole it names in its own header: *"a
+function declared inside a NESTED function is treated as belonging to its whole
+top-level scope... it can MISS a genuine fault"*. And the release was verified by
+reading the source, which is exactly what the 3.79.0 entry above says not to do.
+
+> **`.claude/js-nesting.js` is the answer, and writing it taught the same lesson
+> twice.** The first version stripped comments and strings with regexes and
+> reported nesting depths of fifteen, which would have sent somebody hunting
+> fourteen missing braces. **Line comments, block comments, strings, template
+> literals and regex literals all carry braces that are not code**, and regex
+> literals are the hard one: `/\d{4}/` has braces and `a / b` does not, and
+> telling them apart needs the previous significant token. It self-tests against
+> all five before it asserts anything, then requires every initialiser the
+> startup list names to be declared at depth 1.
+
+### There is a browser on this machine (3.81.0)
+
+`PROJECT.md` has said for several releases that a stylesheet is not rendered
+output and that a fault living only in geometry reaches Mark's screen with the
+suite green. That was true and it was also incomplete: **Chrome is installed and
+headless works**, and two of this release's four reports were settled by
+measuring rather than reasoning.
+
+```
+chrome --headless --disable-gpu --window-size=1400,1200 \
+       --virtual-time-budget=8000 --dump-dom file:///...
+```
+
+- **`.claude/sidebar-enclosure.php`** builds the combined view at three widths
+  and reports real boxes: is anything outside the card, how far the painted edge
+  is from the last row, what radius each corner computes to. It is what showed
+  that 3.80.0's fix had landed and was aimed at the wrong end of the column.
+- **`.claude/media-ticks-live.php`** loads the real `portal.js` against the
+  Images screen's markup, clicks labels the way a person does, and reads the
+  button. It is what turned "Tag 0 images" from a guess into
+  `initTickPickers did not reach it`, and then into the exact ReferenceError.
+
+**Use it before theorising about anything visual or anything the script does.**
+Two releases were spent reasoning about a card that could have been measured in
+ten minutes.
 
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not

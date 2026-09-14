@@ -2016,8 +2016,12 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     background: #fff;
 }
 .uc-calendar .uc-view-panels-combined > .uc-combined-head { flex: 1 1 100%; min-width: 0; border-bottom: 1px solid var(--uc-border, #D1D3D4); }
-.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 1 1 576px; min-width: 0; }
-.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { flex: 1 1 288px; max-width: 380px; min-width: 0; }
+/* 999 AND 1: see the note further down on the sidebar's width. Sharing a line
+   the grid takes all but a thousandth of the free space, which is what the
+   max-width on the sidebar panel used to be reaching for; alone on a wrapped
+   line the sidebar has nothing to share with and fills it. */
+.uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 999 1 576px; min-width: 0; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { flex: 1 1 288px; min-width: 0; }
 
 /* The divider. A border on the grid side only, so there is one line between the
    halves rather than two touching. When they wrap it moves to the bottom of the
@@ -2085,20 +2089,121 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     --uc-sidebar-pad-x: 18px; --uc-sidebar-pad-t: 16px; --uc-sidebar-head-radius: 0px;
     border: 0; padding: 0; background: none;
 }
-/* Side by side the band's top-right corner is the card's top-right corner, one
-   pixel in from a 14px radius. Its top-left is against the divider and stays
-   square. Stacked, the sidebar is below the grid and the band is mid-card, so
-   both corners are square and this rule does not apply. */
-@media (min-width: 864px) {
-    .uc-calendar .uc-view-panels-combined .uc-sidebar .uc-sidebar-heading {
-        border-radius: 0 13px 0 0;
-    }
-}
-/* The month tabs and "See all events" are the column's floor. Giving the link
-   the panel's bottom padding as its own margin stops the column ending on a
-   hairline with air under it, which is the half of the report that read as the
-   card being drawn short. */
-.uc-calendar .uc-view-panels-combined .uc-sidebar .uc-sidebar-all { margin-bottom: 0; }
+/* THE BAND NEEDS NO CORNER RADIUS, AND 3.80.0 GAVE IT ONE FOR A CORNER IT
+   NEVER TOUCHES (3.81.0).
+
+   3.80.0 rounded the band's top-right to match the card, on the reasoning that
+   flush against the card's edge it would paint a square corner over a rounded
+   one. Measured, that corner is not there: the month name and the arrows sit in
+   .uc-combined-head, which spans the full width ABOVE both panels, so the
+   sidebar panel starts well below the card's top edge.
+
+       shared card      top 99
+       sidebar panel    top 177
+
+   So the band is 78px down a straight edge, and a radius on it would draw a
+   notch rather than match anything. The "top corners are not rounded" report
+   was about the band being a square inset rectangle floating inside a rounded
+   card, which is answered by the band spanning its column, not by a radius.
+
+   IT ALSO MEANT A QUERY, AND THIS MODE MAY NOT HAVE ONE. DESIGN.md requires the
+   combined mode to reflow intrinsically and .claude/embed-modes-test.php
+   enforces it. 3.80.0's version asked the viewport, which is not what the panels
+   stack on; the replacement asked a container, which this mode is not allowed.
+   The right answer was neither, because the rule was not needed. */
+
+/* ---------------------------------------------------------------------------
+   THE COLUMN REACHES THE BOTTOM OF THE CARD (3.81.0)
+
+   THIS IS THE HALF 3.80.0 MISSED, and it missed it by fixing the right fault at
+   the wrong end. The diagnosis was correct and is unchanged: nothing overflows,
+   nothing is drawn short, and "See all events" was always inside the card. That
+   was measured, and it is still true. What 3.80.0 then fixed was the TOP of the
+   column, and the report was about the bottom.
+
+   WHAT THE MEASUREMENT ACTUALLY SHOWED, at 1000px with the list empty:
+
+       sidebar box      319x237   top 837  bottom 1074
+       See all events   319x33    top 1040 bottom 1073
+       shared card                         bottom 1365
+
+   292px of blank white card below the last thing in the column, and the last
+   hairline in it is the link's own border-top at y=1040. A rule with 292px of
+   nothing under it is not read as a divider. It is read as the bottom of a box,
+   and the link below it as something that has fallen out.
+
+   SO THE COLUMN FILLS ITS PANEL AND THE LINK SITS AT THE FOOT OF IT. The rule
+   becomes a real footer across the bottom of the card, the air goes ABOVE it
+   where an empty list belongs, and there is nothing below it to be outside of.
+
+   NO HEIGHT AND NO OVERFLOW ANYWHERE IN HERE. The panel is already stretched by
+   align-items: stretch, so this only passes that height down. 3.31.2 is why:
+   a height on a column flex container squashes overflow:hidden items, and
+   .claude/embed-modes-test.php refuses both properties on this container.
+   ------------------------------------------------------------------------ */
+/* ---------------------------------------------------------------------------
+   AND WHEN IT STACKS, THE COLUMN IS THE WHOLE WIDTH (3.81.0)
+
+   THIS IS PROBABLY THE HALF MARK IS ACTUALLY LOOKING AT. sfaf.org renders the
+   block at about 770px, which is under the 864px the two panels need, so the
+   combined view STACKS there: the sidebar sits under the grid rather than
+   beside it. And `max-width: 380px` on the panel does not stop applying when it
+   stacks, so the column stayed 380px wide inside a 770px card, left aligned,
+   with about 390px of blank white down its right.
+
+   A tinted band 380px wide with square corners, inside a much wider rounded
+   white card, with empty space to its right and below: that is a card that does
+   not enclose its contents, and it is what was reported twice.
+
+   THE CAP WAS RIGHT FOR THE CASE IT WAS WRITTEN FOR AND ONLY THAT ONE. Side by
+   side, a panel allowed past 380px reserves room its contents cannot fill and
+   hands nothing back to the grid, which has seven columns to spend it on.
+   Stacked there is no grid beside it to hand anything to, so the cap creates
+   exactly the ragged gap it exists to prevent.
+
+   IT ASKS THE BLOCK, NOT THE WINDOW. The rule sits on the panel, and a
+   container query resolves against the nearest ancestor container EXCLUDING the
+   element itself, so this measures .uc-calendar, the block. That is the width
+   the flex wrap actually decides on, unlike the @media the divider rule still
+   uses. Measured in .claude/sidebar-enclosure.php at 700px and 1000px.
+   ------------------------------------------------------------------------ */
+/* LOPSIDED GROW FACTORS, NOT A QUERY, which is the remedy this file already
+   uses one level down on .uc-sidebar-row and the one DESIGN.md asks for here.
+
+   WHAT max-width WAS DOING AND WHY IT WAS THE WRONG TOOL. The comment on it
+   says the intent exactly: cap the panel so the surplus goes to the grid, which
+   has seven columns to spend it on. A cap is an imprecise way to say that. It
+   is also unconditional, so when the panel WRAPS onto a line of its own it is
+   still capped, and the column stayed 380px wide in a 770px card with 390px of
+   blank beside it. That is sfaf.org's shape, because the block renders at about
+   770px there and the two panels need 864px.
+
+   GROW FACTORS SAY IT PRECISELY AND SAY IT ONCE. Sharing a line, the grid's 999
+   takes all but a thousandth of the free space, so the sidebar sits at its 288px
+   basis and every spare pixel goes where the comment always wanted it. Alone on
+   its own line there is nothing to share with, so its own grow fills the line.
+   One declaration, both shapes, and it asks nothing about any width.
+
+   THE SIDEBAR'S OWN CAP GOES WITH IT, because two caps means lifting one leaves
+   the other: a full-width panel holding a 380px column is the ragged edge moved
+   one element in. Inside the combined mode the panel decides the width; the
+   standalone sidebar block keeps its 380px, which is what that cap is for.
+
+   FULL WIDTH RATHER THAN CENTRED WHEN STACKED. Centred would keep the rows at
+   the width their design was tuned for and leave the band a floating panel in a
+   wider card, which is the thing being fixed. The grid above is full width, so
+   the list under it reads as the same section continuing, and the rows already
+   reflow on their own flex rules at any width. */
+.uc-calendar .uc-view-panels-combined .uc-sidebar { max-width: none; }
+.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { display: flex; flex-direction: column; }
+.uc-calendar .uc-view-panels-combined .uc-sidebar { flex: 1 1 auto; display: flex; flex-direction: column; }
+/* The list takes its natural height. Without this it would share the spare
+   space with nothing and grow, which puts the rows' hairlines in the wrong
+   places. */
+.uc-calendar .uc-view-panels-combined .uc-sidebar-list { flex: 0 0 auto; }
+.uc-calendar .uc-view-panels-combined .uc-month-tabs { flex: 0 0 auto; }
+/* auto, which is the whole fix: all the spare space goes above the link. */
+.uc-calendar .uc-view-panels-combined .uc-sidebar-all { flex: 0 0 auto; margin-top: auto; }
 
 /* ---------------------------------------------------------------------------
    EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.

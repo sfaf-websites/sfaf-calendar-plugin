@@ -523,6 +523,19 @@ $WHITELIST = array(
     'class-sfaf-venues.php'          => 'which events use a venue, for the deletion refusal',
     'class-sfaf-organizers.php'      => 'which events name an organizer, for the count and the deletion confirmation',
     'class-sfaf-categories.php'      => 'which events use a category, for the deletion refusal',
+    /*
+     * THE SAME SHAPE AS THE FOUR DELETION REFUSALS ABOVE, and it MUST see
+     * private events for the same reason (3.81.0). uses_of() answers "what is
+     * relying on this picture" so a removal can be refused and name what. An
+     * event excluded from that answer is an event whose picture is taken away
+     * without anybody being told, and a private event is exactly the one
+     * nobody would then notice. Excluding here would make the refusal
+     * incomplete, which is the opposite of what a refusal is for.
+     *
+     * It renders no list to a visitor: the titles reach one flash message on
+     * /caladmin, behind the role gate the route carries.
+     */
+    'class-sfaf-media.php'           => 'which events use a picture, for the removal refusal',
     'class-sfaf-privacy.php'         => 'the list of private events, which is the point of it',
     /*
      * AN INSERT, NOT A SELECT. The public request form names uc_event once, in

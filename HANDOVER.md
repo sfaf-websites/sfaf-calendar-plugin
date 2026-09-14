@@ -6,15 +6,23 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.80.0, released.
+**Last updated:** 2026-09-14, at 3.81.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.80.0**, built as `sfaf-calendar-3.80.0.zip` in the project root, committed,
-**pushed to both repositories** and **released on 2026-09-14**. Working tree
-clean. It is the version sites are being offered.
+**3.81.0**, built as `sfaf-calendar-3.81.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean. **3.80.0 is the version
+sites are being offered**, released 2026-09-14.
+
+> **3.81.0 IS NOT RELEASED AND IS THE ONE THAT MATTERS MOST SO FAR.** It fixes a
+> single misplaced brace that has made `portal.js` throw on every page since
+> 3.77.0, which killed `requestPrefill`, `calendarTick` and **every tick picker
+> on every screen**: the schedule's bulk publish from 3.72.0, the events list's
+> bulk category from 3.73.0, the Images screen's Tag button from 3.78.0 and the
+> events list's bulk publish from 3.79.0. All of them have been dead for four
+> releases. Releasing is `bash .claude/publish.sh --release`.
 
 > **3.79.0 WAS NEVER RELEASED AND DOES NOT NEED TO BE.** Its work is in 3.80.0,
 > which is a later tag over the same branch, so a site updating from 3.78.0 gets
@@ -33,6 +41,7 @@ clean. It is the version sites are being offered.
 
 | | |
 |---|---|
+| **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **stops being 380px wide inside a 770px card when it stacks**, which is what sfaf.org does. The Images screen gains **alt text** and a **Remove** that is not a delete. |
 | **3.80.0** | **The picker hides by series now**, which it did not: it grouped, so a series with two tagged pictures still showed all eight. A series with nothing tagged gets a sentence naming MarCom rather than the whole folder. **The banner is a live preview** on both public forms, and an upload gets its own thumbnail with a line saying an approver decides. **The month arrows had no border at all**, which the stylesheet appeared to declare and a later rule at equal specificity removed; they are one segmented control at the right now, on the 3.64.0 control standard, 44px on touch. **The sidebar card was not overflowing**: in the combined view it has no box by design, and two lone hairlines read as one that closes early. |
 | **3.79.0** | **The bulk category control never had tick boxes**, on any screen, for any viewer. The cell was built into the dashboard's read-only table instead of the events list's, and both tables have carried half a fault since 3.73.0. Also **bulk publish on the events list**, sharing those ticks, asking `SFAF_Series::publish_skip_reason()` rather than restating it, with each button counting only the rows it can reach. |
 | **3.78.0** | **The preview is two targets, the picture and the pill**, and not the whole panel: one anchor round everything tinted every line in it with the theme's link teal. Also **the staff form's chosen picture is bigger than the rows it chooses from**, which 3.76.0 inverted; **the Images screen is rebuilt**, three cards across rather than six, one Save per card rather than two, and a disabled primary that stops wearing yellow; and **a name typed on that screen now sticks even when it matches its own file**, which it did not, so the remedy 3.76.0 added did not work for the commonest case. |
@@ -76,6 +85,13 @@ clean. It is the version sites are being offered.
   separate actions and neither has been reported back on.
 - **3.71.0's BULK PUBLISH READS CORRECTLY** on a real series. 3.72.0 put
   per-row ticks on it and those have not been seen.
+
+  > **NO TICK PICKER ANYWHERE HAS EVER WORKED IN A BROWSER, AND 3.81.0 IS WHY.**
+  > `portal.js` has thrown on every page since 3.77.0, so the counts, select-all
+  > and the disabled state were dead on all four screens that carry them. The
+  > boxes themselves were fine and posted correctly, so anything actually ticked
+  > was acted on. **Everything asserted about a tick picker before 3.81.0 was
+  > asserted about markup, not behaviour.**
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.

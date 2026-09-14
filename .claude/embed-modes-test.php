@@ -309,8 +309,18 @@ check(
  * nudged later would make that number a lie.
  */
 preg_match( '/\.uc-view-panels-combined\s*\{[^}]*gap:\s*(\d+)(?:px)?\s*;/', $css, $g );
-preg_match( '/uc-panel-calendar\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c1 );
-preg_match( '/uc-panel-sidebar\s*\{\s*flex:\s*1\s+1\s+(\d+)px/', $css, $c2 );
+/* ANY GROW AND SHRINK, BECAUSE THE BASIS IS WHAT DECIDES THE WRAP. These
+ * patterns read `flex: 1 1 576px` until 3.81.0 gave the grid a grow factor of
+ * 999, at which point they matched nothing, $stack went to 0 and every check
+ * below it failed with a number derived from zero. A pattern that stops
+ * matching is a check that stops checking, and it reported three faults that
+ * were all itself. */
+preg_match( '/uc-panel-calendar\s*\{\s*flex:\s*(\d+)\s+(\d+)\s+(\d+)px/', $css, $c1m );
+preg_match( '/uc-panel-sidebar\s*\{\s*flex:\s*(\d+)\s+(\d+)\s+(\d+)px/', $css, $c2m );
+$c1 = isset( $c1m[3] ) ? array( $c1m[0], $c1m[3] ) : array();
+$c2 = isset( $c2m[3] ) ? array( $c2m[0], $c2m[3] ) : array();
+$grow_grid = isset( $c1m[1] ) ? (int) $c1m[1] : 0;
+$grow_side = isset( $c2m[1] ) ? (int) $c2m[1] : 0;
 
 $stack = ( isset( $g[1], $c1[1], $c2[1] ) ) ? ( (int) $c1[1] + (int) $c2[1] + (int) $g[1] ) : 0;
 /* 864 since 3.45.0: the gap between the halves went to zero when they became
@@ -385,19 +395,41 @@ check(
 );
 
 /*
- * AND THE PANEL IS CAPPED WHERE THE SIDEBAR ITSELF IS. .uc-sidebar stops at
- * 380px, so a panel allowed past that reserves room its contents cannot fill and
- * leaves a gap down the right of the block; capped, the surplus goes to the grid.
+ * THE SURPLUS GOES TO THE GRID, AND IT IS SAID WITH GROW FACTORS NOW (3.81.0).
+ *
+ * IT USED TO BE SAID WITH A max-width, and the two caps had to match. The intent
+ * was always "the sidebar sits at its basis and every spare pixel goes to the
+ * grid, which has seven columns to spend it on". A cap is an imprecise way to
+ * say that and it is UNCONDITIONAL, so when the panel wrapped onto a line of its
+ * own it stayed 380px wide inside a 770px card with 390px of blank beside it.
+ * That is sfaf.org's shape, and it was reported twice as the card not enclosing
+ * its contents.
+ *
+ * Grow factors say it exactly and say it once: sharing a line the grid takes all
+ * but a thousandth of the free space; alone on a wrapped line the sidebar has
+ * nothing to share with and fills it. So what is asserted now is the ratio, and
+ * that neither panel carries a cap that would defeat the wrapped case.
  */
-preg_match( '/uc-panel-sidebar\s*\{[^}]*max-width:\s*(\d+)px/', $css, $pcap );
-preg_match( '/^\.uc-sidebar \{[^}]*max-width:\s*(\d+)px/m', $css, $scap );
 check(
-    isset( $pcap[1], $scap[1] ) && (int) $pcap[1] === (int) $scap[1],
+    $grow_grid > 0 && $grow_side > 0 && $grow_grid >= 100 * $grow_side,
     sprintf(
-        'the sidebar panel caps at %s and the sidebar itself caps at %s; they have to be the same number or the panel reserves width the card cannot use',
-        isset( $pcap[1] ) ? $pcap[1] . 'px' : 'nothing',
-        isset( $scap[1] ) ? $scap[1] . 'px' : 'nothing'
+        'the grid grows at %d and the sidebar at %d; the grid has to out-grow it by at least a hundred to one, or the surplus is shared instead of going to the columns that can use it',
+        $grow_grid,
+        $grow_side
     )
+);
+preg_match( '/uc-panel-sidebar\s*\{[^}]*max-width:\s*(\d+)px/', $css, $pcap );
+check(
+    empty( $pcap ),
+    'the sidebar panel has a max-width again. It is unconditional, so it also applies on the line the panel wraps onto, which is where it leaves a ragged gap down the card'
+);
+check(
+    (bool) preg_match( '/uc-view-panels-combined\s+\.uc-sidebar\s*\{[^}]*max-width:\s*none/', $css ),
+    'the sidebar inside the combined mode does not clear its own 380px cap, so a full-width panel would hold a 380px column and the gap moves one element in'
+);
+check(
+    (bool) preg_match( '/^\.uc-sidebar \{[^}]*max-width:\s*(\d+)px/m', $css ),
+    'the standalone sidebar block lost its own max-width; that cap is what the sidebar mode is designed around and only the combined mode clears it'
 );
 
 /*

@@ -373,6 +373,18 @@ $ALLOWED = array(
      */
     'POST:media_tag'              => array( 'role' ),
     'POST:media_untag'            => array( 'role' ),
+    /*
+     * Take a picture out of the calendar folder, or put it back (3.81.0). THE
+     * ROLE GATE, the same one tagging uses, and not the event gate: this acts
+     * on an ATTACHMENT, which no event gate has anything to say about, and it
+     * changes what the calendar OFFERS rather than what any event holds.
+     *
+     * NOT admin-only, for the same reason tagging is not. It deletes no file
+     * and no attachment, and it is refused outright while any event or series
+     * is using the picture, so the worst an editor can do with it is stop a
+     * picture being offered, which the Removed view undoes in one press.
+     */
+    'POST:media_remove'           => array( 'role' ),
     'POST:media_save'             => array( 'role' ),
     'POST:media_upload'           => array( 'role' ),
     'POST:save_rsvp_settings'     => array( 'event' ),

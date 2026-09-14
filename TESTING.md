@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 111 items.** Quick 85, needs real conditions 23, blocked on other
+**Outstanding: 115 items.** Quick 89, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1200,6 +1200,69 @@ fault and is still easy to reach: navigate to a month with nothing published.
 - **Then narrow the window until the two halves stack.** The band's top-right
   corner should go square: down there it is in the middle of the card, not at
   its corner.
+
+### 1.88 Every tick picker, because none of them has ever run (3.81.0)
+
+**FOUR SCREENS, AND THIS IS THE FIRST TIME ANY OF THEM COULD WORK.** `portal.js`
+threw on every page from 3.77.0 to 3.80.0, which killed the script behind all of
+these. The boxes always posted correctly, so anything ticked was acted on; what
+was dead was the count, select-all, and the button going grey at zero.
+
+On each of the four, tick two things and check the button says **2**, then use
+**select all**, then untick everything and check the button goes grey:
+
+- **caladmin > Images**, the Tag button. This is the one that was reported.
+- **caladmin > Events**, the Add to category button.
+- **caladmin > Events**, filtered to Status: Draft, the Publish button. Its count
+  should be the eligible rows only, which is usually fewer than the number
+  ticked.
+- **A series' schedule screen**, the bulk publish list, where every row starts
+  ticked.
+
+**Also press "Fill this in from the last one" on the staff request form.** It has
+never run either. `TESTING.md` 1.79 covers what it should fill in.
+
+### 1.89 A series picture that was tagged rather than set (3.81.0)
+
+**caladmin > Images.** Tag a picture to **El Grupo de Apoyo Latino**, or any of
+the thirty series the import created, and give it a name. Do **not** go to the
+series screen and set a picture.
+
+Then open the **staff request form** and choose that series. The banner should
+appear across the top, and the picker's first row should say "The series
+picture" with that photograph on it. Before 3.81.0 it showed nothing, because
+tagging and setting a series' picture were two different things and only one was
+read.
+
+**Then set a different picture on the series screen** and choose the series
+again. The set one must win. That is the order that must not invert.
+
+### 1.90 Remove a picture, and try to remove one in use (3.81.0)
+
+**caladmin > Images.** Press **Remove** on a picture nothing is using. Read the
+confirmation before accepting: it should say the file is not deleted.
+
+- It should vanish from the grid and from **every picker on both public forms**.
+- Choose **Removed** in the filter. It should be there, with **Put back**.
+- Put it back and check it is offered again.
+
+**Then try to remove one that is in use.** Set a picture as an event's own image,
+or as a series' picture, then try. It must be **refused, naming the event or the
+series**. If it removes, something can be stranded and that is the fault to
+report.
+
+### 1.91 Alt text, and what must never fill it in (3.81.0)
+
+**caladmin > Images.** There should be **one block above the grid** saying what
+Name, Alt text and Series are each for, and **nothing under each card**.
+
+- Type alt text on a picture and press **Save once**. Both the name and the alt
+  text should save together; there is one Save per card.
+- **Choosing a series must never write anything into the alt text box.** If a
+  programme's name ever appears there on its own, that is the fault this was
+  built to avoid: a screen reader reads alt text as a description of the picture.
+- Check it landed in WordPress: **wp-admin > Media**, open the picture, and the
+  Alternative Text field should hold what you typed.
 
 ---
 

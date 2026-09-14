@@ -801,11 +801,57 @@ class SFAF_Portal {
                     $media_id,
                     isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : ''
                 );
+                /*
+                 * ALT TEXT SAVES WITH THE NAME (3.81.0), because they are two
+                 * halves of one act: describing a picture. A second Save for
+                 * the second box is the two-submits-per-card density 3.78.0
+                 * removed. It is NEVER derived from the series; see
+                 * SFAF_Media::set_alt().
+                 */
+                SFAF_Media::set_alt(
+                    $media_id,
+                    isset( $_POST['alt'] ) ? wp_unslash( $_POST['alt'] ) : ''
+                );
                 $media_term = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
                 if ( $media_term ) {
                     SFAF_Media::add_tag( array( $media_id ), $media_term );
                 }
                 $this->redirect( 'media', array( 'msg' => $media_term ? 'saved_tagged' : 'renamed' ) );
+                break;
+
+            /*
+             * TAKE A PICTURE OUT OF THE CALENDAR FOLDER, OR PUT IT BACK
+             * (3.81.0).
+             *
+             * IT DELETES NOTHING. Not the file, not the attachment. See
+             * SFAF_Media::META_REMOVED for why that is the right verb here and
+             * why it is a marker rather than a file move.
+             *
+             * REFUSED WHILE ANYTHING IS USING IT, and the refusal names what.
+             * set_removed() returns the list rather than false, because "that
+             * could not be removed" is not an answer somebody can act on and
+             * "the event Cycle to Zero Training Ride is using it" is.
+             *
+             * THE SAME CAPABILITY AS TAGGING, deliberately: this changes what
+             * the calendar OFFERS and touches no file, which is the same kind
+             * of act as filing one, and an editor who may file may unfile.
+             */
+            case 'media_remove':
+                if ( ! SFAF_Media::can_tag( $user ) ) { wp_die( 'Denied' ); }
+
+                $media_id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+                $put_back = ! empty( $_POST['put_back'] );
+                $done     = SFAF_Media::set_removed( $media_id, ! $put_back );
+
+                if ( true !== $done ) {
+                    set_transient(
+                        'sfaf_media_inuse_' . $user->ID,
+                        array( 'id' => $media_id, 'uses' => (array) $done ),
+                        60
+                    );
+                    $this->redirect( 'media', array( 'msg' => 'media_in_use' ) );
+                }
+                $this->redirect( 'media', array( 'msg' => $put_back ? 'media_back' : 'media_removed' ) );
                 break;
 
             case 'media_untag':
@@ -8711,10 +8757,11 @@ class SFAF_Portal {
 
         /* The controls, read from the URL and validated against the one list
          * each of them has. An unknown value is not an error page. */
-        $raw      = isset( $_GET['tag'] ) ? sanitize_text_field( wp_unslash( $_GET['tag'] ) ) : '';
-        $untagged = ( SFAF_Media::UNTAGGED === $raw );
-        $tag      = ( ! $untagged && '' !== $raw ) ? (int) $raw : 0;
-        $paged    = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+        $raw          = isset( $_GET['tag'] ) ? sanitize_text_field( wp_unslash( $_GET['tag'] ) ) : '';
+        $untagged     = ( SFAF_Media::UNTAGGED === $raw );
+        $removed_view = ( SFAF_Media::REMOVED_VIEW === $raw );
+        $tag          = ( ! $untagged && ! $removed_view && '' !== $raw ) ? (int) $raw : 0;
+        $paged        = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
         $series = SFAF_Series::all();
         if ( $tag ) {
@@ -8733,6 +8780,7 @@ class SFAF_Portal {
         $found = SFAF_Media::pictures( array(
             'series'   => $tag,
             'untagged' => $untagged,
+            'removed'  => $removed_view,
             'paged'    => $paged,
         ) );
         $rows = SFAF_Media::rows( $found['ids'] );
@@ -8775,12 +8823,57 @@ class SFAF_Portal {
             <?php endif; ?>
         </p>
 
+        <?php
+        /*
+         * WHAT EACH BOX IS FOR, ONCE, ABOVE THE GRID (3.81.0).
+         *
+         * ABOVE THE GRID AND NOT UNDER EACH CARD. At fifty images a line of
+         * explanation per card is fifty copies of the same paragraph, and the
+         * cards are already a dense thing to read. One block here is read once,
+         * by the person who needs it, on their first visit.
+         *
+         * IT SAYS WHAT EACH FIELD IS FOR AND NOTHING ELSE. Not how any of it is
+         * stored, not why there are two: the two jobs are genuinely different
+         * and naming them is the whole of what somebody needs.
+         *
+         * THE ALT TEXT LINE IS THE ONE THAT EARNS ITS PLACE. Everybody knows
+         * what a name is. Almost nobody writes alt text unprompted, and the
+         * commonest mistake is to put the programme's name in it, which is
+         * exactly the thing it must not be. So the line gives an example of a
+         * good one and an example of a bad one, which is shorter than a rule
+         * and harder to misread.
+         */
+        ?>
+        <?php if ( $can_tag ) : ?>
+            <div class="uc-card uc-media-legend">
+                <p><strong>Name</strong> is how you find the picture in a chooser. Short, and what
+                    somebody would search for: &ldquo;Cycle To Zero&rdquo;.</p>
+                <p><strong>Alt text</strong> is read out instead of the picture to somebody who
+                    cannot see it, and it is what a search engine reads. Describe the picture, not
+                    the programme: &ldquo;three cyclists on a coastal road&rdquo;, not
+                    &ldquo;Cycle To Zero&rdquo;.</p>
+                <p><strong>Series</strong> files the picture under a programme. A picture with no
+                    series is offered on no form, because the request forms show only the pictures
+                    tagged to the series somebody chose.</p>
+            </div>
+        <?php endif; ?>
+
         <form method="get" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-filters-bar">
             <label class="uc-field uc-media-filter">
                 <span class="uc-visually-hidden">Show</span>
                 <select name="tag">
                     <option value="">All images</option>
                     <option value="<?php echo esc_attr( SFAF_Media::UNTAGGED ); ?>" <?php selected( $untagged ); ?>>Untagged</option>
+                    <?php
+                    /*
+                     * THE ONE VIEW THAT ASKS FOR REMOVED PICTURES. Without it a
+                     * removal is one way: the picture is out of every list on
+                     * the site and there is no screen it can be put back from,
+                     * which would make a recoverable action unrecoverable in
+                     * practice.
+                     */
+                    ?>
+                    <option value="<?php echo esc_attr( SFAF_Media::REMOVED_VIEW ); ?>" <?php selected( $removed_view ); ?>>Removed</option>
                     <?php foreach ( $series as $term ) : ?>
                         <option value="<?php echo (int) $term->term_id; ?>" <?php selected( $tag, (int) $term->term_id ); ?>>
                             <?php echo esc_html( $term->name ); ?>
@@ -9000,6 +9093,37 @@ class SFAF_Portal {
                                                placeholder="<?php echo esc_attr( $row['file'] ); ?>" />
                                     </label>
 
+                                    <?php
+                                    /*
+                                     * ALT TEXT (3.81.0), AND IT IS NOT A SECOND
+                                     * NAME.
+                                     *
+                                     * NO PLACEHOLDER SUGGESTING THE SERIES, and
+                                     * nothing is ever written into it
+                                     * automatically. Alt text describes the
+                                     * PICTURE; a programme's name in it is
+                                     * worse than an empty box, because a screen
+                                     * reader announces it as though it were a
+                                     * description of what is there. What the
+                                     * field is for is said once above the grid,
+                                     * with an example of each.
+                                     *
+                                     * THE PLACEHOLDER IS A SHAPE, NOT A VALUE.
+                                     * It shows the kind of sentence wanted and
+                                     * posts nothing.
+                                     */
+                                    ?>
+                                    <label class="uc-field">
+                                        <span class="uc-field-label">Alt text<?php
+                                            if ( '' === $row['alt'] ) :
+                                            ?><span class="uc-media-unnamed">none yet</span><?php
+                                            endif;
+                                        ?></span>
+                                        <input type="text" name="alt" maxlength="180"
+                                               value="<?php echo esc_attr( $row['alt'] ); ?>"
+                                               placeholder="Describe the picture" />
+                                    </label>
+
                                     <?php if ( ! empty( $series ) ) : ?>
                                         <label class="uc-field">
                                             <span class="uc-field-label">Add a series</span>
@@ -9014,6 +9138,56 @@ class SFAF_Portal {
 
                                     <div class="uc-media-edit-go">
                                         <button type="submit" class="uc-btn uc-btn-sm">Save</button>
+                                        <?php
+                                        /*
+                                         * REMOVE, AND PUT BACK (3.81.0).
+                                         *
+                                         * IT IS NOT A DELETE AND MUST NOT READ
+                                         * AS ONE. The word is "Remove" and the
+                                         * confirmation says what survives,
+                                         * because the thing somebody fears when
+                                         * they press it is losing the file.
+                                         *
+                                         * ITS OWN FORM, OUTSIDE THIS ONE, for
+                                         * the reason the untag buttons have
+                                         * theirs: forms cannot nest, and this
+                                         * must not be a second submit on the
+                                         * Save form, where an accidental press
+                                         * would be a different act entirely.
+                                         * The form is emitted under the grid
+                                         * and reached by id.
+                                         *
+                                         * NOT A PRIMARY. It is the one control
+                                         * on the card that takes something
+                                         * away, and yellow means "this is the
+                                         * thing to do".
+                                         */
+                                        ?>
+                                        <?php
+                                        /*
+                                         * ONE FORM ID, NOT TWO. Both buttons
+                                         * name uc-media-remove-N and the form
+                                         * carries which way round it is in a
+                                         * hidden field. Two ids spelled by a
+                                         * ternary would mean the reference and
+                                         * the declaration were assembled
+                                         * differently, which nothing reading the
+                                         * file can resolve: .claude/bulk-ticks-test.php
+                                         * caught exactly that on the first
+                                         * version of this, and it is the check
+                                         * that exists because a control pointing
+                                         * at a form that is not there fails in
+                                         * silence.
+                                         */
+                                        ?>
+                                        <?php if ( $row['removed'] ) : ?>
+                                            <button type="submit" class="uc-btn uc-btn-sm"
+                                                    form="uc-media-remove-<?php echo (int) $row['id']; ?>">Put back</button>
+                                        <?php else : ?>
+                                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-quiet"
+                                                    form="uc-media-remove-<?php echo (int) $row['id']; ?>"
+                                                    data-uc-confirm="Take this picture out of the calendar folder? It stops being offered on any form and on any picker. The file is not deleted and nothing using it changes.">Remove</button>
+                                        <?php endif; ?>
                                     </div>
                                 </form>
                             <?php else : ?>
@@ -9032,6 +9206,14 @@ class SFAF_Portal {
                 ?>
                 <?php if ( $can_tag ) : ?>
                     <?php foreach ( $rows as $row ) : ?>
+                        <?php // Remove and put back, one form each, for the same nesting reason. ?>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
+                              id="uc-media-remove-<?php echo (int) $row['id']; ?>" hidden>
+                            <input type="hidden" name="uc_action" value="media_remove" />
+                            <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>" />
+                            <input type="hidden" name="put_back" value="<?php echo $row['removed'] ? '1' : '0'; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_media_remove', 'uc_nonce' ); ?>
+                        </form>
                         <?php foreach ( $row['tags'] as $term ) : ?>
                             <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
                                   id="uc-untag-<?php echo (int) $row['id']; ?>-<?php echo (int) $term->term_id; ?>" hidden>
@@ -9163,6 +9345,30 @@ class SFAF_Portal {
                 break;
             case 'uploaded':
                 $said = 'Uploaded, and it is in the folder every picker offers.';
+                break;
+            case 'media_removed':
+                $said = 'Taken out of the calendar folder. It is offered on no form and in no picker now. '
+                      . 'The file is not deleted: choose Removed in the filter above to see it or put it back.';
+                break;
+            case 'media_back':
+                $said = 'Back in the calendar folder, and offered again wherever its series is chosen.';
+                break;
+            /*
+             * THE REFUSAL NAMES WHAT IS USING IT (3.81.0), because "that could
+             * not be removed" leaves somebody with nothing to do next. The list
+             * rides a transient rather than the URL: it holds event titles,
+             * which are neither short nor safe to put in a query string.
+             */
+            case 'media_in_use':
+                $held = get_transient( 'sfaf_media_inuse_' . get_current_user_id() );
+                delete_transient( 'sfaf_media_inuse_' . get_current_user_id() );
+                $uses = ( is_array( $held ) && ! empty( $held['uses'] ) ) ? (array) $held['uses'] : array();
+                $said = 'That picture is still being used, so it was not removed.';
+                if ( $uses ) {
+                    $said .= ' It is the picture for ' . implode( ', ', array_map( 'sanitize_text_field', $uses ) ) . '.';
+                    $said .= ' Change what they use first, then remove it.';
+                }
+                $tone = ' uc-flash-warn';
                 break;
             case 'upload_failed':
                 $said = isset( $_GET['why'] ) ? sanitize_text_field( wp_unslash( $_GET['why'] ) ) : 'That file could not be uploaded.';

@@ -314,7 +314,7 @@ class SFAF_Series {
         if ( ! $term_id ) {
             return '';
         }
-        $att = (int) get_term_meta( $term_id, self::META_IMAGE_ID, true );
+        $att = self::image_id( $term_id );
         if ( $att ) {
             $src = wp_get_attachment_image_url( $att, $size );
             if ( $src ) {
@@ -322,6 +322,68 @@ class SFAF_Series {
             }
         }
         return (string) get_term_meta( $term_id, self::META_IMAGE_URL, true );
+    }
+
+    /**
+     * Which attachment is this series' picture, set or inferred.
+     *
+     * TAGGING AN IMAGE AND SETTING A SERIES' PICTURE WERE TWO DIFFERENT THINGS,
+     * AND ONLY ONE OF THEM WAS READ (3.81.0).
+     *
+     * This method used to be the first three lines of image_url(): the term
+     * meta, and nothing else. Tags are a relationship on the ATTACHMENT, stored
+     * by SFAF_Media in its own taxonomy, and nothing here has ever looked at
+     * them. So a manager could tag a picture to a series on the Images screen,
+     * see it correctly in the picker, and find no banner and no fallback
+     * anywhere, because the two facts are stored in different places and only
+     * one was being asked.
+     *
+     * IT SHOWED UP ON THE IMPORTED SERIES AND NOT THE OTHERS, which is what made
+     * it look like a fault in the new banner. Cycle to Zero and Strut Community
+     * Events predate the import and were built by hand, so somebody set their
+     * picture on the series screen and META_IMAGE_ID is there. The thirty the
+     * import created were made by `SFAF_Series::create( $name )` with nothing
+     * else, so they have no term meta at all and never had.
+     *
+     * SO A TAG IS A FALLBACK, NOT A SECOND SETTING. What is stored still wins,
+     * always, and nothing about setting a series' picture on its own screen
+     * changes. This only answers the case that used to answer "nothing": a
+     * series with pictures tagged to it and no picture of its own.
+     *
+     * THE LOWEST ATTACHMENT ID, WHICH IS THE EARLIEST ONE TAGGED, and that is a
+     * decision rather than an accident. It has to be deterministic, or two
+     * screens asking the same question get different answers. It also has to be
+     * STABLE: "the newest" would mean that adding a picture to the folder
+     * silently changed the banner, the picker's default row and every event
+     * fallback across a whole programme, which is a large change from an action
+     * nobody would connect to it. The earliest never moves unless it is removed.
+     *
+     * MEMOIZED PER REQUEST. Event cards ask for a series picture once per card,
+     * and this is a term query; a page of forty would otherwise run forty.
+     *
+     * @param int $term_id
+     * @return int Attachment id, or 0.
+     */
+    public static function image_id( $term_id ) {
+        $term_id = (int) $term_id;
+        if ( ! $term_id ) {
+            return 0;
+        }
+
+        $set = (int) get_term_meta( $term_id, self::META_IMAGE_ID, true );
+        if ( $set ) {
+            return $set;
+        }
+
+        static $cache = array();
+        if ( array_key_exists( $term_id, $cache ) ) {
+            return $cache[ $term_id ];
+        }
+
+        $cache[ $term_id ] = class_exists( 'SFAF_Media' )
+            ? (int) SFAF_Media::earliest_for_series( $term_id )
+            : 0;
+        return $cache[ $term_id ];
     }
 
     /**

@@ -63,6 +63,15 @@ class SFAF_Media {
 
     /** The filter value meaning "images with no series on them at all". */
     const UNTAGGED = 'none';
+    /**
+     * The filter value meaning "pictures taken out of the folder".
+     *
+     * A STRING LIKE UNTAGGED RATHER THAN AN ID, because it is a view rather
+     * than a series and the filter control reads one value. It is also the only
+     * route back: without a view that asks for them, a removal is one way in
+     * practice however recoverable it is in principle.
+     */
+    const REMOVED_VIEW = 'removed';
 
     /**
      * Post meta: a person typed this picture's name, on the Images screen.
@@ -89,6 +98,35 @@ class SFAF_Media {
      * to the file name rather than leaving an empty title that is trusted.
      */
     const META_NAMED = '_uc_media_named';
+
+    /**
+     * TAKEN OUT OF THE CALENDAR FOLDER, WITHOUT TAKING ANYTHING ELSE (3.81.0).
+     *
+     * WHAT REMOVE DOES, AND THE CHOICE IS THE POINT. It does NOT delete the
+     * file and it does not delete the attachment. It takes the picture out of
+     * the set this calendar offers: gone from the Images screen's default view,
+     * gone from every picker, not eligible to become a series' picture. The
+     * file stays on the server, the attachment keeps its id, and wp-admin's own
+     * Media Library still has it.
+     *
+     * WHY NOT DELETE. Deleting is the one action on this screen nothing puts
+     * back, and the thing somebody wants nine times out of ten is "stop offering
+     * me this", not "destroy it". A recoverable action that covers the common
+     * case beats an irreversible one that covers it and one other.
+     *
+     * WHY A MARKER RATHER THAN MOVING THE FILE. "Out of the folder" could be
+     * literal: move it to another directory and the existing path clause stops
+     * matching. That is a filesystem operation with its own failure modes,
+     * permissions and half-done states, and it changes the URL, which breaks any
+     * place the URL was copied rather than the id referenced. A meta write is
+     * atomic, changes no URL, and is undone by deleting it. The outcome a person
+     * sees is the same.
+     *
+     * NOTHING IS STRANDED, AND THAT IS ENFORCED RATHER THAN HOPED FOR. An image
+     * in use as an event's own picture or as a series' picture is refused, and
+     * the refusal names what is using it. See uses_of().
+     */
+    const META_REMOVED = '_uc_media_removed';
 
     public static function register() {
         /*
@@ -191,6 +229,7 @@ class SFAF_Media {
         $args = array_merge( array(
             'series'   => 0,
             'untagged' => false,
+            'removed'  => false,
             'per_page' => self::PER_PAGE,
             'paged'    => 1,
         ), $args );
@@ -204,11 +243,23 @@ class SFAF_Media {
             'posts_per_page' => $args['per_page'] > 0 ? (int) $args['per_page'] : -1,
             'paged'          => max( 1, (int) $args['paged'] ),
             'meta_query'     => array(
+                'relation' => 'AND',
                 array(
                     'key'     => '_wp_attached_file',
                     'value'   => '^' . preg_quote( SFAF_Media_Folder::prefix() ),
                     'compare' => 'REGEXP',
                 ),
+                /*
+                 * REMOVED PICTURES ARE OUT OF EVERY ANSWER THIS GIVES, which is
+                 * what makes remove mean anything: this is the one builder the
+                 * grid, both pickers and the counts all go through, so
+                 * excluding here excludes everywhere at once. `removed => true`
+                 * is the one view that asks for them, and it is the Images
+                 * screen's own filter, not a picker's.
+                 */
+                $args['removed']
+                    ? array( 'key' => self::META_REMOVED, 'compare' => 'EXISTS' )
+                    : array( 'key' => self::META_REMOVED, 'compare' => 'NOT EXISTS' ),
             ),
         );
 
@@ -296,6 +347,10 @@ class SFAF_Media {
             'full'  => wp_get_attachment_image_url( $id, 'large' ) ?: $thumb,
             'file'  => $file,
             'title' => $title,
+            /* WordPress's own key, so a picture described in the Media Library
+             * arrives here already filled in. See set_alt(). */
+            'alt'   => (string) get_post_meta( $id, '_wp_attachment_image_alt', true ),
+            'removed' => (bool) get_post_meta( $id, self::META_REMOVED, true ),
             'tags'  => self::tags_of( $id ),
         );
     }
@@ -365,6 +420,162 @@ class SFAF_Media {
      * @param int $id
      * @return array<int,WP_Term>
      */
+    /**
+     * What is relying on this picture, in words, or an empty array.
+     *
+     * WHATEVER REMOVE DOES, IT MUST NOT STRAND AN EVENT, and this is the method
+     * that makes that true rather than hoped for. Two things can be relying on
+     * a picture and they are stored in different places, so both are asked:
+     *
+     *   . AN EVENT'S OWN PICTURE, which is WordPress's `_thumbnail_id`.
+     *   . A SERIES' PICTURE, which is the term meta SFAF_Series::META_IMAGE_ID.
+     *
+     * A SERIES THAT ONLY *TAGS* THIS PICTURE IS NOT USING IT, and that is the
+     * distinction the whole of 3.81.0 turns on. A tag is filing; it says which
+     * programme a picture belongs to. Only a picture a series has been GIVEN,
+     * or that an event has chosen, is one something would lose. A series falling
+     * back to a tagged picture through image_id() is covered, because removing
+     * it takes it out of earliest_for_series() and the series falls back to the
+     * next one or to nothing, which is a change in what is offered rather than a
+     * dangling reference.
+     *
+     * NAMES, NOT IDS. The refusal is read by a person deciding what to do next,
+     * and "used by 3 things" is not a sentence anybody can act on.
+     *
+     * @param int $id
+     * @return string[] Human names, most specific first.
+     */
+    public static function uses_of( $id ) {
+        $id  = (int) $id;
+        $out = array();
+        if ( ! $id ) {
+            return $out;
+        }
+
+        $events = get_posts( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'any',
+            'posts_per_page' => 20,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array(
+                array( 'key' => '_thumbnail_id', 'value' => (string) $id ),
+            ),
+        ) );
+        foreach ( $events as $ev ) {
+            $out[] = 'the event "' . ( get_the_title( $ev ) ?: '(untitled)' ) . '"';
+        }
+
+        $terms = get_terms( array(
+            'taxonomy'   => SFAF_Series::TAXONOMY,
+            'hide_empty' => false,
+            'meta_query' => array(
+                array( 'key' => SFAF_Series::META_IMAGE_ID, 'value' => (string) $id ),
+            ),
+        ) );
+        if ( is_array( $terms ) ) {
+            foreach ( $terms as $t ) {
+                $out[] = 'the series "' . $t->name . '"';
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Take a picture out of the calendar folder, or put it back.
+     *
+     * REFUSED WHILE ANYTHING IS USING IT, and the refusal is the return value
+     * rather than a silent no-op: the screen has to be able to say which events
+     * and which series, and a boolean cannot. Same shape as the venue and team
+     * deletion rules, which refuse while an event names them and name the
+     * events.
+     *
+     * PUTTING IT BACK IS NEVER REFUSED. Nothing can be relying on a picture that
+     * is not being offered, so there is no case to check.
+     *
+     * @param int  $id
+     * @param bool $remove True to take it out, false to put it back.
+     * @return true|string[] True, or the list of things using it.
+     */
+    public static function set_removed( $id, $remove = true ) {
+        $id = (int) $id;
+        if ( ! $id ) {
+            return array( 'no such picture' );
+        }
+
+        if ( ! $remove ) {
+            delete_post_meta( $id, self::META_REMOVED );
+            return true;
+        }
+
+        $uses = self::uses_of( $id );
+        if ( ! empty( $uses ) ) {
+            return $uses;
+        }
+
+        update_post_meta( $id, self::META_REMOVED, time() );
+        return true;
+    }
+
+    /**
+     * The earliest picture tagged to this series, or 0.
+     *
+     * WHAT IT IS FOR. SFAF_Series::image_id() falls back to this when a series
+     * has no picture of its own, which is every one of the thirty the import
+     * created. See the long note there for why a tag is a fallback rather than a
+     * second setting, and why it is the earliest rather than the newest.
+     *
+     * IT ASKS THE SAME FOLDER THE PICKER DOES. A picture tagged to a series but
+     * sitting outside the calendar folder is not one this calendar offers
+     * anywhere, so it must not become a programme's picture by a route nobody
+     * can see. Removed pictures are excluded for the same reason.
+     *
+     * ONE QUERY, IDS ONLY, ORDERED BY ID. No post objects are hydrated: the
+     * caller wants a number.
+     *
+     * @param int $term_id
+     * @return int
+     */
+    public static function earliest_for_series( $term_id ) {
+        $term_id = (int) $term_id;
+        if ( ! $term_id ) {
+            return 0;
+        }
+
+        $q = new WP_Query( array(
+            'post_type'      => 'attachment',
+            'post_status'    => 'inherit',
+            'post_mime_type' => 'image',
+            'posts_per_page' => 1,
+            'orderby'        => 'ID',
+            'order'          => 'ASC',
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'tax_query'      => array(
+                array(
+                    'taxonomy' => self::TAXONOMY,
+                    'field'    => 'term_id',
+                    'terms'    => $term_id,
+                ),
+            ),
+            'meta_query'     => array(
+                'relation' => 'AND',
+                array(
+                    'key'     => '_wp_attached_file',
+                    'value'   => '^' . preg_quote( SFAF_Media_Folder::prefix() ),
+                    'compare' => 'REGEXP',
+                ),
+                array(
+                    'key'     => self::META_REMOVED,
+                    'compare' => 'NOT EXISTS',
+                ),
+            ),
+        ) );
+
+        return empty( $q->posts ) ? 0 : (int) $q->posts[0];
+    }
+
     public static function tags_of( $id ) {
         $terms = get_the_terms( (int) $id, self::TAXONOMY );
         return ( is_array( $terms ) ) ? $terms : array();
@@ -751,6 +962,46 @@ class SFAF_Media {
             update_post_meta( $id, self::META_NAMED, 1 );
         } else {
             delete_post_meta( $id, self::META_NAMED );
+        }
+        return true;
+    }
+
+    /**
+     * What a screen reader reads instead of this picture (3.81.0).
+     *
+     * A DIFFERENT JOB FROM THE NAME, WHICH IS WHY IT IS A SECOND FIELD AND NOT A
+     * SECOND USE OF THE FIRST. The name is how somebody FINDS a picture in a
+     * chooser, so it is written for the person picking it: "Cycle To Zero". Alt
+     * text is what stands in for the picture when the picture is not there, so
+     * it is written for the person who cannot see it: "three cyclists on a
+     * coastal road". Somebody who cannot see the image is not helped by being
+     * told the programme's name, which the page around it already says.
+     *
+     * SO IT IS NEVER FILLED IN FROM THE SERIES, and that is the one rule here
+     * worth enforcing rather than just documenting. Auto-filling alt text with a
+     * programme name would put a wrong description on every picture at once,
+     * quietly, and wrong alt text is worse than none: a screen reader announces
+     * it as though it were a description.
+     *
+     * WORDPRESS'S OWN KEY, `_wp_attachment_image_alt`, so a picture given alt
+     * text here has it everywhere WordPress reads alt text, and one given it in
+     * the Media Library arrives here already filled in. A key of our own would
+     * have been a second answer to a question WordPress already answers.
+     *
+     * @param int    $id
+     * @param string $alt
+     * @return bool
+     */
+    public static function set_alt( $id, $alt ) {
+        $id = (int) $id;
+        if ( $id < 1 || 'attachment' !== get_post_type( $id ) || ! SFAF_Media_Folder::holds( $id ) ) {
+            return false;
+        }
+        $clean = sanitize_text_field( (string) $alt );
+        if ( '' === $clean ) {
+            delete_post_meta( $id, '_wp_attachment_image_alt' );
+        } else {
+            update_post_meta( $id, '_wp_attachment_image_alt', $clean );
         }
         return true;
     }
