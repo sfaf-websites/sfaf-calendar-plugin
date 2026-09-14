@@ -6,16 +6,17 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-11, at 3.78.0, built and not released.
+**Last updated:** 2026-09-14, at 3.79.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.78.0**, built as `sfaf-calendar-3.78.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean.
+**3.79.0**, built as `sfaf-calendar-3.79.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean. 3.78.0 was released on
+2026-09-14 and is the version sites are being offered.
 
-> **IT IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
+> **3.79.0 IS NOT RELEASED, AND THAT IS WAITING ON MARK'S WORD.** Releasing is a
 > separate press: `bash .claude/publish.sh --release`. It goes on from the
 > Plugins screen afterwards: Check for updates, then Update now.
 
@@ -27,6 +28,7 @@ and **pushed to both repositories**. Working tree clean.
 
 | | |
 |---|---|
+| **3.79.0** | **The bulk category control never had tick boxes**, on any screen, for any viewer. The cell was built into the dashboard's read-only table instead of the events list's, and both tables have carried half a fault since 3.73.0. Also **bulk publish on the events list**, sharing those ticks, asking `SFAF_Series::publish_skip_reason()` rather than restating it, with each button counting only the rows it can reach. |
 | **3.78.0** | **The preview is two targets, the picture and the pill**, and not the whole panel: one anchor round everything tinted every line in it with the theme's link teal. Also **the staff form's chosen picture is bigger than the rows it chooses from**, which 3.76.0 inverted; **the Images screen is rebuilt**, three cards across rather than six, one Save per card rather than two, and a disabled primary that stops wearing yellow; and **a name typed on that screen now sticks even when it matches its own file**, which it did not, so the remedy 3.76.0 added did not work for the commonest case. |
 | **3.77.0** | **The preview's button went nowhere.** The address was never missing: the tile it describes IS the anchor, and nothing read its href. Also **Fill this in from the last one on the staff request form**, which caladmin has had since 3.64.0: one data source, two appliers, nothing posts, the date never filled in, and proved by RUNNING it rather than by the call being present. |
 | **3.76.0** | **The hover preview reaches the embed**, which is the only surface that exists. Also: the Images screen can **name a picture**, which is what "the picker shows file names" actually needed; the chooser's thumbnails are **twice the size**; the community form knows about the **series default picture**; the picture section sits **under the series**; the staff form has an **organizer selector, first**; the community form **derives its organizer from the series**; the **FAQ set shows its questions**; the **icon picker draws the icons**; and the Series and Categories lists **fold**. |
@@ -131,8 +133,14 @@ set answers).
 
 **Assume unverified rather than assuming the reported faults were the only
 ones.** What 3.73.0 and 3.74.0 have confirmed is listed above and is genuinely
-confirmed; the rest of both, the icon actions, the bulk category control, the
-cancel landing and the RSVP tick, has not been reported back on.
+confirmed; the rest of both, the icon actions, the cancel landing and the RSVP
+tick, has not been reported back on.
+
+> **AND ONE OF THOSE UNVERIFIED THINGS HAD NEVER WORKED AT ALL.** The bulk
+> category control was in that list from 3.73.0 to 3.79.0, and it could not have
+> been used by anybody: the ticks were absent. A build that ships a control
+> nobody has pressed is a build whose test list is load bearing. `TESTING.md`
+> 1.83 is the first press of both bulk actions.
 
 ## Open decisions
 

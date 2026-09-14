@@ -337,17 +337,25 @@ $ALLOWED = array(
     'POST:cancel_event'           => array( 'event' ),
     'POST:duplicate_event'        => array( 'event' ),
     /*
-     * Bulk add a category (3.73.0). THE EVENT GATE, ASKED PER ID rather than
-     * once for the request: it takes a LIST, and the list is a thing anybody
-     * can construct. An id the gate refuses is skipped and the rest of the run
-     * continues, because the other forty are legitimate.
+     * The events list's bulk actions (3.73.0, renamed 3.79.0). ONE ROUTE, TWO
+     * VERBS: `uc_do` picks between adding a category and publishing, because
+     * one set of ticks can only post to one form, so there is one action and
+     * one nonce. It was `bulk_categorize` while filing was all it did.
      *
-     * NOT admin-only. Filing an event under a category is an edit to that
-     * event, and a contributor who may edit their own events may file them.
-     * It publishes nothing: see render_bulk_categorize() for why the bulk
-     * publish exclusions were asked about rather than copied.
+     * THE EVENT GATE, ASKED PER ID rather than once for the request: it takes
+     * a LIST, and the list is a thing anybody can construct. An id the gate
+     * refuses is skipped and the rest of the run continues, because the other
+     * forty are legitimate. BOTH verbs ask it, separately, in their own loops.
+     *
+     * NOT admin-only, and that is right for both. Filing an event under a
+     * category is an edit to that event, and a contributor who may edit their
+     * own events may file them. Publishing is a bigger act, but it is the same
+     * act the event editor already offers that contributor on one event at a
+     * time, and bulk_publish_from_post() re-asks the five publish rules per id
+     * on top of the gate. What stops a contributor publishing somebody else's
+     * draft is can_edit_event(), exactly as on the editor.
      */
-    'POST:bulk_categorize'         => array( 'event' ),
+    'POST:bulk_events'             => array( 'event' ),
     /*
      * THE IMAGE LIBRARY (3.74.0). NONE OF THESE IS AN EVENT ROUTE, and that is
      * the thing to be deliberate about: they act on ATTACHMENTS, which no event

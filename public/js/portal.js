@@ -160,37 +160,80 @@ function ucDismissOnBackdrop(dialog) {
             var all = form.querySelector('[data-uc-tick-all]')
                 || document.querySelector('[data-uc-tick-all][form="' + form.id + '"]');
             var allRow = all ? (all.closest('[data-uc-tick-all-row]') || all.parentNode) : null;
-            var btn = form.querySelector('[data-uc-tick-submit]');
-            var countEl = form.querySelector('[data-uc-tick-count]');
-            var nounEl = form.querySelector('[data-uc-tick-noun]');
 
-            /* The plural and the singular, off the server, so the words are
-             * WordPress's answer rather than an "s" glued on here. */
-            var many = btn ? (btn.getAttribute('data-uc-tick-word') || '') : '';
-            var one = btn ? (btn.getAttribute('data-uc-tick-word-one') || '') : '';
+            /* ONE SET OF TICKS, AS MANY BUTTONS AS THE SCREEN HAS (3.79.0).
+             *
+             * The events list carries two: add a category, and publish. A
+             * checkbox associates with exactly ONE form, so a second action
+             * cannot bring a second form without bringing a second column of
+             * boxes, and that is the worst answer available. It doubles the
+             * width of the column somebody's eye runs down and it makes
+             * "select all" ambiguous.
+             *
+             * THE TWO BUTTONS DO NOT REACH THE SAME ROWS, WHICH IS WHY EACH
+             * KEEPS ITS OWN COUNT. Every ticked row can be filed under a
+             * category. Only some can go on the public calendar: a past date,
+             * an import, a submission and an event with no date are each
+             * refused by rules that live on the server and are marked on the
+             * box as data-uc-tick-block. A button carrying a number that
+             * includes rows it is about to skip is the exact failure this is
+             * built to prevent, and it is the one button on the screen where
+             * being wrong is public.
+             *
+             * SO THE SERVER DECIDES ELIGIBILITY AND THIS ONLY COUNTS IT. The
+             * attribute is a label on a decision already made; nothing here
+             * works out whether a row may be published, and a box with the
+             * attribute stripped by hand is still refused at the write. */
+            var btns = Array.prototype.slice.call(form.querySelectorAll('[data-uc-tick-submit]'));
 
-            /* THE CONFIRMATION IS A TEMPLATE, NOT THE SENTENCE ITSELF.
-             * data-uc-confirm holds a real sentence for the no-script path and
-             * is what ucConfirm() reads; this is the same sentence with {n} and
-             * {noun} left in it, so the count can be swapped without this file
-             * knowing how either screen phrases its question. Rewriting by
-             * regex over the live attribute was tried and is wrong: a category
-             * name can hold a digit. */
-            var confirmTpl = btn ? (btn.getAttribute('data-uc-tick-confirm') || '') : '';
             var total = boxes.length;
 
-            function ticked() {
+            /* Per button: where it writes its number, which subset it counts,
+             * and the words and sentence it does it with. Read once, because
+             * these are attributes on markup this function does not change. */
+            var readouts = btns.map(function (btn) {
+                return {
+                    btn: btn,
+                    /* INSIDE THE BUTTON, NOT ANYWHERE IN THE FORM, and that is
+                     * the whole reason two buttons can keep two different
+                     * numbers. A form-wide lookup would hand both of them the
+                     * first span it found, so the publish button would count
+                     * the category button's ticks. All three screens put the
+                     * number in the label, which is where it belongs anyway:
+                     * nobody should have to look elsewhere to see what a
+                     * button is about to do. */
+                    countEl: btn.querySelector('[data-uc-tick-count]'),
+                    nounEl: btn.querySelector('[data-uc-tick-noun]'),
+                    /* The plural and the singular, off the server, so the words
+                     * are WordPress's answer rather than an "s" glued on here. */
+                    many: btn.getAttribute('data-uc-tick-word') || '',
+                    one: btn.getAttribute('data-uc-tick-word-one') || '',
+                    /* THE CONFIRMATION IS A TEMPLATE, NOT THE SENTENCE ITSELF.
+                     * data-uc-confirm holds a real sentence for the no-script
+                     * path and is what ucConfirm() reads; this is the same
+                     * sentence with {n} and {noun} left in it, so the count can
+                     * be swapped without this file knowing how either screen
+                     * phrases its question. Rewriting by regex over the live
+                     * attribute was tried and is wrong: a category name can
+                     * hold a digit. */
+                    tpl: btn.getAttribute('data-uc-tick-confirm') || '',
+                    /* Counts only the ticks with no block on them. */
+                    eligibleOnly: btn.hasAttribute('data-uc-tick-eligible')
+                };
+            });
+
+            function ticked(eligibleOnly) {
                 var n = 0;
-                boxes.forEach(function (b) { if (b.checked) { n++; } });
+                boxes.forEach(function (b) {
+                    if (!b.checked) { return; }
+                    if (eligibleOnly && b.hasAttribute('data-uc-tick-block')) { return; }
+                    n++;
+                });
                 return n;
             }
 
             function sync() {
-                var n = ticked();
-                var noun = (1 === n) ? one : many;
-
-                if (countEl) { countEl.textContent = String(n); }
-                if (nounEl) { nounEl.textContent = noun; }
+                var n = ticked(false);
 
                 if (all) {
                     all.checked = (n === total);
@@ -199,18 +242,27 @@ function ucDismissOnBackdrop(dialog) {
                     all.indeterminate = (n > 0 && n < total);
                 }
 
-                if (btn) {
+                readouts.forEach(function (r) {
+                    var mine = r.eligibleOnly ? ticked(true) : n;
+                    var noun = (1 === mine) ? r.one : r.many;
+
+                    if (r.countEl) { r.countEl.textContent = String(mine); }
+                    if (r.nounEl) { r.nounEl.textContent = noun; }
+
                     /* Nothing ticked is not an error and does not need a
                      * message. It is a button with nothing to do, so it says
-                     * so and cannot be pressed. */
-                    btn.disabled = (0 === n);
-                    if (confirmTpl) {
-                        btn.setAttribute(
+                     * so and cannot be pressed. A publish button over forty
+                     * ticked past dates is that same button: it counts zero,
+                     * so it disables, and the rows keep their ticks for the
+                     * action that CAN reach them. */
+                    r.btn.disabled = (0 === mine);
+                    if (r.tpl) {
+                        r.btn.setAttribute(
                             'data-uc-confirm',
-                            confirmTpl.split('{n}').join(String(n)).split('{noun}').join(noun)
+                            r.tpl.split('{n}').join(String(mine)).split('{noun}').join(noun)
                         );
                     }
-                }
+                });
             }
 
             boxes.forEach(function (b) { b.addEventListener('change', sync); });

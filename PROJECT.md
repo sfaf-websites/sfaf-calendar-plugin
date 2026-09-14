@@ -1944,6 +1944,68 @@ source, by its first guard.
 > planted to prove it can fail, including the two real ones above. All six were
 > caught. See the note in §1 on what a rendering test can and cannot prove.
 
+### Bulk actions on the events list, and the one rule that decides publishing
+
+The events list carries **two** bulk actions, added in 3.73.0 and 3.79.0: add a
+category to the ticked events, and publish the ticked drafts. They share one set
+of tick boxes and they do **not** reach the same rows, and that asymmetry is the
+whole of what there is to understand here.
+
+**ONE SET OF TICKS, BECAUSE A CHECKBOX ASSOCIATES WITH EXACTLY ONE FORM.** The
+boxes sit in table rows that already contain their own forms for Duplicate and
+Remove, and forms cannot nest, so they are associated by the `form=` attribute
+instead and `form.elements` is what reads them back. A second action cannot
+bring a second form without bringing a second column of boxes. So `uc_action`
+names the form and `uc_do` names the button: one route, one nonce, two verbs,
+and anything that is not `publish` files under a category, which is the route
+that changes no status.
+
+**THE CATEGORY CONTROL REACHES EVERY ROW THE VIEWER CAN EDIT.** Past events,
+imports and submissions included. Filing changes how an event is **filed**; it
+publishes nothing, and on an event that is not public it reaches nobody. Each
+publish exclusion was asked about separately rather than copied across, and the
+reasoning is in the block above `SFAF_Portal::bulk_plan()`.
+
+**PUBLISHING IS DECIDED BY ONE METHOD, AND IT IS NOT ON THIS SCREEN.**
+`SFAF_Series::publish_skip_reason( $id, $today )` refuses a past date, an event
+with no date, a submission awaiting review, anything carrying source provenance,
+and an import parked as a draft because it vanished at its source. It was
+written for the schedule screen in 3.71.0, and it is written **per event with
+the date passed in**: it asks nothing about a series and takes no term id, so it
+was already the general rule and the events list is simply its second caller.
+
+> **A second copy is the thing to refuse.** Two screens that each decide what
+> may reach the public calendar will drift, and the drift is invisible until
+> something is published that should not have been. `.claude/bulk-ticks-test.php`
+> asserts that both callers **call** it and that neither restates any of the
+> five tests itself.
+
+**WHY IT IS ON THIS SCREEN AT ALL.** 3.71.0 put bulk publish on a series'
+schedule, which works one series at a time. The import left 287 drafts across 32
+series, and 32 visits to 32 screens is the thing the button exists to stop.
+
+**THE TICK STAYS ON ROWS THAT CANNOT BE PUBLISHED, and this is the one place the
+two screens differ.** The schedule screen gives an ineligible row no box at all.
+Here the box is shared, so taking it off a past import to protect the publish
+button would take the category control's reach away with it. The row says what
+it cannot do instead: a **draft** that the publish button may not touch carries
+the reason beside its tick. Published rows say nothing, because "not a draft"
+over a page of published events is the page restating itself.
+
+**SO EACH BUTTON COUNTS ITS OWN SUBSET.** The category button counts every tick;
+the publish button counts only the ticks with no block on them, and disables at
+zero even when forty rows are ticked. A button whose number includes rows it is
+about to skip is the failure this arrangement exists to prevent, and it is why
+`initTickPickers()` in `portal.js` learned about a second submit rather than a
+second form. **The server decides eligibility and the script only counts it**:
+the attribute on the box is a label on a decision already made, and a box with
+it stripped by hand is still refused at the write.
+
+**NOTHING IS TRUSTED FROM THE FORM.** `can_edit_event()` is re-asked per id and
+`publish_skip_reason()` is re-asked per id, both after the form has spoken, and
+both against one `$today` so a press that straddles midnight judges every row
+against one date. The ticks narrow; they never widen.
+
 ### The form links are on the dashboard, and they are not a secret
 
 **Nothing in caladmin linked to either public form until 3.49.0**, so sending
@@ -4370,6 +4432,46 @@ nothing for two releases, and the moment it took load it broke both forms.
 > have led anybody to look for it. **Before taking a class off an element, list
 > what else that class declares**, the same way a container audit lists what
 > else a property brings.
+
+### A block can land in the wrong function and look right in review (3.73.0, found 3.79.0)
+
+The bulk category control shipped with tick boxes on the events list, and there
+were no tick boxes on the events list. The `<td class="uc-col-tick">` had been
+inserted into `upcoming_overview()`, the read-only dashboard table, instead of
+`events_table()` immediately below it, and it stayed there for six releases.
+
+**Both halves of one fault, in two different tables.** The events list got a
+`<th>` with no `<td>` under it in any row: a header cell wider than its body,
+and a bulk panel with nothing to select. The dashboard got a `<td>` with no
+`<th>` over it, guarded by a `$plain` that does not exist in that method, and
+associated by `form=` with a form that is not on that screen.
+
+**IT READ CORRECTLY IN REVIEW BECAUSE THE TWO LOOPS ARE THE SAME THERE.** Both
+open `$date = get_post_meta(...)`, then `$st = get_post_status( $id ); ?>`, then
+`<tr>`. There is nothing at the insertion point that says which table you are
+in. The diff hunk applied cleanly and the surrounding lines were the expected
+ones.
+
+**And every check in use proved something true and irrelevant.** The file
+parsed. The string `data-uc-tick-one` was present. `git log -S` would have
+confirmed the edit landed. All three are the answer to "was it written", and the
+question was "is it written in the same table as its header".
+
+> **The check is a RELATIONSHIP, not a presence.** `.claude/bulk-ticks-test.php`
+> slices the file into methods and asserts per renderer that a tick header and a
+> tick cell appear together, on the same guard, and that `upcoming_overview()`
+> has neither. It also resolves every `form="X"` against the form ids the file
+> actually opens, because a control associated with a form that is not on the
+> page fails **silently**: the box ticks, and the press carries nothing.
+>
+> **It failed twice on its own first runs, both times by not reading the file.**
+> `<form[^>]*id="..."` stops at the `>` inside `action="<?php echo esc_url( ... ); ?>"`,
+> so it found one form id in a file that opens sixty-one. Then stripping lines
+> beginning `//` took the `?>` off the second line of a two-line `<?php //`
+> comment, unterminating the block and swallowing the next form whole, which it
+> duly reported as a broken association. Both are the same trap as 3.20.0: **make
+> a new checker fail on purpose before believing it passes**, and give it a floor
+> it must clear so that finding nothing is a failure rather than a pass.
 
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not

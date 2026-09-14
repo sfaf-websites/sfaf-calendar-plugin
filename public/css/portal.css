@@ -892,10 +892,40 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-bulk-cat button[disabled] { opacity: 0.55; cursor: not-allowed; }
 
 /* The tick column. Narrow, and the box centred in it so a column of them
-   reads as a column rather than as a ragged left edge. */
-.uc-col-tick { width: 34px; text-align: center; padding-right: 0; }
+   reads as a column rather than as a ragged left edge.
+
+   IT IS WIDER NOW BECAUSE IT CARRIES A SECOND THING (3.79.0). A draft the
+   bulk publish may not touch says so under its box, in the column where
+   somebody is already deciding what to tick. 34px fitted a checkbox and
+   nothing else. */
+.uc-col-tick { width: 92px; text-align: center; padding-right: 0; }
 .uc-col-tick input[type="checkbox"] { margin: 0; width: auto; }
 .uc-tick-all { display: inline-flex; margin: 0; }
+
+/* WHY A TICKED ROW MIGHT STILL NOT PUBLISH.
+
+   THE BOX STAYS AND THE REASON SITS UNDER IT, which is the opposite of the
+   schedule screen, where an ineligible row gets no box at all. It has to be:
+   this tick is shared with the bulk category control, which reaches every row
+   the viewer can edit, past events and imports included. Taking the box away
+   to protect the publish button would take the category control's reach with
+   it, and that reach is a 3.73.0 guarantee.
+
+   SO IT IS TYPED DOWN, NOT COLOURED. It is a footnote on a row, not a warning
+   and not a status: the pills two columns over are what say what the event IS.
+   Small, muted, and it wraps rather than widening the column further. */
+.uc-tick-block {
+    display: block;
+    margin-top: 3px;
+    font-size: 10px; line-height: 1.25;
+    color: var(--p-muted, #6B6764);
+    text-align: center;
+    cursor: help;
+}
+
+/* The publish button sits on its own line under the category row, because the
+   two are different acts and one of them is public. */
+.uc-bulk-publish { flex: 1 0 100%; }
 
 .uc-actions-icons { gap: 2px; flex-wrap: nowrap; }
 .uc-actions-icons form { display: inline-flex; }

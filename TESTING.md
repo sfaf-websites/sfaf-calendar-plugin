@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 106 items.** Quick 80, needs real conditions 23, blocked on other
+**Outstanding: 107 items.** Quick 81, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1078,6 +1078,43 @@ is what an unnamed picture shows.
 - **Add an image is folded shut** at the top. Press it to open.
 - **A picture with no name says "no name yet"** beside its Name label, and one
   with a name does not.
+
+### 1.83 The events list's two bulk actions, pressed for the first time (3.79.0)
+
+**caladmin > Events.** The category half has existed since 3.73.0 and **has
+never been usable**: the tick boxes were built into the wrong table, so nothing
+on this screen could be selected. Both halves are first presses.
+
+**Start by counting cells.** Every row should have a tick column at the far
+left, and the header row should have one too. That is what was wrong: a header
+cell with nothing under it.
+
+- **Tick two events and add a category.** The button should say "Add to 2
+  events" and be disabled until something is ticked. Afterwards the two rows
+  should show the new category **beside the ones they already had**, not
+  instead of them. This is the promise the control makes twice on screen.
+- **Select all, in the header.** It should appear only once the page has
+  loaded, tick every box, and show a dash rather than a tick when you then
+  untick one.
+- **Now the publish half.** Filter to **Status: Draft** so there is something to
+  publish. The Publish button counts **only the drafts it may touch**, which
+  will usually be fewer than the number ticked.
+- **The two numbers should disagree, and that is the test.** Tick a past draft
+  and a future one: the category button should say 2, the publish button 1. If
+  they ever match when a row is marked as not publishable, the wrong subset is
+  being counted and **the publish button is naming events it will skip**.
+- **A draft that cannot be published says why**, in small type under its box:
+  "already happened", "imported from a source", "no date yet", "a submission",
+  "gone at its source". A published row says nothing, on purpose.
+- **Press Publish and read the confirmation before accepting it.** It should
+  name the count and what is being left out. Then read the message on the page
+  afterwards: it should say how many were published and, separately, how many
+  could not be and how many were not yours.
+- **Then check the public calendar.** This is the only bulk action on the screen
+  that reaches it, so the last step is looking at what a visitor now sees.
+
+**With 287 drafts across 32 series, try this on one page of 25 before reaching
+for Select all.**
 
 ---
 

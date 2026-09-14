@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.78.0
+Stable tag: 3.79.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,28 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.79.0 =
+
+**THE BULK CATEGORY CONTROL HAD NO TICK BOXES, AND HAD NEVER HAD ANY.** Not unstyled, not hidden, not gated away from some viewers: the cell was never drawn on that screen. 3.73.0 inserted it into `upcoming_overview()`, the read-only table on the dashboard, rather than `events_table()` immediately below it, and it has been there for six releases.
+
+**Both halves of one fault, in two different tables.** The events list got a column HEADER with no cell under it in any row, so a bulk panel sat above a table with nothing to select. The dashboard got the cell, under a header row that has no such column, guarded by a `$plain` that does not exist in that method, posting to a form that is not on that screen.
+
+**It read correctly in review because the two loops are identical where it landed.** Both open with the date, then `get_post_status()`, then `<tr>`. Nothing at that point says which table you are in. And every check in use proved something true and beside the point: the file parsed, the string was present, the edit had landed. All three answer "was it written". The question was "is it written in the same table as its header", and **that is a relationship rather than a presence**, so `.claude/bulk-ticks-test.php` now asserts it per renderer, along with every `form=` association resolving to a form the file actually opens.
+
+**BULK PUBLISH IS ON THE EVENTS LIST NOW.** 3.71.0 put it on the series schedule, which works one series at a time, and there are 287 drafts across 32 series.
+
+**THE FIVE SKIP RULES ARE THE SCHEDULE SCREEN'S, ASKED RATHER THAN COPIED.** A past date, an event with no date, a submission awaiting review, anything carrying source provenance, and an import parked as a draft because it vanished at its source are each refused, by `SFAF_Series::publish_skip_reason()` itself. That method was already written per event with the date passed in, so it takes no series and needed no change to serve both screens. **A second copy is how two screens come to disagree about what may reach the public calendar**, and the test asserts that both callers call it and neither restates a rule of its own.
+
+**One set of ticks, two buttons, and they do not reach the same rows.** A checkbox associates with exactly one form, so a second action cannot have a second form without a second column of boxes. The form says who; the button says what.
+
+**A ROW THAT CANNOT BE PUBLISHED KEEPS ITS TICK AND SAYS WHY.** This is the one place the two screens differ, and it is forced: the tick is shared with the category control, which reaches every row the viewer can edit, past events and imports included. Taking the box off a past import to protect the publish button would take the category control's reach with it. So the reason sits under the box instead, on drafts only, because "not a draft" on a page of published events is the page restating itself.
+
+**Each button counts its own subset.** The category button counts every tick. The publish button counts only the ticks it could act on, and disables at zero even with forty rows ticked. A button whose number includes rows it is about to skip is the failure this is built to prevent, and it is the one button on the screen where being wrong is public. **The server decides eligibility and the script only counts it**: a box with the marker stripped by hand is still refused at the write, where permission and the five rules are both re-asked per id.
+
+**The confirmation names the count and what is being left out**, in the schedule screen's own words, because they come from the same method. The outcome names four buckets rather than one: published, could not be published, not yours to change, and could not be saved. **Skipped and refused are said separately** so that ticking a past date does not read as a permissions problem.
+
+**And nothing renders that cannot do anything.** The panel is absent when no row on the page is the viewer's to edit, the publish button is absent when no row on the page could be published, and the count starts at 0 rather than at the number of rows, which was a button naming a larger set than the one it would act on.
 
 = 3.78.0 =
 

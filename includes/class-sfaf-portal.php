@@ -646,7 +646,13 @@ class SFAF_Portal {
              * date was recorded as cancelled. Nothing regenerates any more, so
              * deleting an event deletes an event and nothing brings it back. */
             /*
-             * ADD ONE CATEGORY TO EVERY TICKED EVENT (3.73.0).
+             * THE EVENTS LIST'S BULK ACTIONS (3.73.0, 3.79.0).
+             *
+             * ONE CASE, ONE NONCE, TWO VERBS. The ticks are shared, so the
+             * form is shared, so the posted action is shared and `uc_do`
+             * chooses between filing and publishing. Splitting this into two
+             * cases would mean two nonce fields with one name in one form,
+             * which is one field.
              *
              * ADDS, NEVER REPLACES. wp_set_post_terms() with $append = true,
              * which is the whole of the promise the control makes twice on
@@ -661,7 +667,7 @@ class SFAF_Portal {
              * failing the whole run, because the other forty are legitimate.
              *
              * NO STATUS RULE, AND THAT IS DELIBERATE. See
-             * render_bulk_categorize() for why the bulk publish exclusions
+             * bulk_plan() for why the bulk publish exclusions
              * were asked about rather than copied: publishing reaches the
              * public and filing does not.
              *
@@ -670,9 +676,26 @@ class SFAF_Portal {
              * the control, and the honest answer to unticking everything is to
              * do nothing.
              */
-            case 'bulk_categorize':
-                if ( ! isset( $_POST['uc_bulk_cat_present'] ) ) {
+            case 'bulk_events':
+                if ( ! isset( $_POST['uc_bulk_present'] ) ) {
                     $this->redirect( 'events', array( 'msg' => 'bulk_cat_none' ) );
+                }
+
+                $wanted = isset( $_POST['bulk_ids'] )
+                    ? array_map( 'intval', (array) wp_unslash( $_POST['bulk_ids'] ) )
+                    : array();
+
+                /*
+                 * WHICH VERB (3.79.0). One form carries one set of ticks and
+                 * two buttons, so the BUTTON says what to do and the form says
+                 * only who to do it to. Anything that is not 'publish' files
+                 * under a category, which is the route that changes no status
+                 * and publishes nothing: pressing Enter in the category select
+                 * sends no button value at all, and this is what that means.
+                 */
+                if ( isset( $_POST['uc_do'] ) && 'publish' === $_POST['uc_do'] ) {
+                    $this->bulk_publish_from_post( $user, $wanted );
+                    break;
                 }
 
                 $term_id = isset( $_POST['bulk_category'] ) ? intval( $_POST['bulk_category'] ) : 0;
@@ -680,9 +703,6 @@ class SFAF_Portal {
                     $this->redirect( 'events', array( 'msg' => 'bulk_cat_failed' ) );
                 }
 
-                $wanted = isset( $_POST['bulk_ids'] )
-                    ? array_map( 'intval', (array) wp_unslash( $_POST['bulk_ids'] ) )
-                    : array();
                 if ( empty( $wanted ) ) {
                     $this->redirect( 'events', array( 'msg' => 'bulk_cat_none' ) );
                 }
@@ -3257,6 +3277,7 @@ class SFAF_Portal {
             'trashed'        => 'Event removed.',
             'bulk_cat_none'  => 'Nothing was changed. Tick the events you want the category added to, then press the button.',
             'bulk_cat_failed' => 'That category could not be applied. Choose one from the list and try again.',
+            'bulk_pub_none'  => 'Nothing was published. Tick the drafts you want on the public calendar, then press Publish. A draft that says why it cannot be published is not one this button can touch.',
             'delete_needs_cancel' => 'This event has people registered, so it cannot be deleted. Cancel it instead: that keeps the registrations, closes new ones, stops the reminders, and offers to tell everybody who signed up. Once it is cancelled you can delete it.',
             'series_needs_cancel' => 'Some events in this series have people registered, so deleting them is refused. Cancel them instead, below. Once they are cancelled and the people who signed up have been told, the series can be deleted.',
             'cancelled'      => 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it.',
@@ -3475,6 +3496,61 @@ class SFAF_Portal {
          * else's events gets the ones they may edit and a count of the
          * ones they may not, rather than a silent partial success.
          */
+        /*
+         * THE PUBLISH OUTCOME NAMES EVERY BUCKET (3.79.0), and it has four
+         * where the category outcome has two. Publishing is the one bulk
+         * action on this screen that reaches the public calendar, so "12
+         * published" over a tick of 40 is not an answer: the other 28 went
+         * somewhere, and a person who cannot see where will press it again.
+         *
+         * SKIPPED AND REFUSED ARE DIFFERENT AND ARE SAID DIFFERENTLY. Refused
+         * is "not yours"; skipped is "not this button's". Rolling them into
+         * one number would tell somebody their permissions are wrong when what
+         * is actually true is that they ticked a past date.
+         */
+        if ( 'bulk_pub_done' === $key ) {
+            $did     = isset( $_GET['did'] ) ? (int) $_GET['did'] : 0;
+            $failed  = isset( $_GET['failed'] ) ? (int) $_GET['failed'] : 0;
+            $refused = isset( $_GET['refused'] ) ? (int) $_GET['refused'] : 0;
+            $skipped = isset( $_GET['skipped'] ) ? (int) $_GET['skipped'] : 0;
+
+            $said = sprintf(
+                /* translators: 1: how many events, 2: event or events. */
+                _n( '%1$d %2$s published.', '%1$d %2$s published.', $did ),
+                $did,
+                _n( 'event', 'events', $did )
+            );
+            $said .= ' They are on the public calendar now.';
+            if ( $skipped > 0 ) {
+                $said .= sprintf(
+                    /* translators: %d: how many were not publishable. */
+                    _n(
+                        ' %d could not be published and was left as it was.',
+                        ' %d could not be published and were left as they were.',
+                        $skipped
+                    ),
+                    $skipped
+                );
+            }
+            if ( $refused > 0 ) {
+                $said .= sprintf(
+                    /* translators: %d: how many events were not the viewer's. */
+                    _n( ' %d was not yours to change.', ' %d were not yours to change.', $refused ),
+                    $refused
+                );
+            }
+            if ( $failed > 0 ) {
+                $said .= sprintf(
+                    /* translators: %d: how many writes failed. */
+                    _n( ' %d could not be saved. Open it and publish it on its own.',
+                        ' %d could not be saved. Open them and publish them one at a time.',
+                        $failed ),
+                    $failed
+                );
+            }
+            return $said;
+        }
+
         if ( 'bulk_cat_done' === $key ) {
             $did     = isset( $_GET['did'] ) ? (int) $_GET['did'] : 0;
             $refused = isset( $_GET['refused'] ) ? (int) $_GET['refused'] : 0;
@@ -4021,22 +4097,26 @@ class SFAF_Portal {
                 $date = get_post_meta( $id, '_uc_event_date', true );
                 $st   = get_post_status( $id ); ?>
                 <tr>
-                    <?php if ( ! $plain ) : ?>
-                        <td class="uc-col-tick">
-                            <?php
-                            /*
-                             * ASSOCIATED BY THE form ATTRIBUTE, NOT BY BEING
-                             * INSIDE ONE. These rows already contain their own
-                             * forms for Duplicate and Remove, and forms cannot
-                             * nest. form.elements is what portal.js reads,
-                             * which is exactly what the association is for.
-                             */
-                            ?>
-                            <input type="checkbox" name="bulk_ids[]" value="<?php echo (int) $id; ?>"
-                                   form="uc-bulk-cat" data-uc-tick-one
-                                   aria-label="<?php echo esc_attr( 'Select ' . ( get_the_title( $id ) ?: 'this event' ) ); ?>" />
-                        </td>
-                    <?php endif; ?>
+                    <?php
+                    /*
+                     * NO TICK COLUMN HERE, AND THERE NEVER SHOULD HAVE BEEN
+                     * ONE (3.79.0).
+                     *
+                     * 3.73.0 inserted the bulk tick cell into THIS loop rather
+                     * than events_table()'s. The two loops open identically,
+                     * `$date`, then `$st = get_post_status( $id )`, then `<tr>`,
+                     * which is how it went unnoticed, and it produced both
+                     * halves of one fault at once: the events list got a tick
+                     * COLUMN HEADER with no cell under it in any row, and this
+                     * read-only dashboard table got a cell with no header over
+                     * it, gated on a `$plain` that does not exist in this
+                     * method and posting to a form that is not on this screen.
+                     *
+                     * THIS TABLE IS READ-ONLY BY DESIGN. It is a separate
+                     * renderer from events_table() precisely so it has no
+                     * destructive controls to leak, and a bulk selector is one.
+                     */
+                    ?>
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                     <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php
@@ -4789,8 +4869,14 @@ class SFAF_Portal {
             if ( $public ) {
                 $this->public_events_table( $ids );
             } else {
-                $this->render_bulk_categorize( $user, $ids );
-                $this->events_table( $ids, $user, $sort, $filters );
+                /*
+                 * ASKED ONCE, HANDED TO BOTH (3.79.0). The panel's counts and
+                 * the table's boxes have to be the same answer, so they read
+                 * the same array rather than each running the loop.
+                 */
+                $bulk = $this->bulk_plan( $user, $ids );
+                $this->render_bulk_actions( $user, $bulk );
+                $this->events_table( $ids, $user, $sort, $filters, $bulk );
             }
             ?>
             <?php $this->events_pagination( $paged, $pages, $total, $sort, $filters ); ?>
@@ -5015,9 +5101,15 @@ class SFAF_Portal {
     }
 
     /**
-     * Add one category to every ticked event.
+     * THE TWO BULK ACTIONS ON THE EVENTS LIST, and why their reach differs.
      *
-     * WHY IT EXISTS. WordPress's own bulk edit does this and contributors and
+     * Add one category to every ticked event, and publish the ticked drafts.
+     * One set of ticks feeds both, and the two do NOT reach the same rows. The
+     * whole of that difference is set out here, because it is the thing a
+     * future edit is most likely to flatten into one rule.
+     *
+     * WHY THE CATEGORY CONTROL EXISTS. WordPress's own bulk edit does this and
+     * contributors and
      * editors never see wp-admin, so for most of the people who maintain this
      * calendar it is not available at all. Categorising a term's worth of
      * imported drafts one event at a time is not a thing anybody is going to
@@ -5062,19 +5154,166 @@ class SFAF_Portal {
      * NOTHING RENDERS WITH NO CATEGORIES TO CHOOSE, because a picker over an
      * empty list is a control that cannot do anything.
      *
-     * @param WP_User $user
-     * @param int[]   $ids The rows on this page, which is what a tick can reach.
+     * ---------------------------------------------------------------------
+     * AND THE PUBLISH HALF (3.79.0), WHOSE RULES ARE THE OPPOSITE.
+     *
+     * WHY IT IS HERE AND NOT ONLY ON THE SCHEDULE SCREEN. 3.71.0 put bulk
+     * publish on a series' schedule, which works one series at a time. There
+     * are 287 drafts across 32 series, and 32 visits to 32 screens is the
+     * thing the button was built to stop happening.
+     *
+     * THE FIVE SKIP RULES ARE UNCHANGED AND ARE NOT RE-STATED HERE. They are
+     * SFAF_Series::publish_skip_reason(), called by bulk_plan() above and by
+     * the schedule screen's publishable(), and the method is written per event
+     * with the date passed in, so it was already general. A past date, an event
+     * with no date, a submission awaiting review, anything with source
+     * provenance and an import parked because it vanished at its source are
+     * each refused, and this screen weakens none of them.
+     *
+     * THE TICK STAYS ON EVERY EDITABLE ROW, INCLUDING ROWS THAT CANNOT BE
+     * PUBLISHED, and that is the one place this departs from the schedule
+     * screen's "an ineligible row gets no tick". It has to. The tick is shared:
+     * the category control reaches every row the viewer can edit, past events
+     * and imports and submissions included, and taking the box off a past
+     * import to protect the publish button would take the category control's
+     * reach away with it. One selection mechanism was the requirement, and two
+     * actions with different reach is what that costs.
+     *
+     * SO THE ROW SAYS WHAT IT CANNOT DO, rather than the box being absent. A
+     * draft that cannot be published carries the reason beside its tick, which
+     * is the same information the schedule screen puts where the box would
+     * have been. Published rows say nothing: "not a draft" on a page of
+     * published events is the page restating itself. See bulk_plan().
+     *
+     * AND THE COUNTS ARE PER BUTTON. The category button counts every tick;
+     * the publish button counts only the ticks it could act on. A button whose
+     * number includes rows it is about to skip is the failure mode this whole
+     * arrangement exists to avoid, and it is the reason portal.js had to learn
+     * about a second submit rather than a second form.
+     *
+     * NOTHING IS TRUSTED FROM THE FORM EITHER WAY. The handler re-asks
+     * can_edit_event() per id, and re-asks publish_skip_reason() per id against
+     * its own $today, so a hand-built POST naming a past date publishes
+     * nothing. The ticks narrow; they never widen.
      */
-    private function render_bulk_categorize( $user, $ids ) {
+    /**
+     * Which rows on this page a tick may reach, and what each tick may then do.
+     *
+     * ONE PASS, ASKED ONCE, READ BY THE PANEL AND BY THE TABLE (3.79.0). The
+     * panel has to say how many rows can be published before anybody ticks
+     * anything, and the table has to draw a tick on the same rows the panel
+     * counted. Two loops asking the same two questions is two answers waiting
+     * to drift apart, and the drift would show up as a button whose number does
+     * not match the boxes under it.
+     *
+     * `tick` IS can_edit_event() AND NOTHING ELSE. That is the bulk category
+     * control's reach as 3.73.0 defined it and it does not narrow here: filing
+     * a past event, an import or a submission under a category is allowed and
+     * harmless, and the reasons are set out above render_bulk_actions().
+     *
+     * `publish_why` IS SFAF_Series::publish_skip_reason(), CALLED, NOT COPIED.
+     * That method is the schedule screen's rule and it is written per event
+     * with the date passed in: it asks nothing about a series and takes no
+     * term id, so it is already the general rule and this is simply its second
+     * caller. A second copy here is how the two screens would come to disagree
+     * about what may go on the public calendar, and that is the one thing on
+     * these screens that must never be decided twice.
+     *
+     * ONE `$today` FOR THE WHOLE PAGE, for the same reason publishable() takes
+     * one: a run that straddles midnight must not judge row 1 against
+     * yesterday and row 40 against today.
+     *
+     * @param WP_User $user
+     * @param int[]   $ids Rows on this page.
+     * @return array{tick:int[],publish:int[],blocked:array<int,string>,skipped:array<string,int>}
+     */
+    private function bulk_plan( $user, $ids ) {
+        $out   = array( 'tick' => array(), 'publish' => array(), 'blocked' => array(), 'skipped' => array() );
+        $today = current_time( 'Y-m-d' );
+
+        foreach ( $ids as $id ) {
+            $id   = (int) $id;
+            $post = get_post( $id );
+            if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                continue;
+            }
+            $out['tick'][] = $id;
+
+            $why = SFAF_Series::publish_skip_reason( $id, $today );
+            if ( '' === $why ) {
+                $out['publish'][] = $id;
+                continue;
+            }
+            $out['blocked'][ $id ] = $why;
+
+            /*
+             * "NOT A DRAFT" IS NOT COUNTED AS SOMETHING LEFT OUT, and this is
+             * the one place this screen's arithmetic differs from the schedule
+             * screen's. That screen lists one series' dates, where a published
+             * row genuinely is a date the button is passing over. This list is
+             * every event on the calendar, filtered and paged, and on the
+             * default view most rows are published. "Not included: 22 not a
+             * draft" over a page of published events is not information; it is
+             * the page restating itself, and it would bury the four counts
+             * that are information.
+             */
+            if ( 'not a draft' === $why ) {
+                continue;
+            }
+            $out['skipped'][ $why ] = ( isset( $out['skipped'][ $why ] ) ? $out['skipped'][ $why ] : 0 ) + 1;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The bulk panel above the events table. See the block above bulk_plan()
+     * for what each button may reach and why the two differ.
+     *
+     * @param WP_User $user
+     * @param array   $plan From bulk_plan().
+     */
+    private function render_bulk_actions( $user, $plan ) {
         $cats = SFAF_Categories::all();
-        if ( empty( $cats ) || empty( $ids ) ) {
+        if ( empty( $plan['tick'] ) ) {
             return;
         }
-        $n = count( $ids );
+
+        $ready = count( $plan['publish'] );
+
+        /*
+         * WHAT IS BEING LEFT OUT, NAMED ON THE SCREEN AND AGAIN IN THE
+         * CONFIRMATION, in the schedule screen's own words because they come
+         * from the same method. "Publish 4" over a page of 25 invites the
+         * question this line answers.
+         */
+        $left = array();
+        foreach ( $plan['skipped'] as $why => $n ) {
+            $left[] = $n . ' ' . $why;
+        }
+        $left_said = $left ? ' Nothing else is touched: ' . implode( ', ', $left ) . '.' : '';
         ?>
         <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>"
               class="uc-bulk-cat" id="uc-bulk-cat" data-uc-tick-picker>
-            <input type="hidden" name="uc_action" value="bulk_categorize" />
+            <?php
+            /*
+             * ONE FORM, ONE SET OF TICKS, TWO VERBS (3.79.0).
+             *
+             * A checkbox associates with exactly ONE form, so a second bulk
+             * action cannot have a second form without a second column of
+             * boxes, and two columns of boxes on one table is the worst answer
+             * available: it doubles the width of the thing somebody's eye runs
+             * down and it makes "select all" ambiguous.
+             *
+             * So `uc_action` names the FORM and `uc_do` names the BUTTON. The
+             * dispatcher verifies uc_portal_bulk_events once, before the
+             * switch, and the case below reads uc_do to decide which of the two
+             * routes runs. An absent or unrecognised uc_do categorises, which
+             * is what pressing Enter in the category select means and is the
+             * route that publishes nothing.
+             */
+            ?>
+            <input type="hidden" name="uc_action" value="bulk_events" />
             <?php
             /*
              * THE MARKER, so an empty list of ticks means "none of them"
@@ -5082,48 +5321,109 @@ class SFAF_Portal {
              * other shared control on these screens.
              */
             ?>
-            <input type="hidden" name="uc_bulk_cat_present" value="1" />
-            <?php wp_nonce_field( 'uc_portal_bulk_categorize', 'uc_nonce' ); ?>
+            <input type="hidden" name="uc_bulk_present" value="1" />
+            <?php wp_nonce_field( 'uc_portal_bulk_events', 'uc_nonce' ); ?>
 
-            <label class="uc-field uc-bulk-cat-pick">
-                <span class="uc-field-label">Add a category to the ticked events</span>
-                <select name="bulk_category" required>
-                    <option value="">Choose a category</option>
-                    <?php foreach ( $cats as $term ) : ?>
-                        <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+            <?php if ( ! empty( $cats ) ) : ?>
+                <label class="uc-field uc-bulk-cat-pick">
+                    <span class="uc-field-label">Add a category to the ticked events</span>
+                    <select name="bulk_category" required>
+                        <option value="">Choose a category</option>
+                        <?php foreach ( $cats as $term ) : ?>
+                            <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
 
-            <div class="uc-bulk-cat-go">
-                <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
-                        data-uc-tick-submit
-                        data-uc-confirm="<?php echo esc_attr( sprintf(
-                            'Add that category to %d %s? They keep the categories they already have.',
-                            $n,
-                            _n( 'event', 'events', $n )
-                        ) ); ?>"
-                        data-uc-tick-confirm="Add that category to {n} {noun}? They keep the categories they already have."
-                        data-uc-tick-word="events"
-                        data-uc-tick-word-one="event">
-                    Add to <span data-uc-tick-count><?php echo (int) $n; ?></span>
-                    <span data-uc-tick-noun><?php echo esc_html( _n( 'event', 'events', $n ) ); ?></span>
-                </button>
-                <?php
-                /*
-                 * SAID ON THE SCREEN AND NOT ONLY IN THE CONFIRMATION. The
-                 * one thing somebody needs to know before ticking 40 boxes is
-                 * that this is not a replace, and a sentence they meet only
-                 * after pressing is a sentence they meet too late.
-                 */
-                ?>
-                <span class="uc-hint">Adds it. Nothing already on an event is removed or changed.</span>
-            </div>
+                <div class="uc-bulk-cat-go">
+                    <?php
+                    /*
+                     * THE COUNT STARTS AT 0 AND THE BUTTON IS THE COUNT.
+                     * Nothing is ticked on arrival, so a button reading "Add to
+                     * 25 events" is wrong the moment it is drawn, and it is
+                     * wrong in the direction that matters: it names a set
+                     * larger than the one that would be acted on. The Images
+                     * screen starts at 0 for the same reason.
+                     *
+                     * NOT DISABLED BY THE SERVER. With no script the boxes
+                     * still tick and the form still posts, and a button the
+                     * server disabled would never come back. portal.js disables
+                     * it at 0 and releases it on the first tick; with no script
+                     * an empty press is caught by the marker and answered with
+                     * a sentence.
+                     */
+                    ?>
+                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                            name="uc_do" value="categorize"
+                            data-uc-tick-submit
+                            data-uc-confirm="Add that category to the ticked events? They keep the categories they already have."
+                            data-uc-tick-confirm="Add that category to {n} {noun}? They keep the categories they already have."
+                            data-uc-tick-word="events"
+                            data-uc-tick-word-one="event">
+                        Add to <span data-uc-tick-count>0</span>
+                        <span data-uc-tick-noun>events</span>
+                    </button>
+                    <?php
+                    /*
+                     * SAID ON THE SCREEN AND NOT ONLY IN THE CONFIRMATION. The
+                     * one thing somebody needs to know before ticking 40 boxes is
+                     * that this is not a replace, and a sentence they meet only
+                     * after pressing is a sentence they meet too late.
+                     */
+                    ?>
+                    <span class="uc-hint">Adds it. Nothing already on an event is removed or changed.</span>
+                </div>
+            <?php endif; ?>
+
+            <?php
+            /*
+             * PUBLISH RENDERS ONLY WHEN THERE IS SOMETHING IT COULD PUBLISH.
+             * A page of published events, or a page of imports, gets no publish
+             * button at all: the absence is the answer, exactly as on the
+             * schedule screen, and a greyed button that can never come alive on
+             * this page would be a control that cannot do anything.
+             */
+            ?>
+            <?php if ( $ready > 0 ) : ?>
+                <div class="uc-bulk-cat-go uc-bulk-publish">
+                    <?php
+                    /*
+                     * formnovalidate, AND IT IS LOAD-BEARING. The category
+                     * select is `required`, which is right for the button
+                     * beside it and would otherwise block this one: publishing
+                     * has nothing to do with a category, and a browser refusing
+                     * to submit until one is chosen would be the form enforcing
+                     * a rule nobody wrote.
+                     */
+                    ?>
+                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                            name="uc_do" value="publish" formnovalidate
+                            data-uc-tick-submit data-uc-tick-eligible
+                            data-uc-confirm="<?php echo esc_attr(
+                                'Publish the ticked events? They go on the public calendar straight away.' . $left_said
+                            ); ?>"
+                            data-uc-tick-confirm="<?php echo esc_attr(
+                                'Publish {n} {noun}? They go on the public calendar straight away.' . $left_said
+                            ); ?>"
+                            data-uc-tick-word="drafts"
+                            data-uc-tick-word-one="draft">
+                        Publish <span data-uc-tick-count>0</span>
+                        <span data-uc-tick-noun>drafts</span>
+                    </button>
+                    <span class="uc-hint">
+                        <?php echo (int) $ready; ?>
+                        <?php echo esc_html( _n( 'draft on this page can be published', 'drafts on this page can be published', $ready ) ); ?>.
+                        <?php if ( $left ) : ?>
+                            Not included: <?php echo esc_html( implode( ', ', $left ) ); ?>.
+                        <?php endif; ?>
+                    </span>
+                </div>
+            <?php endif; ?>
         </form>
         <?php
     }
 
-    private function events_table( $ids, $user, $sort = null, $filters = null ) {
+    private function events_table( $ids, $user, $sort = null, $filters = null, $bulk = null ) {
         if ( empty( $ids ) ) {
             echo '<p class="uc-empty">No events found.</p>';
             return;
@@ -5135,6 +5435,22 @@ class SFAF_Portal {
 
         // Called without a sort from screens that are not the Events list.
         $plain = ( null === $sort );
+
+        /*
+         * THE TICK COLUMN NEEDS A PLAN, NOT JUST A SORT (3.79.0).
+         *
+         * $plain answered "is this the Events list", which is the question the
+         * HEADER asked while no row ever drew a cell. Now that both ends are
+         * here they have to ask ONE question, and it is a stronger one: is
+         * there a bulk form on this page, and does it have at least one row it
+         * may reach. A column of boxes over rows the viewer cannot edit is a
+         * control that cannot do anything, and a header cell with no body cell
+         * under it is what this release is fixing.
+         */
+        $ticks = ( ! $plain && is_array( $bulk ) && ! empty( $bulk['tick'] ) )
+            ? array_flip( $bulk['tick'] )
+            : null;
+        $tick_why = ( null !== $ticks && isset( $bulk['blocked'] ) ) ? $bulk['blocked'] : array();
         ?>
         <table class="uc-table">
             <thead><tr>
@@ -5142,17 +5458,17 @@ class SFAF_Portal {
                 /*
                  * THE TICK COLUMN IS ON THE EVENTS LIST ONLY (3.73.0).
                  *
-                 * $plain is every other screen that borrows this table, and
-                 * none of them carries the bulk form the boxes would post to.
-                 * A checkbox associated with a form that is not on the page is
-                 * a control that cannot do anything.
+                 * Every other screen that borrows this table passes no plan,
+                 * and none of them carries the bulk form the boxes would post
+                 * to. A checkbox associated with a form that is not on the page
+                 * is a control that cannot do anything.
                  *
                  * SELECT-ALL IS HIDDEN UNTIL THE SCRIPT REVEALS IT, because a
                  * box that cannot select anything is a control that lies. Same
                  * reason the image picker keeps its search box hidden.
                  */
                 ?>
-                <?php if ( ! $plain ) : ?>
+                <?php if ( null !== $ticks ) : ?>
                     <th class="uc-col-tick">
                         <label class="uc-tick-all" hidden data-uc-tick-all-row>
                             <input type="checkbox" data-uc-tick-all form="uc-bulk-cat" />
@@ -5178,6 +5494,52 @@ class SFAF_Portal {
                 $st   = get_post_status( $id );
                 ?>
                 <tr>
+                    <?php if ( null !== $ticks ) : ?>
+                        <td class="uc-col-tick">
+                            <?php
+                            /*
+                             * ASSOCIATED BY THE form ATTRIBUTE, NOT BY BEING
+                             * INSIDE ONE. These rows already contain their own
+                             * forms for Duplicate and Remove, and forms cannot
+                             * nest. form.elements is what portal.js reads,
+                             * which is exactly what the association is for.
+                             *
+                             * THIS CELL IS DRAWN IN EVERY ROW, TICK OR NO TICK,
+                             * and that is not decoration. A row the viewer
+                             * cannot edit gets an empty cell rather than no
+                             * cell, because a table whose rows have different
+                             * numbers of cells is the fault this release
+                             * exists to fix: 3.73.0 shipped a header cell with
+                             * nothing under it for six releases.
+                             */
+                            $row_tick  = isset( $ticks[ $id ] );
+                            $row_why   = isset( $tick_why[ $id ] ) ? (string) $tick_why[ $id ] : '';
+                            /*
+                             * THE REASON IS SHOWN ON DRAFTS ONLY. On every
+                             * other row "not a draft" is the status pill two
+                             * columns over, said again in smaller type.
+                             */
+                            $row_say   = ( 'draft' === $st && '' !== $row_why ) ? $row_why : '';
+                            ?>
+                            <?php if ( $row_tick ) : ?>
+                                <input type="checkbox" name="bulk_ids[]" value="<?php echo (int) $id; ?>"
+                                       form="uc-bulk-cat" data-uc-tick-one
+                                       <?php if ( '' !== $row_why ) : ?>
+                                           data-uc-tick-block="<?php echo esc_attr( $row_why ); ?>"
+                                       <?php endif; ?>
+                                       aria-label="<?php echo esc_attr(
+                                           'Select ' . ( get_the_title( $id ) ?: 'this event' )
+                                           . ( '' !== $row_say ? '. Cannot be published: ' . $row_say : '' )
+                                       ); ?>" />
+                                <?php if ( '' !== $row_say ) : ?>
+                                    <span class="uc-tick-block" aria-hidden="true"
+                                          title="<?php echo esc_attr( 'This draft is not one the bulk publish may touch: ' . $row_say . '.' ); ?>"><?php
+                                        echo esc_html( $row_say );
+                                    ?></span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </td>
+                    <?php endif; ?>
                     <td><a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a></td>
                     <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short_year' ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo $cats && ! is_wp_error( $cats ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
@@ -9216,6 +9578,85 @@ class SFAF_Portal {
      * `uc_portal_schedule_publish` to match. can_view_all() is asked by the case
      * that calls this, as it is for the other four schedule actions.
      */
+    /**
+     * Publish the ticked drafts on the events list (3.79.0).
+     *
+     * THE SAME FIVE RULES AS THE SCHEDULE SCREEN, AND THE SAME METHOD ASKS
+     * THEM. SFAF_Series::publish_skip_reason() is called per id here exactly as
+     * publishable() calls it there. Nothing about the rule is restated, relaxed
+     * or re-implemented, because a second copy is how two screens come to
+     * disagree about what may go on the public calendar.
+     *
+     * WHY THIS IS NOT SFAF_Series::publish_drafts(). That method takes a term
+     * id and re-derives its own set from one series. This list is not a series:
+     * it is a filtered, paged view that can hold rows from thirty-two of them
+     * and rows from none. So the shape is the same and the source of the ids is
+     * different, which is why the rule lives in the per-event method that both
+     * can call rather than in either caller.
+     *
+     * THE TICKS NARROW AND NEVER WIDEN, twice over. Permission is re-asked with
+     * can_edit_event() per id, and eligibility is re-asked with
+     * publish_skip_reason() per id, both AFTER the form has spoken. A POST is a
+     * request anybody can construct, and this one names ids and reaches the
+     * public calendar, so neither question is left to the render.
+     *
+     * ONE $today FOR THE RUN, so a press that straddles midnight judges every
+     * id against one date.
+     *
+     * wp_update_post(), NOT A DIRECT STATUS WRITE, so save_post fires and every
+     * listener that cares about an event becoming public gets its turn. Same as
+     * publish_drafts().
+     *
+     * @param WP_User $user
+     * @param int[]   $wanted Ids the manager ticked.
+     */
+    private function bulk_publish_from_post( $user, $wanted ) {
+        if ( empty( $wanted ) ) {
+            $this->redirect( 'events', array( 'msg' => 'bulk_pub_none' ) );
+        }
+
+        $today   = current_time( 'Y-m-d' );
+        $did     = 0;
+        $failed  = 0;
+        $refused = 0;
+        $skipped = 0;
+
+        foreach ( array_unique( $wanted ) as $pub_id ) {
+            $pub_id   = (int) $pub_id;
+            $pub_post = get_post( $pub_id );
+            if ( ! $pub_post || 'uc_event' !== $pub_post->post_type ) {
+                continue;
+            }
+            if ( ! $this->can_edit_event( $user, $pub_post ) ) {
+                $refused++;
+                continue;
+            }
+            if ( '' !== SFAF_Series::publish_skip_reason( $pub_id, $today ) ) {
+                $skipped++;
+                continue;
+            }
+
+            $res = wp_update_post( array( 'ID' => $pub_id, 'post_status' => 'publish' ), true );
+            if ( is_wp_error( $res ) || ! $res ) {
+                $failed++;
+            } else {
+                $did++;
+            }
+        }
+
+        if ( 0 === $did && 0 === $failed ) {
+            $this->redirect( 'events', array( 'msg' => 'bulk_pub_none' ) );
+        }
+
+        $this->redirect( 'events', array(
+            'msg'     => 'bulk_pub_done',
+            'did'     => $did,
+            'failed'  => $failed,
+            'refused' => $refused,
+            'skipped' => $skipped,
+        ) );
+    }
+
     private function schedule_publish_from_post() {
         $term_id = isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0;
         if ( ! $term_id || ! SFAF_Series::exists( $term_id ) ) {
