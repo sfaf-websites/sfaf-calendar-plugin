@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 115 items.** Quick 89, needs real conditions 23, blocked on other
+**Outstanding: 119 items.** Quick 93, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1263,6 +1263,62 @@ Name, Alt text and Series are each for, and **nothing under each card**.
   built to avoid: a screen reader reads alt text as a description of the picture.
 - Check it landed in WordPress: **wp-admin > Media**, open the picture, and the
   Alternative Text field should hold what you typed.
+
+### 1.92 The toggle in the stacked layout, and where its calendar button goes (3.82.0)
+
+**At 700px, which is what sfaf.org gives the block today**, so this is the
+default shape rather than something to go looking for.
+
+- **The list and calendar toggle is on screen.** It was not in the markup at all
+  in the combined mode, at any width, from 3.45.0 to 3.81.0.
+- **Press List.** The month grid, the month name and the upcoming dates column
+  should all go, and the list view should be there in their place, paged.
+- **Press the calendar button.** It must bring back **the combined layout**, the
+  grid with the upcoming dates under it, not a bare month grid on its own. If it
+  lands on a grid with no sidebar, the button is going to the wrong view and
+  there is no way back to what the block was configured for.
+- **Reload after pressing List.** It should still be the list. Reload after
+  pressing the calendar button: it should be the combined layout.
+- **Then widen the window** until the two panels sit side by side, and check the
+  toggle still does both of those.
+
+### 1.93 The sidebar card at 700px, third look (3.82.0)
+
+The band and the content under it were measured into line, so this is confirming
+what the numbers say rather than hunting.
+
+- **The heading band is exactly as wide as the list, the month buttons and
+  "See all events".** It was 36px wider than all three.
+- **"See all events" is inside the card**, near its bottom edge, not below a rule
+  with white space under it.
+- **The October button row has the same left and right margin as everything
+  else** in the column.
+- **Check it with the month empty and with events in it.** Both should look like
+  the same card with different contents.
+
+### 1.94 Remove, and what it says when it refuses (3.82.0)
+
+**This is the one that did not work for Mark and the code is not wrong**, so the
+point of this test is to find out which branch runs.
+
+Press **Remove** on a picture, accept the confirmation, and then **read the
+message band at the top of the screen**, which is the thing to look for:
+
+- **"Taken out of the calendar folder"** means it worked. The picture should be
+  gone from the grid; choose **Removed** in the filter to see it and put it back.
+- **"That picture is still being used"** means it was refused, and the message
+  names the event or the series using it. That is the likely one: the
+  2026-09-03 import set a featured image on every event it had one for, so a
+  calendar-folder picture may well be an event's own image. Change what uses it
+  first.
+- **Neither message, and the picture still there**, is the case that needs
+  reporting, with whatever the page says.
+
+### 1.95 The Add an image panel's two columns (3.82.0)
+
+**caladmin > Images > Add an image.** The **File** and **Series** labels should
+sit on one line, with the two controls on the next. The hint about sizes hangs
+below the File control, where a hint goes everywhere else.
 
 ---
 

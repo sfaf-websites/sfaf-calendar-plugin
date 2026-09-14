@@ -4730,6 +4730,42 @@ chrome --headless --disable-gpu --window-size=1400,1200 \
 Two releases were spent reasoning about a card that could have been measured in
 ten minutes.
 
+### A decision made for one shape is made for both (3.45.0, found 3.82.0)
+
+The combined mode forced its view toggle off, with a good reason written beside
+it: both views are on screen, so the toggle has nothing to switch. That is true
+**side by side**, which was the only shape anybody had looked at.
+
+**The panels stack on flex-wrap**, at a width the browser decides, and PHP
+cannot see it. So the decision was made once, for both shapes, and in the
+stacked one it removed the only route to the list view from a screen that is a
+month grid tall enough to need it.
+
+> **THE TEST OF A MODE-WIDE `if` IS WHETHER ITS REASON SURVIVES EVERY SHAPE THE
+> MODE HAS.** This one, the pagination beside it, and 3.81.0's `max-width` on
+> the sidebar panel were all written for the side-by-side case and all three
+> applied unconditionally. A CSS layout with two shapes and a PHP branch that
+> knows about one of them is the general form of this fault, and the calendar
+> now has three instances of it in the same mode.
+
+### The picture an event shows is resolved in one place, and set in two
+
+`sfaf_event_image_url()` is the whole chain: the event's own featured image, then
+`_uc_image_url`, then `_uc_external_image`, then the series' picture, then
+`_uc_remote_image_url`. Every display surface goes through it, which was checked
+rather than assumed in 3.82.0: the month tile's hover preview, the sidebar row,
+the list card, the event page, the sharing tags and the sync payload all call it,
+and the four places that read `has_post_thumbnail()` directly are editor-side
+"does this event have one of its own" questions, not display.
+
+**SO CLEARING AN EVENT'S PICTURE CLEARS IT EVERYWHERE, AND RUNG ONE IS TWO
+VALUES.** `_thumbnail_id` and `_uc_image_url` are both rung one, and clearing
+either alone leaves the other supplying the picture.
+
+**AND AN OCCURRENCE INHERITS BOTH.** `SFAF_Recurrence` copies `_uc_image_url` in
+`$copied_meta` and calls `set_post_thumbnail()` from the seed, so one imported
+pattern's picture reaches every date it generated.
+
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not
 answer "why does this still look like that". Start from the element as rendered
@@ -4744,6 +4780,85 @@ lives only in geometry reaches Mark's screen with the suite green.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### The list view, rebuilt on a horizontal card (3.82.0)
+
+**PROPOSED, NOT BUILT.** Mark wants the list view on the shape at
+`wpeventful.com/events-list/`: a horizontal card per event, picture on the left
+in 16:9 with a zoom on hover, title, one meta line of venue, date and time, and
+a description excerpt with Read More. No social icons: an event is shared from
+its own page.
+
+**THE CALENDAR VIEW IS NOT IN SCOPE.** Some days carry nine events and the grid
+gets very tall; that is being reviewed separately.
+
+**INFINITE SCROLL OVER 287 EVENTS NEEDS A SHAPE, and "load forever" is not one.**
+A scroll with no sense of how far through somebody is, no way to reach the end,
+and a back button that returns them to the top is worse than the pagination it
+replaces. The proposal:
+
+- **The count stays at the top**, which the list already renders: "287 events
+  coming up". It is the only thing that tells somebody how big this is before
+  they start.
+- **Auto-load twice, then a button.** Three pages arrive by scrolling and the
+  fourth asks. That covers browsing, which is the case infinite scroll is for,
+  and stops a visitor who is looking for one thing in December from falling
+  through 280 cards. The button says what is left: "Show more (58 of 287
+  shown)".
+- **The URL carries the page**, so the back button returns somebody to where
+  they were rather than to the top, and a link they send opens on the same set.
+
+**IT MUST WORK WITH SCRIPT OFF, like everything else here.** The shape is the one
+this calendar already uses for Load More: **the server renders real pagination
+and the script layers scrolling on top of it**. The page links are in the markup
+and work on their own; `initLoadMore()` intercepts them, fetches the next page
+through the same endpoint and appends. With the script gone the list is paged,
+which is complete and slower, and nothing is hidden behind a control that cannot
+run.
+
+**THE QUERY DOES NOT CHANGE.** The filters, the scope clamp and the server-side
+querying stay exactly as they are: every narrowing goes through the query and
+nothing is ever done by hiding rows already downloaded.
+
+### The imported events' pictures, and the calendar-folder-only rule (3.82.0)
+
+**INVESTIGATED AND REPORTED, NOTHING CLEARED.** The 2026-09-03 import carried
+each event's featured image across from The Events Calendar. That is what an
+import normally does, it was not asked for, and it happened without a decision.
+The result is pictures outside the calendar folder, in the wrong shape for a 16:9
+card, untagged, invisible to the picker and unreachable from the Images screen.
+
+**MARK'S DECISION: only pictures inside the calendar folder are used.** Roxane
+is producing the event pictures and those are the ones going on.
+
+**WHICH RUNG SUPPLIES THEM.** Rung one, and both halves of it. The importer
+called `attachment_url_to_postid()` and wrote `_thumbnail_id` when it resolved,
+`_uc_image_url` when it did not. The sized URL in the report,
+`Damn-Daddy-768x512.jpg` against a plan that carries `Damn-Daddy.jpg`, is
+WordPress rendering the `large` size of a real featured image, so that one is
+`_thumbnail_id`. **Both have to be cleared**; either alone leaves the other
+supplying the picture. Nothing was written to rung two: `_uc_external_image` is
+the fetch adapters' and the TEC import never touched it.
+
+**HOW TO TELL AN IMPORTED PICTURE FROM ONE MARK CHOSE.** By the file's folder,
+and it is good but not perfect. caladmin's picker only ever offers
+`uploads/calendar/`, so a featured image outside it was not chosen there. The
+gaps, stated rather than glossed: wp-admin's own post editor can set any
+attachment, and the caladmin image control has a URL field that writes
+`_uc_image_url` by hand. **So the clear must be reported and confirmed before it
+runs, never applied blind.**
+
+**WHAT HAPPENS AFTER THE CLEAR IS THE OUTCOME WANTED.** With rung one empty, the
+chain falls to the series' picture, which from 3.81.0 resolves to a picture
+TAGGED to that series when none is set. That is exactly Roxane's calendar-folder
+pictures, so the clear and the end state line up with no third step.
+
+**ENFORCEMENT, PROPOSED AND NOT BUILT.** At the WRITE, in the importer, which is
+the only thing that has ever created these. **Not at the read**: a filter in
+`sfaf_event_image_url()` would leave the wrong value in the database silently
+overridden, so the editor would show one picture and the calendar another, which
+is the two-answers-to-one-question fault this project keeps meeting. A standing
+report of events whose picture sits outside the folder is the honest version.
 
 ### Whether a language belongs as a category, still open
 

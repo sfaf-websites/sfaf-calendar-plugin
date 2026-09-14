@@ -2085,8 +2085,42 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    THE NUMBERS ARE THE PANEL'S OWN PADDING and they have to stay in step with
    it, so they are written immediately under the rule that sets it.
    ------------------------------------------------------------------------ */
+/* ---------------------------------------------------------------------------
+   THE BAND LINES UP WITH WHAT IS UNDER IT (3.82.0), AND 3.80.0'S ESCAPE IS WHAT
+   STOPPED IT.
+
+   MEASURED AT 700px STACKED, in .claude/sidebar-enclosure.php:
+
+       panel content box    left 39   right 701
+       uc-sidebar-heading   left 21   right 719   width 698   ESCAPES
+       uc-sidebar-list      left 39   right 701   width 662
+       uc-month-tabs        left 39   right 701   width 662
+       uc-sidebar-all       left 39   right 701   width 662
+
+   One child reaching the card's edge and three sitting 18px inside it. That is
+   "the heading band is wider than the content below it", and it is this rule's
+   doing: 3.80.0 set the escape to the PANEL's padding so the band would meet the
+   card's edge, which looked right side by side, where the band's right edge is
+   the card's right edge and its left is the divider. Stacked, the band spans the
+   whole card while everything under it is inset, and the mismatch is 36px across
+   a 700px card rather than across a 355px column.
+
+   SO THE ESCAPE GOES BACK TO ZERO AND THE BAND IS A HEADING INSIDE THE COLUMN,
+   aligned with the list, the month tabs and the link. There is nothing left for
+   it to be out of step with.
+
+   THE REASON THE ESCAPE WAS ADDED IS ALREADY ANSWERED ANOTHER WAY. It was there
+   so the band would not read as a panel floating inside a card. What made it
+   read that way was the column being 380px wide in a 700px card and stopping
+   292px above the bottom; both of those are fixed, so the band now sits at the
+   top of a column that plainly runs the width of the card and down to its foot.
+
+   THE STANDALONE SIDEBAR MODE IS UNTOUCHED and keeps its 14px escape. There the
+   band really is the top of its own card, with a border and a corner to sit
+   inside, which is what that treatment was designed for.
+   ------------------------------------------------------------------------ */
 .uc-calendar .uc-view-panels-combined .uc-sidebar {
-    --uc-sidebar-pad-x: 18px; --uc-sidebar-pad-t: 16px; --uc-sidebar-head-radius: 0px;
+    --uc-sidebar-pad-x: 0px; --uc-sidebar-pad-t: 0px; --uc-sidebar-head-radius: 0px;
     border: 0; padding: 0; background: none;
 }
 /* THE BAND NEEDS NO CORNER RADIUS, AND 3.80.0 GAVE IT ONE FOR A CORNER IT

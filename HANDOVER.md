@@ -6,15 +6,22 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.81.0, released.
+**Last updated:** 2026-09-14, at 3.82.0, built and not released.
 
 ---
 
 ## What shipped last
 
-**3.81.0**, built as `sfaf-calendar-3.81.0.zip` in the project root, committed,
-**pushed to both repositories** and **released on 2026-09-14**. Working tree
-clean. It is the version sites are being offered.
+**3.82.0**, built as `sfaf-calendar-3.82.0.zip` in the project root, committed
+and **pushed to both repositories**. Working tree clean. **3.81.0 is the version
+sites are being offered**, released 2026-09-14.
+
+> **THE BLOCK IS AT 700px BECAUSE OF A HOST SETTING, NOT A CALENDAR FAULT.**
+> Teal's embed block carries a `:width-narrow` class, which Mark is raising with
+> them. It means he is looking at the STACKED layout, which nobody had looked at
+> until 2026-09-14, and three faults turned up in it on the first pass. **Treat
+> the stacked case as untested ground rather than a variation of the side by
+> side one.**
 
 > **3.81.0 IS THE ONE TO INSTALL FIRST.** It fixes a single misplaced brace that
 > made `portal.js` throw on every page from 3.77.0, which killed
@@ -41,6 +48,7 @@ clean. It is the version sites are being offered.
 
 | | |
 |---|---|
+| **3.82.0** | **The list and calendar toggle was never in the stacked layout's markup at all**: the combined mode has forced it off since 3.45.0 at every width, on reasoning that only holds side by side. It is back, and its calendar button returns the combined layout rather than collapsing to a bare grid. **The sidebar band was 36px wider than everything under it**, measured at 700px, which was 3.80.0's escape doing exactly what it was told. Also **why Remove looks like it does nothing**, established rather than guessed, and the **Add an image** panel's two columns line up. |
 | **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **fills the width when the mode stacks** instead of staying 380px. The Images screen gains **alt text** and a **Remove** that is not a delete. |
 | **3.80.0** | **The picker hides by series now**, which it did not: it grouped, so a series with two tagged pictures still showed all eight. A series with nothing tagged gets a sentence naming MarCom rather than the whole folder. **The banner is a live preview** on both public forms, and an upload gets its own thumbnail with a line saying an approver decides. **The month arrows had no border at all**, which the stylesheet appeared to declare and a later rule at equal specificity removed; they are one segmented control at the right now, on the 3.64.0 control standard, 44px on touch. **The sidebar card was not overflowing**: in the combined view it has no box by design, and two lone hairlines read as one that closes early. |
 | **3.79.0** | **The bulk category control never had tick boxes**, on any screen, for any viewer. The cell was built into the dashboard's read-only table instead of the events list's, and both tables have carried half a fault since 3.73.0. Also **bulk publish on the events list**, sharing those ticks, asking `SFAF_Series::publish_skip_reason()` rather than restating it, with each button counting only the rows it can reach. |

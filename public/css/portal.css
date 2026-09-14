@@ -3010,7 +3010,21 @@ body.uc-modal-open { overflow: hidden; }
    summary-is-the-card-head arrangement. No scripted show and hide.
    ------------------------------------------------------------------------ */
 .uc-media-upload { margin-bottom: 18px; }
-.uc-media-upload .uc-field-row { align-items: flex-end; }
+/* ---------------------------------------------------------------------------
+   THE TWO COLUMNS LINE UP AT THE TOP, NOT THE BOTTOM (3.82.0)
+
+   flex-end was reaching for the right thing: two controls of different heights
+   sharing a baseline. It cannot get there, because only one of these columns
+   has anything under its control. The File column is label, input, and two
+   lines of hint; the Series column is label and a select. Bottom-aligned, the
+   hint pushes the whole File column up, so the two LABELS end up on different
+   lines and the input sits above the select it is meant to sit beside.
+
+   Top-aligned, the labels are on one line, the two controls are on the next,
+   and the hint hangs below the column it belongs to, which is where a hint goes
+   everywhere else on these screens.
+   ------------------------------------------------------------------------ */
+.uc-media-upload .uc-field-row { align-items: flex-start; }
 /* The grid's own card carries the tint, so a white .uc-media-item reads as a
    card ON something rather than a box IN nothing. That is the one-white-card
    rule this portal already uses everywhere, restored: it was tinted cards on a

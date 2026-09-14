@@ -205,22 +205,72 @@ check(
     false !== strpos( $block, 'self::sidebar_count(' ) && substr_count( $block, 'self::sidebar_count(' ) >= 2,
     'the count of upcoming dates is resolved in two places rather than one, so the sidebar mode and the combined mode can drift'
 );
+
+/* -------------------------------------------------------------------------
+ * THE COMBINED MODE HAS A TOGGLE AGAIN (3.82.0), AND THESE FIVE CHECKS ARE THE
+ * REVERSE OF THE THREE THAT WERE HERE.
+ *
+ * What those asserted was 3.45.0's decision: no toggle, no pagination, neither
+ * panel hidden. That was right while the mode was only ever looked at SIDE BY
+ * SIDE, where both views really are on screen. Stacked, which is what sfaf.org
+ * gives it at 700px, what is on screen is a very tall month grid and a short
+ * list of upcoming dates, and the list view is unreachable. A day carrying nine
+ * events is exactly when somebody needs it.
+ *
+ * PHP CANNOT TELL THE TWO SHAPES APART, because the panels stack on flex-wrap
+ * at a width decided in the browser. So the toggle is rendered in both shapes,
+ * and what is asserted here is that it goes somewhere sensible and that nothing
+ * belonging to the list can appear under the grid.
+ * ---------------------------------------------------------------------- */
+
+/* Pagination stays on, because there is a list to page and it holds 287 events.
+ * What matters is that the controls live INSIDE the list panel, so they hide
+ * with it and can never turn up under a month grid. */
 check(
-    false !== strpos( $block, '$paginate = false;' ),
-    'the combined mode does not switch pagination off, so it can still advertise a Load more it has no list for'
+    false === strpos( $block, '$paginate = false;' ),
+    'the combined mode switches pagination off again, so pressing List would hand over every event in one response'
+);
+if ( preg_match( '/<div class="uc-view-panel uc-panel-list".*?\$panel_list = ob_get_clean\(\);/s', $block, $lp ) ) {
+    check(
+        false !== strpos( $lp[0], 'render_pagination(' ),
+        'the pagination controls moved out of the list panel, so they are no longer hidden with the list they page'
+    );
+} else {
+    check( false, 'could not slice the list panel, so nothing was asserted about where pagination is emitted' );
+}
+
+/* The list panel is BUILT in the combined mode and carries hidden. Built,
+ * because the toggle needs somewhere to go; hidden, because showing it under
+ * the grid would be both views at once. */
+check(
+    false !== strpos( $block, "return ( 'list' === \$panel ) ? ' hidden' : '';" ),
+    'the combined mode no longer hides its list panel, so the list would render underneath the grid'
+);
+check(
+    false !== strpos( $block, '$panel_grid . $panel_side . $panel_list' ),
+    'the combined mode does not emit its list panel, so the toggle has nowhere to go'
 );
 
-// Neither panel is hidden in it.
+/* The toggle is rendered, and its calendar button goes HOME rather than to a
+ * bare grid. Sending it to 'calendar' would collapse a block somebody
+ * configured as combined and leave no way back, which is worse than the
+ * missing toggle this replaced. */
 check(
-    false !== strpos( $block, 'if ( $combined ) {' ) && false !== strpos( $block, "return '';" ),
-    'the combined mode does not un-hide both panels'
+    false === strpos( $block, '$toggle = false;' ),
+    'the combined mode forces the view toggle off again, which leaves the stacked shape with no route to the list'
 );
-
-// The toggle is off, in the renderer and not only in the generator.
 check(
-    false !== strpos( $block, 'if ( $combined ) {' ) && false !== strpos( $block, '$toggle = false;' ),
-    'the combined mode does not force the view toggle off, so a hand-written shortcode could render one'
+    false !== strpos( $block, 'render_view_toggle( $view, $combined ? "combined" : $view )' ),
+    'the view toggle is not told which view is home, so its calendar button cannot send a combined block back to the combined layout'
 );
+if ( preg_match( '/private function render_view_toggle\(.*?\n    \}/s', $code, $tf ) ) {
+    check(
+        false !== strpos( $tf[0], "'combined' === \$home" ),
+        'render_view_toggle() no longer asks what home is, so a combined block gets a button pointing at a view it was never configured for'
+    );
+} else {
+    check( false, 'could not slice render_view_toggle(), so nothing was asserted about where its calendar button goes' );
+}
 
 /*
  * The grid is emitted before the sidebar, in the DOM, for the combined mode.

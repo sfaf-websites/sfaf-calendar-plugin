@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.81.0
+Stable tag: 3.82.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,34 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.82.0 =
+
+**THE LIST AND CALENDAR TOGGLE WAS NOT MISSING IN THE STACKED LAYOUT. IT WAS NOT IN THE MARKUP AT ALL.** The combined mode has forced it off since 3.45.0, at every width, on reasoning that was sound and is now only half true: "both views are on screen, so it has nothing to switch". That holds SIDE BY SIDE. Stacked, what is on screen is a month grid and, a long way below it, a short list of upcoming dates, which is not the list view. A day carrying nine events is exactly when somebody needs the list, and there was no way to reach it.
+
+**PHP cannot tell the two shapes apart**, because the panels stack on flex-wrap at a width decided in the browser. So the decision was being made for both shapes at once, and it was made for the shape that needs it least.
+
+**The calendar button goes home rather than to a fixed view.** In a combined block it carries `data-view="combined"`, so pressing it returns the layout the block was configured for. Sending it to "calendar" would collapse the block to a bare grid nobody chose and leave no way back, which is worse than the missing toggle. The list panel is built and hidden, pagination comes back with it because there are 287 events, and the controls sit inside the list panel so they can never appear under a grid.
+
+**THE SIDEBAR CARD, MEASURED THIS TIME RATHER THAN REASONED ABOUT.** At 700px stacked:
+
+```
+panel content box    left 39   right 701
+uc-sidebar-heading   left 21   right 719   width 698   ESCAPES
+uc-sidebar-list      left 39   right 701   width 662
+uc-month-tabs        left 39   right 701   width 662
+uc-sidebar-all       left 39   right 701   width 662
+```
+
+One child reaching the card's edge and three sitting 18px inside it. **That is 3.80.0's doing**, and the question asked was the right one: it set the band's escape to the panel's padding so the band would meet the card's edge, which looked correct side by side, where the band's right edge IS the card's edge and its left is the divider. Stacked, the band spans the whole card while everything under it is inset, across 700px rather than 355px.
+
+**The escape is back to zero and the band is a heading inside the column**, aligned with the list, the month tabs and the link. Every child now measures identically in all three states. What the escape was added for is answered another way: the band read as a panel floating in a card because the column was 380px wide in a 700px card and stopped 292px above the bottom, and 3.81.0 fixed both.
+
+**REMOVE, AND WHY THE IMAGE SURVIVED IT.** Nothing in the code is wrong, and that was established rather than assumed: the marker is written, `row()` reports it, `pictures()` builds the right exclusion clause, the handler is placed correctly and gated correctly, the button belongs to the remove form rather than the card's Save form, and the confirmation opens and replays the press. Two harnesses and a new test cover all of it.
+
+**What is left is the refusal**, which is the one branch that cannot be exercised without the site: a picture is refused while an event's own featured image or a series' picture is that file, and the refusal is a flash band rather than anything on the card. **The investigation below makes that likely rather than theoretical**: the 2026-09-03 import set a featured image on every event it had one for.
+
+**And the Add an image panel's two columns line up.** `align-items: flex-end` was reaching for two controls sharing a baseline and cannot get there, because only the File column has a hint under it: bottom-aligned, the hint pushed that whole column up and the two labels ended up on different lines.
 
 = 3.81.0 =
 

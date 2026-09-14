@@ -2011,10 +2011,26 @@ class SFAF_Shortcodes {
      * @param string $view Which view is active.
      * @return string
      */
-    private function render_view_toggle( $view ) {
+    private function render_view_toggle( $view, $home = 'calendar' ) {
+        /*
+         * THE CALENDAR BUTTON GOES HOME, NOT TO A FIXED VIEW (3.82.0).
+         *
+         * In a combined block the calendar half IS the combined layout, so the
+         * button carries data-view="combined". Sending it to "calendar" would
+         * collapse the block to a grid the visitor never chose and give them no
+         * way back, which is a worse outcome than the missing toggle this fixes.
+         *
+         * The label follows the destination for the same reason: the tooltip
+         * and the screen reader name have to describe where it goes.
+         */
+        $cal_view  = ( 'combined' === $home ) ? 'combined' : 'calendar';
+        $cal_label = ( 'combined' === $home )
+            ? 'Show the calendar and upcoming dates'
+            : 'Show events on a calendar';
+
         $options = array(
-            'list'     => array( 'Show events as a list', 'menu' ),
-            'calendar' => array( 'Show events on a calendar', 'calendar' ),
+            'list'    => array( 'Show events as a list', 'menu', 'list' ),
+            $cal_view => array( $cal_label, 'calendar', $cal_view ),
         );
 
         ob_start();
@@ -2497,30 +2513,43 @@ class SFAF_Shortcodes {
         $combined = $this->is_combined_view( $view );
 
         /*
-         * NO VIEW TOGGLE IN THE COMBINED MODE, whatever the snippet says.
+         * THE COMBINED MODE KEEPS ITS TOGGLE, AND 3.45.0 WAS RIGHT UNTIL THE
+         * BLOCK GOT NARROW (3.82.0).
          *
-         * The toggle exists to switch between the grid and the list. Here both
-         * are on screen, so it has nothing to switch and pressing it would hide
-         * half of a layout somebody chose specifically to see both halves of.
-         * Forced off here rather than hidden in CSS, so the buttons are not in
-         * the markup for a keyboard or a screen reader to find either.
+         * WHAT THIS USED TO SAY, AND WHY IT WAS REASONABLE. "The toggle exists
+         * to switch between the grid and the list. Here both are on screen, so
+         * it has nothing to switch." That is true SIDE BY SIDE, which is the
+         * only shape this mode had been looked at in.
+         *
+         * IT IS FALSE THE MOMENT THE PANELS STACK. Stacked, what is on screen
+         * is a month grid and, a long way below it, a short list of upcoming
+         * dates. It is not the list view: the list view is every event with its
+         * picture, its excerpt and its meta, paged. A day carrying nine events
+         * makes that grid enormous, and the list is the answer to exactly that.
+         *
+         * AND PHP CANNOT KNOW WHICH SHAPE IT IS IN. The panels stack on
+         * flex-wrap, at a width decided in the browser, so a decision made here
+         * is made for both shapes at once. Turning the toggle off was therefore
+         * turning it off for the shape that needs it most.
+         *
+         * SO THE CALENDAR BUTTON MEANS "THE COMBINED VIEW" HERE, and carries
+         * data-view="combined" rather than "calendar": pressing it must put the
+         * visitor back in the layout the block was configured for, not collapse
+         * it to a grid they never asked for. render_view_toggle() takes the home
+         * view for that reason and for no other.
          */
-        if ( $combined ) {
-            $toggle = false;
-
-            /*
-             * AND NO PAGINATION, because there is no list to page.
-             *
-             * The right column is the sidebar: a fixed number of upcoming dates
-             * and a link out to all of them. "Load more" and page links belong to
-             * the list mode and used to sit in this mode below a column that was
-             * scrolling inside itself, which is two ways of asking for more
-             * events arguing with each other. Turned off here rather than left
-             * out of the markup by accident, so the block does not advertise
-             * paging on an attribute either.
-             */
-            $paginate = false;
-        }
+        /*
+         * PAGINATION COMES BACK WITH THE TOGGLE (3.82.0), and it has to.
+         *
+         * It was turned off here on the reasoning that "there is no list to
+         * page", which was true while the combined mode had no list panel. It
+         * has one now, and without paging a visitor who pressed List would be
+         * handed all 287 events in one response.
+         *
+         * NOTHING APPEARS UNDER THE COMBINED PANELS. render_pagination() is
+         * emitted INSIDE .uc-panel-list, so it is hidden and shown with the
+         * list it pages and cannot turn up beneath a grid.
+         */
         $month    = $this->normalize_month( $args['month'] );
 
         if ( (int) $args['page'] > 0 ) {
@@ -2800,7 +2829,7 @@ class SFAF_Shortcodes {
                         <?php echo esc_html( _n( 'event coming up', 'events coming up', (int) $events['total'] ) ); ?>
                     </div>
                 <?php endif; ?>
-                <?php if ( $toggle ) { echo $this->render_view_toggle( $view ); } ?>
+                <?php if ( $toggle ) { echo $this->render_view_toggle( $view, $combined ? "combined" : $view ); } ?>
             </div>
 
             <?php
@@ -2833,7 +2862,15 @@ class SFAF_Shortcodes {
              */
             $panel_hidden = function ( $panel ) use ( $view, $combined ) {
                 if ( $combined ) {
-                    return '';
+                    /*
+                     * THE COMBINED MODE SHOWS THE GRID AND THE SIDEBAR, AND
+                     * CARRIES THE LIST HIDDEN (3.82.0). It used to show
+                     * everything it built, which was correct while it did not
+                     * build a list. It builds one now so the toggle has
+                     * somewhere to go, and a list panel visible under the grid
+                     * would be both views at once.
+                     */
+                    return ( 'list' === $panel ) ? ' hidden' : '';
                 }
                 return ( $panel === $view ) ? '' : ' hidden';
             };
@@ -2975,8 +3012,14 @@ class SFAF_Shortcodes {
                  * before the sidebar: the order somebody reads it in and the
                  * order it is in are kept the same thing.
                  */
+                /*
+                 * THE LIST PANEL RIDES ALONG IN THE COMBINED MODE TOO (3.82.0),
+                 * hidden, and it is emitted LAST so the reading order is the
+                 * one on screen: head, grid, sidebar, and then the panel that
+                 * only appears when somebody asks for it.
+                 */
                 echo $combined
-                    ? '<div class="uc-combined-head">' . $parts['head'] . '</div>' . $panel_grid . $panel_side
+                    ? '<div class="uc-combined-head">' . $parts['head'] . '</div>' . $panel_grid . $panel_side . $panel_list
                     : $panel_list . $panel_grid;
                 ?>
             </div>

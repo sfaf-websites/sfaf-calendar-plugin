@@ -254,16 +254,27 @@
             return 'sidebar';
         }
         /*
-         * COMBINED IS A CONFIGURATION, LIKE SIDEBAR, AND IS NEVER OVERRIDDEN.
+         * COMBINED IS A CONFIGURATION, AND ONLY ONE THING MAY OVERRIDE IT
+         * (3.82.0).
          *
-         * A remembered choice comes from pressing the view toggle, and the
-         * combined mode has no toggle: both views are on screen. So there is
-         * nothing a visitor could have chosen here, and letting a "calendar"
-         * left in localStorage by another block on the same site collapse this
-         * one to a single panel would take away the layout somebody picked.
+         * IT USED TO BE OVERRIDDEN BY NOTHING, on the reasoning that the mode
+         * had no toggle so nothing a visitor pressed could mean anything here,
+         * and that a "calendar" left in localStorage by another block on the
+         * same site must not collapse this one. Both halves of that still hold.
+         *
+         * WHAT CHANGED IS THAT THE MODE HAS A TOGGLE AGAIN, because stacked it
+         * is a very tall grid with no route to the list. So a remembered LIST is
+         * honoured: it can only have got there by somebody pressing List on a
+         * block like this one, and taking that away on the next page is the
+         * toggle forgetting what it was told.
+         *
+         * A REMEMBERED "calendar" IS STILL IGNORED. That is the stray value the
+         * original note is about, it cannot have come from this block's own
+         * toggle, which offers combined and list, and honouring it would hand
+         * somebody a layout nobody chose.
          */
         if (configured === 'combined') {
-            return 'combined';
+            return (storedView(container) === 'list') ? 'list' : 'combined';
         }
         return storedView(container) || (configured === 'calendar' ? 'calendar' : 'list');
     }
@@ -685,7 +696,11 @@
      */
     function panelHiddenFor(view, panel) {
         if (view === 'combined') {
-            return false;
+            /* THE COMBINED VIEW SHOWS THE GRID AND THE SIDEBAR AND HIDES THE
+             * LIST (3.82.0). It used to show everything, which was right while
+             * it built no list panel. It builds one now, so the toggle has
+             * somewhere to go, and showing it here would be both views at once. */
+            return (panel === 'list');
         }
         if (view !== 'list' && view !== 'calendar') {
             return false;
@@ -704,6 +719,36 @@
         var cal = panelOf(container, 'calendar');
         if (list) { list.hidden = panelHiddenFor(view, 'list'); }
         if (cal) { cal.hidden = panelHiddenFor(view, 'calendar'); }
+
+        /* ---------------------------------------------------------------
+         * LEAVING AND RE-ENTERING THE COMBINED LAYOUT (3.82.0)
+         *
+         * A combined block has two more pieces than any other: the month head
+         * that spans both halves, and the sidebar column. They are not
+         * `.uc-panel-list` or `.uc-panel-calendar`, so the two lines above say
+         * nothing about them, and leaving them on screen under a list is the
+         * fault this whole change exists to avoid repeating.
+         *
+         * THE WRAPPER'S CLASS GOES WITH THEM. `.uc-view-panels-combined` is
+         * what makes that element a two-column flex card with a border and a
+         * divider; with one panel left in it, that is a card drawn round a list
+         * for no reason. Taking the class off puts the wrapper back to what
+         * every other mode uses, so the list renders exactly as it does in a
+         * list block, and putting it back restores the layout.
+         *
+         * DONE HERE RATHER THAN IN CSS. A rule keyed to the view class would be
+         * a second place deciding what the combined mode is, and this file
+         * already owns that decision for the two panels above.
+         * ------------------------------------------------------------- */
+        var panels = container.querySelector('.uc-view-panels');
+        if (panels && panels.getAttribute('data-uc-combined') === '1') {
+            var toCombined = (view === 'combined');
+            var head = container.querySelector('.uc-combined-head');
+            var side = panelOf(container, 'sidebar');
+            if (head) { head.hidden = !toCombined; }
+            if (side) { side.hidden = !toCombined; }
+            panels.classList.toggle('uc-view-panels-combined', toCombined);
+        }
 
         block.setAttribute('data-view', view);
         // Every mode is named here. A mode left out of this list is not removed

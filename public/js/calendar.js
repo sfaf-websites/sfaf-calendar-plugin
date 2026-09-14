@@ -267,6 +267,15 @@
         try {
             stored = window.localStorage.getItem(viewKey($block)) || '';
         } catch (err) { stored = ''; }
+        /* A COMBINED BLOCK MAY REMEMBER 'list' AND NOTHING ELSE (3.82.0), which
+         * is the same rule viewFor() applies in embed.js and for the same
+         * reason: its toggle offers combined and list, so 'list' is the only
+         * value its own control could have written, and a stray 'calendar' from
+         * another block must not collapse a layout somebody configured. */
+        if (($block.attr('data-view') || '') === 'combined') {
+            if (stored === 'list') { showView($block, 'list', false); }
+            return;
+        }
         if (stored === 'list' || stored === 'calendar') {
             showView($block, stored, false);
         } else {
@@ -278,14 +287,17 @@
      * WHICH PANELS A VIEW SHOWS. The twin of panelHiddenFor() in embed.js, and
      * the reasoning is written out there.
      *
-     * Nothing reaches this with 'combined' TODAY: restoreView() above only
-     * forwards a remembered 'list' or 'calendar', and the combined mode renders
-     * no toggle for anything to have been remembered from. It is written this
-     * way regardless, because the version of this in embed.js was reached and
-     * hid both panels of a live block, and "this call site happens not to do
-     * that" is not a property either file should depend on.
+     * 'combined' REACHES THIS NOW (3.82.0), which the note here used to say it
+     * could not: the mode has a toggle again, because stacked it is a very tall
+     * grid with no route to the list. The clause below was written before it
+     * was reachable, on the principle that "this call site happens not to do
+     * that" is not a property either file should depend on, and it is the
+     * reason this one did not have to be found the hard way.
      */
     function panelHiddenFor(view, panel) {
+        if (view === 'combined') {
+            return (panel === 'list');
+        }
         if (view !== 'list' && view !== 'calendar') {
             return false;
         }
@@ -295,6 +307,17 @@
     function showView($block, view, remember) {
         $block.find('.uc-panel-list').prop('hidden', panelHiddenFor(view, 'list'));
         $block.find('.uc-panel-calendar').prop('hidden', panelHiddenFor(view, 'calendar'));
+
+        /* The two pieces only a combined block has, and the wrapper class that
+         * makes it a two-column card. The twin of the block in embed.js's
+         * showView(), where the reasoning is written out. */
+        var $panels = $block.find('.uc-view-panels[data-uc-combined="1"]');
+        if ($panels.length) {
+            var toCombined = (view === 'combined');
+            $block.find('.uc-combined-head').prop('hidden', !toCombined);
+            $block.find('.uc-panel-sidebar').prop('hidden', !toCombined);
+            $panels.toggleClass('uc-view-panels-combined', toCombined);
+        }
         // Every mode named, so applying one removes the last rather than
         // leaving the block wearing two.
         $block.removeClass('uc-view-list uc-view-calendar uc-view-combined uc-view-sidebar').addClass('uc-view-' + view);

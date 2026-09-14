@@ -100,6 +100,19 @@ var lines = [];
     });
   });
   rules.sort(function (a, b) { return a.y - b.y; });
+  // EVERY CHILD OF THE SIDEBAR AGAINST THE PANEL, which is the question:
+  // do some escape the padding and others not.
+  lines.push('  children against the panel content box:');
+  var pcs = getComputedStyle(panel);
+  var inner = { l: pb.l + parseFloat(pcs.paddingLeft) + parseFloat(pcs.borderLeftWidth),
+                r: pb.r - parseFloat(pcs.paddingRight) - parseFloat(pcs.borderRightWidth) };
+  lines.push('      panel content box  left ' + Math.round(inner.l) + '  right ' + Math.round(inner.r));
+  Array.prototype.forEach.call(side.children, function (ch) {
+    var b = box(ch);
+    lines.push('      ' + (ch.className || ch.tagName).split(' ')[0].padEnd(22) +
+      ' left ' + b.l + ' right ' + b.r + ' width ' + b.w +
+      ((b.l < Math.round(inner.l) - 1 || b.r > Math.round(inner.r) + 1) ? '   ESCAPES' : ''));
+  });
   lines.push('  hairlines in the column, by y:');
   rules.forEach(function (r) { lines.push('      y=' + r.y + '  ' + r.what); });
   lines.push('');
