@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.82.0
+Stable tag: 3.83.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,38 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.83.0 =
+
+**A PICTURE OUTSIDE THE CALENDAR FOLDER IS NOT USED, AND THE RULE IS ENFORCED WHERE A PICTURE IS RESOLVED.** Not by clearing 270 stored references, which is the expensive way to enforce a rule that belongs in one place and would be undone by the next import. `sfaf_event_own_image_url()` is the rule and every surface reads it: the month tile, the hover preview, the event page, the sidebar, the list card, the embed payload and the sharing tags. Nothing is cleared, no file is touched, and whatever a future import writes is not used either.
+
+**The event editor asks the same question**, which is what makes read-time enforcement safe. Without that the editor would say an event has a picture of its own while the calendar drew the series one, which is the two-answers-to-one-question fault this project keeps meeting. The completeness prompt, the per-event override flag and the picker's current selection all go through it.
+
+**`sfaf_event_thumbnail()` no longer short-circuits on the featured image**, which was the one path the rule could not have reached: it returned the picture before the chain was consulted at all.
+
+**An address on another site is left alone.** The rule is about attachments and about local paths naming one. A remote source image is the rung a fetch maintains and taking it away would blank every imported campaign, which is a different decision nobody has made.
+
+**`.claude/image-folder-rule-test.php` proves it both ways**: the chain lands on the right rung for seven combinations, and a sweep refuses any other way of resolving a picture. Putting a direct `has_post_thumbnail()` back into a renderer fails the build, which was checked by doing it.
+
+**THE LIST VIEW COLLAPSED TO ONE LETTER PER LINE, AND IT WAS TWO FAULTS.**
+
+**The layout, measured at 700px:**
+
+```
+uc-panel-sidebar   shown   698x964  left  21
+uc-panel-list      shown     0x964  left 719   flex 0 1 auto  min-width auto
+a card              26x268
+```
+
+`.uc-panel-list` had no sizing inside the combined wrapper, because until 3.82.0 it was never in it. Beside a sidebar claiming `1 1 288px` it fell to zero width and its cards overflowed at their 26px min-content width, with Load More floating clear of both. It takes a full row now, and **it does not depend on the script having tidied up first**: a layout that is only correct once a script has run is wrong on any page where the script is old, cached or blocked, and this one is served to another site.
+
+**And the query. The combined mode asked for the total and told the renderer to draw no cards**, with `'none'`, which was right while it had no list panel. 3.82.0 gave it one and nothing here changed to match, so the list panel got an empty string and rendered its empty state: "No upcoming events found." beside a sidebar listing the same events perfectly. **The query had always run and always found them.** There is no `'none'` path left.
+
+**REMOVE, THIRD ATTEMPT, AND THE ANSWER IS THAT THE PRESS WAS NEVER THE PROBLEM.** Driven in a browser: the button belongs to the remove form and not the card's Save form, the confirmation opens, accepting it submits, and the form carries `uc_action=media_remove` with the right id and nonce. The handler, the marker, the exclusion clause and the refusal all hold against a stubbed store.
+
+**What could never be ruled out from here is the refusal**, and a refusal that arrives as a flash band over a reloaded page is indistinguishable from nothing having happened. **So the screen says it before the press.** A picture an event or a series is relying on shows what is relying on it and has no Remove button at all, which is this project's own rule: a control that cannot do anything should not be on screen. Two queries for the whole page rather than two per card. The refusal in the handler stays, because a POST is a request anybody can construct.
+
+**Two committed guards asserted decisions this release reverses** and both were rewritten to assert the new arrangement rather than weakened: display may now filter on the folder, in exactly one place, and the list panel must be sized inside the combined wrapper.
 
 = 3.82.0 =
 

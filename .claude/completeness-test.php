@@ -147,6 +147,12 @@ function get_the_date( $f = '', $id = 0 ) { return 'U' === $f ? time() : date( '
 function get_userdata( $id ) { return false; }
 function has_post_thumbnail( $id = 0 ) { return false; }
 function get_post_thumbnail_id( $id = 0 ) { return 0; }
+/* THE CALENDAR FOLDER RULE (3.83.0). The event editor asks this rather than
+ * has_post_thumbnail(), so that the screen offering to change a picture and the
+ * calendar drawing one agree about whether there is one. These fixtures have no
+ * pictures at all, so the honest stub is false. */
+function sfaf_event_has_own_image( $id = 0 ) { return false; }
+function sfaf_event_own_image_url( $id = 0, $size = 'large' ) { return ''; }
 function wp_get_attachment_image_url( $id, $s = 'thumbnail' ) { return ''; }
 function wp_get_post_terms( $id, $tax, $args = array() ) { return array(); }
 function wp_get_object_terms( $id, $tax, $args = array() ) {

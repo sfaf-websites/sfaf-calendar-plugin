@@ -891,7 +891,9 @@ class SFAF_Post_Types {
             delete_post_thumbnail( $post_id );
             delete_post_meta( $post_id, '_uc_image_url' );
             delete_post_meta( $post_id, '_uc_image_override' );
-        } elseif ( has_post_thumbnail( $post_id ) || get_post_meta( $post_id, '_uc_image_url', true ) ) {
+        /* The folder rule, so wp-admin and caladmin agree with the calendar
+         * about whether this event has a picture of its own (3.83.0). */
+        } elseif ( sfaf_event_has_own_image( $post_id ) ) {
             update_post_meta( $post_id, '_uc_image_override', '1' );
         } else {
             delete_post_meta( $post_id, '_uc_image_override' );

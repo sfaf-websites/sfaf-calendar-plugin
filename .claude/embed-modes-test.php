@@ -559,9 +559,32 @@ check(
     count( $rules ) >= 3,
     sprintf( 'only %d rule(s) name the combined wrapper, so the sweep above is passing because it found nothing to look at', count( $rules ) )
 );
+/* -------------------------------------------------------------------------
+ * THE LIST PANEL IS SIZED INSIDE THE COMBINED WRAPPER (3.83.0), AND THIS IS THE
+ * REVERSE OF THE CHECK THAT WAS HERE.
+ *
+ * What it used to forbid was any rule naming uc-panel-list, on the reasoning
+ * that the combined mode was the only place that class ever sat beside a grid
+ * and the list panel had been taken out of it. 3.82.0 put one back, hidden, so
+ * the toggle would have somewhere to go, and nothing gave it a size.
+ *
+ * MEASURED AT 700px, in .claude/list-view-stacked.php:
+ *
+ *     uc-panel-sidebar   shown   698x964  left  21
+ *     uc-panel-list      shown     0x964  left 719   flex 0 1 auto  min-width auto
+ *     a card              26x268
+ *
+ * A zero-width panel with its cards overflowing at their 26px min-content
+ * width, which is the "one letter per line" that was reported.
+ *
+ * So what is asserted now is that it HAS a full-row basis and a min-width floor,
+ * and that the rule does not depend on the script having removed the wrapper
+ * class first: the block is served to another site, where the script can be old,
+ * cached or blocked.
+ * ---------------------------------------------------------------------- */
 check(
-    ! preg_match( '/uc-panel-list/', $css_code ),
-    'the stylesheet still styles a list panel in some mode; the combined mode is the only place that class ever appeared beside the grid and it is gone'
+    (bool) preg_match( '/uc-view-panels-combined\s*>\s*\.uc-panel-list\s*\{[^}]*flex:\s*1\s+1\s+100%/', $css_code ),
+    'the list panel has no full-row flex basis inside the combined wrapper, so it collapses beside the sidebar to the width of one character'
 );
 check(
     (bool) preg_match( '/\.uc-calendar \.uc-event-list > \*\s*\{[^}]*flex-shrink:\s*0/', $css_code ),

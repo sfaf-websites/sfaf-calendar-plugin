@@ -483,6 +483,80 @@ class SFAF_Media {
     }
 
     /**
+     * What is using each of these pictures, in two queries for the whole page.
+     *
+     * WHY THIS EXISTS AND uses_of() IS NOT ENOUGH (3.83.0). Remove was reported
+     * three times as doing nothing. Everything between the press and the write
+     * has been proved correct: the button belongs to the remove form, the form
+     * carries the right action and nonce, the handler is placed and gated
+     * correctly, the marker writes and pictures() excludes it. The one branch
+     * that cannot be exercised without the site is the REFUSAL, and a refusal
+     * that arrives as a flash band after a page reload is indistinguishable
+     * from nothing happening, which is exactly what was reported.
+     *
+     * SO THE SCREEN SAYS IT BEFORE THE PRESS. A picture something is relying on
+     * shows what is relying on it and has no Remove button at all, which is this
+     * project's own rule: a control that cannot do anything should not be on
+     * screen. The refusal in the handler stays, because a POST is a request
+     * anybody can construct and drawing no button is a render rather than a
+     * guard.
+     *
+     * TWO QUERIES FOR THE WHOLE PAGE, not two per picture. The Images screen
+     * shows 48 at a time, and uses_of() per row would be 96 queries to draw one
+     * grid.
+     *
+     * @param int[] $ids
+     * @return array<int,string[]> attachment id => human names of what uses it.
+     */
+    public static function uses_map( $ids ) {
+        $ids = array_values( array_unique( array_map( 'intval', (array) $ids ) ) );
+        $out = array();
+        if ( empty( $ids ) ) {
+            return $out;
+        }
+
+        /* Events whose own picture is one of these. 'any' rather than a status
+         * list: a draft relying on a picture is relying on it just as much. */
+        $events = get_posts( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array(
+                array( 'key' => '_thumbnail_id', 'value' => $ids, 'compare' => 'IN' ),
+            ),
+        ) );
+        foreach ( $events as $ev ) {
+            $att = (int) get_post_meta( $ev, '_thumbnail_id', true );
+            if ( $att ) {
+                $out[ $att ][] = 'the event "' . ( get_the_title( $ev ) ?: '(untitled)' ) . '"';
+            }
+        }
+
+        /* Series that have been GIVEN one of these as their picture. A series
+         * that merely tags it is not using it: a tag is filing, and removing the
+         * picture moves that series to the next one tagged. */
+        $terms = get_terms( array(
+            'taxonomy'   => SFAF_Series::TAXONOMY,
+            'hide_empty' => false,
+            'meta_query' => array(
+                array( 'key' => SFAF_Series::META_IMAGE_ID, 'value' => $ids, 'compare' => 'IN' ),
+            ),
+        ) );
+        if ( is_array( $terms ) ) {
+            foreach ( $terms as $t ) {
+                $att = (int) get_term_meta( $t->term_id, SFAF_Series::META_IMAGE_ID, true );
+                if ( $att ) {
+                    $out[ $att ][] = 'the series "' . $t->name . '"';
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Take a picture out of the calendar folder, or put it back.
      *
      * REFUSED WHILE ANYTHING IS USING IT, and the refusal is the return value

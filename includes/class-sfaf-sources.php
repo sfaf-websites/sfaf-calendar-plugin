@@ -789,7 +789,11 @@ class SFAF_Sources {
 
         switch ( (string) $field ) {
             case 'image':
-                return has_post_thumbnail( $post_id ) || '' !== (string) get_post_meta( $post_id, '_uc_image_url', true );
+                /* The folder rule (3.83.0): a picture the calendar will not
+                 * draw does not make this field filled, or the completeness
+                 * prompt would say an event has an image and the card would
+                 * show the placeholder. */
+                return function_exists( 'sfaf_event_has_own_image' ) && sfaf_event_has_own_image( $post_id );
             case 'description':
                 // Flattened rather than stripped. Only emptiness is being asked
                 // here, so both answer the same, but keeping one way of turning

@@ -2022,6 +2022,35 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    line the sidebar has nothing to share with and fills it. */
 .uc-calendar .uc-view-panels-combined > .uc-panel-calendar { flex: 999 1 576px; min-width: 0; }
 .uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { flex: 1 1 288px; min-width: 0; }
+/* ---------------------------------------------------------------------------
+   AND THE LIST PANEL, WHICH HAD NO SIZING IN HERE AT ALL (3.83.0)
+
+   It was never inside this wrapper until 3.82.0 gave the combined mode a
+   toggle, so it fell to `flex: 0 1 auto` with `min-width: auto` beside a
+   sidebar claiming `1 1 288px`. Measured at 700px, in
+   .claude/list-view-stacked.php:
+
+       uc-panel-sidebar   shown   698x964  left  21
+       uc-panel-list      shown     0x964  left 719
+       a card              26x268
+
+   A zero-width panel with its cards overflowing at their min-content width of
+   26px, which is the one letter per line that was reported, and a Load More
+   button floating clear of both.
+
+   1 1 100% SO IT ALWAYS TAKES A ROW OF ITS OWN. The list is never a column
+   beside anything: whenever it is visible the other panels are hidden, so a
+   full-width basis is the honest description of it.
+
+   AND IT DOES NOT DEPEND ON THE SCRIPT HAVING TIDIED UP. showView() also takes
+   the combined class off the wrapper when it leaves this mode, which is the
+   cleaner state and is still what happens. But a layout that is only correct
+   once a script has run is a layout that is wrong on any page where the script
+   is old, cached or blocked, and this one is served to another site. So the
+   panel is correct in BOTH states and the class removal is a tidy-up rather
+   than the thing holding it together.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-view-panels-combined > .uc-panel-list { flex: 1 1 100%; min-width: 0; padding: 16px 18px 20px; }
 
 /* The divider. A border on the grid side only, so there is one line between the
    halves rather than two touching. When they wrap it moves to the bottom of the

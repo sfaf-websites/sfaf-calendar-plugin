@@ -4748,6 +4748,43 @@ month grid tall enough to need it.
 > knows about one of them is the general form of this fault, and the calendar
 > now has three instances of it in the same mode.
 
+### A picture outside the calendar folder is not used
+
+**Mark's rule, in full, from 3.83.0.** Every event picture on this calendar is
+one somebody curated into `uploads/calendar/`, at the shape a 16:9 card wants,
+reachable from the Images screen and taggable to a series. Anything else is
+ignored and the chain falls through to the series picture and then the category
+placeholder.
+
+**ENFORCED AT RESOLUTION, NOT BY CLEARING WHAT IS STORED.** The 2026-09-03
+import carried 270 events' pictures across from The Events Calendar. Clearing
+270 stored references is the expensive way to enforce a rule that belongs in one
+place, and the next import would undo it. Enforced at the read, those references
+stop mattering: nothing is deleted, no file is touched, and whatever any future
+import writes is not used either.
+
+**`sfaf_event_own_image_url()` IS THE RULE AND EVERY SURFACE READS IT.** The
+month tile, the hover preview, the event page, the sidebar row, the list card,
+the embed payload and the sharing tags.
+
+> **AND SO DOES THE EDITOR**, which is what makes read-time enforcement safe
+> here. The completeness prompt, the per-event override flag and the picker's
+> current selection all ask `sfaf_event_has_own_image()`. Without that the
+> editor would say an event has a picture of its own while the calendar drew the
+> series one, which is the two-answers-to-one-question fault this project keeps
+> meeting, and it was the reason for rejecting read-time enforcement in 3.82.0.
+
+**IT IS ABOUT ATTACHMENTS AND ABOUT LOCAL PATHS NAMING ONE.** An attachment is
+in the folder or it is not. `_uc_image_url` is asked whether it points into the
+folder. **An address on another site is left alone**: that is `_uc_external_image`
+territory, the rung a fetch maintains, and taking it away would blank every
+imported campaign, which is a different decision nobody has made.
+
+**`sfaf_event_thumbnail()` MUST NOT SHORT-CIRCUIT ON THE FEATURED IMAGE.** It
+did until 3.83.0, returning it before the chain was consulted, which was the one
+path the rule could not reach. `.claude/image-folder-rule-test.php` plants that
+fault and requires the build to fail.
+
 ### The picture an event shows is resolved in one place, and set in two
 
 `sfaf_event_image_url()` is the whole chain: the event's own featured image, then
@@ -4765,6 +4802,35 @@ either alone leaves the other supplying the picture.
 **AND AN OCCURRENCE INHERITS BOTH.** `SFAF_Recurrence` copies `_uc_image_url` in
 `$copied_meta` and calls `set_post_thumbnail()` from the seed, so one imported
 pattern's picture reaches every date it generated.
+
+### A panel moved into a container it was never styled for (3.82.0, found 3.83.0)
+
+3.82.0 gave the combined mode a list panel so its toggle had somewhere to go.
+Nothing gave that panel a size inside the combined wrapper, because until then
+the class had never been in it. Measured at 700px:
+
+```
+uc-panel-sidebar   shown   698x964  left  21
+uc-panel-list      shown     0x964  left 719   flex 0 1 auto  min-width auto
+a card              26x268
+```
+
+A zero-width flex item with its cards overflowing at their min-content width,
+which on screen is one letter per line.
+
+> **WHEN AN ELEMENT MOVES INTO A NEW PARENT, LIST WHAT THAT PARENT GIVES ITS
+> OTHER CHILDREN.** Both siblings carried `flex` and `min-width: 0`; the arrival
+> carried neither and took the defaults, and `min-width: auto` on a flex item is
+> not a floor anybody chose. The same shape as the container-audit rule in
+> `DESIGN.md`, one level up: a property of BEING a child of this container, not
+> of being remembered.
+
+**And the same release left the query behind.** The mode asked its renderer for
+the total with no cards, which was right while it had no list to draw, so the
+new panel rendered its empty state beside a sidebar listing the same events.
+**A feature added to a mode has to be walked against every decision that mode
+already made**, and there were three: the toggle, the pagination and the render
+mode.
 
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not
@@ -4853,7 +4919,12 @@ chain falls to the series' picture, which from 3.81.0 resolves to a picture
 TAGGED to that series when none is set. That is exactly Roxane's calendar-folder
 pictures, so the clear and the end state line up with no third step.
 
-**ENFORCEMENT IS AT THE WRITE, IN THE IMPORTER (3.82.0).** It is the only thing
+**SUPERSEDED IN 3.83.0: THE RULE IS ENFORCED AT RESOLUTION.** Nothing is
+cleared and nothing needs to be. See "A picture outside the calendar folder is
+not used" in section 1. The importer guard below stays, because a picture it
+never writes is one fewer stored value that means nothing.
+
+**ENFORCEMENT IS ALSO AT THE WRITE, IN THE IMPORTER (3.82.0).** It is the only thing
 that has ever created these, and it now skips a picture outside the folder and
 reports every one it passed over. So another run of it cannot undo the clear.
 

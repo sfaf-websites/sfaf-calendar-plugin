@@ -2496,12 +2496,84 @@ function sfaf_mix_hex( $rgb, $toward, $weight ) {
  * the source's, and a fetch refreshes the source's without ever touching the
  * manual one. Clear the manual image and the current source image shows again.
  */
-function sfaf_event_image_url( $post_id ) {
-    if ( has_post_thumbnail( $post_id ) ) {
-        return get_the_post_thumbnail_url( $post_id, 'large' );
+/**
+ * THE CALENDAR FOLDER RULE, AND IT LIVES HERE AND NOWHERE ELSE (3.83.0).
+ *
+ * Mark's rule, in full: a picture that is not in the designated calendar folder
+ * is not used. Every event picture on this calendar is one somebody curated into
+ * that folder, at the shape a 16:9 card wants, reachable from the Images screen
+ * and taggable to a series. Anything else is ignored and the chain falls through
+ * to the series picture and then to the category placeholder.
+ *
+ * ENFORCED AT RESOLUTION, NOT BY CLEARING WHAT IS STORED. There are 270 events
+ * carrying a picture the 2026-09-03 import brought across from The Events
+ * Calendar. Clearing 270 stored references is the expensive way to enforce a
+ * rule that belongs in one place, and it would be undone by the next import.
+ * Enforced here, those references simply stop mattering: nothing is deleted, no
+ * file is touched, and whatever any future import writes is not used either.
+ *
+ * IT IS ABOUT ATTACHMENTS AND ABOUT LOCAL PATHS THAT NAME ONE. An attachment is
+ * either in the folder or it is not, which is SFAF_Media_Folder's own question.
+ * `_uc_image_url` is a URL rather than an attachment, so what is asked of it is
+ * whether it points into the folder; a URL on another site is not an attachment
+ * at all and is left to the rung below, which is the source image a fetch
+ * maintains and a different decision.
+ *
+ * ONE FUNCTION, READ BY EVERY SURFACE AND BY THE EDITOR. That second half is
+ * what makes read-time enforcement safe here: without it the event editor would
+ * say an event has its own picture while the calendar drew the series one, which
+ * is the two-answers-to-one-question fault this project keeps meeting.
+ * .claude/image-folder-rule-test.php asserts that no surface resolves a picture
+ * any other way.
+ *
+ * @param int $post_id
+ * @return string The event's OWN picture, or '' when it has none this calendar
+ *                will use.
+ */
+function sfaf_event_own_image_url( $post_id, $size = 'large' ) {
+    $folder = class_exists( 'SFAF_Media_Folder' );
+
+    $thumb = (int) get_post_thumbnail_id( $post_id );
+    if ( $thumb && ( ! $folder || SFAF_Media_Folder::holds( $thumb ) ) ) {
+        $src = wp_get_attachment_image_url( $thumb, $size );
+        if ( $src ) {
+            return $src;
+        }
     }
-    $own = get_post_meta( $post_id, '_uc_image_url', true );
-    if ( $own ) {
+
+    $own = (string) get_post_meta( $post_id, '_uc_image_url', true );
+    if ( '' === $own ) {
+        return '';
+    }
+    if ( ! $folder ) {
+        return $own;
+    }
+    /* A local uploads path is the same claim an attachment makes, so it answers
+     * to the same rule. Anything not under uploads at all is somebody else's
+     * address and is not what this rule is about. */
+    if ( false === strpos( $own, '/wp-content/uploads/' ) ) {
+        return $own;
+    }
+    return ( false !== strpos( $own, '/wp-content/uploads/' . SFAF_Media_Folder::prefix() ) ) ? $own : '';
+}
+
+/**
+ * Does this event have a picture of its own that the calendar will use?
+ *
+ * THE EDITOR ASKS THIS, not has_post_thumbnail(), so the screen that offers to
+ * change a picture and the screen that draws one agree about whether there is
+ * one. See sfaf_event_own_image_url().
+ *
+ * @param int $post_id
+ * @return bool
+ */
+function sfaf_event_has_own_image( $post_id ) {
+    return '' !== sfaf_event_own_image_url( $post_id );
+}
+
+function sfaf_event_image_url( $post_id ) {
+    $own = sfaf_event_own_image_url( $post_id );
+    if ( '' !== $own ) {
         return $own;
     }
     $external = get_post_meta( $post_id, '_uc_external_image', true );
@@ -2522,7 +2594,11 @@ function sfaf_event_image_url( $post_id ) {
  * Used for the "From series" / "Event-specific" label on edit screens.
  */
 function sfaf_event_image_source( $post_id ) {
-    if ( has_post_thumbnail( $post_id ) || get_post_meta( $post_id, '_uc_image_url', true ) ) {
+    /* THE SAME QUESTION THE CHAIN ASKS. Reading has_post_thumbnail() here would
+     * label an event "Event-specific" while the calendar drew its series
+     * picture, because a featured image outside the calendar folder is not one
+     * this calendar uses. See sfaf_event_own_image_url(). */
+    if ( sfaf_event_has_own_image( $post_id ) ) {
         return 'event';
     }
     if ( get_post_meta( $post_id, '_uc_external_image', true ) ) {
@@ -2542,10 +2618,12 @@ function sfaf_event_image_source( $post_id ) {
  * placeholder when nothing is available.
  */
 function sfaf_event_thumbnail( $post_id, $size = 'large' ) {
-    if ( has_post_thumbnail( $post_id ) ) {
-        return get_the_post_thumbnail( $post_id, $size, array( 'class' => 'uc-thumb-img', 'loading' => 'lazy' ) );
-    }
-    $url = sfaf_event_image_url( $post_id ); // featured already handled above
+    /* NO has_post_thumbnail() SHORT CUT ANY MORE (3.83.0). It used to return
+     * the featured image before the chain was consulted at all, which is the
+     * one path the calendar folder rule could not have reached. The chain
+     * resolves the whole question now, folder rule included, and this renders
+     * whatever it answers. */
+    $url = sfaf_event_image_url( $post_id );
     if ( $url ) {
         return '<img class="uc-thumb-img" src="' . esc_url( $url ) . '" alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy" />';
     }

@@ -2568,9 +2568,28 @@ class SFAF_Shortcodes {
          * runs the query and renders nothing; one row is asked for because
          * found_posts does not depend on how many were returned.
          */
-        $events = $combined
-            ? $this->render_events( 1, 1, $filters, 'none' )
-            : $this->render_events( $per_page, $paged, $filters, $compact ? 'compact' : 'card' );
+        /*
+         * THE COMBINED MODE BUILDS ITS CARDS NOW (3.83.0).
+         *
+         * IT USED TO ASK FOR THE TOTAL AND NOTHING ELSE, with 'none', and the
+         * reason was good: the mode showed a grid and a sidebar, so twelve cards
+         * were built and thrown away on every load. 3.82.0 gave it a list panel
+         * for the toggle to reach, and nothing here was changed to match.
+         *
+         * SO THE LIST PANEL GOT AN EMPTY STRING AND RENDERED ITS EMPTY STATE.
+         * "No upcoming events found." beside a sidebar listing the same events
+         * perfectly, which is exactly how it was reported. The query had always
+         * run and had always found them; it was told to draw none of them.
+         *
+         * THERE IS NO 'none' PATH LEFT, because there is no mode that wants the
+         * count without the cards any more. One call, one render mode, and the
+         * branch that could disagree with itself is gone.
+         *
+         * BUILT RATHER THAN FETCHED ON DEMAND, and that is the no-script rule:
+         * pressing the toggle with no script cannot fetch anything, so the
+         * cards have to be in the document already.
+         */
+        $events = $this->render_events( $per_page, $paged, $filters, $compact ? 'compact' : 'card' );
         $max    = $paginate ? $events['max_pages'] : 1;
 
         // Controls that cannot work from another origin are dropped in an

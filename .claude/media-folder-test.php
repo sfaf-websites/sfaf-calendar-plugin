@@ -178,18 +178,42 @@ foreach ( array( 'ajax_query_attachments_args', 'upload_dir' ) as $need ) {
 }
 
 /* ---------------------------------------------------------------------------
- * 7. NOTHING DISPLAY-SIDE FILTERS ON THE FOLDER.
+ * 7. DISPLAY FILTERS ON THE FOLDER, IN ONE PLACE (3.83.0).
  *
- * The rule is about CHOOSING a new image, never about showing one. An event
- * whose picture predates the folder, or was set through the WordPress editor,
- * must go on rendering exactly as it did. If the folder check ever appears in
- * the template functions or the embed, that has stopped being true.
+ * THIS CHECK IS THE REVERSE OF THE ONE THAT WAS HERE, and the reversal is
+ * Mark's decision rather than a loosening. What it used to say was: "the rule is
+ * about CHOOSING a new image, never about showing one. An event whose picture
+ * predates the folder, or was set through the WordPress editor, must go on
+ * rendering exactly as it did."
+ *
+ * WHAT CHANGED. The 2026-09-03 import carried 270 events' pictures across from
+ * The Events Calendar, all outside the folder, all the wrong shape for a 16:9
+ * card, none of them reachable from the Images screen. Mark's rule now: a
+ * picture that is not in the calendar folder is not used. Enforced at
+ * resolution, so nothing is cleared, no file is touched, and the next import
+ * cannot undo it.
+ *
+ * SO WHAT IS ASSERTED NOW IS WHERE THE RULE LIVES. One function in the template
+ * functions asks the folder question and every surface reads it; the embed and
+ * the shortcodes must still not ask it themselves, because a second place
+ * deciding is how two surfaces come to disagree. That the surfaces all go
+ * through it is .claude/image-folder-rule-test.php's job, and it plants the
+ * fault to prove it.
  * ------------------------------------------------------------------------ */
-foreach ( array( 'includes/sfaf-template-functions.php', 'includes/class-sfaf-embed.php', 'includes/class-sfaf-shortcodes.php' ) as $rel ) {
+foreach ( array( 'includes/class-sfaf-embed.php', 'includes/class-sfaf-shortcodes.php' ) as $rel ) {
     $src = file_get_contents( $root . '/' . $rel );
     if ( false !== strpos( $src, 'SFAF_Media_Folder' ) ) {
-        $fails[] = "$rel asks about the calendar folder; display must never filter on it, or events with older images lose them";
+        $fails[] = "$rel asks about the calendar folder itself; the rule lives in sfaf_event_own_image_url() and every surface reads it from there";
     }
+}
+
+/* And it IS asked, in the one place that should ask it. A check that only
+ * forbids can pass on a file where the rule was deleted. */
+$tf = file_get_contents( $root . '/includes/sfaf-template-functions.php' );
+if ( false === strpos( $tf, 'function sfaf_event_own_image_url' ) ) {
+    $fails[] = 'sfaf_event_own_image_url() is gone, so nothing applies the calendar folder rule at resolution';
+} elseif ( false === strpos( $tf, 'SFAF_Media_Folder::holds' ) ) {
+    $fails[] = 'the resolution rule no longer asks SFAF_Media_Folder::holds(), so it is deciding the folder question some other way';
 }
 
 /* The portal marks the field and passes the flag; the script sends it on both

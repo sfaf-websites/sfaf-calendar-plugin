@@ -4220,3 +4220,16 @@ body.uc-modal-open { overflow: hidden; }
 
 /* Wider than a confirmation, because it holds a picker and two long links. */
 .uc-form-links-modal { width: min(560px, calc(100vw - 32px)); }
+
+/* ---------------------------------------------------------------------------
+   A PICTURE SOMETHING IS RELYING ON (3.83.0)
+
+   Where the Remove button would be. Not a warning and not an error: it is a
+   statement of what is true, and the reason there is nothing to press. Muted
+   and small, because it is a footnote on a card rather than a thing to act on,
+   and it wraps rather than widening the card.
+   ------------------------------------------------------------------------ */
+.uc-media-inuse {
+    font-size: 11px; line-height: 1.35; color: var(--p-muted, #6B6764);
+    text-align: right; cursor: help;
+}

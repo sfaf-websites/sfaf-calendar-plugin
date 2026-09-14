@@ -54,6 +54,13 @@ window.addEventListener('load', function () {
   setTimeout(function () {
     var L = [];
     function say(s) { L.push(s); }
+    /* EVERYTHING IN A try, AND THE CATCH WRITES THE BLOCK OUT.
+     *
+     * The first version of this file printed "not run" and I read that as the
+     * page not loading. It was the probe throwing partway through, which leaves
+     * the <pre> holding its placeholder and looks identical. A harness that
+     * cannot report its own failure is a harness that reports nothing. */
+    try {
 
     say('script errors: ' + (window.__errs.length ? window.__errs.join(' | ') : 'none'));
 
@@ -100,6 +107,11 @@ window.addEventListener('load', function () {
           ? 'The press reaches the remove form with uc_action=media_remove.'
           : 'FAIL: the press reached no form at all.'));
 
+    } catch (err) {
+      L.push('');
+      L.push('THE PROBE THREW: ' + (err && err.message ? err.message : err));
+      L.push('Everything above it is still true; everything after it never ran.');
+    }
     document.getElementById('out').textContent = L.join('\n');
   }, 80);
 });

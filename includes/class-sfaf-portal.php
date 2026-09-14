@@ -6980,8 +6980,20 @@ class SFAF_Portal {
         switch ( $field ) {
 
             case 'image':
-                $thumb_id   = ( $event_id && has_post_thumbnail( $event_id ) ) ? get_post_thumbnail_id( $event_id ) : 0;
-                $own_url    = $event_id ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
+                /*
+                 * THE PICKER'S CURRENT CHOICE ANSWERS TO THE FOLDER RULE TOO
+                 * (3.83.0). This preselects the chosen attachment in the
+                 * picker; an id the calendar will not draw would show as the
+                 * current picture beside a preview of the series one, which is
+                 * the editor and the calendar disagreeing on the same screen.
+                 */
+                $thumb_id = 0;
+                if ( $event_id && sfaf_event_has_own_image( $event_id ) ) {
+                    $maybe    = (int) get_post_thumbnail_id( $event_id );
+                    $thumb_id = ( $maybe && SFAF_Media_Folder::holds( $maybe ) ) ? $maybe : 0;
+                }
+                $own_url    = ( $event_id && sfaf_event_has_own_image( $event_id ) )
+                    ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
                 $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
                 $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
                 $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
@@ -7492,7 +7504,11 @@ class SFAF_Portal {
                 }
             }
             // Flag a per-event image override so series image changes skip it.
-            if ( has_post_thumbnail( $event_id ) || get_post_meta( $event_id, '_uc_image_url', true ) ) {
+            /* THE FOLDER RULE, SAME AS EVERY OTHER SURFACE (3.83.0). An
+             * override the calendar will not draw is not an override: it would
+             * stop a series image change reaching an event that is showing the
+             * series image. */
+            if ( sfaf_event_has_own_image( $event_id ) ) {
                 update_post_meta( $event_id, '_uc_image_override', '1' );
             } else {
                 delete_post_meta( $event_id, '_uc_image_override' );
@@ -8784,6 +8800,10 @@ class SFAF_Portal {
             'paged'    => $paged,
         ) );
         $rows = SFAF_Media::rows( $found['ids'] );
+        /* What each picture on this page is relied on by, in two queries rather
+         * than two per row. A card whose picture is in use says so and offers no
+         * Remove; see the note at that button. */
+        $in_use = $can_tag ? SFAF_Media::uses_map( $found['ids'] ) : array();
 
         $this->chrome_open( $user, 'media' );
         ?>
@@ -9180,7 +9200,34 @@ class SFAF_Portal {
                                          * silence.
                                          */
                                         ?>
-                                        <?php if ( $row['removed'] ) : ?>
+                                        <?php
+                                        /*
+                                         * A PICTURE SOMETHING IS RELYING ON HAS
+                                         * NO REMOVE BUTTON (3.83.0).
+                                         *
+                                         * It said what was using it only after
+                                         * a press, as a flash band over a
+                                         * reloaded page, which is
+                                         * indistinguishable from nothing having
+                                         * happened. Remove was reported three
+                                         * times as doing nothing, and the
+                                         * refusal is the branch that could
+                                         * never be ruled out from here.
+                                         *
+                                         * Said before the press, and the button
+                                         * absent rather than disabled, which is
+                                         * the same rule the schedule's publish
+                                         * list follows: a control that cannot do
+                                         * anything should not be on screen.
+                                         */
+                                        $uses = isset( $in_use[ $row['id'] ] ) ? $in_use[ $row['id'] ] : array();
+                                        ?>
+                                        <?php if ( $uses ) : ?>
+                                            <span class="uc-media-inuse"
+                                                  title="<?php echo esc_attr( 'Change what uses this picture before it can be removed.' ); ?>">
+                                                In use by <?php echo esc_html( implode( ', ', $uses ) ); ?>
+                                            </span>
+                                        <?php elseif ( $row['removed'] ) : ?>
                                             <button type="submit" class="uc-btn uc-btn-sm"
                                                     form="uc-media-remove-<?php echo (int) $row['id']; ?>">Put back</button>
                                         <?php else : ?>

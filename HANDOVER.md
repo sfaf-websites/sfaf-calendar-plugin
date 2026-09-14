@@ -6,15 +6,23 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.82.0, released.
+**Last updated:** 2026-09-14, at 3.83.0, released.
 
 ---
 
 ## What shipped last
 
-**3.82.0**, built as `sfaf-calendar-3.82.0.zip` in the project root, committed,
+**3.83.0**, built as `sfaf-calendar-3.83.0.zip` in the project root, committed,
 **pushed to both repositories** and **released on 2026-09-14**. Working tree
 clean. It is the version sites are being offered.
+
+> **THE 270 IMPORTED PICTURE REFERENCES ARE NOT CLEARED, AND DO NOT NEED TO BE.**
+> 3.83.0 enforces the calendar folder rule where a picture is RESOLVED, so a
+> stored reference to a picture outside the folder simply resolves to nothing
+> and the chain falls to the series picture. Nothing was deleted, no file was
+> touched, and another import cannot undo it.
+> `.claude/import/clear-outside-folder.php` is still there and is now optional
+> housekeeping rather than a fix.
 
 > **THE 73 IMPORTED PICTURE REFERENCES ARE NOT CLEARED YET.** The script is
 > `.claude/import/clear-outside-folder.php` and it has to be run ON THE SITE:
@@ -55,6 +63,7 @@ clean. It is the version sites are being offered.
 
 | | |
 |---|---|
+| **3.83.0** | **The calendar folder rule is enforced where a picture is resolved**, in one function every surface and the editor read, so the 270 imported references stop mattering rather than needing to be cleared. **The list view collapsed to one letter per line at 700px**: the list panel had no sizing inside the combined wrapper, measured at 0px wide with 26px cards, and the combined mode was still telling its renderer to draw no cards, so it said "No upcoming events found" beside a sidebar listing them. **And Remove says what is using a picture before the press**, with no button where there is nothing to press. |
 | **3.82.0** | **The list and calendar toggle was never in the stacked layout's markup at all**: the combined mode has forced it off since 3.45.0 at every width, on reasoning that only holds side by side. It is back, and its calendar button returns the combined layout rather than collapsing to a bare grid. **The sidebar band was 36px wider than everything under it**, measured at 700px, which was 3.80.0's escape doing exactly what it was told. Also **why Remove looks like it does nothing**, established rather than guessed, and the **Add an image** panel's two columns line up. |
 | **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **fills the width when the mode stacks** instead of staying 380px. The Images screen gains **alt text** and a **Remove** that is not a delete. |
 | **3.80.0** | **The picker hides by series now**, which it did not: it grouped, so a series with two tagged pictures still showed all eight. A series with nothing tagged gets a sentence naming MarCom rather than the whole folder. **The banner is a live preview** on both public forms, and an upload gets its own thumbnail with a line saying an approver decides. **The month arrows had no border at all**, which the stylesheet appeared to declare and a later rule at equal specificity removed; they are one segmented control at the right now, on the 3.64.0 control standard, 44px on touch. **The sidebar card was not overflowing**: in the combined view it has no box by design, and two lone hairlines read as one that closes early. |

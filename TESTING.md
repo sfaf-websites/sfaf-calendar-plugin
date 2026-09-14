@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 119 items.** Quick 93, needs real conditions 23, blocked on other
+**Outstanding: 122 items.** Quick 96, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1319,6 +1319,54 @@ message band at the top of the screen**, which is the thing to look for:
 **caladmin > Images > Add an image.** The **File** and **Series** labels should
 sit on one line, with the two controls on the next. The hint about sizes hangs
 below the File control, where a hint goes everywhere else.
+
+### 1.96 The calendar folder rule, on a real event (3.83.0)
+
+**This is the big one and it changes what the calendar looks like.** Every event
+whose picture came from the import now falls back to its series picture, and
+where a series has none, to the category placeholder. **That is expected. The
+calendar will look emptier until the new pictures are in.**
+
+- **Open an event that showed an imported picture.** Its card, its month tile,
+  its hover preview and its own page should all show the series picture or the
+  placeholder. **All of them, or one surface is not reading the rule.**
+- **Open that event in caladmin.** The picture card should say the picture comes
+  from the series, not that the event has one of its own, and the picker should
+  not show the old one as the current choice. The editor and the calendar
+  agreeing is the whole point.
+- **Now choose a picture from the calendar folder on that event.** It should
+  appear everywhere immediately and the editor should call it the event's own.
+- **Nothing was deleted.** Check in **wp-admin > Media** that the old picture is
+  still there.
+- **An imported event from GoFundMe Pro or Eventbrite keeps its source picture.**
+  Those are addresses on another site, not attachments, and the rule is not about
+  them. If one of those goes blank, report it.
+
+### 1.97 The list view at 700px (3.83.0)
+
+**Press the list button in the stacked layout**, which is what sfaf.org gives
+you today.
+
+- **One column of event cards, full width.** It was a column about one character
+  wide beside the sidebar, with a Load More button floating in the middle.
+- **It should show events.** It said "No upcoming events found." while the
+  sidebar beside it listed them.
+- **Then press the calendar button** and check the combined layout comes back.
+- **Widen the window** so the panels sit side by side, and try both again.
+
+### 1.98 Remove says what is using a picture (3.83.0)
+
+**caladmin > Images.** A picture that an event or a series is relying on should
+now show **"In use by ..."** where the Remove button would be, naming what, and
+have **no Remove button at all**.
+
+- **A picture nothing uses should still have Remove**, and pressing it should
+  take the picture out of the grid. Choose **Removed** in the filter to find it
+  and put it back.
+- **If a picture shows Remove and pressing it still does nothing**, that is the
+  case to report, with whatever the message band at the top of the screen says.
+  Every step between the press and the write has been driven in a browser and
+  holds, so a failure now is somewhere none of that reaches.
 
 ---
 
