@@ -4875,7 +4875,7 @@ class SFAF_Portal {
                  * the same array rather than each running the loop.
                  */
                 $bulk = $this->bulk_plan( $user, $ids );
-                $this->render_bulk_actions( $user, $bulk );
+                $this->render_bulk_actions( $bulk );
                 $this->events_table( $ids, $user, $sort, $filters, $bulk );
             }
             ?>
@@ -5228,7 +5228,24 @@ class SFAF_Portal {
      * @return array{tick:int[],publish:int[],blocked:array<int,string>,skipped:array<string,int>}
      */
     private function bulk_plan( $user, $ids ) {
-        $out   = array( 'tick' => array(), 'publish' => array(), 'blocked' => array(), 'skipped' => array() );
+        $out = array( 'tick' => array(), 'publish' => array(), 'blocked' => array(), 'skipped' => array() );
+        if ( empty( $ids ) ) {
+            return $out;
+        }
+
+        /*
+         * PRIMED HERE BECAUSE THIS NOW RUNS FIRST. events_table() has always
+         * primed these caches and it is called after this, so without this line
+         * the loop below is 25 get_post() queries and a meta query per event
+         * before the table gets to do it properly. publish_skip_reason() reads
+         * a status, three meta keys and provenance for every row.
+         *
+         * The second call in events_table() then costs nothing, which is why it
+         * stays: that method is borrowed by screens that never come through
+         * here and has to keep priming for itself.
+         */
+        _prime_post_caches( $ids, true, true );
+
         $today = current_time( 'Y-m-d' );
 
         foreach ( $ids as $id ) {
@@ -5270,16 +5287,28 @@ class SFAF_Portal {
      * The bulk panel above the events table. See the block above bulk_plan()
      * for what each button may reach and why the two differ.
      *
-     * @param WP_User $user
-     * @param array   $plan From bulk_plan().
+     * IT TAKES NO $user. Every permission question was asked in bulk_plan(),
+     * and a renderer that could ask one again is a renderer that could answer
+     * it differently from the table beside it.
+     *
+     * @param array $plan From bulk_plan().
      */
-    private function render_bulk_actions( $user, $plan ) {
-        $cats = SFAF_Categories::all();
+    private function render_bulk_actions( $plan ) {
         if ( empty( $plan['tick'] ) ) {
             return;
         }
 
+        $cats  = SFAF_Categories::all();
         $ready = count( $plan['publish'] );
+
+        /*
+         * NOTHING TO CHOOSE AND NOTHING TO PUBLISH IS AN EMPTY PANEL, so there
+         * is no panel. A form holding two hidden fields and a nonce is a
+         * hairline rule above a table and nothing else.
+         */
+        if ( empty( $cats ) && $ready < 1 ) {
+            return;
+        }
 
         /*
          * WHAT IS BEING LEFT OUT, NAMED ON THE SCREEN AND AGAIN IN THE
