@@ -6,23 +6,23 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.81.0, built and not released.
+**Last updated:** 2026-09-14, at 3.81.0, released.
 
 ---
 
 ## What shipped last
 
-**3.81.0**, built as `sfaf-calendar-3.81.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean. **3.80.0 is the version
-sites are being offered**, released 2026-09-14.
+**3.81.0**, built as `sfaf-calendar-3.81.0.zip` in the project root, committed,
+**pushed to both repositories** and **released on 2026-09-14**. Working tree
+clean. It is the version sites are being offered.
 
-> **3.81.0 IS NOT RELEASED AND IS THE ONE THAT MATTERS MOST SO FAR.** It fixes a
-> single misplaced brace that has made `portal.js` throw on every page since
-> 3.77.0, which killed `requestPrefill`, `calendarTick` and **every tick picker
-> on every screen**: the schedule's bulk publish from 3.72.0, the events list's
-> bulk category from 3.73.0, the Images screen's Tag button from 3.78.0 and the
-> events list's bulk publish from 3.79.0. All of them have been dead for four
-> releases. Releasing is `bash .claude/publish.sh --release`.
+> **3.81.0 IS THE ONE TO INSTALL FIRST.** It fixes a single misplaced brace that
+> made `portal.js` throw on every page from 3.77.0, which killed
+> `requestPrefill`, `calendarTick` and **every tick picker on every screen**: the
+> schedule's bulk publish from 3.72.0, the events list's bulk category from
+> 3.73.0, the Images screen's Tag button from 3.78.0 and the events list's bulk
+> publish from 3.79.0. All of them were dead for four releases and none of them
+> has ever been seen working.
 
 > **3.79.0 WAS NEVER RELEASED AND DOES NOT NEED TO BE.** Its work is in 3.80.0,
 > which is a later tag over the same branch, so a site updating from 3.78.0 gets
