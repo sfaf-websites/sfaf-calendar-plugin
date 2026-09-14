@@ -41,7 +41,7 @@ sites are being offered**, released 2026-09-14.
 
 | | |
 |---|---|
-| **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **stops being 380px wide inside a 770px card when it stacks**, which is what sfaf.org does. The Images screen gains **alt text** and a **Remove** that is not a delete. |
+| **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **fills the width when the mode stacks** instead of staying 380px. The Images screen gains **alt text** and a **Remove** that is not a delete. |
 | **3.80.0** | **The picker hides by series now**, which it did not: it grouped, so a series with two tagged pictures still showed all eight. A series with nothing tagged gets a sentence naming MarCom rather than the whole folder. **The banner is a live preview** on both public forms, and an upload gets its own thumbnail with a line saying an approver decides. **The month arrows had no border at all**, which the stylesheet appeared to declare and a later rule at equal specificity removed; they are one segmented control at the right now, on the 3.64.0 control standard, 44px on touch. **The sidebar card was not overflowing**: in the combined view it has no box by design, and two lone hairlines read as one that closes early. |
 | **3.79.0** | **The bulk category control never had tick boxes**, on any screen, for any viewer. The cell was built into the dashboard's read-only table instead of the events list's, and both tables have carried half a fault since 3.73.0. Also **bulk publish on the events list**, sharing those ticks, asking `SFAF_Series::publish_skip_reason()` rather than restating it, with each button counting only the rows it can reach. |
 | **3.78.0** | **The preview is two targets, the picture and the pill**, and not the whole panel: one anchor round everything tinted every line in it with the theme's link teal. Also **the staff form's chosen picture is bigger than the rows it chooses from**, which 3.76.0 inverted; **the Images screen is rebuilt**, three cards across rather than six, one Save per card rather than two, and a disabled primary that stops wearing yellow; and **a name typed on that screen now sticks even when it matches its own file**, which it did not, so the remedy 3.76.0 added did not work for the commonest case. |
@@ -95,6 +95,27 @@ sites are being offered**, released 2026-09-14.
 
 **The scheduled path works end to end.** A morning-of reminder went out
 unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
+
+**THE BLOCK HAS 700px ON sfaf.org RIGHT NOW, AND THE COMBINED VIEW STACKS
+THERE.** Measured in the console, 2026-09-14. The two panels need about 864px
+side by side, so stacking at 700px is the mode working rather than a fault, and
+anything reported about it should be read that way first.
+
+> **700px IS NEW AND IS BEING TRACED.** It follows a change on Teal's side that
+> Mark has not got to the bottom of yet. Everything in this repository that
+> names **770px as sfaf.org's width is now out of date**: the comments and
+> fixtures in `.claude/combined-panel-parity.php` and the named width in
+> `.claude/embed-modes-test.php`. Both still assert the right THING, which is
+> that the mode must work at whatever sfaf.org gives it and must stack rather
+> than squeeze the grid; only the number has moved, and it has moved in the
+> direction those checks already cover. Update them when the cause is found and
+> the width settles, rather than chasing it now.
+
+> **AND NOBODY HAS SEEN THE STACKED SHAPE YET.** Mark is on 3.80.0 and every
+> report so far, the sidebar card included, came from the SIDE BY SIDE layout.
+> So 3.81.0's stacked work, the column filling the width instead of staying
+> 380px, is unverified by anybody. `TESTING.md` 1.87 covers it; at 700px it is
+> now the default shape rather than something to go looking for.
 
 ## In flight
 
