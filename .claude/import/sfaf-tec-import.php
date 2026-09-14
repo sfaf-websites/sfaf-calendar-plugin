@@ -698,6 +698,7 @@ $made_events   = 0;
 $made_posts    = 0;
 $silenced      = 0;
 $failures      = array();
+$skipped_images = array();
 
 foreach ( $sfaf_plan['series'] as $s ) {
     $term_id = sfaf_import_term_by_name( $s['name'], SFAF_Series::TAXONOMY );
@@ -796,14 +797,43 @@ foreach ( $sfaf_plan['series'] as $s ) {
             delete_post_meta( $post_id, '_uc_location' );
         }
 
+        /*
+         * THE PICTURE IS ONLY CARRIED ACROSS IF IT IS IN THE CALENDAR FOLDER
+         * (3.82.0).
+         *
+         * WHAT THIS USED TO DO, AND WHAT IT COST. It set whatever picture the
+         * export named, which is what an import normally does and was nobody's
+         * decision here. The 2026-09-03 run put 73 events' pictures outside the
+         * calendar folder: the wrong shape for a 16:9 card, untagged, invisible
+         * to the picker and unreachable from the Images screen. Clearing them
+         * was a separate job, and a one-time clear that the next import undoes
+         * is not a fix.
+         *
+         * THE RULE IS MARK'S: a picture that does not sit in the calendar
+         * folder is not used. This is that rule at the WRITE, which is the only
+         * place it can be enforced without the editor showing one picture and
+         * the calendar another.
+         *
+         * A SKIPPED PICTURE IS REPORTED, NOT SWALLOWED. The event still gets
+         * its series' picture through the normal chain, and the run says how
+         * many it passed over so nobody has to notice the absence later.
+         */
         if ( '' !== $e['image'] ) {
             $attach = attachment_url_to_postid( $e['image'] );
-            if ( $attach ) {
+            if ( $attach && class_exists( 'SFAF_Media_Folder' ) && ! SFAF_Media_Folder::holds( (int) $attach ) ) {
+                $skipped_images[] = $e['title'] . '  ' . $e['image'];
+            } elseif ( $attach ) {
                 set_post_thumbnail( $post_id, (int) $attach );
+            } elseif ( class_exists( 'SFAF_Media_Folder' )
+                && false === strpos( $e['image'], '/wp-content/uploads/' . SFAF_Media_Folder::prefix() ) ) {
+                /* A URL that did not resolve to an attachment AND is not in the
+                 * folder. There is nothing here worth recording: it would be a
+                 * picture the calendar has undertaken not to use. */
+                $skipped_images[] = $e['title'] . '  ' . $e['image'];
             } else {
-                // The file is on this site already, so a miss means the URL in
-                // the export no longer resolves to a media row. Recorded as the
-                // fallback the plugin already reads rather than left empty.
+                // In the folder but no media row: the URL in the export no
+                // longer resolves. Recorded as the fallback the plugin already
+                // reads rather than left empty.
                 update_post_meta( $post_id, '_uc_image_url', esc_url_raw( $e['image'] ) );
             }
         }
@@ -857,6 +887,26 @@ if ( $WRITING ) {
     foreach ( $after as $status => $n ) {
         say( sprintf( '  %-10s %d  (was %d)', $status, $n, $before[ $status ] ) );
     }
+}
+
+/*
+ * THE PICTURES THIS RUN PASSED OVER, SAID OUT LOUD (3.82.0).
+ *
+ * Not a failure, which is why it is its own block: the rule is that a picture
+ * outside the calendar folder is not used, and skipping one is that rule
+ * working. It is reported because the alternative is nobody noticing until an
+ * event looks empty, which is how the 73 got there in the first place.
+ */
+if ( $skipped_images ) {
+    say();
+    say( 'PICTURES NOT CARRIED ACROSS, because they are outside the calendar folder' );
+    rule( '-' );
+    foreach ( $skipped_images as $s ) {
+        say( '  ' . $s );
+    }
+    say();
+    say( '  ' . count( $skipped_images ) . ' skipped. Each event takes its series picture instead,' );
+    say( '  and picks up a new one the moment a picture is tagged to that series.' );
 }
 
 if ( $failures ) {

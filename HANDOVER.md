@@ -6,15 +6,22 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.82.0, built and not released.
+**Last updated:** 2026-09-14, at 3.82.0, released.
 
 ---
 
 ## What shipped last
 
-**3.82.0**, built as `sfaf-calendar-3.82.0.zip` in the project root, committed
-and **pushed to both repositories**. Working tree clean. **3.81.0 is the version
-sites are being offered**, released 2026-09-14.
+**3.82.0**, built as `sfaf-calendar-3.82.0.zip` in the project root, committed,
+**pushed to both repositories** and **released on 2026-09-14**. Working tree
+clean. It is the version sites are being offered.
+
+> **THE 73 IMPORTED PICTURE REFERENCES ARE NOT CLEARED YET.** The script is
+> `.claude/import/clear-outside-folder.php` and it has to be run ON THE SITE:
+> there is no WordPress and no database in the build environment, so nothing
+> here can do it or count it. Report mode writes nothing and prints the before
+> count; `apply` clears; `undo` puts every value back. **Read the report first**,
+> because it separates what the import set from what it did not.
 
 > **THE BLOCK IS AT 700px BECAUSE OF A HOST SETTING, NOT A CALENDAR FAULT.**
 > Teal's embed block carries a `:width-narrow` class, which Mark is raising with

@@ -4853,12 +4853,26 @@ chain falls to the series' picture, which from 3.81.0 resolves to a picture
 TAGGED to that series when none is set. That is exactly Roxane's calendar-folder
 pictures, so the clear and the end state line up with no third step.
 
-**ENFORCEMENT, PROPOSED AND NOT BUILT.** At the WRITE, in the importer, which is
-the only thing that has ever created these. **Not at the read**: a filter in
+**ENFORCEMENT IS AT THE WRITE, IN THE IMPORTER (3.82.0).** It is the only thing
+that has ever created these, and it now skips a picture outside the folder and
+reports every one it passed over. So another run of it cannot undo the clear.
+
+**NOT AT THE READ**, and that is deliberate: a filter in
 `sfaf_event_image_url()` would leave the wrong value in the database silently
-overridden, so the editor would show one picture and the calendar another, which
-is the two-answers-to-one-question fault this project keeps meeting. A standing
-report of events whose picture sits outside the folder is the honest version.
+overridden, so the event editor would show one picture and the calendar another,
+which is the two-answers-to-one-question fault this project keeps meeting.
+
+**WHAT IS THEREFORE STILL OPEN.** Two routes can still put an out-of-folder
+picture on an event, and neither is an import: wp-admin's own post editor, and
+the URL field on caladmin's image control. Both are a person choosing something,
+which is the case the rule is not meant to override silently. `clear-outside-folder.php`
+run in its report mode is the standing check for them.
+
+**THE CLEAR ITSELF IS `.claude/import/clear-outside-folder.php`.** Report mode by
+default, undoable, and it matches each picture against `plan.php` so "the import
+set this" is a fact rather than an inference. Anything outside the folder that
+is NOT in the plan is listed and left alone, because the folder test on its own
+cannot tell an import from a person.
 
 ### Whether a language belongs as a category, still open
 
