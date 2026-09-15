@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 122 items.** Quick 96, needs real conditions 23, blocked on other
+**Outstanding: 126 items.** Quick 100, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1367,6 +1367,76 @@ have **no Remove button at all**.
   case to report, with whatever the message band at the top of the screen says.
   Every step between the press and the write has been driven in a browser and
   holds, so a failure now is somewhere none of that reaches.
+
+---
+### 1.99 A co-hosted event, requested on the staff form (3.84.0)
+
+**The staff request form**, reached by the emailed link. The organizer question
+is **tick boxes** now rather than a dropdown, and there is no "Not sure" option:
+leaving them all clear is what "not sure" means.
+
+- **Tick two organizers and submit.** Approve it in the pending queue and open
+  the event page. It should read **"Hosted by A and B"**, with no serial comma,
+  in alphabetical order rather than the order they were ticked.
+- **Then check the filter**, which is the reason for the whole change: the event
+  should appear under **both** organizers on the public calendar, and both
+  counts should include it.
+- **Tick none and submit.** The event should arrive with no organizer, exactly
+  as it did before this field existed.
+
+This is the half that cannot be checked here: there is no form post, no queue
+and no taxonomy write in the build environment.
+
+---
+
+### 1.100 The series prefill fills in every organizer (3.84.0)
+
+**The staff request form**, choosing a series that has run before. Press **Fill
+this in from the last one**.
+
+- The organizer row's preview names the joined phrase, for example **"Black
+  Brothers Esteem and The Stonewall Project"**. **Every one of those boxes
+  should end up ticked**, not just the first.
+- This is the exact fault being fixed: the preview promised the whole phrase and
+  the form received one name. If the preview still names two and only one box
+  ticks, that is the case to report.
+
+Needs a series whose most recent event is co-hosted. If none is, tick two
+organizers on any event in a series first, then use that series here.
+
+---
+
+### 1.101 A community submission inherits every organizer (3.84.0)
+
+**The public form at a series' own address.** It asks nothing about organizers
+and never has: it derives them from the series' most recent event.
+
+- Use a series whose most recent event has **two** organizers. Submit, approve,
+  and open the event. It should carry **both**.
+- Before 3.84.0 it carried the first alphabetically only, so a co-hosted
+  submission appeared under one team's filter and not the other's.
+
+---
+
+### 1.102 A closure note, on both surfaces (3.84.0)
+
+**WordPress admin > the closures screen.** Add a closure with a **Note**, for
+example `The 6th Street Center is open as usual`.
+
+- **On the month grid** the note should appear under CLOSED and the closure's
+  name, shortened if it is long, with an **ellipsis** marking the cut and the
+  **full text on hover**. Check a crowded day too: the cell should not push the
+  events out or overflow.
+- **On the list view** the same closure's card should show the note **in full**,
+  on its own line.
+- **Write a deliberately long note**, longer than about 32 characters, and
+  confirm the grid cuts it **between words** rather than mid-word, and that
+  hovering still gives the whole thing.
+- **An existing closure with no note must look exactly as it did.** Every
+  closure on the site today has none, so this is the case that proves nothing
+  regressed.
+- **On a narrow phone** the note should disappear with the name line, leaving
+  CLOSED, and the list card should still carry it.
 
 ---
 

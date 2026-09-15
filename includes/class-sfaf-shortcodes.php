@@ -1350,7 +1350,25 @@ class SFAF_Shortcodes {
                             // Before the count, because it is the more important
                             // fact about the day and colour must never be the
                             // only thing carrying it.
-                            if ( $closed_row ) { $label = SFAF_Closures::text( $closed_row ) . '. ' . $label; }
+                            /*
+                             * THE NOTE GOES IN THE SPOKEN LABEL IN FULL (3.84.0),
+                             * and it is appended here rather than folded into
+                             * SFAF_Closures::text(). text() is the closure's name
+                             * sentence and the admin table shows it as such; a
+                             * note belongs to the day being described, which is
+                             * this call site's question and not text()'s.
+                             *
+                             * This is what makes the cell's shortening safe: the
+                             * visible text may be cut, the spoken one never is.
+                             */
+                            if ( $closed_row ) {
+                                $closed_said = SFAF_Closures::text( $closed_row );
+                                $closed_full = SFAF_Closures::note( $closed_row );
+                                if ( '' !== $closed_full ) {
+                                    $closed_said .= '. ' . $closed_full;
+                                }
+                                $label = $closed_said . '. ' . $label;
+                            }
                             ?>
                             <td class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
                                 data-day="<?php echo esc_attr( $day ); ?>"
@@ -1390,11 +1408,29 @@ class SFAF_Shortcodes {
                                      * in full.
                                      */
                                     $closed_name = SFAF_Closures::name( $closed_row );
+                                    /*
+                                     * THE NOTE, SHORTENED FOR THE CELL (3.84.0).
+                                     * note_short() cuts on a word boundary and
+                                     * marks the cut with an ellipsis; the title
+                                     * carries the whole thing, and the aria-label
+                                     * above already has it in full, so nothing is
+                                     * only available to a mouse.
+                                     *
+                                     * Dropped below 560px by the same rule as the
+                                     * name line, where the cell has no room. The
+                                     * day panel and the list card both still
+                                     * carry it.
+                                     */
+                                    $closed_note  = SFAF_Closures::note( $closed_row );
+                                    $closed_brief = SFAF_Closures::note_short( $closed_row );
                                     ?>
                                     <span class="uc-day-closed-mark" aria-hidden="true">
                                         <span class="uc-closed-word">Closed</span>
                                         <?php if ( '' !== $closed_name ) : ?>
                                             <span class="uc-closed-name"><?php echo esc_html( $closed_name ); ?></span>
+                                        <?php endif; ?>
+                                        <?php if ( '' !== $closed_brief ) : ?>
+                                            <span class="uc-closed-note" title="<?php echo esc_attr( $closed_note ); ?>"><?php echo esc_html( $closed_brief ); ?></span>
                                         <?php endif; ?>
                                     </span>
                                 <?php endif; ?>
@@ -2174,6 +2210,14 @@ class SFAF_Shortcodes {
          * which is the grid cell's arrangement at a larger size.
          */
         $name = SFAF_Closures::name( $row );
+        /*
+         * THE NOTE IN FULL HERE (3.84.0), where the grid cell gets the short
+         * form. A card has the width for a sentence and this is the surface
+         * somebody reads when they want to know what a closure means for them.
+         * Both surfaces read the same stored string through SFAF_Closures, so
+         * they can differ in length and never in content.
+         */
+        $note = SFAF_Closures::note( $row );
         ?>
         <div class="uc-closure-card uc-closed-hatch" role="note">
             <span class="uc-closure-panel">
@@ -2184,6 +2228,9 @@ class SFAF_Shortcodes {
                     <?php endif; ?>
                 </span>
                 <span class="uc-closure-when"><?php echo esc_html( SFAF_Closures::when( $row ) ); ?></span>
+                <?php if ( '' !== $note ) : ?>
+                    <span class="uc-closure-note"><?php echo esc_html( $note ); ?></span>
+                <?php endif; ?>
             </span>
         </div>
         <?php

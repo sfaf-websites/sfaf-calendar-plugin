@@ -860,16 +860,18 @@ function ucDismissOnBackdrop(dialog) {
                 has: function (d) { return d.organizers && d.organizers.length > 0; },
                 preview: function (d) { return d.organizer_name; },
                 filled: function () {
-                    var el = field('organizer');
-                    return !!(el && el.value && el.value !== '0');
+                    return !!form.querySelector('[name="organizer[]"]:checked');
                 },
-                /* ONE, NOT ALL OF THEM. The payload carries every organizer a
-                   co-hosted series lends, and this form asks a single question
-                   with a single select. The first is the one the most recent
-                   event names first. */
+                /* ALL OF THEM (3.84.0). This took organizers[0] because the form
+                   asked with a single select, so the preview said "A, B and C"
+                   and then applied A on its own. The control is tick boxes now
+                   and the whole set goes on, which is what the preview has been
+                   promising all along. */
                 write: function (d) {
-                    var el = field('organizer');
-                    if (el && d.organizers.length) { el.value = String(d.organizers[0]); }
+                    d.organizers.forEach(function (id) {
+                        var box = form.querySelector('[name="organizer[]"][value="' + id + '"]');
+                        if (box) { box.checked = true; }
+                    });
                 }
             },
             {

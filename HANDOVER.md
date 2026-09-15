@@ -6,15 +6,47 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-14, at 3.83.0, released.
+**Last updated:** 2026-09-15, at 3.84.0, built and NOT released.
 
 ---
 
 ## What shipped last
 
-**3.83.0**, built as `sfaf-calendar-3.83.0.zip` in the project root, committed,
-**pushed to both repositories** and **released on 2026-09-14**. Working tree
-clean. It is the version sites are being offered.
+**3.84.0 IS BUILT AND NOT RELEASED.** It is committed and the zip is
+`sfaf-calendar-3.84.0.zip` in the project root. **Mark has not given the word**,
+so there is no tag and no GitHub release, and sites are still being offered
+3.83.0.
+
+**3.83.0** is the released version, from 2026-09-14, pushed to both
+repositories. It is what sites are running.
+
+> **MOST OF 3.84.0's ORGANIZER BRIEF WAS ALREADY BUILT, IN 3.40.0.** The brief
+> asked for co-hosting and for the cost of undoing the single-organizer decision
+> to be reported before building. That decision was undone thirty-six releases
+> earlier: the taxonomy is multi, the event page prints the joined phrase, the
+> caladmin editor is tick boxes, and the filter has always matched one of
+> several. **Nothing there was rebuilt.** What was missing was the two public
+> forms, and the reason is worth carrying: the staff form's organizer field was
+> added in 3.76.0, AFTER the decision, as a single select. A settled decision
+> does not propagate to code written after it.
+
+> **NEITHER FORM COULD HAVE LOST A STORED ORGANIZER.** Both create a pending
+> event and neither edits one, so there was no existing set to replace. What was
+> lost was what the requester said, before it was stored. This is a smaller
+> fault than 3.40.0's and should not be reported to Mark as data loss.
+
+> **THE EMBED CACHE VERSION FIX DOES NOT EXIST.** The 3.84.0 brief listed it
+> under what must not change, as "fixed in 3.84.0". It was never built. See
+> `PROJECT.md` §8: `SFAF_VERSION` is not in the cache key and nothing flushes on
+> `upgrader_process_complete`. The ten-minute TTL bounds it so it self-heals,
+> which is why nobody has seen it. **It is left alone deliberately** and needs
+> Mark's word.
+
+> **`combined-panel-parity` HAD BEEN FAILING SINCE 3.83.0 AND SHIPPED ANYWAY.**
+> That release moved picture resolution into `sfaf_event_own_image_url()`, and
+> the harness had never stubbed `get_post_thumbnail_id()`. `run-all.sh` reported
+> it correctly and exits 1 on it. The stub is added in 3.84.0. **The gate was
+> working; the output was not read.**
 
 > **THE 270 IMPORTED PICTURE REFERENCES ARE NOT CLEARED, AND DO NOT NEED TO BE.**
 > 3.83.0 enforces the calendar folder rule where a picture is RESOLVED, so a
@@ -63,6 +95,7 @@ clean. It is the version sites are being offered.
 
 | | |
 |---|---|
+| **3.84.0** | **An event could already have several organizers; two forms could not say so.** The 3.40.0 decision was already in place everywhere it had been built, so nothing there was rebuilt. The staff request form, whose organizer field arrived in 3.76.0 as a single select, is **tick boxes** now and approves the whole set in one call; the community form **inherits every organizer the series lends** rather than the first, which had been putting co-hosted submissions under one team's filter and not the other's; and the request prefill **applies the organizers it previews** instead of the first. **A closure can carry a free text note**, shown in full on the list card and shortened on a word boundary with the cut marked on the month grid, where `all()` had been silently dropping it because that method rebuilds rows from a fixed key list. |
 | **3.83.0** | **The calendar folder rule is enforced where a picture is resolved**, in one function every surface and the editor read, so the 270 imported references stop mattering rather than needing to be cleared. **The list view collapsed to one letter per line at 700px**: the list panel had no sizing inside the combined wrapper, measured at 0px wide with 26px cards, and the combined mode was still telling its renderer to draw no cards, so it said "No upcoming events found" beside a sidebar listing them. **And Remove says what is using a picture before the press**, with no button where there is nothing to press. |
 | **3.82.0** | **The list and calendar toggle was never in the stacked layout's markup at all**: the combined mode has forced it off since 3.45.0 at every width, on reasoning that only holds side by side. It is back, and its calendar button returns the combined layout rather than collapsing to a bare grid. **The sidebar band was 36px wider than everything under it**, measured at 700px, which was 3.80.0's escape doing exactly what it was told. Also **why Remove looks like it does nothing**, established rather than guessed, and the **Add an image** panel's two columns line up. |
 | **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **fills the width when the mode stacks** instead of staying 380px. The Images screen gains **alt text** and a **Remove** that is not a delete. |

@@ -156,6 +156,24 @@ function wp_get_post_terms( $id, $tax = '', $args = array() ) {
     return $out;
 }
 function has_post_thumbnail( $id = 0 ) { return ! empty( $GLOBALS['posts'][ $id ]['thumb'] ); }
+/*
+ * ADDED IN 3.84.0 FOR A BREAK THAT SHIPPED IN 3.83.0. That release moved picture
+ * resolution into sfaf_event_own_image_url() and stopped short-circuiting on the
+ * featured image, so this file's fixtures started reaching attachment functions
+ * it had never needed, and it has been fataling ever since. run-all.sh reported
+ * it correctly and exits 1 on it; it shipped anyway, which is a reading problem
+ * rather than a gate problem.
+ *
+ * The folder rule is what these answer. An attachment id of 0 means "no
+ * attachment", which sends the chain to the next rung rather than asserting
+ * anything about the rule; media-folder-test.php and image-folder-rule-test.php
+ * are where that rule is actually proved.
+ */
+function get_post_thumbnail_id( $id = 0 ) { return 0; }
+function wp_get_attachment_image_url( $id, $size = 'full' ) { return ''; }
+function wp_get_attachment_url( $id ) { return ''; }
+function attachment_url_to_postid( $url ) { return 0; }
+function get_attached_file( $id ) { return ''; }
 function get_the_post_thumbnail_url( $id = 0, $size = 'full' ) {
     return isset( $GLOBALS['posts'][ $id ]['thumb'] ) ? $GLOBALS['posts'][ $id ]['thumb'] : false;
 }

@@ -2677,7 +2677,8 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        Kept in step with it. */
     .uc-day-closed-mark { margin-top: 1px; padding: 2px 3px; text-align: center; }
     .uc-day-closed-mark .uc-closed-word { font-size: 9px; letter-spacing: .02em; }
-    .uc-day-closed-mark .uc-closed-name { display: none; }
+    .uc-day-closed-mark .uc-closed-name,
+    .uc-day-closed-mark .uc-closed-note { display: none; }
 
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
     .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
@@ -3325,7 +3326,8 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        container-query copy above. */
     .uc-day-closed-mark { margin-top: 1px; padding: 2px 3px; text-align: center; }
     .uc-day-closed-mark .uc-closed-word { font-size: 9px; letter-spacing: .02em; }
-    .uc-day-closed-mark .uc-closed-name { display: none; }
+    .uc-day-closed-mark .uc-closed-name,
+    .uc-day-closed-mark .uc-closed-note { display: none; }
 
     /* Dots replace the event blocks at this width, one per event. */
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
@@ -3651,6 +3653,15 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-closure-label .uc-closed-word { font-size: 15px; line-height: 1.2; }
 .uc-closure-label .uc-closed-name { font-size: 14px; line-height: 1.3; }
 .uc-closure-when { font-size: 14px; font-weight: 700; color: #374151; }
+/* THE NOTE TAKES ITS OWN LINE, in full. flex-basis:100% breaks the row after
+   the label and the dates, so a sentence never has to share a baseline with
+   them and never squeezes the date phrase. This is the surface with the room
+   for it: the grid cell gets note_short(). */
+.uc-closure-note {
+    flex: 1 1 100%;
+    font-size: 13px; line-height: 1.45; color: var( --uc-secondary );
+    overflow-wrap: anywhere;
+}
 
 /* ---- The month grid: one marked square per day of the closure. ---- */
 
@@ -3677,6 +3688,18 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-day-closed-mark .uc-closed-word { font-size: 10px; line-height: 1.2; }
 .uc-day-closed-mark .uc-closed-name {
     font-size: 9.5px; line-height: 1.2; font-weight: 500; color: var( --uc-secondary );
+}
+/* THE NOTE IN A CELL. Already shortened by note_short() on the way in, so this
+   caps the damage rather than doing the shortening: two lines at most, and the
+   ellipsis the shortener added says there is more. The title attribute and the
+   cell's aria-label both carry the whole thing. */
+.uc-day-closed-mark .uc-closed-note {
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 1px;
+    font-size: 9px; line-height: 1.25; font-weight: 400; font-style: italic;
+    color: var( --uc-secondary );
+    overflow-wrap: anywhere;
 }
 /* A closed day is not clickable and must not offer to be. The grid gives
    every cell a pointer and a hover; a closed one with no events takes

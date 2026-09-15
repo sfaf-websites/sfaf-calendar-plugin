@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.83.0
+Stable tag: 3.84.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,42 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.84.0 =
+
+**AN EVENT COULD ALREADY HAVE SEVERAL ORGANIZERS. TWO FORMS COULD NOT SAY SO.** The brief for this release asked for co-hosting to be built and for the cost of undoing the single-organizer decision to be reported first. That decision was already undone, in 3.40.0, and reporting it was most of the work: the taxonomy is multi, `SFAF_Organizers::for_event()` returns every organizer name-ordered, `phrase()` joins them as "A, B and C" with no serial comma, the event page prints that phrase, the caladmin editor is tick boxes with a present marker, and the filter is a `tax_query` that has always matched one of several. None of that needed building and none of it was touched.
+
+**WHAT WAS ACTUALLY MISSING WAS THE TWO PUBLIC FORMS**, and the reason is a sequence rather than an oversight. The staff request form's organizer field was added in 3.76.0, after 3.40.0 had settled the question everywhere else, and it was added as a single select. So the surface most likely to receive a co-hosted event was the one surface that could not describe one.
+
+**NEITHER FORM COULD EVER HAVE DROPPED A STORED ORGANIZER**, which is worth saying plainly rather than leaving as an implication. Both CREATE a pending event and neither edits one, so there was never an existing set for `wp_set_object_terms()` to replace. What was lost was what the requester said, before it was ever stored, which is a smaller fault than the 3.40.0 one and a different shape.
+
+**The staff form is tick boxes now.** The validator returns a list and drops duplicates rather than refusing over them; approval writes the whole set in ONE call. There is no "Not sure" option any more, because with tick boxes it is not a choice to offer: nothing ticked IS not sure, and a box saying so could be ticked alongside a real answer. It has no present marker, and that is deliberate and not a copy of caladmin: a marker separates "the form did not ask" from "every box was unticked", which matters only where a save REPLACES an existing set.
+
+**The community form inherits every organizer the series lends**, not the first. It reads them off the series' most recent event, and that event can be co-hosted, so an inherited single name put a co-hosted submission under one team's filter and not the other's. That is the whole purpose of the filter.
+
+**And the request form's prefill applies what it previews.** It previewed the joined phrase, "A, B and C", and then applied A on its own.
+
+**No tie-break was needed, and that is the answer to whether organizers want the category rule.** A category's first alphabetically supplies the card colour and the placeholder tile. An organizer carries no colour and no icon, so nothing downstream has a decision to make. They are ordered by name through one method, which is 3.40.0's rule and is unchanged.
+
+**The 287 imported events are untouched, structurally.** `organizer` is a manager field on both adapters, so no fetch has ever written it and none can.
+
+**A CLOSURE CAN CARRY A FREE TEXT NOTE.** SFAF can be closed overall while one site stays open, and "Closed for Labor Day" on its own is then wrong for whoever is standing outside the 6th Street Center. The note is optional, and a closure without one renders exactly as it did.
+
+**It renders on both surfaces, from one stored string, so they cannot come to disagree.** The list card shows it in full on its own line. The month grid shows a shortened form, because a day cell is the tightest space on the calendar and Mark has days carrying nine events.
+
+**A LONG NOTE IS CUT ON A WORD BOUNDARY AND THE CUT IS MARKED.** `note_short()` trims at 32 characters, backs up to the last space so it never breaks mid-word, and appends an ellipsis. The cell's `title` carries the whole note and the cell's `aria-label` already spoke it in full, so nothing is available only to a mouse and the spoken label is never the truncated one. CSS clamps the cell to two lines as a floor under that, and the note is dropped with the name line below 560px where the day panel and the list card still carry it.
+
+**`all()` REBUILDS EVERY ROW FROM A FIXED SET OF KEYS**, which is how the note behaved for its first draft: written, stored, and then silently dropped by every reader, because `get()`, `covering()` and `spans()` all come through it. It is re-cleaned on read like the dates already were.
+
+**Not naming venues.** A closure saying which sites it applies to was considered and set aside: a venue picker turns a sentence somebody wants to write into a data model with its own rules about a site that is half open.
+
+**Everything else about closures is unchanged**: one option rather than a post type, no page, no permalink, nothing to register for, invisible to every query over events, one entry spanning dates, and the stripes and the CLOSED label exactly as they were.
+
+**TWO PLANTED FAULTS WERE NOT CAUGHT, AND FIXING THE CHECKERS IS THE MORE USEFUL HALF.** The first draft of the closure-note checks read the raw file, so "the grid cell gets note_short()" written in a DOCBLOCK satisfied the note_short check, and renaming the class to `uc-closure-noteX` still matched `/uc-closure-note/` as a substring. Both are now matched against a comment-stripped tokenization with quoted class names, and both plants are caught. That is PROJECT.md's rule about auditing with a tokenizer rather than grep, met the hard way a second time.
+
+**Seven faults planted in total and every one now caught by name**: the community form taking the first, the staff form returning to a select, its validator reducing to one id, the prefill applying `organizers[0]`, `all()` dropping the note, the grid rendering the full note, and the card losing it.
+
+**NOT DONE, AND REPORTED RATHER THAN BUILT.** The brief lists "the embed payload cache keying on the version, which was fixed in 3.84.0" under what must not change. There is no such fix. `cache_key()` keys on the parameters, the calendar day and a generation counter, `SFAF_VERSION` is not in it, and nothing flushes on `upgrader_process_complete`. The 10-minute TTL bounds the staleness so it self-heals rather than persisting, which is why it has never been visible, but the gap is real and is left alone here because building something a brief describes as already existing is how a report stops being trustworthy.
 
 = 3.83.0 =
 

@@ -352,6 +352,69 @@ if ( preg_match( "#wp_set_object_terms\(\s*\\\$event_id,\s*\\\$org\s*\?#", $port
     $fails[] = 'the save still writes a single organizer, replacing whatever else the event had';
 }
 
+/* ---- THE TWO PUBLIC FORMS (3.84.0). ----
+ *
+ * 3.40.0 fixed the caladmin editor and the read surfaces and left both forms
+ * single, because the staff form's organizer field did not exist yet: it was
+ * added in 3.76.0, after the decision, as a select. So the one place a
+ * co-hosted event could not be described was the place a co-hosted event is
+ * most likely to be requested from.
+ *
+ * NEITHER FORM COULD EVER DROP AN EXISTING ORGANIZER, and that is worth being
+ * exact about rather than implying a data loss there was not: both CREATE a
+ * pending event and neither edits one, so there was never a stored set to
+ * replace. What was lost was what the requester said, before it was stored. */
+$req_src = file_get_contents( $root . '/includes/class-sfaf-request.php' );
+
+if ( preg_match( '#<select name="organizer">#', $req_src ) ) {
+    $fails[] = 'the staff request form is still a single select, so a co-hosted event cannot be requested as one';
+}
+if ( false === strpos( $req_src, 'name="organizer[]"' ) ) {
+    $fails[] = 'the staff request form does not post an array of organizers';
+}
+if ( preg_match( "#wp_set_object_terms\(\s*\\\$event_id,\s*array\(\s*\(int\)\s*\\\$c\['organizer'\]\s*\),\s*'uc_organizer'#", $req_src ) ) {
+    $fails[] = 'the staff request approval still writes exactly one organizer';
+}
+if ( preg_match( "#\\\$clean\['organizer'\]\s*=\s*0;#", $req_src ) ) {
+    $fails[] = 'the staff request validator still reduces the organizers to a single id';
+}
+
+/* THE COMMUNITY FORM inherits from the series, and a series' most recent event
+ * can be co-hosted. Taking [0] put a co-hosted submission under one team's
+ * filter and not the other's, which is the whole purpose of the filter. */
+$sub_src = file_get_contents( $root . '/includes/class-sfaf-submit.php' );
+
+if ( preg_match( '#foreach\s*\(\s*SFAF_Series::organizers_for[^)]*\)\s*as\s*\$org_id\s*\)#', $sub_src ) ) {
+    $fails[] = 'the community form still loops the series organizers one at a time, which either takes the first or, without the break, keeps only the last';
+}
+if ( false === strpos( $sub_src, 'array_map( \'intval\', $series_orgs )' ) ) {
+    $fails[] = 'the community form no longer writes the whole set of series organizers in one call';
+}
+
+/* ONE CALL, NEVER ONE PER ID. wp_set_object_terms() REPLACES by default, so a
+ * call inside a loop keeps only whichever ran last. This is the 3.8.0
+ * categories fault and the 3.40.0 organizers fault, and it is the single shape
+ * most likely to come back, so it is asserted against every writer by name. */
+foreach ( array(
+    'class-sfaf-request.php' => $req_src,
+    'class-sfaf-submit.php'  => $sub_src,
+    'class-sfaf-portal.php'  => $portal_src,
+) as $fname => $src ) {
+    if ( preg_match( "#foreach[^\n]*\n[^\n}]*wp_set_object_terms\([^\n]*'uc_organizer'#", $src ) ) {
+        $fails[] = $fname . ' calls wp_set_object_terms() for uc_organizer inside a loop, which replaces on every pass and keeps only the last';
+    }
+}
+
+/* THE PREFILL APPLIES WHAT IT PREVIEWS. The request form previewed the joined
+ * phrase, "A, B and C", and then applied A on its own. */
+$pjs = file_get_contents( $root . '/public/js/portal.js' );
+if ( preg_match( '#el\.value\s*=\s*String\(\s*d\.organizers\[0\]\s*\)#', $pjs ) ) {
+    $fails[] = 'the request form prefill still applies only the first organizer while previewing the full phrase';
+}
+if ( 2 !== preg_match_all( '#\[name="organizer\[\]"\]\[value="#', $pjs ) ) {
+    $fails[] = 'both prefill appliers should tick organizer boxes by value; one of them does not';
+}
+
 /* ===========================================================================
  * 3. THE TAXONOMY IS UNTOUCHED.
  * ======================================================================== */
@@ -513,7 +576,11 @@ echo "         stays a manager\n";
 echo "         field on both adapters so no fetch writes it; that an event can hold SEVERAL\n";
 echo "         organizers, ordered by name so two surfaces cannot disagree, phrased 'A and B' and\n";
 echo "         'A, B and C' with no serial comma, counted when one of several, and that neither the\n";
-echo "         single select nor the single-value save that silently dropped one can come back\n\n";
+echo "         single select nor the single-value save that silently dropped one can come back;\n";
+echo "         and that BOTH public forms can now say so too: the staff request form posts an\n";
+echo "         array and approves the whole set, the community form inherits every organizer the\n";
+echo "         series lends rather than the first, no writer sets this taxonomy inside a loop,\n";
+echo "         and the request prefill applies the same organizers its preview names\n\n";
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

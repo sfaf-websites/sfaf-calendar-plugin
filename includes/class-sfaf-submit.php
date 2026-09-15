@@ -827,9 +827,21 @@ class SFAF_Submit {
          * this existed, and whoever approves it sets one. A guessed organizer
          * on a public page is worse than none.
          */
-        foreach ( SFAF_Series::organizers_for( (int) $series->term_id ) as $org_id ) {
-            wp_set_object_terms( $event_id, array( (int) $org_id ), 'uc_organizer' );
-            break; // The series' own most recent answer, not a merge of several.
+        /*
+         * ALL OF THEM, NOT THE FIRST. This took organizers_for()[0] and stopped,
+         * on the reading that a series has one answer. A series does not: the
+         * event it reads from can be co-hosted, and an inherited single name
+         * made a co-hosted submission appear under one team's filter and not the
+         * other's, which is the whole purpose of the filter.
+         *
+         * One call with the whole set, never one call per id. wp_set_object_terms()
+         * REPLACES by default, so setting them in a loop would leave whichever
+         * ran last and lose the rest. That is the 3.8.0 categories fault and the
+         * 3.40.0 organizers fault, and it is why this is one write.
+         */
+        $series_orgs = SFAF_Series::organizers_for( (int) $series->term_id );
+        if ( ! empty( $series_orgs ) ) {
+            wp_set_object_terms( $event_id, array_map( 'intval', $series_orgs ), 'uc_organizer' );
         }
 
         if ( $image_id ) {

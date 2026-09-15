@@ -86,11 +86,24 @@ class SFAF_Closures {
             if ( '' === $end || $end < $start ) {
                 $end = $start;
             }
+            /*
+             * THE NOTE IS REBUILT HERE TOO (3.84.0), and it has to be. This
+             * rebuilds every row from a fixed set of keys rather than passing
+             * the stored array through, so a field added to save() and not to
+             * this list is written, stored, and then silently dropped by every
+             * reader: get(), covering() and spans() all come through here. That
+             * is how the note behaved for its first draft.
+             *
+             * Re-cleaned on read like the dates above, for the same reason: the
+             * option can be edited by hand or restored from an old backup, and
+             * a reader should not be the first thing to trust it.
+             */
             $out[] = array(
                 'id'    => (string) $id,
                 'label' => isset( $row['label'] ) ? (string) $row['label'] : '',
                 'start' => $start,
                 'end'   => $end,
+                'note'  => isset( $row['note'] ) ? self::clean_note( $row['note'] ) : '',
             );
         }
 
@@ -198,6 +211,88 @@ class SFAF_Closures {
     }
 
     /**
+     * The closure's free text note, or '' (3.84.0).
+     *
+     * WHAT IT IS FOR. SFAF can be closed overall while one site stays open, and
+     * "Closed for Labor Day" alone is then wrong for whoever is standing
+     * outside the 6th Street Center. The note is the place to say so.
+     *
+     * FREE TEXT, NOT A LIST OF VENUES. That was considered and set aside: a
+     * venue picker turns a sentence somebody wants to write into a data model
+     * with its own rules about a site that is half open. See PROJECT.md.
+     *
+     * A closure saved before this existed has no 'note' key at all, so this is
+     * read with isset() rather than assumed. That is the whole of the migration:
+     * an absent note is an empty note and renders as it always did.
+     *
+     * @param array $row
+     * @return string
+     */
+    public static function note( $row ) {
+        return isset( $row['note'] ) ? trim( (string) $row['note'] ) : '';
+    }
+
+    /**
+     * The note, trimmed to fit a month grid cell (3.84.0).
+     *
+     * WHY THE GRID GETS A SHORTER ONE. A day cell is already the tightest space
+     * on the calendar and Mark has days carrying nine events. A note written for
+     * the list card ("The 6th Street Center is open 9 to 5 as usual") would push
+     * the events out of the cell or be clipped by overflow with no sign that
+     * anything was cut.
+     *
+     * TRUNCATION IS VISIBLE, WITH THE FULL TEXT STILL REACHABLE. The cell shows
+     * an ellipsis so a reader can see there is more, and the renderer puts the
+     * whole note on the title attribute, so it is one hover or one tap away and
+     * a screen reader gets all of it. Cutting text and saying nothing is the
+     * failure this avoids.
+     *
+     * CUT ON A WORD BOUNDARY, never mid-word, because "Closed for Labor D..."
+     * reads as a rendering fault rather than a deliberate shortening.
+     *
+     * @param array $row
+     * @param int   $limit Characters before trimming.
+     * @return string
+     */
+    public static function note_short( $row, $limit = 32 ) {
+        $note  = self::note( $row );
+        $limit = max( 8, (int) $limit );
+
+        if ( '' === $note ) {
+            return '';
+        }
+
+        $len = function_exists( 'mb_strlen' ) ? mb_strlen( $note ) : strlen( $note );
+        if ( $len <= $limit ) {
+            return $note;
+        }
+
+        $cut = function_exists( 'mb_substr' ) ? mb_substr( $note, 0, $limit ) : substr( $note, 0, $limit );
+        $sp  = strrpos( $cut, ' ' );
+        if ( false !== $sp && $sp >= 8 ) {
+            $cut = substr( $cut, 0, $sp );
+        }
+
+        return rtrim( $cut, " \t\n\r\0\x0B,.;:" ) . '…';
+    }
+
+    /**
+     * Strip and bound a note on the way in.
+     *
+     * TAGS OUT. This is typed in the WordPress admin by an administrator and
+     * rendered on the public calendar, so it goes through the same stripping a
+     * closure's name does rather than being trusted for being staff-written.
+     *
+     * A CEILING, because the option holds up to 200 closures in one row and a
+     * note is the only unbounded field any of them has.
+     */
+    private static function clean_note( $note ) {
+        $note = trim( wp_strip_all_tags( (string) $note ) );
+        $note = preg_replace( '/\s+/u', ' ', $note );
+        return ( function_exists( 'mb_substr' ) ? mb_substr( $note, 0, 200 ) : substr( $note, 0, 200 ) );
+    }
+
+    /**
      * The dates a closure covers, as a phrase. For a list card.
      *
      * @param array $row
@@ -226,8 +321,9 @@ class SFAF_Closures {
      * @param string $end   Y-m-d, or '' for a single day.
      * @return string|WP_Error The id.
      */
-    public static function save( $id, $label, $start, $end = '' ) {
+    public static function save( $id, $label, $start, $end = '', $note = '' ) {
         $label = trim( wp_strip_all_tags( (string) $label ) );
+        $note  = self::clean_note( $note );
         $start = self::clean_date( $start );
         $end   = self::clean_date( $end );
 
@@ -266,6 +362,7 @@ class SFAF_Closures {
             'label' => $label,
             'start' => $start,
             'end'   => $end,
+            'note'  => $note,
         );
 
         update_option( self::OPTION, $raw );

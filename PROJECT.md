@@ -946,6 +946,39 @@ route would match none of preflight, the response headers or the
 built. That is not an exception to the toggles: it is a different shape, with a
 count rather than a page size and no pagination.
 
+### An event has several organizers, and every writer sets them in one call
+
+**They are equal, with no lead organizer** (3.40.0). `uc_organizer` has always
+been multi; what limited an event to one was the controls. `for_event()` returns
+them name-ordered through one method, so two surfaces cannot name the same
+event's hosts in different orders, and `phrase()` joins them as "A, B and C"
+with **no serial comma**, which is AP style for a simple series.
+
+**No tie-break was needed and none was invented.** A category's first
+alphabetically supplies the card colour and the placeholder tile. An organizer
+carries no colour and no icon, so nothing downstream has a decision to make.
+
+**THE WRITE RULE: one `wp_set_object_terms()` call with the whole set, never one
+per id.** It REPLACES by default, so a call inside a loop keeps only whichever
+ran last. That is the 3.8.0 categories fault and the 3.40.0 organizers fault,
+and `.claude/organizers-test.php` now asserts it against every writer by name.
+
+**The lesson is the sequencing, not the fault** (3.84.0). 3.40.0 fixed every
+surface that existed then. The staff request form's organizer field was added in
+3.76.0, thirty-six releases later, and was written as a single select, because
+the person adding a field reaches for the shape the form already uses rather
+than for a decision recorded elsewhere. **A settled decision does not propagate
+to code written after it.** The two public forms were the last single-organizer
+surfaces and neither could ever have dropped a STORED organizer, because both
+create a pending event and neither edits one; what was lost was what the
+requester said, before it was ever stored.
+
+The community form has no organizer question at all, deliberately: it is reached
+at a series' own address by somebody outside SFAF, who is in no position to
+guess which programme is putting an event on. It **inherits** every organizer
+the series lends, read off the series' most recent event, and inheriting only
+the first put a co-hosted submission under one team's filter and not the other's.
+
 ### The organizer filter was a control that did nothing
 
 **Until 3.50.0 it rendered on this site, was left out of embeds deliberately,
@@ -2531,6 +2564,35 @@ for one fact.
 It reaches the embed by not being special: the embed payload is built by calling
 the same shortcode renderers, so a closure the shortcode draws is a closure the
 embed serves.
+
+**A closure can carry a free text note** (3.84.0), because SFAF can be closed
+overall while one site stays open and "Closed for Labor Day" alone is then wrong
+for whoever is standing outside the 6th Street Center. It is optional, and a
+closure without one renders exactly as it did.
+
+Both renderers read the same stored string, so they can differ in LENGTH and
+never in CONTENT. The list card has the width and shows it in full on its own
+line. The month grid shows `note_short()`: cut at 32 characters, backed up to
+the last space so it never breaks mid-word, with an ellipsis marking the cut.
+The cell's `title` carries the whole note and the cell's `aria-label` already
+speaks it in full, so the shortening never costs a reader the content and the
+spoken label is never the truncated one.
+
+**The note is NOT in `text()`.** That method is the closure's name sentence and
+the WordPress admin table shows it as such; a note belongs to the day being
+described, which is the grid's question rather than `text()`'s. Appending it at
+that one call site keeps `text()`'s contract and its committed assertion intact.
+
+**`all()` rebuilds every row from a fixed set of keys**, and a field added to
+`save()` and not to that list is written, stored, and then silently dropped by
+every reader, because `get()`, `covering()` and `spans()` all come through it.
+The note behaved exactly that way for its first draft. Anything added to a
+closure goes in both places.
+
+**Naming venues was considered and set aside.** A closure saying which sites it
+applies to turns a sentence somebody wants to write into a data model with its
+own rules about a site that is half open. Free text first; the structured
+version is not built and is not owed.
 
 ### FAQ sets are made in one place and copied, never linked
 
@@ -4846,6 +4908,35 @@ lives only in geometry reaches Mark's screen with the suite green.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### The embed payload cache does not flush on a plugin update (found 3.84.0)
+
+**NOT BUILT, AND REPORTED RATHER THAN ASSUMED DONE.** The 3.84.0 brief listed
+"the embed payload cache keying on the version, which was fixed in 3.84.0" under
+what must not change. There is no such fix and there never was one.
+
+`SFAF_Embed::cache_key()` keys on the request parameters, the calendar day and a
+generation counter held in `sfaf_embed_cache_version`. `SFAF_VERSION` is not in
+it, and every flush hook is a CONTENT event: `save_post_uc_event`,
+`deleted_post`, the trash and transition hooks, the meta and term hooks,
+`update_option_uc_settings`, `uc_rsvp_submitted`. Nothing listens for
+`upgrader_process_complete`, which the updater uses for its own transient.
+
+**Why it has never been visible**, and why this is a gap rather than a live
+fault: `cache_ttl()` is ten minutes and the calendar day is in the key, so a
+stale payload self-heals within ten minutes of an update. It cannot survive a
+hard refresh hours later and it can never serve markup that was not generated.
+
+**The fix is small**: flush on `upgrader_process_complete` and on activation.
+It is not done here because building something a brief describes as already
+existing is how a report stops being trustworthy. It needs Mark's word.
+
+**A separate and larger gap found alongside it**: `SFAF_Embed::script_url()`
+returns `public/js/embed.js` with NO query string, while `style_url()` carries
+`?ver=`. An embedding site therefore cannot tell from the Network tab which
+`embed.js` is running, and a browser or CDN may hold an old one indefinitely.
+`embed.js` does not build cards, so it cannot cause a stale card layout, but it
+is what would hide a real script fix.
 
 ### The list view, rebuilt on a horizontal card (3.82.0)
 

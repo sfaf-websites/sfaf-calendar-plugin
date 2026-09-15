@@ -87,6 +87,87 @@ expect( 'the phrase', SFAF_Closures::text( $row ), 'Closed for Thanksgiving' );
 $bare = SFAF_Closures::save( '', '', '2026-07-04' );
 expect( 'an unlabelled closure reads', SFAF_Closures::text( SFAF_Closures::get( $bare ) ), 'Closed' );
 
+/* ---- THE FREE TEXT NOTE (3.84.0). ----
+ *
+ * SFAF can be closed while one site stays open, so a closure can carry a
+ * sentence saying so. The rule that matters is that a closure WITHOUT one is
+ * unchanged, because every closure that exists today has none. */
+expect( 'a closure with no note reads exactly as it did', SFAF_Closures::note( $row ), '' );
+expect( 'and its sentence is untouched', SFAF_Closures::text( $row ), 'Closed for Thanksgiving' );
+
+$noted = SFAF_Closures::save( '', 'Labor Day', '2026-09-07', '', 'The 6th Street Center is open as usual' );
+$nrow  = SFAF_Closures::get( $noted );
+expect( 'the note is stored', SFAF_Closures::note( $nrow ), 'The 6th Street Center is open as usual' );
+expect( 'the note does NOT change the sentence', SFAF_Closures::text( $nrow ), 'Closed for Labor Day' );
+
+/* A ROW SAVED BEFORE THE NOTE EXISTED has no 'note' key at all. Reading one is
+ * the whole of the migration and it must not warn or fatal. */
+$legacy = array( 'label' => 'Old', 'start' => '2026-01-01', 'end' => '2026-01-01' );
+expect( 'a pre-3.84.0 row reads as an empty note', SFAF_Closures::note( $legacy ), '' );
+expect( 'and shortens to nothing rather than an ellipsis', SFAF_Closures::note_short( $legacy ), '' );
+
+/* THE GRID GETS A SHORTER ONE, cut on a word boundary and marked. */
+$long  = SFAF_Closures::save( '', 'Spring break', '2026-04-06', '2026-04-08', 'The 6th Street Center and the Castro site are both open their usual hours' );
+$lrow  = SFAF_Closures::get( $long );
+$brief = SFAF_Closures::note_short( $lrow );
+/* NO mb_* IN HERE. mbstring is not loaded in this environment, which is the
+ * reason note_short() guards every call to it with function_exists(). A test
+ * that reached for mb_substr would pass on a server and fatal here, so the
+ * assertions below are byte-safe on purpose. */
+expect( 'a long note is shortened for the cell', ( $brief !== SFAF_Closures::note( $lrow ) ), true );
+expect( 'the cut is marked', str_ends_with( $brief, '…' ), true );
+$stem = substr( $brief, 0, -3 ); // '…' is three bytes in UTF-8.
+expect( 'the cut is on a word boundary', ( ' ' !== substr( $stem, -1 ) ), true );
+expect( 'the shortened note is a prefix of the real one', ( 0 === strpos( SFAF_Closures::note( $lrow ), $stem ) ), true );
+expect( 'the full note is still there to hover', ( strlen( SFAF_Closures::note( $lrow ) ) > strlen( $brief ) ), true );
+
+/* A SHORT NOTE IS NOT TOUCHED, so an ellipsis never appears without a reason. */
+$shorty = SFAF_Closures::save( '', 'Fourth', '2026-07-04', '', 'Castro open' );
+expect( 'a short note is left alone', SFAF_Closures::note_short( SFAF_Closures::get( $shorty ) ), 'Castro open' );
+
+/* TAGS ARE STRIPPED. It is typed by an administrator and rendered publicly. */
+$tagged = SFAF_Closures::save( '', 'Tagged', '2026-03-03', '', 'Open <script>alert(1)</script> as usual' );
+expect( 'markup is stripped from a note', ( false === strpos( SFAF_Closures::note( SFAF_Closures::get( $tagged ) ), '<' ) ), true );
+
+/* BOTH RENDERERS MUST CARRY IT, and neither may be the only one that does.
+ *
+ * COMMENTS ARE STRIPPED FIRST, WITH THE TOKENIZER, and the first draft of these
+ * three checks is the reason. They ran against the raw file, so "the grid cell
+ * gets note_short()" written in a DOCBLOCK satisfied the note_short check, and
+ * renaming the class to uc-closure-noteX still matched /uc-closure-note/ as a
+ * substring. Both faults were planted and neither was caught: the checks were
+ * reading prose and matching prefixes rather than asserting behaviour.
+ *
+ * This is PROJECT.md's rule about auditing with a tokenizer rather than grep,
+ * met the hard way a second time. */
+$sc_raw  = file_get_contents( $root . '/includes/class-sfaf-shortcodes.php' );
+$sc_code = '';
+foreach ( token_get_all( $sc_raw ) as $tok ) {
+    if ( is_array( $tok ) ) {
+        if ( T_COMMENT === $tok[0] || T_DOC_COMMENT === $tok[0] ) {
+            continue;
+        }
+        $sc_code .= $tok[1];
+    } else {
+        $sc_code .= $tok;
+    }
+}
+
+/* Quoted exactly, so a renamed class is a changed class rather than a prefix. */
+if ( ! preg_match( '/"uc-closure-note"/', $sc_code ) ) {
+    $fails[] = 'the list card no longer renders a closure note';
+}
+if ( ! preg_match( '/"uc-closed-note"/', $sc_code ) ) {
+    $fails[] = 'the month grid no longer renders a closure note';
+}
+if ( ! preg_match( '/SFAF_Closures::note_short\(/', $sc_code ) ) {
+    $fails[] = 'the month grid renders the full note rather than the shortened one, which overflows a cell';
+}
+/* The card is the surface with room, so it must NOT be the shortened one. */
+if ( ! preg_match( '/\$note\s*=\s*SFAF_Closures::note\(/', $sc_code ) ) {
+    $fails[] = 'the list card no longer reads the full note, so both surfaces now show the shortened one';
+}
+
 expect( 'a closure with no date is refused', is_wp_error( SFAF_Closures::save( '', 'x', '' ) ), true );
 expect( 'a backwards range is refused', is_wp_error( SFAF_Closures::save( '', 'x', '2026-12-27', '2026-12-24' ) ), true );
 
@@ -326,7 +407,11 @@ printf( "checked: the model and its date validation; that a multi-day closure is
 printf( "         grid expands per day and a list shows as one card; that %d subsystems cannot see a\n", count( $MUST_NOT_SEE ) );
 printf( "         closure and none has grown a reference; that the storage choice which makes that true\n" );
 printf( "         is still in place; that neither the card nor the grid mark is clickable or mentions\n" );
-printf( "         registration; and that the embed still renders through the shortcode class\n\n" );
+printf( "         registration; that a closure can carry a free text note which the list card shows in\n" );
+printf( "         full and the month grid shortens on a word boundary with the cut marked, that a\n" );
+printf( "         closure saved before the note existed reads and renders exactly as it did, and that\n" );
+printf( "         all() rebuilds the note rather than dropping it; and that the embed still renders\n" );
+printf( "         through the shortcode class\n\n" );
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

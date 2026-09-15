@@ -595,17 +595,26 @@ class SFAF_Request {
             }
         }
 
-        /* ---- Who is putting it on (3.76.0). ----
+        /* ---- Who is putting it on (3.76.0, several since 3.84.0). ----
          *
-         * CHECKED AGAINST THE TAXONOMY, never trusted. It is a select on the
-         * form and an integer in a POST, and this page is reached by a link, so
-         * the only thing that makes an id an organizer is asking. 0 is the
-         * "Not sure" answer and is a real one: it stores nothing. */
-        $clean['organizer'] = 0;
+         * CHECKED AGAINST THE TAXONOMY, never trusted. They are tick boxes on
+         * the form and ids in a POST, and this page is reached by a link, so the
+         * only thing that makes an id an organizer is asking. An empty set is
+         * the "not sure" answer and is a real one: it stores nothing.
+         *
+         * A LIST, BECAUSE SEVERAL TEAMS COLLABORATE. The single value this held
+         * was written in 3.76.0, after 3.40.0 had already made the taxonomy
+         * multi everywhere else, so this form was the one surface that could not
+         * say what was true. Duplicates are dropped rather than rejected: two
+         * ticks for one id is a browser's business, not something to refuse a
+         * request over. */
+        $clean['organizer'] = array();
         if ( ! empty( $post['organizer'] ) ) {
-            $oid = (int) $post['organizer'];
-            if ( $oid && SFAF_Organizers::exists( $oid ) ) {
-                $clean['organizer'] = $oid;
+            foreach ( (array) $post['organizer'] as $raw_oid ) {
+                $oid = (int) $raw_oid;
+                if ( $oid && SFAF_Organizers::exists( $oid ) && ! in_array( $oid, $clean['organizer'], true ) ) {
+                    $clean['organizer'][] = $oid;
+                }
             }
         }
 
@@ -1014,11 +1023,20 @@ class SFAF_Request {
         if ( $c['series'] ) {
             SFAF_Series::set_for_event( $event_id, $c['series'] );
         }
-        /* Who is putting it on, when the requester said. "Not sure" is 0 and
-         * writes nothing, which leaves the event exactly as it arrived before
-         * this field existed. */
-        if ( ! empty( $c['organizer'] ) ) {
-            wp_set_object_terms( $event_id, array( (int) $c['organizer'] ), 'uc_organizer' );
+        /* Who is putting it on, when the requester said. An empty set writes
+         * nothing, which leaves the event exactly as it arrived before this
+         * field existed.
+         *
+         * ONE CALL WITH THE WHOLE SET. wp_set_object_terms() REPLACES, so a call
+         * per id would keep only the last, which is the 3.8.0 categories fault
+         * and the 3.40.0 organizers fault. The cast is not defending against a
+         * stored row: a request is never held anywhere, it becomes this pending
+         * event the moment it is submitted. It is here because validate() is the
+         * only caller that shapes this value and a second one must not be able
+         * to pass a bare id without being noticed. */
+        $organizers = array_values( array_filter( array_map( 'intval', (array) $c['organizer'] ) ) );
+        if ( ! empty( $organizers ) ) {
+            wp_set_object_terms( $event_id, $organizers, 'uc_organizer' );
         }
 
         /*
@@ -1570,22 +1588,39 @@ class SFAF_Request {
                  */
                 $all_orgs = SFAF_Organizers::all();
                 ?>
+                <?php
+                /*
+                 * TICK BOXES, NOT A SELECT (3.84.0). Several SFAF teams put on
+                 * one event together, and a select could say only one of them.
+                 *
+                 * NO "NOT SURE" OPTION ANY MORE, because with tick boxes it is
+                 * not a choice to offer: nothing ticked IS not sure, and a box
+                 * saying so beside the others could be ticked alongside a real
+                 * answer. The hint carries what the option used to say.
+                 *
+                 * NO PRESENT MARKER, which the caladmin editor does need. That
+                 * marker separates "the form did not ask" from "every box was
+                 * unticked", and it matters there because the save REPLACES an
+                 * existing set. This form only ever creates a pending event, so
+                 * there is no set to protect and nothing an absent field could
+                 * silently discard.
+                 */
+                $picked_orgs = array_map( 'intval', (array) $v( 'organizer', array() ) );
+                ?>
                 <?php if ( ! empty( $all_orgs ) ) : ?>
                     <fieldset class="uc-form-section-group">
-                        <legend class="uc-field-group-title">Organizer</legend>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Who is putting this on?</span>
-                            <select name="organizer">
-                                <option value="0">Not sure</option>
-                                <?php foreach ( $all_orgs as $o ) : ?>
-                                    <option value="<?php echo (int) $o->term_id; ?>"
-                                        <?php selected( (int) $v( 'organizer' ), (int) $o->term_id ); ?>>
-                                        <?php echo esc_html( $o->name ); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <span class="uc-hint">Shown on the event page as who is running it. Leave it at Not sure and somebody here will set it.</span>
-                        </label>
+                        <legend class="uc-field-label">Who is putting this on?</legend>
+                        <div class="uc-check-grid">
+                            <?php foreach ( $all_orgs as $o ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="organizer[]"
+                                        value="<?php echo (int) $o->term_id; ?>"
+                                        <?php checked( in_array( (int) $o->term_id, $picked_orgs, true ) ); ?> />
+                                    <?php echo esc_html( $o->name ); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <span class="uc-hint">Tick everybody putting it on. Leave them all clear and somebody here will set it.</span>
                     </fieldset>
                 <?php endif; ?>
 

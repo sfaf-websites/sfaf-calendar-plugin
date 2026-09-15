@@ -266,11 +266,18 @@ function build(opts) {
     venue.option('7', 'Strut');
     venue.value = '0';
 
-    const organizer = new Select();
-    organizer.attrs.name = 'organizer';
-    organizer.option('0', 'Not sure');
-    organizer.option('9', 'Strut');
-    organizer.value = opts.organizer || '0';
+    /* TICK BOXES SINCE 3.84.0, not a select. This stub asserted the old
+       arrangement and is rewritten to assert the new one rather than relaxed:
+       the payload carries TWO organizers and both boxes must end up ticked,
+       which the single select could never have expressed. The third box is here
+       so "it ticks everything" would fail as loudly as "it ticks the first". */
+    const org9 = el('input', { type: 'checkbox', name: 'organizer[]', value: '9' });
+    const org12 = el('input', { type: 'checkbox', name: 'organizer[]', value: '12' });
+    const org30 = el('input', { type: 'checkbox', name: 'organizer[]', value: '30' });
+    /* No opts.organizer branch. The select had one and nothing ever passed it,
+       so it was dead on arrival here; the clash case this file tests uses the
+       description and the venue, which callers do pass. */
+    const organizer = org9;
 
     const faqSet = new Select();
     faqSet.attrs.name = 'faq_set';
@@ -301,13 +308,13 @@ function build(opts) {
     dataNode.own = JSON.stringify(opts.payload === undefined ? PAYLOAD : opts.payload);
 
     const form = el('form', { class: 'uc-form' },
-        [select, venue, venueOther, organizer, faqSet, start, end, description, date, title,
+        [select, venue, venueOther, org9, org12, org30, faqSet, start, end, description, date, title,
          radioNone, radio41, panel, dataNode]);
 
     const root = el('div', {}, [form]);
 
     /* .form on a control, which the sliced code reads to find the form. */
-    [select, venue, venueOther, organizer, faqSet, start, end, description, radioNone, radio41]
+    [select, venue, venueOther, org9, org12, org30, faqSet, start, end, description, radioNone, radio41]
         .forEach(c => { c.form = form; });
 
     const doc = {
@@ -317,7 +324,7 @@ function build(opts) {
     };
 
     return {
-        doc, root, form, select, venue, venueOther, organizer, faqSet,
+        doc, root, form, select, venue, venueOther, organizer, org9, org12, org30, faqSet,
         start, end, description, date, title, radioNone, radio41,
         panel, optsBox, nameOut, applyBtn, noneBtn, said
     };
@@ -438,7 +445,13 @@ expect('the venue select is set', a.venue.value, '7');
 expect('the start time is written', a.start.value, '18:00');
 expect('the end time is written', a.end.value, '20:00');
 check('the description is written', a.description.value.indexOf('<strong>weekly</strong>') > -1);
-expect('the organizer is set to the first one', a.organizer.value, '9');
+/* EVERY ORGANIZER THE PAYLOAD CARRIES, not the first (3.84.0). This asserted
+   the first and nothing else, so it passed while the panel previewed "A and B"
+   and the form received A. Both ticked is the claim now, and the third box
+   staying clear is what stops "tick everything" from passing in its place. */
+check('the first organizer is ticked', a.org9.checked === true);
+check('and so is the second', a.org12.checked === true);
+check('an organizer the series does not lend is left clear', a.org30.checked === false);
 expect('the FAQ set is set', a.faqSet.value, 'clinic');
 check('the picture radio is checked', a.radio41.checked === true);
 check('and the "no picture" radio is not', a.radioNone.checked === false);

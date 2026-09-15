@@ -943,7 +943,8 @@ class SFAF_Admin {
                 isset( $_POST['closure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_id'] ) ) : '',
                 isset( $_POST['closure_label'] ) ? wp_unslash( $_POST['closure_label'] ) : '',
                 isset( $_POST['closure_start'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_start'] ) ) : '',
-                isset( $_POST['closure_end'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_end'] ) ) : ''
+                isset( $_POST['closure_end'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_end'] ) ) : '',
+                isset( $_POST['closure_note'] ) ? wp_unslash( $_POST['closure_note'] ) : ''
             );
             if ( is_wp_error( $done ) ) {
                 set_transient( 'sfaf_closure_error_' . get_current_user_id(), $done->get_error_message(), 60 );
@@ -1018,6 +1019,12 @@ class SFAF_Admin {
                         <input type="date" name="closure_end" id="uc_closure_end" />
                         <br /><span class="description">Leave empty for a single day.</span>
                     </p>
+                    <p>
+                        <label for="uc_closure_note">Note</label><br />
+                        <input type="text" name="closure_note" id="uc_closure_note" class="regular-text"
+                               maxlength="200" placeholder="The 6th Street Center is open as usual" />
+                        <br /><span class="description">Optional. Shown with the closure on the calendar. The month grid shortens anything long, so put what matters first.</span>
+                    </p>
                     <p><button type="submit" class="button button-primary">Add closure</button></p>
                 </form>
             </div>
@@ -1042,7 +1049,20 @@ class SFAF_Admin {
                                             <br /><span class="uc-muted">Past</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?php echo esc_html( SFAF_Closures::text( $row ) ); ?></td>
+                                    <td>
+                                        <?php echo esc_html( SFAF_Closures::text( $row ) ); ?>
+                                        <?php
+                                        /* The note goes under the sentence rather than in a
+                                           column of its own: most closures have none, and an
+                                           empty column on every row is a column that stops
+                                           being read. This is the "Reads as" column and the
+                                           note is part of what it reads as. */
+                                        $admin_note = SFAF_Closures::note( $row );
+                                        ?>
+                                        <?php if ( '' !== $admin_note ) : ?>
+                                            <br /><span class="uc-muted"><?php echo esc_html( $admin_note ); ?></span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo (int) $days; ?></td>
                                     <td>
                                         <form method="post" onsubmit="return confirm('Remove this closure? Events on those days are not affected.');">
