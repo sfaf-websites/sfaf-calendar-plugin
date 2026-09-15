@@ -122,6 +122,18 @@ class SFAF_Shortcodes {
      * Returns '' when nothing usable is left, which every caller reads as "no filter".
      */
     private function slug_list( $raw ) {
+        /*
+         * AN ARRAY IS A REAL SHAPE HERE FROM 3.85.0, and this used to cast one
+         * straight to a string. The filter bar's controls are checkboxes now,
+         * named `uc_org[]` and `uc_group[]`, so with no script the browser
+         * submits a real array. `(string) array()` is "Array" plus a notice,
+         * which sanitize_title() turns into the slug `array`, which matches no
+         * term, which empties the calendar silently. Imploding first is the
+         * whole fix and it leaves every existing CSV caller untouched.
+         */
+        if ( is_array( $raw ) ) {
+            $raw = implode( ',', $raw );
+        }
         $slugs = array_filter( array_map( 'sanitize_title', explode( ',', (string) $raw ) ) );
         return implode( ',', array_unique( $slugs ) );
     }
@@ -1882,6 +1894,229 @@ class SFAF_Shortcodes {
      * @param WP_Term[] $available
      * @param string    $active Slug list.
      */
+    /**
+     * Which organizers each group's events actually name.
+     *
+     * THIS IS RELATIONSHIP (B), AND (A) WAS REJECTED ON THE DATA. The obvious
+     * reading of "narrow the groups by organizer" is that a group belongs to an
+     * organizer. Nothing stores that: a series carries a description, an image
+     * and a FAQ set, and no organizer, because an organizer is a property of
+     * the EVENTS in it. So the relationship is derived from the events, and a
+     * group appears under every organizer that runs anything in it. That also
+     * handles collaboration correctly, which (a) could not: Strut Community
+     * Events holds events from two organizers and belongs under both.
+     *
+     * A GROUP WITH NO ORGANIZERED EVENTS GETS AN EMPTY LIST, and the picker
+     * treats an empty list as "always show" rather than "never matches". That
+     * is the difference between missing information and a statement, and on the
+     * current data it is the commonest case rather than an edge: around a third
+     * of the series have no organizer on any of their events while Mark is
+     * still setting them by hand. Hiding those the moment somebody picks an
+     * organizer would empty most of the list and read as a broken control. As
+     * the events gain organizers these groups start narrowing on their own,
+     * with nothing here to change.
+     *
+     * PUBLISHED ONLY, because this decides what a visitor is offered and a
+     * draft is not on their calendar.
+     *
+     * @param WP_Term[] $groups
+     * @return array group slug => organizer slugs
+     */
+    private function group_organizer_map( $groups ) {
+        $map = array();
+        if ( empty( $groups ) ) {
+            return $map;
+        }
+
+        /* One cache entry for the whole map. It is read on every render of a
+         * block that shows the picker, and it changes only when an event's
+         * organizers or series change, which is what the embed cache generation
+         * already moves on. */
+        $key    = 'sfaf_group_org_map_' . md5( implode( ',', wp_list_pluck( $groups, 'slug' ) ) );
+        $cached = get_transient( $key );
+        if ( is_array( $cached ) ) {
+            return $cached;
+        }
+
+        foreach ( $groups as $term ) {
+            /*
+             * PRIVATE EVENTS ARE EXCLUDED, and the committed guard is what said
+             * so: private-events-test.php refused this query on the first
+             * attempt because it named uc_event and did not exclude. It was
+             * right to. This decides what a PUBLIC visitor is offered, and a
+             * private event's organizer appearing in that list would say that
+             * somebody is running something under that name on a screen where
+             * the event itself is deliberately unreachable.
+             */
+            $args = array(
+                'post_type'      => 'uc_event',
+                'post_status'    => 'publish',
+                'posts_per_page' => 200,
+                'fields'         => 'ids',
+                'no_found_rows'  => true,
+                'tax_query'      => array( array(
+                    'taxonomy' => SFAF_Series::TAXONOMY,
+                    'field'    => 'term_id',
+                    'terms'    => (int) $term->term_id,
+                ) ),
+            );
+            /* It MUTATES rather than returns, so this is two statements and not
+             * one. Wrapping the literal in the call is a fatal, by reference. */
+            SFAF_Privacy::exclude( $args );
+            $ids = get_posts( $args );
+
+            $slugs = array();
+            if ( ! empty( $ids ) ) {
+                $orgs = wp_get_object_terms( $ids, 'uc_organizer', array( 'fields' => 'slugs' ) );
+                if ( ! is_wp_error( $orgs ) ) {
+                    $slugs = array_values( array_unique( $orgs ) );
+                }
+            }
+            $map[ $term->slug ] = $slugs;
+        }
+
+        set_transient( $key, $map, 10 * MINUTE_IN_SECONDS );
+        return $map;
+    }
+
+    /**
+     * Organizers and groups, in one dropdown, in the top layer.
+     *
+     * WHY ONE CONTROL. Two dropdowns side by side asked two questions that are
+     * the same question to a visitor: "whose events are these". Programa Latino
+     * exists as an organizer AND as a series, so the two lists could show what
+     * looks like the same name twice with nothing to tell them apart. The
+     * headings are what tell them apart, which is why this is grouped rather
+     * than one list of thirty-four names.
+     *
+     * THIS MAKES GROUPS A FIRST-LEVEL FILTER, and that undoes a decision worth
+     * naming rather than quietly reversing: render_group_row() renders nothing
+     * until a category has been chosen, so that "nobody is ever looking at two
+     * taxonomies at once". Merging the controls necessarily ends that, because
+     * the organizer half has always been first-level. The headings carry the
+     * job the staging used to do.
+     *
+     * THE TOP LAYER, NOT A z-index. The panel is a popover, so the browser puts
+     * it in the top layer and it cannot be trapped by an ancestor that has
+     * become a containing block. That is the hover preview's lesson from
+     * 3.75.0 applied before it had to be learned again here: a stacking value
+     * alone was not enough there and would not be enough here.
+     *
+     * IT WORKS WITH NO SCRIPT, AND THAT IS NEW RATHER THAN PRESERVED. The
+     * filter bar has never had a no-script path: the organizer select and the
+     * group checkboxes were both read by JavaScript and there was no form and
+     * no submit anywhere in this file. So this is a real GET form around real
+     * checkboxes with a real submit button. With script off the panel is an
+     * open <details>, every box is a checkbox, and Apply reloads the page with
+     * the choices in the query string. With script on, the button is hidden and
+     * the choices apply as they are made.
+     *
+     * @param WP_Term[] $organizers
+     * @param WP_Term[] $groups
+     * @param string[]  $org_on
+     * @param string[]  $group_on
+     * @param array     $map        group slug => organizer slugs
+     */
+    private function render_who_picker( $organizers, $groups, $org_on, $group_on, $map ) {
+        if ( empty( $organizers ) && empty( $groups ) ) {
+            return;
+        }
+
+        $id    = 'uc-who-' . wp_rand( 1000, 9999 );
+        $count = count( $org_on ) + count( $group_on );
+
+        /*
+         * THE CLOSED TRIGGER SAYS WHAT IS SELECTED. With thirty-four options
+         * behind one press, "Organizers and groups" on a control with three
+         * filters running is a control that hides its own state. Names while
+         * they fit, a count after that, because six names is longer than the
+         * bar and a number is still the truth.
+         */
+        $picked_names = array();
+        foreach ( $organizers as $o ) {
+            if ( in_array( $o->slug, $org_on, true ) ) { $picked_names[] = $o->name; }
+        }
+        foreach ( $groups as $g ) {
+            if ( in_array( $g->slug, $group_on, true ) ) { $picked_names[] = $g->name; }
+        }
+        if ( 0 === $count ) {
+            $label = 'Organizers and groups';
+        } elseif ( $count <= 2 ) {
+            $label = implode( ', ', $picked_names );
+        } else {
+            $label = $count . ' selected';
+        }
+
+        /*
+         * SELECTED ITEMS SIT AT THE TOP, AND THE ORDER IS DECIDED HERE, ON THE
+         * SERVER, ONCE. The list must not reorder while somebody is clicking
+         * down it: the thing just ticked would move out from under the cursor
+         * and the next click would land on something else. So the server emits
+         * the order for the state it is rendering, and the script reorders only
+         * when the panel is next opened.
+         */
+        $sorter = function ( $terms, $on ) {
+            $sel = array();
+            $rest = array();
+            foreach ( $terms as $t ) {
+                if ( in_array( $t->slug, $on, true ) ) { $sel[] = $t; } else { $rest[] = $t; }
+            }
+            return array_merge( $sel, $rest );
+        };
+        $organizers = $sorter( $organizers, $org_on );
+        $groups     = $sorter( $groups, $group_on );
+        ?>
+        <div class="uc-who" data-uc-who>
+            <button type="button" class="uc-who-trigger<?php echo $count ? ' active' : ''; ?>"
+                    data-uc-who-trigger
+                    popovertarget="<?php echo esc_attr( $id ); ?>"
+                    aria-label="Filter by organizer or group">
+                <span class="uc-who-label" data-uc-who-label><?php echo esc_html( $label ); ?></span>
+                <?php echo sfaf_icon( 'chevron', array( 'class' => 'uc-who-chevron' ) ); ?>
+            </button>
+
+            <div class="uc-who-panel" id="<?php echo esc_attr( $id ); ?>" popover data-uc-who-panel>
+                <?php if ( ! empty( $organizers ) ) : ?>
+                    <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-org">Organizers</p>
+                    <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-org">
+                        <?php foreach ( $organizers as $o ) : ?>
+                            <label class="uc-who-opt">
+                                <input type="checkbox" name="uc_org[]"
+                                       value="<?php echo esc_attr( $o->slug ); ?>"
+                                       data-uc-who-organizer
+                                       <?php checked( in_array( $o->slug, $org_on, true ) ); ?> />
+                                <span><?php echo esc_html( $o->name ); ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ( ! empty( $groups ) ) : ?>
+                    <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-grp">Groups</p>
+                    <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-grp" data-uc-who-groups>
+                        <?php foreach ( $groups as $g ) :
+                            $orgs_of = isset( $map[ $g->slug ] ) ? $map[ $g->slug ] : array(); ?>
+                            <label class="uc-who-opt" data-uc-who-group-orgs="<?php echo esc_attr( implode( ' ', $orgs_of ) ); ?>">
+                                <input type="checkbox" name="uc_group[]"
+                                       value="<?php echo esc_attr( $g->slug ); ?>"
+                                       data-uc-who-group
+                                       <?php checked( in_array( $g->slug, $group_on, true ) ); ?> />
+                                <span><?php echo esc_html( $g->name ); ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="uc-who-none" data-uc-who-none hidden>No groups match those organizers.</p>
+                <?php endif; ?>
+
+                <div class="uc-who-foot">
+                    <button type="button" class="uc-who-clear" data-uc-who-clear>Clear</button>
+                    <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
     private function render_group_row( $available, $active ) {
         if ( empty( $available ) ) {
             return;
@@ -2698,6 +2933,34 @@ class SFAF_Shortcodes {
             $any_row = ( ! empty( $rows['category'] ) || ! empty( $rows['organizer'] ) || ! empty( $rows['series'] ) );
             ?>
             <?php if ( $any_row ) : ?>
+            <?php
+            /*
+             * A REAL GET FORM ROUND THE BAR (3.85.0), AND IT IS NEW RATHER THAN
+             * RESTORED. Nothing in this file had a <form>, a submit or a
+             * <noscript>: the search box, the organizer select and the group
+             * checkboxes were all read by JavaScript, so with script off the
+             * filter bar rendered and did nothing at all. Saying the calendar
+             * works without script was true of the LISTS and was never true of
+             * the filters.
+             *
+             * ACTION IS THE CURRENT PAGE, so a submit reloads the page the
+             * block is on with the choices in the query string, which is where
+             * uc_cat, uc_org and uc_group are already read from. The month is
+             * carried as a hidden field so applying a filter does not throw
+             * somebody back to today.
+             *
+             * The script does not submit this. It intercepts, exactly as
+             * initLoadMore() intercepts the pagination links, so the behaviour
+             * with script is unchanged and the markup underneath is real.
+             */
+            ?>
+            <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
+                <?php if ( '' !== $filters['s'] ) : ?>
+                    <input type="hidden" name="uc_s" value="<?php echo esc_attr( $filters['s'] ); ?>" />
+                <?php endif; ?>
+                <?php if ( '' !== $active_category ) : ?>
+                    <input type="hidden" name="uc_cat" value="<?php echo esc_attr( $active_category ); ?>" />
+                <?php endif; ?>
             <div class="uc-filters">
                 <div class="uc-search-wrap">
                     <?php
@@ -2798,7 +3061,18 @@ class SFAF_Shortcodes {
                  * exactly as the chips are: offering every organizer on the site
                  * would list dozens that can only ever empty the block.
                  */
-                if ( ! empty( $rows['organizer'] ) ) :
+                /*
+                 * EITHER HALF IS ENOUGH TO RENDER THE CONTROL, and gating it on
+                 * the organizer row alone was a real fault the committed
+                 * toggles test caught: filters="category,series" asked for
+                 * groups, got no picker at all, and lost a control it had
+                 * before the merge. The two halves are independent switches on
+                 * one control now, so each is resolved separately and the
+                 * control renders when either has something to show.
+                 */
+                $organizers = array();
+                $org_on     = array();
+                if ( ! empty( $rows['organizer'] ) ) {
                     $organizers = get_terms( array(
                         'taxonomy'   => 'uc_organizer',
                         'hide_empty' => true,
@@ -2813,51 +3087,50 @@ class SFAF_Shortcodes {
                         } ) );
                     }
                     $org_on = ( '' === $active_organizer ) ? array() : explode( ',', $active_organizer );
+                }
+                $who_groups = ! empty( $rows['series'] ) ? $available_groups : array();
+                if ( ! empty( $organizers ) || ! empty( $who_groups ) ) :
                 ?>
-                <div class="uc-organizer-filter">
-                    <select class="uc-organizer-select" aria-label="Filter by organizer" data-uc-organizer>
-                        <option value="all">All Organizers</option>
-                        <?php foreach ( $organizers as $org ) :
-                            $picked = in_array( $org->slug, $org_on, true ); ?>
-                            <option value="<?php echo esc_attr( $org->slug ); ?>"<?php echo $picked ? ' selected' : ''; ?>><?php echo esc_html( $org->name ); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php
-                    /*
-                     * STILL A NATIVE <select>. Keyboard, screen reader, the
-                     * platform's own phone picker and the no-JavaScript case
-                     * all come free with the element, and nothing custom
-                     * reproduces the last three. What changes is only what it
-                     * looks like.
-                     *
-                     * The chevron is a sibling of the select rather than the
-                     * select's own background, for the reason given at the
-                     * search glyph: a host rule shaped `.entry-content select`
-                     * or `select` can repaint the control and cannot touch
-                     * this. The stylesheet turns the native arrow off and
-                     * points this one down; if `appearance` is ever lost to a
-                     * host, the rule that hides the native arrow is at two
-                     * classes and the one drawing this is on a div, so the
-                     * failure is two arrows rather than none.
-                     */
-                    echo sfaf_icon( 'chevron', array( 'class' => 'uc-select-chevron' ) );
-                    ?>
-                </div>
+                <?php
+                /*
+                 * ONE CONTROL FOR BOTH (3.85.0). The native <select> that stood
+                 * here could hold exactly one organizer, which an event with
+                 * three makes useless, and the groups row below asked the same
+                 * question a second time in a second control.
+                 * render_who_picker() carries the reasoning, including what
+                 * merging the two costs and what it replaces.
+                 */
+                $this->render_who_picker(
+                    $organizers,
+                    $who_groups,
+                    $org_on,
+                    ( '' === $active_groups ) ? array() : explode( ',', $active_groups ),
+                    $this->group_organizer_map( $who_groups )
+                );
+                ?>
                 <?php endif; ?>
             </div>
+            </form>
 
             <?php
             /*
-             * THE SECOND LEVEL, ONLY ONCE THE FIRST HAS BEEN ANSWERED.
+             * THE GROUPS ROW IS GONE FROM HERE (3.85.0), and with it the
+             * staging this comment used to describe: groups rendered only once
+             * a category had been chosen, so that nobody was ever looking at
+             * two taxonomies at once. They are in the Organizers and groups
+             * picker now, under their own heading, which is first-level.
              *
-             * Nothing renders until a category is chosen, so the bar a visitor
-             * meets is exactly the bar they met before, and nobody is ever
-             * looking at two taxonomies at once. Nothing renders either when the
-             * chosen category holds no groups at all: an empty row, or a row
-             * saying there are no groups, is a control explaining its own
-             * absence.
+             * render_group_row() NOW HAS NO CALLER. It is left in place for one
+             * release rather than deleted, because the merge is the part of
+             * this change most likely to be reversed and rebuilding it from a
+             * changelog is worse than an unreferenced method somebody can see.
+             * If the picker survives 3.85.0 it should go; PROJECT.md says so
+             * and TESTING.md carries the item that settles it.
+             *
+             * The breadcrumb stays. It names what is currently narrowing the
+             * list, which is a different job from choosing it, and it is the
+             * only thing on the bar that says so in words.
              */
-            $this->render_group_row( $available_groups, $active_groups );
             $this->render_breadcrumb( $scope_category, $active_category, $available_groups, $active_groups );
             ?>
             <?php endif; ?>

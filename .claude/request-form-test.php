@@ -76,6 +76,14 @@ function sfaf_ap_date( $d, $f = 'full' ) { return '' === $d ? '' : ( 'day ' . st
 class SFAF_Reminders {
     public static function new_token() { return bin2hex( random_bytes( 16 ) ); }
 }
+class SFAF_Organizers {
+    const TAXONOMY = 'uc_organizer';
+    /* ADDED IN 3.85.0: validate() asks whether any organizer exists before it
+       requires one, because a form that never showed the control must not
+       demand a value from it. Two here, so the requirement is live. */
+    public static function all() { return array( (object) array( 'term_id' => 7, 'name' => 'Strut', 'slug' => 'strut' ) ); }
+    public static function exists( $id ) { return 7 === (int) $id; }
+}
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
     public static function set_for_event( $a, $b ) {}
@@ -250,6 +258,11 @@ function good_post( $over = array() ) {
         'start_time'     => '18:00',
         'end_time'       => '19:30',
         'repeat'         => 'none',
+        /* AN ORGANIZER IS REQUIRED FROM 3.85.0, so a "good" request carries
+           one. Without this every assertion below would be testing a request
+           that is no longer valid, and the one real failure would be buried in
+           a dozen false ones. The requirement itself is asserted separately. */
+        'organizer'      => array( '7' ),
     ), $over );
 }
 
@@ -315,6 +328,35 @@ $out = SFAF_Request::validate( good_post( array(
     'notes'       => 'Parking is tight.',
 ) ) );
 expect( 'a good request has no errors', $out['errors'], array() );
+
+/* ---- AN ORGANIZER IS REQUIRED, AND IT IS CHECKED HERE (3.85.0). ----
+ *
+ * ON THE SERVER, not only in the markup, and the markup cannot do it anyway: a
+ * group of checkboxes cannot carry `required`, because `required` on one box
+ * means THAT box and a browser would demand the first organizer specifically.
+ *
+ * A FLAT REFUSAL IS RIGHT ON THIS FORM and is deliberately not the caladmin
+ * rule. This form only ever CREATES, so there is no existing event to be
+ * blocked out of and nothing grandfathered to accommodate, and it redisplays
+ * every answer with the error, so refusing costs nobody their typing. */
+$no_org = SFAF_Request::validate( good_post( array( 'organizer' => array() ) ) );
+expect(
+    'a request with no organizer is refused',
+    isset( $no_org['errors']['organizer'] ),
+    true
+);
+$bad_org = SFAF_Request::validate( good_post( array( 'organizer' => array( '99999' ) ) ) );
+expect(
+    'an organizer id that is not an organizer is refused rather than stored',
+    isset( $bad_org['errors']['organizer'] ),
+    true
+);
+$two_org = SFAF_Request::validate( good_post( array( 'organizer' => array( '7', '7' ) ) ) );
+expect(
+    'a duplicate tick is dropped rather than refused',
+    $two_org['clean']['organizer'],
+    array( 7 )
+);
 expect( 'both categories kept',   $out['clean']['categories'], array( 11, 12 ) );
 expect( 'the series kept',        $out['clean']['series'], 21 );
 expect( 'the venue kept',         $out['clean']['venue'], 31 );

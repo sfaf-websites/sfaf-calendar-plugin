@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 126 items.** Quick 100, needs real conditions 23, blocked on other
+**Outstanding: 131 items.** Quick 105, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1440,6 +1440,81 @@ example `The 6th Street Center is open as usual`.
 
 ---
 
+### 1.103 A community submission carries the organizer now (3.85.0)
+
+**This is the one to do first.** No community submission has ever carried an
+organizer, and the fix is an ordering change nothing here can exercise.
+
+- Use a series whose **most recent event has an organizer**, and submit through
+  that series' public URL. Approve it and open the event.
+- It should read **"Hosted by ..."** with the organizer the series' last event
+  names. Before 3.85.0 it arrived with none, every time.
+- **Then try a series co-hosted by two.** The submission should carry both.
+- **A series with no organizer on any event still gives none**, which is correct
+  and is not the fault. Nothing is invented.
+
+---
+
+### 1.104 An organizer is required, and the hundred are not blocked (3.85.0)
+
+**caladmin, the event editor.** Three cases, and the third is the one that
+matters most because it is the one that could stop people working.
+
+- **A new event with no organizer ticked, pressing Publish.** It should SAVE as
+  a draft and say "Saved, and not published. Tick at least one organizer, then
+  publish." Nothing typed should be lost.
+- **An existing event that HAS an organizer, unticking every box and saving.**
+  It should refuse: "Nothing was saved. Tick at least one organizer." The event
+  should be unchanged.
+- **One of the roughly hundred published events with no organizer.** Open it,
+  change something unrelated, for example fix a typo in the description, and
+  save. **It must save normally and stay published.** If it refuses, that is the
+  case to report at once, because it blocks ordinary editing.
+
+---
+
+### 1.105 The staff form refuses a request with no organizer (3.85.0)
+
+**The staff request form.** Submit with no organizer ticked. It should refuse
+and say "Tick everybody putting this on.", with every other answer still filled
+in. Nothing typed should be lost.
+
+---
+
+### 1.106 The filter dropdown floats, on the real site (3.85.0)
+
+**The public calendar.** Organizers and groups are one control now.
+
+- **Open it. The calendar must not move.** The old groups list pushed
+  everything below it down; this one floats over. It was measured in a headless
+  browser, but not on sfaf.org and not inside the Teal embed, where an ancestor
+  with a transform is exactly what could break it.
+- **Check it inside the embed on the other site too**, at 700px, which is where
+  the stacked layout lives.
+- **Tick two organizers.** Both should apply, the list should narrow to events
+  from either, and the closed control should say "2 selected".
+- **Tick one organizer and watch the Groups half.** Groups whose events name
+  other organizers should DISAPPEAR. Groups with no organizer on any event
+  should STAY. That second part is deliberate and is not a bug.
+- **Reopen the panel.** What is ticked should now be at the top of its list.
+  While it is open, ticking things must NOT reorder under the cursor.
+
+---
+
+### 1.107 The filter bar with JavaScript turned off (3.85.0)
+
+**This has never worked and is new, so it has never been seen.** Turn scripting
+off in the browser and open the calendar.
+
+- The **Organizers and groups** button should still open its panel. It is a
+  native popover and needs no script. It will appear centred rather than under
+  the button, which is expected: script is what positions it.
+- Tick an organizer and press **Apply**. The page should reload filtered, with
+  the choice in the address bar.
+- **With script on, Apply should not be visible at all**, because the choices
+  apply as they are made.
+
+---
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

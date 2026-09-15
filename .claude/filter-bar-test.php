@@ -149,9 +149,22 @@ $note = array();
 /* -------------------------------------------------------------------------
  * 1. THE GLYPHS ARE ELEMENTS.
  * ---------------------------------------------------------------------- */
+/*
+ * uc-select-chevron IS GONE WITH THE SELECT IT POINTED AT (3.85.0). The
+ * organizer dropdown and the groups disclosure are one control now, so there is
+ * one chevron rather than two and it belongs to the combined trigger. The claim
+ * is unchanged and is the reason this list exists: a glyph is an ELEMENT drawn
+ * by sfaf_icon(), never a background-image, because the recorded way an
+ * affordance disappears on a host page is a `background:` shorthand in the
+ * theme resetting it to none. That is how the select arrow was lost in 3.18.0.
+ *
+ * uc-groups-chevron stays: render_group_row() still exists and still draws it,
+ * it simply has no caller this release. If that method goes, this line goes
+ * with it.
+ */
 $glyphs = array(
 	'uc-search-icon'     => "the search field's magnifier",
-	'uc-select-chevron'  => "the organizer dropdown's chevron",
+	'uc-who-chevron'     => "the organizers and groups trigger's chevron",
 	'uc-groups-chevron'  => "the folded groups list's chevron",
 );
 foreach ( $glyphs as $class => $what ) {

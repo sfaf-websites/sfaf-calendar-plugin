@@ -120,6 +120,15 @@ function wp_list_pluck( $list, $field ) {
  * right while being wrong, which is the exact class of fault this file exists
  * to catch.
  */
+/*
+ * ADDED IN 3.85.0. group_organizer_map() asks which organizers each group's
+ * events name, so the filter bar now reaches get_posts() and the taxonomy. No
+ * events here, so every group comes back with an empty organizer list, which is
+ * the "always shown" case and is exactly what this file's toggles care about.
+ * who-picker-test.php is where the narrowing itself is asserted.
+ */
+if ( ! defined( 'MINUTE_IN_SECONDS' ) ) { define( 'MINUTE_IN_SECONDS', 60 ); }
+function get_posts( $args = array() ) { return array(); }
 function get_terms( $args = array() ) {
     $tax = isset( $args['taxonomy'] ) ? $args['taxonomy'] : '';
     $all = isset( $GLOBALS['terms'][ $tax ] ) ? array_values( $GLOBALS['terms'][ $tax ] ) : array();
@@ -431,11 +440,24 @@ function block( $args ) {
 }
 
 /* Which controls a rendered block is offering, read out of its markup. */
+/*
+ * THE TWO ROWS ARE ONE CONTROL FROM 3.85.0, and this detector is rewritten to
+ * assert the new arrangement rather than relaxed to accept either. It used to
+ * look for `data-uc-organizer`, a single <select>, and `data-uc-groups`, a
+ * separate disclosure below the bar. Both are gone: organizers and groups share
+ * one popover, so each row is now detected by its own SECTION inside it.
+ *
+ * That is a stronger claim than the old one, not a weaker one. The old check
+ * passed as long as a control existed anywhere in the markup; this one requires
+ * the right checkbox NAME, which is what the server actually reads from the
+ * query string, so a control that renders and posts nothing the server knows
+ * about fails here.
+ */
 function controls_in( $html ) {
     return array(
         'category'  => ( false !== strpos( $html, 'uc-filter-btn' ) ),
-        'organizer' => ( false !== strpos( $html, 'data-uc-organizer' ) ),
-        'series'    => ( false !== strpos( $html, 'data-uc-groups' ) ),
+        'organizer' => ( false !== strpos( $html, 'name="uc_org[]"' ) ),
+        'series'    => ( false !== strpos( $html, 'name="uc_group[]"' ) ),
     );
 }
 
@@ -465,7 +487,7 @@ function combinations() {
  * Both facts are asserted here so neither can be mistaken for the other again.
  * ====================================================================== */
 $picked = block( array( 'filters' => 'category,series', 'active_category' => 'support-groups' ) );
-if ( ! preg_match_all( '/data-uc-group="([^"]+)"/', $picked, $m ) ) {
+if ( ! preg_match_all( '/name="uc_group\[\]"\s+value="([^"]+)"/', $picked, $m ) ) {
     fail( 'no series pills at all with a category chosen, which is what 3.11.0 built' );
 } else {
     sort( $m[1] );
@@ -478,7 +500,7 @@ if ( ! preg_match_all( '/data-uc-group="([^"]+)"/', $picked, $m ) ) {
  * data condition rather than a fault. Workshops holds one series and one event
  * with none, so exactly one pill is correct. */
 $ws = block( array( 'filters' => 'category,series', 'active_category' => 'workshops' ) );
-preg_match_all( '/data-uc-group="([^"]+)"/', $ws, $mw );
+preg_match_all( '/name="uc_group\[\]"\s+value="([^"]+)"/', $ws, $mw );
 if ( array( 'craft-night' ) !== $mw[1] ) {
     fail( 'Workshops offers ' . implode( ',', $mw[1] ) . ' rather than only craft-night' );
 }
@@ -493,7 +515,7 @@ if ( ! $c['series'] ) {
 if ( $c['category'] ) {
     fail( 'a block offering the series row alone also renders category buttons' );
 }
-preg_match_all( '/data-uc-group="([^"]+)"/', $org_only, $mo );
+preg_match_all( '/name="uc_group\[\]"\s+value="([^"]+)"/', $org_only, $mo );
 sort( $mo[1] );
 if ( array( 'monday-group', 'thursday-group' ) !== $mo[1] ) {
     fail( 'the organizer-scoped series row offers ' . implode( ',', $mo[1] ) . ', expected that organizer\'s two' );
@@ -528,15 +550,40 @@ foreach ( $MODES as $mode ) {
     }
 }
 
-/* The order, when more than one is on: category, then organizer, then series. */
+/*
+ * THE ORDER, WHICH IS NOW TWO CLAIMS RATHER THAN ONE (3.85.0).
+ *
+ * Organizers and groups used to be two controls in one row, so their order was
+ * their order in the bar. They are one control now, with the two lists stacked
+ * inside its panel under headings, so the claim splits:
+ *
+ *   . the category pills still come BEFORE the combined control, because the
+ *     pills are the first-level filter and are the one thing readable without
+ *     opening anything;
+ *   . inside the panel, Organizers still comes before Groups, which is the
+ *     same reading order the two controls had.
+ *
+ * Both are asserted, so neither half can be reversed unnoticed. This is the
+ * arrangement the merge produced rather than a relaxation of the old check:
+ * the old one could not have said anything about what is inside a panel.
+ */
 $all_on = block( array( 'filters' => 'category,organizer,series' ) );
 $pos    = array(
-    'category'  => strpos( $all_on, 'uc-filter-btn' ),
-    'organizer' => strpos( $all_on, 'data-uc-organizer' ),
-    'series'    => strpos( $all_on, 'data-uc-groups' ),
+    'category' => strpos( $all_on, 'uc-filter-btn' ),
+    'who'      => strpos( $all_on, 'data-uc-who' ),
 );
-if ( ! ( $pos['category'] < $pos['organizer'] && $pos['organizer'] < $pos['series'] ) ) {
-    fail( 'the rows are not in the order category, organizer, series' );
+if ( false === $pos['who'] ) {
+    fail( 'the combined organizers and groups control is not in the bar at all' );
+} elseif ( ! ( false !== $pos['category'] && $pos['category'] < $pos['who'] ) ) {
+    fail( 'the category pills no longer come before the organizers and groups control' );
+}
+
+$heading_org = strpos( $all_on, '>Organizers<' );
+$heading_grp = strpos( $all_on, '>Groups<' );
+if ( false === $heading_org || false === $heading_grp ) {
+    fail( 'the panel no longer carries both headings, so thirty-four names read as one undifferentiated list' );
+} elseif ( $heading_org > $heading_grp ) {
+    fail( 'Groups now comes before Organizers inside the panel, reversing the reading order the two controls had' );
 }
 
 /*

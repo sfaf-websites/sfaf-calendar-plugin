@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.84.0
+Stable tag: 3.85.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,54 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.85.0 =
+
+**NO COMMUNITY SUBMISSION HAS EVER CARRIED AN ORGANIZER, AND THE WRITE WAS NEVER THE PROBLEM.** The reported fault was that the community form resolved the series' organizer and then threw it away. That is not what the code did: it called `wp_set_object_terms()` with it, and has since 3.76.0. The fault is the ORDER, which is why reading the write in isolation finds nothing wrong with it.
+
+**THE EVENT WAS ITS OWN SOURCE.** `create_event()` adds the new event to the series, and then asks `SFAF_Series::organizers_for()` for the series' organizers. That method answers from the series' MOST RECENT EVENT and counts `pending` among the statuses it looks at. A submission is pending and is dated in the future, so by the time the question was asked the newest event in the series was the submission itself, holding no organizer yet. It read its own empty set and wrote nothing.
+
+**Proved by running it rather than by reading it**, with the series' events and the insert modelled in order: asked before the join the answer is organizer 7, asked after the join the answer is the new event and an empty list. The control case, the same submission dated BEFORE the series' last event, inherits correctly, which is why this was never a total failure and never showed up as one.
+
+**The resolve moved to the top of `create_event()`**, before anything is inserted or joined, so the question describes the series as it was. `submissions-test.php` asserts the ORDER rather than the write, reading a comment-stripped tokenization because the docblocks around that code name that method several times and a raw offset comparison would compare prose.
+
+**EVERY SURFACE THAT ASSUMED ONE ORGANIZER, AND WHAT IT DOES NOW.** The decision was already undone in 3.40.0 and finished in 3.84.0, so most of this was reporting rather than building: `for_event()` returns them all name-ordered, `phrase()` joins them "A, B and C" with no serial comma, the event page prints that phrase, the caladmin editor and the staff form are tick boxes, the filter is a `tax_query` that has always matched one of several, and JSON-LD emits an array. Nothing there was rebuilt.
+
+**THE SILENT-DROP GUARD HAD TWO HOLES AND BOTH WERE FOUND BY PLANTING.** The 3.84.0 check required a NEWLINE between the `foreach` and the `wp_set_object_terms()` call, so the whole fault written on one line walked past it. Widening that then missed `array( $orgs[0] )`, because the pattern demanded an `(int)` cast and allowed no subscript. Five shapes are now planted and caught: a same-line loop, a multi-line loop, and a single-element array with a cast, without one, and on a property.
+
+**AN ORGANIZER IS REQUIRED, ON THE SERVER.** It has been in `completeness_fields()` since 3.40.0, but that is a `confirm()` in the browser: with script off, or the dialog dismissed, nothing stopped a published event having none.
+
+**THE RULE IS ABOUT DIRECTION, NOT STATE, and that is what protects the hundred.** `SFAF_Organizers::requirement()` is the one place that decides, so the two forms cannot answer differently. An event that HAS organizers cannot be saved with none: that is somebody unticking every box, it is related to what they came to do, and the save refuses and says so. A new or unpublished event being PUBLISHED with none is SAVED and NOT PUBLISHED, because refusing a new event outright would discard everything typed, there being no saved event to return to.
+
+**WHAT HAPPENS WHEN SOMEBODY EDITS ONE OF THE HUNDRED: nothing.** An event that had no organizer and still has none is left alone at whatever status it already held, published included. A flat refusal would stop somebody fixing a typo because of a field they did not come to change and cannot fill in without going and finding out who ran it, which is how a rule people cannot satisfy gets worked around. The staff request form does refuse outright, and the difference is real rather than an inconsistency: that form only ever CREATES, so there is nothing grandfathered to accommodate, and it redisplays every answer with the error so refusing costs nobody their typing.
+
+**ORGANIZERS AND GROUPS ARE ONE CONTROL, AND IT FLOATS.** Two dropdowns asked what is one question to a visitor, and Programa Latino exists as both an organizer and a series, so the two lists could show the same name twice with nothing to tell them apart. The headings are what tell them apart, which is why this is grouped rather than one list of thirty-four names.
+
+**THE PANEL IS A POPOVER, SO THE BROWSER PUTS IT IN THE TOP LAYER.** The old groups disclosure was an ordinary block and opening it pushed the calendar down. A stacking value would not have been enough: an ancestor with a transform or a filter becomes the containing block and traps it, which is what happened to the hover preview in 3.75.0. **Measured in Chrome rather than reasoned about**: the calendar sat at y=88 before the panel opened and y=88 after, with the panel in the top layer at 16,62 under a trigger ending at y=56.
+
+**`right` AND `bottom` ARE EXPLICITLY `auto`.** The UA stylesheet gives every `[popover]` `inset: 0` and `margin: auto`, so setting only `top` and `left` leaves the other two edges pinned and the auto margins centre the panel in the viewport instead of placing it. Same trap as the hover preview, answered before it had to be met again.
+
+**ORGANIZERS ARE MULTI-SELECT**, which an event with three organizers makes necessary rather than nice, and **selecting them HIDES the non-matching groups** rather than greying them: every option is visible when the panel opens, so somebody already knows they are there, and a greyed row still costs a line of a list thirty-four long.
+
+**A GROUP APPEARS UNDER THE ORGANIZERS OF THE EVENTS ACTUALLY IN IT.** Nothing stores a group's organizer, because a series carries a description, an image and a FAQ set and no organizer; an organizer is a property of the EVENTS. Deriving it from the events also handles collaboration, which the simpler reading could not: Strut Community Events holds events from two organizers and appears under both.
+
+**A GROUP WITH NO ORGANIZERED EVENTS IS ALWAYS SHOWN.** An empty list is missing information rather than a statement that the group is not that organizer's, and on the current data it is roughly a third of them while Mark is still setting organizers by hand. Hiding those the moment somebody picks an organizer would empty most of the list and read as a broken control. As the events gain organizers those groups start narrowing on their own, with nothing to change. **A ticked group is never hidden either**, or a filter would be running with nothing on screen to see it by or clear it with.
+
+**Organizer is the controlling filter and the narrowing is one-way.** Selecting groups does not narrow the organizers, because then each would be hiding the other's options and neither list could be trusted to be complete.
+
+**SELECTED ITEMS SIT AT THE TOP, AND THE LIST REORDERS ON OPEN RATHER THAN ON CLICK.** A list that moves the row just ticked out from under the cursor makes the next click land on something else. The server emits the order for the state it is rendering and the script reorders only when the panel is next opened.
+
+**The closed trigger says what is selected**, names while they fit and a count after that, from the server AND the script in the same shape so the wording does not change when the script takes over. **The category pills are untouched**: they are colour-coded and readable at a glance and folding them in would lose that.
+
+**IT WORKS WITH SCRIPT OFF, AND THAT IS NEW RATHER THAN PRESERVED.** The filter bar has never had a no-script path: there was no form, no submit and no noscript anywhere in the file, and the search box, the organizer select and the group checkboxes were all read by JavaScript. Saying the calendar works without script was true of the LISTS and was never true of the FILTERS. There is a real GET form now, `popovertarget` opens the panel declaratively with no script at all, and Apply is a real submit that reloads the page with the choices in the query string. The script intercepts, exactly as `initLoadMore()` intercepts the pagination links, and hides Apply only once something is actually listening.
+
+**`slug_list()` accepts an array**, which it did not. Checkboxes submit one, and casting an array to a string gives "Array" plus a notice, which `sanitize_title()` turns into the slug `array`, which matches no term, which empties the calendar silently.
+
+**THIS MAKES GROUPS A FIRST-LEVEL FILTER, and that undoes a decision worth naming.** The groups row rendered only once a category had been chosen, so that nobody was ever looking at two taxonomies at once. Merging the controls necessarily ends that, because the organizer half has always been first-level. The headings carry the job the staging used to do. `render_group_row()` now has no caller and is left in place for one release rather than deleted, because the merge is the part of this change most likely to be reversed.
+
+**A CLOSURE CAN CARRY A FREE TEXT NOTE.** Shipped in 3.84.0 and unchanged here: optional, in full on the list card, shortened on a word boundary with the cut marked on the month grid, with the whole note on the `title` and the `aria-label` speaking it in full. Not naming venues.
+
+**Nothing was deleted.** The hundred published events with no organizer stay published and untouched, the 287 imported events keep their organizers, and no event's terms were rewritten by this release.
 
 = 3.84.0 =
 

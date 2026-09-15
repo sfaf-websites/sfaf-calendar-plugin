@@ -735,6 +735,18 @@ class SFAF_Submit {
      * @return int
      */
     private static function create_event( $c, $series, $image_id ) {
+        /*
+         * ASKED FIRST, BEFORE ANYTHING IS INSERTED OR JOINED.
+         *
+         * SFAF_Series::organizers_for() reads the series' most recent event and
+         * counts pending ones, so the answer changes the moment this submission
+         * joins the series below. Asked here it describes the series as it was,
+         * which is what "inherit from the series" means. See the write further
+         * down for what this cost: every community submission since 3.76.0
+         * arrived with no organizer because it was its own source.
+         */
+        $series_orgs = SFAF_Series::organizers_for( (int) $series->term_id );
+
         $event_id = wp_insert_post( array(
             'post_type'    => 'uc_event',
             'post_status'  => 'pending',
@@ -839,7 +851,23 @@ class SFAF_Submit {
          * ran last and lose the rest. That is the 3.8.0 categories fault and the
          * 3.40.0 organizers fault, and it is why this is one write.
          */
-        $series_orgs = SFAF_Series::organizers_for( (int) $series->term_id );
+        /*
+         * THE SET WAS RESOLVED BEFORE THIS EVENT JOINED THE SERIES, and that is
+         * the whole of the 3.85.0 fix rather than a detail of it.
+         *
+         * organizers_for() answers from the series' MOST RECENT EVENT, and
+         * prefill_data() counts 'pending' among the statuses it looks at. This
+         * event is pending, it has just been added to the series above, and a
+         * submission is for an UPCOMING date, so by the time the question was
+         * asked here the newest event in the series was this one. It read its
+         * own empty organizer set and wrote nothing, every time, and the write
+         * looked correct in isolation because the fault is the order.
+         *
+         * Resolved at the top of this method instead, before set_for_event()
+         * puts it in the series, so the question is asked of the series as it
+         * was. submissions-test.php asserts that ordering rather than the write,
+         * because the write has been right since 3.76.0.
+         */
         if ( ! empty( $series_orgs ) ) {
             wp_set_object_terms( $event_id, array_map( 'intval', $series_orgs ), 'uc_organizer' );
         }

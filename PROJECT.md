@@ -979,6 +979,76 @@ guess which programme is putting an event on. It **inherits** every organizer
 the series lends, read off the series' most recent event, and inheriting only
 the first put a co-hosted submission under one team's filter and not the other's.
 
+**AND IT INHERITED NOTHING AT ALL UNTIL 3.85.0, BECAUSE THE EVENT WAS ITS OWN
+SOURCE.** `create_event()` added the new event to the series and then asked
+`organizers_for()`, which answers from the series' MOST RECENT EVENT and counts
+`pending` among the statuses it reads. A submission is pending and dated in the
+future, so the newest event in the series was the submission itself, holding no
+organizer yet. It read its own empty set and wrote nothing, every time, from
+3.76.0. **The write was correct throughout**, which is why reading it in
+isolation found nothing: the fault was the order, and the resolve now happens at
+the top of the method before anything is inserted or joined.
+
+**THE GENERAL SHAPE, worth more than this instance:** a derived value must be
+read BEFORE the thing being created joins the set it derives from. Anything that
+asks "what does this group look like" after adding a member to the group is
+asking a question the member has already changed.
+
+**An organizer is required from 3.85.0**, on the server, and the rule is about
+DIRECTION rather than state, which is what protects the hundred published events
+that have none. `SFAF_Organizers::requirement()` is the only place that decides:
+an event that HAS organizers cannot be saved with none; a new or unpublished one
+being published with none is saved and not published; and an event that had none
+and still has none is left exactly as it is, published included. A flat refusal
+would block somebody fixing a typo over a field they did not come to change.
+
+### Organizers and groups are one control, in the top layer (3.85.0)
+
+**TWO DROPDOWNS ASKED WHAT IS ONE QUESTION.** Programa Latino exists as both an
+organizer and a series, so the two lists could show what reads as the same name
+twice with nothing to tell them apart. **The headings are what tell them apart**,
+which is why the panel is grouped rather than one list of thirty-four names.
+
+**THE PANEL IS A POPOVER.** The groups disclosure was an ordinary block and
+opening it pushed the calendar down. A stacking value would not have been
+enough: an ancestor with a transform or a filter becomes the containing block
+and traps it, which is what happened to the hover preview in 3.75.0. `right` and
+`bottom` are explicitly `auto` because the UA stylesheet gives every `[popover]`
+`inset: 0` and `margin: auto`, so setting only `top` and `left` centres it.
+
+**THE NARROWING IS ONE-WAY AND DERIVED FROM EVENTS.** Nothing stores a group's
+organizer: a series carries a description, an image and a FAQ set, and an
+organizer is a property of the EVENTS in it. `group_organizer_map()` reads them
+off the published, non-private events in each group, so a group appears under
+every organizer that runs anything in it, and a collaboration appears under
+both. Selecting organizers hides non-matching groups; selecting groups does NOT
+narrow the organizers, because then each would hide the other's options and
+neither list could be trusted to be complete.
+
+**A GROUP WITH NO ORGANIZERED EVENTS IS ALWAYS SHOWN**, and this is the rule
+most likely to be "tidied" later. An empty list is missing information, not a
+statement that the group is not that organizer's. On the current data it is
+roughly a third of the groups while the hundred are being set by hand, so hiding
+them would empty most of the list and read as a broken control. **A ticked group
+is never hidden either**, or a filter runs with nothing on screen to clear it by.
+
+**THE LIST REORDERS ON OPEN, NEVER ON CLICK.** Selected items sit at the top; a
+list that moves the row just ticked out from under the cursor makes the next
+click land on something else. The server emits the order for the state it
+renders and the script reorders only when the panel is next opened.
+
+**THE FILTER BAR NOW WORKS WITH SCRIPT OFF, WHICH IT NEVER DID.** There was no
+`<form>`, no submit and no `<noscript>` anywhere in the file: the search box, the
+organizer select and the group checkboxes were all read by JavaScript. "The
+calendar works without script" was true of the LISTS and was never true of the
+FILTERS. `popovertarget` opens the panel declaratively, Apply is a real submit on
+a real GET form, and the script intercepts exactly as `initLoadMore()` does.
+
+**THIS MADE GROUPS A FIRST-LEVEL FILTER**, undoing the staging that kept them
+hidden until a category was chosen so that nobody was looking at two taxonomies
+at once. Merging necessarily ends that, because the organizer half was always
+first-level. `render_group_row()` has no caller and is kept one release.
+
 ### The organizer filter was a control that did nothing
 
 **Until 3.50.0 it rendered on this site, was left out of embeds deliberately,

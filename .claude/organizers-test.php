@@ -394,14 +394,52 @@ if ( false === strpos( $sub_src, 'array_map( \'intval\', $series_orgs )' ) ) {
 /* ONE CALL, NEVER ONE PER ID. wp_set_object_terms() REPLACES by default, so a
  * call inside a loop keeps only whichever ran last. This is the 3.8.0
  * categories fault and the 3.40.0 organizers fault, and it is the single shape
- * most likely to come back, so it is asserted against every writer by name. */
+ * most likely to come back, so it is asserted against every writer by name.
+ *
+ * TWO CHECKS, BECAUSE THE FIRST ONE HAD A HOLE. The 3.84.0 version required a
+ * NEWLINE between the foreach and the call, so the whole fault written on one
+ * line walked straight past it. That was found by planting it in 3.85.0 and
+ * watching the suite stay green, which is the reason the planting rule exists.
+ *
+ * COMMENTS ARE STRIPPED FIRST, so a docblock describing the fault is not read
+ * as the fault. Every one of these three files has one.
+ *
+ * Check 1 is the loop. Check 2 is the SHAPE, which is the stronger of the two:
+ * a single-element array literal written to this taxonomy is wrong however it
+ * got there, loop or no loop, because an event can hold several organizers and
+ * this call replaces. */
+function org_strip_comments( $src ) {
+    $out = '';
+    foreach ( token_get_all( $src ) as $tok ) {
+        if ( is_array( $tok ) ) {
+            if ( T_COMMENT === $tok[0] || T_DOC_COMMENT === $tok[0] ) { continue; }
+            $out .= $tok[1];
+        } else {
+            $out .= $tok;
+        }
+    }
+    return $out;
+}
+
 foreach ( array(
     'class-sfaf-request.php' => $req_src,
     'class-sfaf-submit.php'  => $sub_src,
     'class-sfaf-portal.php'  => $portal_src,
 ) as $fname => $src ) {
-    if ( preg_match( "#foreach[^\n]*\n[^\n}]*wp_set_object_terms\([^\n]*'uc_organizer'#", $src ) ) {
+    $code = org_strip_comments( $src );
+
+    /* 1. A loop whose body reaches this taxonomy, on one line or many. */
+    if ( preg_match( "#(?:foreach|for|while)\s*\([^)]*\)\s*\{?[^{}]{0,300}?wp_set_object_terms\s*\([^;]*?'uc_organizer'#s", $code ) ) {
         $fails[] = $fname . ' calls wp_set_object_terms() for uc_organizer inside a loop, which replaces on every pass and keeps only the last';
+    }
+
+    /* 2. A single-element array literal, which is the fault without the loop. */
+    /* THE VARIABLE MAY CARRY A SUBSCRIPT OR A PROPERTY, and the first draft of
+     * this pattern did not allow either, so `array( (int) $orgs[0] )` walked
+     * past it. Planted and caught only after widening, which is the second hole
+     * this one check has had. */
+    if ( preg_match( "#wp_set_object_terms\s*\([^;]*?array\s*\(\s*(?:\(\s*int\s*\)\s*)?\\\$[A-Za-z_][A-Za-z0-9_]*(?:\s*\[[^\]]*\]|\s*->\s*[A-Za-z_][A-Za-z0-9_]*)*\s*\)\s*,\s*'uc_organizer'#s", $code ) ) {
+        $fails[] = $fname . ' writes a SINGLE-element array to uc_organizer, which replaces whatever else the event had';
     }
 }
 

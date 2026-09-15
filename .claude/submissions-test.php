@@ -801,6 +801,51 @@ if ( $self ) {
 }
 
 /* ---------------------------------------------------------------------------
+ * THE COMMUNITY FORM'S ORGANIZER IS RESOLVED BEFORE THE EVENT JOINS THE SERIES.
+ *
+ * THE ORDER IS THE WHOLE ASSERTION, and the write is not, because the write has
+ * been correct since 3.76.0 and produced nothing anyway.
+ *
+ * SFAF_Series::organizers_for() answers from the series' MOST RECENT EVENT and
+ * prefill_data() counts 'pending' among the statuses it reads. A submission is
+ * pending and is dated in the FUTURE, so once it has joined the series it is
+ * the most recent event in it. Asked after the join, the question answered with
+ * the new event's own empty organizer set, so every community submission from
+ * 3.76.0 to 3.84.0 arrived with no organizer.
+ *
+ * Read with the tokenizer, comments stripped, because the docblocks around this
+ * code say "organizers_for" several times and a raw offset comparison would
+ * compare prose. That trap cost a round in 3.84.0.
+ * ------------------------------------------------------------------------ */
+$sub_raw  = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-submit.php' );
+$sub_code = '';
+foreach ( token_get_all( $sub_raw ) as $tok ) {
+    if ( is_array( $tok ) ) {
+        if ( T_COMMENT === $tok[0] || T_DOC_COMMENT === $tok[0] ) { continue; }
+        $sub_code .= $tok[1];
+    } else {
+        $sub_code .= $tok;
+    }
+}
+
+$at_resolve = strpos( $sub_code, 'SFAF_Series::organizers_for(' );
+$at_join    = strpos( $sub_code, 'SFAF_Series::set_for_event(' );
+$at_write   = strpos( $sub_code, "'uc_organizer'" );
+
+if ( false === $at_resolve ) {
+    fail( 'the community form no longer asks the series for its organizers at all' );
+} elseif ( false === $at_join ) {
+    fail( 'the community form no longer puts the event in the series; this check is blind' );
+} elseif ( $at_resolve > $at_join ) {
+    fail( 'the community form resolves the series organizers AFTER the event joins the series, so the event is its own source and inherits nothing' );
+}
+if ( false === $at_write ) {
+    fail( 'the community form never writes uc_organizer, so a derived organizer is discarded' );
+} elseif ( $at_write < $at_join ) {
+    fail( 'the community form writes uc_organizer before the event is in the series; the derived value cannot be right yet' );
+}
+
+/* ---------------------------------------------------------------------------
  * Report.
  * ------------------------------------------------------------------------ */
 echo "The two public forms, and the file handler behind both\n";

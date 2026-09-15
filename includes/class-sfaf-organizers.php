@@ -238,6 +238,61 @@ class SFAF_Organizers {
         return implode( ', ', $names ) . ' and ' . $last;
     }
 
+    /**
+     * What a save should do when it would leave an event with no organizer.
+     *
+     * AN ORGANIZER IS REQUIRED FROM 3.85.0, and this is the one place that
+     * decides what "required" means, so the caladmin editor and the staff
+     * request form cannot answer it differently.
+     *
+     * IT IS NOT A FLAT REFUSAL, AND THE REASON IS THE HUNDRED. There are about
+     * a hundred published events carrying no organizer, from before this was
+     * asked for. Mark is setting those by hand and they stay published in the
+     * meantime. A flat refusal would mean somebody fixing a typo on one of them
+     * is stopped by a field they did not come to change and cannot fill in
+     * without going and finding out who ran it, which is how a rule people
+     * cannot satisfy gets worked around.
+     *
+     * SO THE RULE IS ABOUT DIRECTION, NOT STATE:
+     *
+     *   'refuse'  the event HAS organizers and this save would leave it with
+     *             none. That is somebody unticking every box, which is related
+     *             to what they came to do, so refusing is fair and says so.
+     *   'hold'    a new event, or an unpublished one, being PUBLISHED with
+     *             none. The save still happens; the publish does not. Nothing
+     *             typed is lost, which a refusal on a new event would lose
+     *             entirely because there is no saved event to return to.
+     *   'ok'      everything else, including every save of one of the hundred.
+     *             An event that had none and still has none is left alone at
+     *             whatever status it already held.
+     *
+     * @param int[]  $posted  Organizer ids this save is offering.
+     * @param int[]  $had     Organizer ids the event holds now. Empty for new.
+     * @param bool   $is_new
+     * @param string $status  The status this save would set.
+     * @param string $current The event's status before this save. '' for new.
+     * @return string 'ok'|'refuse'|'hold'
+     */
+    public static function requirement( $posted, $had, $is_new, $status, $current = '' ) {
+        $posted = array_values( array_filter( array_map( 'intval', (array) $posted ) ) );
+        if ( ! empty( $posted ) ) {
+            return 'ok';
+        }
+
+        $had = array_values( array_filter( array_map( 'intval', (array) $had ) ) );
+        if ( ! empty( $had ) ) {
+            return 'refuse';
+        }
+
+        /* One of the hundred, saved as it is. Its status is not being raised,
+         * so nothing about this save makes the calendar any less complete. */
+        if ( ! $is_new && 'publish' === $current ) {
+            return 'ok';
+        }
+
+        return ( 'publish' === $status ) ? 'hold' : 'ok';
+    }
+
     /* ---------------------------------------------------------------------
      * Writing
      * ------------------------------------------------------------------- */

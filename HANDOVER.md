@@ -6,19 +6,49 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-15, at 3.84.0, built and NOT released.
+**Last updated:** 2026-09-15, at 3.85.0, built and NOT released.
 
 ---
 
 ## What shipped last
 
-**3.84.0 IS BUILT AND NOT RELEASED.** It is committed and the zip is
-`sfaf-calendar-3.84.0.zip` in the project root. **Mark has not given the word**,
-so there is no tag and no GitHub release, and sites are still being offered
-3.83.0.
+**3.85.0 IS BUILT AND NOT RELEASED.** The zip is `sfaf-calendar-3.85.0.zip` in
+the project root. **Mark has not given the word**, so there is no tag and no
+GitHub release. **3.84.0 was never released either**, so a site updating from
+3.83.0 gets both at once; there is nothing missing in between.
 
-**3.83.0** is the released version, from 2026-09-14, pushed to both
-repositories. It is what sites are running.
+**3.83.0** is still the released version, from 2026-09-14. It is what sites are
+running.
+
+> **THE FILTER BAR IS THE THING TO LOOK AT FIRST, AND IT IS THE RISKIEST PART.**
+> Organizers and groups are one popover now and it was measured floating in a
+> headless browser, but NOT on sfaf.org and NOT inside the Teal embed. An
+> ancestor with a transform is exactly what breaks a popover, and the embed is
+> the place most likely to have one. `TESTING.md` 1.106.
+
+> **NO COMMUNITY SUBMISSION HAS EVER CARRIED AN ORGANIZER, AND THE REPORTED
+> CAUSE WAS WRONG.** The brief said the form resolved the organizer and threw it
+> away. It did not: it wrote it, and has since 3.76.0. The event was its OWN
+> SOURCE. `create_event()` joined the event to the series and then asked the
+> series for its organizers, which answers from the series' most recent event
+> and counts pending ones, so the newest event was the submission itself with no
+> organizer yet. Proved by running it, not by reading it.
+
+> **THE HUNDRED ARE NOT BLOCKED, AND THAT IS THE THING TO CHECK.** An organizer
+> is required now, on the server, but the rule is about DIRECTION: an event that
+> had none and still has none saves normally and stays published. If somebody
+> reports being unable to edit an old event, that rule has broken and it matters
+> more than anything else in the release. `TESTING.md` 1.104.
+
+> **THE FILTER BAR HAS NEVER WORKED WITH SCRIPT OFF.** Not a regression, a fact:
+> there was no form, no submit and no noscript anywhere in the file. 3.85.0 adds
+> a real GET form, so this is new capability and has never been seen working.
+> `TESTING.md` 1.107.
+
+> **GROUPS ARE A FIRST-LEVEL FILTER NOW.** They used to appear only after a
+> category was chosen, deliberately, so nobody saw two taxonomies at once.
+> Merging the controls ended that. If it reads wrong, `render_group_row()` is
+> still in the file with no caller and the old row can come back.
 
 > **MOST OF 3.84.0's ORGANIZER BRIEF WAS ALREADY BUILT, IN 3.40.0.** The brief
 > asked for co-hosting and for the cost of undoing the single-organizer decision
@@ -95,6 +125,7 @@ repositories. It is what sites are running.
 
 | | |
 |---|---|
+| **3.85.0** | **No community submission has ever carried an organizer, and the write was never the problem.** The event was its OWN SOURCE: it joined the series and then asked the series for its organizers, which answers from the most recent event and counts pending ones. Proved by running it. **An organizer is required on the server now**, with a rule about direction rather than state, so the hundred published events with none save normally and stay published. **Organizers and groups are one popover in the top layer**, multi-select, narrowing one way from the events actually in each group, reordering on open rather than on click, and **the filter bar works with script off for the first time**, which needed a GET form the file never had. |
 | **3.84.0** | **An event could already have several organizers; two forms could not say so.** The 3.40.0 decision was already in place everywhere it had been built, so nothing there was rebuilt. The staff request form, whose organizer field arrived in 3.76.0 as a single select, is **tick boxes** now and approves the whole set in one call; the community form **inherits every organizer the series lends** rather than the first, which had been putting co-hosted submissions under one team's filter and not the other's; and the request prefill **applies the organizers it previews** instead of the first. **A closure can carry a free text note**, shown in full on the list card and shortened on a word boundary with the cut marked on the month grid, where `all()` had been silently dropping it because that method rebuilds rows from a fixed key list. |
 | **3.83.0** | **The calendar folder rule is enforced where a picture is resolved**, in one function every surface and the editor read, so the 270 imported references stop mattering rather than needing to be cleared. **The list view collapsed to one letter per line at 700px**: the list panel had no sizing inside the combined wrapper, measured at 0px wide with 26px cards, and the combined mode was still telling its renderer to draw no cards, so it said "No upcoming events found" beside a sidebar listing them. **And Remove says what is using a picture before the press**, with no button where there is nothing to press. |
 | **3.82.0** | **The list and calendar toggle was never in the stacked layout's markup at all**: the combined mode has forced it off since 3.45.0 at every width, on reasoning that only holds side by side. It is back, and its calendar button returns the combined layout rather than collapsing to a bare grid. **The sidebar band was 36px wider than everything under it**, measured at 700px, which was 3.80.0's escape doing exactly what it was told. Also **why Remove looks like it does nothing**, established rather than guessed, and the **Add an image** panel's two columns line up. |

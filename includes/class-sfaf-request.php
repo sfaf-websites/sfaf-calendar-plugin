@@ -617,6 +617,27 @@ class SFAF_Request {
                 }
             }
         }
+        /*
+         * REQUIRED, AND CHECKED HERE RATHER THAN ONLY IN THE MARKUP (3.85.0).
+         *
+         * The control carries no `required` attribute, because a group of
+         * checkboxes cannot: `required` on one box means THAT box, so a browser
+         * would demand the first organizer specifically. This is the check.
+         *
+         * A FLAT REFUSAL IS RIGHT HERE and it is not on the caladmin editor,
+         * and the difference is real rather than an inconsistency. This form
+         * only ever CREATES, so there is no existing event to be blocked out of
+         * and nothing grandfathered to accommodate; and the form redisplays
+         * every answer with the error, so refusing costs nobody their typing.
+         *
+         * ONLY WHEN THERE IS SOMETHING TO TICK. With no organizers on the site
+         * the fieldset is not rendered at all, and demanding a value from a
+         * control that was never shown is the $offered rule broken from the
+         * other side.
+         */
+        if ( empty( $clean['organizer'] ) && ! empty( SFAF_Organizers::all() ) ) {
+            $errors['organizer'] = 'Tick everybody putting this on.';
+        }
 
         $clean['venue']       = 0;
         $clean['venue_other'] = '';
@@ -1620,7 +1641,8 @@ class SFAF_Request {
                                 </label>
                             <?php endforeach; ?>
                         </div>
-                        <span class="uc-hint">Tick everybody putting it on. Leave them all clear and somebody here will set it.</span>
+                        <span class="uc-hint">Tick everybody putting it on.</span>
+                        <?php SFAF_Submissions::field_error( $err( 'organizer' ) ); ?>
                     </fieldset>
                 <?php endif; ?>
 

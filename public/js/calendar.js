@@ -38,6 +38,7 @@
         run('addToCalendar', initAddToCalendar);
         run('faq', initFAQ);
         run('pagination', initPagination);
+        run('who', initWhoPicker);
         run('views', initViews);
         // After views, which is what puts a month grid on the screen. It is
         // delegated, so the order does not actually matter, and it is here
@@ -711,6 +712,147 @@
      * a category chosen here returns exactly the events that category holds.
      * The count changing is the point.
      */
+    /**
+     * ORGANIZERS AND GROUPS, ONE CONTROL (3.85.0).
+     *
+     * THE SERVER RENDERS THIS WORKING. The panel opens without JavaScript,
+     * because popovertarget is declarative, and Apply is a real submit on a
+     * real GET form. Everything here is enhancement over markup that already
+     * answers, which is the same shape as initLoadMore() over the pagination
+     * links. Stamping data-uc-who-live is what hides Apply, so the button is
+     * only ever hidden once something is actually listening.
+     */
+    function initWhoPicker() {
+        function panelOf(el) { return $(el).closest('[data-uc-who]').find('[data-uc-who-panel]')[0] || null; }
+
+        function selected(panel, sel) {
+            return $(panel).find(sel).filter(':checked').map(function () {
+                return String(this.value || '');
+            }).get().filter(Boolean);
+        }
+
+        /* THE LABEL SAYS WHAT IS ON. Same rule the server used, kept in one
+           shape so the closed control does not change wording when the script
+           takes over: names while they fit, a count after that. */
+        function relabel(root) {
+            var panel = $(root).find('[data-uc-who-panel]')[0];
+            if (!panel) { return; }
+            var names = $(panel).find('input:checked').map(function () {
+                return $(this).next('span').text().trim();
+            }).get();
+            var text = !names.length ? 'Organizers and groups'
+                : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
+            $(root).find('[data-uc-who-label]').text(text);
+            $(root).find('[data-uc-who-trigger]').toggleClass('active', names.length > 0);
+        }
+
+        /**
+         * SELECTING ORGANIZERS NARROWS THE GROUPS, AND ONLY IN THAT DIRECTION.
+         * Organizer is the controlling filter; choosing a group does not narrow
+         * the organizers, because then each would be hiding the other's options
+         * and neither list could be trusted to be complete.
+         *
+         * A GROUP WITH NO ORGANIZERED EVENTS IS ALWAYS SHOWN. Its data
+         * attribute is empty, which is missing information rather than a
+         * statement that it is not this organizer's, and on the current data
+         * that is roughly a third of the groups while Mark is still setting
+         * organizers by hand. Hiding them the moment somebody picks an
+         * organizer would empty most of the list and read as a broken control.
+         *
+         * A TICKED GROUP IS NEVER HIDDEN. Hiding something already selected
+         * would leave a filter running with no way to see or clear it.
+         */
+        function narrow(root) {
+            var panel = $(root).find('[data-uc-who-panel]')[0];
+            if (!panel) { return; }
+            var orgs = selected(panel, '[data-uc-who-organizer]');
+            var $opts = $(panel).find('[data-uc-who-group-orgs]');
+            var shown = 0;
+
+            $opts.each(function () {
+                var mine = String($(this).attr('data-uc-who-group-orgs') || '').split(/\s+/).filter(Boolean);
+                var box = $(this).find('input')[0];
+                var keep = !orgs.length
+                    || !mine.length
+                    || (box && box.checked)
+                    || mine.some(function (s) { return orgs.indexOf(s) > -1; });
+                $(this).prop('hidden', !keep);
+                if (keep) { shown++; }
+            });
+
+            $(panel).find('[data-uc-who-none]').prop('hidden', shown > 0 || !$opts.length);
+        }
+
+        /* REORDER ON OPEN, NEVER WHILE SOMEBODY IS CLICKING. A list that moves
+           the row just ticked out from under the cursor makes the next click
+           land on something else. */
+        function reorder(panel) {
+            $(panel).find('[data-uc-who-list], .uc-who-list').each(function () {
+                var $list = $(this);
+                var $opts = $list.children('.uc-who-opt');
+                var sel = $opts.filter(function () { return $(this).find('input')[0].checked; });
+                var rest = $opts.not(sel);
+                $list.append(sel).append(rest);
+            });
+        }
+
+        /* POSITIONED UNDER ITS TRIGGER, AFTER IT IS SHOWN. A popover has no
+           size until it is in the top layer, so measuring before that gives
+           zero. Same order as the hover preview. */
+        function place(panel, trigger) {
+            var r = trigger.getBoundingClientRect();
+            var w = panel.offsetWidth || 320;
+            var left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+            panel.style.top = Math.round(r.bottom + 6) + 'px';
+            panel.style.left = Math.round(left) + 'px';
+        }
+
+        $('[data-uc-who]').each(function () {
+            var root = this;
+            var panel = $(root).find('[data-uc-who-panel]')[0];
+            var trigger = $(root).find('[data-uc-who-trigger]')[0];
+            if (!panel || !trigger) { return; }
+
+            $(root).closest('.uc-calendar').attr('data-uc-who-live', '1');
+            narrow(root);
+
+            panel.addEventListener('toggle', function (e) {
+                if (e.newState !== 'open') { return; }
+                reorder(panel);
+                narrow(root);
+                place(panel, trigger);
+            });
+        });
+
+        $(document).on('change', '[data-uc-who-organizer], [data-uc-who-group]', function () {
+            var root = $(this).closest('[data-uc-who]')[0];
+            var $block = $(this).closest('.uc-calendar');
+            if (!root || !$block.length) { return; }
+
+            var panel = panelOf(this);
+            narrow(root);
+            relabel(root);
+
+            $block.attr('data-active-organizer', selected(panel, '[data-uc-who-organizer]').join(','));
+            $block.attr('data-active-groups', selected(panel, '[data-uc-who-group]').join(','));
+            reloadBlock($block);
+        });
+
+        $(document).on('click', '[data-uc-who-clear]', function (e) {
+            e.preventDefault();
+            var root = $(this).closest('[data-uc-who]')[0];
+            var $block = $(this).closest('.uc-calendar');
+            if (!root) { return; }
+            $(root).find('input:checked').prop('checked', false);
+            narrow(root);
+            relabel(root);
+            if ($block.length) {
+                $block.attr('data-active-organizer', '').attr('data-active-groups', '');
+                reloadBlock($block);
+            }
+        });
+    }
+
     function initFilters() {
         $(document).on('click', '.uc-filter-btn', function () {
             var $btn   = $(this);

@@ -1921,6 +1921,73 @@ class SFAF_Portal {
             $status   = $existing ? $existing : 'draft';
         }
 
+        /*
+         * AN ORGANIZER IS REQUIRED, AND IT IS DECIDED HERE, ON THE SERVER.
+         *
+         * It has been in SFAF_Sources::completeness_fields() since 3.40.0, but
+         * that is a PROMPT: a confirm() in the browser saying "publish anyway?".
+         * With script off, or with the dialog dismissed, nothing stopped a
+         * published event having no organizer. This is the gate that does.
+         *
+         * THE $offered RULE APPLIES FIRST. A form that did not show the control
+         * does not speak for organizers at all, so a save arriving without the
+         * present marker is left alone rather than being read as "none".
+         * Without that, any save from a screen with no organizer control would
+         * be refused for a field it never asked about.
+         *
+         * SFAF_Organizers::requirement() decides what happens. See it for why
+         * this is not a flat refusal and what the hundred grandfathered events
+         * do.
+         */
+        $org_verdict = 'ok';
+        if ( isset( $_POST['uc_organizer_present'] ) ) {
+            $org_posted = isset( $_POST['organizer'] )
+                ? array_map( 'intval', (array) wp_unslash( $_POST['organizer'] ) )
+                : array();
+            $org_had = array();
+            if ( ! $is_new ) {
+                $terms = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) );
+                $org_had = is_wp_error( $terms ) ? array() : $terms;
+            }
+            $org_verdict = SFAF_Organizers::requirement(
+                $org_posted,
+                $org_had,
+                $is_new,
+                $status,
+                $is_new ? '' : (string) get_post_status( $event_id )
+            );
+        }
+
+        /*
+         * REFUSED BEFORE ANYTHING IS WRITTEN. The event is left exactly as it
+         * was and the editor says why. This is the only branch that returns
+         * early, and it can only be reached on an event that ALREADY has an
+         * organizer, so there is a saved event to go back to.
+         */
+        if ( 'refuse' === $org_verdict ) {
+            return array(
+                'id'      => $event_id,
+                'msg'     => 'organizer_required',
+                'written' => array(),
+                'scope'   => isset( $_POST['edit_scope'] ) ? sanitize_key( $_POST['edit_scope'] ) : '',
+                'moved'   => 0,
+                'told'    => 0,
+            );
+        }
+
+        /*
+         * HELD BACK FROM PUBLISHING, but saved. A new event keeps everything
+         * typed and lands as a draft; an existing one stays at the status it
+         * already had. The flash says which, so nobody is left wondering why
+         * the event is not on the calendar.
+         */
+        $org_held = false;
+        if ( 'hold' === $org_verdict ) {
+            $org_held = true;
+            $existing_status = $is_new ? '' : (string) get_post_status( $event_id );
+            $status = ( $existing_status && 'publish' !== $existing_status ) ? $existing_status : 'draft';
+        }
+
         // WHICH FIELDS THIS SAVE IS ALLOWED TO WRITE.
         //
         // A locked field renders `disabled`, and a disabled control submits
@@ -2386,7 +2453,15 @@ class SFAF_Portal {
             $told   = (int) $result['sent'];
         }
 
-        if ( $generated ) {
+        /*
+         * THE HELD PUBLISH OUTRANKS THE OTHERS, because it is the one outcome
+         * that differs from what the button said it would do. "Saved" on a
+         * screen where somebody pressed Publish is a true sentence that leaves
+         * them looking for the event on the calendar.
+         */
+        if ( $org_held ) {
+            $msg = 'organizer_needed_to_publish';
+        } elseif ( $generated ) {
             $msg = 'generated_' . $generated;
         } elseif ( 'all_upcoming' === $scope ) {
             $msg = 'bulk_' . $written;
@@ -3335,6 +3410,12 @@ class SFAF_Portal {
             'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
             'rejected'       => 'Event rejected.',
+            /*
+             * Both say what to do, and the second also says what happened,
+             * because what happened is not what the button said.
+             */
+            'organizer_required' => 'Nothing was saved. Tick at least one organizer.',
+            'organizer_needed_to_publish' => 'Saved, and not published. Tick at least one organizer, then publish.',
             /*
              * THE SHAPE WARNING IS HERE AND NOT ON THE BUTTON, because it is a
              * thing that will have happened rather than a thing to decide. A
