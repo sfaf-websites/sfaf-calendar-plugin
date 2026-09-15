@@ -1093,6 +1093,43 @@ hidden until a category was chosen so that nobody was looking at two taxonomies
 at once. Merging necessarily ends that, because the organizer half was always
 first-level. `render_group_row()` has no caller and is kept one release.
 
+### The embed has its own script, and that is where fixes go missing
+
+**THREE TIMES NOW a correct change reached the shortcode and not the embed**: the
+list card was rebuilt into a renderer only the shortcode used, the toggle
+rendered into a panel the stacked layout hid, and search was taught to redraw
+the month grid on the admin-ajax path while `embed.js` went on asking the REST
+route for `mode=items` and nothing else.
+
+> **THE RENDERERS ARE SHARED AND THE SCRIPTS ARE NOT.** `calendar.js` and
+> `embed.js` are two files of handlers over one set of markup, joined by nothing.
+> A behaviour added to the filter bar has to be added twice, and the second one
+> is the one that gets forgotten, because the first one demonstrably works.
+
+**THE TEST IS THE PAIRS, NOT THE BEHAVIOUR.**
+`.claude/embed-filters-test.php` asserts that for each thing the filter bar does,
+BOTH scripts do it: the merged control handled AND actually called, the month
+redrawn from the search handler rather than merely reachable, every narrowing in
+both month cache keys. Anything added to one script from here belongs in that
+file as a pair.
+
+**A HANDLER THAT EXISTS IS NOT A HANDLER THAT RUNS.** `embed.js` held the code
+for the merged control and never called it during one planted fault, and the
+first draft of the test passed: every string it looked for was still in the
+file. Assert the call, not the code.
+
+**AND THE EMBED'S CACHES ARE TWO, NOT ONE.** The server's `cache_identity()` has
+carried every narrowing for releases. The CLIENT's `monthCacheKey()` carried only
+the category, so searching and clearing served the grid cached for the other
+state out of a JavaScript object. When a payload looks stale, ask which of the
+two is answering.
+
+**A NARROWED RESPONSE IS NOT PUBLICLY CACHEABLE.** `public, max-age=60` on a
+response built for one visitor's search makes a filtered calendar a document a
+shared proxy may keep. The unnarrowed calendar is the same for everybody and is
+still cached; anything carrying a search, an organizer, groups or a category is
+`private, no-cache`.
+
 ### The organizer filter was a control that did nothing
 
 **Until 3.50.0 it rendered on this site, was left out of embeds deliberately,
@@ -5083,34 +5120,23 @@ and rewrite `_wp_attached_file`, the GUID and every stored `_uc_image_url`.
 both directions, because until that exists nobody knows how many files are in
 which state.
 
-### The embed payload cache does not flush on a plugin update (found 3.84.0)
+### embed.js is served with no version at all (found 3.84.0)
 
-**NOT BUILT, AND REPORTED RATHER THAN ASSUMED DONE.** The 3.84.0 brief listed
-"the embed payload cache keying on the version, which was fixed in 3.84.0" under
-what must not change. There is no such fix and there never was one.
+`SFAF_Embed::script_url()` returns `public/js/embed.js` with NO query string,
+while `style_url()` beside it carries `?ver=`. An embedding site therefore
+cannot tell from the Network tab which `embed.js` is running, and a browser or
+CDN may hold an old one indefinitely.
 
-`SFAF_Embed::cache_key()` keys on the request parameters, the calendar day and a
-generation counter held in `sfaf_embed_cache_version`. `SFAF_VERSION` is not in
-it, and every flush hook is a CONTENT event: `save_post_uc_event`,
-`deleted_post`, the trash and transition hooks, the meta and term hooks,
-`update_option_uc_settings`, `uc_rsvp_submitted`. Nothing listens for
-`upgrader_process_complete`, which the updater uses for its own transient.
+**This is now the likeliest way a fix goes missing on an embed**, because
+3.88.0 moved real behaviour into that file: the merged filter control and the
+month redraw on search both live there. A stale `embed.js` is a stale filter
+bar, which is the exact symptom that took three releases to find the first time.
 
-**Why it has never been visible**, and why this is a gap rather than a live
-fault: `cache_ttl()` is ten minutes and the calendar day is in the key, so a
-stale payload self-heals within ten minutes of an update. It cannot survive a
-hard refresh hours later and it can never serve markup that was not generated.
-
-**The fix is small**: flush on `upgrader_process_complete` and on activation.
-It is not done here because building something a brief describes as already
-existing is how a report stops being trustworthy. It needs Mark's word.
-
-**A separate and larger gap found alongside it**: `SFAF_Embed::script_url()`
-returns `public/js/embed.js` with NO query string, while `style_url()` carries
-`?ver=`. An embedding site therefore cannot tell from the Network tab which
-`embed.js` is running, and a browser or CDN may hold an old one indefinitely.
-`embed.js` does not build cards, so it cannot cause a stale card layout, but it
-is what would hide a real script fix.
+**Why it is still not built.** Adding `?ver=` changes the URL in every snippet
+already pasted on other sites, and those snippets are HTML this plugin cannot
+see or update. The note at `script_url()` records that a block pasted before
+2.10.1 still carries an old pinned URL. Deciding what happens to those is the
+part that needs Mark rather than code.
 
 ### The list view, rebuilt on a horizontal card (3.82.0)
 

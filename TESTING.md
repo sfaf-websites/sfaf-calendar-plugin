@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 142 items.** Quick 116, needs real conditions 23, blocked on other
+**Outstanding: 145 items.** Quick 119, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1680,6 +1680,45 @@ text and Series on the right.
   That is the alignment fault reported twice now.
 - **Upload with a Name that matches its own file name**, which is the case that
   used to be blanked.
+
+---
+### 1.119 Search and the filter dropdown ON THE EMBED (3.88.0)
+
+**On the embedded calendar, not on resources.sfaf.org.** That distinction is the
+whole of this release: the embed has its own script and its own route, and the
+two previous fixes went to the other one.
+
+- **Type in the search box in calendar or combined view.** The month grid and
+  the sidebar should both narrow. Before 3.88.0 only the hidden list changed.
+- **Open the Organizers and Groups dropdown and tick an organizer.** The groups
+  should narrow at once and the calendar should rebuild about a third of a
+  second later. Before 3.88.0 nothing happened at all on an embed.
+- **Tick two or three in a row.** The panel must stay open throughout.
+- **Clear the search and confirm the month fills back in.** If it only fills in
+  after moving month, a cached grid is being served and that is the thing to
+  report.
+- **Watch the Network tab while you do it.** There should be a request with
+  `mode=month` carrying your search in `s`, as well as the `mode=items` one.
+
+---
+
+### 1.120 A release is visible immediately on an embed (3.88.0)
+
+**The embed cache now retires on a plugin update**, which it never did.
+
+- **Update the plugin, then reload a page carrying an embed**, without waiting.
+  Whatever the release changed should be visible at once rather than up to ten
+  minutes later.
+- This is worth one deliberate check because four faults in this project have
+  looked arbitrary for want of it, and because it is invisible when it works.
+
+---
+
+### 1.121 An empty month on the embed says why (3.88.0)
+
+**On the embedded calendar.** Search for something that matches nothing in the
+month on screen. The grid should name your term back rather than saying nothing
+is scheduled. Do the same with an organizer that has no events that month.
 
 ---
 ## 2. Needs real conditions

@@ -6,14 +6,36 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-15, at 3.87.0, released.
+**Last updated:** 2026-09-15, at 3.88.0, released.
 
 ---
 
 ## What shipped last
 
-**3.87.0 IS RELEASED** and is what sites are being offered. 3.86.0 and 3.85.0
-are released behind it.
+**3.88.0 IS RELEASED** and is what sites are being offered.
+
+> **THE EMBED HAS ITS OWN SCRIPT AND ITS OWN ROUTE. READ THIS BEFORE FIXING
+> ANYTHING ON THE FILTER BAR.** Search and the merged dropdown did nothing on an
+> embed for three releases while both were provably correct on this site,
+> because `embed.js` asked its REST route for `mode=items` and nothing else, and
+> had no handler for the merged control at all. **That is the third time**: the
+> list card and the toggle went the same way. The renderers are shared and the
+> two scripts are not.
+>
+> **`.claude/embed-filters-test.php` now asserts the PAIRS.** Anything added to
+> one script belongs in that file as a pair, and it asserts the handler is
+> CALLED rather than merely present, because a planted rename passed the first
+> draft.
+
+> **THE EMBED HAS TWO CACHES AND THEY ARE NOT THE SAME ONE.** The server's
+> `cache_identity()` has carried every narrowing for releases and was never the
+> fault. The CLIENT's `monthCacheKey()` in `embed.js` carried only the category.
+> When a payload looks stale, ask which of the two is answering.
+
+> **THE EMBED CACHE NOW FLUSHES ON A PLUGIN UPDATE.** Flagged twice, built here.
+> A release is installed and then immediately looked at, which is exactly the
+> window it covers. `TESTING.md` 1.120 is one deliberate check of something that
+> is invisible when it works.
 
 > **AN EVENT-EDITOR UPLOAD WAS NEVER LOST, AND THE OBVIOUS DIAGNOSIS WAS WRONG.**
 > The file always landed in `uploads/calendar/` and was always on the Images
@@ -22,15 +44,11 @@ are released behind it.
 > on `uc_series`, which a picture uploaded two seconds ago cannot answer. It is
 > tagged with the series as it arrives now. `TESTING.md` 1.115.
 
-> **SEARCH IN CALENDAR VIEW: NO CODE CHANGED IN 3.87.0, DELIBERATELY.** It was
-> reported as still broken and the instruction was not to fix a fifth place
-> blind. The whole chain is now proved: typing fires `uc_load_month` carrying
-> the term, in calendar AND combined view, driven in Chrome against a real
-> block; `month_grid_data()` puts `sfaf_search` on the query it builds; and all
-> four of 3.86.0's changes are in the shipped 3.86.0 zip, checked by extracting
-> it. **What is left is the SQL, which needs a database, and the install.**
-> `TESTING.md` 1.116 tells Mark how to tell which in one look at the Network
-> tab. Do not change a fifth place without that answer.
+> **SEARCH ON THIS SITE WAS ALWAYS CORRECT, AND 3.87.0 PROVING IT WAS THE USEFUL
+> HALF.** The admin-ajax chain was driven in Chrome and executed in PHP and holds
+> end to end. What that verification could not see is that an EMBED never calls
+> it. The lesson is not "the proof was wrong", it is that proving one path says
+> nothing about the other, which is what 3.88.0's pair test exists for.
 
 > **THE APPLY BUTTON IS GONE AND THE PANEL HAD TO SURVIVE ITS OWN REDRAW.**
 > `reloadBlock()` replaces the whole block and the server renders the control
@@ -103,13 +121,6 @@ are released behind it.
 > lost was what the requester said, before it was stored. This is a smaller
 > fault than 3.40.0's and should not be reported to Mark as data loss.
 
-> **THE EMBED CACHE VERSION FIX DOES NOT EXIST.** The 3.84.0 brief listed it
-> under what must not change, as "fixed in 3.84.0". It was never built. See
-> `PROJECT.md` §8: `SFAF_VERSION` is not in the cache key and nothing flushes on
-> `upgrader_process_complete`. The ten-minute TTL bounds it so it self-heals,
-> which is why nobody has seen it. **It is left alone deliberately** and needs
-> Mark's word.
-
 > **`combined-panel-parity` HAD BEEN FAILING SINCE 3.83.0 AND SHIPPED ANYWAY.**
 > That release moved picture resolution into `sfaf_event_own_image_url()`, and
 > the harness had never stubbed `get_post_thumbnail_id()`. `run-all.sh` reported
@@ -163,6 +174,7 @@ are released behind it.
 
 | | |
 |---|---|
+| **3.88.0** | **Search and the merged dropdown did nothing on the EMBED, and both fixes had gone to the other path.** `embed.js` asked its own REST route for `mode=items` only, so the month grid never moved, and it had no handler for the merged Organizers and Groups control at all, still listening for the two controls 3.85.0 replaced. Third time a correct change reached the shortcode and not the embed. **Nothing was missing from the server's cache key**; the CLIENT's month cache key carried only the category. A narrowed response is no longer publicly cacheable, which is where Mark's 304 came from. **And the embed cache retires on a plugin update**, flagged twice and now built, so a release is not served from a payload built before it. `.claude/embed-filters-test.php` asserts both scripts as pairs, and that the handler is called rather than merely present. |
 | **3.87.0** | **An image uploaded from the event editor was never lost.** It landed in the calendar folder correctly; it vanished from the PICKER, because wp.media refreshes its library on upload and for an event in a series that query narrows on `uc_series`, which a brand new picture cannot answer. It is tagged with the series as it arrives now. **Search in calendar view: nothing changed, deliberately**, because the whole chain was proved correct in a browser and by execution, and the remaining candidates are the SQL and the install. **The filter panel is lighter and the Apply button is gone**, inside `<noscript>` rather than hidden, with the open panel surviving the redraw and the rebuild debounced at 350ms. **The upload panel is the picture on the left and the typed fields on the right**, which is what actually fixes an alignment fault two arrangements had not. |
 | **3.86.0** | **The merged filter control opened in the top left of the viewport**, and it was not the anchor positioning API: it was `position: fixed` at 0,0 placed by script from a popover `toggle` event, hidden by a selector older browsers discard. It is a `<details>` placed by the stylesheet now, with nothing platform-specific in how it opens, and measured with no script on the page at all. **Two columns, one third and two thirds**, held by grid fractions so narrowing cannot make them jump. **Closures can be edited**, which the model always allowed and the form never offered, the fifth control found built and unreachable. **Search narrows the month grid and the sidebar**, which needed three separate places to carry the term and a cache key to include it. Plus **name and alt text at upload** on a panel laid out as a grid, **top-aligned tick boxes** in one shared rule, and **a dashboard count of published events with no organizer** that links to them. |
 | **3.85.0** | **No community submission has ever carried an organizer, and the write was never the problem.** The event was its OWN SOURCE: it joined the series and then asked the series for its organizers, which answers from the most recent event and counts pending ones. Proved by running it. **An organizer is required on the server now**, with a rule about direction rather than state, so the hundred published events with none save normally and stay published. **Organizers and groups are one popover in the top layer**, multi-select, narrowing one way from the events actually in each group, reordering on open rather than on click, and **the filter bar works with script off for the first time**, which needed a GET form the file never had. |

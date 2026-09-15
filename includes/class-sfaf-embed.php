@@ -82,6 +82,28 @@ class SFAF_Embed {
         add_action( 'edited_uc_event_category', array( $this, 'flush_cache' ), 99 );
         add_action( 'update_option_uc_settings', array( $this, 'flush_cache' ) );
 
+        /*
+         * AND ON A PLUGIN UPDATE (3.88.0), WHICH CLOSES A GAP FLAGGED TWICE.
+         *
+         * Every other hook on this cache is a CONTENT event: an event saved, a
+         * term edited, a setting changed. None of them fires when the code that
+         * BUILDS the markup changes, so for up to the TTL after an update a site
+         * served the payload rendered by the release before it.
+         *
+         * WHY IT MATTERED MORE THAN THE TEN MINUTES SUGGEST. A release is
+         * installed and then immediately looked at, which is exactly the window
+         * this covers. Four faults in this project have looked arbitrary because
+         * the fix was live and the page was not, and "wait ten minutes and try
+         * again" is not something anybody thinks to do.
+         *
+         * BOTH HOOKS, because they answer different questions.
+         * upgrader_process_complete fires for an update in place; activation
+         * fires when the plugin is switched on, which an update does not always
+         * do and a manual reinstall does. Flushing twice costs one option write.
+         */
+        add_action( 'upgrader_process_complete', array( $this, 'flush_cache' ), 10, 2 );
+        add_action( 'sfaf_calendar_activated', array( $this, 'flush_cache' ) );
+
         // Cards show a live RSVP count, so a new registration dates them too.
         add_action( 'uc_rsvp_submitted', array( $this, 'flush_cache' ) );
     }
@@ -306,8 +328,36 @@ class SFAF_Embed {
         // store them with the response — the most reliable place for them.
         $this->apply_cors_to_response( $response, $request );
 
+        /*
+         * A NARROWED ANSWER IS NOT CACHED BY THE BROWSER (3.88.0).
+         *
+         * THE 304 MARK SAW IN THE NETWORK TAB CAME FROM HERE. Every response
+         * carried `public, max-age=60`, including one built for a search or a
+         * chosen organizer. Per URL that is not wrong, and the server's own
+         * transient already refuses to cache a search, but it makes a filtered
+         * calendar a PUBLIC, cacheable document for a minute: a shared proxy
+         * may keep it, and a visitor who clears a filter within the minute is
+         * answered from the copy built while it was on.
+         *
+         * The unnarrowed calendar is the same for everybody and is worth
+         * caching. Anything carrying a search term, a chosen organizer, chosen
+         * groups or a chosen category is one visitor's view of it, so it says
+         * so and is revalidated every time.
+         *
+         * THIS IS NOT WHAT MADE SEARCH DO NOTHING. That was embed.js asking for
+         * mode=items and never redrawing the grid. This is the other half of
+         * what the Network tab showed, fixed because it is real rather than
+         * because it was the cause.
+         */
+        $narrowed = ( '' !== trim( (string) $params['s'] ) )
+            || ( '' !== trim( (string) $params['active_organizer'] ) )
+            || ( '' !== trim( (string) $params['active_groups'] ) )
+            || ( '' !== trim( (string) $params['active_category'] ) );
+
         $browser_ttl = (int) apply_filters( 'sfaf_embed_browser_cache_ttl', MINUTE_IN_SECONDS );
-        if ( $browser_ttl > 0 ) {
+        if ( $narrowed ) {
+            $response->header( 'Cache-Control', 'private, no-cache, max-age=0, must-revalidate' );
+        } elseif ( $browser_ttl > 0 ) {
             $response->header( 'Cache-Control', 'public, max-age=' . $browser_ttl );
         }
 
@@ -1156,9 +1206,19 @@ class SFAF_Embed {
 
     /**
      * Retire every cached response by moving to the next cache generation.
-     * Accepts and ignores whatever arguments the hook it is attached to passes.
+     *
+     * ACCEPTS AND IGNORES WHATEVER THE HOOK PASSES, and from 3.88.0 it actually
+     * does. This docblock said so while the signature took none, which was true
+     * of every hook attached to it until `upgrader_process_complete` arrived
+     * with two. The callable audit caught it before it shipped; PHP would have
+     * raised nothing, because extra arguments to a plain function are discarded
+     * silently, so the only cost would have been a promise the code did not
+     * keep for the next person to attach something.
+     *
+     * @param mixed $a Unused. Whatever the hook sends first.
+     * @param mixed $b Unused.
      */
-    public function flush_cache() {
+    public function flush_cache( $a = null, $b = null ) {
         update_option( self::CACHE_VERSION_OPTION, $this->cache_version() + 1 );
     }
 

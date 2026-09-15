@@ -798,10 +798,24 @@
     /** Prefetched month HTML, keyed by block and month. */
     var monthCache = {};
 
+    /*
+     * EVERY NARROWING BELONGS IN THIS KEY (3.88.0).
+     *
+     * The category was here and the search term, the groups and the organizers
+     * were not, so searching and then clearing, or ticking an organizer and
+     * untivking it, served the grid cached for the other state out of this
+     * object. That is the same fault the category note below describes, three
+     * more times, and it is the client-side twin of the server's cache
+     * identity, which has carried all four for releases.
+     */
     function monthCacheKey(container, month) {
         // The chosen category belongs in the key: without it, filtering and then
         // returning would serve the other category's grid out of this cache.
-        return viewKey(container) + '#' + activeCategory(container) + '#' + month;
+        return viewKey(container) + '#' + activeCategory(container)
+            + '#' + (container.getAttribute('data-active-groups') || '')
+            + '#' + (container.getAttribute('data-active-organizer') || '')
+            + '#' + (container.getAttribute('data-active-search') || '')
+            + '#' + month;
     }
 
     /**
@@ -1263,6 +1277,144 @@
         });
     }
 
+    /**
+     * ORGANIZERS AND GROUPS, ON THE EMBED (3.88.0).
+     *
+     * THE CONTROL HAD NO HANDLER HERE AT ALL. 3.85.0 merged the organizer
+     * select and the groups row into one <details> and wired it in
+     * calendar.js, which is this site's script. The embed has its own, and
+     * embed.js still listened for `[data-uc-organizer]` and `[data-uc-group]`,
+     * which are the controls that merge REMOVED. So on an embed the dropdown
+     * rendered, opened, and did nothing whatever anybody ticked.
+     *
+     * That is the third time a correct change reached the shortcode and not the
+     * embed, after the list card and the toggle. The renderer is shared; the
+     * two scripts are not, and nothing makes them agree.
+     *
+     * DELEGATED ON THE CONTAINER, like every other handler in this file, so a
+     * block redrawn by loadBlock() keeps it.
+     */
+    function bindWho(container) {
+        function panelIn() { return container.querySelector('[data-uc-who-panel]'); }
+
+        function chosen(sel) {
+            var panel = panelIn();
+            if (!panel) { return []; }
+            return Array.prototype.slice.call(panel.querySelectorAll(sel))
+                .filter(function (b) { return b.checked; })
+                .map(function (b) { return b.value; })
+                .filter(Boolean);
+        }
+
+        /* The same rules as calendar.js, and they have to be the same: a group
+           with no organizered events is ALWAYS shown, because an empty list is
+           missing information rather than a mismatch, and a ticked group is
+           never hidden or the filter runs with nothing to clear it by. */
+        function narrow() {
+            var panel = panelIn();
+            if (!panel) { return; }
+            var orgs = chosen('[data-uc-who-organizer]');
+            var opts = panel.querySelectorAll('[data-uc-who-group-orgs]');
+            var shown = 0;
+            Array.prototype.forEach.call(opts, function (opt) {
+                var mine = (opt.getAttribute('data-uc-who-group-orgs') || '').split(/\s+/).filter(Boolean);
+                var box = opt.querySelector('input');
+                var keep = !orgs.length || !mine.length || (box && box.checked)
+                    || mine.some(function (s) { return orgs.indexOf(s) > -1; });
+                opt.hidden = !keep;
+                if (keep) { shown++; }
+            });
+            var none = panel.querySelector('[data-uc-who-none]');
+            if (none) { none.hidden = shown > 0 || !opts.length; }
+        }
+
+        function relabel() {
+            var panel = panelIn();
+            if (!panel) { return; }
+            var names = Array.prototype.slice.call(panel.querySelectorAll('input'))
+                .filter(function (b) { return b.checked; })
+                .map(function (b) {
+                    var s = b.nextElementSibling;
+                    return s ? (s.textContent || '').replace(/^\s+|\s+$/g, '') : '';
+                })
+                .filter(Boolean);
+            var label = container.querySelector('[data-uc-who-label]');
+            if (label) {
+                label.textContent = !names.length ? 'Organizers and groups'
+                    : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
+            }
+            var trigger = container.querySelector('[data-uc-who-trigger]');
+            if (trigger) { trigger.classList.toggle('active', names.length > 0); }
+        }
+
+        /* Selected to the top, ON OPEN ONLY, so a row never moves out from
+           under the cursor between one click and the next. */
+        function reorder() {
+            var panel = panelIn();
+            if (!panel) { return; }
+            Array.prototype.forEach.call(panel.querySelectorAll('.uc-who-list'), function (list) {
+                var opts = Array.prototype.slice.call(list.children);
+                opts.filter(function (o) { var b = o.querySelector('input'); return b && b.checked; })
+                    .concat(opts.filter(function (o) { var b = o.querySelector('input'); return !b || !b.checked; }))
+                    .forEach(function (o) { list.appendChild(o); });
+            });
+        }
+
+        var timer = null;
+
+        container.addEventListener('toggle', function (e) {
+            var d = e.target;
+            if (!d || !d.matches || !d.matches('[data-uc-who]') || !d.open) { return; }
+            reorder();
+            narrow();
+        }, true);
+
+        container.addEventListener('change', function (e) {
+            var box = e.target;
+            if (!box || !box.matches) { return; }
+            if (!box.matches('[data-uc-who-organizer], [data-uc-who-group]')) { return; }
+
+            narrow();
+            relabel();
+            container.setAttribute('data-active-organizer', chosen('[data-uc-who-organizer]').join(','));
+            container.setAttribute('data-active-groups', chosen('[data-uc-who-group]').join(','));
+
+            /* DEBOUNCED FOR THE REASON calendar.js DEBOUNCES: loadBlock()
+               replaces the block, so three ticks in a second would be three
+               redraws each replacing the markup the next is being ticked into.
+               350ms, the same number, because it is the same decision. */
+            if (timer) { clearTimeout(timer); }
+            timer = setTimeout(function () {
+                timer = null;
+                loadBlock(container, 1, false);
+            }, 350);
+        });
+
+        container.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) { return; }
+            var clear = t.closest('[data-uc-who-clear]');
+            if (clear && container.contains(clear)) {
+                e.preventDefault();
+                var panel = panelIn();
+                if (panel) {
+                    Array.prototype.forEach.call(panel.querySelectorAll('input'), function (b) { b.checked = false; });
+                }
+                narrow();
+                relabel();
+                container.setAttribute('data-active-organizer', '');
+                container.setAttribute('data-active-groups', '');
+                loadBlock(container, 1, false);
+                return;
+            }
+            /* Light dismiss, which a <details> does not give and a popover did. */
+            var open = container.querySelector('[data-uc-who][open]');
+            if (open && !open.contains(t)) { open.open = false; }
+        });
+
+        narrow();
+    }
+
     function bindGroups(container) {
         container.addEventListener('click', function (e) {
             var t = e.target;
@@ -1387,6 +1539,27 @@
             var term = (input.value || '').replace(/^\s+|\s+$/g, '');
             container.setAttribute('data-active-search', term);
 
+            /*
+             * THE MONTH GRID AND THE SIDEBAR ARE REDRAWN TOO (3.88.0), AND THIS
+             * IS THE FAULT MARK FOUND IN THE NETWORK TAB.
+             *
+             * This asked for mode=items and nothing else, so on an embed in
+             * calendar or combined view a search refreshed the LIST, which is
+             * the panel that is hidden or far below, and the grid beside it
+             * never moved. The shortcode had exactly this bug and it was fixed
+             * in 3.86.0; the embed has its own script and its own route and did
+             * not get the fix, which is the third time a correct change has gone
+             * to one path and not the other.
+             *
+             * THE MONTH REQUEST CARRIES THE TERM ALREADY. params() reads
+             * data-active-search, which is set above before either request is
+             * made, so mode=month and mode=items describe the same search.
+             */
+            var grid = gridOf(container);
+            if (grid) {
+                loadMonth(container, grid.getAttribute('data-month') || '');
+            }
+
             var list = listOf(container);
             if (!list) {
                 return;
@@ -1508,6 +1681,12 @@
         bindChips(container);
         bindGroups(container);
         bindOrganizer(container);
+        /* The merged Organizers and Groups control (3.88.0). bindGroups and
+           bindOrganizer above listen for the two controls that merge replaced,
+           and are kept because render_group_row() and the select are still in
+           the renderer for a block that asks for the old shape. This is the one
+           that reaches what the filter bar actually draws now. */
+        bindWho(container);
 
         ensureStylesheet();
         setLoading(container);

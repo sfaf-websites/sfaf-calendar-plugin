@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.87.0
+Stable tag: 3.88.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,36 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.88.0 =
+
+**THE EMBED HAS ITS OWN SCRIPT AND ITS OWN ROUTE, AND THAT IS THE WHOLE STORY.** Search and the merged Organizers and Groups dropdown did nothing on the embedded calendar. Two releases of work went to the admin-ajax path, and 3.87.0's verification drove that path in a headless browser and found it correct. It was correct. Nothing on an embed calls it.
+
+**THIS IS THE THIRD TIME.** The list card was rebuilt into a renderer only the shortcode used. The toggle rendered into a panel the stacked layout hid. Now this. **The renderers are shared and the two scripts are not**, and until this release nothing made them agree.
+
+**WHAT THE ROUTE HONOURS, which was never the problem.** `normalize_params()` reads `s`, `category`, `active_category`, `organizer`, `active_organizer`, `active_groups`, `filters`, `venue`, `series`, `view`, `month`, `mode`, `page`, `count`, `layout`, `per_page`, `toggle`, `source_links`, `show_filters` and `heading`. It ignores nothing the filter bar can send, and `$resolved = $params` hands all of it to the same renderers the shortcode uses.
+
+**FAULT ONE: THE EMBED ASKED FOR mode=items AND NOTHING ELSE.** That is the list. In calendar or combined view the list is the panel that is hidden or far below, so the month grid beside it never moved. It is exactly the bug the shortcode had before 3.86.0, living on the other path. **The month and the sidebar are redrawn from the search handler now**, carrying the term the same request already sent.
+
+**FAULT TWO: THE MERGED DROPDOWN HAD NO HANDLER ON THE EMBED AT ALL.** `embed.js` still listened for `[data-uc-organizer]` and `[data-uc-group]`, the two controls 3.85.0 replaced with one. So the dropdown rendered, opened, and did nothing whatever was ticked. It is handled now, with the same narrowing rules: a group with no organizered events is always shown, a ticked group is never hidden, organizer is the controlling filter, selected items rise on open rather than under the cursor, and the redraw is debounced at 350ms for the reason the other script debounces.
+
+**WHAT WAS MISSING FROM THE SERVER'S CACHE KEY: nothing.** `cache_identity()` has carried the search term, both active selections, the filter set, the venue, the series and the mode for releases, and searches are not cached server-side at all. Saying otherwise would have been easier and wrong.
+
+**WHAT WAS MISSING WAS THE CLIENT'S.** `monthCacheKey()` in `embed.js` carried the category and nothing else, so searching and clearing, or ticking an organizer and unticking it, served the grid cached for the other state out of a JavaScript object. Every narrowing is in that key now, which is what the server's identity has always done.
+
+**AND THE 304 WAS REAL, THOUGH IT WAS NOT THE CAUSE.** Every response carried `public, max-age=60`, including one built for one visitor's search. Per URL that is not wrong, but it makes a filtered calendar a publicly cacheable document for a minute: a shared proxy may keep it, and clearing a filter inside the minute is answered from the copy built while it was on. **A narrowed answer is now `private, no-cache, must-revalidate`**; the unnarrowed calendar, which is the same for everybody, is still cached.
+
+**WHY THE LIST VIEW WAS UNAFFECTED.** It asks for `mode=items` and `mode=items` is exactly what it wants: the request that did nothing useful in calendar view is the whole answer in list view. The list was always being rebuilt correctly by both scripts, on both paths, which is why the same search box worked in one view and looked dead in the other.
+
+**AN EMPTY MONTH SAYS WHICH KIND OF EMPTY IT IS**, on the embed as on this site, because both go through the same `render_month_grid()`: it names the search term back when a search emptied it, says the filters did when they did, and says nothing is scheduled only when that is true.
+
+**THE EMBED CACHE NOW RETIRES ON A PLUGIN UPDATE, which closes a gap flagged twice.** Every other hook on it was a CONTENT event, so nothing told it that the code building the markup had changed, and for up to the TTL after an update a site served the payload rendered by the release before it. A release is installed and then immediately looked at, which is exactly that window. **Four faults in this project have looked arbitrary for want of this.** Both `upgrader_process_complete` and activation are hooked, because an update in place and a reinstall are different events.
+
+**THE CALLABLE AUDIT CAUGHT ONE ON THE WAY OUT.** `upgrader_process_complete` passes two arguments and `flush_cache()` took none, while its own docblock claimed it accepted whatever a hook sent. PHP discards extra arguments silently, so nothing would have broken; what would have shipped is a promise the code did not keep.
+
+**`.claude/embed-filters-test.php` ASSERTS THE PAIRS.** For each behaviour the filter bar has, BOTH scripts must have it: the merged control handled and actually called, the month redrawn on search from the search handler rather than merely owning the function, every narrowing in both month cache keys, every parameter still read by the route and still in its cache identity. Five faults planted, including the one that shipped, and all five caught. **Two of the five escaped the first draft** and both were the same trap: matching a string that also appears in a comment, and matching a handler's code while nothing calls it.
+
+**Unchanged and confirmed working**: the event-editor upload and its tagging, the upload panel layout, closure editing, and the filter panel's position, columns, open state across a redraw and no-script path.
 
 = 3.87.0 =
 
