@@ -168,6 +168,71 @@ if ( ! preg_match( '/\$note\s*=\s*SFAF_Closures::note\(/', $sc_code ) ) {
     $fails[] = 'the list card no longer reads the full note, so both surfaces now show the shortened one';
 }
 
+/* ---- EDITING (3.86.0). ----
+ *
+ * THE MODEL COULD ALWAYS DO THIS AND THE SCREEN NEVER OFFERED IT. save() takes
+ * an existing id and updates that row; what was missing was any way to send
+ * one, because the admin form hardcoded `closure_id` to the empty string and
+ * the table offered Remove and nothing else. So a closure could only be changed
+ * by deleting and retyping it, which made the note added in 3.84.0 unreachable
+ * on every closure that already existed.
+ *
+ * The model half is asserted here. The half that actually broke was the FORM,
+ * so that is asserted against the source below. */
+$ed = SFAF_Closures::save( '', 'Staff day', '2026-05-04', '2026-05-05', 'Castro open' );
+$before = SFAF_Closures::get( $ed );
+expect( 'a closure to edit exists', is_array( $before ), true );
+
+$again = SFAF_Closures::save( $ed, 'Staff training day', '2026-05-04', '2026-05-06', 'Castro and 6th Street open' );
+expect( 'editing returns the SAME id rather than making a second closure', $again, $ed );
+
+$after = SFAF_Closures::get( $ed );
+expect( 'the name changed',  SFAF_Closures::name( $after ), 'Staff training day' );
+expect( 'the last day changed', $after['end'], '2026-05-06' );
+expect( 'the note changed',  SFAF_Closures::note( $after ), 'Castro and 6th Street open' );
+expect( 'the first day is unchanged', $after['start'], '2026-05-04' );
+
+/* AND IT IS STILL ONE ENTRY. An edit that quietly added a row would leave the
+ * grid marking both the old span and the new one. */
+$count_now = 0;
+foreach ( SFAF_Closures::all() as $r ) {
+    if ( 'Staff training day' === SFAF_Closures::name( $r ) ) { $count_now++; }
+}
+expect( 'a multi-day closure stays ONE entry after an edit', $count_now, 1 );
+
+/* A NOTE CAN BE CLEARED, which "edit the note" has to mean both ways. */
+SFAF_Closures::save( $ed, 'Staff training day', '2026-05-04', '2026-05-06', '' );
+expect( 'the note can be emptied again', SFAF_Closures::note( SFAF_Closures::get( $ed ) ), '' );
+
+/* ---- THE FORM MUST BE ABLE TO SEND AN ID. ----
+ *
+ * This is the assertion that would have failed for every release since closures
+ * shipped. Comments stripped, because the docblock beside it names the field. */
+$admin_raw  = file_get_contents( $root . '/admin/class-sfaf-admin.php' );
+$admin_code = '';
+foreach ( token_get_all( $admin_raw ) as $tok ) {
+    if ( is_array( $tok ) ) {
+        if ( T_COMMENT === $tok[0] || T_DOC_COMMENT === $tok[0] ) { continue; }
+        $admin_code .= $tok[1];
+    } else {
+        $admin_code .= $tok;
+    }
+}
+if ( preg_match( '#name="closure_id"\s+value=""#', $admin_code ) ) {
+    $fails[] = 'the closure form hardcodes an empty closure_id again, so every save creates a new closure and nothing can be edited';
+}
+if ( ! preg_match( '#name="closure_id"\s+value="<\?php echo esc_attr\(\s*\$e_id#', $admin_code ) ) {
+    $fails[] = 'the closure form no longer carries the id of the closure being edited';
+}
+foreach ( array( 'e_label', 'e_start', 'e_end', 'e_note' ) as $field ) {
+    if ( false === strpos( $admin_code, '$' . $field ) ) {
+        $fails[] = 'the closure form does not fill in $' . $field . ', so editing would blank that field';
+    }
+}
+if ( false === strpos( $admin_code, "add_query_arg( 'edit'" ) ) {
+    $fails[] = 'the closures table offers no way to reach the edit form';
+}
+
 expect( 'a closure with no date is refused', is_wp_error( SFAF_Closures::save( '', 'x', '' ) ), true );
 expect( 'a backwards range is refused', is_wp_error( SFAF_Closures::save( '', 'x', '2026-12-27', '2026-12-24' ) ), true );
 

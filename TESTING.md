@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 131 items.** Quick 105, needs real conditions 23, blocked on other
+**Outstanding: 138 items.** Quick 112, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1513,6 +1513,111 @@ off in the browser and open the calendar.
   the choice in the address bar.
 - **With script on, Apply should not be visible at all**, because the choices
   apply as they are made.
+
+---
+### 1.108 The filter dropdown opens under its trigger, everywhere (3.86.0)
+
+**This is the one to do first, and it needs more than one browser.** It opened
+in the top left corner of the viewport on sfaf.org. It is a `<details>` now and
+is placed by the stylesheet, so there is no script and no platform feature left
+to fail.
+
+- **On sfaf.org, and inside the Teal embed at 700px.** Open it. The panel should
+  appear directly under the button and the calendar below should not move.
+- **In Safari and in Firefox**, which is the point of the change. Chrome alone
+  proves nothing here: it supported the thing that broke.
+- **Shut, it must be invisible.** A closed `<details>` does not hide an
+  absolutely positioned child on its own and that was caught by measuring, so if
+  the panel is ever visible before you press anything, report that.
+- **Click outside it**, and press Escape. Both should close it.
+
+---
+
+### 1.109 The two columns hold still as groups are hidden (3.86.0)
+
+**The filter dropdown, opened.** Organizers on the left in one third, groups on
+the right in two thirds running in two sub-columns.
+
+- **Tick an organizer.** Groups that do not match should disappear. **The two
+  columns must not change width or swap places** as that happens.
+- **On a phone, and in the narrow embed**, the two should stack into one column.
+  The breakpoint measures the block's own column, so check it inside the embed
+  rather than only by narrowing the window.
+
+---
+
+### 1.110 Editing a closure (3.86.0)
+
+**WordPress admin, the closures screen.** There was no way to edit one at all
+until now, so every closure Mark has made was typed once and could only be
+deleted.
+
+- **Press Edit on an existing closure.** The form above should fill in with its
+  name, both dates and its note, and the button should read "Save changes".
+- **Change the note and save.** The list should show one closure, changed, not
+  two. Check the month grid afterwards: a multi-day closure must still mark its
+  whole span once rather than appearing twice.
+- **Press Cancel**, and confirm the form goes back to "Add a closure" empty.
+- **This is what makes the note from 3.84.0 usable on closures that already
+  exist.** Adding notes to the ones already recorded is the real test.
+
+---
+
+### 1.111 Search narrows the month grid and the sidebar (3.86.0)
+
+**The public calendar, in calendar view.** Typing in the search box did nothing
+to the grid or the sidebar before; it worked only in list view.
+
+- **Type something that matches a few events.** The grid should lose the events
+  that do not match, and the sidebar beside it should narrow with it.
+- **The caret must stay in the box.** If focus jumps out mid-word, report it: the
+  grid is refreshed without replacing the search field precisely to avoid that.
+- **Search for something that matches nothing in the month on screen.** The grid
+  should say it found nothing for that term rather than "Nothing scheduled",
+  and should name the term back.
+- **Then clear the search** and confirm the month fills back in. A stale cached
+  month here would show everything again only after moving month, which is the
+  thing to watch for.
+
+---
+
+### 1.112 Name and alt text at upload (3.86.0)
+
+**caladmin > Images > Add an image.**
+
+- The panel should now show **four fields on a tidy grid**, with File, Series,
+  Name and Alt text, and all four labels on the same line as each other.
+- **Upload with a Name that matches its own file name**, for example a file
+  called `strut-clinic.jpg` named "Strut clinic". The name must STICK. If the
+  grid shows the file name instead, the deliberate marker is not being set and
+  that is the 3.78.0 fault returning.
+- **Upload with both left blank.** It should behave exactly as before and show
+  up under the untagged filter.
+- **Check the alt text reached the picture**, in the grid's own alt field.
+
+---
+
+### 1.113 The tick boxes line up with long names (3.86.0)
+
+**caladmin, the event editor.** Find an organizer whose name wraps to two lines
+in the column. Its tick box should sit level with the FIRST line, not the middle
+of the two. **Check the categories in the same way**: they share one rule, so
+they should both be right or both be wrong.
+
+---
+
+### 1.114 The dashboard count of events with no organizer (3.86.0)
+
+**caladmin dashboard, Needs attention.**
+
+- It should say how many published events have no organizer. On today's data
+  that is about a hundred.
+- **Press the link.** It should open the events list showing only those, with a
+  band saying it is narrowed and a way back to all events.
+- **Set an organizer on one and come back.** The number should go down by one.
+  That is the whole point of counting this one and not the others.
+- **Editing one of those events must still work normally**, including saving it
+  while it still has no organizer. If a save refuses, report it at once.
 
 ---
 ## 2. Needs real conditions

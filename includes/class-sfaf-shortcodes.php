@@ -970,6 +970,24 @@ class SFAF_Shortcodes {
         // two cannot be excluded from one builder and not the other.
         SFAF_Cancellation::exclude( $args );
 
+        /*
+         * SEARCH NARROWS THE MONTH GRID TOO (3.86.0).
+         *
+         * IT JOINS A MECHANISM THAT ALREADY EXISTED rather than being a new
+         * one. The category, organizer, venue and series filters below have
+         * always narrowed this query; search was the one filter on the bar that
+         * did not, because this builder never called SFAF_Search::apply() and
+         * list_query_args() did. So the same box narrowed the list and did
+         * nothing at all to the grid or the sidebar beside it.
+         *
+         * THROUGH THE QUERY, NEVER BY HIDING TILES. Same rule as every other
+         * filter here: a day with no matching events has no events, rather than
+         * having them drawn and then hidden.
+         */
+        if ( '' !== $filters['s'] ) {
+            SFAF_Search::apply( $args, $filters['s'] );
+        }
+
         foreach ( array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer', 'venue' => 'uc_venue' ) as $key => $taxonomy ) {
             if ( '' !== $filters[ $key ] ) {
                 $args['tax_query'][] = array(
@@ -1572,8 +1590,33 @@ class SFAF_Shortcodes {
             // grid, and it is also what a failed month must NOT look like,
             // which is why the error box is separate and says something else.
             if ( 0 === (int) $data['in_month'] ) :
+                /*
+                 * IT HAS TO SAY WHICH KIND OF EMPTY IT IS (3.86.0).
+                 *
+                 * "Nothing scheduled in September" is TRUE of a bare month and
+                 * FALSE of a month that is full of events none of which match
+                 * what somebody just typed. Searching in calendar view began
+                 * narrowing this grid in 3.86.0, so the common way to reach an
+                 * empty month is now a search, and the old sentence would have
+                 * told somebody the month was empty when it was their own
+                 * search that emptied it.
+                 *
+                 * The search term is named back, because the box may be off
+                 * screen by the time somebody reads this on a long page.
+                 */
+                $m_search = isset( $filters['s'] ) ? (string) $filters['s'] : '';
+                $m_narrow = ( '' !== $m_search )
+                    || ( isset( $filters['category'] ) && '' !== $filters['category'] )
+                    || ( isset( $filters['organizer'] ) && '' !== $filters['organizer'] )
+                    || ( isset( $filters['groups'] ) && '' !== $filters['groups'] );
                 ?>
-                <p class="uc-month-empty">Nothing scheduled in <?php echo esc_html( $grid['label'] ); ?>. Use the arrows to look at another month.</p>
+                <?php if ( '' !== $m_search ) : ?>
+                    <p class="uc-month-empty">Nothing in <?php echo esc_html( $grid['label'] ); ?> matches &ldquo;<?php echo esc_html( $m_search ); ?>&rdquo;. Clear the search, or use the arrows to look at another month.</p>
+                <?php elseif ( $m_narrow ) : ?>
+                    <p class="uc-month-empty">Nothing in <?php echo esc_html( $grid['label'] ); ?> matches the filters. Clear them, or use the arrows to look at another month.</p>
+                <?php else : ?>
+                    <p class="uc-month-empty">Nothing scheduled in <?php echo esc_html( $grid['label'] ); ?>. Use the arrows to look at another month.</p>
+                <?php endif; ?>
             <?php endif; ?>
 
             <?php // Mobile: the grid above collapses to date + dots, and the
@@ -2066,54 +2109,113 @@ class SFAF_Shortcodes {
         $organizers = $sorter( $organizers, $org_on );
         $groups     = $sorter( $groups, $group_on );
         ?>
-        <div class="uc-who" data-uc-who>
-            <button type="button" class="uc-who-trigger<?php echo $count ? ' active' : ''; ?>"
+        <?php
+        /*
+         * A <details>, NOT A POPOVER, AND THAT IS THE 3.86.0 FIX.
+         *
+         * WHAT WENT WRONG. The panel was `position: fixed` with `top: 0; left: 0`
+         * as pre-measurement values, and a script moved it under the trigger
+         * from the popover's `toggle` event. Where that event does not fire, or
+         * where the popover API is missing entirely, nothing moved it and the
+         * panel opened in the top left corner of the viewport. Worse, the rule
+         * that HID it was `:not(:popover-open)`, and a browser that does not
+         * know `:popover-open` throws the whole rule away, so the panel does not
+         * merely open in the wrong place: it stands open permanently.
+         *
+         * IT WAS NEVER THE ANCHOR POSITIONING API. Nothing here has ever used
+         * `anchor-name`, `position-anchor` or `anchor()`. The diagnosis matters
+         * because the remedy is different: this needed the fragile dependency
+         * removed, not a fallback bolted beside it.
+         *
+         * WHAT REPLACES IT NEEDS NO JAVASCRIPT AND NO NEW PLATFORM FEATURE.
+         * <details> and <summary> open and close by themselves in every browser
+         * that has ever shipped, and the panel is placed by ordinary absolute
+         * positioning inside a relative wrapper, which has worked since CSS 2.
+         * Out of flow, so it floats over the calendar rather than pushing it,
+         * which is what the top layer was reached for in the first place.
+         *
+         * The script adds light dismiss and keeps the label in step. If it never
+         * runs, the control still opens, still filters and still submits.
+         */
+        ?>
+        <details class="uc-who" data-uc-who>
+            <summary class="uc-who-trigger<?php echo $count ? ' active' : ''; ?>"
                     data-uc-who-trigger
-                    popovertarget="<?php echo esc_attr( $id ); ?>"
                     aria-label="Filter by organizer or group">
                 <span class="uc-who-label" data-uc-who-label><?php echo esc_html( $label ); ?></span>
                 <?php echo sfaf_icon( 'chevron', array( 'class' => 'uc-who-chevron' ) ); ?>
-            </button>
+            </summary>
 
-            <div class="uc-who-panel" id="<?php echo esc_attr( $id ); ?>" popover data-uc-who-panel>
-                <?php if ( ! empty( $organizers ) ) : ?>
-                    <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-org">Organizers</p>
-                    <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-org">
-                        <?php foreach ( $organizers as $o ) : ?>
-                            <label class="uc-who-opt">
-                                <input type="checkbox" name="uc_org[]"
-                                       value="<?php echo esc_attr( $o->slug ); ?>"
-                                       data-uc-who-organizer
-                                       <?php checked( in_array( $o->slug, $org_on, true ) ); ?> />
-                                <span><?php echo esc_html( $o->name ); ?></span>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+            <div class="uc-who-panel" id="<?php echo esc_attr( $id ); ?>" data-uc-who-panel>
+                <?php
+                /*
+                 * TWO COLUMNS, ONE THIRD AND TWO THIRDS (3.86.0). Nine
+                 * organizers against twenty-five groups, so equal columns would
+                 * leave the left side half empty and make the right side twice
+                 * as tall as it needs to be.
+                 *
+                 * THE WIDTHS ARE HELD BY THE GRID, NOT BY THEIR CONTENTS, which
+                 * is the part that needed saying out loud: narrowing can take
+                 * the right side from twenty-five names to two, and a layout
+                 * sized by what is left would jump every time somebody ticked
+                 * an organizer. The grid template is fixed in fractions, so the
+                 * columns stay where they are and only the rows inside change.
+                 */
+                ?>
+                <div class="uc-who-cols">
+                    <?php if ( ! empty( $organizers ) ) : ?>
+                        <section class="uc-who-col uc-who-col-org">
+                            <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-org">
+                                <?php foreach ( $organizers as $o ) : ?>
+                                    <label class="uc-who-opt">
+                                        <input type="checkbox" name="uc_org[]"
+                                               value="<?php echo esc_attr( $o->slug ); ?>"
+                                               data-uc-who-organizer
+                                               <?php checked( in_array( $o->slug, $org_on, true ) ); ?> />
+                                        <span><?php echo esc_html( $o->name ); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+                    <?php endif; ?>
 
-                <?php if ( ! empty( $groups ) ) : ?>
-                    <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-grp">Groups</p>
-                    <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-grp" data-uc-who-groups>
-                        <?php foreach ( $groups as $g ) :
-                            $orgs_of = isset( $map[ $g->slug ] ) ? $map[ $g->slug ] : array(); ?>
-                            <label class="uc-who-opt" data-uc-who-group-orgs="<?php echo esc_attr( implode( ' ', $orgs_of ) ); ?>">
-                                <input type="checkbox" name="uc_group[]"
-                                       value="<?php echo esc_attr( $g->slug ); ?>"
-                                       data-uc-who-group
-                                       <?php checked( in_array( $g->slug, $group_on, true ) ); ?> />
-                                <span><?php echo esc_html( $g->name ); ?></span>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                    <p class="uc-who-none" data-uc-who-none hidden>No groups match those organizers.</p>
-                <?php endif; ?>
+                    <?php if ( ! empty( $groups ) ) : ?>
+                        <section class="uc-who-col uc-who-col-grp">
+                            <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-grp">Groups</p>
+                            <?php
+                            /*
+                             * TWO SUB-COLUMNS, by CSS columns rather than by
+                             * splitting the list in the markup. Splitting here
+                             * would mean deciding the break server-side and
+                             * getting it wrong the moment narrowing hides half
+                             * of one side; `columns` reflows on its own and
+                             * leaves one list for a screen reader to read.
+                             */
+                            ?>
+                            <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-grp" data-uc-who-groups>
+                                <?php foreach ( $groups as $g ) :
+                                    $orgs_of = isset( $map[ $g->slug ] ) ? $map[ $g->slug ] : array(); ?>
+                                    <label class="uc-who-opt" data-uc-who-group-orgs="<?php echo esc_attr( implode( ' ', $orgs_of ) ); ?>">
+                                        <input type="checkbox" name="uc_group[]"
+                                               value="<?php echo esc_attr( $g->slug ); ?>"
+                                               data-uc-who-group
+                                               <?php checked( in_array( $g->slug, $group_on, true ) ); ?> />
+                                        <span><?php echo esc_html( $g->name ); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="uc-who-none" data-uc-who-none hidden>No groups match those organizers.</p>
+                        </section>
+                    <?php endif; ?>
+                </div>
 
                 <div class="uc-who-foot">
                     <button type="button" class="uc-who-clear" data-uc-who-clear>Clear</button>
                     <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
                 </div>
             </div>
-        </div>
+        </details>
         <?php
     }
 
@@ -3572,7 +3674,14 @@ class SFAF_Shortcodes {
 
         $month   = $this->normalize_month( isset( $_POST['month'] ) ? wp_unslash( $_POST['month'] ) : '' );
         $filters = array();
-        foreach ( array( 'category', 'organizer', 'series', 'venue', 'groups' ) as $key ) {
+        /*
+         * 's' IS IN THIS LIST FROM 3.86.0 AND WAS NOT BEFORE, which is half of
+         * why searching did nothing on the month grid. The other half is that
+         * month_grid_data() never applied it. Either one alone would have been
+         * enough to make the box look broken in calendar view while working
+         * perfectly in list view.
+         */
+        foreach ( array( 'category', 'organizer', 'series', 'venue', 'groups', 's' ) as $key ) {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
         // Clamped exactly as the list is, so choosing a category or a group

@@ -4003,7 +4003,42 @@ class SFAF_Portal {
              * warnings. An administrator sees it on the admin notice, on the
              * Automation screen, and now by email.
              */
-            $needs = ( $imports || $pending );
+            /*
+             * HOW MANY PUBLISHED EVENTS HAVE NO ORGANIZER (3.86.0).
+             *
+             * WHY THIS ONE AND NOT THE OTHERS. Imported events also lack
+             * images, descriptions and categories, and the pending queue
+             * already flags those per event. This count is here because it goes
+             * to ZERO as Mark works through it, which is what makes a number on
+             * a dashboard worth reading. A permanently large one is a number
+             * people learn to look past, and then the one that mattered is
+             * looked past with it.
+             *
+             * PUBLISHED ONLY, because an event with no organizer that nobody
+             * can see yet is not a gap on the public calendar. These are the
+             * ones invisible to the organizer filter right now.
+             *
+             * IT IS A COUNT, NOT A BLOCK. Saves do not refuse on these: see
+             * SFAF_Organizers::requirement(), where an event that had no
+             * organizer and still has none is left exactly as it is. This is
+             * how the gap gets noticed, and nothing else.
+             */
+            $no_org = 0;
+            if ( $is_admin ) {
+                $no_org_q = new WP_Query( array(
+                    'post_type'      => 'uc_event',
+                    'post_status'    => 'publish',
+                    'posts_per_page' => 1,
+                    'fields'         => 'ids',
+                    'tax_query'      => array( array(
+                        'taxonomy' => 'uc_organizer',
+                        'operator' => 'NOT EXISTS',
+                    ) ),
+                ) );
+                $no_org = (int) $no_org_q->found_posts;
+            }
+
+            $needs = ( $imports || $pending || $no_org );
             ?>
             <div class="uc-card">
                 <div class="uc-card-head"><h2>Needs attention</h2></div>
@@ -4023,6 +4058,14 @@ class SFAF_Portal {
                                 <strong><?php echo (int) $pending; ?></strong>
                                 <?php echo esc_html( _n( 'event was', 'events were', $pending ) ); ?> submitted for review.
                                 <a href="<?php echo esc_url( $this->url( 'pending' ) ); ?>">Review submissions &rarr;</a>
+                            </li>
+                        <?php endif; ?>
+                        <?php if ( $no_org ) : ?>
+                            <li>
+                                <strong><?php echo (int) $no_org; ?></strong>
+                                published <?php echo esc_html( _n( 'event has', 'events have', $no_org ) ); ?> no organizer,
+                                so <?php echo esc_html( _n( 'it does', 'they do', $no_org ) ); ?> not appear under any organizer on the calendar.
+                                <a href="<?php echo esc_url( add_query_arg( 'missing', 'organizer', $this->url( 'events' ) ) ); ?>">Set organizers &rarr;</a>
                             </li>
                         <?php endif; ?>
                     </ul>
@@ -4879,12 +4922,18 @@ class SFAF_Portal {
         $scope  = $this->scope_choice();
         $public = $this->is_public_scope( $user, $scope );
 
+        /* The dashboard's "Set organizers" link lands here. Read from the URL
+         * rather than carried in $filters, because it is a one-off way in
+         * rather than a control on this screen. */
+        $missing = isset( $_GET['missing'] ) ? sanitize_key( wp_unslash( $_GET['missing'] ) ) : '';
+
         $ids = $this->query_events( $user, array_merge( $filters, $this->event_views()[ $view ]['args'], array(
             'orderby'  => $orderby,
             'order'    => $order,
             'paged'    => $paged,
             'per_page' => 25,
             'scope'    => $scope,
+            'missing'  => $missing,
         ) ) );
         $total = $this->last_query_total;
         $pages = $this->last_query_pages;
@@ -4893,6 +4942,16 @@ class SFAF_Portal {
             <h1><?php echo 'all' === $scope ? 'All Events' : 'My Events'; ?></h1>
             <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
         </div>
+
+        <?php if ( 'organizer' === $missing ) : ?>
+            <?php /* A narrowed list has to say it is narrowed and offer the way
+                     out, or the next person to open this screen from a bookmark
+                     sees a fraction of the events and no reason why. */ ?>
+            <div class="uc-flash">
+                Showing only events with no organizer.
+                <a href="<?php echo esc_url( add_query_arg( 'scope', $scope, $this->url( 'events' ) ) ); ?>">Show all events</a>
+            </div>
+        <?php endif; ?>
 
         <?php
         // The scope travels with the view, the search and the sort, so
@@ -9021,7 +9080,24 @@ class SFAF_Portal {
                     <input type="hidden" name="uc_action" value="media_upload" />
                     <input type="hidden" name="<?php echo esc_attr( SFAF_Media_Folder::FLAG ); ?>" value="1" />
                     <?php wp_nonce_field( 'uc_portal_media_upload', 'uc_nonce' ); ?>
-                    <div class="uc-field-row">
+                    <?php
+                    /*
+                     * A GRID OF FOUR, NOT TWO FIELDS WITH TWO APPENDED (3.86.0).
+                     *
+                     * THE ALIGNMENT FAULT AND WHY A GRID ANSWERS IT. This was a
+                     * flex row of two fields, and only the File column had a
+                     * hint under it, so the two columns were different heights
+                     * and nothing held their contents in step. Adding two more
+                     * fields to that makes four things each finding their own
+                     * level.
+                     *
+                     * A grid puts every LABEL on a row boundary, so labels line
+                     * up because they are in the same grid row rather than
+                     * because two columns happen to be the same height. The
+                     * hints then hang below without moving anything.
+                     */
+                    ?>
+                    <div class="uc-upload-grid">
                         <label class="uc-field">
                             <span class="uc-field-label">File</span>
                             <input type="file" name="uc_media" accept="image/jpeg,image/png,image/gif,image/webp" required />
@@ -9038,6 +9114,18 @@ class SFAF_Portal {
                                     <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Name <span class="uc-muted">(optional)</span></span>
+                            <input type="text" name="uc_media_title" maxlength="120"
+                                   placeholder="Strut drop-in clinic" />
+                            <span class="uc-hint">What the picker calls it. Leave it blank and the file name is used.</span>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Alt text <span class="uc-muted">(optional)</span></span>
+                            <input type="text" name="uc_media_alt" maxlength="160"
+                                   placeholder="Two people talking at a clinic reception desk" />
+                            <span class="uc-hint">What somebody who cannot see the picture is told it shows.</span>
                         </label>
                     </div>
                     <div class="uc-form-actions">
@@ -9434,6 +9522,29 @@ class SFAF_Portal {
         $term_id = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
         if ( $term_id ) {
             SFAF_Media::add_tag( array( $id ), $term_id );
+        }
+
+        /*
+         * NAME AND ALT TEXT, GIVEN AT UPLOAD (3.86.0).
+         *
+         * THROUGH THE SAME TWO METHODS THE GRID USES, not by writing the post
+         * title here. SFAF_Media::rename() sets the title AND the deliberate
+         * marker, which is what stops the derived-title rule blanking a name
+         * that happens to resemble its own file name: without the marker,
+         * "Strut clinic" uploaded as strut-clinic.jpg would be read as a file
+         * name and thrown away. That fault cost 3.78.0 a release.
+         *
+         * BOTH OPTIONAL, and an empty one writes nothing rather than writing an
+         * empty string, so a picture uploaded without them is in exactly the
+         * state the untagged filter is built to surface.
+         */
+        $up_title = isset( $_POST['uc_media_title'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_media_title'] ) ) : '';
+        if ( '' !== trim( $up_title ) ) {
+            SFAF_Media::rename( $id, $up_title );
+        }
+        $up_alt = isset( $_POST['uc_media_alt'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_media_alt'] ) ) : '';
+        if ( '' !== trim( $up_alt ) ) {
+            SFAF_Media::set_alt( $id, $up_alt );
         }
 
         $this->redirect( 'media', array( 'msg' => 'uploaded' ) );
@@ -17116,6 +17227,28 @@ class SFAF_Portal {
             $q['post_status'] = $args['status'];
         } else {
             $q['post_status'] = array( 'publish', 'pending', 'draft', 'future' );
+        }
+
+        /*
+         * "SHOW ME THE ONES MISSING SOMETHING" (3.86.0).
+         *
+         * The dashboard counts published events with no organizer, and a count
+         * that cannot be opened is a number somebody has to go and find by
+         * hand. This is what its link lands on.
+         *
+         * ONE FIELD FOR NOW, AND THE SHAPE ALLOWS MORE. Only 'organizer' is
+         * accepted, because that is the only count on the dashboard: imported
+         * events also lack images and descriptions, and the pending queue
+         * already flags those per event. An unrecognised value narrows nothing
+         * rather than returning an empty list, so a stale or hand-edited link
+         * shows the ordinary list instead of looking like every event is gone.
+         */
+        if ( ! empty( $args['missing'] ) && 'organizer' === $args['missing'] ) {
+            $q['tax_query'] = isset( $q['tax_query'] ) ? $q['tax_query'] : array();
+            $q['tax_query'][] = array(
+                'taxonomy' => 'uc_organizer',
+                'operator' => 'NOT EXISTS',
+            );
         }
 
         /*

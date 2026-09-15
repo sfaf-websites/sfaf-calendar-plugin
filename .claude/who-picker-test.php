@@ -5,13 +5,17 @@
  *     php .claude/who-picker-test.php
  *
  * WHAT THIS CAN AND CANNOT SETTLE. It reads the rendered markup and the source,
- * so it proves the CONTRACT: the panel is a popover, the boxes post the names
- * the server already reads, every group carries the organizers its events name,
- * and there is a real form with a real submit under it. What it cannot prove is
- * that the panel floats instead of pushing the calendar down, because that is
- * geometry. That half was driven in Chrome for 3.85.0 and measured: the
- * calendar sat at y=88 before the panel opened and y=88 after, with the panel in
- * the top layer at 16,62 under a trigger ending at y=56.
+ * so it proves the CONTRACT: the control opens without script or any platform
+ * feature, the boxes post the names the server already reads, every group
+ * carries the organizers its events name, and there is a real form with a real
+ * submit under it. What it cannot prove is geometry, which is driven in Chrome
+ * and recorded in the release notes.
+ *
+ * 3.86.0 REVERSED THE OPENING MECHANISM and these assertions reversed with it.
+ * The panel was a popover placed by script from its `toggle` event, and on
+ * sfaf.org it opened in the top left corner of the viewport. Section 2 now
+ * asserts the opposite: nothing about opening this may depend on the popover
+ * API, on CSS anchor positioning, or on script running.
  *
  * THE COMMENTS ARE STRIPPED BEFORE ANY SOURCE MATCH. Every docblock around this
  * code names the classes and the parameters, so a raw match reads prose. That
@@ -50,26 +54,63 @@ if ( strpos( $sc, '$this->render_group_row(' ) !== false ) {
     $fails[] = 'the separate groups row is being rendered again alongside the merged picker, so the same question is asked twice';
 }
 
-/* 2. THE TOP LAYER. A z-index is not enough and never was: an ancestor that has
- *    become a containing block traps it, which is what happened to the hover
- *    preview in 3.75.0. */
-if ( strpos( $sc, 'popovertarget=' ) === false ) {
-    $fails[] = 'the trigger no longer targets a popover, so the panel is not in the top layer and will push the calendar down';
+/* 2. IT OPENS UNDER ITS TRIGGER IN EVERY BROWSER (3.86.0), WHICH THE POPOVER
+ *    VERSION DID NOT.
+ *
+ * WHAT THESE USED TO ASSERT, and why the reversal is a strengthening rather
+ * than a retreat. 3.85.0 required a popover, a popovertarget, and `right: auto`
+ * and `bottom: auto` on the popover rule to defeat the UA's `inset: 0`. All of
+ * that was correct ABOUT A POPOVER and all of it was load-bearing on a platform
+ * feature that is not everywhere. On sfaf.org the panel opened in the top left
+ * corner of the viewport: `position: fixed` at 0,0 was the pre-measurement
+ * value and the script that moved it ran from the popover's `toggle` event.
+ *
+ * WORSE THAN A WRONG POSITION. The rule that HID the panel was
+ * `:not(:popover-open)`, and a browser that does not know that selector throws
+ * the whole rule away, so the panel stands open permanently.
+ *
+ * So the claim now is the opposite one and it is checkable without a browser:
+ * NOTHING about opening this control may depend on the popover API, on anchor
+ * positioning, or on script. */
+if ( strpos( $sc, 'popovertarget' ) !== false || preg_match( '#<div class="uc-who-panel"[^>]*\spopover#', $sc ) ) {
+    $fails[] = 'the panel is a popover again, which is what opened it in the top left corner on sfaf.org';
 }
-if ( strpos( $sc, 'popover data-uc-who-panel' ) === false ) {
-    $fails[] = 'the panel no longer carries the popover attribute';
+if ( strpos( $css, ':popover-open' ) !== false && preg_match( '#uc-who[^\n]*:popover-open#', $css ) ) {
+    $fails[] = 'the who panel is hidden or styled by :popover-open again; a browser that does not know that selector discards the rule and the panel stands open';
 }
-/* SCOPED TO THE RULE, NOT SEARCHED ACROSS THE FILE. The first draft asked
- * whether "right: auto" appeared anywhere in calendar.css, which it does, in
- * rules that have nothing to do with this. Deleting the declaration from the
- * popover changed nothing and the check stayed green. Caught by planting it. */
-if ( ! preg_match( '#\.uc-who-panel\[popover\]\s*\{([^}]*)\}#', $css, $panel_rule ) ) {
-    $fails[] = 'the popover has no stylesheet rules, so the UA inset:0 and margin:auto will centre it in the viewport';
+if ( ! preg_match( '#<details class="uc-who"#', $sc ) ) {
+    $fails[] = 'the control is no longer a <details>, so it needs script or a platform feature to open';
+}
+if ( ! preg_match( '#<summary class="uc-who-trigger#', $sc ) ) {
+    $fails[] = 'the trigger is no longer a <summary>, so opening it needs script';
+}
+/* THE PLACEMENT IS IN THE STYLESHEET AND NEEDS NO MEASUREMENT. */
+if ( ! preg_match( '#\.uc-who\s*\{([^}]*)\}#', $css, $wrap_rule ) || strpos( $wrap_rule[1], 'position: relative' ) === false ) {
+    $fails[] = 'the wrapper is not positioned, so the panel has nothing to be absolute against and falls back to the viewport';
+}
+/* ANCHORED AT THE START OF A LINE, so this matches the panel's OWN rule and not
+ * `.uc-who:not([open]) .uc-who-panel`, which also contains that string and has
+ * no positioning in it. The unanchored version reported the panel unpositioned
+ * while it was positioned correctly. */
+if ( ! preg_match( '#^\.uc-who-panel\s*\{([^}]*)\}#m', $css, $panel_rule ) ) {
+    $fails[] = 'the panel has no placement rules at all';
 } else {
-    foreach ( array( 'right: auto', 'bottom: auto' ) as $needed ) {
-        if ( strpos( $panel_rule[1], $needed ) === false ) {
-            $fails[] = 'the popover rule does not set ' . $needed . ', so the UA stylesheet pins that edge at 0 and the auto margins centre the panel instead of placing it';
-        }
+    if ( strpos( $panel_rule[1], 'position: absolute' ) === false ) {
+        $fails[] = 'the panel is not absolutely positioned, so it is placed by script or not at all';
+    }
+    if ( strpos( $panel_rule[1], 'top: calc(100% + 6px)' ) === false ) {
+        $fails[] = 'the panel is no longer placed under its trigger by the stylesheet';
+    }
+}
+/* NO ANCHOR POSITIONING ANYWHERE. It is unimplemented in Safari and Firefox, so
+ * a control that leans on it is a control that is wrong in two engines. */
+if ( preg_match( '#anchor-name|position-anchor|position-try|\banchor\(#', $css ) ) {
+    $fails[] = 'the stylesheet now uses CSS anchor positioning, which Safari and Firefox do not implement';
+}
+/* AND NOTHING SCRIPTED PLACES IT, which is the dependency that actually broke. */
+if ( preg_match( '#panel\.style\.(top|left)\s*=#', $js ) && preg_match( '#uc-who#', $js ) ) {
+    if ( preg_match( '#function place\(panel#', $js ) ) {
+        $fails[] = 'the who panel is positioned by script again, so wherever that code does not run it opens in the corner';
     }
 }
 
@@ -97,6 +138,31 @@ if ( strpos( $sc, 'data-uc-who-apply' ) === false ) {
 }
 if ( strpos( $css, '[data-uc-who-live] .uc-who-apply' ) === false ) {
     $fails[] = 'Apply is not hidden once the script is listening, so it is a button that repeats what already happened';
+}
+
+echo "The two columns\n";
+
+/* 5b. ONE THIRD AND TWO THIRDS, HELD BY THE GRID (3.86.0).
+ *
+ * THE FRACTIONS ARE THE ASSERTION. Narrowing can take the right column from
+ * twenty-five names to two, and a template sized by its contents would jump on
+ * every tick. `1fr 2fr` does not care what is left inside it, which is the only
+ * reason the layout holds still. */
+if ( ! preg_match( '#\.uc-who-cols\s*\{([^}]*)\}#', $css, $cols_rule ) ) {
+    $fails[] = 'the panel no longer lays its two sections out as columns';
+} else {
+    if ( strpos( $cols_rule[1], 'grid-template-columns: 1fr 2fr' ) === false ) {
+        $fails[] = 'the columns are not one third and two thirds in fractions, so the layout is sized by its contents and will jump as groups are hidden';
+    }
+}
+if ( strpos( $css, '.uc-who-list-2col' ) === false ) {
+    $fails[] = 'the groups no longer run in two sub-columns, so twenty-five names are one long drop';
+}
+/* THE CONTAINER DECIDES THE STACK, NOT THE WINDOW. This block is embedded on
+ * another site inside a column it does not control, so a media query about the
+ * window is a lie in there. The media query is a floor beside it, not instead. */
+if ( ! preg_match( '#@container\s+uc-calendar\s*\(max-width:\s*620px\)#', $css ) ) {
+    $fails[] = 'the stack breakpoint is not a container query, so it measures the window rather than the column the block is in';
 }
 
 echo "The narrowing\n";
@@ -135,7 +201,7 @@ echo "The ordering and the label\n";
 
 /* 10. REORDER ON OPEN, NOT WHILE CLICKING. A list that moves the row just
  *     ticked out from under the cursor makes the next click land elsewhere. */
-if ( strpos( $js, "addEventListener('toggle'" ) === false ) {
+if ( ! preg_match( "#on\('toggle', '\[data-uc-who\]'#", $js ) ) {
     $fails[] = 'the panel no longer reorders on open, so either it never reorders or it reorders under the cursor';
 }
 if ( preg_match( "#'change'[^\n]*\n[^\n]*reorder\(#", $js ) ) {

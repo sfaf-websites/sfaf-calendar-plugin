@@ -6,25 +6,47 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-15, at 3.85.0, built and NOT released.
+**Last updated:** 2026-09-15, at 3.86.0, built and NOT released.
 
 ---
 
 ## What shipped last
 
-**3.85.0 IS BUILT AND NOT RELEASED.** The zip is `sfaf-calendar-3.85.0.zip` in
+**3.86.0 IS BUILT AND NOT RELEASED.** The zip is `sfaf-calendar-3.86.0.zip` in
 the project root. **Mark has not given the word**, so there is no tag and no
-GitHub release. **3.84.0 was never released either**, so a site updating from
-3.83.0 gets both at once; there is nothing missing in between.
+GitHub release.
 
-**3.83.0** is still the released version, from 2026-09-14. It is what sites are
-running.
+**3.85.0 IS RELEASED**, on 2026-09-15, and is what sites are being offered.
 
-> **THE FILTER BAR IS THE THING TO LOOK AT FIRST, AND IT IS THE RISKIEST PART.**
-> Organizers and groups are one popover now and it was measured floating in a
-> headless browser, but NOT on sfaf.org and NOT inside the Teal embed. An
-> ancestor with a transform is exactly what breaks a popover, and the embed is
-> the place most likely to have one. `TESTING.md` 1.106.
+> **3.85.0 SHIPPED A REAL FAULT AND 3.86.0 FIXES IT.** The merged filter control
+> opened in the top left corner of the viewport on sfaf.org. I flagged that risk
+> when shipping it and it landed, so 3.86.0 should go out reasonably promptly.
+
+> **IT WAS NOT THE ANCHOR POSITIONING API**, which this plugin has never used.
+> The panel was `position: fixed` at 0,0 until a script moved it from the
+> popover's `toggle` event, and it was HIDDEN by `:not(:popover-open)`, which a
+> browser without the API discards along with the whole rule. So it could open
+> in the corner OR stand open permanently. It is a `<details>` now, placed by
+> the stylesheet, with no popover, no anchor positioning and no script involved
+> in opening it. **Check it in Safari and Firefox**: Chrome supported the thing
+> that broke, so Chrome proves nothing here. `TESTING.md` 1.108.
+
+> **THE HOVER PREVIEW DOES NOT HAVE THE SAME PROBLEM.** It probes for
+> `showPopover` and returns before building anything, and its visible state is a
+> class it controls rather than `:popover-open`, so without the API it degrades
+> to nothing rather than to a panel in a corner. Popover is supported in Safari
+> 17+ and Firefox 125+ anyway. Nothing to do.
+
+> **CLOSURES COULD NOT BE EDITED AND THE MODEL ALWAYS COULD.** `save()` has taken
+> an existing id since it was written; the form hardcoded an empty one. That is
+> the FIFTH control found built and unreachable in this project. It was checked
+> before being rebuilt, which is the only reason it took one edit.
+
+> **THE TWO CALENDAR FOLDERS: INVESTIGATED, NOTHING BUILT.** The plugin reads the
+> physical path; the media library's folder is a **WP Media Folder** taxonomy
+> term that can be set without the file moving. `PROJECT.md` §8 has the four
+> answers and what reconciling would cost. **It needs Mark's decision**, because
+> moving files breaks stored URLs.
 
 > **NO COMMUNITY SUBMISSION HAS EVER CARRIED AN ORGANIZER, AND THE REPORTED
 > CAUSE WAS WRONG.** The brief said the form resolved the organizer and threw it
@@ -125,6 +147,7 @@ running.
 
 | | |
 |---|---|
+| **3.86.0** | **The merged filter control opened in the top left of the viewport**, and it was not the anchor positioning API: it was `position: fixed` at 0,0 placed by script from a popover `toggle` event, hidden by a selector older browsers discard. It is a `<details>` placed by the stylesheet now, with nothing platform-specific in how it opens, and measured with no script on the page at all. **Two columns, one third and two thirds**, held by grid fractions so narrowing cannot make them jump. **Closures can be edited**, which the model always allowed and the form never offered, the fifth control found built and unreachable. **Search narrows the month grid and the sidebar**, which needed three separate places to carry the term and a cache key to include it. Plus **name and alt text at upload** on a panel laid out as a grid, **top-aligned tick boxes** in one shared rule, and **a dashboard count of published events with no organizer** that links to them. |
 | **3.85.0** | **No community submission has ever carried an organizer, and the write was never the problem.** The event was its OWN SOURCE: it joined the series and then asked the series for its organizers, which answers from the most recent event and counts pending ones. Proved by running it. **An organizer is required on the server now**, with a rule about direction rather than state, so the hundred published events with none save normally and stay published. **Organizers and groups are one popover in the top layer**, multi-select, narrowing one way from the events actually in each group, reordering on open rather than on click, and **the filter bar works with script off for the first time**, which needed a GET form the file never had. |
 | **3.84.0** | **An event could already have several organizers; two forms could not say so.** The 3.40.0 decision was already in place everywhere it had been built, so nothing there was rebuilt. The staff request form, whose organizer field arrived in 3.76.0 as a single select, is **tick boxes** now and approves the whole set in one call; the community form **inherits every organizer the series lends** rather than the first, which had been putting co-hosted submissions under one team's filter and not the other's; and the request prefill **applies the organizers it previews** instead of the first. **A closure can carry a free text note**, shown in full on the list card and shortened on a word boundary with the cut marked on the month grid, where `all()` had been silently dropping it because that method rebuilds rows from a fixed key list. |
 | **3.83.0** | **The calendar folder rule is enforced where a picture is resolved**, in one function every surface and the editor read, so the 270 imported references stop mattering rather than needing to be cleared. **The list view collapsed to one letter per line at 700px**: the list panel had no sizing inside the combined wrapper, measured at 0px wide with 26px cards, and the combined mode was still telling its renderer to draw no cards, so it said "No upcoming events found" beside a sidebar listing them. **And Remove says what is using a picture before the press**, with no button where there is nothing to press. |

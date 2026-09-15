@@ -357,6 +357,12 @@
             organizer: $block.attr('data-filter-organizer') || '',
             series: $block.attr('data-filter-series') || '',
             venue: $block.attr('data-filter-venue') || '',
+            /* THE SEARCH TERM TRAVELS WITH THE MONTH FROM 3.86.0. It was not in
+               this payload, and ajax_load_month() did not read it, and
+               month_grid_data() did not apply it. Three places, each of which
+               alone was enough to make the box do nothing in calendar view
+               while working in list view. */
+            s: $block.attr('data-filter-s') || '',
             /* THE VIEW, NOT A BOOLEAN. The server decides the shape from this,
                with the same normalize_view() the first render used, so a redraw
                cannot produce a shape the first render would not have. */
@@ -375,8 +381,13 @@
      * and then flipping back would serve the other category's grid out of cache,
      * which is the same class of fault the filter bar itself had.
      */
+    /* THE SEARCH TERM AND THE GROUPS ARE PART OF THE KEY (3.86.0). Without the
+       term, searching would hit the entry cached for the UNSEARCHED month and
+       redraw the grid with everything still on it, which looks exactly like
+       search not working and is the harder version of it to find. */
     function monthKey($block, month) {
-        return viewKey($block) + '#' + activeCategory($block) + '#' + month;
+        return viewKey($block) + '#' + activeCategory($block) + '#' + activeGroups($block)
+            + '#' + ($block.attr('data-filter-s') || '') + '#' + month;
     }
 
     function loadMonth($block, month) {
@@ -796,31 +807,52 @@
             });
         }
 
-        /* POSITIONED UNDER ITS TRIGGER, AFTER IT IS SHOWN. A popover has no
-           size until it is in the top layer, so measuring before that gives
-           zero. Same order as the hover preview. */
-        function place(panel, trigger) {
-            var r = trigger.getBoundingClientRect();
-            var w = panel.offsetWidth || 320;
-            var left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
-            panel.style.top = Math.round(r.bottom + 6) + 'px';
-            panel.style.left = Math.round(left) + 'px';
-        }
+        /* NOTHING POSITIONS THE PANEL ANY MORE (3.86.0), and that is the fix.
+           It was `position: fixed` at 0,0 until a script moved it from the
+           popover's `toggle` event, so wherever that event did not fire it
+           opened in the top left corner of the viewport. The stylesheet places
+           it absolutely under its trigger now, which needs no script, no
+           popover API and no anchor positioning. There is no place() left to
+           fail to run. */
 
-        $('[data-uc-who]').each(function () {
-            var root = this;
-            var panel = $(root).find('[data-uc-who-panel]')[0];
-            var trigger = $(root).find('[data-uc-who-trigger]')[0];
-            if (!panel || !trigger) { return; }
+        /* THE STAMP IS ON THE DOCUMENT, NOT ON THE BLOCK, and that is a fix of
+           its own. It hides the no-script Apply button, and it used to be set
+           per block at ready, so a block redrawn by reloadBlock() came back
+           without it and Apply reappeared. Whether a script is running is a
+           fact about the page, not about one block, so it is recorded once
+           where no redraw can remove it. */
+        document.documentElement.setAttribute('data-uc-who-live', '1');
 
-            $(root).closest('.uc-calendar').attr('data-uc-who-live', '1');
-            narrow(root);
+        /* Narrowing applied once for what the server rendered, because a block
+           can arrive with organizers already selected from the query string. */
+        $('[data-uc-who]').each(function () { narrow(this); });
 
-            panel.addEventListener('toggle', function (e) {
-                if (e.newState !== 'open') { return; }
-                reorder(panel);
-                narrow(root);
-                place(panel, trigger);
+        /* DELEGATED, so a block redrawn by reloadBlock() keeps its behaviour.
+           The previous version bound the open handler with .each() at ready,
+           which is one of the two ways this control could lose its script. */
+        $(document).on('toggle', '[data-uc-who]', function () {
+            if (!this.open) { return; }
+            var panel = $(this).find('[data-uc-who-panel]')[0];
+            if (!panel) { return; }
+            reorder(panel);
+            narrow(this);
+        });
+
+        /* LIGHT DISMISS, which a popover gave for free and a <details> does not.
+           Closing on an outside click is what makes this behave like a menu
+           rather than a panel somebody has to press the trigger again to shut. */
+        $(document).on('click', function (e) {
+            $('[data-uc-who][open]').each(function () {
+                if (this.contains(e.target)) { return; }
+                this.open = false;
+            });
+        });
+        $(document).on('keydown', function (e) {
+            if ('Escape' !== e.key && 'Esc' !== e.key) { return; }
+            $('[data-uc-who][open]').each(function () {
+                this.open = false;
+                var s = $(this).find('[data-uc-who-trigger]')[0];
+                if (s) { s.focus(); }
             });
         });
 
@@ -1209,6 +1241,26 @@
             function run() {
                 var term = $.trim($input.val() || '');
                 $block.attr('data-filter-s', term);
+
+                /*
+                 * THE GRID AND THE SIDEBAR ARE REDRAWN TOO (3.86.0).
+                 *
+                 * This only ever updated the list, so in calendar view the box
+                 * quietly refreshed a HIDDEN panel and the month grid beside it
+                 * never moved. The organizer filter has always narrowed the grid
+                 * because it goes through reloadBlock(); search does not, and
+                 * deliberately still does not, because reloadBlock() replaces
+                 * the whole block INCLUDING THIS INPUT and would take the focus
+                 * out from under somebody mid-word.
+                 *
+                 * loadMonth() replaces the grid and the sidebar panels only, so
+                 * the search box keeps its focus and its caret. Same endpoint,
+                 * same clamping, same query as every other filter on the bar.
+                 */
+                var $grid = $block.find('.uc-month');
+                if ($grid.length) {
+                    loadMonth($block, $grid.attr('data-month') || $block.attr('data-month') || '');
+                }
 
                 var $list = $block.find('.uc-event-list, .uc-upcoming-list').first();
                 if (!$list.length) {

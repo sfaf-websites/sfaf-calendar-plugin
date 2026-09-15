@@ -993,8 +993,44 @@ class SFAF_Admin {
                 <div class="notice notice-success"><p>Closure removed. Nothing else changed: no event refers to one.</p></div>
             <?php endif; ?>
 
+            <?php
+            /*
+             * EDITING WAS ALWAYS POSSIBLE AND WAS NEVER OFFERED (3.86.0).
+             *
+             * SFAF_Closures::save() has taken an existing id since it was
+             * written: pass one that is already in the option and it updates
+             * that row rather than creating another. What was missing was any
+             * way to SEND one. This form hardcoded `closure_id` to the empty
+             * string, so every save took the create branch, and the table
+             * offered Remove and nothing else. A closure could only be changed
+             * by deleting it and typing it again, which loses nothing except
+             * the time, and made the note added in 3.84.0 unreachable on every
+             * closure that already existed.
+             *
+             * That is the fifth control in this project found built and
+             * unreachable, so it was checked before being built again rather
+             * than after.
+             *
+             * ONE FORM, NOT TWO. The add form IS the edit form with a row
+             * loaded into it, which is the shared-field-list rule this project
+             * keeps: two forms would be two places for the note to be forgotten
+             * next time a field is added.
+             */
+            $editing = isset( $_GET['edit'] ) ? SFAF_Closures::get( sanitize_text_field( wp_unslash( $_GET['edit'] ) ) ) : null;
+            $e_id    = $editing ? $editing['id'] : '';
+            $e_label = $editing ? SFAF_Closures::name( $editing ) : '';
+            $e_start = $editing ? $editing['start'] : '';
+            $e_end   = $editing ? $editing['end'] : '';
+            $e_note  = $editing ? SFAF_Closures::note( $editing ) : '';
+            ?>
+            <?php if ( isset( $_GET['edit'] ) && ! $editing ) : ?>
+                <?php /* A stale link, most often from a closure removed in another tab.
+                         Said out loud, because the form silently becoming "Add a closure"
+                         would look like the Edit button had done nothing. */ ?>
+                <div class="notice notice-error"><p>That closure no longer exists, so there is nothing to edit.</p></div>
+            <?php endif; ?>
             <div class="uc-admin-card">
-                <h2>Add a closure</h2>
+                <h2><?php echo $editing ? 'Edit this closure' : 'Add a closure'; ?></h2>
                 <p class="description">
                     A closure is marked on the month grid and appears in a calendar list as a flat card.
                     It has no page, cannot be clicked, takes no registrations and sends nothing.
@@ -1003,29 +1039,36 @@ class SFAF_Admin {
                 <form method="post">
                     <?php wp_nonce_field( 'uc_closure_action', 'uc_closure_nonce' ); ?>
                     <input type="hidden" name="uc_closure_action" value="save" />
-                    <input type="hidden" name="closure_id" value="" />
+                    <input type="hidden" name="closure_id" value="<?php echo esc_attr( $e_id ); ?>" />
                     <p>
                         <label for="uc_closure_label">What to call it</label><br />
                         <input type="text" name="closure_label" id="uc_closure_label" class="regular-text"
-                               placeholder="Thanksgiving" required />
+                               placeholder="Thanksgiving" value="<?php echo esc_attr( $e_label ); ?>" required />
                         <br /><span class="description">Shown as &ldquo;Closed for Thanksgiving&rdquo;.</span>
                     </p>
                     <p>
                         <label for="uc_closure_start">First day</label><br />
-                        <input type="date" name="closure_start" id="uc_closure_start" required />
+                        <input type="date" name="closure_start" id="uc_closure_start" value="<?php echo esc_attr( $e_start ); ?>" required />
                     </p>
                     <p>
                         <label for="uc_closure_end">Last day</label><br />
-                        <input type="date" name="closure_end" id="uc_closure_end" />
+                        <input type="date" name="closure_end" id="uc_closure_end" value="<?php echo esc_attr( $e_end ); ?>" />
                         <br /><span class="description">Leave empty for a single day.</span>
                     </p>
                     <p>
                         <label for="uc_closure_note">Note</label><br />
                         <input type="text" name="closure_note" id="uc_closure_note" class="regular-text"
-                               maxlength="200" placeholder="The 6th Street Center is open as usual" />
+                               maxlength="200" placeholder="The 6th Street Center is open as usual" value="<?php echo esc_attr( $e_note ); ?>" />
                         <br /><span class="description">Optional. Shown with the closure on the calendar. The month grid shortens anything long, so put what matters first.</span>
                     </p>
-                    <p><button type="submit" class="button button-primary">Add closure</button></p>
+                    <p>
+                        <button type="submit" class="button button-primary"><?php echo $editing ? 'Save changes' : 'Add closure'; ?></button>
+                        <?php if ( $editing ) : ?>
+                            <?php /* A way out that is not the browser's back button, which would
+                                     re-offer the edit rather than leave it. */ ?>
+                            <a class="button" href="<?php echo esc_url( self::closures_url() ); ?>">Cancel</a>
+                        <?php endif; ?>
+                    </p>
                 </form>
             </div>
 
@@ -1068,7 +1111,12 @@ class SFAF_Admin {
                                         <form method="post" onsubmit="return confirm('Remove this closure? Events on those days are not affected.');">
                                             <?php wp_nonce_field( 'uc_closure_action', 'uc_closure_nonce' ); ?>
                                             <input type="hidden" name="uc_closure_action" value="delete" />
+                                            <?php /* Edit sits beside Remove rather than in a column of
+                                                     its own: the two are the row's actions and a column
+                                                     holding one link on every row is a column of links. */ ?>
                                             <input type="hidden" name="closure_id" value="<?php echo esc_attr( $row['id'] ); ?>" />
+                                            <a class="button button-small"
+                                               href="<?php echo esc_url( add_query_arg( 'edit', $row['id'], self::closures_url() ) ); ?>">Edit</a>
                                             <button type="submit" class="button button-small">Remove</button>
                                         </form>
                                     </td>

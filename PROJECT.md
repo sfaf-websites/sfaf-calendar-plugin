@@ -1009,12 +1009,39 @@ organizer and a series, so the two lists could show what reads as the same name
 twice with nothing to tell them apart. **The headings are what tell them apart**,
 which is why the panel is grouped rather than one list of thirty-four names.
 
-**THE PANEL IS A POPOVER.** The groups disclosure was an ordinary block and
-opening it pushed the calendar down. A stacking value would not have been
-enough: an ancestor with a transform or a filter becomes the containing block
-and traps it, which is what happened to the hover preview in 3.75.0. `right` and
-`bottom` are explicitly `auto` because the UA stylesheet gives every `[popover]`
-`inset: 0` and `margin: auto`, so setting only `top` and `left` centres it.
+**IT IS A `<details>`, AND IT WAS A POPOVER FOR ONE RELEASE (3.86.0).** The
+popover version opened in the top left corner of the viewport on sfaf.org. It
+was `position: fixed` at 0,0 until a script moved it from the popover's `toggle`
+event, and it was HIDDEN by `:not(:popover-open)`, a selector a browser without
+the API discards along with the whole rule, so the panel could also stand open
+permanently. Two failure modes, one dependency.
+
+> **A CONTROL THAT OPENS MUST NOT DEPEND ON A PLATFORM FEATURE OR ON SCRIPT.**
+> `<details>` and `<summary>` open everywhere with nothing running, and absolute
+> positioning inside a relative wrapper has placed elements under other elements
+> since CSS 2. That is the whole mechanism now. The script adds light dismiss,
+> Escape and the reordering: things a menu wants and a `<details>` lacks, none of
+> which are how it opens.
+>
+> **It was never CSS anchor positioning**, which this plugin has never used. The
+> diagnosis mattered because the remedy differs: this needed the dependency
+> removed, not a fallback bolted beside it.
+
+**A CLOSED `<details>` DOES NOT HIDE AN ABSOLUTELY POSITIONED CHILD.** Measured:
+the panel rendered 700x184 with the control shut, because out-of-flow content
+escapes the content skipping a closed `<details>` does.
+`.uc-who:not([open]) .uc-who-panel { display: none; }` is the remedy and it is a
+plain attribute selector.
+
+**TWO COLUMNS, ONE THIRD AND TWO THIRDS, HELD BY THE GRID.** Narrowing can take
+the right column from twenty-five names to two, and a template sized by its
+contents would jump on every tick. `1fr 2fr` does not care what is left inside
+it. The stack breakpoint is a CONTAINER query, because the block is embedded in
+a column it does not control and a media query about the window is a lie there.
+
+**What the top layer gave and this does not** is escaping an ancestor's
+`overflow: hidden`. The filter bar has none, and a control that is occasionally
+clipped is a better failure than one that is reliably in the wrong corner.
 
 **THE NARROWING IS ONE-WAY AND DERIVED FROM EVENTS.** Nothing stores a group's
 organizer: a series carries a description, an image and a FAQ set, and an
@@ -4978,6 +5005,49 @@ lives only in geometry reaches Mark's screen with the suite green.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Two things are called the calendar folder (investigated 3.86.0)
+
+**NOTHING WAS BUILT. This needs a decision, because reconciling the two means
+moving files and moving files breaks stored URLs.**
+
+**WHAT THE PLUGIN READS: the physical directory.** `SFAF_Media_Folder::holds()`
+reads `_wp_attached_file`, core's own record of where the file actually is, and
+checks the path starts with `calendar/`, anchored. `SFAF_Media::pictures()`, the
+Images screen's query, uses the same anchored REGEXP over the same meta. **Those
+two agree with each other**, and always have.
+
+**WHAT THE MEDIA LIBRARY SHOWS: a WP Media Folder taxonomy term.** WordPress
+core has no folder UI; that one is the plugin's. Its folders are an ASSIGNMENT
+on the attachment, which can be set without the file moving, and a file can be
+moved without the assignment following.
+
+> **That is the entire disagreement.** A file physically in `uploads/calendar/`
+> but not assigned to the plugin's Calendar folder is visible to the calendar and
+> absent from the library view. A file assigned to that folder but physically in
+> `uploads/2026/09/` is the other way round. Both states read as "the folder is
+> wrong" and neither is a fault in either piece of software.
+
+**REMOVE IS NOT GATED ON OWNERSHIP**, which is worth stating because it looks as
+though it is. It is a soft marker, `_uc_media_removed`, offered on any row the
+Images screen lists, withheld only when the picture is IN USE. An image Mark
+filed into the folder himself has no Remove button because **it is not on that
+screen at all**: the screen lists by physical path, so a file the library calls
+"Calendar" while it sits in a date directory is not listed, and a row that does
+not exist has no button.
+
+**WHICH SHOULD WIN: the physical path, and that is already the recorded
+decision.** `PROJECT.md` has said since the picker was built that this filters on
+`_wp_attached_file` and never on WP Media Folder's API, so the rule survives that
+plugin being removed and depends on metadata core maintains. Going through its
+taxonomy would make a third-party plugin load-bearing in the event editor.
+
+**WHAT IT WOULD TAKE TO AGREE.** Either configure WP Media Folder to move files
+on disk when they are filed, so an assignment implies a path, or move the strays
+and rewrite `_wp_attached_file`, the GUID and every stored `_uc_image_url`.
+**A reconciliation REPORT should come before either**, listing the mismatches in
+both directions, because until that exists nobody knows how many files are in
+which state.
 
 ### The embed payload cache does not flush on a plugin update (found 3.84.0)
 

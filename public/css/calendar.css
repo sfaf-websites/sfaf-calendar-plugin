@@ -830,9 +830,14 @@
    organizer select stood and does the same job, so it should not read as a new
    kind of control. Same height, same radius, same end-cap hairline.
    ------------------------------------------------------------------------ */
-.uc-who { position: relative; display: flex; align-items: center; min-width: 0; }
+/* NOT display:flex ON THE <details>. A flex details lays its summary and its
+   panel out as flex items, which puts the panel beside the trigger and undoes
+   the absolute positioning below the moment anything sets `position: static`.
+   It is a plain block; the summary is the flex row. */
+.uc-who { position: relative; min-width: 0; }
 .uc-calendar .uc-who-trigger {
     appearance: none; -webkit-appearance: none;
+    list-style: none;
     display: flex; align-items: center; gap: 8px;
     padding: 9px 40px 9px 14px; min-width: 0; max-width: 100%;
     border: 1px solid var(--uc-border-strong); border-radius: 8px;
@@ -850,36 +855,96 @@
     color: var(--uc-teal-text); pointer-events: none;
     transform: rotate(90deg); transition: transform 0.18s ease;
 }
-.uc-who:has(.uc-who-panel:popover-open) .uc-who-chevron { transform: rotate(-90deg); }
+/* THE MARKER IS HIDDEN AND THE CHEVRON IS THE OPEN STATE. `[open]` is a real
+   attribute the browser maintains, so this needs no script and no :has(). */
+.uc-who > summary::-webkit-details-marker { display: none; }
+.uc-who > summary::marker { content: ""; }
+.uc-who[open] .uc-who-chevron { transform: rotate(-90deg); }
 
-/* THE PANEL IS A POPOVER, SO THE BROWSER PUTS IT IN THE TOP LAYER. That is the
-   whole point of the change: the old groups disclosure was an ordinary block
-   and opening it PUSHED THE CALENDAR DOWN. A z-index would not have been
-   enough, because an ancestor with a transform or a filter becomes the
-   containing block and traps it, which is exactly what happened to the hover
-   preview in 3.75.0.
+/* ---------------------------------------------------------------------------
+   THE PANEL: ABSOLUTE, UNDER ITS TRIGGER, IN EVERY BROWSER (3.86.0).
 
-   right AND bottom ARE EXPLICITLY auto, AND THAT IS NOT TIDINESS. The UA
-   stylesheet gives every [popover] `inset: 0` and `margin: auto`, so setting
-   only top and left leaves right and bottom pinned at 0 and the auto margins
-   centre the panel in the viewport. Same trap, same remedy, as .uc-mp. */
-.uc-who-panel[popover] {
-    position: fixed;
-    top: 0; left: 0; right: auto; bottom: auto; margin: 0;
-    width: 320px; max-width: calc(100vw - 16px);
-    max-height: min(60vh, 420px); overflow-y: auto;
-    padding: 6px 0;
+   THIS WAS A POPOVER AND IT OPENED IN THE TOP LEFT OF THE VIEWPORT. The panel
+   was `position: fixed` with `top: 0; left: 0` as pre-measurement values, moved
+   into place by script from the popover's `toggle` event. Where that event does
+   not fire the panel simply stayed at 0,0. And the rule that HID it was
+   `:not(:popover-open)`: a browser that does not know that selector discards the
+   whole rule, so the panel does not merely open in the wrong place, it stands
+   open permanently.
+
+   IT WAS NOT THE ANCHOR POSITIONING API. Nothing here has ever used it. The
+   remedy is to remove the fragile dependency, not to add a fallback beside it.
+
+   ABSOLUTE INSIDE A RELATIVE WRAPPER NEEDS NOTHING. It has placed elements
+   under other elements since CSS 2, it is out of flow so it floats over the
+   calendar rather than pushing it, and it works with the script blocked, the
+   popover API missing and anchor positioning unimplemented. The one thing the
+   top layer gave that this does not is escaping an ancestor's `overflow:
+   hidden`; the bar has none, and a control that is occasionally clipped is a
+   better failure than one that is reliably in the wrong corner.
+   ------------------------------------------------------------------------ */
+/* CLOSED MEANS HIDDEN, SAID EXPLICITLY, and it has to be said. A closed
+   <details> hides its contents by skipping them in layout, and an absolutely
+   positioned child is out of flow and escapes that: measured in Chrome, the
+   panel rendered 700x184 with the control shut. `[open]` is a plain attribute
+   the browser maintains, so this works everywhere and needs nothing. */
+.uc-who:not([open]) .uc-who-panel { display: none; }
+
+.uc-who-panel {
+    position: absolute;
+    top: calc(100% + 6px); left: 0; right: auto;
+    z-index: 60;
+    width: 700px; max-width: calc(100vw - 32px);
+    max-height: min(70vh, 460px); overflow-y: auto;
+    padding: 10px 0 6px;
     border: 1px solid var(--uc-border-strong); border-radius: 10px;
     background: #fff; color: var(--uc-text);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
     font-family: var(--uc-font-body);
 }
-.uc-who-panel[popover]:not(:popover-open) { display: none; }
 
-/* WITH NO SCRIPT THE PANEL IS STILL REACHABLE, because popovertarget is
-   declarative and needs no JavaScript at all. Unpositioned it lands centred by
-   those UA rules, which is a fine place for it: script is what puts it under
-   the trigger, and script is what is missing. */
+/* ---------------------------------------------------------------------------
+   TWO COLUMNS, ONE THIRD AND TWO THIRDS.
+
+   THE TEMPLATE IS IN FRACTIONS, WHICH IS WHAT HOLDS THE WIDTHS STILL. Ticking
+   an organizer can take the right column from twenty-five names to two, and a
+   layout sized by its contents would jump on every tick. `1fr 2fr` does not
+   care what is left inside.
+
+   THE CONTAINER DECIDES THE STACK, NOT THE WINDOW. A container query, because
+   this block is embedded on another site inside a column it does not control,
+   and a media query about the window is a lie in there. Measured rather than
+   guessed: the two columns need about 230px and 470px plus the gap and the
+   padding, so below 620px of CONTAINER they stack.
+   ------------------------------------------------------------------------ */
+.uc-who-cols {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0 18px;
+    align-items: start;
+}
+/* One section present means it takes the whole width rather than sitting in a
+   third of it with two thirds of nothing beside it. */
+.uc-who-cols > .uc-who-col:only-child { grid-column: 1 / -1; }
+.uc-who-col { min-width: 0; }
+
+/* THE GROUPS RUN IN TWO SUB-COLUMNS so twenty-five names are not one long drop.
+   `columns` rather than a second grid, because the list reflows on its own as
+   narrowing hides rows and stays one list for a screen reader. */
+.uc-who-list-2col { columns: 2; column-gap: 14px; }
+.uc-who-list-2col > .uc-who-opt { break-inside: avoid; }
+
+@container uc-calendar (max-width: 620px) {
+    .uc-who-cols { grid-template-columns: 1fr; gap: 0; }
+    .uc-who-list-2col { columns: 1; }
+    .uc-who-panel { width: 340px; }
+}
+/* The same decision for any host that gives us no container to measure. The
+   container query above wins wherever containment is supported; this is the
+   floor, and it is deliberately the same number. */
+@media (max-width: 620px) {
+    .uc-who-panel { width: 340px; }
+}
 
 .uc-who-heading {
     margin: 8px 0 4px; padding: 0 14px;

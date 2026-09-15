@@ -1110,10 +1110,19 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    the Classification card is almost entirely these: eight categories, every
    organizer, and a field label above each group trying to outrank them by one
    weight. Body puts the two a full step apart, which is what the ladder is for. */
-.uc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; margin-bottom: 8px; }
+/* TOP ALIGNED, NOT CENTRED (3.86.0), AND THIS IS THE ONE PLACE IT IS DECIDED.
+   Categories and organizers are the same control wearing the same class, so
+   `align-items: center` put the box level with the MIDDLE of a name that wrapped
+   to two lines, as several organizer names do. One fix, both screens.
+
+   The 2px is the offset that puts the box on the FIRST LINE rather than at the
+   very top of the text block: a 16px box in a 20px line box wants (20-16)/2, and
+   flush-top would sit it slightly high against the cap height. Measured, not
+   guessed, at the 14px body size this control uses. */
+.uc-check { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 400; margin-bottom: 8px; }
 /* The box holds its size and the label takes the rest, so a two-word label
    never wraps because the control grew. The gap owns the spacing. */
-.uc-check input[type="checkbox"], .uc-check input[type="radio"] { flex: 0 0 auto; margin: 0; }
+.uc-check input[type="checkbox"], .uc-check input[type="radio"] { flex: 0 0 auto; margin: 2px 0 0; }
 /* ---------------------------------------------------------------------------
    A TICK THAT IS NOT A CHOICE RIGHT NOW (3.64.0).
 
@@ -3025,6 +3034,29 @@ body.uc-modal-open { overflow: hidden; }
    everywhere else on these screens.
    ------------------------------------------------------------------------ */
 .uc-media-upload .uc-field-row { align-items: flex-start; }
+/* FOUR FIELDS ON A GRID, NOT A FLEX ROW (3.86.0).
+
+   WHY THE FLEX ROW MISALIGNED. Two columns, one with a hint under it and one
+   without, so the columns were different heights and nothing tied their
+   contents together: the labels lined up only when the content happened to make
+   them. Four fields turned that from a blemish into a mess.
+
+   `align-items: start` with a real row boundary is what fixes it. Every label
+   is the first thing in its cell and every cell starts on the row line, so the
+   labels are on one line because the GRID says so. The hints hang below and
+   move nothing.
+
+   ONE COLUMN WHEN NARROW, on the container rather than the window: this screen
+   is inside caladmin's own column and the window is not what decides its width. */
+.uc-upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 16px;
+    align-items: start;
+}
+@media (max-width: 720px) {
+    .uc-upload-grid { grid-template-columns: 1fr; }
+}
 /* The grid's own card carries the tint, so a white .uc-media-item reads as a
    card ON something rather than a box IN nothing. That is the one-white-card
    rule this portal already uses everywhere, restored: it was tinted cards on a

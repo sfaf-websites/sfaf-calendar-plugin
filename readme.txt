@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.85.0
+Stable tag: 3.86.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,54 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.86.0 =
+
+**THE FILTER POPOVER OPENED IN THE TOP LEFT OF THE VIEWPORT, AND IT WAS NOT THE ANCHOR POSITIONING API.** Nothing in this plugin has ever used `anchor-name`, `position-anchor` or `anchor()`. The panel was `position: fixed` with `top: 0; left: 0` as pre-measurement values, moved under its trigger by a script running from the popover's `toggle` event. Wherever that event did not fire, nothing moved it and it stayed at 0,0.
+
+**AND THE RULE THAT HID IT WAS WORSE THAN THE ONE THAT PLACED IT.** The panel was hidden by `:not(:popover-open)`. A browser that does not know that selector discards the whole rule, so the panel does not merely open in the wrong corner: it stands open permanently. Two failure modes, one dependency.
+
+**THE FIX REMOVES THE DEPENDENCY RATHER THAN ADDING A FALLBACK BESIDE IT.** The control is a `<details>` and its trigger is a `<summary>`, which open and close by themselves in every browser that has ever shipped. The panel is placed by ordinary absolute positioning inside a relative wrapper, which has put elements under other elements since CSS 2. No popover, no anchor positioning, no script, no measurement.
+
+**Measured in Chrome with no JavaScript on the page at all**: closed it computes `display: none` at 0x0; opened it is 700x184 at 16,62 under a trigger ending at y=56; the calendar below sat at y=88 before and y=88 after, so it still floats rather than pushing.
+
+**A CLOSED `<details>` DOES NOT HIDE AN ABSOLUTELY POSITIONED CHILD**, which is the one thing this approach needed saying out loud. Measured, the panel rendered 700x184 with the control shut, because out-of-flow content escapes the content skipping a closed `<details>` does. `.uc-who:not([open]) .uc-who-panel { display: none; }` is the whole remedy and it is a plain attribute selector.
+
+**THE SCRIPT NOW ADDS ONLY WHAT A MENU NEEDS AND A `<details>` LACKS**: light dismiss on an outside click, Escape to close, and the reordering. All of it delegated, so a block redrawn by `reloadBlock()` keeps it; the previous version bound at ready and lost its behaviour on every redraw. **The stamp that hides the no-script Apply button moved to the document element** for the same reason.
+
+**THE HOVER PREVIEW DOES NOT HAVE THIS PROBLEM, and it is worth saying why rather than just that.** It probes `typeof probe.showPopover !== 'function'` and returns before building anything, so a browser without the popover API gets no preview and no stray element. Its visible state is a class it controls rather than `:popover-open`, and it positions itself immediately after `showPopover()` rather than waiting for an event. It is safe in current Safari and Firefox, which have supported popover since Safari 17 and Firefox 125, and it degrades to nothing rather than to a panel in the corner in anything older.
+
+**TWO COLUMNS, ONE THIRD AND TWO THIRDS.** Nine organizers against twenty-five groups, so equal columns wasted the left side and doubled the height of the right. Measured at 900px: organizers 227px, groups 453px, exactly 1 : 2, side by side, with the groups running in two sub-columns.
+
+**THE WIDTHS ARE HELD BY THE GRID, NOT BY THEIR CONTENTS**, which is the part that needed deciding rather than discovering. Narrowing can take the right column from twenty-five names to two. `grid-template-columns: 1fr 2fr` does not care what is left inside it: measured, hiding all but one group moved neither column by a pixel.
+
+**THE STACK BREAKPOINT MEASURES THE CONTAINER, NOT THE WINDOW**, because this block is embedded on another site inside a column it does not control and a media query about the window is a lie in there. A media query sits beside it at the same number as the floor for any host that gives us no container.
+
+**CLOSURES COULD NOT BE EDITED, AND THE MODEL COULD ALWAYS DO IT.** `SFAF_Closures::save()` has taken an existing id since it was written: pass one already in the option and it updates that row. What was missing was any way to SEND one. The form hardcoded `closure_id` to the empty string, so every save took the create branch, and the table offered Remove and nothing else. **That is the fifth control in this project found built and unreachable, so it was checked before being built again rather than after.**
+
+**Editing covers the name, both dates and the note**, through the same form, because two forms would be two places for the next field to be forgotten. A multi-day closure stays one entry: asserted, because an edit that quietly added a row would leave the grid marking both the old span and the new one.
+
+**SEARCH DID NOTHING IN CALENDAR VIEW, AND IT WAS THREE THINGS.** `monthParams()` did not send the term, `ajax_load_month()` did not read it, and `month_grid_data()` did not apply it. Any one of the three alone was enough. **The month cache key did not include it either**, so a search would have been served the entry cached for the unsearched month, which looks exactly like search not working and is the harder version to find.
+
+**IT JOINED A MECHANISM THAT ALREADY EXISTED.** The category, organizer, venue and series filters have always narrowed the month query; search was the one filter on the bar that did not. Everything still runs through the query and nothing is hidden after being downloaded.
+
+**THE SEARCH BOX KEEPS ITS FOCUS.** The organizer filter narrows the grid by going through `reloadBlock()`, which replaces the whole block including the search input, and doing that on every keystroke would take the caret out from under somebody mid-word. Search calls `loadMonth()` instead, which replaces the grid and sidebar panels only.
+
+**AN EMPTY MONTH SAYS WHICH KIND OF EMPTY IT IS.** "Nothing scheduled in September" is true of a bare month and false of a month full of events that do not match what somebody typed, and searching in calendar view made the second the common way to get there. It names the term back, because the box may be off screen by the time the sentence is read.
+
+**THE UPLOAD PANEL TAKES A NAME AND ALT TEXT**, both optional. The name goes through `SFAF_Media::rename()` rather than being written here, because that method sets the deliberate marker as well as the title: without it, "Strut clinic" uploaded as strut-clinic.jpg is read as a file name and thrown away by the derived-title rule.
+
+**AND THE PANEL IS A GRID RATHER THAN TWO FIELDS WITH TWO APPENDED.** It was a flex row of two, and only one had a hint under it, so the columns were different heights and the labels lined up only when the content happened to make them. Every label is now on a grid row boundary, so they line up because the grid says so.
+
+**THE TICK BOXES ARE TOP ALIGNED**, in one shared rule. Categories and organizers are the same control wearing the same class, so `align-items: center` put the box level with the middle of any name that wrapped to two lines. One fix, both screens.
+
+**THE DASHBOARD COUNTS PUBLISHED EVENTS WITH NO ORGANIZER**, and links to them. Organizers only: imported events also lack images, descriptions and categories, and the pending queue already flags those per event. **A count that goes to zero as somebody works through it is worth reading; a permanently large one teaches people to look past the row, and then the one that mattered is looked past with it.** The list it opens says it is narrowed and offers the way out.
+
+**SAVES STILL DO NOT REFUSE ON THOSE EVENTS.** The count is how the gap gets noticed and nothing else. An event that had no organizer and still has none saves normally and stays published, which is `SFAF_Organizers::requirement()` unchanged from 3.85.0.
+
+**Nothing was deleted.** The hundred published events with no organizer stay published and editable, several organizers per event is untouched, the calendar folder rule is unchanged pending the investigation below, and the embed payload cache still keys on the version.
+
+**THE TWO CALENDAR FOLDERS ARE INVESTIGATED AND NOTHING WAS BUILT.** The plugin's rule and its Images screen both read the PHYSICAL path, `_wp_attached_file` anchored at `calendar/`. The folder in the WordPress media library belongs to **WP Media Folder**, which is a taxonomy assignment and can be set independently of where a file actually sits. That is the whole disagreement, and moving files to reconcile it breaks stored URLs, so it needs a decision rather than an implementation.
 
 = 3.85.0 =
 
