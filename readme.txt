@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.86.0
+Stable tag: 3.87.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,43 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.87.0 =
+
+**AN IMAGE UPLOADED FROM THE EVENT EDITOR WAS NEVER LOST, AND THE PICKER COULD NOT SEE IT.** The proposed explanation was that the upload went through wp.media rather than the plugin's own form and landed in a date directory. It did not. The folder flag rides the uploader's multipart params, so `upload_dir` fires, and the file lands in `uploads/calendar/` with a stored path that satisfies the folder rule. It has been on the Images screen the whole time.
+
+**IT VANISHED FROM THE PICKER THAT UPLOADED IT.** wp.media refreshes its library the instant an upload finishes, using that frame's own arguments, and for an event in a series those include `uc_series`. `restrict_query()` then narrows on that term, and a picture uploaded two seconds ago carries no term at all. The picker could not return the thing it had just uploaded. 3.74.0 and 3.80.0 were both working exactly as designed; what was missing was that a picture uploaded FOR an event is a picture in that event's series.
+
+**THE SERIES RIDES THE UPLOAD NOW AND THE PICTURE IS TAGGED AS IT ARRIVES**, on the same route the folder flag takes, through `SFAF_Media::add_tag()` so the rule about what may be tagged is not implemented twice. **Tagging rather than widening the picker**: widening would answer a different question from the one asked and would undo the hiding 3.80.0 added on purpose. The series is a fact here rather than a guess, because somebody was editing an event in it when they pressed Upload.
+
+**BOTH KEYS OR NOTHING**, and the series is cleared from the uploader's global defaults when there is none, so a later upload from any picker on the page cannot inherit it.
+
+**SEARCH IN CALENDAR VIEW: THE CODE IS CORRECT AND NOTHING WAS CHANGED.** It was reported as still doing nothing after 3.86.0 changed four places for it. The instruction was not to fix a fifth place blind, so this release establishes rather than guesses, and the answer is that there is no fifth place.
+
+**Driven in Chrome against a real rendered block with the real script**, typing fires two requests and the month one carries the term, in calendar view and in combined view alike:
+
+```
+[0] action=uc_load_month   month=2026-09   s="harm"
+[1] action=uc_load_events                  s="harm"
+```
+
+**And the server half is executed, not read.** `month_grid_data()` puts `sfaf_search` on the WP_Query it builds, leaves it absent when there is no term, and `build_query_args()` puts the same var on the list query from the same term. **All four of 3.86.0's changes are present in the shipped 3.86.0 zip**, checked by extracting it.
+
+**So the chain holds from the keystroke to the query var.** What could not be exercised here is the WHERE clause `SFAF_Search::clauses()` appends, because that is SQL and needs the database, and that clause is shared with list view, which works. The remaining candidates are the install itself and the environment, not the code. `.claude/search-in-calendar-test.php` is committed so the next report starts from proof rather than from reading.
+
+**THE FILTER PANEL IS LIGHTER AND LESS BOXY.** Reported as "the lettering is thick and it looks square and boxy", and three things were doing that, none of them colour or typeface, which DESIGN.md and the brand guide own and which are untouched. The headings were 700 AND uppercase AND tracked at 0.08em, which is three emphasis signals on a label nobody reads twice, so the weight comes down to 600. The rows were 7px apart, which is a wall at thirty-four names, and are 9px with a rounded inset hover rather than a full-bleed band. The corners were 10px on a 700px panel, which reads as square, and are 16px against a lighter border with the separation carried by a softer, wider shadow.
+
+**THE APPLY BUTTON IS GONE, AND IT IS GONE RATHER THAN HIDDEN.** 3.85.0 hid it with a CSS rule driven by an attribute the script stamped, which is a hidden button: still in the markup, still there if that attribute ever failed to be set. It is inside `<noscript>` now, so a browser with scripting on never parses it. **It is still the whole no-script path**, because without script ticking a box does nothing until something submits.
+
+**WHAT REMOVING IT COST, AND IT IS NOT THE REBUILD.** `reloadBlock()` replaces the whole block, and the server renders the control CLOSED because a `<details>` is closed unless it says otherwise. That was invisible while Apply did the reloading, since the panel was on its way out anyway. With every tick applying immediately, the panel would have shut on the first box and ticking two would have been impossible. **The open panel now survives the redraw**, read off the outgoing block and put back on the incoming one.
+
+**And yes, it needed debouncing.** The panel answers at once, because narrowing and relabelling are local and cost nothing; only the calendar redraw waits, at **350ms**. That is longer than the search box's 250ms on purpose: a search is one field typed continuously, and this is several separate decisions with longer pauses between them. Without the delay, live filtering on a control with thirty-four options is worse than the button was.
+
+**THE UPLOAD PANEL IS THE PICTURE ON THE LEFT AND WHAT IS TYPED ABOUT IT ON THE RIGHT.** The 2x2 grid 3.86.0 put there did not fix the alignment and could not: a file input, a select and two text boxes have different intrinsic heights, so whatever grid they are arranged in, their labels drift. **Splitting by KIND is the fix.** The file control and its preview are one column that answers for itself; the three things somebody types are a single stack where every label is the first line of an identical block. Nothing has to line up across the gap, so nothing can fail to.
+
+**The preview well holds its size empty or full**, at the 16:9 a card crops to, so choosing a file changes what is in the box and never the layout around it. It is server-rendered rather than built by script, so the panel is the same shape with no script at all.
+
+**Unchanged and confirmed working**: editing a closure, the panel's position under its trigger, that it does not push the calendar down, one third and two thirds, groups in two sub-columns, the widths holding still as groups hide, and the folder rule reading the physical directory.
 
 = 3.86.0 =
 

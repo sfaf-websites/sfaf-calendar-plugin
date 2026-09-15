@@ -3048,14 +3048,41 @@ body.uc-modal-open { overflow: hidden; }
 
    ONE COLUMN WHEN NARROW, on the container rather than the window: this screen
    is inside caladmin's own column and the window is not what decides its width. */
-.uc-upload-grid {
+/* THE PICTURE ON THE LEFT, WHAT IS TYPED ABOUT IT ON THE RIGHT (3.87.0).
+
+   THE 2x2 GRID THIS REPLACES DID NOT FIX THE ALIGNMENT and could not. A file
+   input, a select and two text boxes have different intrinsic heights, so
+   whatever grid they are put in, their labels drift apart. Splitting by KIND is
+   the fix: nothing has to line up across the gap, so nothing can fail to.
+
+   THE LEFT COLUMN IS FIXED, so the preview appearing cannot resize the fields
+   beside it. The right column takes the rest. */
+.uc-upload-panel {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px 16px;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 18px;
     align-items: start;
 }
+.uc-upload-pic { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* THE WELL HOLDS ITS SIZE EMPTY OR FULL, at the 16:9 a card crops to, so
+   choosing a file changes what is in the box and never the layout around it. */
+.uc-upload-thumb {
+    position: relative;
+    aspect-ratio: 16 / 9; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px dashed var(--p-border); border-radius: 10px;
+    background: var(--p-bg, #F9FAFB);
+    overflow: hidden;
+}
+.uc-upload-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.uc-upload-thumb-empty { font-size: 12px; color: var(--p-muted); }
+/* THE THREE TYPED FIELDS ARE ONE STACK, so every label is the first line of an
+   identical block and they line up by construction. */
+.uc-upload-fields { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
 @media (max-width: 720px) {
-    .uc-upload-grid { grid-template-columns: 1fr; }
+    .uc-upload-panel { grid-template-columns: 1fr; }
+    .uc-upload-thumb { max-width: 260px; }
 }
 /* The grid's own card carries the tint, so a white .uc-media-item reads as a
    card ON something rather than a box IN nothing. That is the one-white-card

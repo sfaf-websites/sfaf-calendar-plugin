@@ -33,6 +33,10 @@ function get_post_meta( $id, $k, $single = false ) {
     return array_key_exists( $key, $GLOBALS['pmeta'] ) ? $GLOBALS['pmeta'][ $key ] : '';
 }
 function add_filter( $h, $cb, $p = 10, $a = 1 ) { $GLOBALS['hooks'][] = array( $h, $cb ); return true; }
+/* ADDED IN 3.87.0. register() now also hooks add_attachment, to tag a picture
+   uploaded from the event editor with that event's series. Recorded the same
+   way as the filters so the assertions below can see it was hooked. */
+function add_action( $h, $cb, $p = 10, $a = 1 ) { $GLOBALS['hooks'][] = array( $h, $cb ); return true; }
 function get_posts( $args ) { return isset( $GLOBALS['attachments'] ) ? $GLOBALS['attachments'] : array(); }
 $GLOBALS['hooks'] = array();
 

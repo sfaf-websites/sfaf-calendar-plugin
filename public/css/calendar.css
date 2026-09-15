@@ -890,16 +890,21 @@
    the browser maintains, so this works everywhere and needs nothing. */
 .uc-who:not([open]) .uc-who-panel { display: none; }
 
+/* THE CORNERS AND THE EDGE (3.87.0). A 10px radius on a 700px panel reads as
+   square, and a full-strength border plus a heavy shadow is two boundaries. The
+   radius goes up, the border drops to the lighter token, and the shadow carries
+   the separation instead: softer and wider, so the panel sits above the page
+   rather than being cut out of it. */
 .uc-who-panel {
     position: absolute;
-    top: calc(100% + 6px); left: 0; right: auto;
+    top: calc(100% + 8px); left: 0; right: auto;
     z-index: 60;
     width: 700px; max-width: calc(100vw - 32px);
     max-height: min(70vh, 460px); overflow-y: auto;
-    padding: 10px 0 6px;
-    border: 1px solid var(--uc-border-strong); border-radius: 10px;
+    padding: 6px 6px 8px;
+    border: 1px solid var(--uc-border); border-radius: 16px;
     background: #fff; color: var(--uc-text);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.04), 0 16px 40px rgba(16, 24, 40, 0.12);
     font-family: var(--uc-font-body);
 }
 
@@ -946,18 +951,40 @@
     .uc-who-panel { width: 340px; }
 }
 
+/* ---------------------------------------------------------------------------
+   THE PANEL'S WEIGHT AND SPACING (3.87.0).
+
+   REPORTED AS "the lettering is thick and it looks square and boxy". Three
+   things were doing that, and none of them is colour or typeface, which
+   DESIGN.md and the brand guide own and which are untouched here:
+
+     . THE HEADINGS WERE 700 AND UPPERCASE AT 0.08em. Uppercase plus heavy plus
+       wide tracking is three emphasis signals on a label nobody needs to read
+       twice. One is enough, so the tracking stays and the weight comes down.
+     . THE ROWS WERE 7px APART in a panel 460px tall. Thirty-four names at that
+       density is a wall. The breathing room costs height the panel already has.
+     . EVERY EDGE WAS A HARD 1px AT FULL STRENGTH. The divider above the footer
+       and the hover fill were both doing the work of separating things that
+       spacing separates better.
+   ------------------------------------------------------------------------ */
 .uc-who-heading {
-    margin: 8px 0 4px; padding: 0 14px;
-    font-family: var(--uc-font-heading); font-size: 11px; font-weight: 700;
+    margin: 12px 0 6px; padding: 0 18px;
+    font-family: var(--uc-font-heading); font-size: 11px; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--uc-secondary);
 }
 .uc-who-list { display: block; }
 .uc-who-opt {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 14px; cursor: pointer;
-    font-size: 14px; line-height: 1.35;
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 18px; cursor: pointer;
+    font-size: 14px; font-weight: 400; line-height: 1.4;
+    border-radius: 8px;
+    transition: background-color 0.12s ease;
 }
+/* THE HOVER IS A ROUNDED TINT INSET FROM THE EDGE, not a full-bleed band. A
+   band that runs wall to wall is what makes a list read as a table of cells;
+   an inset rounded fill reads as one row being pointed at. */
+.uc-who-list { padding: 0 6px; }
 .uc-who-opt:hover { background: var(--uc-bg); }
 /* A hidden option is hidden, not greyed. Mark's reasoning: every option is
    visible when the panel opens, so somebody already knows they are there, and
@@ -965,10 +992,13 @@
 .uc-who-opt[hidden] { display: none !important; }
 .uc-who-none { margin: 8px 0; padding: 0 14px; font-size: 13px; color: var(--uc-secondary); }
 
+/* THE FOOTER HOLDS ONE CONTROL NOW, so it is a row rather than a bar with two
+   ends. The rule above it is gone: with the row spacing above, a hairline was
+   a second separator doing a job spacing had already done, and it was half of
+   what read as boxy. Clear sits left, where the eye already is. */
 .uc-who-foot {
-    display: flex; justify-content: space-between; align-items: center; gap: 10px;
-    margin-top: 6px; padding: 8px 14px 4px;
-    border-top: 1px solid var(--uc-border);
+    display: flex; justify-content: flex-start; align-items: center; gap: 10px;
+    margin-top: 4px; padding: 6px 12px 8px;
 }
 .uc-calendar .uc-who-clear {
     padding: 6px 10px; border: 0; border-radius: 6px;
@@ -985,7 +1015,6 @@
     background: var(--uc-teal-text); color: #fff; cursor: pointer;
     font-family: var(--uc-font-heading); font-size: 13px;
 }
-[data-uc-who-live] .uc-who-apply { display: none; }
 
 /* ---------------------------------------------------------------------------
    THE SECOND LEVEL: GROUPS

@@ -62,6 +62,57 @@ class SFAF_Media_Folder {
         add_filter( 'ajax_query_attachments_args', array( __CLASS__, 'restrict_query' ) );
         add_filter( 'upload_dir', array( __CLASS__, 'upload_to_folder' ) );
         add_filter( 'map_meta_cap', array( __CLASS__, 'gate_upload' ), 10, 3 );
+        add_action( 'add_attachment', array( __CLASS__, 'tag_upload_with_series' ) );
+    }
+
+    /**
+     * Tag a picture uploaded from the event editor with that event's series.
+     *
+     * WHAT THIS FIXES, AND IT IS NOT WHERE THE FILE WENT (3.87.0). An image
+     * uploaded while editing an event was reported as going nowhere. The file
+     * was never lost: the folder flag rides the uploader's multipart params, so
+     * `upload_dir` fired and it landed in `uploads/calendar/` correctly, and it
+     * has always been on the Images screen.
+     *
+     * IT VANISHED FROM THE PICKER THAT UPLOADED IT. wp.media refreshes its
+     * library the moment an upload finishes, using the frame's own arguments,
+     * and for an event in a series those include `uc_series`. restrict_query()
+     * then narrows on that term, and a picture uploaded two seconds ago carries
+     * no term at all, so it cannot be returned. 3.74.0 and 3.80.0 were both
+     * working exactly as designed; what was missing was that a picture uploaded
+     * FOR an event is a picture in that event's series.
+     *
+     * TAGGING RATHER THAN WIDENING THE PICKER. Widening after an upload would
+     * answer a different question from the one asked and would undo the hiding
+     * 3.80.0 added on purpose. The series here is a fact rather than a guess:
+     * somebody was editing an event in it when they pressed Upload. Tagging
+     * makes the picture visible to the open picker, to the Images screen, and
+     * to every other event in the same series.
+     *
+     * BOTH KEYS OR NOTHING. The series alone is not enough: an upload from
+     * anywhere else in WordPress must not be filed into a calendar series
+     * because a request key happened to be present. asked_for() gates it, which
+     * is the same gate the folder routing uses.
+     *
+     * THROUGH SFAF_Media::add_tag(), which already refuses anything that is not
+     * an attachment, is not in the folder, or names a term that does not exist.
+     * A second implementation of that rule here is a second place for it to
+     * drift.
+     *
+     * @param int $attachment_id
+     */
+    public static function tag_upload_with_series( $attachment_id ) {
+        if ( ! self::asked_for() ) {
+            return;
+        }
+        $series = self::asked_series();
+        if ( $series < 1 ) {
+            return;
+        }
+        if ( ! class_exists( 'SFAF_Media' ) ) {
+            return;
+        }
+        SFAF_Media::add_tag( array( (int) $attachment_id ), $series );
     }
 
     /**

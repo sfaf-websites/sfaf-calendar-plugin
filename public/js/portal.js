@@ -118,6 +118,7 @@ function ucDismissOnBackdrop(dialog) {
         // Last of the three: it reads whatever the other two settled on.
         run('formBanner', initFormBanner);
         run('uploadPreview', initUploadPreview);
+        run('mediaUploadPreview', initMediaUploadPreview);
         run('faqSetPeek', initFaqSetPeek);
         run('requestPrefill', initRequestPrefill);
         run('calendarTick', initCalendarTick);
@@ -551,6 +552,46 @@ function ucDismissOnBackdrop(dialog) {
      * FileReader, NOT AN UPLOAD. Nothing leaves the browser until the form is
      * submitted. This reads the file the input already holds.
      * ------------------------------------------------------------------ */
+    /**
+     * The Images screen's Add an image panel: show what was chosen (3.87.0).
+     *
+     * THE MARKUP IS ALREADY THERE, which is the difference between this and
+     * initUploadPreview() below. That one builds its box in script, so with no
+     * script the public form has no preview and no gap where one was. Here the
+     * well is server-rendered at a fixed 16:9 so the layout is the same before
+     * a file is chosen, after one is chosen, and with no script at all. This
+     * only fills it in.
+     *
+     * NOTHING IS UPLOADED BY LOOKING. FileReader reads the file the browser
+     * already has; the upload still happens on submit, through the same handler
+     * and the same folder rule.
+     */
+    function initMediaUploadPreview() {
+        var input = document.querySelector('[data-uc-upload-input]');
+        if (!input || !window.FileReader) { return; }
+
+        var img   = document.querySelector('[data-uc-upload-preview]');
+        var empty = document.querySelector('[data-uc-upload-empty]');
+        if (!img || !empty) { return; }
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            if (!file || file.type.indexOf('image/') !== 0) {
+                img.hidden = true;
+                img.removeAttribute('src');
+                empty.hidden = false;
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                img.src = e.target.result;
+                img.hidden = false;
+                empty.hidden = true;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     function initUploadPreview() {
         var input = document.querySelector('.uc-request-upload input[type="file"]');
         if (!input || !window.FileReader) { return; }
@@ -1803,6 +1844,32 @@ function ucDismissOnBackdrop(dialog) {
             if (flag && wp.Uploader && wp.Uploader.defaults) {
                 wp.Uploader.defaults.multipart_params = wp.Uploader.defaults.multipart_params || {};
                 wp.Uploader.defaults.multipart_params[flag] = '1';
+
+                /*
+                 * THE SERIES RIDES THE UPLOAD TOO (3.87.0), AND THIS IS WHY AN
+                 * UPLOAD FROM HERE USED TO DISAPPEAR.
+                 *
+                 * The file was never lost: the flag above put it in the calendar
+                 * folder correctly, and it has always been on the Images screen.
+                 * But wp.media refreshes its library the instant an upload
+                 * finishes, using THIS frame's arguments, and for an event in a
+                 * series those include uc_series. A picture uploaded two seconds
+                 * ago carries no series term, so the refreshed picker could not
+                 * return the thing it had just uploaded.
+                 *
+                 * Sending the series lets the server tag it as it arrives, so
+                 * the refresh finds it. See tag_upload_with_series().
+                 *
+                 * CLEARED WHEN THERE IS NO SERIES, because these defaults are
+                 * GLOBAL and outlive the frame: a stale id left here would file
+                 * the next upload, from any picker on the page, into a series
+                 * nobody chose.
+                 */
+                if (library.uc_series) {
+                    wp.Uploader.defaults.multipart_params.uc_series = String(library.uc_series);
+                } else {
+                    delete wp.Uploader.defaults.multipart_params.uc_series;
+                }
             }
             frame.on('select', function () {
                 var att = frame.state().get('selection').first().toJSON();

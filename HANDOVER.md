@@ -6,21 +6,37 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-15, at 3.86.0, built and NOT released.
+**Last updated:** 2026-09-15, at 3.87.0, released.
 
 ---
 
 ## What shipped last
 
-**3.86.0 IS BUILT AND NOT RELEASED.** The zip is `sfaf-calendar-3.86.0.zip` in
-the project root. **Mark has not given the word**, so there is no tag and no
-GitHub release.
+**3.87.0 IS RELEASED** and is what sites are being offered. 3.86.0 and 3.85.0
+are released behind it.
 
-**3.85.0 IS RELEASED**, on 2026-09-15, and is what sites are being offered.
+> **AN EVENT-EDITOR UPLOAD WAS NEVER LOST, AND THE OBVIOUS DIAGNOSIS WAS WRONG.**
+> The file always landed in `uploads/calendar/` and was always on the Images
+> screen. It vanished from the PICKER, because wp.media refreshes its library
+> the instant an upload finishes and for an event in a series that query narrows
+> on `uc_series`, which a picture uploaded two seconds ago cannot answer. It is
+> tagged with the series as it arrives now. `TESTING.md` 1.115.
 
-> **3.85.0 SHIPPED A REAL FAULT AND 3.86.0 FIXES IT.** The merged filter control
-> opened in the top left corner of the viewport on sfaf.org. I flagged that risk
-> when shipping it and it landed, so 3.86.0 should go out reasonably promptly.
+> **SEARCH IN CALENDAR VIEW: NO CODE CHANGED IN 3.87.0, DELIBERATELY.** It was
+> reported as still broken and the instruction was not to fix a fifth place
+> blind. The whole chain is now proved: typing fires `uc_load_month` carrying
+> the term, in calendar AND combined view, driven in Chrome against a real
+> block; `month_grid_data()` puts `sfaf_search` on the query it builds; and all
+> four of 3.86.0's changes are in the shipped 3.86.0 zip, checked by extracting
+> it. **What is left is the SQL, which needs a database, and the install.**
+> `TESTING.md` 1.116 tells Mark how to tell which in one look at the Network
+> tab. Do not change a fifth place without that answer.
+
+> **THE APPLY BUTTON IS GONE AND THE PANEL HAD TO SURVIVE ITS OWN REDRAW.**
+> `reloadBlock()` replaces the whole block and the server renders the control
+> closed, so without care every tick would have shut the panel. Debounced at
+> 350ms. If Mark reports the panel closing when he ticks something, that is the
+> thing that broke.
 
 > **IT WAS NOT THE ANCHOR POSITIONING API**, which this plugin has never used.
 > The panel was `position: fixed` at 0,0 until a script moved it from the
@@ -147,6 +163,7 @@ GitHub release.
 
 | | |
 |---|---|
+| **3.87.0** | **An image uploaded from the event editor was never lost.** It landed in the calendar folder correctly; it vanished from the PICKER, because wp.media refreshes its library on upload and for an event in a series that query narrows on `uc_series`, which a brand new picture cannot answer. It is tagged with the series as it arrives now. **Search in calendar view: nothing changed, deliberately**, because the whole chain was proved correct in a browser and by execution, and the remaining candidates are the SQL and the install. **The filter panel is lighter and the Apply button is gone**, inside `<noscript>` rather than hidden, with the open panel surviving the redraw and the rebuild debounced at 350ms. **The upload panel is the picture on the left and the typed fields on the right**, which is what actually fixes an alignment fault two arrangements had not. |
 | **3.86.0** | **The merged filter control opened in the top left of the viewport**, and it was not the anchor positioning API: it was `position: fixed` at 0,0 placed by script from a popover `toggle` event, hidden by a selector older browsers discard. It is a `<details>` placed by the stylesheet now, with nothing platform-specific in how it opens, and measured with no script on the page at all. **Two columns, one third and two thirds**, held by grid fractions so narrowing cannot make them jump. **Closures can be edited**, which the model always allowed and the form never offered, the fifth control found built and unreachable. **Search narrows the month grid and the sidebar**, which needed three separate places to carry the term and a cache key to include it. Plus **name and alt text at upload** on a panel laid out as a grid, **top-aligned tick boxes** in one shared rule, and **a dashboard count of published events with no organizer** that links to them. |
 | **3.85.0** | **No community submission has ever carried an organizer, and the write was never the problem.** The event was its OWN SOURCE: it joined the series and then asked the series for its organizers, which answers from the most recent event and counts pending ones. Proved by running it. **An organizer is required on the server now**, with a rule about direction rather than state, so the hundred published events with none save normally and stay published. **Organizers and groups are one popover in the top layer**, multi-select, narrowing one way from the events actually in each group, reordering on open rather than on click, and **the filter bar works with script off for the first time**, which needed a GET form the file never had. |
 | **3.84.0** | **An event could already have several organizers; two forms could not say so.** The 3.40.0 decision was already in place everywhere it had been built, so nothing there was rebuilt. The staff request form, whose organizer field arrived in 3.76.0 as a single select, is **tick boxes** now and approves the whole set in one call; the community form **inherits every organizer the series lends** rather than the first, which had been putting co-hosted submissions under one team's filter and not the other's; and the request prefill **applies the organizers it previews** instead of the first. **A closure can carry a free text note**, shown in full on the list card and shortened on a word boundary with the cut marked on the month grid, where `all()` had been silently dropping it because that method rebuilds rows from a fixed key list. |

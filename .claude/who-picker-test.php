@@ -98,7 +98,11 @@ if ( ! preg_match( '#^\.uc-who-panel\s*\{([^}]*)\}#m', $css, $panel_rule ) ) {
     if ( strpos( $panel_rule[1], 'position: absolute' ) === false ) {
         $fails[] = 'the panel is not absolutely positioned, so it is placed by script or not at all';
     }
-    if ( strpos( $panel_rule[1], 'top: calc(100% + 6px)' ) === false ) {
+    /* THE PROPERTY, NOT THE GAP. This pinned `top: calc(100% + 6px)` and so
+     * failed when the gap was opened to 8px for spacing, which is a design
+     * decision rather than a regression. What must hold is that the panel is
+     * placed BELOW its trigger by the stylesheet, whatever the gap. */
+    if ( ! preg_match( '#top:\s*calc\(\s*100%#', $panel_rule[1] ) ) {
         $fails[] = 'the panel is no longer placed under its trigger by the stylesheet';
     }
 }
@@ -136,8 +140,16 @@ if ( strpos( $sc, 'class="uc-filter-form" method="get"' ) === false ) {
 if ( strpos( $sc, 'data-uc-who-apply' ) === false ) {
     $fails[] = 'there is no Apply submit, so a no-script visitor cannot apply a filter';
 }
-if ( strpos( $css, '[data-uc-who-live] .uc-who-apply' ) === false ) {
-    $fails[] = 'Apply is not hidden once the script is listening, so it is a button that repeats what already happened';
+/* APPLY EXISTS ONLY FOR NO-SCRIPT (3.87.0), and this assertion reversed with
+ * it. 3.85.0 hid the button with a CSS rule driven by an attribute the script
+ * stamped, which is a hidden button rather than no button. It is inside
+ * <noscript> now, so a browser with scripting on never parses it at all. The
+ * claim is stronger: not "it is hidden" but "it is not there". */
+if ( ! preg_match( '#<noscript>\s*<button type="submit" class="uc-who-apply"#s', $sc ) ) {
+    $fails[] = 'Apply is not inside <noscript>, so it exists for people who have script and every other filter here applies immediately';
+}
+if ( strpos( $css, '[data-uc-who-live]' ) !== false ) {
+    $fails[] = 'the data-uc-who-live hiding rule is back; Apply is removed by <noscript> now, not hidden by CSS';
 }
 
 echo "The two columns\n";

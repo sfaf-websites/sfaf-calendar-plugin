@@ -9097,36 +9097,74 @@ class SFAF_Portal {
                      * hints then hang below without moving anything.
                      */
                     ?>
-                    <div class="uc-upload-grid">
-                        <label class="uc-field">
-                            <span class="uc-field-label">File</span>
-                            <input type="file" name="uc_media" accept="image/jpeg,image/png,image/gif,image/webp" required />
+                    <div class="uc-upload-panel">
+                        <?php
+                        /*
+                         * THE PICTURE ON THE LEFT, EVERYTHING WRITTEN ABOUT IT
+                         * ON THE RIGHT (3.87.0).
+                         *
+                         * THE ALIGNMENT FAULT WAS NEVER ABOUT THE FIELDS, it
+                         * was about mixing two kinds of control in one row. A
+                         * file input, a select and two text boxes have
+                         * different intrinsic heights and different label
+                         * lengths, so whatever they are arranged in, the labels
+                         * drift. Four of them on a two-by-two grid made that
+                         * worse rather than better.
+                         *
+                         * Splitting by KIND is what fixes it: the file control
+                         * and its preview are one column and answer for
+                         * themselves, and the three things somebody TYPES are a
+                         * single stack on the right where every label is the
+                         * first line of an identical block. Nothing has to line
+                         * up across the gap, so nothing can fail to.
+                         */
+                        ?>
+                        <div class="uc-upload-pic">
+                            <span class="uc-field-label">Picture</span>
+                            <?php
+                            /*
+                             * THE PREVIEW IS A REAL IMG WITH NO SRC UNTIL ONE
+                             * IS CHOSEN, hidden rather than absent, so the
+                             * column does not change height when a file is
+                             * picked and push the fields beside it. The empty
+                             * state is a dashed well of the same size.
+                             */
+                            ?>
+                            <div class="uc-upload-thumb" data-uc-upload-thumb>
+                                <img alt="" data-uc-upload-preview hidden />
+                                <span class="uc-upload-thumb-empty" data-uc-upload-empty>No picture chosen</span>
+                            </div>
+                            <input type="file" name="uc_media" accept="image/jpeg,image/png,image/gif,image/webp"
+                                   data-uc-upload-input required />
                             <span class="uc-hint">
                                 JPEG, PNG, GIF or WebP, at least <?php echo (int) SFAF_Uploads::MIN_WIDTH; ?> pixels wide.
                                 Landscape works best: an event card crops to 16:9.
                             </span>
-                        </label>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Series <span class="uc-muted">(optional)</span></span>
-                            <select name="term_id">
-                                <option value="0">No series</option>
-                                <?php foreach ( $series as $term ) : ?>
-                                    <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </label>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Name <span class="uc-muted">(optional)</span></span>
-                            <input type="text" name="uc_media_title" maxlength="120"
-                                   placeholder="Strut drop-in clinic" />
-                            <span class="uc-hint">What the picker calls it. Leave it blank and the file name is used.</span>
-                        </label>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Alt text <span class="uc-muted">(optional)</span></span>
-                            <input type="text" name="uc_media_alt" maxlength="160"
-                                   placeholder="Two people talking at a clinic reception desk" />
-                            <span class="uc-hint">What somebody who cannot see the picture is told it shows.</span>
-                        </label>
+                        </div>
+
+                        <div class="uc-upload-fields">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Name <span class="uc-muted">(optional)</span></span>
+                                <input type="text" name="uc_media_title" maxlength="120"
+                                       placeholder="Strut drop-in clinic" />
+                                <span class="uc-hint">What the picker calls it. Leave it blank and the file name is used.</span>
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Alt text <span class="uc-muted">(optional)</span></span>
+                                <input type="text" name="uc_media_alt" maxlength="160"
+                                       placeholder="Two people talking at a clinic reception desk" />
+                                <span class="uc-hint">What somebody who cannot see the picture is told it shows.</span>
+                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Series <span class="uc-muted">(optional)</span></span>
+                                <select name="term_id">
+                                    <option value="0">No series</option>
+                                    <?php foreach ( $series as $term ) : ?>
+                                        <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                        </div>
                     </div>
                     <div class="uc-form-actions">
                         <button type="submit" class="uc-btn uc-btn-primary">Upload</button>

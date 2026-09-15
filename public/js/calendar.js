@@ -734,6 +734,10 @@
      * only ever hidden once something is actually listening.
      */
     function initWhoPicker() {
+        /* Shared by the change handler below, declared here so a redraw that
+           re-enters this function cannot orphan a pending redraw. */
+        var whoTimer = null;
+
         function panelOf(el) { return $(el).closest('[data-uc-who]').find('[data-uc-who-panel]')[0] || null; }
 
         function selected(panel, sel) {
@@ -815,13 +819,11 @@
            popover API and no anchor positioning. There is no place() left to
            fail to run. */
 
-        /* THE STAMP IS ON THE DOCUMENT, NOT ON THE BLOCK, and that is a fix of
-           its own. It hides the no-script Apply button, and it used to be set
-           per block at ready, so a block redrawn by reloadBlock() came back
-           without it and Apply reappeared. Whether a script is running is a
-           fact about the page, not about one block, so it is recorded once
-           where no redraw can remove it. */
-        document.documentElement.setAttribute('data-uc-who-live', '1');
+        /* THE data-uc-who-live STAMP IS GONE (3.87.0). It existed to hide the
+           Apply button once a script was listening, and Apply is inside
+           <noscript> now, so with script it is not in the document to hide.
+           A stamp whose only reader has gone is a thing the next person has to
+           work out the purpose of. */
 
         /* Narrowing applied once for what the server rendered, because a block
            can arrive with organizers already selected from the query string. */
@@ -862,12 +864,40 @@
             if (!root || !$block.length) { return; }
 
             var panel = panelOf(this);
+
+            /*
+             * THE PANEL ANSWERS AT ONCE AND THE CALENDAR FOLLOWS (3.87.0).
+             *
+             * narrow() and relabel() are local and cost nothing, so the groups
+             * hide and the trigger updates on the tick itself. Only the
+             * CALENDAR redraw is delayed, and it is delayed because it is a
+             * whole-block request: somebody choosing three organizers in a
+             * second would otherwise fire three, each replacing the markup the
+             * next one is being ticked into.
+             *
+             * 350ms, which is longer than the search box's 250ms on purpose. A
+             * search is one field typed continuously; this is several separate
+             * decisions, and the pause between ticking two boxes is longer than
+             * the pause between two keystrokes.
+             *
+             * THIS IS WHAT REPLACES THE APPLY BUTTON rather than being an
+             * optimisation on top of it. Without the delay, live filtering on a
+             * control with thirty-four options is worse than the button was.
+             */
             narrow(root);
             relabel(root);
 
             $block.attr('data-active-organizer', selected(panel, '[data-uc-who-organizer]').join(','));
             $block.attr('data-active-groups', selected(panel, '[data-uc-who-group]').join(','));
-            reloadBlock($block);
+
+            if (whoTimer) { clearTimeout(whoTimer); }
+            whoTimer = setTimeout(function () {
+                whoTimer = null;
+                /* Found again rather than closed over: an earlier redraw may
+                   already have replaced the element this handler was given. */
+                var $live = $('[data-uc-who]').closest('.uc-calendar').first();
+                reloadBlock($live.length ? $live : $block);
+            }, 350);
         });
 
         $(document).on('click', '[data-uc-who-clear]', function (e) {
@@ -1097,8 +1127,25 @@
                     // pressing again retries.
                     return;
                 }
+                /*
+                 * THE OPEN FILTER PANEL SURVIVES THE REDRAW (3.87.0).
+                 *
+                 * This replaces the whole block, and the server renders the
+                 * Organizers and groups control CLOSED because a <details> is
+                 * closed unless it says otherwise. That was invisible while an
+                 * Apply button did the reloading, since the panel was on its
+                 * way out anyway. With Apply gone and every tick applying
+                 * immediately, the panel would shut on the first box ticked and
+                 * ticking two would be impossible.
+                 *
+                 * Read off the outgoing block and put back on the incoming one,
+                 * here rather than in the who handler, because this is the one
+                 * place that swaps the markup.
+                 */
+                var whoWasOpen = $block.find('[data-uc-who]').prop('open');
                 var $fresh = $(resp.html);
                 $block.replaceWith($fresh);
+                if (whoWasOpen) { $fresh.find('[data-uc-who]').prop('open', true); }
                 initViewsFor($fresh);
             },
             complete: function () {

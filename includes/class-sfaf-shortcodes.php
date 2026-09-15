@@ -2212,7 +2212,32 @@ class SFAF_Shortcodes {
 
                 <div class="uc-who-foot">
                     <button type="button" class="uc-who-clear" data-uc-who-clear>Clear</button>
-                    <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
+                    <?php
+                    /*
+                     * APPLY IS INSIDE <noscript> FROM 3.87.0, so it does not
+                     * exist at all for anybody who has script.
+                     *
+                     * IT WAS NEVER WANTED WITH SCRIPT. Every other filter on
+                     * this bar applies as it is pressed, and a button that
+                     * repeats what already happened is a button people press
+                     * twice and then distrust. 3.85.0 hid it with a CSS rule
+                     * driven by an attribute the script stamps, which is a
+                     * hidden button rather than no button: still in the tab
+                     * order's markup, still there if that one attribute ever
+                     * fails to be set.
+                     *
+                     * IT IS STILL THE WHOLE NO-SCRIPT PATH. Without script,
+                     * ticking a box does nothing on its own: this is the submit
+                     * that turns the ticks into a real GET request, and the
+                     * <details> around it opens without script too. The browser
+                     * parses <noscript> contents only when scripting is off, so
+                     * the two cases get exactly what each needs and neither
+                     * carries the other's leftovers.
+                     */
+                    ?>
+                    <noscript>
+                        <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
+                    </noscript>
                 </div>
             </div>
         </details>

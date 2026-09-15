@@ -1043,6 +1043,23 @@ a column it does not control and a media query about the window is a lie there.
 `overflow: hidden`. The filter bar has none, and a control that is occasionally
 clipped is a better failure than one that is reliably in the wrong corner.
 
+**THERE IS NO APPLY BUTTON, AND THE COST OF THAT IS NOT THE REBUILD** (3.87.0).
+Every filter on this bar applies as it is pressed, so a button that repeats what
+already happened is one people press twice and then distrust. It lives inside
+`<noscript>`, so it is absent rather than hidden for anybody with script, and is
+still the entire no-script path.
+
+> **THE PANEL HAD TO SURVIVE ITS OWN REDRAW.** `reloadBlock()` replaces the whole
+> block and the server renders the control CLOSED, because a `<details>` is
+> closed unless it says otherwise. While Apply did the reloading that was
+> invisible. With every tick applying, the panel shut on the first box and
+> ticking two was impossible. The open state is carried across the swap.
+
+**AND IT IS DEBOUNCED AT 350ms**, longer than the search box's 250ms on purpose:
+a search is one field typed continuously, and this is several separate decisions
+with longer pauses between them. Narrowing and relabelling stay instant, because
+they are local and cost nothing; only the whole-block redraw waits.
+
 **THE NARROWING IS ONE-WAY AND DERIVED FROM EVENTS.** Nothing stores a group's
 organizer: a series carries a description, an image and a FAQ set, and an
 organizer is a property of the EVENTS in it. `group_organizer_map()` reads them
@@ -1672,6 +1689,23 @@ nothing and the picker would silently show the whole library.
 runs for the WordPress media library itself, so an ungated version would hide
 most of the site's images from somebody writing an unrelated page. That failure
 is silent and would not look like the calendar's doing.
+
+**A PICTURE UPLOADED FOR AN EVENT IS TAGGED WITH THAT EVENT'S SERIES** (3.87.0),
+and the fault it fixes is worth keeping because the obvious diagnosis was wrong.
+An image uploaded from the event editor was reported as going nowhere. It went
+exactly where it should: the folder flag rides the uploader's multipart params,
+so `upload_dir` fires and the file lands in `uploads/calendar/`.
+
+> **IT DISAPPEARED FROM THE PICKER THAT UPLOADED IT.** wp.media refreshes its
+> library the instant an upload finishes, with that frame's own arguments, and
+> for an event in a series those include `uc_series`. A picture uploaded two
+> seconds ago has no term, so the refreshed query could not return it. Nothing
+> was broken; the picker was asking a question the new file could not yet answer.
+
+**THE GENERAL SHAPE:** when a control both narrows a list and adds to it, the
+thing it adds has to satisfy the narrowing, or it adds into somewhere it cannot
+see. Tagging at upload is what makes that true here, and widening the picker
+afterwards would have answered a different question from the one asked.
 
 **Choosing is narrowed; DISPLAY never is.** An event whose image predates the
 folder, or was set in the WordPress editor, renders exactly as before, and the

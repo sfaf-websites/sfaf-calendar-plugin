@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 138 items.** Quick 112, needs real conditions 23, blocked on other
+**Outstanding: 142 items.** Quick 116, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1618,6 +1618,68 @@ they should both be right or both be wrong.
   That is the whole point of counting this one and not the others.
 - **Editing one of those events must still work normally**, including saving it
   while it still has no organizer. If a save refuses, report it at once.
+
+---
+### 1.115 An image uploaded from the event editor (3.87.0)
+
+**This is the one to do first.** It was reported as going nowhere.
+
+- **Edit an event that belongs to a SERIES.** Press Choose Image, upload a new
+  picture, and it should appear in the picker immediately and be selectable for
+  that event. It should also now be tagged with that series.
+- **Then edit an event with NO series** and upload. It should appear too, and
+  should NOT be tagged with anything.
+- **Check the Images screen afterwards.** The picture should be there with the
+  series tag it was given, and in `uploads/calendar/` rather than a date folder.
+- **Upload from somewhere else in WordPress** while you are at it, for example a
+  page, and confirm it does NOT get filed into a calendar series.
+
+---
+
+### 1.116 Search in calendar view, on the real site (3.87.0)
+
+**No code changed for this in 3.87.0 and that is deliberate.** The whole chain
+was proved: typing fires a month request carrying the term, and the server puts
+that term on the month query. What could not be tested here is the SQL and the
+install.
+
+- **Confirm the site is actually on 3.87.0** before judging this. Plugins > SFAF
+  Calendar > Check for updates.
+- **Open the browser's Network tab, type in the search box in calendar view**,
+  and look for `admin-ajax.php`. There should be a request with
+  `action=uc_load_month` and an `s` field carrying what you typed.
+- **If that request is there and the grid does not change**, the fault is in the
+  SQL or the data, and the response body is what to send back.
+- **If that request is NOT there**, the script on the page is older than 3.87.0
+  and the cache is the thing to chase.
+
+---
+
+### 1.117 The filter panel, restyled, with no Apply (3.87.0)
+
+- **It should look lighter**: less heavy headings, more space between rows,
+  rounder corners, a softer edge.
+- **There should be no Apply button.** Ticking an organizer should narrow the
+  groups at once and rebuild the calendar about a third of a second later.
+- **Tick two or three in a row.** The panel must STAY OPEN throughout. If it
+  shuts on the first tick, report that at once: it is the thing most likely to
+  have gone wrong with removing the button.
+- **With JavaScript off**, Apply should reappear and be the way to apply a
+  filter.
+
+---
+
+### 1.118 The upload panel, laid out (3.87.0)
+
+**caladmin > Images > Add an image.** The picture goes on the left and Name, Alt
+text and Series on the right.
+
+- **Choose a file.** A preview should appear in the box on the left, and
+  **nothing to the right of it should move**.
+- **The three labels on the right should be on the same lines as each other.**
+  That is the alignment fault reported twice now.
+- **Upload with a Name that matches its own file name**, which is the case that
+  used to be blanked.
 
 ---
 ## 2. Needs real conditions
