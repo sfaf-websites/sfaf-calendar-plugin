@@ -6,20 +6,22 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-16, at 3.94.0, released.
+**Last updated:** 2026-09-16, at 3.95.0, released.
 
 ---
 
 ## What shipped last
 
-**3.94.0 IS RELEASED.** The filter dropdown's counts moved inside the name and
-onto its baseline, pasted fonts are normalised on event pages, the event editor
-uses the request form's picture picker instead of the WordPress media modal, the
-editor's three bottom actions are one row coloured by consequence, a ticked row
-in the dropdown is visible, and "See all events" clears the card's rounded
-corner. **`readme.txt` is the changelog** and carries the reasoning for each.
+**3.95.0 IS RELEASED**, and all it did was remove the "Use this image" button
+from the pending queue. **3.94.0 is the release with the substance in it**: the
+filter dropdown's counts moved inside the name and onto its baseline, pasted
+fonts are normalised on event pages, the event editor uses the request form's
+picture picker instead of the WordPress media modal, the editor's three bottom
+actions are one row coloured by consequence, a ticked row in the dropdown is
+visible, and "See all events" clears the card's rounded corner. **`readme.txt`
+is the changelog** and carries the reasoning for each.
 
-**Three things from it a new session needs, because each retires or reverses
+**Three things a new session needs, because each retires or reverses
 something:**
 
 > **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, deliberately, and the
@@ -28,14 +30,17 @@ something:**
 > path**: a picture added on the Images screen is not tagged to a series
 > automatically. Both public forms keep their own upload and are unaffected.
 
-> **"USE THIS IMAGE" ON THE PENDING ROW IS BROKEN AND WAS NOT FIXED.** It sets
-> the thumbnail; the calendar folder rule then refuses it, because the file is in
-> `calendar-submissions/` and the rule is anchored on `calendar/`; the event falls
-> back to its series picture. The row then says "This is the event's picture."
-> It also deletes any typed image URL on the way past. **Reported and awaiting
-> Mark's answer on the remedy.** `PROJECT.md` 8, "Agreed, not built".
+> **"USE THIS IMAGE" IS GONE (3.95.0), AND THAT IS SETTLED.** It never worked:
+> it set the thumbnail, the folder rule refused the attachment because the file
+> is in `calendar-submissions/` and the rule is anchored on `calendar/`, and the
+> event went on showing its series picture while the row said otherwise. It also
+> deleted any typed image URL on the way past. **Submitted pictures stay outside
+> the calendar folder, off the Images screen and out of every picker**, because
+> most are one-off events. The way to use one is to download it, size it and add
+> it on the Images screen. `PROJECT.md` 8 has the reasoning, and **the rejected
+> option was copying them into the folder on use**, so do not propose it again.
 
-> **TWO ITEMS IN THAT BRIEF WERE ALREADY BUILT.** The five minute time step has
+> **TWO ITEMS IN THE 3.94.0 BRIEF WERE ALREADY BUILT.** The five minute time step has
 > been on all twelve time controls since 3.72.0, and the dashboard's count of
 > published events with no organizer has been in Needs attention since 3.86.0:
 > organizers only, linked, and saves do not refuse. Both were asked for again.
@@ -101,8 +106,6 @@ targets. Assume everything else unverified.
 - **The calendar home URL.** Until it is filled in, "All Events" on an event page
   falls back to the archive on resources.sfaf.org, which is not a public surface.
   Settings, Display, Calendar home URL.
-- **What "Use this image" should do**, now that it is known to be broken: copy
-  the file into the calendar folder on use, or remove the button.
 - **Two pieces of public copy nobody has read**: the rejection notice and the
   "this event is back on" message. Both unticked by default, so nothing can send
   while they wait. `TESTING.md` 2.21 and 2.24.

@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 172 items.** Quick 146, needs real conditions 23, blocked on other
+**Outstanding: 173 items.** Quick 147, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -2147,6 +2147,29 @@ nobody had measured.**
   unchanged.
 - **If it still looks wrong, say which of the two you are looking at.** That
   distinction is what took three attempts.
+
+### 1.150 The submitted picture path, with no button (3.95.0)
+
+**"Use this image" is gone. It never worked, so nothing is lost, but the path
+that replaces it has never been walked end to end by anybody.**
+
+- **Open a pending community submission that came with a picture.** There should
+  be a thumbnail and no button under it.
+- **Click the thumbnail.** The full-size file should open in a new tab. Save it
+  from there.
+- **Add it on the Images screen**, give it a name, tag it to the series, then
+  open the event and choose it in the picture picker. That is the whole path and
+  it is the one Mark intends to use, so say if any step of it is awkward.
+- **Open the same event in the editor.** The request panel should show the
+  picture with the sentence "Download it, size it, and add it on the Images
+  screen. This file is not used on the event." **It used to say "upload the
+  finished one through the image picker", which stopped being possible in
+  3.94.0.**
+- **Check an event that had a typed image URL.** Nothing about a submitted
+  picture should touch it now. The button used to delete it.
+- **Send a submission with a picture under 1200 pixels wide** and look at the
+  queue row. The amber warning should be a readable sentence beside the row, not
+  squeezed into the narrow picture column.
 
 ---
 ## 2. Needs real conditions

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.94.0
+Stable tag: 3.95.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.95.0 =
+
+**"USE THIS IMAGE" IS GONE FROM THE PENDING QUEUE, AND IT NEVER WORKED.** 3.72.0 added it to make a submitted file the event's picture in one press. It called `set_post_thumbnail()`, and `sfaf_event_own_image_url()` then asked `SFAF_Media_Folder::holds()`, which is anchored on the string "calendar/". A submitted file lives in "calendar-submissions/", which does not start with that, so the folder rule refused the attachment and the event went on showing its series picture or the placeholder. **The row then said "This is the event's picture."** For three releases the button reported a result it had not produced.
+
+**AND IT DID HARM ON THE WAY PAST.** It deleted `_uc_image_url`, so an event with a working typed image URL lost it and gained a thumbnail that resolved to nothing. That is worse than doing nothing, and it is the half that had to go whether the button stayed or not.
+
+**IT WAS REMOVED RATHER THAN MADE TO WORK, AND THAT IS THE DECISION.** The only way the button and the folder rule can agree is to copy the file into the calendar folder on use, and that would put one-off event photos into the folder that is deliberately kept curated. **Submitted pictures stay in `calendar-submissions/`: outside the calendar folder, off the Images screen, and out of every picker.** The way to use one is to download it, size it, and add it deliberately.
+
+**WHAT STAYS IS THE PATH THAT ACTUALLY WORKS.** The thumbnail on the queue row and in the event editor, both linking to the full-size file in a new tab, and the sentence describing what to do with it.
+
+**AND THAT SENTENCE IS TRUE AGAIN.** "This file is not used on the event" was written in 3.67.0, made untrue by 3.72.0's button, and is correct now. It never actually stopped being correct, because the folder rule refused the attachment the whole time: the sentence was right and the button was wrong. **It also names the Images screen instead of the image picker**, because 3.94.0 took uploading off the event editor with the media modal, so telling somebody to upload through the picker there pointed at a control that cannot do it.
+
+**WHAT ELSE CALLED THE HANDLER: nothing.** One form on the pending row, and it is gone with the case. The event editor's request panel has only ever shown the thumbnail, the link and the hint; it never had the button, so nothing there changed but the wording.
+
+**AND NOTHING IS LEFT UNREACHABLE.** `SFAF_Submit::META_IMAGE` is still written by both public forms and still read in two places, `SFAF_Uploads::url()` still serves both panels, and `uc-inline-form` is on four other forms. **Three things did become dead and went with it**: the `image_used` and `image_failed` messages, the `POST:use_submitted_image` entry on the route whitelist, and two CSS rules that sized a button inside the picture column. The route test caught the whitelist entry on its own, from the other direction, which is what a whitelist checked in both directions is for.
+
+**THE PICTURE WARNING MOVED OUT OF THE 46px COLUMN.** 3.93.0 put the "that image is 768 pixels wide" sentence under the thumbnail, beside the button that was there then. With the button gone it was a sentence alone in a column sized for a 46px picture. It sits with the rest of the row's sentences now and takes their size.
+
+**Four faults planted and every one caught**, including one that puts the action back with no gate, which the route whitelist catches rather than the new check.
 
 = 3.94.0 =
 

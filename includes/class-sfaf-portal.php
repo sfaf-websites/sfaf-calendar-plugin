@@ -1386,58 +1386,34 @@ class SFAF_Portal {
                 break;
 
             /*
-             * MAKE THE SUBMITTED FILE THE EVENT'S PICTURE (3.72.0).
+             * "USE THIS IMAGE" IS GONE (3.95.0), AND IT NEVER WORKED.
              *
-             * ITS OWN ACTION RATHER THAN A FIELD ON THE MANAGER PANEL. The
-             * panel's image control offers the calendar folder, which is
-             * curated and stays curated; this attachment is in
-             * `calendar-submissions/` and is deliberately not in that list. So
-             * this is not "choose a picture", it is "the one that arrived is
-             * the one", and it is one press on the row where the picture is
-             * already on screen.
+             * 3.72.0 added it to set a submitted file as the event picture in
+             * one press. It called set_post_thumbnail(), and
+             * sfaf_event_own_image_url() then asked SFAF_Media_Folder::holds(),
+             * which is anchored on the string "calendar/". A submitted file
+             * lives in "calendar-submissions/", which does not start with
+             * that, so the rule refused it and the event fell through to
+             * its series picture. The row then said "This is the event's
+             * picture." It also deleted _uc_image_url on the way past, so an
+             * event with a working typed URL lost it and gained a thumbnail
+             * that resolved to nothing.
              *
-             * IT SETS THE THUMBNAIL AND NOTHING ELSE. It does not move the file,
-             * copy it into the calendar folder or change the status: the
-             * submissions folder is where raw uploads live and this event now
-             * points at one. Mark moves images between the folders by hand when
-             * one is worth keeping, and an event pointing at a submissions file
-             * goes on working either way, because a thumbnail is an attachment
-             * id and WordPress does not care which folder the file sits in.
+             * IT WAS NOT MADE TO WORK, AND THAT IS THE DECISION. Copying the
+             * file into the calendar folder on use is the only way the button
+             * and the rule can agree, and it would put one-off event photos
+             * into the folder that is being kept curated. So submitted
+             * pictures stay in calendar-submissions/, outside the folder, off
+             * the Images screen and out of every picker, and the way to use
+             * one is to download it, size it and add it deliberately.
+             *
+             * WHAT STAYS ON THE ROW: the thumbnail, the link to the full-size
+             * file, and the hint describing that path. The hint in
+             * render_request_panel() says "This file is not used on the
+             * event", which was written in 3.67.0, made untrue by 3.72.0 and
+             * is true again.
              */
-            case 'use_submitted_image':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                $event_id = intval( $_POST['event_id'] );
-                $post     = get_post( $event_id );
-                if ( ! $post || 'uc_event' !== $post->post_type ) {
-                    $this->redirect( 'pending', array( 'msg' => 'image_failed' ) );
-                }
 
-                /*
-                 * THE ID COMES FROM THE EVENT, NEVER FROM THE FORM, which is
-                 * what stops this being a way to set any attachment on the site
-                 * as any event's picture. The row's own meta is the only
-                 * source, and it is checked to be a real image attachment
-                 * before it becomes one.
-                 */
-                $shot_id = (int) get_post_meta( $event_id, SFAF_Submit::META_IMAGE, true );
-                if ( $shot_id < 1
-                    || 'attachment' !== get_post_type( $shot_id )
-                    || 0 !== strpos( (string) get_post_mime_type( $shot_id ), 'image/' ) ) {
-                    $this->redirect( 'pending', array( 'msg' => 'image_failed' ) );
-                }
-
-                set_post_thumbnail( $event_id, $shot_id );
-                /*
-                 * AND THE URL FIELD IS CLEARED. sfaf_event_image_url() prefers a
-                 * chosen attachment over a typed URL, so a stale URL underneath
-                 * would be invisible now and would come back the day somebody
-                 * removed the thumbnail. One answer to "what is this event's
-                 * picture" is the point of pressing this.
-                 */
-                delete_post_meta( $event_id, '_uc_image_url' );
-
-                $this->redirect( 'pending', array( 'msg' => 'image_used' ) );
-                break;
 
             /*
              * A TYPED PLACE BECOMES A REAL VENUE (3.93.0).
@@ -1457,10 +1433,11 @@ class SFAF_Portal {
              * "which of these two is the address" is exactly the question the
              * venue list exists to stop anybody having to ask.
              *
-             * NOTHING IS READ FROM THE FORM BUT THE EVENT ID, the same rule
-             * use_submitted_image follows: the name and the address come off
-             * the event's own meta, so this cannot be a way to write any name
-             * against any address.
+             * NOTHING IS READ FROM THE FORM BUT THE EVENT ID: the name and the
+             * address come off the event's own meta, so this cannot be a way to
+             * write any name against any address. use_submitted_image followed
+             * the same rule and was removed in 3.95.0, so this is the only
+             * place the pattern is now written down.
              */
             case 'make_venue':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -3481,18 +3458,6 @@ class SFAF_Portal {
              */
             'organizer_required' => 'Nothing was saved. Tick at least one organizer.',
             'organizer_needed_to_publish' => 'Saved, and not published. Tick at least one organizer, then publish.',
-            /*
-             * THE SHAPE WARNING IS HERE AND NOT ON THE BUTTON, because it is a
-             * thing that will have happened rather than a thing to decide. A
-             * submitted photo is whatever shape the person had; the calendar
-             * folder's pictures are 16:9 because somebody made them that way,
-             * and the card crops to 16:9 either way. So a portrait photo will
-             * lose its top and bottom on a card, and this says so at the moment
-             * it becomes possible rather than leaving it to be found on a
-             * published event.
-             */
-            'image_used'     => 'That is the event\'s picture now. Cards crop to 16:9, so check how a tall or square photo looks before publishing.',
-            'image_failed'   => 'That picture could not be used. It is no longer on the event, or it is not an image.',
             'venue_made'     => 'That place is in the venue list now, and this event points at it. Correcting the address on the Venues screen will correct every event held there.',
             'venue_failed'   => 'That place could not be added. The event has no place name on it, or it already points at a venue.',
             'user_saved'     => 'User permissions updated.',
@@ -15968,59 +15933,39 @@ class SFAF_Portal {
                         <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
                             <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
                         </a>
+
                         <?php
                         /*
-                         * "USE THIS IMAGE" (3.72.0).
+                         * WHAT IS WRONG WITH THE PICTURE (3.93.0). A submitted
+                         * image under MIN_WIDTH used to be refused, which
+                         * refused the whole submission with it; it is taken now
+                         * and the sentence goes to somebody who can see the
+                         * photo and decide. Amber and a mark rather than red,
+                         * the same as the missing-fields note on this row: it
+                         * is a step in the job, not a fault.
                          *
-                         * WHAT IT REPLACES. A submitted file has always been
-                         * shown here and has never been the event's picture: it
-                         * is stored under SFAF_Submit::META_IMAGE and
-                         * set_post_thumbnail() is deliberately not called on it,
-                         * so an approver who wanted to use it had to download it
-                         * from this link and upload it again through the media
-                         * library. That is the whole of the gap this closes: one
-                         * press, no download, no re-upload.
-                         *
-                         * IT IS ONE PRESS AND NOT A DEFAULT, and that has not
-                         * changed. The reason the upload is not the thumbnail
-                         * automatically is that nobody has looked at it yet: it
-                         * arrived from a public form, and a picture on the
-                         * public calendar is a decision somebody takes. This
-                         * control is where they take it, next to the picture.
-                         *
-                         * ALREADY THE PICTURE MEANS NO BUTTON. Pressing it twice
-                         * does nothing the first press did not, and a control
-                         * that is offered when it would change nothing is one
-                         * somebody presses to find out.
-                         */
-                        $is_thumb = ( $shot_id && (int) get_post_thumbnail_id( $id ) === (int) $shot_id );
-                        ?>
-                        <?php
-                        /*
-                         * WHAT IS WRONG WITH THE PICTURE, BESIDE THE PICTURE
-                         * (3.93.0). A submitted image under MIN_WIDTH used to be
-                         * refused, which refused the whole submission; it is
-                         * taken now and the sentence lands here, where somebody
-                         * can see the photo and the warning at once and decide.
-                         * Amber and a mark rather than red, the same as the
-                         * missing-fields note on this row: it is a step in the
-                         * job, not a fault.
+                         * Read here, where the picture is, and RENDERED further
+                         * down beside the rest of the row's sentences. See the
+                         * note at the point it is drawn.
                          */
                         $shot_note = (string) get_post_meta( $id, SFAF_Submit::META_IMAGE_NOTE, true );
                         ?>
-                        <?php if ( '' !== $shot_note ) : ?>
-                            <p class="uc-submitted-note uc-submitted-warn"><?php echo esc_html( $shot_note ); ?></p>
-                        <?php endif; ?>
-                        <?php if ( $is_thumb ) : ?>
-                            <p class="uc-submitted-note">This is the event's picture.</p>
-                        <?php else : ?>
-                            <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form">
-                                <input type="hidden" name="uc_action" value="use_submitted_image" />
-                                <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
-                                <?php wp_nonce_field( 'uc_portal_use_submitted_image', 'uc_nonce' ); ?>
-                                <button type="submit" class="uc-btn uc-btn-sm">Use this image</button>
-                            </form>
-                        <?php endif; ?>
+                        <?php
+                        /*
+                         * NO "USE THIS IMAGE" BUTTON (3.95.0). It never worked:
+                         * the folder rule refused the attachment it set, so the
+                         * event went on showing its series picture while this
+                         * row said it had a picture of its own. The reasoning,
+                         * and why it was removed rather than fixed, is on the
+                         * dead case in dispatch_post().
+                         *
+                         * THE THUMBNAIL AND ITS LINK STAY, and they are the
+                         * control now: the file opens full size in a new tab,
+                         * and the way to use it is to size it and add it
+                         * through the Images screen. render_request_panel()
+                         * says so in a sentence on the editor.
+                         */
+                        ?>
                     </div>
                 <?php endif; ?>
 
@@ -16053,6 +15998,19 @@ class SFAF_Portal {
                      * would be the same three words on every row.
                      */
                     ?>
+                    <?php
+                    /*
+                     * AND IT IS RENDERED HERE, NOT IN THE PICTURE COLUMN
+                     * (3.95.0). 3.93.0 put it under the thumbnail, which is a
+                     * 46px column sized for a 46px picture and a button. With
+                     * the button gone it held nothing but this sentence, in a
+                     * column too narrow to read one in. It is a sentence about
+                     * the row, so it goes where the row's other sentences are.
+                     */
+                    ?>
+                    <?php if ( '' !== $shot_note ) : ?>
+                        <p class="uc-submitted-warn"><?php echo esc_html( $shot_note ); ?></p>
+                    <?php endif; ?>
                     <p class="uc-queue-meta">
                         <span><?php echo esc_html( $this->pending_when( $id, $date, $prov ) ); ?></span>
                         <?php $location = sfaf_event_location_short( $id ); ?>
@@ -16464,7 +16422,24 @@ class SFAF_Portal {
                     <a href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
                         <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" />
                     </a>
-                    <p class="uc-hint">Download it, size it, and upload the finished one through the image picker. This file is not used on the event.</p>
+                    <?php
+                    /*
+                     * THE MANUAL PATH, AND IT IS THE ONLY PATH AGAIN (3.95.0).
+                     *
+                     * "This file is not used on the event" was written in
+                     * 3.67.0, made untrue by 3.72.0's "Use this image" button,
+                     * and is true again now that the button is gone. It never
+                     * actually became the picture even while the button existed,
+                     * because the folder rule refused it, so the sentence was
+                     * right the whole time and the button was wrong.
+                     *
+                     * AND IT NAMES THE IMAGES SCREEN RATHER THAN THE PICKER.
+                     * 3.94.0 took uploading off this editor with the media
+                     * modal, so telling somebody to upload through the picker
+                     * here points at a control that cannot do it.
+                     */
+                    ?>
+                    <p class="uc-hint">Download it, size it, and add it on the Images screen. This file is not used on the event.</p>
                 </div>
             <?php endif; ?>
         </div>

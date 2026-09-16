@@ -1613,6 +1613,41 @@ if ( preg_match( '/\.uc-sidebar \{[^}]*padding:\s*var\(--uc-sidebar-pad-t\) var\
     check( false, 'the standalone sidebar has no bottom padding declaration, so nothing holds the link off the corner' );
 }
 
+
+/* ===========================================================================
+ * "USE THIS IMAGE" IS GONE AND MUST NOT COME BACK ON ITS OWN (3.95.0).
+ *
+ * It set a submitted attachment as the event thumbnail, and
+ * sfaf_event_own_image_url() then refused it because SFAF_Media_Folder::holds()
+ * is anchored on the calendar folder and a submitted file is not in it. The
+ * event showed its series picture while the row said otherwise.
+ *
+ * THE PAIR IS WHAT IS ASSERTED, not just the absence. A button like this is
+ * only correct if something first puts the file inside the folder the rule
+ * names, and the decision was that submitted pictures stay outside it. So if
+ * the action ever returns, the check below says what would have to be true for
+ * it to work, rather than simply forbidding it.
+ * ======================================================================== */
+check(
+    false === strpos( $code_portal, "case 'use_submitted_image'" ),
+    'the use_submitted_image action is back; it can only work if something copies the file into the calendar folder first, because the folder rule refuses an attachment outside it'
+);
+check(
+    false === strpos( $code_portal, 'Use this image' ),
+    'the "Use this image" button is back on the queue'
+);
+/* AND NOTHING ABOUT A SUBMITTED PICTURE MAY DELETE THE TYPED URL. That was the
+ * second half of the harm: pressing the button destroyed a working image URL
+ * and replaced it with a thumbnail that resolved to nothing. The two that are
+ * left are the editor's own image field acting on what the form posted: "Reset
+ * to series image", and an image URL box somebody emptied. A third would be
+ * something clearing it as a side effect again. */
+$img_url_deletes = substr_count( $code_portal, "delete_post_meta( \$event_id, '_uc_image_url' )" );
+check(
+    2 === $img_url_deletes,
+    sprintf( 'the typed image URL is deleted in %d places rather than the two the editor form owns', $img_url_deletes )
+);
+
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }

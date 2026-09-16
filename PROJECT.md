@@ -5431,22 +5431,28 @@ same meta and the event keeps it.
 > precisely so `calendar-submissions/` is not mistaken for `calendar/`. What was
 > never followed through is what that means for a button added later.
 
-**Agreed, not built: what it should do instead.** Two answers, and it is Mark's
-call because they point at different models.
+**SETTLED IN 3.95.0: THE BUTTON WAS REMOVED.** Mark's model is that a submitted
+picture stays out of the calendar folder and off the Images screen, because most
+are one-off events and he does not want them becoming permanent images. The only
+way the button and the folder rule could agree was to copy the file into that
+folder on use, which is the one thing that model rules out. So:
 
-- **Copy the file into the calendar folder on use.** The button becomes a
-  deliberate promotion, the same shape as promoting a typed place to a venue in
-  3.93.0: one press, and afterwards the picture is an ordinary calendar image
-  that every picker offers.
-- **Remove the button.** Mark's stated model is that a submitted picture should
-  stay out of the calendar folder and out of the Images screen, because a
-  one-off event's photo should not clutter the library, and that he adds it
-  himself when it is worth keeping. That model has no room for this button at
-  all, and the editor's existing hint already describes the manual path.
+- **A submitted picture is never the event's picture by any automatic route.**
+  The way to use one is to download it, size it, and add it on the Images screen
+  deliberately.
+- **Nothing about a submitted picture touches `_uc_image_url`.** The button
+  deleted it, which cost an event its working typed URL and gave it a thumbnail
+  that resolved to nothing. The two remaining deletions are the editor's own
+  image field acting on what the form posted, and
+  `.claude/embed-modes-test.php` counts them, so a third cannot appear as a
+  side effect.
+- **Widening the folder rule to admit the submissions folder was never one of
+  the options.** The rule exists so the calendar draws from one place, and the
+  submissions folder is meant to be emptied.
 
-**Widening the folder rule to admit the submissions folder is not one of them.**
-The rule exists so the calendar draws from one place, and the submissions folder
-is meant to be emptied.
+**This entry stays here rather than moving into the body**, because what it
+records is a decision not to build something, and that is the kind of thing
+somebody proposes again.
 
 ### Two things are called the calendar folder (3.86.0, half closed in 3.90.0)
 

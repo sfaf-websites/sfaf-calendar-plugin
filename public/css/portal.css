@@ -3691,22 +3691,28 @@ body.uc-modal-open { overflow: hidden; }
    under a 46px square is the right shape for a caption. */
 .uc-submitted-shot { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 46px; }
 .uc-submitted-shot > .uc-submitted-thumb { float: none; margin: 0; }
-.uc-submitted-shot .uc-inline-form { margin: 0; }
-.uc-submitted-shot .uc-btn {
-    width: 100%; padding: 4px 4px; gap: 0;
-    font-size: 12px; font-weight: 600; line-height: 1.25;
-    text-align: center; justify-content: center;
-}
+/* THE COLUMN HOLDS A PICTURE AND NOTHING ELSE NOW (3.95.0). It had a button
+   under the thumbnail and two rules sizing it; the button never worked and was
+   removed, so both rules matched nothing and are gone with it. Dead CSS is
+   worse than no CSS, because the next person reads it as a description of the
+   screen. */
 /* Already the picture. A statement, not a control, so it takes the muted
    helper step rather than anything that reads as pressable. */
 .uc-submitted-note { margin: 0; font-size: 12px; font-weight: 400; line-height: 1.25; text-align: center; color: var(--p-muted, #6B6764); }
-/* THE PICTURE WARNING (3.93.0). #b45309 is the amber already measured for this
-   screen at 5.02:1, used on the needs-attention flag and the strong source
-   link. Amber and not red, the same reasoning as the missing-fields mark on
-   this row: a small picture is a step in the job, not a fault, and the
-   submission was taken. Left-aligned because it is a sentence rather than a
-   caption and centring makes a wrapped sentence hard to read. */
-.uc-submitted-warn { color: #b45309; text-align: left; margin-bottom: 6px; }
+/* THE PICTURE WARNING (3.93.0, moved 3.95.0). #b45309 is the amber already
+   measured for this screen at 5.02:1, used on the needs-attention flag and the
+   strong source link. Amber and not red, the same reasoning as the
+   missing-fields mark on this row: a small picture is a step in the job, not a
+   fault, and the submission was taken.
+
+   IT IS NO LONGER IN THE 46px PICTURE COLUMN. 3.93.0 put it under the
+   thumbnail, beside the button that was there then; with the button gone it
+   was a sentence alone in a column too narrow to read one in. It sits with the
+   row's other sentences now and takes their size. */
+.uc-submitted-warn {
+    margin: 0 0 4px; font-size: 12px; font-weight: 400; line-height: 1.4;
+    color: #b45309;
+}
 
 /* The approval prompt lives in the actions column when JavaScript is off, and
    that column sizes to its content. Unbounded, its two sentences would make
