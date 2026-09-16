@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.91.0
+Stable tag: 3.92.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,35 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.92.0 =
+
+**EVERY NAME IN THE FILTER DROPDOWN CARRIES ITS COUNT, AND IT COSTS TWO QUERIES RATHER THAN THIRTY-FOUR.** A naive version asks the database once per name, which is thirty-four queries every time the panel renders, and the panel renders on every redraw. What runs instead is one query for the matching event ids and one that resolves both taxonomies across that whole id set at once, then tallies in PHP. At Mark's size, nine organizers, twenty-five groups and two hundred and eighty-seven events, that is **two queries and one pass over about three hundred term rows**. It also **replaced fifty queries that were already there**: the narrowing map was built by asking each group separately, twice.
+
+**WHAT THE NUMBERS COUNT: upcoming and published, never everything ever.** They are built from the same `build_query_args()` the list itself uses, so "upcoming" cannot mean one thing in the count and another in the list, and a block scoped to one series or one category counts inside that scope.
+
+**THE ACTIVE FILTERS ARE HONOURED, WITH ONE DELIBERATE EXCEPTION.** A category selection, a search and a block's own scope all narrow the counts, because a count that ignored them could say 12 and then show nothing. The exception is that **an organizer's own count ignores the organizer ticks**: organizer is the controlling filter here, and leaving it applied would make every unticked organizer read (0) the moment somebody ticked one, which is a list of zeros rather than a set of choices. **A group's count does respect the ticked organizers**, because the two AND together and a group is what is being narrowed.
+
+**A ZERO IS HIDDEN, NOT SHOWN, WHICH IS THE RULE THE PANEL ALREADY HAD.** It already hid a group with nothing from the chosen organizers, and adding a second answer for the same situation would have been the worse outcome. **One exception: a ticked row survives its own zero**, because removing a filter's own control while it is on is how a filter becomes unreachable.
+
+**THE HEADINGS TAKE PALETTE COLOUR.** "Organizers" and "Groups" are `--uc-teal-text`, the measured #0E7680 that DESIGN.md carries at 5.35:1 on white, with the section rule under them mixed from the same token so the heading and its line read as one mark. **Nothing else in the panel changed colour.** Colour on two headings is separation; colour on thirty-four rows is noise, and there is an assertion against the rows taking it.
+
+**THE ROWS ARE 31px, DOWN FROM 37px, AT THE SAME PITCH.** Vertical padding went from 8px to 5px. **The tap target is the row, not the box**: the row is a `<label>`, so the whole column width toggles the tick, which is **220 by 31 CSS pixels** in the organizers column and **202 by 31** in each group sub-column, against the 24 by 24 WCAG 2.5.8 asks for. The 13px checkbox on its own never met that and still does not; the label is what does, which is why the whole row has always been one.
+
+**THE COUNTS COST WIDTH, AND THE WIDTH CAME OUT OF THE GUTTERS RATHER THAN OUT OF THE NAMES.** Measured at the embed width: two names of thirty-four wrapped to a second line before counts existed, and eleven wrapped with them. A wrapped row is 50px against 31px, so that is the difference between an even list and a ragged one. The column gap, the divider padding and the sub-column gap each came down 18px to 14px, the row's side padding 12px to 10px, the label gap 11px to 8px and the count itself to 11px. **That puts it back to three.** Nothing is truncated and no name is hidden; the two that wrapped before still wrap.
+
+**THE SCROLLBAR CANNOT BE REMOVED, AND IT NO LONGER FIRES ON A NORMAL SCREEN.** Both halves of that are measured. The panel wanted 518px before the padding change and wants **460px** after it. The cap was `min(70vh, 460px)`, so it was clipping by a hair and drawing a scrollbar; the scrollbar then took 15px off every row, which wrapped three more names, which made the panel taller still. The cap is **520px** now and that loop does not start: on a 900px-tall window the panel draws its full 462px with no scroll region at all.
+
+**IT STILL CANNOT FIT ON A SHORT WINDOW, AND SAYING SO IS THE POINT.** `70vh` is what binds there. A 1366x768 laptop has about 630px of viewport, 70vh of that is 441px, and 460px of names does not go into it. **Removing the overflow would not make the panel fit; it would put the last few groups past the bottom edge with nothing to reach them by.** Measured at both heights:
+
+```
+900px viewport   cap 520px   panel 462px drawn, wants 460px   no scrollbar
+630px viewport   cap 442px   panel 442px drawn, wants 461px   scrolls
+```
+
+**WHAT DID NOT MOVE:** the panel's position under its trigger, the one third and two thirds, the two group sub-columns, the widths held still by the grid fractions as groups hide, the panel staying open across a redraw, and the no-script path. **The weights are still 600 and 400**, and the assertion pinning them is still there and still green. Two complaints have pointed in opposite directions about this panel and that pin is what stops a third edit chasing them.
+
+**ALL OF IT IS THE SHARED RENDERER AND THE ONE STYLESHEET**, so the shortcode and the embed get it from the same place rather than from two implementations agreeing. **Eighteen faults planted and every one caught.** One is worth recording: `/function who_counts\(.*?build_query_args\(/s` matched straight past the end of the function to the next call elsewhere in the file and stayed green on a plant that gutted `who_counts()` entirely. The function is sliced out by its own braces before anything is asked of it now.
 
 = 3.91.0 =
 

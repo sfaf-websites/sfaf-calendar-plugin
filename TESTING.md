@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 155 items.** Quick 129, needs real conditions 23, blocked on other
+**Outstanding: 159 items.** Quick 133, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1883,6 +1883,68 @@ opposite, so the weights were deliberately NOT changed.**
 - **A ticked row should stay visibly ticked** after the pointer moves away.
 - **If it now reads as too ruled**, say so: the hairlines are one edit. The
   thing to avoid is going back to changing the weights.
+
+### 1.132 The counts beside each name are the right numbers (3.92.0)
+
+**Every organizer and group in the dropdown now shows `(n)`. Nothing here can be
+settled without real data, because the whole question is whether the number
+matches what clicking it produces.**
+
+- **Open it and pick any name with a count.** Tick it, let the list redraw, and
+  **compare the number of events against what the row said.** They must agree.
+  Do this for one organizer and one group.
+- **Then select a category first and open the panel again.** The counts should
+  have changed: they are computed inside the category. If they did not move at
+  all, the category is not reaching `who_counts()`.
+- **Tick an organizer and watch the GROUP counts.** They should narrow to what
+  that organizer runs. **The organizer counts should NOT all drop to zero**,
+  because an organizer's own count deliberately ignores the organizer ticks.
+- **Type something in the search box and open the panel.** The counts should
+  narrow to the search as well.
+
+### 1.133 Nothing reads (0), and nothing that should be there is missing (3.92.0)
+
+**A name with nothing behind it is now hidden rather than shown as (0). Two
+cases are deliberately held out of that and both need a person to confirm.**
+
+- **Count the names in the panel against the taxonomy screens.** Nine organizers
+  and twenty-five groups were the numbers given. If the panel now shows fewer,
+  the missing ones have nothing upcoming, which is correct, but **check one of
+  them on its taxonomy screen to be sure it really has nothing** rather than
+  being hidden by a bad count.
+- **A ticked name must never disappear.** Tick something, then tick a category
+  that leaves it with nothing. The row should stay, reading (0), so it can be
+  unticked. If it vanishes, that filter is stuck on with no way off.
+- **A group whose events name no organizer must stay visible when an organizer
+  is ticked**, reading (0). Roughly a third of groups were in that state while
+  the hundred were being set by hand. This is the rule that a plain zero rule
+  would have reversed by a side effect, so it is worth one deliberate check.
+
+### 1.134 The panel is tighter and the scrollbar mostly does not appear (3.92.0)
+
+- **Open it on a normal desktop window** and look for a scrollbar inside the
+  panel. There should not be one: the content measures 460px and the cap is
+  520px. If there is one, the content is taller than it was measured to be and
+  the cap needs to go up again rather than the overflow coming off.
+- **Then make the browser window short**, about 700px tall, and open it again.
+  **It should scroll**, and it should still be possible to reach the last group.
+  That is the case the overflow exists for.
+- **The rows are 31px.** Tap one on a phone, on the NAME rather than the box.
+  The whole row is the target. If only the checkbox responds, the label is
+  broken and that is a real defect, not a preference.
+- **Look for names broken onto two lines.** Two or three of thirty-four is
+  expected and is what the longest names did before the counts existed. If most
+  of them are wrapping, say so and say at what width, because the width taken
+  back out of the gutters was measured against invented names rather than the
+  real ones.
+
+### 1.135 The dropdown headings are teal and nothing else is (3.92.0)
+
+- **"Organizers" and "Groups" should be the brand teal**, with a matching line
+  under each. **No name, count or tick should have taken that colour.**
+- **Look at it beside the rest of the filter bar.** If the two headings now
+  compete with the calendar itself, say so; the answer is the amount rather than
+  the hue.
 
 ---
 ## 2. Needs real conditions

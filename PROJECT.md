@@ -1062,10 +1062,10 @@ they are local and cost nothing; only the whole-block redraw waits.
 
 **THE NARROWING IS ONE-WAY AND DERIVED FROM EVENTS.** Nothing stores a group's
 organizer: a series carries a description, an image and a FAQ set, and an
-organizer is a property of the EVENTS in it. `group_organizer_map()` reads them
-off the published, non-private events in each group, so a group appears under
-every organizer that runs anything in it, and a collaboration appears under
-both. Selecting organizers hides non-matching groups; selecting groups does NOT
+organizer is a property of the EVENTS in it. `who_counts()` reads them off the
+published, non-private events in each group as it counts, so a group appears
+under every organizer that runs anything in it, and a collaboration appears
+under both. Selecting organizers hides non-matching groups; selecting groups does NOT
 narrow the organizers, because then each would hide the other's options and
 neither list could be trusted to be complete.
 
@@ -1225,6 +1225,58 @@ and looks for a term literally named for the folder.
 independent fact for a library this plugin does not own; it does not become the
 rule. Nothing about display depends on it.
 
+### Every name in the picker carries its count (3.92.0)
+
+**The whole panel is two queries.** One `get_posts()` for the ids that match
+everything except this control's own answers, and one `wp_get_object_terms()`
+that resolves `uc_organizer` and `uc_series` across that entire id set at once,
+with the object id on each row so a term can be attributed back to its event.
+The tallying is a pass over the rows in PHP. `who_counts()` is where all of it
+lives.
+
+> **A COUNT PER NAME WOULD BE THIRTY-FOUR QUERIES ON EVERY RENDER**, and the
+> panel re-renders on every redraw. It also **replaced fifty queries that were
+> already there**: `group_organizer_map()` asked the database separately for
+> each of twenty-five groups, twice. That method still exists and nothing calls
+> it from the picker.
+
+**THE COUNTS ARE THE LIST'S OWN QUERY, WHICH IS WHY "UPCOMING" NEEDS NO SECOND
+DEFINITION.** `who_counts()` calls `build_query_args()`, so upcoming, published
+and non-private mean exactly what they mean in the list, and a block scoped to
+one series or one category counts inside that scope. A count that built its own
+args would drift from the list the first time either moved.
+
+**THE ACTIVE FILTERS NARROW THE COUNTS, WITH ONE EXCEPTION THAT IS DELIBERATE.**
+A category, a search and a block's scope all apply, because a count that ignored
+them can say 12 and then show nothing.
+
+- **An organizer's own count ignores the organizer ticks.** Organizer is the
+  controlling filter here, and leaving it applied would make every unticked
+  organizer read (0) the moment one was ticked: a list of zeros rather than a
+  set of choices.
+- **A group's count is computed inside the ticked organizers**, because the two
+  AND together in the query and the group is what is being narrowed.
+- **The map is not narrowed at all.** It is the full relationship, because it is
+  what the client-side narrowing reads to decide what to hide in the 350ms
+  before the debounced redraw, and narrowing it here would make that decision
+  circular.
+
+**A ZERO IS HIDDEN, NOT SHOWN.** The panel already hid a group with nothing from
+the chosen organizers, so a name with nothing behind it not being there is the
+answer this control already had; adding a second one for the same situation
+would be the worse outcome. **Two cases are held out of it:**
+
+- **A ticked row survives its own zero**, or the filter it represents has no
+  control left to turn it off by.
+- **A group whose events name no organizer at all survives too**, which is the
+  rule above. Its count is computed inside the ticks, so it reads (0) as soon as
+  one is ticked, and a plain zero rule would then hide it: the narrowing rule
+  reversed by a side effect. `$protected` in the render loop is the whole of
+  that, and `who_counts()` returns a second `group_all` tally, unnarrowed, for
+  it to ask.
+
+**The count is `aria-hidden` and carries a spoken alternative beside it**, "12
+upcoming events", because "(12)" read out on its own attaches to nothing.
 ### Separation is not weight, and measuring first tells them apart (3.91.0)
 
 The Organizers and groups panel was reported as "a big blob of text and boxes".

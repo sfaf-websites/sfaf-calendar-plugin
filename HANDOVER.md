@@ -6,13 +6,55 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-16, at 3.91.0, released.
+**Last updated:** 2026-09-16, at 3.92.0, released.
 
 ---
 
 ## What shipped last
 
-**3.91.0 IS RELEASED** and is what sites are being offered.
+**3.92.0 IS RELEASED** and is what sites are being offered.
+
+> **THE FILTER DROPDOWN SHOWS A COUNT BESIDE EVERY NAME, AND IT COSTS TWO
+> QUERIES.** One id query and one that resolves both taxonomies over the whole
+> id set, then a tally in PHP. A count per name would have been thirty-four
+> queries on every render; it also replaced fifty that were already there, in
+> the narrowing map. **Nothing about the counts can be checked in this
+> environment**, so `TESTING.md` 1.132 and 1.133 are the ones that matter.
+
+> **WHAT THE COUNTS MEAN, IF ANYONE ASKS.** Upcoming and published only, built
+> from the list's own `build_query_args()`. Category, search and block scope all
+> narrow them. **An organizer's count ignores the organizer ticks** on purpose,
+> or every unticked organizer would read (0) the moment one was ticked; a
+> group's count does respect them. A zero is hidden, which is the rule the panel
+> already had, **except for a ticked row and except for a group whose events
+> name no organizer**, which is the 3.85.0 narrowing rule and which a plain zero
+> rule would have quietly reversed.
+
+> **THE SCROLLBAR CANNOT GO, AND IT NOW DOES NOT FIRE.** Both halves measured:
+> the panel wants 460px and the cap was 460px, so it clipped by a hair, drew a
+> scrollbar, and the scrollbar took 15px off every row and wrapped three more
+> names. The cap is 520px and on a 900px window there is no scroll region at
+> all. On a 630px window 70vh is 441px and it scrolls, which is what the
+> overflow is for. **If anyone proposes removing it, that measurement is the
+> answer.**
+
+> **THE ROWS ARE 31px AND THE TAP TARGET IS THE ROW.** 220 by 31 on the left,
+> 202 by 31 in each group sub-column, against WCAG's 24 by 24. The 13px checkbox
+> has never met that on its own. **Do not replace the `<label>` with a div and a
+> click handler**; it is what makes the tightening safe.
+
+> **THE WIDTH THE COUNTS COST CAME OUT OF THE GUTTERS, NOT THE NAMES.** Eleven
+> of thirty-four names wrapped to a second line once counts were added; the
+> column gap, divider padding and sub-column gap each came down 4px and it is
+> three now. **The names were measured with invented data**, so if Mark's real
+> ones wrap more than that, the gutters are where to look, not truncation.
+
+> **THE HEADINGS ARE TEAL AND NOTHING ELSE IS.** Two coloured words separate two
+> sections; thirty-four coloured rows would be a field of teal. There is an
+> assertion against the rows taking it. **The weights are still pinned** by the
+> 3.91.0 assertion and were not touched again.
+
+**3.91.0** made three appearance changes and is unchanged by this.
 
 > **THREE APPEARANCE CHANGES, ALL ON SHARED RENDERERS.** The list card became a
 > table row, the month tile shows its whole title, and the filter dropdown got
@@ -243,6 +285,7 @@ here that is still true in six months belongs in one of those instead.
 
 | | |
 |---|---|
+| **3.92.0** | **The filter dropdown carries a count beside every name, in two queries rather than thirty-four.** One id query plus one that resolves both taxonomies across the whole id set; it also replaced the fifty the narrowing map was already spending. Upcoming and published only, from the list own args, narrowed by category, search and block scope; an organizer count ignores the organizer ticks and a group count respects them. A zero is hidden, except a ticked row and except a group whose events name no organizer, which is the 3.85.0 narrowing rule a plain zero rule would have reversed. **The headings take palette teal and nothing else does.** **Rows are 31px with the whole label as the target**, 220x31 and 202x31 against WCAG 24x24. **The scrollbar cannot go and no longer fires**: the panel wants 460px, the cap was 460px so it clipped and the scrollbar then wrapped three more names; the cap is 520px and 70vh still binds on a short window. |
 | **3.91.0** | **The list view is a table of rows**: thumbnail, title, date and time, venue, replacing the card rather than joining it, with no excerpt and no footer button. A grid of divs rather than a `<table>`, so infinite scroll and both scripts append targets were untouched and a phone gets two columns instead of a sideways scroll. Measured 900x90 at 1100px, 700x111 at 700px, 380x158 on a phone. **The month tile shows its whole title**, reversing 3.89.0: a column of ellipses tells nobody what anything is, and the time moved under the title so it stops taking width the title needs. **And the filter dropdown got separation rather than more lightening**, which measuring first is what established: the headings had been flush against the first row since 3.85.0, because the paragraph reset beat them on specificity. The weights were not touched. |
 | **3.90.0** | **The Cycle to Zero picture was pinned to an attachment that no longer existed.** Replacing it left the old id in the term meta, and a stale id is truthy, so it won the chain and the tag fallback never ran: every surface went dark at once while a correctly tagged picture sat unused. An order problem, not the empty state the previous investigation reported. A stored id that no longer resolves is treated as absent now, falling through rather than being cleared, and the series screen asks the same chain the calendar asks. **The picker was a dead end built from three correct decisions**: the series screen narrowed to its own series, the empty grid explained nothing, and the way out has been rendered `hidden` since 3.74.0, the sixth built-and-unreachable control here. All three fixed, and choosing a series picture now tags it. **And a caladmin upload is filed into the media library's Calendar folder too**, by discovering that taxonomy rather than naming it, because WP Media Folder is commercial and could not be inspected from the build machine. No files were moved. |
 | **3.89.0** | **The filter panel shut on every tick on the embed**, because 3.87.0 carried the open state across the redraw in `calendar.js` only. Fourth fix to reach one script and not the other, and **the pair test was green and blind**: it covers the pairs somebody enumerated, and this behaviour shipped a release before the test existed. A second fault turned up in BOTH scripts while fixing it: the narrowing is an attribute on rows the redraw replaces, so hidden groups came back a frame later. **The month grid is lines, not cards**: a dot, a title, a time, measured at 21px a row against 42px before, with four things other than a border keeping nine of them readable and the category still carried as text rather than by colour alone. **And a stale `embed.js` now names itself in the console**, which is why two correct releases looked broken; the script URL stays unversioned because a version in a pasted snippet pins it, which was the 2.10.1 defect. |
@@ -250,18 +293,10 @@ here that is still true in six months belongs in one of those instead.
 | **3.87.0** | **An image uploaded from the event editor was never lost.** It landed in the calendar folder correctly; it vanished from the PICKER, because wp.media refreshes its library on upload and for an event in a series that query narrows on `uc_series`, which a brand new picture cannot answer. It is tagged with the series as it arrives now. **Search in calendar view: nothing changed, deliberately**, because the whole chain was proved correct in a browser and by execution, and the remaining candidates are the SQL and the install. **The filter panel is lighter and the Apply button is gone**, inside `<noscript>` rather than hidden, with the open panel surviving the redraw and the rebuild debounced at 350ms. **The upload panel is the picture on the left and the typed fields on the right**, which is what actually fixes an alignment fault two arrangements had not. |
 | **3.86.0** | **The merged filter control opened in the top left of the viewport**, and it was not the anchor positioning API: it was `position: fixed` at 0,0 placed by script from a popover `toggle` event, hidden by a selector older browsers discard. It is a `<details>` placed by the stylesheet now, with nothing platform-specific in how it opens, and measured with no script on the page at all. **Two columns, one third and two thirds**, held by grid fractions so narrowing cannot make them jump. **Closures can be edited**, which the model always allowed and the form never offered, the fifth control found built and unreachable. **Search narrows the month grid and the sidebar**, which needed three separate places to carry the term and a cache key to include it. Plus **name and alt text at upload** on a panel laid out as a grid, **top-aligned tick boxes** in one shared rule, and **a dashboard count of published events with no organizer** that links to them. |
 | **3.85.0** | **No community submission has ever carried an organizer, and the write was never the problem.** The event was its OWN SOURCE: it joined the series and then asked the series for its organizers, which answers from the most recent event and counts pending ones. Proved by running it. **An organizer is required on the server now**, with a rule about direction rather than state, so the hundred published events with none save normally and stay published. **Organizers and groups are one popover in the top layer**, multi-select, narrowing one way from the events actually in each group, reordering on open rather than on click, and **the filter bar works with script off for the first time**, which needed a GET form the file never had. |
-| **3.84.0** | **An event could already have several organizers; two forms could not say so.** The 3.40.0 decision was already in place everywhere it had been built, so nothing there was rebuilt. The staff request form, whose organizer field arrived in 3.76.0 as a single select, is **tick boxes** now and approves the whole set in one call; the community form **inherits every organizer the series lends** rather than the first, which had been putting co-hosted submissions under one team's filter and not the other's; and the request prefill **applies the organizers it previews** instead of the first. **A closure can carry a free text note**, shown in full on the list card and shortened on a word boundary with the cut marked on the month grid, where `all()` had been silently dropping it because that method rebuilds rows from a fixed key list. |
-| **3.83.0** | **The calendar folder rule is enforced where a picture is resolved**, in one function every surface and the editor read, so the 270 imported references stop mattering rather than needing to be cleared. **The list view collapsed to one letter per line at 700px**: the list panel had no sizing inside the combined wrapper, measured at 0px wide with 26px cards, and the combined mode was still telling its renderer to draw no cards, so it said "No upcoming events found" beside a sidebar listing them. **And Remove says what is using a picture before the press**, with no button where there is nothing to press. |
-| **3.82.0** | **The list and calendar toggle was never in the stacked layout's markup at all**: the combined mode has forced it off since 3.45.0 at every width, on reasoning that only holds side by side. It is back, and its calendar button returns the combined layout rather than collapsing to a bare grid. **The sidebar band was 36px wider than everything under it**, measured at 700px, which was 3.80.0's escape doing exactly what it was told. Also **why Remove looks like it does nothing**, established rather than guessed, and the **Add an image** panel's two columns line up. |
-| **3.81.0** | **portal.js has thrown on every page since 3.77.0**, from one closing brace in the wrong place, and it took every tick picker on every screen down with it. Found by loading the real script into a real browser rather than by reading it. Also: **tagging a picture and giving a series a picture were two different facts and only one was read**, which is why the banner worked for the hand-built series and not the thirty the import made; a tag is a fallback now. The sidebar's column **reaches the bottom of the card**, and **fills the width when the mode stacks** instead of staying 380px. The Images screen gains **alt text** and a **Remove** that is not a delete. |
-| **3.80.0** | **The picker hides by series now**, which it did not: it grouped, so a series with two tagged pictures still showed all eight. A series with nothing tagged gets a sentence naming MarCom rather than the whole folder. **The banner is a live preview** on both public forms, and an upload gets its own thumbnail with a line saying an approver decides. **The month arrows had no border at all**, which the stylesheet appeared to declare and a later rule at equal specificity removed; they are one segmented control at the right now, on the 3.64.0 control standard, 44px on touch. **The sidebar card was not overflowing**: in the combined view it has no box by design, and two lone hairlines read as one that closes early. |
-| **3.79.0** | **The bulk category control never had tick boxes**, on any screen, for any viewer. The cell was built into the dashboard's read-only table instead of the events list's, and both tables have carried half a fault since 3.73.0. Also **bulk publish on the events list**, sharing those ticks, asking `SFAF_Series::publish_skip_reason()` rather than restating it, with each button counting only the rows it can reach. |
-| **3.78.0** | **The preview is two targets, the picture and the pill**, and not the whole panel: one anchor round everything tinted every line in it with the theme's link teal. Also **the staff form's chosen picture is bigger than the rows it chooses from**, which 3.76.0 inverted; **the Images screen is rebuilt**, three cards across rather than six, one Save per card rather than two, and a disabled primary that stops wearing yellow; and **a name typed on that screen now sticks even when it matches its own file**, which it did not, so the remedy 3.76.0 added did not work for the commonest case. |
-| **3.77.0** | **The preview's button went nowhere.** The address was never missing: the tile it describes IS the anchor, and nothing read its href. Also **Fill this in from the last one on the staff request form**, which caladmin has had since 3.64.0: one data source, two appliers, nothing posts, the date never filled in, and proved by RUNNING it rather than by the call being present. |
-| **3.76.0** | **The hover preview reaches the embed**, which is the only surface that exists. Also: the Images screen can **name a picture**, which is what "the picker shows file names" actually needed; the chooser's thumbnails are **twice the size**; the community form knows about the **series default picture**; the picture section sits **under the series**; the staff form has an **organizer selector, first**; the community form **derives its organizer from the series**; the **FAQ set shows its questions**; the **icon picker draws the icons**; and the Series and Categories lists **fold**. |
-| **3.75.0** | **SIX SHADES JOIN THE PALETTE**, all measured by `.claude/palette-audit.php`; **the icon set goes from sixteen offered to thirty**, because Español and Program Groups were drawing the same one. **A block opens on the month grid**, which it did in none of the four places that decide it. And **four mobile faults**, three reported and one found on the way. Confirmed working by Mark, except the preview. |
-| **3.74.0** | **THE FAQ ANSWERS THAT STAYED PLAIN WERE THE ONES A FAQ SET PUT THERE**, a third path nobody had counted. Also **Approve and Reject on the event editor**, the buttons following the event's state, a **Delete** card, the search box no longer tearing itself down, one set of details on the community form, and **caladmin's Images screen**. |
-| **3.73.0** | **THREE CONTROLS HAD BEEN DEAD SINCE 3.72.0 AND ONE OF THEM WAS APPROVE**, from a helper declared in one of portal.js's four top-level IIFEs and called from two others. The **updater** work is in this release too, and is confirmed working. |
+
+**Older releases are in `readme.txt`, which is the changelog.** This table is
+not a history: it is the handful of releases somebody opening a fresh chat still
+needs to know about, and it was running to twenty rows.
 
 ## What has actually been seen on the site
 

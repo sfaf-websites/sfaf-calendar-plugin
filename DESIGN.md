@@ -537,6 +537,82 @@ that every host stylesheet writes a rule for.
 
 ---
 
+### Colour on two headings, not on thirty-four rows (3.92.0)
+
+The Organizers and groups panel holds thirty-four names in two sections. The
+section headings carry `--uc-teal-text`, the measured #0E7680, with the rule
+under each mixed from the same token at 22% so the word and its line read as one
+mark. **Nothing else in the panel took colour.**
+
+> **The amount is the decision, not the hue.** Two coloured words separate two
+> sections. Thirty-four coloured rows are a field of teal with no separation in
+> it at all, and the names stop being names. There is an assertion against the
+> rows taking the heading colour, because that is the edit that looks like
+> consistency and is not.
+
+**The count beside each name stays `--uc-secondary`.** It is a second piece of
+information on a row that already has one, and it must lose.
+
+### A tap target is the row, and the row is the label (3.92.0)
+
+The panel's rows came down from 37px to 31px, which is 5px of vertical padding
+around one 19.6px line. That is under any reading of a 44px touch target and it
+is fine, because **the whole row is the `<label>`**: the hit area is 220 by 31
+CSS pixels in the organizers column and 202 by 31 in each group sub-column,
+against the 24 by 24 that WCAG 2.5.8 asks for.
+
+> **The checkbox is 13px and has never met that on its own.** Any measurement
+> that looks at the box is measuring the wrong element. What makes this safe is
+> a structural decision made long before the padding one, and it is the reason
+> not to replace the label with a div and a click handler.
+
+**5px is the floor.** Below it a row stops reading as a band and becomes text
+with a rule through it, which is the complaint this panel has already had once.
+The assertion captures the number and checks the range rather than matching a
+literal, so 6px passes and 2px does not.
+
+### Width taken from a gutter is free, width taken from a name is not (3.92.0)
+
+Adding `(12)` to every row in that panel cost each name about 26px, and at the
+embed width that wrapped **eleven names of thirty-four onto a second line**. A
+wrapped row is 50px against 31px, so the list goes ragged rather than dense,
+which is the opposite of what a count is for.
+
+**The 26px came back out of the spacing, not out of the names.** The column gap,
+the divider padding and the sub-column gap each went 18px to 14px, the row's
+side padding 12px to 10px, the label gap 11px to 8px, the count to 11px. That
+put it at three, which is the two that wrapped before counts existed plus one.
+
+> **Once a line is drawn, the space around it is only breathing room.** The
+> dividers added in 3.91.0 are what make the narrower gutters affordable: a gap
+> alone has to be wide to read as a boundary, a hairline does not.
+
+**Nothing is truncated.** The alternative was an ellipsis, and that is the thing
+3.91.0 reversed in the month tiles for the same reason: a column of cut-off
+names tells nobody what anything is.
+
+### A scrollbar that fires makes the thing it is scrolling taller (3.92.0)
+
+The panel capped at `min(70vh, 460px)` and its content wanted 460px, so it
+clipped by a hair and drew a scrollbar. **The scrollbar then took 15px of width
+off every row, which wrapped three more names, which made the content taller
+still.** A loop, started by a cap set one pixel too low.
+
+The cap is 520px now. Measured at the embed width with nine organizers and
+twenty-five groups:
+
+```
+900px viewport   cap 520px   content 460px   no scroll region at all
+630px viewport   cap 442px   content 461px   scrolls
+```
+
+**The overflow cannot be removed, and the second row is why.** `70vh` is what
+binds on a short window: a 1366x768 laptop has about 630px of viewport and 70vh
+of that is 441px. Taking the overflow away there would not make the panel fit,
+it would put the last few groups past the bottom edge with nothing to reach them
+by. **Measure the content and the cap separately before deciding a scrollbar is
+unnecessary; "it looks like it fits" is a statement about one window.**
+
 ## 5. CSS discipline
 
 Six separate defects where a rule was correct and never reached the screen.

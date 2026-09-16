@@ -1992,6 +1992,148 @@ class SFAF_Shortcodes {
      * @param WP_Term[] $groups
      * @return array group slug => organizer slugs
      */
+    /**
+     * How many upcoming events each organizer and each group holds, and which
+     * organizers run anything in each group, in TWO queries (3.92.0).
+     *
+     * WHAT IT REPLACES. group_organizer_map() asked one get_posts() per group
+     * and then one wp_get_object_terms() per group: fifty queries for
+     * twenty-five groups, behind a ten minute transient that hid the cost
+     * rather than removing it. Counting thirty-four names the same way would
+     * have been sixty-eight more.
+     *
+     * TWO QUERIES, WHATEVER THE SIZE. One WP_Query for the upcoming event ids
+     * this block would actually list, and one wp_get_object_terms() over that
+     * whole id set for both taxonomies at once. Everything else is counting in
+     * PHP. At Mark's size, 287 events, 9 organizers and 25 groups, that is two
+     * queries and about 287 rows of term relationships to tally, against fifty
+     * queries before.
+     *
+     * `fields => ids` and `no_found_rows`, because nothing here needs a post
+     * object or a total, and `posts_per_page` is the same 200 cap the map used.
+     *
+     * WHAT THE COUNTS COUNT, and this is the decision rather than the
+     * mechanism:
+     *
+     *   . UPCOMING AND PUBLISHED ONLY, which is build_query_args()'s own
+     *     clause, so the counts cannot drift from the list they describe.
+     *   . THE CATEGORY, THE SEARCH AND THE BLOCK'S SCOPE ARE HONOURED, because
+     *     a count that ignored them would say 12 and then show none.
+     *   . THE CONTROL'S OWN SELECTIONS ARE NOT, with one exception. An
+     *     organizer's count ignores which organizers are ticked, or ticking one
+     *     would change its own number and nobody could see what unticking would
+     *     give. A GROUP's count DOES respect the ticked organizers, because
+     *     organizer is the controlling filter and the two combine as AND: a
+     *     group showing 5 beside a chosen organizer has 5 with that organizer,
+     *     not 5 in total. That is what makes the narrowing legible rather than
+     *     a row quietly vanishing.
+     *
+     * @param WP_Term[] $organizers
+     * @param WP_Term[] $groups
+     * @param array     $filters Block filters, already resolved.
+     * @return array{org:array<string,int>,group:array<string,int>,map:array<string,string[]>}
+     */
+    private function who_counts( $organizers, $groups, $filters ) {
+        $empty = array( 'org' => array(), 'group' => array(), 'group_all' => array(), 'map' => array() );
+        if ( empty( $organizers ) && empty( $groups ) ) {
+            return $empty;
+        }
+
+        /*
+         * THE CONTROL'S OWN ANSWERS COME OUT OF THE QUERY. `organizer` and
+         * `groups` are what this panel is choosing; counting inside them would
+         * count the answer rather than the choice. The category, the venue, the
+         * series scope and the search all stay.
+         */
+        $base = $filters;
+        $base['organizer'] = '';
+        $base['groups']    = '';
+
+        $args = $this->build_query_args( 200, 1, $base );
+        $args['fields']         = 'ids';
+        $args['no_found_rows']  = true;
+        $args['update_post_meta_cache'] = false;
+
+        $ids = get_posts( $args );
+        if ( empty( $ids ) ) {
+            return $empty;
+        }
+
+        /* ONE CALL FOR BOTH TAXONOMIES, with the object id on each row so a
+         * term can be attributed to the event it came from. */
+        $rows = wp_get_object_terms(
+            $ids,
+            array( 'uc_organizer', SFAF_Series::TAXONOMY ),
+            array( 'fields' => 'all_with_object_id' )
+        );
+        if ( is_wp_error( $rows ) ) {
+            return $empty;
+        }
+
+        $org_of   = array();   // event id => organizer slugs
+        $group_of = array();   // event id => group slugs
+        foreach ( $rows as $row ) {
+            $eid = (int) $row->object_id;
+            if ( 'uc_organizer' === $row->taxonomy ) {
+                $org_of[ $eid ][] = $row->slug;
+            } elseif ( SFAF_Series::TAXONOMY === $row->taxonomy ) {
+                $group_of[ $eid ][] = $row->slug;
+            }
+        }
+
+        /* The organizers this panel currently has ticked, which the GROUP
+         * counts are computed inside and the organizer counts are not. */
+        $picked = array_values( array_filter( explode( ',', (string) $filters['organizer'] ) ) );
+
+        $out = $empty;
+        foreach ( $organizers as $o ) {
+            $out['org'][ $o->slug ] = 0;
+        }
+        foreach ( $groups as $g ) {
+            $out['group'][ $g->slug ]     = 0;
+            $out['group_all'][ $g->slug ] = 0;
+            $out['map'][ $g->slug ]       = array();
+        }
+
+        foreach ( $ids as $eid ) {
+            $eid   = (int) $eid;
+            $orgs  = isset( $org_of[ $eid ] ) ? $org_of[ $eid ] : array();
+            $grps  = isset( $group_of[ $eid ] ) ? $group_of[ $eid ] : array();
+
+            foreach ( $orgs as $slug ) {
+                if ( isset( $out['org'][ $slug ] ) ) {
+                    $out['org'][ $slug ]++;
+                }
+            }
+
+            /* An event counts towards a group only when it also satisfies the
+             * ticked organizers, which is the AND the query itself would
+             * apply. No ticks means every event counts. */
+            $matches = empty( $picked ) || (bool) array_intersect( $picked, $orgs );
+
+            foreach ( $grps as $gslug ) {
+                if ( ! isset( $out['group'][ $gslug ] ) ) {
+                    continue;
+                }
+                $out['group_all'][ $gslug ]++;
+                if ( $matches ) {
+                    $out['group'][ $gslug ]++;
+                }
+                /* The map is the FULL relationship and is deliberately not
+                 * narrowed by the ticks: it is what the client-side narrowing
+                 * reads to decide what to hide in the 350ms before the redraw,
+                 * and narrowing it here would make that decision circular. */
+                foreach ( $orgs as $oslug ) {
+                    if ( ! in_array( $oslug, $out['map'][ $gslug ], true ) ) {
+                        $out['map'][ $gslug ][] = $oslug;
+                    }
+                }
+            }
+        }
+
+        return $out;
+    }
+
     private function group_organizer_map( $groups ) {
         $map = array();
         if ( empty( $groups ) ) {
@@ -2087,7 +2229,7 @@ class SFAF_Shortcodes {
      * @param string[]  $group_on
      * @param array     $map        group slug => organizer slugs
      */
-    private function render_who_picker( $organizers, $groups, $org_on, $group_on, $map ) {
+    private function render_who_picker( $organizers, $groups, $org_on, $group_on, $map, $counts = array() ) {
         if ( empty( $organizers ) && empty( $groups ) ) {
             return;
         }
@@ -2194,13 +2336,36 @@ class SFAF_Shortcodes {
                         <section class="uc-who-col uc-who-col-org">
                             <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-org">Organizers</p>
                             <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-org">
-                                <?php foreach ( $organizers as $o ) : ?>
+                                <?php foreach ( $organizers as $o ) :
+                                    $n = isset( $counts['org'][ $o->slug ] ) ? (int) $counts['org'][ $o->slug ] : null;
+                                    /*
+                                     * A ZERO IS HIDDEN, NOT SHOWN, AND THAT IS
+                                     * ONE ANSWER RATHER THAN A SECOND ONE. The
+                                     * panel already hides a group with nothing
+                                     * matching the chosen organizers, so a name
+                                     * with nothing to offer not being there is
+                                     * the rule this control has. A row reading
+                                     * (0) is a row somebody can tick to be
+                                     * shown nothing.
+                                     *
+                                     * A TICKED NAME SURVIVES ITS OWN ZERO. It
+                                     * is how somebody unticks it, and removing
+                                     * a filter's own control while it is on is
+                                     * how a filter becomes unreachable.
+                                     */
+                                    $on = in_array( $o->slug, $org_on, true );
+                                    if ( 0 === $n && ! $on ) { continue; }
+                                    ?>
                                     <label class="uc-who-opt">
                                         <input type="checkbox" name="uc_org[]"
                                                value="<?php echo esc_attr( $o->slug ); ?>"
                                                data-uc-who-organizer
-                                               <?php checked( in_array( $o->slug, $org_on, true ) ); ?> />
+                                               <?php checked( $on ); ?> />
                                         <span><?php echo esc_html( $o->name ); ?></span>
+                                        <?php if ( null !== $n ) : ?>
+                                            <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span>
+                                            <span class="uc-visually-hidden"><?php echo esc_html( sprintf( _n( '%d upcoming event', '%d upcoming events', $n ), $n ) ); ?></span>
+                                        <?php endif; ?>
                                     </label>
                                 <?php endforeach; ?>
                             </div>
@@ -2222,13 +2387,43 @@ class SFAF_Shortcodes {
                             ?>
                             <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-grp" data-uc-who-groups>
                                 <?php foreach ( $groups as $g ) :
-                                    $orgs_of = isset( $map[ $g->slug ] ) ? $map[ $g->slug ] : array(); ?>
+                                    $orgs_of = isset( $map[ $g->slug ] ) ? $map[ $g->slug ] : array();
+                                    $n  = isset( $counts['group'][ $g->slug ] ) ? (int) $counts['group'][ $g->slug ] : null;
+                                    $on = in_array( $g->slug, $group_on, true );
+                                    /*
+                                     * SAME RULE AS THE ORGANIZERS ABOVE, WITH
+                                     * ONE CASE HELD OUT OF IT, and the case is
+                                     * one PROJECT.md already settled: a group
+                                     * whose events name NO organizer at all is
+                                     * always shown, because an empty list is
+                                     * missing information rather than a
+                                     * statement that the group is not that
+                                     * organizer's. A group's count is computed
+                                     * inside the ticked organizers, so without
+                                     * this that group would read (0) the moment
+                                     * one was ticked and then be hidden by its
+                                     * own zero, which is the narrowing rule
+                                     * reversed by a side effect.
+                                     *
+                                     * It still goes when it has nothing
+                                     * upcoming at all. That is not narrowing,
+                                     * it is an empty group, and nothing is lost
+                                     * by leaving it out.
+                                     */
+                                    $ever      = isset( $counts['group_all'][ $g->slug ] ) ? (int) $counts['group_all'][ $g->slug ] : 0;
+                                    $protected = empty( $orgs_of ) && $ever > 0;
+                                    if ( 0 === $n && ! $on && ! $protected ) { continue; }
+                                    ?>
                                     <label class="uc-who-opt" data-uc-who-group-orgs="<?php echo esc_attr( implode( ' ', $orgs_of ) ); ?>">
                                         <input type="checkbox" name="uc_group[]"
                                                value="<?php echo esc_attr( $g->slug ); ?>"
                                                data-uc-who-group
-                                               <?php checked( in_array( $g->slug, $group_on, true ) ); ?> />
+                                               <?php checked( $on ); ?> />
                                         <span><?php echo esc_html( $g->name ); ?></span>
+                                        <?php if ( null !== $n ) : ?>
+                                            <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span>
+                                            <span class="uc-visually-hidden"><?php echo esc_html( sprintf( _n( '%d upcoming event', '%d upcoming events', $n ), $n ) ); ?></span>
+                                        <?php endif; ?>
                                     </label>
                                 <?php endforeach; ?>
                             </div>
@@ -3254,12 +3449,20 @@ class SFAF_Shortcodes {
                  * render_who_picker() carries the reasoning, including what
                  * merging the two costs and what it replaces.
                  */
+                /*
+                 * ONE PASS ANSWERS BOTH QUESTIONS (3.92.0): how many upcoming
+                 * events each name holds, and which organizers run anything in
+                 * each group. group_organizer_map() asked fifty queries for
+                 * the second alone; this is two for both.
+                 */
+                $who = $this->who_counts( $organizers, $who_groups, $filters );
                 $this->render_who_picker(
                     $organizers,
                     $who_groups,
                     $org_on,
                     ( '' === $active_groups ) ? array() : explode( ',', $active_groups ),
-                    $this->group_organizer_map( $who_groups )
+                    $who['map'],
+                    $who
                 );
                 ?>
                 <?php endif; ?>

@@ -1008,6 +1008,156 @@ check(
     (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*font-weight:\s*600/s', $css ),
     'the who heading weight moved; the reported problem was separation, not weight'
 );
+
+/* ===========================================================================
+ * THE COUNTS, THE HEADING COLOUR AND THE ROW PADDING (3.92.0).
+ *
+ * CSS COMMENTS ARE STRIPPED BEFORE ANY OF THIS. The rules below are written
+ * out in prose a few lines above the declarations they describe, so a check
+ * against the raw stylesheet would pass on the explanation of a rule somebody
+ * had just deleted. That trap has been met three times in the PHP checks and
+ * this is the first CSS check close enough to a comment to meet it.
+ * ======================================================================== */
+$cssc = preg_replace( '#/\*.*?\*/#s', '', $css );
+
+/* --- A. THE COUNTS COST TWO QUERIES, NOT THIRTY-FOUR. --------------------
+ *
+ * The thing worth pinning is not that a number appears; it is where the
+ * number comes from. `who_counts()` runs one id query and one term query and
+ * tallies in PHP. A future edit that counts inside the render loop would look
+ * correct on screen and cost a query per name. */
+check(
+    false !== strpos( $code, '$this->who_counts( $organizers, $who_groups, $filters )' ),
+    'the who picker no longer asks who_counts() for its numbers'
+);
+/* THE FUNCTION IS SLICED OUT BEFORE ANY OF THIS IS ASKED, and that is not
+ * tidiness. `/function who_counts\(.*?build_query_args\(/s` matches right past
+ * the end of the function to the next call anywhere in the file, so it stayed
+ * green on a plant that gutted who_counts() entirely. A planted fault found
+ * that, which is what planting is for. */
+$who_fn = '';
+if ( preg_match( '/private function who_counts\(.*?\n    \}\n/s', $code, $m ) ) {
+    $who_fn = $m[0];
+}
+check(
+    '' !== $who_fn,
+    'who_counts() is gone, so nothing computes the numbers in two queries'
+);
+check(
+    (bool) preg_match( '/\$args\[.fields.\]\s*=\s*.ids./', $who_fn ),
+    'who_counts() no longer fetches ids only, so it is loading whole posts to count them'
+);
+check(
+    false !== strpos( $who_fn, 'wp_get_object_terms(' ),
+    'who_counts() no longer resolves every term in one pass, which is the only reason it is two queries'
+);
+/* AND THE COUNTS ARE THE SAME QUERY AS THE LIST. Reusing build_query_args()
+ * is what makes "upcoming only" true without stating it twice: a count that
+ * built its own args would drift from the list the first time either moved. */
+check(
+    false !== strpos( $who_fn, '$this->build_query_args(' ),
+    'who_counts() builds its own query args, so the counts can drift from the list they describe'
+);
+/* AN ORGANIZER COUNT IGNORES THE ORGANIZER TICKS. Organizer is the
+ * controlling filter here: leaving it applied would make every unticked
+ * organizer read (0) the moment one was ticked. */
+check(
+    (bool) preg_match( "/\\\$base\['organizer'\]\s*=\s*''/", $who_fn ),
+    'who_counts() leaves the organizer filter applied to its own counts, so ticking one zeroes the rest'
+);
+/* QUOTED EXACTLY, for the same reason as `uc-day-event-text` above. */
+check(
+    2 === substr_count( $code, 'class="uc-who-count"' ),
+    'the count is missing from one of the two lists, so organizers and groups no longer answer the same question'
+);
+check(
+    false !== strpos( $code, 'if ( 0 === $n && ! $on ) { continue; }' ),
+    'the organizer list shows its zero rows again; the panel hides empty rows and that is one answer, not two'
+);
+/* AND THE GROUPS HIDE THEIR ZEROS TOO, WITH THE ONE CASE PROJECT.md ALREADY
+ * SETTLED HELD OUT OF IT. A group whose events name no organizer is always
+ * shown; its count is computed inside the ticked organizers, so it reads (0)
+ * the moment one is ticked and a plain zero rule would then hide it, which is
+ * the narrowing rule reversed by a side effect.  is the whole of
+ * that and is exactly the kind of clause a later tidy-up removes. */
+check(
+    false !== strpos( $code, 'if ( 0 === $n && ! $on && ! $protected ) { continue; }' ),
+    'the group list hides a zero unconditionally, which hides the group with no organizer that the narrowing rule keeps'
+);
+check(
+    false !== strpos( $code, '$protected = empty( $orgs_of ) && $ever > 0;' ),
+    'the protected case is no longer a group with no organizer and something upcoming, so it is protecting something else'
+);
+/* A TICKED ROW SURVIVES ITS OWN ZERO, or the filter it represents cannot be
+ * turned off. The `! $on` is the whole of that and is easy to tidy away. */
+check(
+    false === strpos( $code, 'if ( 0 === $n ) { continue; }' ),
+    'a ticked row is now hidden by its own zero, which makes that filter unreachable'
+);
+check(
+    (bool) preg_match( '/_n\(\s*.%d upcoming event.,\s*.%d upcoming events.,\s*\$n\s*\)/', $code ),
+    'the count has no text alternative, so a screen reader hears "(12)" with nothing to attach it to'
+);
+
+/* --- B. THE HEADINGS CARRY PALETTE COLOUR, AND ONLY THE HEADINGS. -------- */
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*color:\s*var\(--uc-teal-text\)/s', $cssc ),
+    'the who headings are back to grey, or have taken a colour that is not the palette token'
+);
+check(
+    ! preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*color:\s*#/s', $cssc ),
+    'the heading colour is written as a literal; DESIGN.md owns the palette and a hex here escapes it'
+);
+/* COLOUR ON TWO HEADINGS IS SEPARATION, COLOUR ON THIRTY-FOUR ROWS IS NOISE.
+ * The rows and the counts stay ink and secondary grey. */
+check(
+    ! preg_match( '/\n\.uc-who-opt \{[^}]*color:\s*var\(--uc-teal/s', $cssc ),
+    'the who rows have taken the heading colour; thirty-four teal names is not separation'
+);
+check(
+    (bool) preg_match( '/\.uc-who-count \{[^}]*color:\s*var\(--uc-secondary\)/s', $cssc ),
+    'the count is no longer secondary grey, so it competes with the name it belongs to'
+);
+
+/* --- C. THE ROWS ARE TIGHTER AND STILL HITTABLE. ------------------------- */
+/* THE NUMBER IS CAPTURED AND CHECKED, NOT MATCHED. A check for the literal
+ * `5px` passes on 5px and fails on 6px, which is not the rule. The rule is a
+ * floor: one line of 14px text at 1.4 is 19.6px, so 4px a side is the least
+ * that still clears the 24px WCAG 2.5.8 target, and 8px is where this came
+ * from and is no longer "less padding". */
+if ( preg_match( '/\n\.uc-who-opt \{[^}]*padding:\s*(\d+)px\s+(\d+)px/s', $cssc, $m ) ) {
+    check(
+        (int) $m[1] >= 4 && (int) $m[1] < 8,
+        sprintf( 'the who row padding is %dpx, which is either back where it was or below the 24px tap target', (int) $m[1] )
+    );
+    check(
+        (int) $m[2] >= 8,
+        sprintf( 'the who row side padding is %dpx; the name needs the width but the row still needs an edge', (int) $m[2] )
+    );
+} else {
+    check( false, 'the who row has no padding declaration at all' );
+}
+
+/* --- D. THE SCROLL STAYS, AND THE CAP CLEARS THE CONTENT. ---------------- */
+/* MEASURED, NOT ASSUMED: nine organizers and twenty-five groups want 460px at
+ * the embed width once the padding came down. A cap at or below that draws a
+ * scrollbar, the scrollbar takes 15px off every row, and three more names
+ * wrap, which makes the panel taller. Removing the overflow instead would put
+ * the last groups below the bottom edge on a short window with no way to
+ * reach them. */
+check(
+    (bool) preg_match( '/\.uc-who-panel \{[^}]*overflow-y:\s*auto/s', $cssc ),
+    'the who panel lost its overflow; on a 630px viewport 70vh is 441px and the last groups are then unreachable'
+);
+if ( preg_match( '/\.uc-who-panel \{[^}]*max-height:\s*min\(\s*70vh\s*,\s*(\d+)px/s', $cssc, $m ) ) {
+    check(
+        (int) $m[1] >= 500,
+        sprintf( 'the who panel caps at %dpx, at or under the 460px the content wants, so the scrollbar fires and narrows the rows', (int) $m[1] )
+    );
+} else {
+    check( false, 'the who panel no longer caps its height against the viewport' );
+}
+
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }

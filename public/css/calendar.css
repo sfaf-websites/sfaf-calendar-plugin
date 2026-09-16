@@ -900,7 +900,20 @@
     top: calc(100% + 8px); left: 0; right: auto;
     z-index: 60;
     width: 700px; max-width: calc(100vw - 32px);
-    max-height: min(70vh, 460px); overflow-y: auto;
+    /* THE SCROLL STAYS, AND THE CAP GOES UP SO IT STOPS FIRING (3.92.0).
+       Measured at the embed width with nine organizers and twenty-five groups:
+       the panel wanted 518px before the row padding came down and wants 460px
+       after it. The old 460px cap therefore clipped it by a hair and drew a
+       scrollbar, and the scrollbar took 15px of width off the rows, which
+       wrapped three more names, which made the panel taller still. 520px
+       clears the content with headroom and that loop does not start.
+
+       IT CANNOT BE REMOVED. 70vh is what binds on a short window: a 1366x768
+       laptop has about 630px of viewport, 70vh of that is 441px, and 460px of
+       names does not fit in it. Taking the overflow away there would not make
+       the panel fit, it would put the last few groups past the bottom edge
+       with nothing to reach them by. */
+    max-height: min(70vh, 520px); overflow-y: auto;
     padding: 6px 6px 8px;
     border: 1px solid var(--uc-border); border-radius: 16px;
     background: #fff; color: var(--uc-text);
@@ -925,18 +938,22 @@
 .uc-who-cols {
     display: grid;
     grid-template-columns: 1fr 2fr;
-    gap: 0 18px;
+    gap: 0 14px;
     align-items: start;
 }
 /* One section present means it takes the whole width rather than sitting in a
    third of it with two thirds of nothing beside it. */
 .uc-who-cols > .uc-who-col:only-child { grid-column: 1 / -1; }
 .uc-who-col { min-width: 0; }
-/* A DIVIDER BETWEEN THE TWO COLUMNS (3.91.0). Eighteen pixels of gap is not a
+/* A DIVIDER BETWEEN THE TWO COLUMNS (3.91.0). A gap on its own is not a
    boundary when both sides are dense lists of names; it reads as one field of
    text with a gutter in it. The rule is on the SECOND column and only when it
-   has a first beside it, so a panel showing one section has no stray edge. */
-.uc-who-col + .uc-who-col { border-left: 1px solid var(--uc-border); padding-left: 18px; }
+   has a first beside it, so a panel showing one section has no stray edge.
+
+   THE GAP CAME DOWN FROM 18px TO 14px IN 3.92.0 and the rule is why that is
+   affordable: once a line is drawn, the space around it is only breathing room,
+   and the four pixels are worth more inside the names. */
+.uc-who-col + .uc-who-col { border-left: 1px solid var(--uc-border); padding-left: 14px; }
 
 /* THE GROUPS RUN IN TWO SUB-COLUMNS so twenty-five names are not one long drop.
    `columns` rather than a second grid, because the list reflows on its own as
@@ -946,7 +963,7 @@
    no style was ever set: the property looked present in a measurement and did
    nothing on screen. Stated properly it is the same hairline as everything
    else here. */
-.uc-who-list-2col { columns: 2; column-gap: 18px; column-rule: 1px solid var(--uc-border); }
+.uc-who-list-2col { columns: 2; column-gap: 14px; column-rule: 1px solid var(--uc-border); }
 .uc-who-list-2col > .uc-who-opt { break-inside: avoid; }
 
 @container uc-calendar (max-width: 620px) {
@@ -1004,30 +1021,69 @@
 
 /* (0,2,0) so it clears the reset's (0,1,1). The panel is the scope, which is
    the narrowest thing that wins rather than a blanket raise. */
+/* THE HEADINGS CARRY COLOUR (3.92.0), so the two halves read as two halves.
+   `--uc-teal-text` is the palette's measured text teal, 5.35:1 on white, and is
+   the token every other piece of text colour on this calendar uses. Nothing new
+   is reached for and nothing else in the panel is coloured: colour on two
+   headings is separation, colour on thirty-four rows is noise. The rule under
+   each heading takes the same colour at a tenth, so the section boundary reads
+   as one mark rather than a grey line under a teal word. */
 .uc-who-panel .uc-who-heading {
-    margin: 14px 0 4px; padding: 0 16px 6px;
+    margin: 12px 0 3px; padding: 0 12px 5px;
     font-family: var(--uc-font-heading); font-size: 11px; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--uc-secondary);
-    border-bottom: 1px solid var(--uc-border);
+    color: var(--uc-teal-text);
+    border-bottom: 1px solid color-mix(in srgb, var(--uc-teal-text) 22%, var(--uc-border));
 }
 /* The first heading in a column does not need the space above it: the panel's
    own padding is already there. */
 .uc-who-col > .uc-who-heading:first-child { margin-top: 4px; }
 
-.uc-who-list { display: block; padding: 0 4px; }
+.uc-who-list { display: block; padding: 0 2px; }
 
 /* A HAIRLINE BETWEEN ROWS, NOT AROUND THEM. A box per row is the "boxy" the
    last complaint was about; a single line between two names is the least mark
    that says where one ends. Inset by the row's own padding so it reads as a
    list rule rather than a table border, and never under the last row. */
+/* PADDING DOWN FROM 8px TO 5px (3.92.0). Measured: the row was 36.6px and is
+   30.6px, at the same pitch, and the panel came down from 518px to 460px.
+
+   THE TAP TARGET IS THE ROW, NOT THE BOX, and that is what makes this safe to
+   tighten. The row is a <label>, so the whole width of the column toggles the
+   tick: 220 by 31 CSS pixels in the organizers column and 202 by 31 in each
+   group sub-column, against the 24 by 24 that WCAG 2.5.8 asks for. The 13px
+   checkbox on its own never met that and still does not; the label is what
+   does, which is why the whole row has always been one.
+
+   It is not taken lower, and the horizontal 12px comes down only to 10px. One
+   line of 14px text is 19.6px and the hairline is 1px, so 5px a side is the
+   last value where a row is still visibly a band rather than text with a rule
+   through it. */
 .uc-who-opt {
-    display: flex; align-items: center; gap: 11px;
-    padding: 8px 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px; cursor: pointer;
     font-size: 14px; font-weight: 400; line-height: 1.4;
     border-radius: 6px;
     border-bottom: 1px solid var(--uc-border);
     transition: background-color 0.12s ease;
+}
+/* THE COUNT IS QUIET AND SITS BESIDE THE NAME. `margin-left: auto` would push
+   it to the column's right edge and leave a gap that changes width with every
+   name; beside the name it reads as part of it. Tabular figures so a column of
+   them does not jitter. It is aria-hidden because the row already carries the
+   count as a sentence for a screen reader.
+
+   11px RATHER THAN 12px, AND THE GUTTERS CAME IN 4px EACH, BECAUSE THE COUNT
+   COSTS WIDTH AND WIDTH IS WHAT KEEPS A NAME ON ONE LINE. Measured at the
+   embed width: two of thirty-four names wrapped before counts existed, eleven
+   wrapped with them, and taking the width back out of the column gap, the
+   divider padding, the sub-column gap and the row padding puts it at three. A
+   wrapped row is 50px against 31px, so this is the difference between an even
+   list and a ragged one. */
+.uc-who-count {
+    margin-left: 2px; flex: 0 0 auto;
+    font-size: 11px; color: var(--uc-secondary);
+    font-variant-numeric: tabular-nums;
 }
 .uc-who-opt:last-child { border-bottom: 0; }
 /* THE HOVER IS A ROUNDED TINT INSET FROM THE EDGE, not a full-bleed band. A
