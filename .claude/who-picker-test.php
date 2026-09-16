@@ -145,7 +145,14 @@ if ( strpos( $sc, 'data-uc-who-apply' ) === false ) {
  * stamped, which is a hidden button rather than no button. It is inside
  * <noscript> now, so a browser with scripting on never parses it at all. The
  * claim is stronger: not "it is hidden" but "it is not there". */
-if ( ! preg_match( '#<noscript>\s*<button type="submit" class="uc-who-apply"#s', $sc ) ) {
+/* THE WHOLE FOOTER IS INSIDE <noscript> FROM 3.93.0, NOT JUST THE BUTTON.
+ * Clear moved out of that row, and an empty div still carries its own padding
+ * and margin, which was 46px of panel height charged to everybody with script.
+ * So the pattern allows the wrapper between the two. The claim is unchanged and
+ * is still the strong one: a browser with scripting on never parses this
+ * button, which is what <noscript> in front of it guarantees however much
+ * markup sits in between. */
+if ( ! preg_match( '#<noscript>\s*(<div class="uc-who-foot">\s*)?(<\?php.*?\?>\s*)?<button type="submit" class="uc-who-apply"#s', $sc ) ) {
     $fails[] = 'Apply is not inside <noscript>, so it exists for people who have script and every other filter here applies immediately';
 }
 if ( strpos( $css, '[data-uc-who-live]' ) !== false ) {
@@ -211,13 +218,29 @@ if ( ! preg_match( '#\.uc-who-opt\[hidden\]\s*\{([^}]*)\}#', $css, $hidden_rule 
 
 echo "The ordering and the label\n";
 
-/* 10. REORDER ON OPEN, NOT WHILE CLICKING. A list that moves the row just
- *     ticked out from under the cursor makes the next click land elsewhere. */
+/* 10. NOTHING REORDERS THE LIST AT ALL (3.93.0), AND THIS ASSERTION REVERSED
+ *     WITH THE BEHAVIOUR IT WAS PINNING.
+ *
+ *     It used to require a reorder on open and forbid one on change. That was
+ *     the right pair while ticked items moved to the top: the on-open timing
+ *     existed only so a row could not move out from under the cursor between
+ *     one press and the next. The sort is gone, so the timing has nothing left
+ *     to protect and the only thing worth asserting is that neither came back.
+ *
+ *     The toggle handler is still required, because narrowing runs from it: a
+ *     block can arrive with organizers already ticked from the query string. */
 if ( ! preg_match( "#on\('toggle', '\[data-uc-who\]'#", $js ) ) {
-    $fails[] = 'the panel no longer reorders on open, so either it never reorders or it reorders under the cursor';
+    $fails[] = 'the open handler is gone, so narrowing never runs for a panel opened after a redraw';
 }
-if ( preg_match( "#'change'[^\n]*\n[^\n]*reorder\(#", $js ) ) {
-    $fails[] = 'the list reorders on change, which moves the row just ticked out from under the cursor';
+/*     COMMENTS STRIPPED FIRST. The removal is explained in a comment that
+ *     names reorder(), so the raw file contains the string this is looking
+ *     for and the check failed on its own documentation. That is the same
+ *     trap the docblock at the top of this file names for the PHP side, met
+ *     for the first time on the JS side. */
+$js_code = preg_replace( '#/\*.*?\*/#s', '', $js );
+$js_code = preg_replace( '#^\s*//.*$#m', '', $js_code );
+if ( false !== strpos( $js_code, 'reorder(' ) ) {
+    $fails[] = 'the list reorders again; with every option visible in two columns, moving a ticked row loses somebody their place in it';
 }
 
 /* 11. THE CLOSED TRIGGER SAYS WHAT IS SELECTED, from the server AND the script,
@@ -249,7 +272,7 @@ echo "         the calendar down; the boxes post the names the server already re
 echo "         slug_list() accepts the array a checkbox group submits; there is a real GET\n";
 echo "         form and a real submit under it, which the filter bar has never had before;\n";
 echo "         narrowing runs one way only, keeps a group with no organizered events and\n";
-echo "         never hides a ticked one; the list reorders on open and not on change; and the\n";
+echo "         never hides a ticked one; nothing reorders the list, ticked or not; and the\n";
 echo "         closed trigger says what is selected from both the server and the script\n\n";
 
 if ( empty( $fails ) ) {

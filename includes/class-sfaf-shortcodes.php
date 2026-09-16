@@ -2260,23 +2260,29 @@ class SFAF_Shortcodes {
         }
 
         /*
-         * SELECTED ITEMS SIT AT THE TOP, AND THE ORDER IS DECIDED HERE, ON THE
-         * SERVER, ONCE. The list must not reorder while somebody is clicking
-         * down it: the thing just ticked would move out from under the cursor
-         * and the next click would land on something else. So the server emits
-         * the order for the state it is rendering, and the script reorders only
-         * when the panel is next opened.
+         * THE ORDER IS ALPHABETICAL AND NOTHING MOVES IT (3.93.0).
+         *
+         * A $sorter here put ticked terms at the top of each list, and matching
+         * reorder() functions in calendar.js and embed.js redid it whenever the
+         * panel opened. All three are gone.
+         *
+         * WHY IT WAS THERE AND WHY THAT REASONING DOES NOT APPLY HERE.
+         * Selection-first is worth having in a long list somebody scrolls,
+         * where the thing they just ticked would otherwise be off screen and
+         * they would have no way to see what is running. This panel shows every
+         * one of thirty-four options at once in two columns. Nothing is out of
+         * sight to bring back, so the sort bought nothing and cost somebody
+         * their place in a list of names they were reading down.
+         *
+         * AND THE ON-OPEN TIMING GOES WITH IT. That existed only so the sort
+         * could not move a row out from under the cursor between one press and
+         * the next. With no sort there is nothing for it to protect, and a
+         * function that carefully reorders nothing is worse than no function.
+         *
+         * The terms arrive in the order get_terms() gives them, which is by
+         * name. That is what somebody scanning for a name expects, and it is
+         * the same order whether anything is ticked or not.
          */
-        $sorter = function ( $terms, $on ) {
-            $sel = array();
-            $rest = array();
-            foreach ( $terms as $t ) {
-                if ( in_array( $t->slug, $on, true ) ) { $sel[] = $t; } else { $rest[] = $t; }
-            }
-            return array_merge( $sel, $rest );
-        };
-        $organizers = $sorter( $organizers, $org_on );
-        $groups     = $sorter( $groups, $group_on );
         ?>
         <?php
         /*
@@ -2316,6 +2322,27 @@ class SFAF_Shortcodes {
             </summary>
 
             <div class="uc-who-panel" id="<?php echo esc_attr( $id ); ?>" data-uc-who-panel>
+                <?php
+                /*
+                 * CLEAR ALL, OUT OF FLOW, IN THE TOP RIGHT (3.93.0).
+                 *
+                 * IT IS KEPT BECAUSE UNTICKING SIX THINGS BY HAND IS WORSE
+                 * than one press, and moved because a row at the bottom of the
+                 * panel costs the list its height at exactly the point where
+                 * height decides whether the panel scrolls.
+                 *
+                 * FIRST IN THE PANEL SO THE TAB ORDER IS THE READING ORDER.
+                 * Absolute positioning takes it out of flow visually and
+                 * changes nothing about where a keyboard reaches it, so a
+                 * control drawn at the top right must also be written at the
+                 * top, or somebody tabbing gets it after thirty-four boxes.
+                 *
+                 * "CLEAR ALL", NOT "CLEAR". Sitting at the panel's right edge
+                 * it is level with the Groups heading, and "Clear" there reads
+                 * as clearing the groups. It clears both lists.
+                 */
+                ?>
+                <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                 <?php
                 /*
                  * TWO COLUMNS, ONE THIRD AND TWO THIRDS (3.86.0). Nine
@@ -2432,8 +2459,26 @@ class SFAF_Shortcodes {
                     <?php endif; ?>
                 </div>
 
+                <?php
+                /*
+                 * THE FOOTER IS THE NO-SCRIPT PATH AND NOTHING ELSE (3.93.0).
+                 *
+                 * Clear used to sit in it, which meant this row existed for
+                 * everybody and cost the list 26px at exactly the point where
+                 * 26px decides whether the panel scrolls. Clear has moved into
+                 * the panel's top right, out of flow, where it costs the list
+                 * nothing. See .uc-who-clear in calendar.css for the
+                 * measurement.
+                 *
+                 * SO THE WHOLE ROW IS INSIDE <noscript> NOW, not just the
+                 * button in it. An empty footer div still carries its own
+                 * padding and margin, which is the height this change exists to
+                 * remove; leaving the div outside and the button inside would
+                 * have moved the control and kept the cost.
+                 */
+                ?>
+                <noscript>
                 <div class="uc-who-foot">
-                    <button type="button" class="uc-who-clear" data-uc-who-clear>Clear</button>
                     <?php
                     /*
                      * APPLY IS INSIDE <noscript> FROM 3.87.0, so it does not
@@ -2457,10 +2502,9 @@ class SFAF_Shortcodes {
                      * carries the other's leftovers.
                      */
                     ?>
-                    <noscript>
-                        <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
-                    </noscript>
+                    <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
                 </div>
+                </noscript>
             </div>
         </details>
         <?php
@@ -3422,9 +3466,17 @@ class SFAF_Shortcodes {
                 $organizers = array();
                 $org_on     = array();
                 if ( ! empty( $rows['organizer'] ) ) {
+                    /* ALPHABETICAL, AND STATED RATHER THAN INHERITED.
+                     * get_terms() already defaults to name, but 3.93.0 removed
+                     * the sort that used to move ticked items to the top and the
+                     * comment on that removal says the order is alphabetical. A
+                     * claim in a comment that rests on somebody else's default is
+                     * a claim that can stop being true without this file changing. */
                     $organizers = get_terms( array(
                         'taxonomy'   => 'uc_organizer',
                         'hide_empty' => true,
+                        'orderby'    => 'name',
+                        'order'      => 'ASC',
                     ) );
                     if ( is_wp_error( $organizers ) ) {
                         $organizers = array();

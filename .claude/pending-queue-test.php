@@ -202,6 +202,18 @@ function _prime_post_caches( $ids, $a = true, $b = true ) {}
 function date_i18n( $fmt, $ts = null, $gmt = false ) { return date( $fmt, null === $ts ? time() : (int) $ts ); }
 function wp_timezone_string() { return 'America/Los_Angeles'; }
 function sfaf_event_location_short( $id ) { return ''; }
+/* The typed place name the pending row reads to decide whether to offer
+ * "Add to venues" (3.93.0). Answering '' means the control is not drawn, which
+ * is what every fixture in this file expects: none of them types a place. */
+function sfaf_event_location_name( $id ) { return ''; }
+function sfaf_location_part_keys() {
+    return array(
+        'street' => '_uc_location_street',
+        'city'   => '_uc_location_city',
+        'state'  => '_uc_location_state',
+        'zip'    => '_uc_location_zip',
+    );
+}
 function sanitize_hex_color( $c ) { return preg_match( '/^#[0-9a-f]{3,6}$/i', (string) $c ) ? $c : ''; }
 function language_attributes( $doctype = 'html' ) { echo 'lang="en-US"'; }
 function bloginfo( $show = '' ) { echo 'UTF-8'; }

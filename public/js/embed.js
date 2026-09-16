@@ -496,7 +496,7 @@
      * build if this string is not SFAF_VERSION. It cannot drift by being
      * forgotten at release time.
      */
-    var EMBED_JS_VERSION = '3.92.0';
+    var EMBED_JS_VERSION = '3.93.0';
     var staleReported = false;
 
     /**
@@ -1433,25 +1433,25 @@
             if (trigger) { trigger.classList.toggle('active', names.length > 0); }
         }
 
-        /* Selected to the top, ON OPEN ONLY, so a row never moves out from
-           under the cursor between one click and the next. */
-        function reorder() {
-            var panel = panelIn();
-            if (!panel) { return; }
-            Array.prototype.forEach.call(panel.querySelectorAll('.uc-who-list'), function (list) {
-                var opts = Array.prototype.slice.call(list.children);
-                opts.filter(function (o) { var b = o.querySelector('input'); return b && b.checked; })
-                    .concat(opts.filter(function (o) { var b = o.querySelector('input'); return !b || !b.checked; }))
-                    .forEach(function (o) { list.appendChild(o); });
-            });
-        }
+        /* NOTHING REORDERS THIS LIST (3.93.0). Ticked items used to move to the
+           top of their column, on OPEN only so a row never moved out from under
+           the cursor between one press and the next. Both are gone, and the
+           second because of the first: with no sort there is nothing for the
+           timing to protect.
+
+           Selection-first is for a long scrolling list where the thing just
+           ticked would be out of sight. This panel shows all thirty-four at
+           once, so it moved the name somebody was reading and bought nothing.
+           Alphabetical, ticked or not. Removed from this script AND from
+           calendar.js AND from the renderer's own $sorter, because a sort left
+           in any one of the three puts the behaviour back on that path only,
+           which is the split that has cost five faults. */
 
         var timer = null;
 
         container.addEventListener('toggle', function (e) {
             var d = e.target;
             if (!d || !d.matches || !d.matches('[data-uc-who]') || !d.open) { return; }
-            reorder();
             narrow();
         }, true);
 

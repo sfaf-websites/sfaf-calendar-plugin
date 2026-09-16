@@ -201,6 +201,42 @@ while ( have_posts() ) :
                              * for the link would try. See SFAF_Online.
                              */
                             ?>
+                            <?php
+                            /*
+                             * THE NAME OF THE PLACE COMES ABOVE THE ADDRESS
+                             * (3.93.0), AND BOTH KINDS OF PLACE READ THE SAME.
+                             *
+                             * An event either names a venue or carries its own
+                             * typed place name, and until now only the first of
+                             * those had a line at all, printed BELOW the
+                             * address. A street number is not an answer to
+                             * "where is this"; the name is, and it is what
+                             * somebody reads first.
+                             *
+                             * Two sources, one line, and the venue is asked
+                             * first for the same reason sfaf_event_location()
+                             * asks it first: a promoted event keeps no text of
+                             * its own, so there is never both.
+                             *
+                             * An online event's venue term was cleared by
+                             * SFAF_Online::set(), so this is already empty for
+                             * one; the explicit test is the second mechanism,
+                             * for a row written before 3.62.0 by something that
+                             * predates that rule.
+                             */
+                            $place_name = '';
+                            if ( ! SFAF_Online::is_online( $post_id ) ) {
+                                $place_name = ! empty( $venues )
+                                    ? implode( ', ', wp_list_pluck( $venues, 'name' ) )
+                                    : sfaf_event_location_name( $post_id );
+                            }
+                            ?>
+                            <?php if ( '' !== $place_name ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'venue' ); ?></span>
+                                    <span><?php echo esc_html( $place_name ); ?></span>
+                                </li>
+                            <?php endif; ?>
                             <?php if ( SFAF_Online::is_online( $post_id ) ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'video' ); ?></span>
@@ -213,17 +249,6 @@ while ( have_posts() ) :
                                           // visitor nothing until they follow it. The map
                                           // itself is further down, behind a button. ?>
                                     <span><a class="uc-fact-maplink" href="<?php echo esc_url( sfaf_map_search_url( $location ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a></span>
-                                </li>
-                            <?php endif; ?>
-                            <?php // The venue name, and only where the event has a venue.
-                                  // An online event's term was cleared by SFAF_Online::set(),
-                                  // so this is already empty for one; the explicit test is
-                                  // the second mechanism, for a row written before 3.62.0
-                                  // by something that predates that rule. ?>
-                            <?php if ( ! empty( $venues ) && ! SFAF_Online::is_online( $post_id ) ) : ?>
-                                <li>
-                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'venue' ); ?></span>
-                                    <span><?php echo esc_html( implode( ', ', wp_list_pluck( $venues, 'name' ) ) ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php

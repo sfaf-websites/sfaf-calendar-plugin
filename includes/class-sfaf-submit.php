@@ -59,6 +59,13 @@ class SFAF_Submit {
      * asked explicitly rather than inferred from which fields are filled in.
      */
     const META_IMAGE   = '_uc_submitted_image';
+    /* WHAT WAS WRONG WITH THE PICTURE, WHEN IT WAS TAKEN ANYWAY (3.93.0).
+     * A picture under SFAF_Uploads::MIN_WIDTH used to be refused, which
+     * refused the whole submission with it. It is accepted now and the
+     * sentence travels with it to the pending row, where somebody who can
+     * see the picture decides. Written only when there is something to say,
+     * so its absence means the picture was fine. */
+    const META_IMAGE_NOTE = '_uc_submitted_image_note';
     const META_SERIES  = '_uc_submitted_series';
 
     /**
@@ -422,6 +429,9 @@ class SFAF_Submit {
             }
         }
 
+        /* THE PLACE NAME, WHICH THIS FORM HAD NOWHERE TO PUT (3.93.0). Text on
+         * the event, never a venue: see sfaf_event_location_name(). */
+        $clean['venue_name'] = $line( 'venue_name', 120 );
         $clean['street'] = $line( 'street', 200 );
         $clean['city']   = $line( 'city', 100 );
         $clean['state']  = $line( 'state', 40 );
@@ -695,6 +705,12 @@ class SFAF_Submit {
         }
 
         $event_id = self::create_event( $checked['clean'], $series, (int) $upload['id'] );
+        /* THE WARNING IS KEPT, NOT SHOWN TO THE SUBMITTER. They have already
+         * sent it and cannot act on it from the thank-you page; the person
+         * who can act on it is the approver, looking at the picture. */
+        if ( $event_id && '' !== (string) $upload['warning'] ) {
+            update_post_meta( $event_id, self::META_IMAGE_NOTE, (string) $upload['warning'] );
+        }
         if ( ! $event_id ) {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
@@ -792,6 +808,7 @@ class SFAF_Submit {
             self::META_CONTACT_PHONE => $c['contact_phone'],
             self::META_RSVP_URL      => $c['rsvp_url'],
             self::META_VENUE_URL     => $c['venue_url'],
+            '_uc_location_name'      => $c['venue_name'],
             self::META_STREET        => $c['street'],
             self::META_CITY          => $c['city'],
             self::META_STATE         => $c['state'],
@@ -1349,6 +1366,23 @@ class SFAF_Submit {
                     <?php endif; ?>
 
                     <div class="uc-address-parts uc-reveal-target" id="uc-address">
+                        <?php
+                        /*
+                         * THE PLACE NAME, ABOVE THE ADDRESS AND NOT REQUIRED.
+                         * An event at a restaurant or a partner site could not
+                         * say what the place was called, so the page read "470
+                         * Castro St" and nothing else. The hint says what it
+                         * will NOT do, which is the one thing somebody would
+                         * otherwise assume: filling it in does not add the
+                         * place to the venue list.
+                         */
+                        ?>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Place name</span>
+                            <input type="text" name="venue_name" maxlength="120" value="<?php echo esc_attr( $v( 'venue_name' ) ); ?>"
+                                   placeholder="Strut" />
+                            <span class="uc-hint">Shown above the address on the event page. Leave it blank if the address is the whole answer.</span>
+                        </label>
                         <label class="uc-field">
                             <span class="uc-field-label">Street address</span>
                             <input type="text" name="street" maxlength="200" value="<?php echo esc_attr( $v( 'street' ) ); ?>"

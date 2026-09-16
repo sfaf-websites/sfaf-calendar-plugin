@@ -2159,6 +2159,36 @@ function sfaf_location_part_keys() {
 }
 
 /**
+ * The event's own place NAME, on the manual address path only.
+ *
+ * WHY THIS EXISTS (3.93.0). Both public forms took a street address and no
+ * name, so an event at a restaurant or a partner site read "470 Castro St"
+ * where it should read "Strut, 470 Castro St". A venue already carries a name;
+ * a typed address had nowhere to put one.
+ *
+ * IT IS NOT A VENUE AND DOES NOT BECOME ONE BY BEING FILLED IN. This is text on
+ * the event, the same as the street is. A venue is a term that resolves its
+ * address at display time, so a correction reaches every event using it, and
+ * that is worth having only for a place used more than once. Promoting one is a
+ * decision an approver takes on the pending row; see 'make_venue' in
+ * SFAF_Portal.
+ *
+ * IT IS NEVER READ WHEN THE EVENT NAMES A VENUE. sfaf_event_location() answers
+ * from the venue first and returns before it gets here, so an event that was
+ * promoted shows the venue's name and not a stale copy of it.
+ *
+ * @param int $post_id
+ * @return string '' when there is none.
+ */
+function sfaf_event_location_name( $post_id ) {
+    $post_id = (int) $post_id;
+    if ( ! $post_id ) {
+        return '';
+    }
+    return trim( (string) get_post_meta( $post_id, '_uc_location_name', true ) );
+}
+
+/**
  * An event's own location as its four parts.
  *
  * FALLS BACK TO PARSING THE STORED LINE, which is how every location written
@@ -2222,6 +2252,16 @@ function sfaf_event_location_short( $post_id ) {
         }
     }
 
+    /* A TYPED PLACE NAME IS THE SHORT ANSWER TOO (3.93.0). This function's
+     * whole rule is "the name where there is one, the first line of the address
+     * otherwise", and a name typed on a form is a name. Without this the queue
+     * would show "470 Castro St" for a row whose event page says "Strut, 470
+     * Castro St", which is the same fact said two ways. */
+    $named = sfaf_event_location_name( $post_id );
+    if ( '' !== $named ) {
+        return $named;
+    }
+
     $full = sfaf_event_location( $post_id );
     if ( '' === $full ) {
         return '';
@@ -2263,7 +2303,28 @@ function sfaf_event_location( $post_id ) {
         }
     }
 
-    return trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+    /*
+     * THE TYPED PLACE NAME GOES IN FRONT OF THE TYPED ADDRESS (3.93.0), AND IT
+     * IS COMPOSED HERE RATHER THAN AT EACH WRITER.
+     *
+     * Four things write `_uc_location`: both public forms, the caladmin editor
+     * and the importer. Composing the name into the stored line at each of them
+     * would be four places to get right and four places for a later edit to
+     * leave it out of, and a stored line that already contains the name cannot
+     * be told apart from one where the submitter typed it into the street box.
+     * Here it is one line, every one of the thirteen readers gets it, and the
+     * name stays a separate fact that the venue promotion can move.
+     *
+     * The comma is the same separator SFAF_Venues::display() puts between a
+     * venue's name and its address, so "Strut, 470 Castro St" reads identically
+     * whichever of the two paths produced it.
+     */
+    $line = trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+    $name = sfaf_event_location_name( $post_id );
+    if ( '' === $name ) {
+        return $line;
+    }
+    return ( '' === $line ) ? $name : $name . ', ' . $line;
 }
 
 /**

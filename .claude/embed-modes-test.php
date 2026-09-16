@@ -985,9 +985,16 @@ check(
     (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{/', $css ),
     'the who heading is back to one class and loses its margin to the paragraph reset again'
 );
+/* THE SECTION MARK, WHICH IS A BAND FROM 3.93.0 AND WAS A RULE BEFORE IT.
+ * This check used to name the rule. The rule was replaced rather than removed,
+ * and what it was protecting is still protected: a section has to start
+ * visibly. So this one stays as the CONTRACT rather than the implementation,
+ * and the band is asserted on its own terms further down, with the contrast it
+ * was measured at. A check written against one of two acceptable marks is a
+ * check that has to be argued with every time the mark changes. */
 check(
-    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*border-bottom:\s*1px/s', $css ),
-    'the who headings no longer rule off their section'
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*(border-bottom:\s*1px|background:\s*var\()/s', $css ),
+    'the who headings no longer mark off their section at all, by a rule or by a band'
 );
 check(
     (bool) preg_match( '/\.uc-who-opt \{[^}]*border-bottom:\s*1px/s', $css ),
@@ -1157,6 +1164,294 @@ if ( preg_match( '/\.uc-who-panel \{[^}]*max-height:\s*min\(\s*70vh\s*,\s*(\d+)p
 } else {
     check( false, 'the who panel no longer caps its height against the viewport' );
 }
+
+
+/* The other sources these checks read, comment-stripped for the reason the
+ * CSS is: every rule here is explained in prose a few lines above itself. */
+$strip_php = function ( $path ) {
+    $src = (string) file_get_contents( $path );
+    $out = '';
+    foreach ( token_get_all( $src ) as $t ) {
+        if ( is_array( $t ) ) {
+            if ( T_COMMENT === $t[0] || T_DOC_COMMENT === $t[0] ) { continue; }
+            $out .= $t[1];
+        } else {
+            $out .= $t;
+        }
+    }
+    return $out;
+};
+$code_tf      = $strip_php( $root . '/includes/sfaf-template-functions.php' );
+$code_submit  = $strip_php( $root . '/includes/class-sfaf-submit.php' );
+$code_request = $strip_php( $root . '/includes/class-sfaf-request.php' );
+$code_portal  = $strip_php( $root . '/includes/class-sfaf-portal.php' );
+$code_uploads = $strip_php( $root . '/includes/class-sfaf-uploads.php' );
+
+/*
+ * SLICE THE THING BEFORE ASKING ANYTHING OF IT.
+ *
+ * THIS IS THE SECOND RELEASE RUNNING THAT PLANTED FAULTS CAUGHT THE SAME BUG
+ * IN THIS FILE. `/function foo\(.*?bar\(/s` does not stop at the end of foo();
+ * it runs on to the next bar() anywhere in the file, so four checks written
+ * that way stayed green on plants that gutted exactly what they named. 3.92.0
+ * fixed one instance by hand. These two helpers are so there is no reason to
+ * write the unbounded form again.
+ *
+ * A top-level function ends at a `}` in column 0. A class method ends at one
+ * indented four. A switch case ends at its `break;`. None of those is clever,
+ * and all three are a great deal better than a wildcard crossing a file.
+ */
+$slice_fn = function ( $src, $name, $indent = '' ) {
+    $pat = '/(?:private |public |protected |static )*function ' . preg_quote( $name, '/' )
+         . '\(.*?\n' . preg_quote( $indent, '/' ) . '\}\n/s';
+    return preg_match( $pat, $src, $m ) ? $m[0] : '';
+};
+$slice_case = function ( $src, $case ) {
+    return preg_match( "/case '" . preg_quote( $case, '/' ) . "':.*?\n\s*break;/s", $src, $m ) ? $m[0] : '';
+};
+
+/* ===========================================================================
+ * THE DROPDOWN AGAIN: NO MID-WORD BREAK, A BAND, NO REORDER, CLEAR OUT OF
+ * THE FOOTER (3.93.0).
+ * ======================================================================== */
+
+/* --- B. A NAME NEVER BREAKS INSIDE A WORD. ------------------------------- */
+/* These four properties are INHERITED and this panel renders inside somebody
+ * else's page, so not declaring them is not a neutral choice: it is taking the
+ * host's. The measurement said the column is wide enough for the longest real
+ * name at every width, so a break can only have come from outside. */
+check(
+    (bool) preg_match( '/\.uc-who-opt[^{]*\{[^}]*overflow-wrap:\s*normal/s', $cssc ),
+    'the who rows no longer declare overflow-wrap, so a host page that sets break-word again splits a name mid-word'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt[^{]*\{[^}]*word-break:\s*normal/s', $cssc ),
+    'the who rows no longer declare word-break, so a host page that sets break-all again splits a name mid-word'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt[^{]*\{[^}]*hyphens:\s*manual/s', $cssc ),
+    'the who rows no longer declare hyphens, so a host with hyphens: auto and a Spanish lang breaks the same name and adds a hyphen'
+);
+/* AND THE COLUMN CANNOT BE NARROWER THAN THE LONGEST NAME. A minimum width
+ * with a maximum count: two sub-columns where two will hold a name, one where
+ * they will not. Measured against the real terms: "Transformaciones" plus its
+ * count is 145.6px, and 190px is that plus the row's own padding, box and gap.
+ * `columns: 2` on its own put no floor under it at all. */
+if ( preg_match( '/\.uc-who-list-2col \{[^}]*columns:\s*(\d+)px\s+2/s', $cssc, $m ) ) {
+    check(
+        (int) $m[1] >= 186,
+        sprintf( 'the group sub-column floor is %dpx, under the 186px the longest real name and its count need', (int) $m[1] )
+    );
+} else {
+    check( false, 'the group sub-columns have no width floor, so a narrow container can make a column smaller than a name' );
+}
+
+/* --- C. EACH HEADING SITS ON A TINTED BAND. ------------------------------ */
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*background:\s*var\(--uc-band-heading\)/s', $cssc ),
+    'the who headings lost their band; coloured text on its own was reported as not being separation'
+);
+check(
+    (bool) preg_match( '/--uc-band-heading:\s*#D5F3F6/', $cssc ),
+    'the heading band is no longer the measured 18% teal, so the heading contrast on it is no longer the one that was checked'
+);
+/* THE BAND REPLACED THE RULE, IT DID NOT JOIN IT. A band and a hairline under
+ * the band are two boundaries for one section. */
+check(
+    ! preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*border-bottom:\s*1px/s', $cssc ),
+    'the heading has a band AND a rule under it, which is two boundaries for one section'
+);
+/* AND THE TEXT ON IT IS STILL THE PALETTE TEAL, which is what decided how
+ * strong the band may be. Changing either without the other breaks the pair. */
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*color:\s*var\(--uc-teal-text\)/s', $cssc ),
+    'the heading colour moved off the palette token the band strength was measured against'
+);
+
+/* --- D. NOTHING REORDERS THE LIST, ON ANY OF THE THREE PATHS. ------------ */
+/* THE POINT IS THAT IT IS GONE FROM ALL THREE. A sort left in any one of them
+ * puts the behaviour back on that path only, which is the shortcode-versus-
+ * embed split that has cost five faults. */
+check(
+    false === strpos( $code, '$sorter = function' ),
+    'the renderer sorts ticked terms to the top again, so the server and the two scripts disagree about the order'
+);
+$cal_js = (string) file_get_contents( $root . '/public/js/calendar.js' );
+$emb_js = (string) file_get_contents( $root . '/public/js/embed.js' );
+$strip_js = function ( $js ) {
+    $js = preg_replace( '#/\*.*?\*/#s', '', $js );
+    return preg_replace( '#^\s*//.*$#m', '', $js );
+};
+$cal_code = $strip_js( $cal_js );
+$emb_code = $strip_js( $emb_js );
+check(
+    false === strpos( $cal_code, 'function reorder' ),
+    'calendar.js reorders the who list again'
+);
+check(
+    false === strpos( $emb_code, 'function reorder' ),
+    'embed.js reorders the who list again'
+);
+/* AND NOTHING CALLS ONE. A declaration removed while a call stayed is the
+ * fault this file already met twice; a call removed while the declaration
+ * stayed is the same fault the other way round and is what a half-finished
+ * removal looks like. */
+check(
+    false === strpos( $cal_code, 'reorder(' ) && false === strpos( $emb_code, 'reorder(' ),
+    'a script still calls reorder(), so the list still moves under somebody reading it'
+);
+/* THE ORDER IS STATED, NOT INHERITED. The comment on the removal says the list
+ * is alphabetical; that claim rests on get_terms()'s default unless the query
+ * says so. */
+check(
+    (bool) preg_match( "/'taxonomy'\s*=>\s*'uc_organizer',\s*'hide_empty'\s*=>\s*true,\s*'orderby'\s*=>\s*'name'/s", $code ),
+    'the organizer list no longer states its own order, so "alphabetical" rests on somebody else\'s default'
+);
+
+/* --- E. CLEAR IS OUT OF THE FOOTER AND OUT OF FLOW. ---------------------- */
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-who-clear \{[^}]*position:\s*absolute/s', $cssc ),
+    'Clear all is back in the flow, where it costs the list the height that decides whether the panel scrolls'
+);
+/* THE FOOTER IS THE NO-SCRIPT PATH AND NOTHING ELSE. An empty div still
+ * carries its own padding and margin, which is the height this removed. */
+check(
+    (bool) preg_match( '/<noscript>\s*<div class="uc-who-foot">/s', $code ),
+    'the who footer renders outside <noscript> again, so the row costs its height to everybody with script'
+);
+/* AND THE NO-SCRIPT SUBMIT IS STILL IN IT. Moving Clear must not have taken
+ * Apply with it: without script, ticking a box does nothing until this submits. */
+check(
+    false !== strpos( $code, '<button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>' ),
+    'the no-script Apply button is gone, so with script off the filter cannot be applied at all'
+);
+/* CLEAR IS FIRST IN THE PANEL'S MARKUP. Absolute positioning moves it visually
+ * and not in the tab order, so drawn at the top and written at the bottom
+ * would put it after thirty-four boxes for anybody on a keyboard. */
+/* THE BUTTON HAS TO EXIST BEFORE ITS POSITION MEANS ANYTHING. A planted
+ * deletion passed the comparison below on its own: strpos() returns false for
+ * the missing needle, PHP compares that as 0, and 0 is less than any real
+ * offset. An ordering check with no presence check beside it reads a deletion
+ * as a pass. */
+check(
+    false !== strpos( $code, 'data-uc-who-clear' ),
+    'Clear all is gone from the panel, so unticking six things has to be done by hand'
+);
+check(
+    false !== strpos( $code, 'data-uc-who-clear' )
+    && strpos( $code, 'data-uc-who-clear' ) < strpos( $code, 'class="uc-who-cols"' ),
+    'Clear all is written after the columns, so a keyboard reaches it after thirty-four checkboxes'
+);
+
+/* --- G. A PLACE NAME ON THE MANUAL ADDRESS PATH. ------------------------- */
+/* THE NAME IS COMPOSED IN THE ONE READER, not at the four writers. Composing
+ * it into the stored line at each writer is four places to get right, and a
+ * stored line that already contains the name cannot be told apart from one
+ * where somebody typed it into the street box. */
+$fn_loc       = $slice_fn( $code_tf, 'sfaf_event_location' );
+$fn_loc_short = $slice_fn( $code_tf, 'sfaf_event_location_short' );
+check(
+    '' !== $fn_loc && '' !== $fn_loc_short,
+    'one of the two location readers is gone, so the checks below are asking nothing'
+);
+check(
+    false !== strpos( $fn_loc, 'sfaf_event_location_name(' ),
+    'sfaf_event_location() no longer composes the place name in, so the name is stored and never shown'
+);
+check(
+    false !== strpos( $fn_loc_short, 'sfaf_event_location_name(' ),
+    'the short form ignores the place name, so a queue row says "470 Castro St" where the event page says "Strut, 470 Castro St"'
+);
+/* BOTH FORMS ASK FOR IT. One of the two would be the same fault as every
+ * shortcode-only fix in this file's history. */
+check(
+    false !== strpos( $code_submit, 'name="venue_name"' ),
+    'the community form has no place name field'
+);
+check(
+    false !== strpos( $code_request, 'name="venue_name"' ),
+    'the staff request form has no place name field'
+);
+/* AND NEITHER FORM MAY MAKE A VENUE. A submitter who could add to the venue
+ * list could put a wrong address on a place every later event inherits. */
+check(
+    false === strpos( $code_submit, 'SFAF_Venues::save(' ) && false === strpos( $code_request, 'SFAF_Venues::save(' ),
+    'a public form creates venue terms, which lets a submitter write an address every later event inherits'
+);
+/* THE PROMOTION IS ADMIN-GATED AND READS NOTHING FROM THE FORM BUT THE ID.
+ * Sliced to the case, for the reason the slicers say: an unbounded wildcard
+ * from `case 'make_venue':` runs on into the rest of a 17,000 line file and
+ * finds the same calls somewhere else. Both of these stayed green on plants
+ * that gutted the case before they were bounded. */
+$case_venue = $slice_case( $code_portal, 'make_venue' );
+check(
+    '' !== $case_venue,
+    'the make_venue action is gone, so a typed place can no longer be promoted at all'
+);
+check(
+    (bool) preg_match( "/case 'make_venue':\s*if \( ! \\\$this->is_admin_role\( \\\$user \) \) \{ wp_die\( 'Denied' \); \}/s", $case_venue ),
+    'the make_venue action is not gated on the admin role'
+);
+check(
+    false !== strpos( $case_venue, '$vname = sfaf_event_location_name( $event_id );' ),
+    'make_venue takes the venue name from somewhere other than the event, so any name could be written against any address'
+);
+/* AND THE EVENT THEN POINTS AT THE VENUE AND KEEPS NO TEXT. Keeping a copy is
+ * the one thing that would make the promotion pointless: a venue exists so a
+ * corrected address reaches every event held there. */
+check(
+    false !== strpos( $case_venue, 'SFAF_Venues::set_for_event( $event_id, (int) $made );' )
+    && false !== strpos( $case_venue, "delete_post_meta( \$event_id, '_uc_location' );" )
+    && false !== strpos( $case_venue, "delete_post_meta( \$event_id, '_uc_location_name' );" ),
+    'a promoted event keeps its own address text, so correcting the venue no longer corrects this event'
+);
+/* A CHOSEN VENUE CLEARS THE TYPED NAME. Without this a stale name sits in
+ * front of the venue's own the moment anything reads it. The branch is sliced
+ * on its own opening and closing, not searched for across the file, because
+ * make_venue a few hundred lines away makes the same two calls. */
+$branch_venue = '';
+if ( preg_match(
+    "/if \( 'venue' === \\\$mode && \\\$venue && SFAF_Venues::exists\( \\\$venue \) \) \{.*?\n            \} else \{/s",
+    $code_portal,
+    $bm
+) ) {
+    $branch_venue = $bm[0];
+}
+check(
+    '' !== $branch_venue,
+    'the editor\'s venue branch could not be found, so the check below is asking nothing'
+);
+check(
+    false !== strpos( $branch_venue, "delete_post_meta( \$event_id, '_uc_location_name' );" ),
+    'choosing a venue in the editor leaves the typed place name behind, so two names describe one place'
+);
+
+/* --- H. THE PICTURE FLOOR WARNS AND DOES NOT REFUSE. --------------------- */
+check(
+    (bool) preg_match( '/if \( \$w < self::MIN_WIDTH \) \{\s*\$warning =/s', $code_uploads ),
+    'a picture under the floor is refused again, which refuses the whole submission with it'
+);
+check(
+    ! preg_match( '/if \( \$w < self::MIN_WIDTH \) \{\s*return \$no\(/s', $code_uploads ),
+    'the floor returns a refusal again'
+);
+/* THE SENTENCE IS THE ONE THAT WAS ASKED FOR, naming the real width and the
+ * number it needs to be. "That image is too small" leaves somebody guessing at
+ * both and the usual next move is to send the same file again. */
+check(
+    (bool) preg_match( "/'That image is ' \. \(int\) \\\$w \. ' pixels wide and needs to be at least '/", $code_uploads ),
+    'the picture warning no longer names the width that was sent'
+);
+/* AND IT IS A DIFFERENT KEY FROM 'error'. Both callers treat a non-empty
+ * 'error' as a refusal and delete the file. */
+check(
+    (bool) preg_match( "/return array\( 'id' => \\\$attachment_id, 'error' => '', 'warning' =>/", $code_uploads ),
+    'the warning no longer travels back with a stored picture, so nothing can show it to the approver'
+);
+check(
+    false !== strpos( $code_portal, 'SFAF_Submit::META_IMAGE_NOTE' ),
+    'the pending row no longer shows the picture warning, so the warning is stored and never read'
+);
 
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";

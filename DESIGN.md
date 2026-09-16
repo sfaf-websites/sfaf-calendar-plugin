@@ -613,6 +613,128 @@ it would put the last few groups past the bottom edge with nothing to reach them
 by. **Measure the content and the cap separately before deciding a scrollbar is
 unnecessary; "it looks like it fits" is a statement about one window.**
 
+### A parent's suggestion is not a rule: align the box, not the row (3.93.0)
+
+A check box against a label that can wrap to two lines belongs at the TOP. This
+was fixed in 3.86.0, fixed again, and reported a third time, and the reason is
+the shape of the fix rather than the value in it.
+
+**Both previous fixes set `align-items` on the ROW.** That is a suggestion the
+parent makes about its children, and any later rule naming that row takes it
+back. By the third report there were **twenty-two rules across three
+stylesheets** setting alignment on a box-bearing class, fourteen of them centre
+or baseline, and the comment above the 3.86.0 one still said "this is the one
+place it is decided".
+
+> **`align-self` on the box beats `align-items` on the container, and not on
+> specificity.** They are different properties on different elements, so there
+> is no contest to lose. A row written tomorrow with `align-items: center` gets
+> a centred row and a top-aligned box.
+
+**When a rule keeps coming back, ask whether it is the kind of rule that can be
+taken back.** Specificity is the usual answer and it is the wrong one here: a
+higher-specificity `align-items` would have lost to the next higher one. The
+property that cannot be overruled from the parent is the fix.
+
+**And the checker reads the source rather than holding a list.**
+`.claude/checkbox-align-test.php` finds every element that wraps an
+`input[type=checkbox|radio]`, collects its classes, and checks the stylesheets
+against that set, exempting the hidden-input controls by reading the stylesheet
+for `position: absolute` or `opacity: 0`. A list in a checker is a list somebody
+has to remember to add to, which is the same failure as a rule somebody has to
+remember to apply.
+
+### An inherited property you do not declare is one the host page sets (3.93.0)
+
+A name in the filter dropdown was breaking mid-word on sfaf.org: "Transformacione"
+then "s". Measured against the real terms, the column was never too narrow. The
+longest single word in either list is **123.6px in Merriweather at 14px, 145.6px
+with its count**, and the sub-column gives a name **161.5px** at the embed width
+and 251px stacked. It fits at every width, scrollbar in or out.
+
+**`word-break`, `overflow-wrap`, `hyphens` and `line-break` are inherited.** This
+panel renders inside somebody else's page, so not declaring them is not a neutral
+choice: it is taking the host's. A theme with `overflow-wrap: break-word` on its
+body reaches every name in the panel.
+
+> **The same class of fault as "an `<img>` is what the host styles".** Not a
+> cascade fight we lost. A value we never wrote down. The remedy is the same:
+> declare it on our own element.
+
+**And put a floor under the thing that would make it real.** `columns: 190px 2`
+is a minimum width and a maximum count: two sub-columns wherever two will hold a
+name, one where they will not. `columns: 2` alone put no floor under the column
+at all, so the arithmetic could have become the cause even after the inherited
+rule stopped being it.
+
+### Coloured text is not separation; a band is (3.93.0)
+
+3.92.0 gave the dropdown's two section headings the palette teal. The report on
+it: that is not separation, it is coloured text. Correct. **A word in a different
+colour above a list still floats above the list. A filled band is a boundary,
+because the eye reads an area before it reads a hue.**
+
+The band is brand teal at 18% over white, flattened to **#D5F3F6**, and the
+strength is a measured ceiling rather than a preference:
+
+```
+10%  #E8F9FA   band 1.08:1 on white   heading 4.94:1
+18%  #D5F3F6   band 1.17:1 on white   heading 4.58:1
+20%  #D0F2F5   band 1.19:1 on white   heading 4.51:1
+24%  #C7EFF3   band 1.23:1 on white   heading 4.35:1  FAILS
+```
+
+The heading is 11px, so it is small text at a 4.5:1 floor. **20% clears it by
+0.01, which is not a margin.** 18% is the strongest band this text can sit on.
+
+**The rule under the heading went when the band arrived.** A band and a hairline
+under the band are two boundaries for one section, which is the "boxes inside
+boxes" rule applied to a heading.
+
+### Selection-first is for a list you cannot see all of (3.93.0)
+
+Ticked items floated to the top of the dropdown's columns, and a reorder-on-open
+existed so the sort could never move a row out from under the cursor between one
+press and the next. Both are gone.
+
+**The behaviour is right in a long scrolling list**, where what somebody just
+ticked would otherwise be out of sight and they would have no way to see what is
+running. **This panel shows all thirty-five options at once in two columns**, so
+it bought nothing and cost somebody their place in a list of names they were
+reading down.
+
+> **When you remove a behaviour, remove what was built to protect it.** The
+> on-open timing had no purpose but the sort. A function that carefully reorders
+> nothing is worse than no function, because the next person has to work out
+> what it is for.
+
+### Out of flow costs the list nothing, and the tab order does not move (3.93.0)
+
+The dropdown's Clear sat in a footer row, which cost the list **46px** at exactly
+the point where height decides whether the panel scrolls. It is absolutely
+positioned in the panel's top right now.
+
+**It is written FIRST in the markup.** Absolute positioning moves a control
+visually and changes nothing about where a keyboard reaches it, so a control
+drawn at the top and written at the bottom arrives after thirty-five checkboxes.
+
+**An empty container still costs its own padding and margin.** The footer now
+renders inside `<noscript>` in its entirety, not just the button in it: leaving
+the div outside would have moved the control and kept the height.
+
+Measured with the real terms at the embed width:
+
+```
+plain heading and a footer      582px
+the heading band alone          578px    (the band saves 4px)
+Clear out of the footer alone   536px    (46px)
+both                            532px
+```
+
+**And a cap measured against invented data is a cap measured against nothing.**
+520px was set in 3.92.0 from made-up names; the real ones are much longer, eleven
+of thirty-five take two lines and three take three. The cap is 580px.
+
 ## 5. CSS discipline
 
 Six separate defects where a rule was correct and never reached the screen.

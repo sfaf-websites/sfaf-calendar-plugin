@@ -148,6 +148,43 @@
 .uc-meta-box input[type="checkbox"], .uc-meta-box input[type="radio"] {
     accent-color: var(--uc-teal-text);
 }
+/* ===========================================================================
+   A BOX SITS AT THE TOP OF ITS LABEL. THIS IS THE THIRD TIME (3.93.0).
+
+   IT HAS BEEN FIXED TWICE AND CAME BACK TWICE, AND THE REASON IS THE SHAPE OF
+   THE FIX RATHER THAN THE VALUE IN IT. Both previous fixes set `align-items`
+   on the ROW. `align-items` is a parent's suggestion: any later rule naming
+   that row, at any specificity, silently takes it back, and three of them did.
+   The comment above .uc-check even says "this is the one place it is decided",
+   which was true when it was written and was not true a release later.
+
+   SO THIS RULE NAMES THE BOX, NOT THE ROW. `align-self` on a flex item BEATS
+   `align-items` on its container outright, and not on specificity: they are
+   different properties on different elements, so there is no contest to lose.
+   A new row written tomorrow with `align-items: center` on it gets a centred
+   row and a top-aligned box, which is the outcome this rule exists to
+   guarantee.
+
+   THE 2px IS THE FIRST LINE, NOT THE TOP EDGE. A 13px box in a 20px line box
+   wants about (20-13)/2 to sit on the text rather than above it, and flush-top
+   reads slightly high against the cap height. Measured at the 14px body size
+   these controls use, and it is the same 2px .uc-check has carried since
+   3.86.0.
+
+   IT DOES NOTHING WHERE THERE IS NOTHING TO ALIGN. `align-self` is inert
+   unless the box is a flex or grid item, so a box inside a paragraph, a table
+   cell or an absolutely positioned overlay is untouched by it.
+
+   `.claude/checkbox-align-test.php` reads the box-bearing classes out of the
+   SOURCE rather than from a list kept here, so a control added next month is
+   covered without anybody remembering this. That is the part that makes it a
+   fourth time rather than a fourth fix.
+   ======================================================================== */
+.uc-admin-wrap input[type="checkbox"], .uc-admin-wrap input[type="radio"],
+.uc-meta-box input[type="checkbox"], .uc-meta-box input[type="radio"] {
+    align-self: flex-start; margin-top: 2px;
+}
+
 .uc-admin-wrap input[type="checkbox"]:focus, .uc-admin-wrap input[type="radio"]:focus,
 .uc-meta-box input[type="checkbox"]:focus, .uc-meta-box input[type="radio"]:focus {
     outline: 2px solid var(--uc-teal-text); outline-offset: 2px; box-shadow: none;
@@ -272,7 +309,7 @@
 .uc-users-editrole { display: block; font-size: 12px; margin-top: 2px; }
 .uc-users-form { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .uc-users-teamlist { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
-.uc-users-teamlist label { display: flex; align-items: center; gap: 6px; }
+.uc-users-teamlist label { display: flex; align-items: flex-start; gap: 6px; }
 .uc-users-pager { display: flex; gap: 6px; padding: 12px 16px; }
 .uc-users-page { padding: 4px 10px; border: 1px solid var(--uc-border); border-radius: 6px; font-size: 13px; text-decoration: none; }
 .uc-users-page.current { background: var(--uc-bg); font-weight: 700; }
@@ -344,9 +381,9 @@
 
 
 /* Meta box: display toggles + checkbox lists */
-.uc-display-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.uc-display-toggle { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 13px; }
 .uc-checkbox-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; border: 1px solid var(--uc-border); border-radius: 6px; padding: 8px 10px; background: var(--uc-bg); }
-.uc-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.uc-checkbox-list label { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; }
 .uc-checkbox-list-inline { flex-direction: row; flex-wrap: wrap; gap: 12px; max-height: none; }
 .uc-muted-inline { color: var(--uc-muted); font-size: 11px; }
 .uc-meta-field textarea { width: 100%; box-sizing: border-box; } /* box defers to the control block */
@@ -401,7 +438,7 @@
 .uc-gen-field { display: flex; flex-direction: column; gap: 6px; }
 .uc-gen-field label { font-size: 13px; font-weight: 600; color: var(--uc-text); }
 /* .uc-gen-input: box defers to the control block at the top of this file. */
-.uc-gen-checkbox { flex-direction: row !important; align-items: center; gap: 8px; }
+.uc-gen-checkbox { flex-direction: row !important; align-items: flex-start; gap: 8px; }
 .uc-gen-output-wrap { border-top: 1px solid var(--uc-border); padding-top: 18px; }
 .uc-gen-output-wrap > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
 .uc-gen-output-row { display: flex; gap: 10px; align-items: stretch; }
@@ -529,11 +566,11 @@
    three of the sliders above: sliders are for one decision, and three of them
    stacked reads as three settings rather than one choice with three parts. */
 .uc-embed-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.uc-embed-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--uc-text); }
+.uc-embed-check { display: inline-flex; align-items: flex-start; gap: 6px; font-size: 13px; color: var(--uc-text); }
 .uc-embed-check input { margin: 0; }
 
 .uc-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.uc-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--uc-text); cursor: pointer; }
+.uc-check { display: inline-flex; align-items: flex-start; gap: 7px; font-size: 13px; color: var(--uc-text); cursor: pointer; }
 .uc-check-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
 .uc-embed-field .uc-input { width: 100%; box-sizing: border-box; }

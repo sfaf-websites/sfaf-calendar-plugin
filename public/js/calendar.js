@@ -819,18 +819,22 @@
          */
         function narrow(root) { narrowWho(root); }
 
-        /* REORDER ON OPEN, NEVER WHILE SOMEBODY IS CLICKING. A list that moves
-           the row just ticked out from under the cursor makes the next click
-           land on something else. */
-        function reorder(panel) {
-            $(panel).find('[data-uc-who-list], .uc-who-list').each(function () {
-                var $list = $(this);
-                var $opts = $list.children('.uc-who-opt');
-                var sel = $opts.filter(function () { return $(this).find('input')[0].checked; });
-                var rest = $opts.not(sel);
-                $list.append(sel).append(rest);
-            });
-        }
+        /* NOTHING REORDERS THIS LIST (3.93.0), AND THE SECOND REMOVAL FOLLOWS
+           FROM THE FIRST. Ticked items used to move to the top of their column,
+           and a whole reorder() existed to do that on OPEN rather than on
+           click, so a row never moved out from under the cursor between one
+           press and the next.
+
+           Selection-first earns its place in a long scrolling list, where the
+           thing somebody just ticked would otherwise be out of sight. This
+           panel shows all thirty-four at once in two columns, so it bought
+           nothing and cost somebody their place: the name they were reading
+           moved. With the sort gone there is nothing for the on-open timing to
+           protect, so that goes too rather than being left as a function that
+           reorders nothing.
+
+           The order is alphabetical, ticked or not, which is the order the
+           server sends. */
 
         /* NOTHING POSITIONS THE PANEL ANY MORE (3.86.0), and that is the fix.
            It was `position: fixed` at 0,0 until a script moved it from the
@@ -857,7 +861,6 @@
             if (!this.open) { return; }
             var panel = $(this).find('[data-uc-who-panel]')[0];
             if (!panel) { return; }
-            reorder(panel);
             narrow(this);
         });
 

@@ -443,6 +443,22 @@ $ALLOWED = array(
      * the site as any event's picture. See the case in dispatch_post().
      */
     'POST:use_submitted_image'    => array( 'caladmin' ),
+    /*
+     * MAKING A VENUE OUT OF A TYPED PLACE (3.93.0). Administrators only, and
+     * for the same reason as the picture above: this WRITES A ROW EVERY FUTURE
+     * EVENT CAN PICK FROM. A submitter who could reach it could put a wrong
+     * address on a place, and every event later held there would inherit it,
+     * because pointing at a venue is exactly what stops an event keeping its
+     * own copy.
+     *
+     * IT TAKES NO NAME AND NO ADDRESS FROM THE FORM. Both come off the event's
+     * own meta, so the gate is not the only thing between this and writing any
+     * name against any address. See the case in dispatch_post().
+     *
+     * NEITHER PUBLIC FORM OFFERS IT. Both now collect a place name and neither
+     * may create a term; that pair is asserted in embed-modes-test.php.
+     */
+    'POST:make_venue'             => array( 'caladmin' ),
     'POST:fetch_sources'          => array( 'caladmin' ),
     'POST:import_publish'         => array( 'caladmin' ),
     'POST:import_dismiss'         => array( 'caladmin' ),

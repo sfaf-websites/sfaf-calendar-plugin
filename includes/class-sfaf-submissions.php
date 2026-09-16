@@ -833,7 +833,7 @@ if ( $args['editor'] ) {
             <span class="uc-hint">
                 JPEG, PNG, GIF or WebP, up to <?php echo (int) $mb; ?>MB, and at least
                 <?php echo (int) SFAF_Uploads::MIN_WIDTH; ?> pixels wide. Landscape works best.
-                Leave this empty if you do not have one.
+                A narrower one is still accepted. Leave this empty if you do not have one.
             </span>
             <?php self::field_error( $error ); ?>
         </label>

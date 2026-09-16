@@ -66,6 +66,11 @@
        whose background is declared, so the flat colour is both measurable and
        correct. Text on it: --uc-text at 15.59:1. */
     --uc-band: #E8F9FA;
+    /* THE SECTION HEADING BAND, brand teal at 18% over white. Measured in the
+       rule that uses it: the band is 1.17:1 against the panel and the heading
+       teal on it is 4.58:1, which is the strongest this tint may be while
+       11px text still clears 4.5:1. */
+    --uc-band-heading: #D5F3F6;
     /* -----------------------------------------------------------------------
        ONE SECONDARY TEXT COLOUR, NOT TWO.
 
@@ -905,15 +910,21 @@
        the panel wanted 518px before the row padding came down and wants 460px
        after it. The old 460px cap therefore clipped it by a hair and drew a
        scrollbar, and the scrollbar took 15px of width off the rows, which
-       wrapped three more names, which made the panel taller still. 520px
-       clears the content with headroom and that loop does not start.
+       wrapped three more names, which made the panel taller still.
+
+       520px WAS MEASURED AGAINST INVENTED NAMES AND WAS TOO LOW (3.93.0).
+       Read against the real terms, which are much longer, the panel wanted
+       582px: eleven of thirty-five names take two lines and three take three.
+       Moving Clear out of the footer took 46px off and the heading band took
+       another 4, which puts it at 532px, and the cap is 580px so there is a
+       row and a half of headroom before that loop can start again.
 
        IT CANNOT BE REMOVED. 70vh is what binds on a short window: a 1366x768
        laptop has about 630px of viewport, 70vh of that is 441px, and 460px of
        names does not fit in it. Taking the overflow away there would not make
        the panel fit, it would put the last few groups past the bottom edge
        with nothing to reach them by. */
-    max-height: min(70vh, 520px); overflow-y: auto;
+    max-height: min(70vh, 580px); overflow-y: auto;
     padding: 6px 6px 8px;
     border: 1px solid var(--uc-border); border-radius: 16px;
     background: #fff; color: var(--uc-text);
@@ -963,7 +974,46 @@
    no style was ever set: the property looked present in a measurement and did
    nothing on screen. Stated properly it is the same hairline as everything
    else here. */
-.uc-who-list-2col { columns: 2; column-gap: 14px; column-rule: 1px solid var(--uc-border); }
+/* A NAME NEVER BREAKS INSIDE A WORD (3.93.0).
+
+   MEASURED FIRST, AND THE MEASUREMENT SAYS THE COLUMN IS NOT THE PROBLEM. Read
+   against the real terms on the site, nine organizers and twenty-five series:
+   the longest single word anywhere in either list is "Transformaciones", which
+   is 123.6px in Merriweather at 14px, and with its count beside it 145.6px. The
+   group sub-column gives a name 161.5px at the embed width, and 251px once the
+   panel stacks. It fits at every width, with the scrollbar out and with the
+   scrollbar in.
+
+   SO NOTHING HERE WAS BREAKING IT AND SOMETHING ELSE WAS. These four
+   properties are INHERITED, this panel renders inside somebody else's page, and
+   `word-break: break-all` or `overflow-wrap: break-word` set on a host's body
+   reaches every name in it. That is the same class of fault as a theme's rule
+   reaching our `<img>`: not a cascade fight we lost, a value we never declared.
+   Declared here, nothing outside can force a break.
+
+   `hyphens: manual` is in the list because a host that sets `hyphens: auto`
+   with a Spanish lang attribute breaks the same word and adds a hyphen to it.
+
+   THE COST IF A NAME IS EVER GENUINELY TOO LONG is that it overflows its column
+   rather than breaking. The `columns` floor below is what stops that being
+   possible. */
+.uc-who-opt, .uc-who-opt > span {
+    overflow-wrap: normal; word-break: normal; hyphens: manual;
+}
+
+/* THE SUB-COLUMN HAS A FLOOR, AND THE COUNT FALLS BACK RATHER THAN THE COLUMN
+   GETTING TOO NARROW. `columns: 190px 2` is a minimum width and a maximum
+   count: two sub-columns wherever two will hold a name, one where they will
+   not. 190px is the longest name plus its count plus the row's own padding,
+   box and gap, taken from the measurement above with headroom, so the column
+   can no longer be narrower than the longest word by arithmetic rather than by
+   somebody checking.
+
+   IT IS STILL TWO SUB-COLUMNS. At the 700px panel the list has about 430px, so
+   two at 190px plus the 14px rule is what it computes, and that is what it has
+   drawn since 3.86.0. The floor only does something at a width where two
+   columns were going to break a name. */
+.uc-who-list-2col { columns: 190px 2; column-gap: 14px; column-rule: 1px solid var(--uc-border); }
 .uc-who-list-2col > .uc-who-opt { break-inside: avoid; }
 
 @container uc-calendar (max-width: 620px) {
@@ -1021,19 +1071,39 @@
 
 /* (0,2,0) so it clears the reset's (0,1,1). The panel is the scope, which is
    the narrowest thing that wins rather than a blanket raise. */
-/* THE HEADINGS CARRY COLOUR (3.92.0), so the two halves read as two halves.
-   `--uc-teal-text` is the palette's measured text teal, 5.35:1 on white, and is
-   the token every other piece of text colour on this calendar uses. Nothing new
-   is reached for and nothing else in the panel is coloured: colour on two
-   headings is separation, colour on thirty-four rows is noise. The rule under
-   each heading takes the same colour at a tenth, so the section boundary reads
-   as one mark rather than a grey line under a teal word. */
+/* EACH HEADING SITS ON A TINTED BAND (3.93.0), AND 3.92.0's COLOURED TEXT WAS
+   NOT ENOUGH. The report on that release: teal text is not separation, it is
+   coloured text. It was right. A word in a different colour above a list still
+   floats above the list; a filled band is a boundary, because the eye reads an
+   area before it reads a hue.
+
+   THE BAND IS THE BRAND TEAL AT 18% OVER WHITE, PRE-FLATTENED TO A HEX for the
+   same reason --uc-band is: a translucent fill over an unknown backdrop cannot
+   be contrast-checked, and this one sits on the panel's declared white.
+
+   18% IS A MEASURED CEILING, NOT A PREFERENCE. The heading keeps the palette's
+   measured text teal, and that colour on this band is what decides how strong
+   the band may be:
+
+       10% #E8F9FA   band 1.08:1 on white   heading 4.94:1
+       18% #D5F3F6   band 1.17:1 on white   heading 4.58:1
+       20% #D0F2F5   band 1.19:1 on white   heading 4.51:1
+       24% #C7EFF3   band 1.23:1 on white   heading 4.35:1  FAILS
+
+   The heading is 11px, so it is small text and needs 4.5:1. 20% clears it by
+   0.01 and that is not a margin; 18% clears it by 0.08 and is the strongest
+   band this text can sit on.
+
+   AND THE RULE UNDER IT GOES. A band and a hairline under the band are two
+   boundaries for one section, which is the "boxes inside boxes" this panel has
+   already been told off for once. The band is the mark now. */
 .uc-who-panel .uc-who-heading {
-    margin: 12px 0 3px; padding: 0 12px 5px;
+    margin: 12px 0 4px; padding: 5px 10px 4px;
     font-family: var(--uc-font-heading); font-size: 11px; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--uc-teal-text);
-    border-bottom: 1px solid color-mix(in srgb, var(--uc-teal-text) 22%, var(--uc-border));
+    background: var(--uc-band-heading);
+    border-radius: 6px;
 }
 /* The first heading in a column does not need the space above it: the panel's
    own padding is already there. */
@@ -1059,8 +1129,44 @@
    line of 14px text is 19.6px and the hairline is 1px, so 5px a side is the
    last value where a row is still visibly a band rather than text with a rule
    through it. */
+/* ===========================================================================
+   A BOX SITS AT THE TOP OF ITS LABEL. THIS IS THE THIRD TIME (3.93.0).
+
+   IT HAS BEEN FIXED TWICE AND CAME BACK TWICE, AND THE REASON IS THE SHAPE OF
+   THE FIX RATHER THAN THE VALUE IN IT. Both previous fixes set `align-items`
+   on the ROW. `align-items` is a parent's suggestion: any later rule naming
+   that row, at any specificity, silently takes it back, and three of them did.
+   The comment above .uc-check even says "this is the one place it is decided",
+   which was true when it was written and was not true a release later.
+
+   SO THIS RULE NAMES THE BOX, NOT THE ROW. `align-self` on a flex item BEATS
+   `align-items` on its container outright, and not on specificity: they are
+   different properties on different elements, so there is no contest to lose.
+   A new row written tomorrow with `align-items: center` on it gets a centred
+   row and a top-aligned box, which is the outcome this rule exists to
+   guarantee.
+
+   THE 2px IS THE FIRST LINE, NOT THE TOP EDGE. A 13px box in a 20px line box
+   wants about (20-13)/2 to sit on the text rather than above it, and flush-top
+   reads slightly high against the cap height. Measured at the 14px body size
+   these controls use, and it is the same 2px .uc-check has carried since
+   3.86.0.
+
+   IT DOES NOTHING WHERE THERE IS NOTHING TO ALIGN. `align-self` is inert
+   unless the box is a flex or grid item, so a box inside a paragraph, a table
+   cell or an absolutely positioned overlay is untouched by it.
+
+   `.claude/checkbox-align-test.php` reads the box-bearing classes out of the
+   SOURCE rather than from a list kept here, so a control added next month is
+   covered without anybody remembering this. That is the part that makes it a
+   fourth time rather than a fourth fix.
+   ======================================================================== */
+.uc-calendar input[type="checkbox"], .uc-calendar input[type="radio"] {
+    align-self: flex-start; margin-top: 2px;
+}
+
 .uc-who-opt {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: flex-start; gap: 8px;
     padding: 5px 10px; cursor: pointer;
     font-size: 14px; font-weight: 400; line-height: 1.4;
     border-radius: 6px;
@@ -1099,20 +1205,44 @@
 .uc-who-opt[hidden] { display: none !important; }
 .uc-who-none { margin: 8px 0; padding: 0 14px; font-size: 13px; color: var(--uc-secondary); }
 
-/* THE FOOTER HOLDS ONE CONTROL NOW, so it is a row rather than a bar with two
-   ends. The rule above it is gone: with the row spacing above, a hairline was
-   a second separator doing a job spacing had already done, and it was half of
-   what read as boxy. Clear sits left, where the eye already is. */
+/* THE FOOTER IS THE NO-SCRIPT ROW AND ONLY EXISTS THERE (3.93.0). The
+   renderer puts the whole div inside <noscript>, so with script on there is no
+   element here at all and these rules match nothing. */
 .uc-who-foot {
     display: flex; justify-content: flex-start; align-items: center; gap: 10px;
     margin-top: 4px; padding: 6px 12px 8px;
 }
+
+/* CLEAR ALL IS OUT OF FLOW AND COSTS THE LIST NOTHING (3.93.0).
+
+   MEASURED, WHICH IS THE POINT OF THE MOVE. In the footer the row cost the
+   panel 26px: 6px and 8px of its own padding, 4px of margin and a 21px
+   control. The panel wants 528px with the real terms in it and the cap is
+   520px, so those 26px were the difference between a panel that scrolls and
+   one that does not, and they were being spent on one word.
+
+   TOP RIGHT, LEVEL WITH THE HEADING BANDS.  against the
+   panel, which is already positioned, so the columns start at the same y they
+   would with no button on the page. The Groups heading is padded on the right
+   by more than this control is wide, so the band runs under it rather than
+   into it.
+
+   IT SCROLLS WITH THE PANEL RATHER THAN PINNING. The panel is the scroll
+   container and this is inside it, so on a short window Clear all scrolls away
+   with the first heading. That is correct: it is a header control, not a
+   toolbar, and pinning it would put a floating button over the names. */
 .uc-calendar .uc-who-clear {
-    padding: 6px 10px; border: 0; border-radius: 6px;
+    position: absolute; top: 10px; right: 10px; z-index: 1;
+    padding: 4px 8px; border: 0; border-radius: 6px;
     background: none; color: var(--uc-teal-text); cursor: pointer;
-    font-family: var(--uc-font-heading); font-size: 13px;
+    font-family: var(--uc-font-heading); font-size: 12px; line-height: 1.4;
 }
 .uc-calendar .uc-who-clear:hover { text-decoration: underline; }
+.uc-calendar .uc-who-clear:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+/* The room Clear all sits in. 76px is the control at its widest plus the 10px
+   it is inset by, so a heading band that runs the full column width still ends
+   before the button starts. */
+.uc-who-col-grp > .uc-who-heading:first-child { padding-right: 76px; }
 /* APPLY IS THE NO-SCRIPT SUBMIT AND IS HIDDEN ONCE THE SCRIPT RUNS, because
    with script the choices apply as they are made and a button that does what
    already happened is a button people press twice. The script stamps the
@@ -1199,7 +1329,7 @@
 .uc-groups-list > summary:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
 .uc-groups-options { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding: 10px 12px;
     border: 1px solid var(--uc-border); border-radius: 10px; background: #fff; max-height: 260px; overflow-y: auto; }
-.uc-group-option { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0; cursor: pointer; }
+.uc-group-option { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin: 0; cursor: pointer; }
 
 /* ---------------------------------------------------------------------------
    THE BAR MEASURES ITS OWN COLUMN, AND UNTIL NOW IT MEASURED THE WINDOW.

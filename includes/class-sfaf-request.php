@@ -649,6 +649,11 @@ class SFAF_Request {
         }
         if ( ! $clean['venue'] ) {
             $clean['venue_other'] = $str( 'venue_other', 200 );
+            /* THE PLACE NAME (3.93.0). Text on the event, never a venue:
+             * see sfaf_event_location_name(). */
+            $clean['venue_name']  = $str( 'venue_name', 120 );
+        } else {
+            $clean['venue_name'] = '';
         }
 
         /* ---- When. ---- */
@@ -982,6 +987,11 @@ class SFAF_Request {
         }
 
         $event_id = self::create_event( $checked['clean'], $email, (int) $upload['id'] );
+        /* Same as the community form: the approver is the one who can act on
+         * it, so it is kept on the event rather than said to the sender. */
+        if ( $event_id && '' !== (string) $upload['warning'] ) {
+            update_post_meta( $event_id, SFAF_Submit::META_IMAGE_NOTE, (string) $upload['warning'] );
+        }
         if ( ! $event_id ) {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
@@ -1036,6 +1046,12 @@ class SFAF_Request {
         } elseif ( '' !== $c['venue_other'] ) {
             update_post_meta( $event_id, '_uc_location', $c['venue_other'] );
             update_post_meta( $event_id, self::META_VENUE, $c['venue_other'] );
+        }
+        /* WRITTEN OUTSIDE THE BRANCH ABOVE AND ONLY WHEN THERE IS ONE. A
+         * chosen venue zeroes it in clean(), so this cannot leave a typed
+         * name sitting in front of a venue's own name. */
+        if ( ! empty( $c['venue_name'] ) ) {
+            update_post_meta( $event_id, '_uc_location_name', $c['venue_name'] );
         }
 
         if ( ! empty( $c['categories'] ) ) {
@@ -1875,8 +1891,27 @@ class SFAF_Request {
                         <?php endforeach; ?>
                     </select>
                 </label>
+                <?php
+                /*
+                 * A NAME AND AN ADDRESS, NOT ONE BOX (3.93.0). This field took
+                 * a whole address as one line and had nowhere for what the
+                 * place is called, so an event at a restaurant or a partner
+                 * site read as a street number on the event page.
+                 *
+                 * The hint says what filling it in will NOT do, because that is
+                 * the thing somebody would otherwise assume: a name typed here
+                 * does not join the venue list. An approver can promote it on
+                 * the pending row when the place is going to be used again.
+                 */
+                ?>
                 <label class="uc-field">
-                    <span class="uc-field-label">If somewhere else, where</span>
+                    <span class="uc-field-label">If somewhere else, the place name</span>
+                    <input type="text" name="venue_name" maxlength="120" value="<?php echo esc_attr( $v( 'venue_name' ) ); ?>"
+                           placeholder="Strut" />
+                    <span class="uc-hint">Shown above the address on the event page. It does not add the place to the venue list.</span>
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">If somewhere else, the address</span>
                     <input type="text" name="venue_other" maxlength="200" value="<?php echo esc_attr( $v( 'venue_other' ) ); ?>"
                            placeholder="470 Castro St, San Francisco" />
                 </label>

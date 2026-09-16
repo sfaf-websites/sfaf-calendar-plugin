@@ -263,11 +263,11 @@ class SFAF_Uploads {
      *
      * @param string        $field   The $_FILES key.
      * @param callable|null $limiter Returns false when the caller is over its rate limit.
-     * @return array{ok:bool,error:string,type:int,mime:string,width:int,height:int}
+     * @return array{ok:bool,error:string,warning:string,type:int,mime:string,width:int,height:int}
      */
     public static function inspect( $field, $limiter = null ) {
         $no = function ( $error ) {
-            return array( 'ok' => false, 'error' => $error, 'type' => 0, 'mime' => '', 'width' => 0, 'height' => 0 );
+            return array( 'ok' => false, 'error' => $error, 'warning' => '', 'type' => 0, 'mime' => '', 'width' => 0, 'height' => 0 );
         };
 
         /* 1. Is there a file at all. An empty field is not an error. */
@@ -336,19 +336,33 @@ class SFAF_Uploads {
             return $no( 'That image is too many pixels. Save it at a smaller size and send it again.' );
         }
         /*
-         * AND THE FLOOR, WHICH NAMES THE NUMBER AND WHAT WAS SENT. "That image
-         * is too small" leaves somebody guessing at both, and the usual next
-         * move is to send the same file again. See MIN_WIDTH for why width and
-         * not height.
+         * AND THE FLOOR, WHICH WARNS AND DOES NOT REFUSE (3.93.0).
+         *
+         * IT USED TO REFUSE, and the reasoning was that the moment to say no
+         * is while the person who has the original is still at the keyboard.
+         * That reasoning was about the PICTURE and it ignored the SUBMISSION:
+         * somebody who only has a 768px copy could not send the event at all,
+         * and an event with a small picture is worth more than no event. The
+         * submission goes through, the approver sees the picture and the
+         * warning side by side on the pending row, and decides.
+         *
+         * THE WORDING IS UNCHANGED, because it was right: it names the number
+         * and what was sent, so the usual next move is not to send the same
+         * file again. Only where it lands has changed. See MIN_WIDTH for why
+         * width and not height.
+         *
+         * IT IS A SEPARATE KEY FROM 'error' ON PURPOSE. Both callers treat a
+         * non-empty 'error' as a refusal and throw the file away; a warning
+         * that shared that key would have been a refusal wearing a different
+         * name the day somebody read the code quickly.
          */
+        $warning = '';
         if ( $w < self::MIN_WIDTH ) {
-            return $no(
-                'That image is ' . (int) $w . ' pixels wide and needs to be at least '
-                . (int) self::MIN_WIDTH . '. Send the original rather than a resized copy if you have it.'
-            );
+            $warning = 'That image is ' . (int) $w . ' pixels wide and needs to be at least '
+                . (int) self::MIN_WIDTH . '. Send the original rather than a resized copy if you have it.';
         }
 
-        return array( 'ok' => true, 'error' => '', 'type' => $type, 'mime' => $mime, 'width' => $w, 'height' => $h );
+        return array( 'ok' => true, 'error' => '', 'warning' => $warning, 'type' => $type, 'mime' => $mime, 'width' => $w, 'height' => $h );
     }
 
     public static function store( $field, $limiter = null ) {
@@ -357,7 +371,7 @@ class SFAF_Uploads {
          * them inline. */
         $seen = self::inspect( $field, $limiter );
         if ( ! $seen['ok'] ) {
-            return array( 'id' => 0, 'error' => $seen['error'] );
+            return array( 'id' => 0, 'error' => $seen['error'], 'warning' => '' );
         }
         $file = $_FILES[ $field ];
         $type = (int) $seen['type'];
@@ -365,13 +379,13 @@ class SFAF_Uploads {
 
         $dir = self::dir();
         if ( is_wp_error( $dir ) ) {
-            return array( 'id' => 0, 'error' => 'Images cannot be saved just now. Send this without one and say so.' );
+            return array( 'id' => 0, 'error' => 'Images cannot be saved just now. Send this without one and say so.', 'warning' => '' );
         }
 
         /* 9. The submitted name is discarded entirely. */
         $ext = ltrim( (string) image_type_to_extension( $type, true ), '.' );
         if ( '' === $ext ) {
-            return array( 'id' => 0, 'error' => self::wrong_kind() );
+            return array( 'id' => 0, 'error' => self::wrong_kind(), 'warning' => '' );
         }
         $file['name'] = 'submission-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 6 ) ) . '.' . $ext;
 
@@ -392,7 +406,7 @@ class SFAF_Uploads {
         remove_filter( 'upload_dir', array( __CLASS__, 'upload_to_folder' ) );
 
         if ( ! is_array( $moved ) || ! empty( $moved['error'] ) || empty( $moved['file'] ) ) {
-            return array( 'id' => 0, 'error' => self::wrong_kind() );
+            return array( 'id' => 0, 'error' => self::wrong_kind(), 'warning' => '' );
         }
 
         /* 11. It must not be executable. */
@@ -404,7 +418,7 @@ class SFAF_Uploads {
         $real_file = realpath( $moved['file'] );
         if ( ! $real_dir || ! $real_file || 0 !== strpos( $real_file, $real_dir . DIRECTORY_SEPARATOR ) ) {
             @unlink( $moved['file'] );
-            return array( 'id' => 0, 'error' => self::wrong_kind() );
+            return array( 'id' => 0, 'error' => self::wrong_kind(), 'warning' => '' );
         }
 
         /* 13. Only now is it an attachment. */
@@ -424,7 +438,7 @@ class SFAF_Uploads {
 
         if ( is_wp_error( $attachment_id ) || ! $attachment_id ) {
             @unlink( $moved['file'] );
-            return array( 'id' => 0, 'error' => 'That image could not be saved. Send this without one and say so.' );
+            return array( 'id' => 0, 'error' => 'That image could not be saved. Send this without one and say so.', 'warning' => '' );
         }
         $attachment_id = (int) $attachment_id;
 
@@ -436,7 +450,10 @@ class SFAF_Uploads {
             wp_generate_attachment_metadata( $attachment_id, $moved['file'] )
         );
 
-        return array( 'id' => $attachment_id, 'error' => '' );
+        /* THE WARNING TRAVELS WITH THE SUCCESS (3.93.0). A picture under the
+         * floor is stored and the sentence comes back beside it, for the
+         * caller to keep on the event so the approver sees it. */
+        return array( 'id' => $attachment_id, 'error' => '', 'warning' => (string) $seen['warning'] );
     }
 
     /**

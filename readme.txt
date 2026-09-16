@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.92.0
+Stable tag: 3.93.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,60 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.93.0 =
+
+**A CHECK BOX SITS AT THE TOP OF ITS LABEL, AND THIS IS THE THIRD TIME.** Twenty-two rules across the three stylesheets set the alignment of a box against its label; **fourteen of them said centre or baseline** and now say top. That is the answer to why it came back: there was never one rule, and the comment above the 3.86.0 fix said "this is the one place it is decided" while three later rules were quietly overriding it and two stylesheets had never agreed with it at all.
+
+**THE FIX IS A DIFFERENT SHAPE, NOT A FOURTEENTH VALUE.** Both previous fixes set `align-items` on the ROW, which is a parent's suggestion that any later rule naming that row takes back. Each stylesheet now sets **`align-self` on the BOX**, which beats `align-items` on the container outright, and not on specificity: they are different properties on different elements, so there is no contest to lose. A row written tomorrow with `align-items: center` on it gets a centred row and a top-aligned box.
+
+**AND `.claude/checkbox-align-test.php` READS THE SOURCE RATHER THAN HOLDING A LIST.** It finds every element that actually wraps an `<input type="checkbox">` or `"radio"`, collects the classes those elements wear, and checks the stylesheets against that set: **thirty classes, twenty-four of which draw their own box.** A control added next month is covered the day it is written. The six that hide the input and draw a sibling instead, a segmented option, a day letter, a swatch, an email pill and the toggles, are **exempted by reading the stylesheet**, not by being listed.
+
+**NAMES NO LONGER BREAK MID-WORD IN THE DROPDOWN, AND THE COLUMN WAS NEVER THE PROBLEM.** Measured against the real terms on the site rather than invented ones: the longest single word in either list is **"Transformaciones", 123.6px in Merriweather at 14px, 145.6px with its count**, and the group sub-column gives a name **161.5px** at the embed width and 251px once the panel stacks. **It fits at every width, with the scrollbar out and with the scrollbar in.**
+
+**SO IT WAS BEING BROKEN FROM OUTSIDE.** `word-break`, `overflow-wrap`, `hyphens` and `line-break` are inherited, this panel renders inside somebody else's page, and a host that sets `break-word` or `break-all` on its body reaches every name in it. That is the same class of fault as a theme's rule reaching our `<img>`: not a cascade fight lost, a value never declared. **All three are declared on the rows now**, so nothing outside can force a break.
+
+**AND THE COLUMN NOW HAS A FLOOR SO IT CANNOT BECOME THE PROBLEM EITHER.** `columns: 190px 2` is a minimum width and a maximum count: two sub-columns wherever two will hold a name, one where they will not. 190px is the longest name plus its count plus the row's own padding, box and gap. It is still two sub-columns at the embed width, which has about 430px to give them.
+
+**EACH HEADING SITS ON A TINTED BAND NOW, BECAUSE COLOURED TEXT IS NOT SEPARATION.** 3.92.0 made "Organizers" and "Groups" teal and the report on it was right: a word in a different colour above a list still floats above the list. A filled band is a boundary, because the eye reads an area before it reads a hue. **The band is brand teal at 18% over white, pre-flattened to #D5F3F6, and 18% is a measured ceiling rather than a preference:**
+
+```
+10%  #E8F9FA   band 1.08:1 on white   heading 4.94:1
+18%  #D5F3F6   band 1.17:1 on white   heading 4.58:1
+20%  #D0F2F5   band 1.19:1 on white   heading 4.51:1
+24%  #C7EFF3   band 1.23:1 on white   heading 4.35:1  FAILS
+```
+
+The heading is 11px, so it is small text and needs 4.5:1. 20% clears that by 0.01, which is not a margin. **The rule under the heading goes**: a band and a hairline under the band are two boundaries for one section.
+
+**TICKED ITEMS NO LONGER FLOAT TO THE TOP, AND THE REORDER-ON-OPEN LOGIC GOES WITH THEM.** Selection-first earns its place in a long scrolling list, where the thing somebody just ticked would otherwise be out of sight. This panel shows all thirty-five options at once in two columns, so it bought nothing and cost somebody their place: the name they were reading moved. **Three implementations removed, not one**: the renderer's `$sorter`, `calendar.js`'s `reorder()` and `embed.js`'s, because a sort left in any one of them puts the behaviour back on that path alone, which is the split that has cost five faults. **The on-open timing existed only to stop the sort moving a row out from under the cursor**, so with no sort there is nothing for it to protect and a function that carefully reorders nothing is worse than no function. The order is alphabetical either way, and the organizer query now says so rather than resting on `get_terms()`'s default.
+
+**CLEAR ALL MOVED OUT OF THE PANEL'S FOOTER AND COSTS THE LIST NOTHING.** It is kept, because unticking six things by hand is worse than one press, and it sits in the panel's top right, out of flow, level with the heading bands. **It is written FIRST in the markup**, because absolute positioning moves a control visually and not in the tab order, and drawn at the top while written at the bottom would put it after thirty-five checkboxes for anybody on a keyboard. It says "Clear all" rather than "Clear" because at the panel's right edge it is level with the Groups heading and would otherwise read as clearing the groups.
+
+**WHAT MOVING IT DID TO THE HEIGHT, measured with the real terms at the embed width:**
+
+```
+3.92.0 shape, plain heading and a footer      582px
+the heading band alone                        578px    (the band SAVES 4px)
+Clear out of the footer alone                 536px    (46px)
+3.93.0, both                                  532px
+```
+
+**THE 520px CAP WAS MEASURED AGAINST INVENTED NAMES AND WAS TOO LOW.** The real terms are much longer: eleven of thirty-five take two lines and three take three, including "Opioid Overdose Prevention and Reversal Training". The cap is **580px**, so on a 900px-tall window the panel draws its whole 532px with no scroll region at all. `70vh` still binds below about 760px of viewport, which is what the overflow is for.
+
+**FIVE MINUTE TIME STEPS WERE NEVER LOST, FOR THE SECOND TIME OF ASKING.** `sfaf_time_step_attr()` has been on every time control since 3.72.0, **all twelve of them still carry it**, and `.claude/time-step-test.php` has checked every call site since it was written. Nothing was built and nothing was lost. **The one way a control does not get the attribute is the deliberate exception**: a control already holding a time off a five-minute boundary is left alone, because `step="300"` on a field containing 6:07 is a form that cannot be submitted until somebody works out that the time field is the reason. **On either request form the field starts empty, so it always gets the attribute**; only caladmin, editing an event whose stored time is off the boundary, can show the one-minute stepper.
+
+**BOTH REQUEST FORMS TAKE A PLACE NAME NOW.** An event at a restaurant or a partner site could not say what the place was called, so the page read "470 Castro St" where it should read "Strut, 470 Castro St". The staff form's single box has become a name and an address; the community form gains a **Place name** above the street. It is **text on the event and not a venue**, and both hints say so, because that is the thing somebody would otherwise assume.
+
+**THE NAME IS COMPOSED IN THE ONE READER, NOT AT THE FOUR WRITERS.** `sfaf_event_location()` puts it in front of the stored line, so all thirteen readers get it from one place, and a stored line that already contained the name could never be told apart from one where somebody typed it into the street box. `sfaf_event_location_short()` returns it too, so a queue row and an event page say the same thing. **On the event page the name is its own line above the address**, and the venue line moved above the address with it, so a named place and a real venue read identically.
+
+**AN APPROVER CAN TURN A TYPED PLACE INTO A REAL VENUE, AND NEITHER PUBLIC FORM CAN.** A submitter who could add to the venue list could put a wrong address on a place every later event would inherit it from. The control is on the pending row, offered only where it would do something, gated on the admin role, and **it reads nothing from the form but the event id**: the name and the address come off the event's own meta.
+
+**THE EVENT THEN POINTS AT THE VENUE AND KEEPS NO TEXT OF ITS OWN**, which is the whole reason to promote it. A venue resolves its address at display time, so correcting the venue corrects every event held there, including published ones. An event that kept a copy would be the one that did not get the correction. Choosing a venue in the caladmin editor clears the typed name for the same reason.
+
+**A SUBMITTED PICTURE UNDER 1200 PIXELS WARNS INSTEAD OF REFUSING.** It used to be refused, on the reasoning that the moment to say no is while the person who has the original is still at the keyboard. **That reasoning was about the picture and ignored the submission**: somebody with only a 768px copy could not send the event at all, and an event with a small picture is worth more than no event. The sentence is unchanged, because it was right, and it names the real width: "That image is 768 pixels wide and needs to be at least 1200. Send the original rather than a resized copy if you have it." It lands on the pending row beside the picture, in the amber already measured for that screen at 5.02:1, where somebody who can see the photo decides. **It is a separate key from the refusal on purpose**: both callers treat a non-empty `error` as a refusal and delete the file.
+
+**Thirty-four faults planted and every one caught, after five escaped a first draft.** Four escaped the same way and it is the second release running: `/function foo\(.*?bar\(/s` does not stop at the end of `foo()`, it runs on to the next `bar()` anywhere in the file, so four checks stayed green on plants that gutted exactly what they named. There are two slicing helpers now so there is no reason to write the unbounded form again. The fifth is older and simpler: an ordering check with no presence check beside it read a deletion as a pass, because `strpos()` returns false for a missing needle and PHP compares that as zero.
 
 = 3.92.0 =
 

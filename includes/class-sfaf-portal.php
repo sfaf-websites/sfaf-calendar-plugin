@@ -1439,6 +1439,58 @@ class SFAF_Portal {
                 $this->redirect( 'pending', array( 'msg' => 'image_used' ) );
                 break;
 
+            /*
+             * A TYPED PLACE BECOMES A REAL VENUE (3.93.0).
+             *
+             * WHY THIS IS HERE AND NOT ON EITHER PUBLIC FORM. Both forms now
+             * take a place name, and neither of them may add to the venue list:
+             * a submitter typing "Strut" with a wrong address would put that
+             * address on the venue every later event inherits it from. This is
+             * the approver's decision, taken while they are looking at the row,
+             * and it is gated on the admin role like every other action here.
+             *
+             * THE EVENT THEN POINTS AT THE VENUE AND KEEPS NO TEXT OF ITS OWN.
+             * That is the whole reason to promote it. A venue resolves its
+             * address at display time, so correcting the venue corrects every
+             * event held there, including ones already published. An event that
+             * kept a copy would be the one that did not get the correction, and
+             * "which of these two is the address" is exactly the question the
+             * venue list exists to stop anybody having to ask.
+             *
+             * NOTHING IS READ FROM THE FORM BUT THE EVENT ID, the same rule
+             * use_submitted_image follows: the name and the address come off
+             * the event's own meta, so this cannot be a way to write any name
+             * against any address.
+             */
+            case 'make_venue':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $event_id = intval( $_POST['event_id'] );
+                $post     = get_post( $event_id );
+                if ( ! $post || 'uc_event' !== $post->post_type ) {
+                    $this->redirect( 'pending', array( 'msg' => 'venue_failed' ) );
+                }
+
+                $vname = sfaf_event_location_name( $event_id );
+                if ( '' === $vname ) {
+                    $this->redirect( 'pending', array( 'msg' => 'venue_failed' ) );
+                }
+
+                $vparts = sfaf_event_location_parts( $event_id );
+                $made   = SFAF_Venues::save( 0, $vname, $vparts );
+                if ( is_wp_error( $made ) || ! $made ) {
+                    $this->redirect( 'pending', array( 'msg' => 'venue_failed' ) );
+                }
+
+                SFAF_Venues::set_for_event( $event_id, (int) $made );
+                delete_post_meta( $event_id, '_uc_location' );
+                delete_post_meta( $event_id, '_uc_location_name' );
+                foreach ( sfaf_location_part_keys() as $lkey ) {
+                    delete_post_meta( $event_id, $lkey );
+                }
+
+                $this->redirect( 'pending', array( 'msg' => 'venue_made' ) );
+                break;
+
             case 'reject_event':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
@@ -2109,6 +2161,10 @@ class SFAF_Portal {
             if ( 'venue' === $mode && $venue && SFAF_Venues::exists( $venue ) ) {
                 SFAF_Venues::set_for_event( $event_id, $venue );
                 delete_post_meta( $event_id, '_uc_location' );
+                /* AND THE TYPED NAME GOES WITH THE TYPED ADDRESS. A venue
+                 * carries its own name, so leaving this behind would put
+                 * a stale one in front of it the moment anything read it. */
+                delete_post_meta( $event_id, '_uc_location_name' );
                 foreach ( sfaf_location_part_keys() as $key ) {
                     delete_post_meta( $event_id, $key );
                 }
@@ -2135,6 +2191,15 @@ class SFAF_Portal {
                         update_post_meta( $event_id, $key, $posted[ $part ] );
                     } else {
                         delete_post_meta( $event_id, $key );
+                    }
+                }
+
+                if ( isset( $_POST['location_name'] ) ) {
+                    $name = trim( sanitize_text_field( wp_unslash( $_POST['location_name'] ) ) );
+                    if ( '' !== $name ) {
+                        update_post_meta( $event_id, '_uc_location_name', $name );
+                    } else {
+                        delete_post_meta( $event_id, '_uc_location_name' );
                     }
                 }
 
@@ -3428,6 +3493,8 @@ class SFAF_Portal {
              */
             'image_used'     => 'That is the event\'s picture now. Cards crop to 16:9, so check how a tall or square photo looks before publishing.',
             'image_failed'   => 'That picture could not be used. It is no longer on the event, or it is not an image.',
+            'venue_made'     => 'That place is in the venue list now, and this event points at it. Correcting the address on the Venues screen will correct every event held there.',
+            'venue_failed'   => 'That place could not be added. The event has no place name on it, or it already points at a venue.',
             'user_saved'     => 'User permissions updated.',
             'user_added'     => 'User added to the calendar system.',
             'user_removed'   => 'User removed from the calendar system, and taken out of any teams they were in. They organized no events, so nothing needed reassigning.',
@@ -12905,6 +12972,25 @@ class SFAF_Portal {
                 $loc_parts = sfaf_event_location_parts( $event_id );
                 ?>
                 <div class="uc-venue-grid uc-location-grid">
+                    <?php
+                    /*
+                     * THE PLACE NAME (3.93.0), FIRST AND FULL WIDTH. It is the
+                     * first line of the answer on the event page, so it is the
+                     * first box here. Both public forms now collect it and this
+                     * is where a manager corrects what a submitter typed.
+                     *
+                     * The hint names what it is NOT, because the control right
+                     * above this field is the venue picker and the difference
+                     * between the two is the whole point: a venue resolves its
+                     * address at display, so correcting it corrects every event
+                     * held there. This is one event's own text.
+                     */
+                    ?>
+                    <label class="uc-field uc-venue-street">
+                        <span class="uc-field-label">Place name</span>
+                        <input type="text" name="location_name" value="<?php echo esc_attr( sfaf_event_location_name( $event_id ) ); ?>" placeholder="Strut" maxlength="120" />
+                        <span class="uc-hint">Shown above the address. This event only; it does not become a venue.</span>
+                    </label>
                     <label class="uc-field uc-venue-street">
                         <span class="uc-field-label">Street</span>
                         <input type="text" name="location_street" value="<?php echo esc_attr( $loc_parts['street'] ); ?>" placeholder="Dolores Park, near the tennis courts" />
@@ -15734,6 +15820,22 @@ class SFAF_Portal {
                          */
                         $is_thumb = ( $shot_id && (int) get_post_thumbnail_id( $id ) === (int) $shot_id );
                         ?>
+                        <?php
+                        /*
+                         * WHAT IS WRONG WITH THE PICTURE, BESIDE THE PICTURE
+                         * (3.93.0). A submitted image under MIN_WIDTH used to be
+                         * refused, which refused the whole submission; it is
+                         * taken now and the sentence lands here, where somebody
+                         * can see the photo and the warning at once and decide.
+                         * Amber and a mark rather than red, the same as the
+                         * missing-fields note on this row: it is a step in the
+                         * job, not a fault.
+                         */
+                        $shot_note = (string) get_post_meta( $id, SFAF_Submit::META_IMAGE_NOTE, true );
+                        ?>
+                        <?php if ( '' !== $shot_note ) : ?>
+                            <p class="uc-submitted-note uc-submitted-warn"><?php echo esc_html( $shot_note ); ?></p>
+                        <?php endif; ?>
                         <?php if ( $is_thumb ) : ?>
                             <p class="uc-submitted-note">This is the event's picture.</p>
                         <?php else : ?>
@@ -15801,6 +15903,51 @@ class SFAF_Portal {
                             echo esc_html( 'Received ' . sfaf_ap_date( $this->pending_received( $id ), 'short_year' ) );
                         ?></span>
                     </p>
+
+                    <?php
+                    /*
+                     * TURN A TYPED PLACE INTO A REAL VENUE (3.93.0).
+                     *
+                     * OFFERED ONLY WHERE IT WOULD DO SOMETHING: the event has a
+                     * typed place name and does not already point at a venue.
+                     * A control that is there when it would change nothing is
+                     * one somebody presses to find out, which is the same rule
+                     * "Use this image" follows a few lines up.
+                     *
+                     * THE APPROVER ONLY, AND ONLY HERE. Neither public form
+                     * offers it: a submitter who could add to the venue list
+                     * could put a wrong address on a place every later event
+                     * would inherit it from. The case is admin-gated as well,
+                     * so the button not being drawn is not the protection.
+                     *
+                     * THE NAME IS IN THE LABEL because "Add as a venue" does not
+                     * say what is about to be added, and this writes a row that
+                     * every future event can pick from.
+                     */
+                    /* THE VENUE LOOKUP IS ONLY REACHED WHEN IT CAN MATTER. An
+                     * event with no typed place name cannot be promoted whatever
+                     * its venue is, so asking costs a term query on every row of
+                     * the queue for an answer nothing reads. */
+                    $typed_place = sfaf_event_location_name( $id );
+                    $has_venue   = ( '' !== $typed_place ) && (bool) SFAF_Venues::id_for_event( $id );
+                    ?>
+                    <?php
+                    /* THE CURRENT USER, ASKED HERE. pending_row() is not given
+                     * one and widening its signature to carry a thing only this
+                     * control wants is a change every caller pays for. The
+                     * handler gates on the same rule, so this is which control
+                     * to draw and not the protection. */
+                    $viewer = wp_get_current_user();
+                    ?>
+                    <?php if ( '' !== $typed_place && ! $has_venue && $viewer && $this->is_admin_role( $viewer ) ) : ?>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form">
+                            <input type="hidden" name="uc_action" value="make_venue" />
+                            <input type="hidden" name="event_id" value="<?php echo (int) $id; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_make_venue', 'uc_nonce' ); ?>
+                            <button type="submit" class="uc-btn uc-btn-sm">Add <?php echo esc_html( $typed_place ); ?> to venues</button>
+                            <span class="uc-hint">The event will point at the venue, so a corrected address reaches every event held there.</span>
+                        </form>
+                    <?php endif; ?>
 
                     <?php if ( 'import' === $shape && $prov['source_url'] ) : ?>
                         <p class="uc-queue-links">

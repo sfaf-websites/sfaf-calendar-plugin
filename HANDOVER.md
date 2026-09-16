@@ -6,13 +6,64 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-16, at 3.92.0, released.
+**Last updated:** 2026-09-16, at 3.93.0, released.
 
 ---
 
 ## What shipped last
 
-**3.92.0 IS RELEASED** and is what sites are being offered.
+**3.93.0 IS RELEASED** and is what sites are being offered.
+
+> **CHECK BOXES ARE TOP ALIGNED AND THIS WAS THE THIRD REPORT.** Twenty-two
+> rules set the alignment of a box against a label; fourteen said centre or
+> baseline. **The fix is a different SHAPE, not a fourteenth value**: each
+> stylesheet sets `align-self` on the BOX, which beats `align-items` on the row
+> outright because they are different properties on different elements. A new
+> centred row cannot take it back. `.claude/checkbox-align-test.php` reads the
+> box-bearing classes out of the source rather than holding a list, so a control
+> written next month is covered without anybody knowing the file exists.
+
+> **THE MID-WORD BREAK IS NOT OURS AND THAT IS THE MEASURED ANSWER.** Against
+> the REAL terms, "Transformaciones" is 123.6px and the sub-column gives a name
+> 161.5px at the embed width. It fits everywhere. `word-break`, `overflow-wrap`
+> and `hyphens` are inherited and we never declared them, so sfaf.org's own
+> stylesheet was setting them. Declared now. **If Mark still sees a broken word,
+> that is important**, because it means the cause is not what was measured;
+> `TESTING.md` 1.137 asks for the name and the width.
+
+> **THE REAL TERM NAMES ARE MUCH LONGER THAN THE ONES 3.92.0 WAS MEASURED
+> AGAINST**, which is why its 520px cap was wrong. Eleven of thirty-five take
+> two lines and three take three. The panel wants 532px and the cap is 580px.
+> **Read the real ones off `resources.sfaf.org/wp-json/wp/v2/uc_organizer` and
+> `/uc_series`** rather than inventing any again.
+
+> **CLEAR ALL MOVED OUT OF THE FOOTER AND SAVED 46px**, the heading band saved
+> another 4, and ticked items no longer float to the top. **Three reorder
+> implementations were removed, not one**: the renderer's `$sorter` and both
+> scripts, because a sort left on one path is the split that has cost five
+> faults.
+
+> **FIVE MINUTE TIME STEPS: NOTHING WAS BUILT AND NOTHING WAS LOST, AGAIN.**
+> All twelve controls have carried `sfaf_time_step_attr()` since 3.72.0 and the
+> committed test has been green since it was written. The only suppression is
+> the deliberate one: a control already holding an off-boundary time gets no
+> step, because `step="300"` on a field holding 6:07 makes the form
+> unsubmittable. **On a blank request form it cannot fire.** `TESTING.md` 1.139
+> is about finding out what Mark is actually looking at, browser included.
+
+> **BOTH FORMS TAKE A PLACE NAME NOW, AND NEITHER MAY MAKE A VENUE.** The name
+> is text on the event, composed into the address by the one reader rather than
+> at the four writers. **An approver promotes it from the pending row**, and the
+> event then points at the venue and keeps no text of its own, which is the
+> whole reason to promote: a corrected venue address reaches every event held
+> there.
+
+> **A SUBMITTED PICTURE UNDER 1200px IS TAKEN AND FLAGGED** rather than refused.
+> The old rule refused the whole submission along with the picture. The warning
+> lands on the pending row beside the photo.
+
+**3.92.0** put counts in the picker and is unchanged by this, except that its
+520px cap was measured against invented names and is now 580px.
 
 > **THE FILTER DROPDOWN SHOWS A COUNT BESIDE EVERY NAME, AND IT COSTS TWO
 > QUERIES.** One id query and one that resolves both taxonomies over the whole
@@ -285,6 +336,7 @@ here that is still true in six months belongs in one of those instead.
 
 | | |
 |---|---|
+| **3.93.0** | **Check boxes are top aligned everywhere, and the fix is a different shape from the last two.** Twenty-two rules set a box against its label and fourteen said centre or baseline; each stylesheet now aligns the BOX with `align-self`, which a later `align-items` on the row cannot take back, and `.claude/checkbox-align-test.php` reads the box-bearing classes out of the source rather than holding a list. **The mid-word break in the dropdown is inherited from the host page**: measured against the real terms, the sub-column fits the longest word at every width, so `word-break`, `overflow-wrap` and `hyphens` are declared on the rows now, with a 190px floor under the sub-column so arithmetic cannot become the cause either. **The headings sit on a tinted band** at the measured 18% ceiling, because coloured text was reported as not being separation. **Ticked items no longer float to the top**, and all three reorder implementations went with the on-open timing that existed only to protect them. **Clear all moved out of the footer**, saving 46px against a cap that had been measured on invented names and is 580px now. **Both request forms take a place name**, composed into the address by the one reader, with an approver-only promotion to a real venue that leaves the event pointing at it. **A submitted picture under 1200px warns instead of refusing.** And the five minute time step was never built or lost: twelve of twelve since 3.72.0. |
 | **3.92.0** | **The filter dropdown carries a count beside every name, in two queries rather than thirty-four.** One id query plus one that resolves both taxonomies across the whole id set; it also replaced the fifty the narrowing map was already spending. Upcoming and published only, from the list own args, narrowed by category, search and block scope; an organizer count ignores the organizer ticks and a group count respects them. A zero is hidden, except a ticked row and except a group whose events name no organizer, which is the 3.85.0 narrowing rule a plain zero rule would have reversed. **The headings take palette teal and nothing else does.** **Rows are 31px with the whole label as the target**, 220x31 and 202x31 against WCAG 24x24. **The scrollbar cannot go and no longer fires**: the panel wants 460px, the cap was 460px so it clipped and the scrollbar then wrapped three more names; the cap is 520px and 70vh still binds on a short window. |
 | **3.91.0** | **The list view is a table of rows**: thumbnail, title, date and time, venue, replacing the card rather than joining it, with no excerpt and no footer button. A grid of divs rather than a `<table>`, so infinite scroll and both scripts append targets were untouched and a phone gets two columns instead of a sideways scroll. Measured 900x90 at 1100px, 700x111 at 700px, 380x158 on a phone. **The month tile shows its whole title**, reversing 3.89.0: a column of ellipses tells nobody what anything is, and the time moved under the title so it stops taking width the title needs. **And the filter dropdown got separation rather than more lightening**, which measuring first is what established: the headings had been flush against the first row since 3.85.0, because the paragraph reset beat them on specificity. The weights were not touched. |
 | **3.90.0** | **The Cycle to Zero picture was pinned to an attachment that no longer existed.** Replacing it left the old id in the term meta, and a stale id is truthy, so it won the chain and the tag fallback never ran: every surface went dark at once while a correctly tagged picture sat unused. An order problem, not the empty state the previous investigation reported. A stored id that no longer resolves is treated as absent now, falling through rather than being cleared, and the series screen asks the same chain the calendar asks. **The picker was a dead end built from three correct decisions**: the series screen narrowed to its own series, the empty grid explained nothing, and the way out has been rendered `hidden` since 3.74.0, the sixth built-and-unreachable control here. All three fixed, and choosing a series picture now tags it. **And a caladmin upload is filed into the media library's Calendar folder too**, by discovering that taxonomy rather than naming it, because WP Media Folder is commercial and could not be inspected from the build machine. No files were moved. |

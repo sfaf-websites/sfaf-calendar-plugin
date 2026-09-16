@@ -259,7 +259,7 @@ body.uc-portal {
    hairline as its boundary until 3.64.0, which is why the sign-in box read
    fainter than every field behind it. */
 .uc-login-form input[type=text], .uc-login-form input[type=password] { width: 100%; }
-.uc-login-remember { flex-direction: row !important; align-items: center; gap: 8px; font-weight: 500 !important; }
+.uc-login-remember { flex-direction: row !important; align-items: flex-start; gap: 8px; font-weight: 500 !important; }
 .uc-login-error { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
 .uc-portal-brandmark { display: inline-block; background: var(--sfaf-yellow); color: #000; font-weight: 800; padding: 8px 12px; border-radius: 8px; letter-spacing: 1px; }
 
@@ -1119,6 +1119,42 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    very top of the text block: a 16px box in a 20px line box wants (20-16)/2, and
    flush-top would sit it slightly high against the cap height. Measured, not
    guessed, at the 14px body size this control uses. */
+/* ===========================================================================
+   A BOX SITS AT THE TOP OF ITS LABEL. THIS IS THE THIRD TIME (3.93.0).
+
+   IT HAS BEEN FIXED TWICE AND CAME BACK TWICE, AND THE REASON IS THE SHAPE OF
+   THE FIX RATHER THAN THE VALUE IN IT. Both previous fixes set `align-items`
+   on the ROW. `align-items` is a parent's suggestion: any later rule naming
+   that row, at any specificity, silently takes it back, and three of them did.
+   The comment above .uc-check even says "this is the one place it is decided",
+   which was true when it was written and was not true a release later.
+
+   SO THIS RULE NAMES THE BOX, NOT THE ROW. `align-self` on a flex item BEATS
+   `align-items` on its container outright, and not on specificity: they are
+   different properties on different elements, so there is no contest to lose.
+   A new row written tomorrow with `align-items: center` on it gets a centred
+   row and a top-aligned box, which is the outcome this rule exists to
+   guarantee.
+
+   THE 2px IS THE FIRST LINE, NOT THE TOP EDGE. A 13px box in a 20px line box
+   wants about (20-13)/2 to sit on the text rather than above it, and flush-top
+   reads slightly high against the cap height. Measured at the 14px body size
+   these controls use, and it is the same 2px .uc-check has carried since
+   3.86.0.
+
+   IT DOES NOTHING WHERE THERE IS NOTHING TO ALIGN. `align-self` is inert
+   unless the box is a flex or grid item, so a box inside a paragraph, a table
+   cell or an absolutely positioned overlay is untouched by it.
+
+   `.claude/checkbox-align-test.php` reads the box-bearing classes out of the
+   SOURCE rather than from a list kept here, so a control added next month is
+   covered without anybody remembering this. That is the part that makes it a
+   fourth time rather than a fourth fix.
+   ======================================================================== */
+.uc-portal input[type="checkbox"], .uc-portal input[type="radio"] {
+    align-self: flex-start; margin-top: 2px;
+}
+
 .uc-check { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 400; margin-bottom: 8px; }
 /* The box holds its size and the label takes the rest, so a two-word label
    never wraps because the control grew. The gap owns the spacing. */
@@ -1708,7 +1744,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    is given. flex: 0 0 auto here resolves its basis from `width`, so it could
    not undo that by itself. The width reset lives with the rule that caused it,
    where the next person to read `.uc-field input` will see it. */
-.uc-radio-row { display: flex; align-items: center; gap: 8px; margin: 0 0 6px;
+.uc-radio-row { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 6px;
     font-size: 14px; font-weight: 400; cursor: pointer; text-align: left; }
 .uc-radio-row input[type="radio"] { flex: 0 0 auto; width: auto; margin: 0; }
 .uc-radio-row span { flex: 1 1 auto; }
@@ -2142,7 +2178,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 }
 .uc-publish-row { margin: 0; padding: 5px 2px; font-size: 13px; line-height: 1.4; }
 .uc-publish-row + .uc-publish-row { border-top: 1px solid var(--p-border); }
-.uc-publish-row .uc-check { margin: 0; align-items: baseline; gap: 8px; }
+.uc-publish-row .uc-check { margin: 0; align-items: flex-start; gap: 8px; }
 
 /* The date column is fixed so the titles line up down the list and the eye can
    run the dates on their own. tabular-nums keeps the digits from shifting. */
@@ -2151,7 +2187,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-publish-title { flex: 1 1 auto; }
 
 .uc-publish-row.is-blocked {
-    display: flex; align-items: baseline; gap: 8px;
+    display: flex; align-items: flex-start; gap: 8px;
     /* The width of a checkbox plus its gap, so this row's date starts where a
        ticked row's date does. */
     padding-left: 26px;
@@ -3212,7 +3248,7 @@ body.uc-modal-open { overflow: hidden; }
    to be read, and pressing Cancel or reloading brings them back untouched.
    Same pattern, and the same reasoning, as the "anyone else" address pills.
    ------------------------------------------------------------------------- */
-.uc-member-chip { position: relative; display: flex; align-items: baseline; gap: 9px;
+.uc-member-chip { position: relative; display: flex; align-items: flex-start; gap: 9px;
     margin: 0; padding: 6px 8px; border-radius: 6px; font-size: 13px; font-weight: 400;
     cursor: pointer; }
 .uc-member-chip:hover { background: var(--p-bg); }
@@ -3585,6 +3621,13 @@ body.uc-modal-open { overflow: hidden; }
 /* Already the picture. A statement, not a control, so it takes the muted
    helper step rather than anything that reads as pressable. */
 .uc-submitted-note { margin: 0; font-size: 12px; font-weight: 400; line-height: 1.25; text-align: center; color: var(--p-muted, #6B6764); }
+/* THE PICTURE WARNING (3.93.0). #b45309 is the amber already measured for this
+   screen at 5.02:1, used on the needs-attention flag and the strong source
+   link. Amber and not red, the same reasoning as the missing-fields mark on
+   this row: a small picture is a step in the job, not a fault, and the
+   submission was taken. Left-aligned because it is a sentence rather than a
+   caption and centring makes a wrapped sentence hard to read. */
+.uc-submitted-warn { color: #b45309; text-align: left; margin-bottom: 6px; }
 
 /* The approval prompt lives in the actions column when JavaScript is off, and
    that column sizes to its content. Unbounded, its two sentences would make
@@ -3653,7 +3696,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-access-organizer { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; }
 .uc-access-organizer .uc-muted { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.5; }
 .uc-access-teams { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
-.uc-access-teams .uc-check { align-items: center; }
+.uc-access-teams .uc-check { align-items: flex-start; }
 .uc-access-teams .uc-muted { margin-left: 6px; font-size: 12px; }
 /* The notify tick is a different question from the boxes above it, so a rule
    separates them rather than a gap somebody has to interpret. */

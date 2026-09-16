@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 159 items.** Quick 133, needs real conditions 23, blocked on other
+**Outstanding: 166 items.** Quick 140, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1938,13 +1938,127 @@ cases are deliberately held out of that and both need a person to confirm.**
   back out of the gutters was measured against invented names rather than the
   real ones.
 
-### 1.135 The dropdown headings are teal and nothing else is (3.92.0)
+### 1.135 The dropdown headings, and nothing else, carry colour (3.92.0, 3.93.0)
 
-- **"Organizers" and "Groups" should be the brand teal**, with a matching line
-  under each. **No name, count or tick should have taken that colour.**
+**REWRITTEN RATHER THAN LEFT, because what it described lasted one release. It
+asked about teal heading TEXT with a rule under it, which 3.93.0 replaced with a
+tinted band after that was reported as not being separation. The half that has
+not changed is the half worth keeping: whatever the mark is, only the headings
+get it.**
+
+- **No name, count or tick should have taken any colour.** Thirty-five teal
+  names would be a field of teal with no separation in it.
 - **Look at it beside the rest of the filter bar.** If the two headings now
   compete with the calendar itself, say so; the answer is the amount rather than
   the hue.
+- The band itself is 1.138.
+
+### 1.136 Check boxes are top aligned, on every screen (3.93.0)
+
+**Fourteen rules changed and the fix is a different shape from the last two, so
+this needs looking at rather than trusting.** The box should sit level with the
+FIRST LINE of its label, not the middle of a two-line one.
+
+- **caladmin, the event editor's Classification card.** Categories and
+  organizers, where several names wrap. This is the one that was reported.
+- **caladmin, the Access card**, the Publish list, the Prefill options and the
+  Approve question. All four had their own rule and two of them disagreed with
+  the base.
+- **WordPress admin**, the event's Display toggles and the Pardot campaign list.
+- **The public calendar's filter dropdown**, and the RSVP opt-in on an event.
+- **If any box now looks too HIGH**, say so. The 2px offset puts it on the first
+  line rather than at the very top of the text block, and that number is the one
+  thing here that is a judgement.
+
+### 1.137 No name in the dropdown breaks mid-word (3.93.0)
+
+**"Transformaciones" was rendering as "Transformacione" then "s". It could not
+be reproduced in isolation: measured against the real terms the column is wide
+enough at every width, so the break was being forced by a property inherited
+from sfaf.org's own stylesheet.**
+
+- **Open the dropdown on sfaf.org and find Transformaciones.** It must be on one
+  line. Look at the other long ones too: Health Education & Legal Assistance
+  Group, Opioid Overdose Prevention and Reversal Training, The Elizabeth Taylor
+  50-Plus Network.
+- **Wrapping at a SPACE is fine.** Those three take two or three lines and that
+  is expected. What must not happen is a word cut in half.
+- **If it still breaks**, that is worth knowing immediately, because it means the
+  cause is not what was measured. Say which name and at what window width.
+- **Check it on a phone as well**, where the panel narrows to one column.
+
+### 1.138 The dropdown after the band, the reorder and Clear (3.93.0)
+
+- **Two tinted bands, one per section.** "Organizers" and "Groups" sit on a light
+  teal band now rather than being teal words. If the bands read as too strong or
+  too faint, say which, because 18% is the top of the range the heading text can
+  stay legible on.
+- **Tick something and watch where it goes. It must not move.** Ticked items used
+  to jump to the top of their column; they now stay in alphabetical order.
+- **Clear all is in the top right of the panel.** Tick several things, press it,
+  and everything should clear at once.
+- **Tab to it with the keyboard.** It should come BEFORE the checkboxes, not
+  after all thirty-five of them.
+- **Look for a scrollbar inside the panel on a normal desktop window.** There
+  should not be one: the content measures 532px and the cap is 580px. On a short
+  window it will scroll, which is what the overflow is for.
+
+### 1.139 Five minute steps, the fourth report (3.93.0)
+
+**Nothing was built for this and nothing was lost. The attribute has been on all
+twelve time controls since 3.72.0 and a committed test checks every one. So this
+item is about finding out what Mark is actually seeing.**
+
+- **Open a request form, staff or community, and click the time field.** The
+  field starts empty on a new form, so it always carries `step="300"` there. If
+  the picker still offers every minute, **the attribute is not the mechanism in
+  that browser** and that is the thing to report: say which browser and version.
+- **Then open an EXISTING event in caladmin and check its start time.** If the
+  stored time is not a multiple of five, that control deliberately has no step,
+  because `step="300"` on a field holding 6:07 makes the form unsubmittable.
+  **Change it to a round time, save, reopen.** The stepper should be there.
+- **Confirm the install is current** before either: `SFAF_VERSION` in the plugin
+  header against what the site reports.
+
+### 1.140 A place name on both request forms (3.93.0)
+
+- **Send a staff request with a place name and an address**, "Strut" and "470
+  Castro St, San Francisco". The event page should read "Strut, 470 Castro St",
+  with the name on its own line above the address.
+- **Do the same on the community form**, where the name sits above Street
+  address.
+- **Leave the name blank** on one and confirm the page reads exactly as it did
+  before, with no stray comma.
+- **The pending queue row should show the NAME**, not the street number.
+
+### 1.141 Promoting a typed place to a venue (3.93.0)
+
+**This writes a row every future event can pick from, so it wants one careful
+run before it is used in anger.**
+
+- **On the pending row for an event with a typed place name**, there should be a
+  button reading "Add <name> to venues". Press it.
+- **Check the Venues screen**: the venue should be there with the address the
+  submitter typed, split into its parts.
+- **Check the event**: it should now POINT at that venue, with no address text of
+  its own. Open it in caladmin and confirm the venue picker shows the venue and
+  the address boxes are empty.
+- **Now correct the venue's address on the Venues screen** and reload the event
+  page. The correction must reach it. That is the whole reason to promote.
+- **The button must not appear on either public form.** Check both.
+- **Send a second event at the same place and promote it too.** It should reuse
+  the existing venue rather than making a second one with the same name.
+
+### 1.142 A small picture is taken and flagged (3.93.0)
+
+- **Send a community submission with a picture under 1200 pixels wide.** The
+  submission must go through. It used to be refused.
+- **The pending row should show the picture and an amber sentence beside it**
+  naming the real width: "That image is 768 pixels wide and needs to be at least
+  1200."
+- **"Use this image" should still work** on it. The warning is information, not a
+  block.
+- **Send one over 1200 as well** and confirm there is no warning on that row.
 
 ---
 ## 2. Needs real conditions

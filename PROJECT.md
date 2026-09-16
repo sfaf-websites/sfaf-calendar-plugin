@@ -1225,6 +1225,74 @@ and looks for a term literally named for the folder.
 independent fact for a library this plugin does not own; it does not become the
 rule. Nothing about display depends on it.
 
+### An event can name its place without naming a venue (3.93.0)
+
+An event's location is one of three things, asked in this order by
+`sfaf_event_location()`, which is the single reader every surface goes through:
+
+1. **Online**, which is answered first and answered there.
+2. **A venue**, a `uc_venue` term that resolves its own address at display time.
+3. **The event's own text**, four address parts composed into `_uc_location`,
+   and from 3.93.0 a **place name** in `_uc_location_name` in front of it.
+
+**THE NAME IS COMPOSED IN THE READER, NOT AT THE WRITERS.** Four things write
+`_uc_location`: both public forms, the caladmin editor and the importer.
+Composing the name into the stored line at each of them would be four places to
+get right, four places for a later edit to leave it out of, and a stored line
+that already contained the name could never be told apart from one where
+somebody typed it into the street box. One line in `sfaf_event_location()`
+serves all thirteen readers, and the name stays a separate fact that the venue
+promotion can move.
+
+> The comma is the same separator `SFAF_Venues::display()` puts between a
+> venue's name and its address, so "Strut, 470 Castro St" reads identically
+> whichever of the two paths produced it.
+
+**BOTH PUBLIC FORMS ASK FOR IT AND NEITHER MAY CREATE A VENUE.** A submitter who
+could add to the venue list could put a wrong address on a place that every
+later event would inherit it from, because pointing at a venue is exactly what
+stops an event keeping its own copy. That is asserted in both directions:
+neither form calls `SFAF_Venues::save()`, and the promotion is admin-gated.
+
+**PROMOTION IS AN APPROVER'S DECISION, TAKEN ON THE PENDING ROW.** The
+`make_venue` action creates or reuses the term from the event's OWN name and
+address parts, reading nothing from the form but the event id, and then:
+
+- the event points at the venue, and
+- **the event's own `_uc_location`, `_uc_location_name` and four part keys are
+  deleted.**
+
+That second half is the whole reason to promote it. A venue resolves its address
+at display, so correcting the venue corrects every event held there, including
+published ones; an event that kept a copy would be the one that did not get the
+correction. Choosing a venue in the caladmin editor clears the typed name for
+the same reason.
+
+**On the event page the name is its own line ABOVE the address**, and the venue
+line moved above the address with it, so a named place and a real venue read
+identically.
+
+### A submitted picture that is too small is a warning, not a refusal (3.93.0)
+
+`SFAF_Uploads::MIN_WIDTH` is 1200 and it used to refuse the upload, which
+refused the whole submission with it. **The reasoning was about the picture and
+ignored the submission**: somebody with only a 768px copy could not send the
+event at all, and an event with a small picture is worth more than no event.
+
+`inspect()` returns a `warning` beside `ok`, `store()` carries it back with the
+stored attachment, both forms keep it on the event under
+`SFAF_Submit::META_IMAGE_NOTE`, and the pending row shows it beside the picture.
+
+> **The warning is a separate key from `error` on purpose.** Both callers treat
+> a non-empty `error` as a refusal and delete the file, so a warning sharing
+> that key would have been a refusal wearing a different name the day somebody
+> read the code quickly.
+
+Everything above `MIN_WIDTH` in that file still refuses: the type checks, the
+byte ceiling and `MAX_PIXELS` are about what could hurt the server. This one was
+always the odd one out, the only constant there whose number is a design
+decision rather than a resource one.
+
 ### Every name in the picker carries its count (3.92.0)
 
 **The whole panel is two queries.** One `get_posts()` for the ids that match
@@ -1260,6 +1328,13 @@ them can say 12 and then show nothing.
   what the client-side narrowing reads to decide what to hide in the 350ms
   before the debounced redraw, and narrowing it here would make that decision
   circular.
+
+**THE ORDER IS ALPHABETICAL AND NOTHING MOVES IT (3.93.0).** A $sorter put
+ticked terms at the top of each list and matching reorder() functions in both
+scripts redid it on open. All three are gone: every option is visible at once in
+two columns, so nothing was out of sight to bring back, and the sort moved the
+name somebody was reading. The on-open timing existed only to stop the sort
+moving a row under the cursor, so it went with it.
 
 **A ZERO IS HIDDEN, NOT SHOWN.** The panel already hid a group with nothing from
 the chosen organizers, so a name with nothing behind it not being there is the
