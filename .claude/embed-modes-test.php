@@ -651,20 +651,36 @@ check(
  * is on the hover preview via data-uc-pv-title on the same link, on the event
  * page, and in the accessibility tree, which reads the text not the box.
  */
+/*
+ * REVERSED AGAIN IN 3.91.0, AND THIS TIME IT IS THE ANSWER.
+ *
+ * 3.89.0 cut the title to one line with an ellipsis and these asserted it.
+ * That was wrong about the thing that matters: a column of ellipses tells
+ * nobody what anything is, hover does not help somebody scanning, and hover
+ * does not exist on a phone. The title wraps to as many lines as it needs and
+ * the height is the accepted cost.
+ *
+ * SO THE CLAIM IS NOW THE OPPOSITE, and it is the stronger one: nothing in the
+ * tile may cut the title, in any context. The three checks below are what a
+ * later "tidy up the busy days" change would have to argue with.
+ */
 check(
-    (bool) preg_match( '/\.uc-day-event-title \{[^}]*white-space:\s*nowrap/s', $css ),
-    'the day event title wraps again, so one long title makes the row three lines tall'
+    ! preg_match( '/\.uc-day-event-title \{[^}]*white-space:\s*nowrap/s', $css ),
+    'the day event title is truncated to one line again; the whole title must show'
 );
 check(
-    (bool) preg_match( '/\.uc-day-event-title \{[^}]*text-overflow:\s*ellipsis/s', $css ),
-    'a cut title does not say it was cut'
+    ! preg_match( '/\.uc-day-event-title \{[^}]*text-overflow:\s*ellipsis/s', $css ),
+    'the day event title is being cut with an ellipsis again'
 );
-/* AND THE DAY PANEL STILL WRAPS, because it is full width and showing the whole
- * title is the reason that panel exists. One rule, two contexts, opposite
- * answers, which is the shape PROJECT.md 7 keeps warning about. */
 check(
-    (bool) preg_match( '/\.uc-month-day-panel \.uc-day-event-title \{[^}]*white-space:\s*normal/s', $css ),
-    'the day panel truncates the title too, where there is room for all of it'
+    ! preg_match( '/\.uc-day-event-title \{[^}]*-webkit-line-clamp/s', $css ),
+    'the day event title is clamped to a line count again'
+);
+/* AND THE TIME IS OFF THE TITLE'S LINE, because pinned beside it the time takes
+ * width from the title and forces wrapping the title did not need. */
+check(
+    (bool) preg_match( '/\.uc-day-event-time \{[^}]*display:\s*block/s', $css ),
+    'the time is back on the title\'s line, taking width the title needs'
 );
 check(
     false !== strpos( $css, '@container uc-calendar (max-width: 930px)' ),
@@ -880,6 +896,118 @@ printf( "default:  %d places agree that a block with no view of its own opens on
     count( $defaults ), reset( $agreed ) );
 echo "          (a visitor's remembered choice still wins over it; see viewFor())\n\n";
 
+
+/* ===========================================================================
+ * THE LIST VIEW IS A TABLE OF ROWS (3.91.0).
+ *
+ * It REPLACED the card: no large image, no excerpt, no footer button, and no
+ * second list layout kept behind an option. These assertions are what a later
+ * "bring the description back" change would have to argue with, because the
+ * description column is the one thing that would undo the density.
+ *
+ * ONE RENDERER SERVES BOTH PATHS, which is why this file is its home: the
+ * shortcode and the embed both compose render_event_card() and both use this
+ * stylesheet, so a row proved here is a row on both.
+ * ======================================================================== */
+check(
+    false !== strpos( $code, 'uc-event-card uc-lrow' ),
+    'the list view is not rendering rows'
+);
+check(
+    false === strpos( $code, 'uc-card-excerpt uc-lc-summary' ),
+    'the excerpt is back in the list row; a paragraph per row is what makes rows tall'
+);
+check(
+    ! preg_match( '/uc-lc-foot/', $code ),
+    'the card footer and its button are back in the list row'
+);
+check(
+    ! preg_match( '/uc-lrow[^>]*>.*?sfaf_share|uc-lrow-share/s', $code ),
+    'social icons are on the row; an event is shared from its own page'
+);
+/* FOUR COLUMNS, AND ONLY THE TITLE FLEXES, so rows cannot disagree about where
+ * a column starts, which is the whole point of a table. */
+if ( ! preg_match( '/\.uc-calendar \.uc-lrow \{([^}]*)\}/s', $css, $lrow ) ) {
+    $fails[] = 'the list row has no grid rule at all';
+} else {
+    check(
+        (bool) preg_match( '/grid-template-columns:\s*96px minmax\(0, 1fr\) 170px 200px/', $lrow[1] ),
+        'the list row is no longer four columns with only the title flexing'
+    );
+    /* THE CARD CHROME STAYS OFF. `.uc-event-card` still gives this element a
+     * border, a radius and a lift shadow, and the class has to stay because
+     * both scripts select on it. Nine bordered boxes is what this replaced. */
+    foreach ( array( 'border: 0', 'border-radius: 0', 'box-shadow: none' ) as $off ) {
+        check(
+            false !== strpos( $lrow[1], $off ),
+            'the list row does not turn off the card chrome (' . $off . '), so it reads as a stack of boxes'
+        );
+    }
+}
+/* A PHONE GETS TWO COLUMNS, NOT A SIDEWAYS SCROLL, and it is decided on the
+ * CONTAINER because this block is embedded in a column it does not control. */
+check(
+    (bool) preg_match( '/@container uc-calendar \(max-width: 640px\)/', $css ),
+    'there is no container breakpoint for a narrow column, so the row cannot restack'
+);
+check(
+    (bool) preg_match( '/@container uc-calendar \(max-width: 860px\)/', $css ),
+    'the middle step is gone; at 700px the fixed date and venue tracks squeeze the title'
+);
+
+/* ===========================================================================
+ * THE MONTH TILE SHOWS THE WHOLE TITLE (3.91.0), and the text is a column
+ * beside the dot so the time can sit under the title rather than beside it.
+ * ======================================================================== */
+/* QUOTED EXACTLY. `uc-day-event-textX` contains `uc-day-event-text`, so a
+ * substring check passed a planted rename. Third time this trap has been met
+ * across these files. */
+check(
+    false !== strpos( $code, 'class="uc-day-event-text"' ),
+    'the tile has no text column, so the time cannot sit under the title'
+);
+check(
+    false !== strpos( $code, 'sfaf_day_event_dot( $id )' ),
+    'the tile no longer renders its category dot'
+);
+
+/* ===========================================================================
+ * THE DROPDOWN IS SEPARATED, NOT LIGHTENED (3.91.0).
+ *
+ * The complaint was "a big blob of text and boxes", and the previous one was
+ * the opposite: thick and boxy. Measuring first found the heading's margin was
+ * being eaten by `.uc-calendar p { margin: 0 }` at (0,1,1), so the headings sat
+ * 0px above the first row and had done since the panel was built. These pin
+ * the four things that separate it, and the specificity that makes the first
+ * one actually apply.
+ * ======================================================================== */
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{/', $css ),
+    'the who heading is back to one class and loses its margin to the paragraph reset again'
+);
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*border-bottom:\s*1px/s', $css ),
+    'the who headings no longer rule off their section'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt \{[^}]*border-bottom:\s*1px/s', $css ),
+    'the who rows have no separator, so thirty-four names read as one mass'
+);
+check(
+    (bool) preg_match( '/\.uc-who-col \+ \.uc-who-col \{[^}]*border-left:\s*1px/s', $css ),
+    'there is no divider between the two columns of the who panel'
+);
+check(
+    (bool) preg_match( '/\.uc-who-list-2col \{[^}]*column-rule:\s*1px solid/s', $css ),
+    'the group sub-columns have no rule between them'
+);
+/* AND THE WEIGHTS WERE NOT TOUCHED, which is the point: the problem was
+ * separation. Lightening further was the wrong direction and is asserted
+ * against here rather than left to memory. */
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-heading \{[^}]*font-weight:\s*600/s', $css ),
+    'the who heading weight moved; the reported problem was separation, not weight'
+);
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }

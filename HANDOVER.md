@@ -6,13 +6,40 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-16, at 3.90.0, released.
+**Last updated:** 2026-09-16, at 3.91.0, released.
 
 ---
 
 ## What shipped last
 
-**3.90.0 IS RELEASED** and is what sites are being offered.
+**3.91.0 IS RELEASED** and is what sites are being offered.
+
+> **THREE APPEARANCE CHANGES, ALL ON SHARED RENDERERS.** The list card became a
+> table row, the month tile shows its whole title, and the filter dropdown got
+> separators. All three are the one PHP renderer and the one stylesheet the
+> embed adopts, so there is no second implementation to disagree. Measurements
+> were taken at 700px, which is the embed's width on sfaf.org.
+
+> **THE MONTH TILE REVERSES 3.89.0 AND THAT WAS RIGHT.** Cutting the title to
+> one line with an ellipsis was wrong: a column of ellipses tells nobody what
+> anything is, and hover neither helps scanning nor exists on a phone. **If
+> anyone proposes truncating it again to tidy up busy days, that is the argument
+> to have first.**
+
+> **THE DROPDOWN NEEDED SEPARATION, NOT LIGHTENING**, and measuring first is
+> what established it: the headings had been sitting 0px above the first row
+> since 3.85.0, because `.uc-calendar p { margin: 0 }` at (0,1,1) beat the
+> heading's own rule at (0,1,0). The weights were NOT touched and an assertion
+> says so. If it now reads over-ruled, the hairlines are one edit; going back to
+> the weights is the wrong direction.
+
+> **THE LIST IS A GRID OF DIVS, NOT A TABLE, DELIBERATELY.** Both scripts append
+> rows into a div, so a real `<tr>` would have meant changing the container and
+> the append target in `calendar.js` AND `embed.js`. That split has cost five
+> faults, and infinite scroll and the no-script path were left untouched because
+> of it. A phone gets two columns rather than a sideways scroll.
+
+**3.90.0** fixed the picture resolution and is unchanged by this.
 
 > **THE CYCLE TO ZERO PICTURE WAS PINNED TO AN ATTACHMENT THAT NO LONGER
 > EXISTED.** Replacing a picture left the old id in the term meta, a stale id is
@@ -216,6 +243,7 @@ here that is still true in six months belongs in one of those instead.
 
 | | |
 |---|---|
+| **3.91.0** | **The list view is a table of rows**: thumbnail, title, date and time, venue, replacing the card rather than joining it, with no excerpt and no footer button. A grid of divs rather than a `<table>`, so infinite scroll and both scripts append targets were untouched and a phone gets two columns instead of a sideways scroll. Measured 900x90 at 1100px, 700x111 at 700px, 380x158 on a phone. **The month tile shows its whole title**, reversing 3.89.0: a column of ellipses tells nobody what anything is, and the time moved under the title so it stops taking width the title needs. **And the filter dropdown got separation rather than more lightening**, which measuring first is what established: the headings had been flush against the first row since 3.85.0, because the paragraph reset beat them on specificity. The weights were not touched. |
 | **3.90.0** | **The Cycle to Zero picture was pinned to an attachment that no longer existed.** Replacing it left the old id in the term meta, and a stale id is truthy, so it won the chain and the tag fallback never ran: every surface went dark at once while a correctly tagged picture sat unused. An order problem, not the empty state the previous investigation reported. A stored id that no longer resolves is treated as absent now, falling through rather than being cleared, and the series screen asks the same chain the calendar asks. **The picker was a dead end built from three correct decisions**: the series screen narrowed to its own series, the empty grid explained nothing, and the way out has been rendered `hidden` since 3.74.0, the sixth built-and-unreachable control here. All three fixed, and choosing a series picture now tags it. **And a caladmin upload is filed into the media library's Calendar folder too**, by discovering that taxonomy rather than naming it, because WP Media Folder is commercial and could not be inspected from the build machine. No files were moved. |
 | **3.89.0** | **The filter panel shut on every tick on the embed**, because 3.87.0 carried the open state across the redraw in `calendar.js` only. Fourth fix to reach one script and not the other, and **the pair test was green and blind**: it covers the pairs somebody enumerated, and this behaviour shipped a release before the test existed. A second fault turned up in BOTH scripts while fixing it: the narrowing is an attribute on rows the redraw replaces, so hidden groups came back a frame later. **The month grid is lines, not cards**: a dot, a title, a time, measured at 21px a row against 42px before, with four things other than a border keeping nine of them readable and the category still carried as text rather than by colour alone. **And a stale `embed.js` now names itself in the console**, which is why two correct releases looked broken; the script URL stays unversioned because a version in a pasted snippet pins it, which was the 2.10.1 defect. |
 | **3.88.0** | **Search and the merged dropdown did nothing on the EMBED, and both fixes had gone to the other path.** `embed.js` asked its own REST route for `mode=items` only, so the month grid never moved, and it had no handler for the merged Organizers and Groups control at all, still listening for the two controls 3.85.0 replaced. Third time a correct change reached the shortcode and not the embed. **Nothing was missing from the server's cache key**; the CLIENT's month cache key carried only the category. A narrowed response is no longer publicly cacheable, which is where Mark's 304 came from. **And the embed cache retires on a plugin update**, flagged twice and now built, so a release is not served from a payload built before it. `.claude/embed-filters-test.php` asserts both scripts as pairs, and that the handler is called rather than merely present. |

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.90.0
+Stable tag: 3.91.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,52 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.91.0 =
+
+**THE MONTH TILE SHOWS THE WHOLE TITLE, WHICH REVERSES 3.89.0 DELIBERATELY.** That release cut the title to one line with an ellipsis, on the reasoning that uniform row height is what makes nine of them scannable, and offered the hover preview as the place the full title still lived. **That was wrong about the thing that matters: a column of ellipses tells nobody what anything is.** Hover does not help somebody scanning and does not exist on a phone at all. The title wraps to as many lines as it needs and the height is the accepted cost.
+
+**THE TIME MOVED OFF THE TITLE'S LINE.** Pinned right it was taking width from the title and forcing wrapping the title did not need, which is the opposite of what a cell that narrow wants. It sits under the title now, which costs 14px and gives the title the full width.
+
+**`.uc-day-event-text` is back**, which is what it was always for and why removing it in 3.89.0 was the mistake: two children of the link cannot stack, because they are both flex items on one line. `align-items` is `flex-start` rather than `baseline`, or the dot would align to the baseline of the LAST line and float down a three-line row.
+
+**Everything else from 3.89.0 stands**: no border, no card, minimal padding, the dot as a left margin so the titles form a column, the whole row as the hover target, and the category name in the accessibility tree rather than carried by the dot alone.
+
+**THE LIST VIEW IS A TABLE OF ROWS AND THE CARD IS GONE.** Thumbnail, title, date and time, venue. Not a second option: a view with large images is not wanted and two list layouts is not something to maintain. **No description column**, because a paragraph per row is exactly what makes rows tall and is the one thing that would undo the density this is for. **No social icons**, because an event is shared from its own page.
+
+**A GRID OF DIVS RATHER THAN A `<table>`, AND THAT IS THE LOAD-BEARING DECISION.** Three things fall out of it. Infinite scroll keeps working untouched, because both scripts append this markup into a div and a `<tr>` appended into a div is not a row, it is nothing; a real table would have meant changing the container and the append target in `calendar.js` AND `embed.js`, which is the split that has cost five faults. It restacks on a phone, which a table cannot do without scrolling sideways. And the class stays `uc-event-card`, so the reveal animation, the visible count and every existing selector in both scripts go on matching without being told about any of this.
+
+**Measured at three widths against the renderer's own markup:**
+
+```
+1100px   row 900x90    96px 370px 170px 200px   four columns, aligned
+ 700px   row 700x111   96px 400px 160px         venue moves under the title
+ 380px   row 380x158   72px 268px               everything beside the thumbnail
+```
+
+**WHAT A PHONE GETS: two columns, the thumbnail on the left and the rest stacked beside it.** The DOM order does not change, so the reading order is the same in all three; only the template changes. A middle step at 860px was added after measuring, because at 700px the fixed date and venue tracks squeezed the title to 170px and rows ran to 136px; moving the venue under the title gave that back and took 25px off the row.
+
+**THE CARD CHROME IS TURNED OFF BY NAME.** `.uc-event-card` still gives the element a white ground, an 18px pad, a 14px radius, a border and a lift shadow, and the class has to stay because both scripts select on it. Nine of those stacked is the boxiness this replaces, so every piece is named and switched off rather than left to be wondered about, and the list's 14px gap goes with it: between cards it was right, between table rows it breaks the hairline into a dashed ladder.
+
+**THE DROPDOWN NEEDED SEPARATION, NOT LIGHTENING, AND MEASURING FIRST IS WHAT ESTABLISHED THAT.** The previous complaint was the opposite, thick and boxy, and 3.87.0 lightened it; going further in that direction would have been wrong. What it actually was:
+
+```
+headings   11px / 600, uppercase, 0.88px tracking, secondary grey
+rows       14px / 400, 38px tall, 38px pitch, no separator of any kind
+columns    1fr 2fr, 18px gap, NO divider
+groups     2 sub-columns, column-rule computing 3px and painting nothing
+heading    0px above the first row
+```
+
+**THAT LAST LINE IS A CASCADE FAULT, NOT A CHOICE.** `.uc-who-heading` asks for `margin: 12px 0 6px` at (0,1,0) and `.uc-calendar p { margin: 0 }` in the reset beats it at (0,1,1), so **the headings have had no vertical separation since the panel was built in 3.85.0**. That is the recurring fault in PROJECT.md 7, "one class loses to one class plus one type", for the fifth time. Restoring it is not lightening; it is giving back what the stylesheet already asked for.
+
+**Four things separate thirty-four items and none of them is a heavier font:** the heading margin, at a specificity that actually applies; a rule under each heading so a section starts visibly; a hairline between rows so one name ends where the next begins; and a divider between the two columns and between the group sub-columns. **The weights were not touched**, and there is now an assertion saying so, because the temptation next time will be to move them again.
+
+**The `column-rule` is worth one line on its own.** It was computing to 3px, which is the initial `medium`, and painting nothing because no style was ever set. A property can be present in a measurement and do nothing on screen.
+
+**EVERYTHING HERE RENDERS THROUGH BOTH PATHS AND THAT IS STRUCTURAL RATHER THAN CHECKED TWICE.** All three items are the shared PHP renderers and the one stylesheet the embed adopts, so there is no second implementation to disagree: the measurements above were taken at 700px, which is the embed's width on sfaf.org. `embed-modes-test.php` carries the contracts, and the no-script path, the infinite scroll and both scripts' append targets were deliberately left untouched.
+
+**Five faults planted and every one caught**, after three escaped a first draft. One is worth recording because it is the third time: `uc-day-event-textX` contains `uc-day-event-text`, so a substring check passed a planted rename. Assertions about a class are quoted exactly now.
 
 = 3.90.0 =
 

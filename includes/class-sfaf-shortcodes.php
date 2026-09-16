@@ -1571,13 +1571,30 @@ class SFAF_Shortcodes {
                                                      */
                                                     echo sfaf_day_event_dot( $id );
                                                     ?>
-                                                    <?php if ( $ev_off ) : ?>
-                                                        <span class="uc-day-event-off">Cancelled</span>
-                                                    <?php endif; ?>
-                                                    <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
-                                                    <?php if ( '' !== $start ) : ?>
-                                                        <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
-                                                    <?php endif; ?>
+                                                    <?php
+                                                    /*
+                                                     * THE TEXT IS A COLUMN BESIDE THE DOT AGAIN
+                                                     * (3.91.0), which is what .uc-day-event-text is
+                                                     * for and why removing it in 3.89.0 was wrong.
+                                                     *
+                                                     * The title has to WRAP to as many lines as it
+                                                     * needs, and the time has to sit UNDER it rather
+                                                     * than beside it: pinned right, the time was
+                                                     * taking width from the title and forcing more
+                                                     * wrapping than the title needed. Two children
+                                                     * of the link cannot do that, because they are
+                                                     * both flex items on one line. A wrapper can.
+                                                     */
+                                                    ?>
+                                                    <span class="uc-day-event-text">
+                                                        <?php if ( $ev_off ) : ?>
+                                                            <span class="uc-day-event-off">Cancelled</span>
+                                                        <?php endif; ?>
+                                                        <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
+                                                        <?php if ( '' !== $start ) : ?>
+                                                            <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
+                                                        <?php endif; ?>
+                                                    </span>
                                                     <?php echo sfaf_new_tab_note(); ?>
                                                 </a>
                                             </li>
@@ -3963,131 +3980,108 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <div class="uc-event-card uc-lc<?php echo $cancelled ? ' is-cancelled' : ''; ?>" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
+        <?php
+        /*
+         * A ROW, NOT A CARD (3.91.0). Thumbnail, title, date and time, venue.
+         *
+         * WHAT IT REPLACES AND WHY IT IS A REPLACEMENT RATHER THAN A SECOND
+         * VIEW. The list card was a 16:9 photograph, a title, an excerpt, three
+         * lines of meta and a footer button, about 690px of height each. Mark
+         * does not want a view with large images and does not want two list
+         * layouts to maintain, so this is the list view now and the card is
+         * gone rather than kept behind an option.
+         *
+         * NO DESCRIPTION COLUMN, deliberately: a paragraph per row is what
+         * makes rows tall and is the one thing that would undo the density this
+         * is for. NO SOCIAL ICONS: an event is shared from its own page.
+         *
+         * IT IS A GRID OF DIVS, NOT A <table>, AND THAT IS THE LOAD-BEARING
+         * DECISION HERE. Three things fall out of it:
+         *
+         *   . INFINITE SCROLL KEEPS WORKING UNTOUCHED. Both scripts append this
+         *     markup into `.uc-event-list`, and a <tr> appended into a div is
+         *     not a row, it is nothing. A real table would have meant changing
+         *     the container and the append target in calendar.js AND embed.js,
+         *     which is the split that has cost five faults.
+         *   . IT RESTACKS ON A PHONE. A table cannot: it scrolls sideways,
+         *     which the brief rules out. A grid changes its template.
+         *   . The class stays `uc-event-card`, so the reveal animation, the
+         *     visible-count and every existing selector in both scripts go on
+         *     matching without being told about this at all.
+         *
+         * THE CELLS ARE IN READING ORDER IN THE MARKUP, so the DOM order is the
+         * order a screen reader gets and the order a phone stacks them in. The
+         * grid places them; it does not reorder them.
+         */
+        ?>
+        <div class="uc-event-card uc-lrow<?php echo $cancelled ? ' is-cancelled' : ''; ?>" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
              style="--uc-cat: <?php echo esc_attr( $cat_color ); ?>; --uc-cat-tint: <?php echo esc_attr( $shades['tint'] ); ?>; --uc-cat-media: <?php echo esc_attr( $shades['media'] ); ?>; --uc-cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>">
 
-            <div class="uc-lc-head">
-                <div class="uc-lc-ident">
-                    <?php echo $chips; ?>
-                    <?php if ( '' !== $byline ) : ?>
-                        <?php
-                        /*
-                         * THE EXTERNAL MARKER GOES HERE AND NOWHERE ELSE ON THE
-                         * CARD.
-                         *
-                         * The byline already names the platform the event came
-                         * from, so an arrow beside it says "and that is where
-                         * this link goes" in the one place a visitor is already
-                         * reading the answer. Putting it on the title as well
-                         * and on the button as well would be three marks for
-                         * one fact, which is the noise the brief asked this not
-                         * to become.
-                         *
-                         * Empty on a native event and empty when the setting is
-                         * off, because sfaf_external_marker() asks whether this
-                         * link actually leaves rather than whether the setting
-                         * exists.
-                         */
-                        ?>
-                        <span class="uc-lc-byline"><?php echo esc_html( $byline ); echo sfaf_external_marker( $post_id ); ?></span>
-                    <?php endif; ?>
-                </div>
-                <?php if ( $date_ts ) : ?>
-                    <div class="uc-lc-date">
-                        <span class="uc-lc-dow"><?php echo esc_html( sfaf_ap_date( $date_ts, 'weekday' ) ); ?></span>
-                        <span class="uc-lc-md"><?php echo esc_html( sfaf_ap_date( $date_ts, 'short' ) ); ?></span>
-                    </div>
-                <?php endif; ?>
-            </div>
-
             <?php
             /*
-             * The image is inset inside the card padding and rounded, not bled
-             * to the card edge: it is one element of the card, not its lid.
-             * Wrapped in a link so the picture is clickable, but hidden from
-             * assistive tech: the title below is the same destination and is
-             * the one that reads properly.
+             * THE THUMBNAIL IS DECORATION AND SAYS SO. The title beside it is
+             * the same fact and is a real link, so a second link round the
+             * picture would be two tab stops to one place. aria-hidden and
+             * tabindex -1 is the arrangement the old card used and the reason
+             * is unchanged.
              */
             ?>
-            <div class="uc-lc-media">
-                <?php // No new-tab note on this one: it is aria-hidden and out
-                      // of the tab order, so it has no name to add a sentence
-                      // to. The title below is the same destination. ?>
-                <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?> tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
-            </div>
+            <a class="uc-lrow-media" href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
+               tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
 
-            <?php
-            /*
-             * ABOVE THE TITLE, NOT AFTER IT. Somebody scanning a list reads
-             * titles, so the word has to be in the path their eye is already
-             * taking rather than at the end of a line they may not finish. It
-             * is also before the title in the reading order, which is where a
-             * screen reader needs it: "Cancelled, Coffee Social" is the useful
-             * order and "Coffee Social, cancelled" makes them listen to the
-             * whole card first.
-             */
-            ?>
-            <?php if ( $cancelled ) : ?>
-                <p class="uc-lc-cancelled">Cancelled</p>
-            <?php endif; ?>
-
-            <h3 class="uc-card-title uc-lc-title">
-                <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?>><?php echo esc_html( get_the_title( $post_id ) ); ?><?php echo sfaf_new_tab_note(); ?></a>
-            </h3>
-
-            <?php if ( '' !== $summary ) : ?>
-                <p class="uc-card-excerpt uc-lc-summary"><?php echo esc_html( $summary ); ?></p>
-            <?php endif; ?>
-
-            <div class="uc-card-meta uc-lc-meta">
-                <?php if ( '' !== $time ) : ?>
-                    <span class="uc-meta-item"><?php echo sfaf_icon( 'clock', array( 'size' => '15px' ) ); ?><span><?php echo esc_html( $time ); ?></span></span>
+            <div class="uc-lrow-main">
+                <h3 class="uc-card-title uc-lrow-title">
+                    <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?>><?php
+                        echo esc_html( get_the_title( $post_id ) );
+                        echo sfaf_external_marker( $post_id );
+                        echo sfaf_new_tab_note();
+                    ?></a>
+                </h3>
+                <?php if ( $cancelled ) : ?>
+                    <p class="uc-lrow-cancelled">Cancelled</p>
                 <?php endif; ?>
-                <?php if ( $location ) : ?>
-                    <span class="uc-meta-item"><?php echo sfaf_icon( 'pin', array( 'size' => '15px' ) ); ?><span><?php echo esc_html( $location ); ?></span></span>
-                <?php endif; ?>
-                <?php
-                // Omitted entirely when the event is in no series. An empty
-                // row labelled "Event Series" was the thing this replaces.
-                $series = sfaf_series_dates_link( $post_id );
-                if ( '' !== $series ) {
-                    echo '<span class="uc-meta-item">' . sfaf_icon( 'repeat', array( 'size' => '15px' ) ) . $series . '</span>';
-                }
-                ?>
-            </div>
-
-            <?php echo sfaf_fundraising_progress( $post_id ); ?>
-
-            <div class="uc-lc-foot">
-                <?php if ( '' !== $note ) : ?>
-                    <span class="uc-lc-note"><?php echo esc_html( $note ); ?></span>
-                <?php endif; ?>
-
                 <?php
                 /*
-                 * Both are plain links now, on both surfaces. The embed split
-                 * existed only because the RSVP label opened a modal that
-                 * cannot post cross-origin; with no modal on the card there is
-                 * nothing left to differ about, so the shortcode and the embed
-                 * emit byte-identical markup here.
+                 * THE CHIPS STAY. They are the one place the category is
+                 * readable as a word on this row, and the row has no other
+                 * colour on it: a category that is only a tint is a fact
+                 * carried by colour alone, which this project does not do.
                  */
                 ?>
-                <div class="uc-lc-actions">
-                    <?php echo sfaf_action_button( array(
-                        'label'   => 'View event',
-                        'href'    => $permalink,
-                        'variant' => 'secondary',
-                        'new_tab' => true,
-                    ) ); ?>
-                    <?php if ( $can_donate ) : ?>
-                        <?php echo sfaf_action_button( array(
-                            'label'    => 'Donate',
-                            'href'     => $donate_url,
-                            'variant'  => 'primary',
-                            'external' => true,
-                        ) ); ?>
+                <?php
+                /*
+                 * THE CHIP AND THE BYLINE SHARE A LINE. Two small facts stacked
+                 * are two lines of row height for about twelve words, and
+                 * height is the thing this view exists to save.
+                 */
+                ?>
+                <span class="uc-lrow-meta">
+                    <?php echo $chips; ?>
+                    <?php if ( '' !== $byline ) : ?>
+                        <span class="uc-lrow-byline"><?php echo esc_html( $byline ); ?></span>
                     <?php endif; ?>
-                </div>
+                </span>
+            </div>
+
+            <div class="uc-lrow-when">
+                <?php if ( $date_ts ) : ?>
+                    <span class="uc-lrow-date"><?php echo esc_html( sfaf_ap_date( $date_ts, 'full' ) ); ?></span>
+                <?php endif; ?>
+                <?php if ( '' !== $time ) : ?>
+                    <span class="uc-lrow-time"><?php echo esc_html( $time ); ?></span>
+                <?php endif; ?>
+            </div>
+
+            <div class="uc-lrow-where">
+                <?php if ( '' !== $location ) : ?>
+                    <span class="uc-lrow-venue"><?php echo esc_html( $location ); ?></span>
+                <?php endif; ?>
+                <?php if ( '' !== $note ) : ?>
+                    <span class="uc-lrow-note"><?php echo esc_html( $note ); ?></span>
+                <?php endif; ?>
+                <?php if ( $can_donate ) : ?>
+                    <a class="uc-lrow-donate" href="<?php echo esc_url( $donate_url ); ?>" target="_blank" rel="noopener">Donate</a>
+                <?php endif; ?>
             </div>
         </div>
         <?php

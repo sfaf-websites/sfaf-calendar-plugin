@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 152 items.** Quick 126, needs real conditions 23, blocked on other
+**Outstanding: 155 items.** Quick 129, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1837,6 +1837,52 @@ Media Folder is not there and its taxonomy name could not be confirmed.
   release if the name simply differs.
 - **The nine already on disk and missing from the folder are NOT retrofitted.**
   This changes uploads from here on. Filing those is a separate decision.
+
+---
+### 1.129 The list view is a table now (3.91.0)
+
+**This replaces the card list entirely.** Thumbnail, title, date and time,
+venue, and nothing else.
+
+- **On sfaf.org and in the embed**, at a wide window and at 700px. Rows should
+  read as a table: the dates should line up down one column and the venues down
+  another, with a hairline between rows and no boxes.
+- **Scroll to the bottom.** Infinite scroll should keep working exactly as
+  before; the rows are a grid of divs precisely so that did not have to change.
+- **On a phone**, the row should stack beside the thumbnail rather than scroll
+  sideways. If anything scrolls sideways, report it.
+- **The excerpt, the big image and the View event button are gone on purpose.**
+  If Mark wants any of them back, that is a decision rather than a fault.
+
+---
+
+### 1.130 The month tile shows the whole title (3.91.0)
+
+- **Find the longest title on the calendar**, for example an Opioid Overdose
+  Prevention and Reversal Training. It should now wrap to as many lines as it
+  needs, with **no ellipsis anywhere**.
+- **The time should be on its own line under the title**, not beside it.
+- **The dot should sit against the FIRST line** of a three-line title, not float
+  down beside the middle of it.
+- **Check a busy day.** It will be taller than 3.89.0 and that is accepted; what
+  matters is whether it reads.
+
+---
+
+### 1.131 The dropdown reads as sections and rows (3.91.0)
+
+**The complaint was "a big blob of text and boxes", and the previous one was the
+opposite, so the weights were deliberately NOT changed.**
+
+- **Open it.** There should now be a rule under each heading, a hairline between
+  rows, a divider between the Organizers and Groups columns, and a rule between
+  the two group sub-columns.
+- **The headings should sit clear of the first row.** They have been flush
+  against it since the panel was built, which was a specificity fault rather
+  than a choice.
+- **A ticked row should stay visibly ticked** after the pointer moves away.
+- **If it now reads as too ruled**, say so: the hairlines are one edit. The
+  thing to avoid is going back to changing the weights.
 
 ---
 ## 2. Needs real conditions

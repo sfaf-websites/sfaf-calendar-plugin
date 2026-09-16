@@ -1093,6 +1093,45 @@ hidden until a category was chosen so that nobody was looking at two taxonomies
 at once. Merging necessarily ends that, because the organizer half was always
 first-level. `render_group_row()` has no caller and is kept one release.
 
+### The list view is a table of rows (3.91.0)
+
+**Thumbnail, title, date and time, venue.** It replaced the card rather than
+joining it: no large image, no excerpt, no footer button, and no second list
+layout to maintain. **No description column**, because a paragraph per row is
+what makes rows tall and is the one thing that undoes the density.
+
+**A GRID OF DIVS, NOT A `<table>`, AND THE REASONS ARE STRUCTURAL.** Both
+scripts append rows into a div, and a `<tr>` appended into a div is nothing; a
+real table meant changing the container and the append target in `calendar.js`
+AND `embed.js`, which is the split that has cost five faults. A table also
+cannot restack on a phone without scrolling sideways. **The class stays
+`uc-event-card`**, so every existing selector in both scripts keeps matching.
+
+**THE CARD CHROME IS TURNED OFF BY NAME**, not left to be wondered about:
+`.uc-event-card` still supplies a ground, an 18px pad, a radius, a border and a
+lift shadow, and nine of those stacked is the boxiness this replaced.
+
+**Three widths, measured**: 900x90 with four columns at 1100px; at 700px the
+venue moves under the title, because the fixed date and venue tracks were
+squeezing it to 170px; at 380px everything stacks beside a 72px thumbnail. The
+DOM order never changes, so the reading order is the same in all three.
+
+### The month tile shows the whole title (3.91.0, reversing 3.89.0)
+
+**3.89.0 cut it to one line with an ellipsis** and offered the hover preview as
+where the full title lived. That was wrong: **a column of ellipses tells nobody
+what anything is**, and hover neither helps somebody scanning nor exists on a
+phone. The title wraps to as many lines as it needs.
+
+> **A FALLBACK THAT REQUIRES AN INTERACTION IS NOT A FALLBACK FOR SCANNING.**
+> The hover preview is a good thing and was the wrong argument for hiding
+> content from the only view that shows a whole month at once.
+
+**The time sits under the title**, because pinned beside it the time takes width
+the title needs and forces wrapping the title did not need.
+`.uc-day-event-text` is what lets those stack, and removing it in 3.89.0 is why
+that release had no other option.
+
 ### An event on the month grid is a line, not a card (3.89.0)
 
 **A dot, the title, the time**, at 21px a row, measured. Each event was a
@@ -1185,6 +1224,32 @@ and looks for a term literally named for the folder.
 **The folder rule still reads the physical directory.** This adds a second,
 independent fact for a library this plugin does not own; it does not become the
 rule. Nothing about display depends on it.
+
+### Separation is not weight, and measuring first tells them apart (3.91.0)
+
+The Organizers and groups panel was reported as "a big blob of text and boxes".
+**The previous complaint about the same control was the opposite**, thick and
+boxy, and 3.87.0 lightened it. Going further in that direction would have made
+it worse, and only measuring showed why.
+
+**What it was**: headings 11px/600 uppercase, rows 14px/400 at 38px pitch, no
+row separator, no divider between the two columns, a `column-rule` computing to
+3px and painting nothing because no style was set, and **the heading sitting
+0px above the first row**.
+
+> **THAT LAST ONE WAS A CASCADE FAULT, NOT A CHOICE.** `.uc-who-heading` asks
+> for a margin at (0,1,0) and `.uc-calendar p { margin: 0 }` beats it at
+> (0,1,1), so the headings had no vertical separation from the day the panel
+> was built. The recurring fault in section 7, for the fifth time.
+
+**Four separators and no weight change**: the heading margin at a specificity
+that applies, a rule under each heading, a hairline between rows, and a divider
+between the columns and the sub-columns. There is an assertion pinning the
+weights, because the temptation next time will be to move them again.
+
+**A property can be present in a measurement and do nothing.** The
+`column-rule` had a computed width and no style. Read what paints, not what is
+set.
 
 ### A stale embed.js says so, and the URL stays unversioned (3.89.0)
 

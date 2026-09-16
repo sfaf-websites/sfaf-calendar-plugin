@@ -932,11 +932,21 @@
    third of it with two thirds of nothing beside it. */
 .uc-who-cols > .uc-who-col:only-child { grid-column: 1 / -1; }
 .uc-who-col { min-width: 0; }
+/* A DIVIDER BETWEEN THE TWO COLUMNS (3.91.0). Eighteen pixels of gap is not a
+   boundary when both sides are dense lists of names; it reads as one field of
+   text with a gutter in it. The rule is on the SECOND column and only when it
+   has a first beside it, so a panel showing one section has no stray edge. */
+.uc-who-col + .uc-who-col { border-left: 1px solid var(--uc-border); padding-left: 18px; }
 
 /* THE GROUPS RUN IN TWO SUB-COLUMNS so twenty-five names are not one long drop.
    `columns` rather than a second grid, because the list reflows on its own as
    narrowing hides rows and stays one list for a screen reader. */
-.uc-who-list-2col { columns: 2; column-gap: 14px; }
+/* AND A RULE BETWEEN THE GROUP SUB-COLUMNS. `column-rule-width` was already
+   computing to 3px, which is the initial `medium`, and painted nothing because
+   no style was ever set: the property looked present in a measurement and did
+   nothing on screen. Stated properly it is the same hairline as everything
+   else here. */
+.uc-who-list-2col { columns: 2; column-gap: 18px; column-rule: 1px solid var(--uc-border); }
 .uc-who-list-2col > .uc-who-opt { break-inside: avoid; }
 
 @container uc-calendar (max-width: 620px) {
@@ -967,25 +977,66 @@
        and the hover fill were both doing the work of separating things that
        spacing separates better.
    ------------------------------------------------------------------------ */
-.uc-who-heading {
-    margin: 12px 0 6px; padding: 0 18px;
+/* ---------------------------------------------------------------------------
+   SEPARATION (3.91.0), WHICH IS NOT THE SAME PROBLEM AS WEIGHT.
+
+   REPORTED AS "a big blob of text and boxes, hard to make out". The previous
+   complaint was the opposite, thick and boxy, and 3.87.0 lightened it. Going
+   further in that direction would have been wrong. MEASURED FIRST, and the
+   panel was: headings 11px/600 uppercase, rows 14px/400 at 38px pitch, no row
+   separator, no divider between the two columns, no rule between the group
+   sub-columns, and the heading sitting 0px above the first row.
+
+   THAT LAST ONE IS A CASCADE FAULT, NOT A CHOICE. `.uc-who-heading` asks for
+   `margin: 12px 0 6px` at (0,1,0) and `.uc-calendar p { margin: 0 }` in the
+   reset beats it at (0,1,1), so the headings have had NO vertical separation
+   since the panel was built in 3.85.0. That is the recurring fault in
+   PROJECT.md 7, "one class loses to one class plus one type", for the fifth
+   time. Restoring it is not lightening: it is giving back what the stylesheet
+   already asked for.
+
+   FOUR THINGS SEPARATE THIRTY-FOUR ITEMS, and none of them is a heavier font:
+     . the heading margin, back, at the specificity it needed all along;
+     . a rule under each heading, so a section starts visibly;
+     . a hairline between rows, so one name ends where the next begins;
+     . a divider between the two columns and between the group sub-columns.
+   ------------------------------------------------------------------------ */
+
+/* (0,2,0) so it clears the reset's (0,1,1). The panel is the scope, which is
+   the narrowest thing that wins rather than a blanket raise. */
+.uc-who-panel .uc-who-heading {
+    margin: 14px 0 4px; padding: 0 16px 6px;
     font-family: var(--uc-font-heading); font-size: 11px; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--uc-secondary);
+    border-bottom: 1px solid var(--uc-border);
 }
-.uc-who-list { display: block; }
+/* The first heading in a column does not need the space above it: the panel's
+   own padding is already there. */
+.uc-who-col > .uc-who-heading:first-child { margin-top: 4px; }
+
+.uc-who-list { display: block; padding: 0 4px; }
+
+/* A HAIRLINE BETWEEN ROWS, NOT AROUND THEM. A box per row is the "boxy" the
+   last complaint was about; a single line between two names is the least mark
+   that says where one ends. Inset by the row's own padding so it reads as a
+   list rule rather than a table border, and never under the last row. */
 .uc-who-opt {
     display: flex; align-items: center; gap: 11px;
-    padding: 9px 18px; cursor: pointer;
+    padding: 8px 12px; cursor: pointer;
     font-size: 14px; font-weight: 400; line-height: 1.4;
-    border-radius: 8px;
+    border-radius: 6px;
+    border-bottom: 1px solid var(--uc-border);
     transition: background-color 0.12s ease;
 }
+.uc-who-opt:last-child { border-bottom: 0; }
 /* THE HOVER IS A ROUNDED TINT INSET FROM THE EDGE, not a full-bleed band. A
    band that runs wall to wall is what makes a list read as a table of cells;
    an inset rounded fill reads as one row being pointed at. */
-.uc-who-list { padding: 0 6px; }
 .uc-who-opt:hover { background: var(--uc-bg); }
+/* A ticked row is the one thing in the panel that has to be findable without
+   reading it, so it carries a tint that survives the pointer moving away. */
+.uc-who-opt:has(input:checked) { background: var(--uc-bg); font-weight: 600; }
 /* A hidden option is hidden, not greyed. Mark's reasoning: every option is
    visible when the panel opens, so somebody already knows they are there, and
    a greyed row still costs a line of a list that is thirty-four long. */
@@ -1156,7 +1207,12 @@
 .uc-count-number { font-weight: 700; }
 
 /* Event list */
-.uc-event-list { display: flex; flex-direction: column; gap: 14px; }
+/* NO GAP BETWEEN ROWS (3.91.0). A 14px gap was right between cards, which were
+   separate objects; between table rows it breaks the hairline into a dashed
+   ladder and puts air where a rule should be. The rows carry their own
+   separator and sit flush. The closure card is still a card and keeps its own
+   margin, which is why this is `gap: 0` rather than a margin reset. */
+.uc-event-list { display: flex; flex-direction: column; gap: 0; }
 
 /* Event card */
 /* ===========================================================================
@@ -1203,6 +1259,121 @@
    card that only ever changed its border on hover made the button look like
    the only live thing on it. */
 .uc-calendar .uc-event-card:hover { box-shadow: var(--uc-lift-hover); border-color: #C6CBD3; transform: none; }
+
+/* ===========================================================================
+   THE LIST VIEW IS A TABLE OF ROWS (3.91.0).
+
+   Thumbnail, title, date and time, venue. It REPLACES the card: no large
+   image, no excerpt, no footer button, and no second list layout to maintain.
+
+   A GRID OF DIVS RATHER THAN A <table>, and the reasons are in the renderer.
+   The short version is that infinite scroll appends this markup into a div in
+   two different scripts, a <tr> in a div is nothing, and a table cannot
+   restack on a phone without scrolling sideways.
+
+   THE COLUMNS ARE FIXED EXCEPT THE TITLE. The thumbnail, the date and the
+   venue are predictable widths and the title is what should absorb the rest,
+   so only the title's track is fr. That also means rows cannot disagree about
+   where a column starts, which is the whole point of a table.
+   ------------------------------------------------------------------------ */
+/* THE CARD CHROME COMES OFF, EXPLICITLY. `.uc-event-card` still gives this
+   element a white ground, an 18px pad, a 14px radius, a border and a lift
+   shadow, and the class stays because both scripts select on it. Nine of those
+   stacked is the boxiness this replaces, so every piece of it is named and
+   turned off here rather than left to be wondered about. Same specificity,
+   later in the file, which is the ordinary way to win and is why this block
+   sits after that rule rather than being raised above it. */
+.uc-calendar .uc-lrow {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 170px 200px;
+    gap: 0 16px;
+    align-items: center;
+    padding: 12px 8px;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--uc-border);
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+/* One rule between two rows, and none under the last: a list, not a grid of
+   cells. */
+.uc-calendar .uc-event-list > .uc-lrow:last-child { border-bottom: 0; }
+/* THE WHOLE ROW IS THE HOVER TARGET, as a tint rather than a lift. The lift
+   was a card saying "this responds to you"; a row says it by filling. */
+.uc-calendar .uc-event-card.uc-lrow:hover {
+    background: var(--uc-bg); box-shadow: none; border-color: var(--uc-border);
+}
+/* THE 16:9 THE WHOLE CALENDAR CROPS TO, at 96px wide rather than full bleed.
+   Small enough that a row is about 70px, large enough to be recognisable. */
+.uc-calendar .uc-lrow-media {
+    display: block; width: 96px; aspect-ratio: 16 / 9;
+    border-radius: 8px; overflow: hidden; background: var(--uc-bg);
+}
+.uc-calendar .uc-lrow-media img,
+.uc-calendar .uc-lrow-media .uc-thumb-ph { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.uc-calendar .uc-lrow-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.uc-calendar .uc-lrow-title { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
+.uc-calendar .uc-lrow-title a { color: var(--uc-text); text-decoration: none; }
+.uc-calendar .uc-lrow-title a:hover { text-decoration: underline; }
+.uc-calendar .uc-lrow-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.uc-calendar .uc-lrow-byline { font-size: 12px; color: var(--uc-secondary); }
+.uc-calendar .uc-lrow-cancelled { margin: 0; font-size: 12px; font-weight: 700; color: var(--uc-danger-ink, #A8322D); }
+
+.uc-calendar .uc-lrow-when,
+.uc-calendar .uc-lrow-where { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.uc-calendar .uc-lrow-date { font-weight: 600; color: var(--uc-text); }
+.uc-calendar .uc-lrow-time,
+.uc-calendar .uc-lrow-venue,
+.uc-calendar .uc-lrow-note { color: var(--uc-secondary); }
+.uc-calendar .uc-lrow-donate { align-self: flex-start; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); }
+
+/* A MIDDLE STEP, BECAUSE FOUR COLUMNS AT 700px IS TIGHT AND MEASURABLY SO.
+   Measured: at 700px the title track fell to 170px and rows ran to 136px,
+   because the date and venue tracks are fixed and take their width first. The
+   venue moves UNDER the title here and the date keeps its own column, which
+   gives the title back the width it was losing. Placed explicitly rather than
+   by auto-flow, which would put the venue under the thumbnail. */
+@container uc-calendar (max-width: 860px) {
+    .uc-calendar .uc-lrow { grid-template-columns: 96px minmax(0, 1fr) 160px; gap: 2px 14px; align-items: start; }
+    .uc-calendar .uc-lrow-media { grid-column: 1; grid-row: 1 / span 2; }
+    .uc-calendar .uc-lrow-main  { grid-column: 2; grid-row: 1; }
+    .uc-calendar .uc-lrow-where { grid-column: 2; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 2px 10px; }
+    .uc-calendar .uc-lrow-when  { grid-column: 3; grid-row: 1 / span 2; }
+}
+
+/* WHAT A PHONE GETS: the thumbnail on the left and everything else stacked
+   beside it, which is the shape a narrow column can actually hold. The
+   template changes and the DOM does not, so the reading order is the same
+   order in both. Measured on the CONTAINER, because this block is embedded in
+   a column it does not control and a window query is a lie in there.
+
+   THE PLACEMENT FROM 860px IS UNDONE EXPLICITLY. Leaving `grid-column: 3` on
+   the date in a two-column grid puts it in a column that does not exist, which
+   is the quiet way a breakpoint below another one breaks. */
+@container uc-calendar (max-width: 640px) {
+    .uc-calendar .uc-lrow-main,
+    .uc-calendar .uc-lrow-when,
+    .uc-calendar .uc-lrow-where { grid-column: 2; grid-row: auto; }
+    .uc-calendar .uc-lrow {
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 4px 12px;
+        align-items: start;
+    }
+    .uc-calendar .uc-lrow-media { width: 72px; grid-column: 1; grid-row: 1 / span 3; }
+    .uc-calendar .uc-lrow-title { font-size: 15px; }
+    /* Date and venue become two quiet lines under the title rather than
+       columns, and the row is read top to bottom like everything else on a
+       phone. */
+    .uc-calendar .uc-lrow-when,
+    .uc-calendar .uc-lrow-where { flex-direction: row; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; }
+}
+/* The same floor for any host that gives us no container to measure. */
+@media (max-width: 640px) {
+    .uc-calendar .uc-lrow { grid-template-columns: 72px minmax(0, 1fr); }
+    .uc-calendar .uc-lrow-media { width: 72px; grid-column: 1; grid-row: 1 / span 3; }
+}
 
 /* --- Header row: who and when ------------------------------------------- */
 .uc-calendar .uc-lc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -2768,11 +2939,19 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        which is a bigger and more obvious target than the old 1px border edge.
    ------------------------------------------------------------------------ */
 .uc-calendar .uc-day-events { display: flex; flex-direction: column; gap: 1px; }
+/* align-items: flex-start, NOT baseline (3.91.0). Baseline was right when the
+   row was one line; with a title wrapping to three it would align the dot to
+   the baseline of the LAST line and float it down the row. The dot belongs
+   against the first line, which is what flex-start plus the dot's own nudge
+   gives. */
 .uc-calendar .uc-day-event a {
-    display: flex; align-items: baseline; gap: 6px;
+    display: flex; align-items: flex-start; gap: 6px;
     padding: 3px 4px; border: 0; border-radius: 4px; background: none;
     font-size: 11px; line-height: 1.35; color: var(--uc-text); text-decoration: none;
 }
+/* The text column beside the dot. min-width: 0 so a long word wraps inside it
+   rather than widening the cell. */
+.uc-calendar .uc-day-event-text { flex: 1 1 auto; min-width: 0; }
 .uc-calendar .uc-day-event a:hover { background: var(--uc-bg); }
 .uc-calendar .uc-day-event a:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 1px; }
 
@@ -2815,25 +2994,34 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    rule stays because the day panel's markup still carries one. */
 .uc-calendar .uc-day-event-text { min-width: 0; flex: 1 1 auto; }
 
-/* ONE LINE, AND THE OVERFLOW IS CUT RATHER THAN WRAPPED. A title like "Opioid
-   Overdose Prevention and Naloxone Training" will not fit at 11px in a seventh
-   of a calendar, and no size it could be cut to would. Wrapping it is what made
-   the rows enormous, so it is truncated: uniform row height is what makes nine
-   of them scannable, and the ellipsis says there is more.
+/* THE WHOLE TITLE SHOWS, WHATEVER IT COSTS IN HEIGHT (3.91.0), AND THIS
+   REVERSES 3.89.0 DELIBERATELY.
 
-   NOTHING IS LOST TO THE CUT. The full title is on the hover preview, which
-   reads data-uc-pv-title off this same link, and on the event page one click
-   away. A screen reader gets the whole text: this is overflow, not content. */
+   3.89.0 cut the title to one line with an ellipsis, on the reasoning that
+   uniform row height is what makes nine of them scannable, and offered the
+   hover preview as the place the full title still lived. That reasoning was
+   wrong about the thing that matters: A COLUMN OF ELLIPSES TELLS NOBODY WHAT
+   ANYTHING IS. It is worse than the boxes it replaced, because the boxes at
+   least carried two lines of title. And hover does not help somebody scanning,
+   and does not exist on a phone at all.
+
+   So the title wraps to as many lines as it needs. "Opioid Overdose Prevention
+   and Reversal Training" is three lines in a narrow cell, and that is the
+   accepted cost rather than a regression.
+
+   overflow-wrap: anywhere, because a single long word in a seventh of a
+   calendar has nowhere to break and would otherwise push the cell wider. */
 .uc-day-event-title {
-    flex: 1 1 auto; min-width: 0;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: block;
+    overflow-wrap: anywhere;
     font-weight: 600;
 }
-/* PINNED RIGHT SO THE TIMES FORM THEIR OWN COLUMN, and never squeezed: it is
-   four or five characters and it is the second thing being compared down a
-   busy day. */
+/* UNDER THE TITLE, NOT BESIDE IT. Pinned right, the time was taking width from
+   the title and forcing wrapping the title did not need, which is the opposite
+   of what a cell this narrow wants. On its own line it costs 14px and gives
+   the title the full width. */
 .uc-day-event-time {
-    flex: 0 0 auto; margin-top: 0;
+    display: block; margin-top: 1px;
     font-weight: 500; font-size: 10px; color: var(--uc-secondary);
     font-variant-numeric: tabular-nums;
 }
