@@ -42,6 +42,14 @@ function get_term_meta( $id, $key = '', $single = false ) {
 function wp_get_attachment_image_url( $id, $size = 'thumbnail', $icon = false ) {
     return 'https://example.org/uploads/calendar/' . $size . '-' . $id . '.jpg';
 }
+/* EVERY ATTACHMENT IN THIS FILE EXISTS, which is the model the stub above
+   already assumed: it resolves any id to a URL. image_id() checks existence
+   from 3.90.0, because an id left behind by a DELETED picture used to win and
+   resolve to nothing. That case has its own harness,
+   series-image-stale-test.php, where the attachment table is a real list and an
+   id can be absent from it. Here the answer is always yes, so these assertions
+   go on testing the ordering rather than the existence check. */
+function get_post_type( $id = 0 ) { return 'attachment'; }
 function is_wp_error( $t ) { return false; }
 function esc_html( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }

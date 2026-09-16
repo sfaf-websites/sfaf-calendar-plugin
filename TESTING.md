@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 148 items.** Quick 122, needs real conditions 23, blocked on other
+**Outstanding: 152 items.** Quick 126, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1774,6 +1774,69 @@ a line: a coloured category dot, the title, the time. No box, no picture.
   you are looking at.
 - **Worth one deliberate check** that the warning appears when it should and
   does NOT appear once the page has the current script.
+
+---
+### 1.125 The Cycle to Zero picture comes back (3.90.0)
+
+**This is the fix for what Mark reported and it needs no action first.** The
+series was pinned to the attachment he replaced, which no longer exists, and
+that pin stopped the chain reaching the picture he tagged.
+
+- **Open a Cycle to Zero event.** The picture should be there now, from the
+  tagged one in the folder, with nothing re-saved.
+- **The series page too**, and the community request form for that series.
+- **Then open the series screen.** The preview should show the same picture the
+  calendar shows. Before this it could show nothing while the calendar showed
+  something, or the reverse.
+- **Worth doing for the other series as well.** Any series whose picture was
+  ever replaced was in the same state, so more than Cycle to Zero may come back
+  at once.
+
+---
+
+### 1.126 The picker is no longer a dead end (3.90.0)
+
+**caladmin, the series screen, Choose Image.**
+
+- It should open on the **whole calendar folder**, not only pictures tagged to
+  that series. That circularity is why it was blank.
+- **"All calendar images" should be visible** beside Choose Image. It has been
+  rendered hidden since 3.74.0 and has never been seen by anybody.
+- **On the event editor**, Choose Image should still open on that event's series
+  and the escape button should still be there beside it.
+- **Find a series with nothing tagged and open the picker from the event
+  editor.** The empty grid should now carry a sentence saying why it is empty
+  and pointing at the escape button, rather than WordPress's bare "No media
+  items found".
+
+---
+
+### 1.127 Setting a series picture also tags it (3.90.0)
+
+**caladmin, the series screen.** Choose a picture and save.
+
+- **Check the Images screen**: that picture should now carry the series tag, set
+  by the save rather than by a second visit.
+- **The old picture keeps its tag.** Changing a series' picture does not untag
+  the previous one, deliberately: it may still belong with the series.
+- **Only pictures in the calendar folder are tagged.** A pasted URL tags nothing.
+
+---
+
+### 1.128 A caladmin upload appears in the media library folder (3.90.0)
+
+**This is the one that cannot be verified from the build machine**, because WP
+Media Folder is not there and its taxonomy name could not be confirmed.
+
+- **Upload a picture through caladmin > Images > Add an image.**
+- **Then open the WordPress media library and look at the Calendar folder.** The
+  new picture should be in it as well as in `uploads/calendar/`.
+- **If it is not**, the discovery did not find the folder, and the thing to
+  report is what the Calendar folder is actually called in that library. It is a
+  one line correction through the `sfaf_library_folder_term` filter and needs no
+  release if the name simply differs.
+- **The nine already on disk and missing from the folder are NOT retrofitted.**
+  This changes uploads from here on. Filing those is a separate decision.
 
 ---
 ## 2. Needs real conditions

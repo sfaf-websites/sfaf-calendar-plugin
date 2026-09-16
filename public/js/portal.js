@@ -1762,6 +1762,10 @@ function ucDismissOnBackdrop(dialog) {
          * that do the same thing. */
         var hasSeries = field.getAttribute('data-uc-media-series');
         hasSeries = !!(hasSeries && hasSeries !== '0');
+        /* The server already answered "is there anything in the folder at all",
+           which is a different question from "did this query match": the first
+           sends somebody to the Images screen, the second to a wider filter. */
+        var folderEmpty = field.hasAttribute('data-uc-media-folder-empty');
 
         Array.prototype.forEach.call(triggers, function (chooseBtn) {
         var frame;
@@ -1838,6 +1842,45 @@ function ucDismissOnBackdrop(dialog) {
                     if (tab) { tab.hidden = true; }
                 });
             }
+
+            /*
+             * A BLANK GRID SAYS WHY IT IS BLANK (3.90.0).
+             *
+             * wp.media's own empty state is "No media items found", which is
+             * true and useless: it cannot know the library was narrowed to one
+             * folder and possibly one series, so an empty grid looked exactly
+             * like a broken picker. That is what cost a whole investigation.
+             *
+             * The public forms' picker has had this sentence since 3.80.0. This
+             * is the caladmin equivalent, in the one place a wp.media frame will
+             * let a sentence be put without replacing its views.
+             *
+             * WRITTEN ON EVERY OPEN rather than once, because the frame is
+             * reused and the answer changes: uploading a picture into an empty
+             * folder makes it wrong to still say the folder is empty.
+             */
+            frame.on('open', function () {
+                setTimeout(function () {
+                    var el = frame.$el && frame.$el[0];
+                    if (!el) { return; }
+                    var box = el.querySelector('.uc-media-empty-note');
+                    if (!box) {
+                        box = document.createElement('p');
+                        box.className = 'uc-media-empty-note';
+                        var host = el.querySelector('.media-frame-content');
+                        if (!host) { return; }
+                        host.appendChild(box);
+                    }
+                    var shown = el.querySelectorAll('.attachments .attachment').length;
+                    if (shown) { box.hidden = true; return; }
+                    box.hidden = false;
+                    box.textContent = folderEmpty
+                        ? 'There are no pictures in the calendar folder yet. Add one on the Images screen, or ask MarCom for an event image.'
+                        : (isAll || !hasSeries
+                            ? 'No pictures in the calendar folder match. Add one on the Images screen.'
+                            : 'No pictures are tagged to this series yet. Press "All calendar images" to choose from the whole folder.');
+                }, 400);
+            });
 
             /* The uploader is built with the frame, so its params are set once
              * the frame exists rather than on every open. */

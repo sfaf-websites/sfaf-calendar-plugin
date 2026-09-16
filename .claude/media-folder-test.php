@@ -234,6 +234,76 @@ if ( false === strpos( $js, 'multipart_params' ) ) {
     $fails[] = 'portal.js does not put the flag on the uploader, so an upload would land in the month folder';
 }
 
+
+/* ---------------------------------------------------------------------------
+ * THE MEDIA LIBRARY'S OWN CALENDAR FOLDER (3.90.0).
+ *
+ * Fourteen pictures sit in uploads/calendar/ and the library's Calendar folder
+ * shows five, because WP Media Folder files by TAXONOMY and this plugin only
+ * ever set the PATH. The taxonomy name could not be verified here: WP Media
+ * Folder is commercial, is not on wordpress.org and is not on this machine. So
+ * the code DISCOVERS it instead of naming it, and these assertions are about
+ * what that discovery may and may not do.
+ * ------------------------------------------------------------------------ */
+echo "The media library's own folder\n";
+
+$GLOBALS['obj_tax']   = array();   // taxonomies registered for 'attachment'
+$GLOBALS['terms_by']  = array();   // tax => array( slug/name => term_id )
+$GLOBALS['assigned']  = array();   // "id|tax" => array of term ids
+$GLOBALS['appended']  = array();
+
+function get_object_taxonomies( $type, $output = 'names' ) { return $GLOBALS['obj_tax']; }
+function get_term_by( $field, $value, $tax = '' ) {
+    if ( ! isset( $GLOBALS['terms_by'][ $tax ][ $value ] ) ) { return false; }
+    return (object) array( 'term_id' => $GLOBALS['terms_by'][ $tax ][ $value ], 'slug' => $value, 'name' => $value );
+}
+function wp_set_object_terms( $id, $terms, $tax, $append = false ) {
+    $GLOBALS['assigned'][ $id . '|' . $tax ] = array_map( 'intval', (array) $terms );
+    $GLOBALS['appended'][ $id . '|' . $tax ] = (bool) $append;
+    return true;
+}
+function apply_filters( $tag, $value ) { return $value; }
+function is_wp_error( $t ) { return false; }
+
+/* The shape a site with WP Media Folder is in: its taxonomy carries a term
+ * named for the folder, and our own taxonomies are on attachments too. */
+/* uc_series CARRIES A MATCHING TERM TOO, deliberately, so the exclusion below is
+ * the only thing stopping the write. Without that the assertion passes for the
+ * wrong reason: no term, nothing written, guard never exercised. Found by
+ * planting the guard's removal and watching the test stay green. */
+$GLOBALS['obj_tax']  = array( 'wpmf-category', 'uc_series' );
+$GLOBALS['terms_by'] = array(
+    'wpmf-category' => array( 'calendar' => 77 ),
+    'uc_series'     => array( 'calendar' => 99 ),
+);
+$_REQUEST = array( SFAF_Media_Folder::FLAG => '1' );
+
+SFAF_Media_Folder::file_into_library_folder( 500 );
+expect( 'a caladmin upload is filed into the library folder', $GLOBALS['assigned']['500|wpmf-category'] ?? array(), array( 77 ) );
+expect( 'and appended rather than replacing what it was in', $GLOBALS['appended']['500|wpmf-category'] ?? false, true );
+expect( 'our own taxonomy is never written here', isset( $GLOBALS['assigned']['500|uc_series'] ), false );
+
+/* NOTHING IS INVENTED. A taxonomy with no matching term is skipped, so a site
+ * without that plugin, or with the folder named something else, is untouched. */
+$GLOBALS['assigned'] = array();
+$GLOBALS['terms_by'] = array( 'wpmf-category' => array( 'photos' => 88 ) );
+SFAF_Media_Folder::file_into_library_folder( 501 );
+expect( 'no matching term means nothing is written', $GLOBALS['assigned'], array() );
+
+/* AND ONLY OUR OWN UPLOADS. An upload from anywhere else in WordPress must not
+ * be filed into the calendar folder because a taxonomy happened to have one. */
+$GLOBALS['assigned'] = array();
+$GLOBALS['terms_by'] = array( 'wpmf-category' => array( 'calendar' => 77 ) );
+$_REQUEST = array();
+SFAF_Media_Folder::file_into_library_folder( 502 );
+expect( 'an upload without the calendar flag is left alone', $GLOBALS['assigned'], array() );
+
+/* IT IS HOOKED, or none of the above ever runs. */
+$hooked_lib = false;
+foreach ( $GLOBALS['hooks'] as $h ) {
+    if ( 'add_attachment' === $h[0] && is_array( $h[1] ) && 'file_into_library_folder' === $h[1][1] ) { $hooked_lib = true; }
+}
+expect( 'and it is hooked to add_attachment', $hooked_lib, true );
 /* ---------------------------------------------------------------------------
  * Result.
  * ------------------------------------------------------------------------ */

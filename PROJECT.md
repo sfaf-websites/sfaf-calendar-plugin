@@ -1121,6 +1121,71 @@ answers.
 `sfaf_day_event_thumb()` is kept for one release with no caller, because the
 line treatment is the part most likely to be reversed.
 
+### A stored id that no longer resolves is treated as absent (3.90.0)
+
+**A DELETED PICTURE USED TO PIN A SERIES TO NOTHING.** `SFAF_Series::image_id()`
+read the stored attachment id first and never asked whether it still resolved.
+Replace a series' picture and the meta pointing at the old one stays; a stale id
+is truthy, so it won, `image_url()` ended at a dead attachment, and the tag
+fallback never ran. Every surface went dark at once while a correctly tagged
+picture sat in the folder unused.
+
+> **AN ORDER PROBLEM, NOT AN EMPTY STATE.** The investigation before it concluded
+> nothing was tagged and was wrong. When a chain has a preferred source and a
+> fallback, ask whether the preferred one still ANSWERS, not just whether it is
+> set. A truthy pointer to something gone is the shape to look for.
+
+**FALL THROUGH, DO NOT CLEAR.** Deleting the stale meta on read would turn a
+read into a write, fire on the public calendar for every visitor, and destroy
+the only record of what the series was pinned to before anybody could look at
+it. A picture that is still there still wins, always.
+
+**TWO READERS HAD THE SAME BLINDNESS**, which is why every surface failed
+together: the chain, and the series screen, which previewed the raw stored id
+and so did not even fall through to the pasted URL beside it. The screen asks
+the chain now, so it cannot disagree with the calendar.
+
+### Setting a series' picture also tags it (3.90.0)
+
+**The Series dropdown on the upload panel is the tag**, so setting a picture and
+tagging it should not be two things somebody has to know to do separately.
+
+**WHAT IT COSTS AGAINST 3.81.0**, which made a tag a fallback rather than a
+second setting: that survives in the direction that matters, because nothing
+makes a tag override a setting and the stored id is still read first. What
+changes is that a deliberate choice leaves a tag behind it, so the two facts
+agree rather than drifting.
+
+**Nothing reads a tag assuming nobody set it deliberately.** The three readers
+are the picker's series filter, the earliest-tagged fallback and the Images
+screen's grouping, and all three mean "belongs with this series". The one thing
+to keep in view is unchanged and is why the fallback is the EARLIEST rather than
+the newest: tagging an older attachment to a series with no stored picture can
+change what it falls back to. **Additive, and it never untags**, because a save
+quietly unpicking a relationship nobody mentioned is a fault shape this project
+keeps meeting.
+
+### The media library's folder is a taxonomy, and it is discovered (3.90.0)
+
+**Both facts were true at once**: pictures sat in `uploads/calendar/` and the
+library's Calendar folder showed fewer. WP Media Folder files by TAXONOMY
+ASSIGNMENT rather than by location, and this plugin only ever set the path.
+
+**THE TAXONOMY IS DISCOVERED, NOT NAMED.** WP Media Folder is commercial, is not
+on wordpress.org and is not on the build machine, so its taxonomy name could not
+be verified. A hardcoded guess would either work silently or fail silently with
+no way to tell which. The code asks WordPress which taxonomies attachments carry
+and looks for a term literally named for the folder.
+
+> **IT CANNOT MISFILE ANYTHING.** The taxonomy must be registered for
+> `attachment`, must not be one of ours, and must ALREADY hold a matching term.
+> Nothing is created. A site without that plugin is untouched. Appended rather
+> than replacing, and only on an upload carrying the calendar flag.
+
+**The folder rule still reads the physical directory.** This adds a second,
+independent fact for a library this plugin does not own; it does not become the
+rule. Nothing about display depends on it.
+
 ### A stale embed.js says so, and the URL stays unversioned (3.89.0)
 
 **The script URL must not carry a version**, and this is a decision made by a
@@ -5144,10 +5209,20 @@ Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
 
-### Two things are called the calendar folder (investigated 3.86.0)
+### Two things are called the calendar folder (3.86.0, half closed in 3.90.0)
 
-**NOTHING WAS BUILT. This needs a decision, because reconciling the two means
-moving files and moving files breaks stored URLs.**
+> **NEW UPLOADS ARE NOW FILED IN BOTH**, by discovering the library's taxonomy
+> rather than naming it. See the body of this document. **What is still open is
+> the BACKLOG**: pictures already on disk and absent from the library folder are
+> not retrofitted, because that is a bulk write to somebody else's taxonomy and
+> a decision rather than code.
+>
+> **The two remaining options are unchanged and both are Mark's**: configure WP
+> Media Folder to move files on disk when they are filed, or file the strays
+> into the library folder in bulk. **Moving files and rewriting stored paths
+> stays refused** while anything reads those paths.
+
+**THE REST OF THIS ENTRY IS THE ORIGINAL INVESTIGATION AND IS STILL TRUE.**
 
 **WHAT THE PLUGIN READS: the physical directory.** `SFAF_Media_Folder::holds()`
 reads `_wp_attached_file`, core's own record of where the file actually is, and

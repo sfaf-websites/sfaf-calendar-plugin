@@ -370,8 +370,32 @@ class SFAF_Series {
             return 0;
         }
 
+        /*
+         * A STORED ID THAT NO LONGER RESOLVES IS TREATED AS ABSENT (3.90.0).
+         *
+         * THE FAULT THIS FIXES. Mark replaced the Cycle to Zero picture. The
+         * old attachment went, the meta pointing at it stayed, and because a
+         * stale id is still TRUTHY it won here, image_url() ended at a dead
+         * attachment, and the fallback below never ran. The series was pinned
+         * to a picture that did not exist and could not reach the correctly
+         * tagged one sitting in the folder. Every surface went dark at once,
+         * which is what made it look like the tag was being ignored.
+         *
+         * IT IS AN ORDER PROBLEM, NOT AN EMPTY STATE, and the difference
+         * matters: the previous investigation concluded nothing was tagged and
+         * was wrong. A tag existed and could not be reached.
+         *
+         * FALL THROUGH, DO NOT CLEAR. Deleting the stale meta here would turn
+         * a READ into a WRITE: it would fire on the public calendar for every
+         * visitor, and it would destroy the only record of what the series was
+         * pinned to before anybody could look at it. An existence check costs
+         * one cached post lookup and leaves the evidence in place.
+         *
+         * A PICTURE THAT IS STILL THERE STILL WINS, always. This only answers
+         * the case that used to answer nothing.
+         */
         $set = (int) get_term_meta( $term_id, self::META_IMAGE_ID, true );
-        if ( $set ) {
+        if ( $set && 'attachment' === get_post_type( $set ) ) {
             return $set;
         }
 

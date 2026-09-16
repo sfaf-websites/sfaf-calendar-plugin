@@ -6,13 +6,38 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-16, at 3.89.0, released.
+**Last updated:** 2026-09-16, at 3.90.0, released.
 
 ---
 
 ## What shipped last
 
-**3.89.0 IS RELEASED** and is what sites are being offered.
+**3.90.0 IS RELEASED** and is what sites are being offered.
+
+> **THE CYCLE TO ZERO PICTURE WAS PINNED TO AN ATTACHMENT THAT NO LONGER
+> EXISTED.** Replacing a picture left the old id in the term meta, a stale id is
+> truthy, so it won and the tag fallback never ran. **The previous
+> investigation said nothing was tagged and that was wrong.** A tag existed and
+> could not be reached. `TESTING.md` 1.125: it should come back with nothing
+> re-saved, and possibly on other series too.
+>
+> **The general shape**: when a chain has a preferred source and a fallback, ask
+> whether the preferred one still ANSWERS, not just whether it is set.
+
+> **THE PICKER WAS A DEAD END BUILT FROM THREE CORRECT DECISIONS.** The series
+> screen narrowed to its own series (circular), the empty grid said nothing, and
+> the way out has been rendered `hidden` since 3.74.0 and never revealed, which
+> is the SIXTH built-and-unreachable control here. All three fixed.
+
+> **A CALADMIN UPLOAD NOW ALSO GOES INTO THE MEDIA LIBRARY'S CALENDAR FOLDER**,
+> by DISCOVERING the taxonomy rather than naming it: WP Media Folder is
+> commercial and not on the build machine, so its taxonomy name could not be
+> verified. **This is the one thing in the release that cannot be proved from
+> here.** If it does not appear, the fix is the `sfaf_library_folder_term`
+> filter and no release. `TESTING.md` 1.128.
+>
+> **The nine already on disk are not retrofitted**, deliberately. No files were
+> moved and no stored path was rewritten.
 
 > **THE MONTH GRID IS LINES NOW, AND IT IS THE ONE THING WAITING ON MARK'S EYE.**
 > A dot, a title, a time, at 21px a row against 42px before. The structure is
@@ -98,12 +123,6 @@ here that is still true in six months belongs in one of those instead.
 > an existing id since it was written; the form hardcoded an empty one. That is
 > the FIFTH control found built and unreachable in this project. It was checked
 > before being rebuilt, which is the only reason it took one edit.
-
-> **THE TWO CALENDAR FOLDERS: INVESTIGATED, NOTHING BUILT.** The plugin reads the
-> physical path; the media library's folder is a **WP Media Folder** taxonomy
-> term that can be set without the file moving. `PROJECT.md` §8 has the four
-> answers and what reconciling would cost. **It needs Mark's decision**, because
-> moving files breaks stored URLs.
 
 > **NO COMMUNITY SUBMISSION HAS EVER CARRIED AN ORGANIZER, AND THE REPORTED
 > CAUSE WAS WRONG.** The brief said the form resolved the organizer and threw it
@@ -197,6 +216,7 @@ here that is still true in six months belongs in one of those instead.
 
 | | |
 |---|---|
+| **3.90.0** | **The Cycle to Zero picture was pinned to an attachment that no longer existed.** Replacing it left the old id in the term meta, and a stale id is truthy, so it won the chain and the tag fallback never ran: every surface went dark at once while a correctly tagged picture sat unused. An order problem, not the empty state the previous investigation reported. A stored id that no longer resolves is treated as absent now, falling through rather than being cleared, and the series screen asks the same chain the calendar asks. **The picker was a dead end built from three correct decisions**: the series screen narrowed to its own series, the empty grid explained nothing, and the way out has been rendered `hidden` since 3.74.0, the sixth built-and-unreachable control here. All three fixed, and choosing a series picture now tags it. **And a caladmin upload is filed into the media library's Calendar folder too**, by discovering that taxonomy rather than naming it, because WP Media Folder is commercial and could not be inspected from the build machine. No files were moved. |
 | **3.89.0** | **The filter panel shut on every tick on the embed**, because 3.87.0 carried the open state across the redraw in `calendar.js` only. Fourth fix to reach one script and not the other, and **the pair test was green and blind**: it covers the pairs somebody enumerated, and this behaviour shipped a release before the test existed. A second fault turned up in BOTH scripts while fixing it: the narrowing is an attribute on rows the redraw replaces, so hidden groups came back a frame later. **The month grid is lines, not cards**: a dot, a title, a time, measured at 21px a row against 42px before, with four things other than a border keeping nine of them readable and the category still carried as text rather than by colour alone. **And a stale `embed.js` now names itself in the console**, which is why two correct releases looked broken; the script URL stays unversioned because a version in a pasted snippet pins it, which was the 2.10.1 defect. |
 | **3.88.0** | **Search and the merged dropdown did nothing on the EMBED, and both fixes had gone to the other path.** `embed.js` asked its own REST route for `mode=items` only, so the month grid never moved, and it had no handler for the merged Organizers and Groups control at all, still listening for the two controls 3.85.0 replaced. Third time a correct change reached the shortcode and not the embed. **Nothing was missing from the server's cache key**; the CLIENT's month cache key carried only the category. A narrowed response is no longer publicly cacheable, which is where Mark's 304 came from. **And the embed cache retires on a plugin update**, flagged twice and now built, so a release is not served from a payload built before it. `.claude/embed-filters-test.php` asserts both scripts as pairs, and that the handler is called rather than merely present. |
 | **3.87.0** | **An image uploaded from the event editor was never lost.** It landed in the calendar folder correctly; it vanished from the PICKER, because wp.media refreshes its library on upload and for an event in a series that query narrows on `uc_series`, which a brand new picture cannot answer. It is tagged with the series as it arrives now. **Search in calendar view: nothing changed, deliberately**, because the whole chain was proved correct in a browser and by execution, and the remaining candidates are the SQL and the install. **The filter panel is lighter and the Apply button is gone**, inside `<noscript>` rather than hidden, with the open panel surviving the redraw and the rebuild debounced at 350ms. **The upload panel is the picture on the left and the typed fields on the right**, which is what actually fixes an alignment fault two arrangements had not. |

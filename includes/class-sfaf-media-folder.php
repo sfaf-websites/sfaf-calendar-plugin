@@ -63,6 +63,7 @@ class SFAF_Media_Folder {
         add_filter( 'upload_dir', array( __CLASS__, 'upload_to_folder' ) );
         add_filter( 'map_meta_cap', array( __CLASS__, 'gate_upload' ), 10, 3 );
         add_action( 'add_attachment', array( __CLASS__, 'tag_upload_with_series' ) );
+        add_action( 'add_attachment', array( __CLASS__, 'file_into_library_folder' ) );
     }
 
     /**
@@ -101,6 +102,77 @@ class SFAF_Media_Folder {
      *
      * @param int $attachment_id
      */
+    /**
+     * Also file a caladmin upload into the media library's own Calendar folder.
+     *
+     * THE PROBLEM, AND BOTH HALVES OF IT ARE TRUE AT ONCE (3.90.0). Fourteen
+     * pictures sit in `uploads/calendar/` and the media library's Calendar
+     * folder shows five. The folder in that library belongs to WP Media Folder,
+     * which files by TAXONOMY ASSIGNMENT rather than by location, and this
+     * plugin has never written that assignment. So an upload made here lands in
+     * the right directory and is invisible in the place Mark uses to find
+     * things. Mark's requirement is one upload, one place.
+     *
+     * THE TAXONOMY IS DISCOVERED, NOT NAMED, AND THAT IS THE WHOLE DESIGN.
+     * WP Media Folder is commercial, is not on wordpress.org, and is not on the
+     * build machine, so its taxonomy name could not be verified from here.
+     * Hardcoding a guess would either work silently or fail silently, and there
+     * would be no way to tell which. Instead this asks WordPress what
+     * taxonomies attachments actually carry and looks for a term that is
+     * literally the calendar folder's name.
+     *
+     * WHY THAT CANNOT MISFILE ANYTHING. Three conditions, all required: the
+     * taxonomy must be registered for `attachment`, it must not be one of ours,
+     * and it must already contain a term whose slug or name matches the folder.
+     * A taxonomy with no such term is skipped, so nothing is created and nothing
+     * is invented. If WP Media Folder is absent, or its Calendar folder is
+     * named something else, this does nothing at all and the upload behaves
+     * exactly as it did.
+     *
+     * APPENDED, NEVER REPLACING. `wp_set_object_terms()` with $append true, so
+     * a picture that is already filed somewhere else in that library keeps its
+     * other folders. This adds a fact; it does not take one away.
+     *
+     * TURN IT OFF WITH ONE FILTER, and correct the name with another, so
+     * neither needs a release:
+     *
+     *     add_filter( 'sfaf_library_folder_enabled', '__return_false' );
+     *     add_filter( 'sfaf_library_folder_term', function () { return 'events'; } );
+     *
+     * @param int $attachment_id
+     */
+    public static function file_into_library_folder( $attachment_id ) {
+        if ( ! self::asked_for() ) {
+            return;
+        }
+        if ( ! apply_filters( 'sfaf_library_folder_enabled', true ) ) {
+            return;
+        }
+
+        $wanted = (string) apply_filters( 'sfaf_library_folder_term', self::FOLDER );
+        if ( '' === $wanted ) {
+            return;
+        }
+
+        /* Ours are not media-library folders and must never be written here.
+         * uc_series is the calendar's own tag and is set by its own rule. */
+        $mine = array( 'uc_series', 'uc_event_category', 'uc_organizer', 'uc_venue' );
+
+        foreach ( get_object_taxonomies( 'attachment', 'names' ) as $tax ) {
+            if ( in_array( $tax, $mine, true ) ) {
+                continue;
+            }
+            $term = get_term_by( 'slug', $wanted, $tax );
+            if ( ! $term || is_wp_error( $term ) ) {
+                $term = get_term_by( 'name', $wanted, $tax );
+            }
+            if ( ! $term || is_wp_error( $term ) ) {
+                continue;
+            }
+            wp_set_object_terms( (int) $attachment_id, array( (int) $term->term_id ), $tax, true );
+        }
+    }
+
     public static function tag_upload_with_series( $attachment_id ) {
         if ( ! self::asked_for() ) {
             return;

@@ -3057,6 +3057,16 @@ body.uc-modal-open { overflow: hidden; }
 
    THE LEFT COLUMN IS FIXED, so the preview appearing cannot resize the fields
    beside it. The right column takes the rest. */
+/* THE SENTENCE IN AN EMPTY wp.media GRID (3.90.0). Inside WordPress's own frame,
+   so it is deliberately plain and sits below the grid rather than replacing
+   anything: overwriting a core view is how a media picker breaks on a core
+   update. Quiet and centred, because it explains rather than offers. */
+.uc-media-empty-note {
+    margin: 0; padding: 18px 20px;
+    font-size: 14px; line-height: 1.5; text-align: center;
+    color: var(--p-muted, #6B7280);
+}
+
 .uc-upload-panel {
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);

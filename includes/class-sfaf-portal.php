@@ -7062,7 +7062,27 @@ class SFAF_Portal {
              * with no script neither button does anything at all.
              */
             ?>
-            <button type="button" class="uc-btn uc-btn-sm uc-choose-image" data-uc-media-all hidden>All calendar images</button>
+            <?php
+            /*
+             * NOT `hidden` IN THE MARKUP ANY MORE (3.90.0), AND THAT ATTRIBUTE
+             * IS WHY THIS BUTTON HAS NEVER BEEN SEEN.
+             *
+             * The note above says it is "rendered always and hidden by
+             * portal.js when there is no series". Only the second half was
+             * true. It was rendered hidden HERE, and portal.js only ever sets
+             * `hidden = true` for the no-series case; nothing has ever removed
+             * it, and no stylesheet reveals it. So the way out of the series
+             * filter has been invisible since 3.74.0, which is the sixth
+             * control in this project found built and unreachable.
+             *
+             * Rendered VISIBLE now and hidden by the script when there is
+             * nothing to escape from, which is what the comment always claimed.
+             * With no script both buttons show; the second one then opens the
+             * same unfiltered library the first does, which is harmless and is
+             * the honest no-script behaviour.
+             */
+            ?>
+            <button type="button" class="uc-btn uc-btn-sm uc-choose-image" data-uc-media-all>All calendar images</button>
             <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
         </div>
         <?php echo $a['after_buttons']; // Already-built markup from the caller. ?>
@@ -7849,11 +7869,62 @@ class SFAF_Portal {
 
         if ( $term_id ) {
             $result = SFAF_Series::update( $term_id, $name, $args );
-            return is_wp_error( $result ) ? 0 : $term_id;
+            if ( is_wp_error( $result ) ) {
+                return 0;
+            }
+            $this->tag_series_image( $term_id, (int) $args['image_id'] );
+            return $term_id;
         }
 
         $created = SFAF_Series::create( $name, $args );
-        return is_wp_error( $created ) ? 0 : (int) $created;
+        if ( is_wp_error( $created ) ) {
+            return 0;
+        }
+        $this->tag_series_image( (int) $created, (int) $args['image_id'] );
+        return (int) $created;
+    }
+
+    /**
+     * Setting a series' picture also tags it to that series (3.90.0).
+     *
+     * WHY, IN MARK'S WORDS: the Series dropdown on the upload panel IS the tag,
+     * so setting a series' picture and tagging it should not be two separate
+     * things somebody has to know to do. They were, and the gap between them is
+     * most of what made the Cycle to Zero picture hard to find.
+     *
+     * WHAT IT COSTS AGAINST 3.81.0, which decided a tag is a FALLBACK rather
+     * than a second setting. That decision survives in the direction that
+     * matters: nothing here makes a tag override a setting, and image_id()
+     * still reads the stored id first. What changes is that a deliberate choice
+     * now leaves a tag behind it, so the two facts agree instead of drifting.
+     *
+     * NOTHING NOW READS A TAG ASSUMING NOBODY SET IT DELIBERATELY. The readers
+     * are the picker's series filter, SFAF_Media::earliest_for_series() and the
+     * Images screen's grouping, and all three mean "belongs with this series",
+     * which is exactly what choosing it here asserts. The one thing to keep in
+     * view is that the earliest tagged picture is the fallback, so tagging an
+     * OLDER attachment to a series that has no stored picture can change what
+     * that series falls back to. That is unchanged by this and is why the
+     * fallback is the earliest rather than the newest.
+     *
+     * ADDITIVE, AND IT NEVER UNTAGS. Changing a series' picture does not remove
+     * the tag from the old one: that picture may still belong with the series,
+     * and a save quietly unpicking a relationship nobody mentioned is the shape
+     * of fault this project keeps meeting. Untagging stays a deliberate act on
+     * the Images screen.
+     *
+     * THE FOLDER RULE STILL DECIDES. SFAF_Media::add_tag() refuses anything
+     * that is not an attachment in the calendar folder, so a pasted URL or a
+     * picture from elsewhere writes nothing here.
+     *
+     * @param int $term_id
+     * @param int $attachment_id 0 when the picture was cleared or is a URL.
+     */
+    private function tag_series_image( $term_id, $attachment_id ) {
+        if ( $term_id < 1 || $attachment_id < 1 || ! class_exists( 'SFAF_Media' ) ) {
+            return;
+        }
+        SFAF_Media::add_tag( array( $attachment_id ), $term_id );
     }
 
     /**
@@ -8277,7 +8348,23 @@ class SFAF_Portal {
 
         $img_id  = $term_id ? (int) get_term_meta( $term_id, SFAF_Series::META_IMAGE_ID, true ) : 0;
         $img_url = $term_id ? (string) get_term_meta( $term_id, SFAF_Series::META_IMAGE_URL, true ) : '';
-        $preview = $img_id ? wp_get_attachment_image_url( $img_id, 'medium' ) : $img_url;
+        /*
+         * THE PREVIEW ASKS THE CHAIN, NOT THE RAW META (3.90.0).
+         *
+         * This was `$img_id ? wp_get_attachment_image_url( $img_id ) : $img_url`,
+         * which has two faults in one line. A deleted attachment left a truthy
+         * id, so the ternary took the first branch, resolved to false, and did
+         * not even fall through to the pasted URL sitting beside it. And it
+         * never consulted the tag, so this screen disagreed with the calendar
+         * about what the series' picture was.
+         *
+         * SFAF_Series::image_url() is what every other surface asks, so asking
+         * it here is what makes the screen show what the calendar shows. The
+         * raw id is still read above, because the hidden field has to carry
+         * what is actually STORED rather than what was resolved: saving the
+         * resolved fallback would silently promote a tag into a setting.
+         */
+        $preview = $term_id ? SFAF_Series::image_url( $term_id, 'medium' ) : '';
         $set     = $term_id ? SFAF_Series::default_faq_set( $term_id ) : '';
         $sets    = SFAF_FAQ_Sets::all();
 
@@ -8326,8 +8413,28 @@ class SFAF_Portal {
                  * render_image_picker().
                  */
                 ?>
-                <?php // This screen IS a series, so the picker opens on its own pictures. ?>
-                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), (int) $term_id ); ?>>
+                <?php
+                /*
+                 * THE SERIES SCREEN DOES NOT NARROW TO ITS OWN SERIES (3.90.0).
+                 *
+                 * It did, and the reasoning was circular: this screen is where
+                 * a series' picture is ESTABLISHED, so offering only pictures
+                 * already tagged to it means the first one can never be chosen.
+                 * A series with nothing tagged got a blank wp.media grid with no
+                 * sentence in it, and the way out was a button that has never
+                 * been visible. That is a dead end built out of three correct
+                 * decisions.
+                 *
+                 * THE EVENT EDITOR'S NARROWING STAYS. There the series is
+                 * context rather than the subject: somebody setting a picture
+                 * for one date wants that programme's pictures first, and has
+                 * the escape button beside it, which now renders.
+                 *
+                 * Passing 0 is what the "All calendar images" trigger passes,
+                 * so this opens on the whole folder.
+                 */
+                ?>
+                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), 0 ); ?>>
                     <span class="uc-field-label">Image</span>
                     <?php $this->render_image_picker( array(
                         'uid'         => 'series',

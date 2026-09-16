@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.89.0
+Stable tag: 3.90.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,42 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.90.0 =
+
+**THE CYCLE TO ZERO PICTURE WAS PINNED TO AN ATTACHMENT THAT NO LONGER EXISTED, AND THAT IS WHY A CORRECTLY TAGGED PICTURE SAT THERE UNUSED.** The previous investigation concluded nothing was tagged. That was wrong, and the real fault is an ORDER problem rather than an empty state.
+
+**`SFAF_Series::image_id()` read the stored attachment id first and never asked whether it still resolved.** Mark replaced the picture: the old attachment went, the meta pointing at it stayed, and a stale id is still truthy. So it won, `image_url()` ended at a dead attachment, and the tag fallback below it never ran. The series could not reach the picture in the folder because it was still pointing at one that was gone.
+
+**Established by execution, not by reading.** `.claude/series-image-stale-test.php` builds exactly that state, an attachment table with the old id absent and the replacement tagged, and the unfixed code returns an empty string while the tagged picture is right there.
+
+**A STORED ID THAT NO LONGER RESOLVES IS NOW TREATED AS ABSENT**, so the chain continues to the tag. **Fall through, do not clear:** deleting the stale meta on read would turn opening a page into an edit, it would fire on the public calendar for every visitor, and it would destroy the only record of what the series was pinned to before anybody could look at it. An existence check costs one cached lookup and leaves the evidence in place. **A picture that is still there still wins, always.**
+
+**TWO READERS HAD THE SAME BLINDNESS**, which is why every surface went dark at once instead of one of them. The series screen read the term meta directly and previewed `$img_id ? url($img_id) : $img_url`, so a dead id did not even fall through to the pasted URL beside it, and it never consulted the tag at all. It asks the same chain the calendar asks now, so the screen and the calendar cannot disagree about what a series' picture is.
+
+**WHY THE UPLOAD PANEL'S TAG WAS NOT USED: it was written, and nothing was wrong with it.** Mark selected the series in that dropdown and the tag went on correctly. It was never reached, because the stale id short-circuited the chain three steps earlier.
+
+**THE "ALL CALENDAR IMAGES" BUTTON HAS NEVER BEEN VISIBLE**, since 3.74.0, which is the sixth control in this project found built and unreachable. Its own note says it is "rendered always and hidden by portal.js when there is no series". Only the second half was true: it was rendered with `hidden` in the markup, `portal.js` only ever sets that attribute, nothing removes it and no stylesheet reveals it. It renders visible now and the script hides it when there is nothing to escape from, which is what the note always claimed.
+
+**A BLANK PICKER SAYS WHY IT IS BLANK.** wp.media's own empty state is "No media items found", which is true and useless: it cannot know the library was narrowed to one folder and possibly one series. The public forms' picker has had that sentence since 3.80.0; this is the caladmin equivalent, written on every open rather than once, because uploading a picture into an empty folder makes it wrong to still say the folder is empty.
+
+**THE SERIES SCREEN'S PICKER NO LONGER NARROWS TO ITS OWN SERIES.** The reasoning was circular: that screen is where a series' picture is ESTABLISHED, so offering only pictures already tagged to it means the first one can never be chosen. Combined with an invisible escape button and a silent empty grid, it was a dead end built out of three separately correct decisions. **The event editor's narrowing stays**, because there the series is context rather than the subject.
+
+**CHOOSING A PICTURE ON THE SERIES SCREEN NOW TAGS IT TO THAT SERIES.** Mark's reasoning: the Series dropdown on the upload panel IS the tag, so setting a series' picture and tagging it should not be two separate things somebody has to know to do.
+
+**WHAT THAT COSTS AGAINST 3.81.0**, which decided a tag is a FALLBACK rather than a second setting. That decision survives in the direction that matters: nothing makes a tag override a setting, and the stored id is still read first. What changes is that a deliberate choice now leaves a tag behind it, so the two facts agree instead of drifting apart. **Nothing now reads a tag assuming nobody set it deliberately:** the three readers are the picker's series filter, the earliest-tagged fallback and the Images screen's grouping, and all three mean "belongs with this series", which is exactly what choosing it asserts. The one thing to keep in view is unchanged and is why the fallback is the earliest rather than the newest: tagging an OLDER attachment to a series with no stored picture can change what that series falls back to. **It is additive and never untags**, because a save quietly unpicking a relationship nobody mentioned is a shape of fault this project keeps meeting.
+
+**A CALADMIN UPLOAD NOW APPEARS IN THE MEDIA LIBRARY'S CALENDAR FOLDER TOO.** Both of Mark's facts were true at once: fourteen pictures sit in `uploads/calendar/` and the library's Calendar folder showed five. That folder belongs to WP Media Folder, which files by TAXONOMY ASSIGNMENT rather than by location, and this plugin had only ever set the path.
+
+**THE TAXONOMY IS DISCOVERED, NOT NAMED, AND THAT IS THE WHOLE DESIGN.** WP Media Folder is commercial, is not on wordpress.org and is not on the build machine, so its taxonomy name could not be verified here. Hardcoding a guess would either work silently or fail silently with no way to tell which. Instead the code asks WordPress which taxonomies attachments actually carry and looks for a term that is literally the calendar folder's name.
+
+**IT CANNOT MISFILE ANYTHING.** Three conditions, all required: the taxonomy must be registered for `attachment`, it must not be one of ours, and it must ALREADY contain a term matching the folder. Nothing is created and nothing is invented, so a site without that plugin, or with the folder named something else, is untouched. It is appended rather than replacing, so a picture already filed elsewhere keeps its other folders, and it only ever runs on an upload carrying the calendar flag. Two filters turn it off or correct the name without a release.
+
+**NO FILES WERE MOVED AND NO STORED PATH WAS REWRITTEN**, as instructed. The nine pictures already on disk and absent from the library folder are not retrofitted by this: it changes what happens to uploads from here. Filing those nine is a decision rather than code, and the options are in PROJECT.md.
+
+**Eight faults planted and every one caught by name**, including both halves of the shipped fault. **Three escaped a first draft**, and one of those is worth recording: a guard's removal left the test green because the fixture never gave the excluded taxonomy a matching term, so the assertion had been passing for the wrong reason. The fixture now makes the guard the only thing preventing the write.
+
+**Unchanged**: the folder rule reads the physical directory, the event editor picker narrows by series, the public forms' picker and its MarCom sentence, search and the filters in calendar view, and the filter dropdown's open state across a redraw.
 
 = 3.89.0 =
 
