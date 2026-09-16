@@ -3402,6 +3402,85 @@ body.uc-modal-open { overflow: hidden; }
    (0,1,1) and would repaint an anchor wearing this with the page's link teal,
    which is the same specificity accident documented at .uc-btn-source, so the
    anchor case is named explicitly. */
+
+/* ===========================================================================
+ * THE THREE ACTIONS AT THE FOOT OF THE EVENT EDITOR (3.94.0).
+ *
+ * WHAT IT WAS. Save in a band, Cancel a whole disclosure section with its own
+ * heading, Delete a card with its own heading and paragraph. Three blocks for
+ * three buttons. AND CANCEL AND DELETE WERE BOTH RED, which is the fault under
+ * the mess: the two actions with the most different consequences on this screen
+ * looked identical. One is reversible and keeps every registration; the other
+ * keeps nothing and tells nobody.
+ *
+ * COLOURED BY CONSEQUENCE. Green go, amber caution, red stop. These are SYSTEM
+ * STATES, not brand: DESIGN.md's palette rule is about what a visitor sees on
+ * the public calendar, and caladmin is a set of controls for one person doing a
+ * job. Going outside the palette is allowed here and only here.
+ *
+ * EVERY ONE MEASURED, because green and amber with white text are the two that
+ * are usually wrong. The obvious 600-weight shades both fail:
+ *
+ *     #16A34A green 600   white text 3.30:1   FAILS
+ *     #D97706 amber 600   white text 3.19:1   FAILS
+ *     #15803D green 700   white text 5.02:1   passes
+ *     #B45309 amber 700   white text 5.02:1   passes
+ *     #c0392b the red we already have   white text 5.44:1   passes
+ *
+ * THE AMBER IS ALREADY ON THIS SCREEN. #B45309 is the needs-attention flag and
+ * the strong source link, measured at 5.02:1 in 3.68.0. The red is unchanged
+ * from .uc-btn-danger. Only the green is new, and it is the same 700 weight as
+ * the amber so the row is one family rather than three borrowed palettes.
+ *
+ * THE HOVERS GO DARKER, NEVER LIGHTER: 7.17, 7.09 and 6.98 to one.
+ * ======================================================================== */
+.uc-editor-actions,
+.uc-portal .uc-form-actions-primary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+}
+
+.uc-portal .uc-btn-go { background: #15803D; border-color: #15803D; color: #fff; }
+.uc-portal .uc-btn-go:hover { background: #12652F; border-color: #12652F; color: #fff; }
+.uc-portal .uc-btn-caution { background: #B45309; border-color: #B45309; color: #fff; }
+.uc-portal .uc-btn-caution:hover { background: #92400E; border-color: #92400E; color: #fff; }
+.uc-portal .uc-btn-stop { background: #c0392b; border-color: #c0392b; color: #fff; }
+.uc-portal .uc-btn-stop:hover { background: #a33025; border-color: #a33025; color: #fff; }
+
+/* THE CANCEL DISCLOSURE IS ONE OF THE THREE BUTTONS, AND THEN IT IS A PANEL.
+   Closed it is a flex item the size of its label. Open it takes the row's whole
+   width and moves to the end of it, so the options lay out under the buttons
+   rather than shouldering them aside. Two declarations, no script, and the
+   element is still a native <details>, which is what makes it work with
+   scripting off. */
+.uc-cancel-inline { flex: 0 0 auto; }
+.uc-cancel-inline[open] { flex: 1 1 100%; order: 20; }
+.uc-cancel-inline > summary { list-style: none; cursor: pointer; }
+.uc-cancel-inline > summary::-webkit-details-marker { display: none; }
+.uc-cancel-inline > summary::marker { content: ""; }
+/* Open, the summary stops being a button and becomes the panel's heading: a
+   full-width amber bar would be a very loud thing to have on screen while
+   somebody reads two paragraphs and a radio group. */
+.uc-cancel-inline[open] > summary {
+    display: inline-flex; margin-bottom: 10px;
+}
+.uc-cancel-inline-body {
+    flex: 1 1 100%;
+    padding: 14px 16px; margin-top: 2px;
+    border: 1px solid var(--p-border); border-radius: 10px;
+    background: #fff;
+}
+
+/* THE EXPLANATIONS, UNDER THE ROW AND NOT BESIDE EACH BUTTON. One line, the
+   secondary size, in the order the buttons are in. */
+.uc-editor-actions-note {
+    margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--p-muted, #6B6764);
+}
+.uc-editor-actions-note strong { color: var(--p-text); font-weight: 600; }
+
+/* What is left of the delete card: the form it posts, which draws nothing, and
+   the sentence for when it is refused. */
+.uc-delete-block { margin-top: 10px; }
+
 .uc-btn-danger { background: #c0392b; border-color: #c0392b; color: #fff; }
 .uc-btn-danger:hover { background: #a33025; border-color: #a33025; color: #fff; }
 .uc-portal a.uc-btn-danger, .uc-portal a.uc-btn-danger:hover { color: #fff; }

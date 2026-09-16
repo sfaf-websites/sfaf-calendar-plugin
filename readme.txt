@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.93.0
+Stable tag: 3.94.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,70 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.94.0 =
+
+**THE COUNT IS INSIDE THE NAME NOW, WHICH FIXES BOTH THINGS WRONG WITH IT.** It was a sibling of the name in a flex row. Measured in a browser here it sat a constant 10px after the name on every row, which is right; on sfaf.org it was pinned to the column's right edge, and the only thing that does that is a host rule giving the name a flex-grow. **That is the third time this panel has been hit by a value set outside it**, after the inherited word-break and the theme reaching our `<img>`. Inline inside the name there is no flex distribution left to lose. **And it sits on the name's baseline for free**: as a flex item it took the row's `align-items: flex-start`, so an 11px count and a 14px name had their BOX tops level and their text on different lines. Inline text shares the line box. The space before it is a real space in the markup, because a margin is a property something else can override.
+
+**AND IT REDUCED THE WRAPPING, measured after rather than before.** A pinned count takes width from the name. Against the real terms at the embed width, rows taking more than one line went from **eleven of thirty-five to nine**, and the panel from 532px to **513px**.
+
+**A TICKED ROW IS VISIBLE NOW, AND A TINT ALONE WAS NEVER GOING TO DO IT.** It carried `--uc-bg`, which measures **1.06:1** against the panel: that is not a light background, it is white with a rounding error. Brand teal over white tops out around 1.3:1 before the name starts losing contrast, so the fill cannot carry a selection by itself:
+
+```
+10%  #E8F9FA   1.08:1 on white
+18%  #D5F3F6   1.17:1
+36%  #ABE8EE   1.35:1, and by here the tint is doing the reading
+```
+
+**So it is both, and the edge is the half that carries it.** A solid 3px rule down the left of the row in `--uc-teal-text`, which is **5.35:1** against the panel and clears the 3:1 WCAG asks of a non-text indicator with room. The brand fill #16BECF would have been 2.26:1 and failed it. An inset shadow rather than a border, so the edge costs no layout and ticking does not shift the list. The fill is the heading band token, so there is one tint in the panel rather than two, and **the count takes the teal ink on a ticked row** because secondary grey on that tint is 4.14:1, under the 4.5:1 an 11px number needs. The tick itself takes the same ink through `accent-color`, which colours a native box without replacing it.
+
+**AN EVENT DESCRIPTION IS IN ONE FONT.** People write these in Word, in Outlook and in a browser, and a paste carries the source's typeface as an inline style on nearly every element. **OVERRIDDEN ON DISPLAY, NOT STRIPPED ON SAVE**, and that is the decision rather than the selector: stripping cannot be undone, the next thing anybody asks for is the bold that went with it, and it would only fix descriptions saved after it while about a hundred already exist. An override fixes what is already there the moment it ships and is reversible by deleting one rule.
+
+**`inherit`, NOT A NAMED FACE, which is why our own rules survive.** An element told to inherit takes its parent's computed font, so a paragraph takes the body face and a span inside an `<h3>` takes the HEADING face. Naming the body font here would have flattened our own headings into body text, which is the same mistake as the paste. `!important` is required and is not a shortcut: a style attribute beats every selector in the cascade, and !important is the only author-level thing that outranks it.
+
+**PASTED COLOUR AND PASTED SIZE ARE UNTOUCHED AND STILL COME THROUGH EXACTLY AS PASTED.** They were not asked for, and both are sometimes meant: somebody emphasising a line in red chose that, where nobody has ever chosen Calibri on purpose. If they turn out to be a problem they are two more properties in the same rule.
+
+**CHOOSE IMAGE ON AN EVENT IS THE REQUEST FORM'S PICKER, NOT THE WORDPRESS MEDIA MODAL.** The modal was correct and was still not what somebody setting a picture for one event wants: it offers the whole folder, it opens a second window over the form, and the folder it filters on is the thing behind four separate confusion reports. The staff request form has had a picker since 3.67.0 that shows the calendar folder narrowed to the event's own series, inline, with a search box. **One picker on three surfaces now**, which is what 3.42.1 cost when there were two.
+
+**"ALL CALENDAR IMAGES" IS STILL THE WAY OUT, and it is rendered visible and hidden by the script rather than the other way round.** A control rendered `hidden` and revealed by script is how the last one of these stayed invisible for sixteen releases. The narrowing sets the same `data-uc-off-series` attribute the staff form's filter sets and asks the same list owner to run, because one owner of `hidden` is what stopped the search box and the series filter fighting over the same rows.
+
+**UPLOADING FROM THE EVENT EDITOR IS GONE WITH THE MODAL, AND THIS IS WHAT GOES WITH IT.** Pictures are added on the Images screen and chosen here. **The 3.87.0 tagging that ran on upload from this path no longer runs**: a picture added on the Images screen is not tagged to a series automatically, so until somebody tags it, it will not appear under any series in any picker. Both public forms keep their own upload and are unaffected.
+
+**THE THREE ACTIONS AT THE FOOT OF THE EVENT EDITOR ARE ONE ROW, COLOURED BY CONSEQUENCE.** Save was a band inside the form, Cancel a whole disclosure section with its own heading, Delete a card with its own heading and paragraph: three blocks and about four hundred pixels for three buttons. **And Cancel and Delete were both red**, which is the fault under the mess: the two actions with the most different consequences on this screen looked identical. One is reversible and keeps every registration; the other keeps nothing and tells nobody.
+
+**EVERY COLOUR MEASURED, because green and amber with white text are the two that are usually wrong:**
+
+```
+#16A34A green 600   white text 3.30:1   FAILS
+#D97706 amber 600   white text 3.19:1   FAILS
+#15803D green 700   white text 5.02:1   Save
+#B45309 amber 700   white text 5.02:1   Cancel
+#c0392b the red already in use   white text 5.44:1   Delete
+```
+
+The amber is already on this screen: it is the needs-attention flag, measured at 5.02:1 in 3.68.0. The red is unchanged. Only the green is new, and it is the same 700 weight as the amber so the row is one family rather than three borrowed palettes. Hovers go darker, never lighter: 7.17, 7.09 and 6.98 to one.
+
+**THE ROW SITS OUTSIDE THE FORM, WHICH IS WHAT MAKES ONE ROW POSSIBLE.** Cancelling and deleting post their own actions and forms do not nest, so Save reaches its form by `form=`, exactly as Approve and Reject have since 3.74.0. **The cancel disclosure IS the middle button**: closed it is a flex item the size of its label, open it takes the row's whole width and moves to the end, so the options lay out under the buttons. Two declarations, no script, still a native `<details>`. A separate button that opened a panel below would have left two things on screen that both say cancel. The explanations are one line each, under the row, in the order the buttons are in.
+
+**"SEE ALL EVENTS" CLEARS THE ROUNDED CORNER, AND THE REASON IT TOOK THREE REPORTS IS THAT THE WRONG ELEMENT WAS MEASURED TWICE.** Both previous diagnoses measured the COMBINED view, where the sidebar has `border: 0` and `padding: 0` because the panel around it carries the box; there the link clears the card by 21px and always has. **THE STANDALONE SIDEBAR, WHICH CARRIES ITS OWN BOX, WAS NEVER MEASURED.** In all four states at 700px:
+
+```
+card radius                14px, so 13px on the padding box
+link bottom to that edge   15px
+clearance                  2px
+```
+
+**A corner is a square, not a point.** A 14px radius means the card is still coming in for the whole last 14px, so a full-width link ending 2px above that reads as sitting on the curve whatever the arithmetic says it clears. Two pixels is a coincidence, not a clearance. The bottom padding is 20px now, which is **21px of clearance in all four states**, the same number the combined view has always had and which nobody has ever reported.
+
+**TWO THINGS IN THE BRIEF WERE ALREADY BUILT AND NOTHING WAS ADDED FOR EITHER.** The **five minute time step** has been on all twelve time controls since 3.72.0, with a committed test checking every call site; the only suppression is the deliberate one, a control already holding an off-boundary time, and on a blank request form it cannot fire. The **dashboard count of published events with no organizer** has been in "Needs attention" since 3.86.0: organizers only, linked to those events, and the save refusal can only be reached on an event that already has one, so the hundred save normally. **Check the installed version before building anything reported missing.**
+
+**WHERE A SUBMITTED PICTURE GOES, AND WHY "USE THIS IMAGE" DOES NOT WORK. INVESTIGATED AND DELIBERATELY NOT CHANGED.** A submitted file is stored at `uploads/calendar-submissions/submission-<date>-<random>.<ext>` as a real attachment with no author and the title "Submitted image". It IS in the media library, and it is NOT in the Calendar media folder, so it never reaches the Images screen or any picker. On the pending row and again in the event editor its thumbnail links to the full-size file in a new tab, and the editor's hint already says "Download it, size it, and upload the finished one through the image picker."
+
+**"Use this image" sets the thumbnail and the folder rule then refuses it.** `SFAF_Media_Folder::holds()` is anchored on `calendar/` and the file is in `calendar-submissions/`, which does not start with it. So the event falls through to its series picture or the placeholder, and the row says "This is the event's picture." **It also deletes any typed image URL on the way past**, so an event with a working URL loses it and gains a thumbnail that resolves to nothing. Nobody had tested it. The remedy is Mark's call and is recorded in `PROJECT.md` 8.
+
+**Twenty-five faults planted and every one caught.** Three existing tests caught real work on the way: two harnesses needed the new picker stubbed, and one assertion about a hidden attachment id had to reverse with the control it was pinning.
+
+**AND `HANDOVER.md` IS 155 LINES, DOWN FROM 569 AGAINST A 150 CAP.** The release history it carried is in this file, which is where a history belongs; what is durable went to `PROJECT.md`; what is left is what is true today. **Six things that existed only in a chat are written down**: the help icon audit, a searchable help section for caladmin, hybrid events with a separate RSVP for each half, the calendar home URL, whether an event with no description falls back to its series description, and the nine images on disk that are not in the Calendar folder.
 
 = 3.93.0 =
 

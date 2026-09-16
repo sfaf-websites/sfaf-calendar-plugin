@@ -443,6 +443,22 @@ class SFAF_Media {
     public static function can_upload( $user ) { return true; }
     public static function can_tag( $user ) { return true; }
     public static function tags_of( $id ) { return array(); }
+    /* THE EVENT EDITOR'S PICTURE CHOOSER IS THIS PICKER FROM 3.94.0, not
+     * wp.media. This harness is about the COMPLETENESS banner, not about
+     * which pictures are offered, so the stub emits the one thing the checks
+     * below need: a control that posts the field. Emitting nothing would make
+     * "the image control renders no input at all" true and would be true for
+     * the wrong reason. */
+    public static function picker( $args = array() ) {
+        $name   = isset( $args['name'] ) ? $args['name'] : 'image_id';
+        $chosen = isset( $args['chosen'] ) ? (int) $args['chosen'] : 0;
+        echo '<details class="uc-picker uc-image-picker" data-uc-image-picker>'
+            . '<summary class="uc-picker-toggle">Choose a picture</summary>'
+            . '<label class="uc-check uc-picker-option uc-image-option">'
+            . '<input type="radio" name="' . esc_attr( $name ) . '" value="' . $chosen . '"'
+            . ( $chosen ? ' checked' : '' ) . ' data-uc-image-option /></label>'
+            . '</details>';
+    }
 }
 class SFAF_Media_Folder {
     const FOLDER = 'sfaf-calendar';
@@ -825,8 +841,21 @@ function nodes_matching( $html, $xpath ) {
 $img_fields = nodes_matching( $new, '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-field ")]' );
 expect( 'New Event renders one featured image field', count( $img_fields ), 1 );
 
+/* THE ATTACHMENT ID IS A RADIO NOW, NOT A HIDDEN INPUT (3.94.0), AND THIS
+   ASSERTION REVERSED WITH IT.
+
+   The event editor's picture chooser was wp.media writing into a hidden field;
+   it is the request form's picker now, and the chosen picture is the checked
+   radio. The data-uc-image-id attribute was the hook wp.media wrote through,
+   and there is nothing left to write through.
+
+   WHAT THE CHECK WAS PROTECTING IS UNCHANGED and is asserted below instead:
+   the field posts featured_image_id. That is the contract the save reads. The
+   hidden input was one implementation of it. */
+$posts_id = nodes_matching( $new, '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-field ")]//input[@name="featured_image_id"]' );
+expect( 'the image field posts featured_image_id', count( $posts_id ) > 0, true );
+
 foreach ( array(
-    'the hidden attachment id'   => '@data-uc-image-id',
     'the image URL box'          => '@data-uc-image-url',
     'the preview container'      => '@data-uc-image-preview',
     'the preview <img>'          => '@data-uc-image-preview-img',

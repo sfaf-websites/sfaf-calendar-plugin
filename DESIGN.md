@@ -735,6 +735,104 @@ both                            532px
 520px was set in 3.92.0 from made-up names; the real ones are much longer, eleven
 of thirty-five take two lines and three take three. The cap is 580px.
 
+### A flex item is something a host page can move (3.94.0)
+
+The count beside each name in the filter dropdown was a sibling of the name in a
+flex row. **Measured in a browser it sat a constant 10px after the name on every
+row. On sfaf.org it was pinned to the column's right edge**, and the only thing
+that does that is a rule giving the name a flex-grow, which nothing in this
+plugin does.
+
+> **Third time this panel has been hit by a value set outside it**, after an
+> inherited `word-break` splitting a name in half and a theme's rule reaching our
+> `<img>`. The pattern is the same each time: a property we never declared, or a
+> layout role we left available for something else to fill.
+
+**The count is inline inside the name now**, and that fixes a second fault at
+the same time: as a flex item it took the row's `align-items: flex-start`, so an
+11px count and a 14px name had their box tops level and their text on different
+lines. **Inline text shares the name's baseline because it is in the same line
+box.** No property has to be set for that and none can be overridden.
+
+**The space before it is a real space in the markup**, for the same reason a
+margin was wrong: a margin is a property, and a property is a thing something
+else can take away.
+
+### A tint cannot carry a selection on its own (3.94.0)
+
+A ticked row in the dropdown carried `--uc-bg`, which measures **1.06:1**
+against the panel. That is not a light background, it is white with a rounding
+error, and with thirty-five rows in two columns nobody could see what they had
+picked.
+
+**And no tint was going to fix it.** Brand teal over white tops out near 1.3:1
+before the name starts losing contrast:
+
+```
+10%  #E8F9FA   1.08:1 on white
+18%  #D5F3F6   1.17:1
+36%  #ABE8EE   1.35:1, and by here the tint is doing the reading
+```
+
+**So the fill says which row and a solid edge says that it is picked.** A 3px
+rule down the left in `--uc-teal-text` is 5.35:1 against the panel and clears
+the 3:1 WCAG asks of a non-text indicator with room; the brand fill #16BECF
+would have been 2.26:1 and failed it. **Shape and mark before colour**, which
+this file already asks for, applied to a state rather than to a control.
+
+**An inset shadow, not a border**, so the edge costs no layout and ticking does
+not shift the list sideways.
+
+### System colour is allowed in caladmin and nowhere public (3.94.0)
+
+The three actions at the foot of the event editor are Save, Cancel and Delete.
+**Cancel and Delete were both red**, which is the real fault under "it reads as
+a mess": the two actions with the most different consequences on the screen
+looked identical. One is reversible and keeps every registration; the other
+keeps nothing and tells nobody.
+
+Green, amber and red are **system states, not brand**. The palette rule in
+CLAUDE.md is about what a visitor sees; caladmin is a set of controls for one
+person doing a job, and going outside the palette is allowed there and only
+there.
+
+**Measure green and amber, because those two are usually wrong:**
+
+```
+#16A34A green 600   white text 3.30:1   FAILS
+#D97706 amber 600   white text 3.19:1   FAILS
+#15803D green 700   white text 5.02:1
+#B45309 amber 700   white text 5.02:1
+#c0392b the red already in use   white text 5.44:1
+```
+
+The 600 weights are what a palette hands you first and neither survives white
+text. **One weight across the three** so the row is one family rather than three
+borrowed palettes, and the amber was already on this screen at that value.
+
+### A corner is a square, not a point (3.94.0)
+
+"See all events sits on the rounded corner" was reported three times and
+diagnosed twice, and **both diagnoses measured the wrong element**: the combined
+view, where the sidebar has `border: 0` and `padding: 0` because the panel
+carries the box, and where the link clears the card by 21px and always has.
+**The standalone sidebar, which carries its own box, had never been measured.**
+
+```
+card radius                14px, so 13px on the padding box
+link bottom to that edge   15px
+clearance                  2px
+```
+
+**A 14px radius means the card is still coming in for the whole last 14px**, so
+a full-width element ending 2px above that has its own bottom corners inside the
+curve's square. Two pixels is a coincidence, not a clearance. Bottom padding is
+20px now: 21px of clearance, which is the number the other mode has always had.
+
+> **When an explanation has failed three times against what somebody sees, the
+> thing to check is whether it is about the element they are looking at.** All
+> three fixes were correct about the component they measured.
+
 ## 5. CSS discipline
 
 Six separate defects where a rule was correct and never reached the screen.

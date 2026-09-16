@@ -7103,11 +7103,21 @@ class SFAF_Portal {
             'url_help'    => '',
             'extra_hint'  => '',
             'folder_has_any' => true,
+            /*
+             * THE SELF-BUILT PICKER RATHER THAN wp.media (3.94.0). See the
+             * block where the buttons used to be.
+             */
+            'inline' => false,
+            'inline_series' => 0,
         ), $args );
+
+        $inline = ! empty( $a['inline'] );
         ?>
+        <?php if ( ! $inline ) : ?>
         <input type="hidden" name="<?php echo esc_attr( $a['id_name'] ); ?>"
                id="uc-featured-image-id-<?php echo esc_attr( $a['uid'] ); ?>"
                data-uc-image-id value="<?php echo (int) $a['id_value']; ?>" />
+        <?php endif; ?>
         <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $a['uid'] ); ?>"
              data-uc-image-preview<?php echo $a['preview'] ? '' : ' style="display:none;"'; ?>>
             <img src="<?php echo esc_url( $a['preview'] ); ?>" alt="" data-uc-image-preview-img />
@@ -7117,6 +7127,50 @@ class SFAF_Portal {
             <p class="uc-hint"><?php echo esc_html( $a['locked_note'] ); ?></p>
             <?php return; ?>
         <?php endif; ?>
+
+        <?php if ( $inline ) : ?>
+            <?php
+            /*
+             * THE REQUEST FORM'S PICKER, NOT THE MEDIA MODAL (3.94.0).
+             *
+             * WHAT WAS WRONG WITH THE MODAL. "Choose Image" opened wp.media
+             * filtered to the calendar folder, which is correct and is still
+             * not what somebody setting a picture for one event wants: it
+             * offers the whole folder, it opens a second window over the form,
+             * and the folder it filters on is the thing that has caused
+             * confusion in four separate reports. The staff request form has
+             * had a picker since 3.67.0 that shows the calendar folder narrowed
+             * to the event's own series, inline, with a search box. That is the
+             * answer, and it already exists.
+             *
+             * ONE PICKER, NOW ON THREE SURFACES. SFAF_Media::picker() renders
+             * both public forms and this. A second implementation here is what
+             * 3.42.1 cost, and the docblock above this method is the record of
+             * it.
+             *
+             * series_fixed RATHER THAN series_locked. Locked emits only that
+             * series' pictures, which is right on a public form and wrong here:
+             * an approver needs the way past the filter. Every row is written
+             * out and the script narrows, so "All calendar images" has
+             * something to reveal.
+             *
+             * UPLOADING FROM HERE IS GONE WITH THE MODAL, deliberately, and the
+             * hint says where it went. That is Mark's decision and it is not a
+             * side effect: see the release notes for what goes with it.
+             */
+            SFAF_Media::picker( array(
+                'name'         => $a['id_name'],
+                'chosen'       => (int) $a['id_value'],
+                'series'       => (int) $a['inline_series'],
+                'series_fixed' => (int) $a['inline_series'],
+                'show_all'     => true,
+                'label'        => 'Choose a picture',
+            ) );
+            ?>
+            <div class="uc-image-buttons">
+                <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
+            </div>
+        <?php else : ?>
 
         <div class="uc-image-buttons">
             <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
@@ -7152,6 +7206,7 @@ class SFAF_Portal {
             <button type="button" class="uc-btn uc-btn-sm uc-choose-image" data-uc-media-all>All calendar images</button>
             <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
         </div>
+        <?php endif; ?>
         <?php echo $a['after_buttons']; // Already-built markup from the caller. ?>
         <label class="uc-field uc-image-url-field">
             <span class="uc-field-label"><?php echo esc_html( $a['url_label'] ); ?>
@@ -7190,7 +7245,11 @@ class SFAF_Portal {
          */
         ?>
         <?php if ( $a['folder_has_any'] ) : ?>
-            <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
+            <?php if ( $inline ) : ?>
+                <p class="uc-hint">This list is the calendar folder, narrowed to this event's series. All calendar images shows the rest of the folder. To add a new picture, upload it on the Images screen first.</p>
+            <?php else : ?>
+                <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
+            <?php endif; ?>
         <?php else : ?>
             <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/<?php echo esc_html( SFAF_Media_Folder::FOLDER ); ?></code>.</span></p>
         <?php endif; ?>
@@ -7288,6 +7347,8 @@ class SFAF_Portal {
                         ? '<label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>'
                         : '';
                     $this->render_image_picker( array(
+                        'inline'        => true,
+                        'inline_series' => $picker_tag,
                         'uid'         => $uid,
                         'id_name'     => 'featured_image_id',
                         'url_name'    => 'image_url',
@@ -11695,7 +11756,17 @@ class SFAF_Portal {
         }
         ?>
 
-        <form method="post" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
+        <?php
+        /* THE FORM HAS AN ID SO ITS SAVE CAN SIT OUTSIDE IT (3.94.0). The
+         * three actions at the bottom of this screen are one row now, and a
+         * row holding Save, Cancel and Delete cannot be inside the form,
+         * because cancelling and deleting have forms of their own and forms
+         * do not nest.  is how HTML says which form a button submits,
+         * and Approve and Reject on this same screen have used it since
+         * 3.74.0 for the same reason. */
+        $form_id = 'uc-event-form-' . (int) $event_id;
+        ?>
+        <form method="post" id="<?php echo esc_attr( $form_id ); ?>" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
             <input type="hidden" name="uc_action" value="save_event" />
             <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_event', 'uc_nonce' ); ?>
@@ -12429,6 +12500,33 @@ class SFAF_Portal {
              * the one thing the labels cannot say.
              */
             ?>
+            </fieldset>
+        </form>
+
+        <?php
+        /*
+         * THE THREE ACTIONS ARE ONE ROW, OUTSIDE THE FORM (3.94.0).
+         *
+         * WHAT IT WAS. Save sat in a band inside the form; Cancel was a whole
+         * disclosure section under it with its own heading; Delete was a card
+         * under that with its own heading and its own paragraph. Three blocks,
+         * three explanations, and about four hundred pixels of screen for
+         * three buttons. Worse, Cancel and Delete were both red, so the two
+         * actions on this screen with the most different consequences looked
+         * identical: one is reversible and keeps every registration, the other
+         * keeps nothing and tells nobody.
+         *
+         * COLOURED BY CONSEQUENCE, AND THE COLOURS ARE MEASURED. Green, amber
+         * and red are system states rather than brand, which DESIGN.md allows
+         * here and nowhere public. The contrast for each is in portal.css
+         * beside the rule.
+         *
+         * OUTSIDE THE FORM, WHICH IS WHAT MAKES ONE ROW POSSIBLE. Cancelling
+         * and deleting post their own actions, forms do not nest, so a row
+         * holding all three cannot be inside the event form. Save reaches it
+         * by , exactly as Approve and Reject have since 3.74.0.
+         */
+        ?>
             <div class="uc-form-actions uc-form-actions-primary">
                 <p class="uc-form-actions-note"><?php
                     if ( $can_decide ) {
@@ -12464,7 +12562,7 @@ class SFAF_Portal {
                  * button somebody reaches for to save a typo.
                  */
                 ?>
-                <button type="submit" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
+                <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn uc-btn-go"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -12540,9 +12638,32 @@ class SFAF_Portal {
                         echo wp_json_encode( $watched, JSON_HEX_TAG | JSON_HEX_AMP );
                     ?></script>
                 <?php endif; ?>
+                <?php
+                /*
+                 * THE OTHER TWO OF THE THREE. Cancel is a <details> whose
+                 * summary is the button; Delete is a submit for a form emitted
+                 * further down, because forms do not nest and this row is one.
+                 *
+                 * NEITHER IS DRAWN BEFORE THE FIRST SAVE. There is nothing to
+                 * cancel or delete until the event exists, which is what both
+                 * renderers already check for themselves.
+                 */
+                $this->render_cancel_card( $user, $event_id );
+                $this->render_delete_button( $user, $event_id );
+                ?>
             </div>
-            </fieldset>
-        </form>
+            <?php
+            /*
+             * THE EXPLANATIONS, UNDER THE ROW AND IN ONE PLACE. Each of these
+             * used to be a paragraph inside its own block above its own
+             * button, which is what made three buttons take four hundred
+             * pixels. One line each, in the order the buttons are in.
+             */
+            ?>
+            <p class="uc-editor-actions-note">
+                <strong>Cancel</strong> keeps the registrations, closes new ones and offers to tell everybody who signed up.
+                <strong>Delete</strong> takes the event, its questions and its settings. Nothing puts them back.
+            </p>
 
         <?php
         /*
@@ -12581,7 +12702,6 @@ class SFAF_Portal {
          * Below rather than above because it is the destructive thing on this
          * screen and should not be the first control somebody meets.
          */
-        $this->render_cancel_card( $user, $event_id );
         $this->render_delete_card( $user, $event_id );
 
         $this->chrome_close();
@@ -12613,6 +12733,42 @@ class SFAF_Portal {
      * @param WP_User $user
      * @param int     $event_id
      */
+    /**
+     * The Delete button, for the actions row (3.94.0).
+     *
+     * SEPARATE FROM THE FORM IT POSTS, and that is not tidiness: the row is a
+     * flex container holding Save, Cancel and Delete, forms do not nest, and
+     * Save already belongs to the event form by id. So the button is here and
+     * render_delete_card() emits the form it names.
+     *
+     * IT ASKS THE SAME QUESTIONS THE FORM'S RENDERER ASKS, so a button that
+     * appears and a form that is not there cannot happen: no event yet, not
+     * this person's to edit, or registrations on an uncancelled event.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_delete_button( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return;
+        }
+        $post = get_post( $event_id );
+        if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+            return;
+        }
+        if ( ! SFAF_Cancellation::is_cancelled( $event_id ) && SFAF_Announce::has_registrations( $event_id ) ) {
+            /* Refused, and render_delete_card() says why below the row. A
+             * button that bounces is worse than no button. */
+            return;
+        }
+        ?>
+        <button type="submit" form="uc-delete-event-<?php echo (int) $event_id; ?>"
+                class="uc-btn uc-btn-stop"
+                data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
+        <?php
+    }
+
     private function render_delete_card( $user, $event_id ) {
         $event_id = (int) $event_id;
         if ( ! $event_id ) {
@@ -12627,10 +12783,16 @@ class SFAF_Portal {
         $blocked = ( ! SFAF_Cancellation::is_cancelled( $event_id )
             && SFAF_Announce::has_registrations( $event_id ) );
         ?>
-        <div class="uc-card uc-delete-card">
-            <div class="uc-card-head">
-                <h2>Delete this event</h2>
-            </div>
+        <?php
+        /*
+         * NO CARD AND NO HEADING (3.94.0). The button is in the row of three
+         * at the bottom of the editor; what is left here is the FORM it posts,
+         * which cannot be in that row because forms do not nest, and the one
+         * sentence that has to be said. A heading reading "Delete this event"
+         * above a button reading "Delete" was the label written twice.
+         */
+        ?>
+        <div class="uc-delete-block">
             <?php if ( $blocked ) : ?>
                 <p class="uc-hint">
                     People are registered for this one, so it cannot be deleted. Cancel it above:
@@ -12638,17 +12800,12 @@ class SFAF_Portal {
                     Once it is cancelled you can delete it.
                 </p>
             <?php else : ?>
-                <p class="uc-hint">
-                    The event, its questions and its settings go. Nothing puts them back.
-                </p>
-                <form method="post" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
+                <?php /* The form only. Its submit is in the actions row above,
+                   associated by id. */ ?>
+                <form method="post" id="uc-delete-event-<?php echo (int) $event_id; ?>" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
                     <input type="hidden" name="uc_action" value="trash_event" />
                     <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                     <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
-                    <div class="uc-form-actions">
-                        <button type="submit" class="uc-btn uc-btn-danger"
-                                data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
-                    </div>
                 </form>
             <?php endif; ?>
         </div>
@@ -13684,13 +13841,32 @@ class SFAF_Portal {
          */
         $came_to_cancel = ! empty( $_GET['cancel'] );
         ?>
-        <section class="uc-danger-zone" id="uc-cancel-this" aria-label="Cancelling this event">
-            <details class="uc-danger-disclosure" data-uc-disclosure<?php echo $came_to_cancel ? ' open' : ''; ?>>
-                <summary class="uc-danger-toggle" aria-expanded="<?php echo $came_to_cancel ? 'true' : 'false'; ?>">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                    <span>Cancel this event</span>
+        <?php
+        /*
+         * THE DISCLOSURE IS ONE OF THE THREE BUTTONS NOW (3.94.0), rather than
+         * a section of its own under them.
+         *
+         * IT IS STILL A <details> AND STILL NEEDS NO SCRIPT. Closed it is a
+         * button in the row; open it takes the row's whole width and moves to
+         * the end of it, so the options appear below the three buttons. Both
+         * states are two lines of flex in portal.css.
+         *
+         * ONE CANCEL CONTROL, NOT TWO. Putting a separate button in the row to
+         * open a disclosure below would have been the easy version and would
+         * have left two things on the screen that both say cancel. The summary
+         * IS the button.
+         */
+        ?>
+        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-disclosure<?php echo $came_to_cancel ? ' open' : ''; ?>>
+                <?php /* THE CHEVRON STAYS. It is a button in a row of buttons and it is
+                   also the only one of the three that opens something rather than doing
+                   it, which is exactly what the mark is for. control-standard-audit.php
+                   caught its removal. */ ?>
+                <summary class="uc-btn uc-btn-caution uc-cancel-inline-toggle" aria-expanded="<?php echo $came_to_cancel ? 'true' : 'false'; ?>">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
+                    <span>Cancel</span>
                 </summary>
-                <div class="uc-danger-body">
+                <div class="uc-cancel-inline-body">
 
                 <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form" data-uc-confirm-cancel>
                     <input type="hidden" name="uc_action" value="cancel_event" />
@@ -13787,12 +13963,11 @@ class SFAF_Portal {
                         <p class="uc-hint" data-uc-cancel-count="0">Nobody is registered, so there is nobody to tell.</p>
                     <?php endif; ?>
 
-                    <button type="submit" class="uc-btn uc-btn-danger">Cancel this event</button>
+                    <button type="submit" class="uc-btn uc-btn-caution">Cancel this event</button>
                 </form>
 
                 </div>
-            </details>
-        </section>
+        </details>
         <?php
     }
 

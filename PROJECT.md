@@ -5401,6 +5401,53 @@ Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
 
+### Where a submitted picture lives, and why "Use this image" does not work (3.94.0)
+
+**PHYSICALLY**: `wp-content/uploads/calendar-submissions/`, named
+`submission-<YYYYMMDD-HHMMSS>-<12 hex>.<ext>`. The submitted filename is
+discarded entirely.
+
+**IN THE MEDIA LIBRARY**: it is a real attachment, `post_status: inherit`,
+`post_author: 0`, titled "Submitted image". Nothing hides it. It is NOT in the
+Calendar media folder, so it never reaches the Images screen or any picker, and
+it is not in the folder any picker narrows on.
+
+**REACHING IT**: on the pending row and again in the event editor's request
+panel, the thumbnail is an anchor to the full-size file with `target="_blank"`.
+So it opens in a tab and is saved from there; there is no `download` attribute.
+**It stays reachable after approval**, because the editor's panel draws from the
+same meta and the event keeps it.
+
+> **"USE THIS IMAGE" IS BROKEN AND HAS NEVER WORKED.** It calls
+> `set_post_thumbnail()`, and `sfaf_event_own_image_url()` then asks
+> `SFAF_Media_Folder::holds()`, which is `strpos( $file, 'calendar/' ) === 0`.
+> `calendar-submissions/photo.jpg` does not start with `calendar/`, so the rule
+> refuses it and the event falls through to its series picture or the
+> placeholder. **The row then says "This is the event's picture."** It also
+> deletes `_uc_image_url` on the way past, so an event with a working typed URL
+> loses it and gains a thumbnail that resolves to nothing.
+>
+> The anchoring is deliberate and correct: `path_is_inside()` is anchored
+> precisely so `calendar-submissions/` is not mistaken for `calendar/`. What was
+> never followed through is what that means for a button added later.
+
+**Agreed, not built: what it should do instead.** Two answers, and it is Mark's
+call because they point at different models.
+
+- **Copy the file into the calendar folder on use.** The button becomes a
+  deliberate promotion, the same shape as promoting a typed place to a venue in
+  3.93.0: one press, and afterwards the picture is an ordinary calendar image
+  that every picker offers.
+- **Remove the button.** Mark's stated model is that a submitted picture should
+  stay out of the calendar folder and out of the Images screen, because a
+  one-off event's photo should not clutter the library, and that he adds it
+  himself when it is worth keeping. That model has no room for this button at
+  all, and the editor's existing hint already describes the manual path.
+
+**Widening the folder rule to admit the submissions folder is not one of them.**
+The rule exists so the calendar draws from one place, and the submissions folder
+is meant to be emptied.
+
 ### Two things are called the calendar folder (3.86.0, half closed in 3.90.0)
 
 > **NEW UPLOADS ARE NOW FILED IN BOTH**, by discovering the library's taxonomy

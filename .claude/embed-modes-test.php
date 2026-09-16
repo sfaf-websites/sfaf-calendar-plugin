@@ -1453,6 +1453,166 @@ check(
     'the pending row no longer shows the picture warning, so the warning is stored and never read'
 );
 
+
+/* The rest of what 3.94.0 touched, read the same way: comments stripped, and
+ * sliced where a wildcard would run past the end of what it names. */
+$code_media    = $strip_php( $root . '/includes/class-sfaf-media.php' );
+$code_richtext = $strip_php( $root . '/includes/class-sfaf-rich-text.php' );
+$cssp      = preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $root . '/public/css/portal.css' ) );
+$portal_js = preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $root . '/public/js/portal.js' ) );
+$portal_js = preg_replace( '#^\s*//.*$#m', '', $portal_js );
+
+/* ===========================================================================
+ * 3.94.0: THE COUNT INSIDE THE NAME, ONE FONT, THE EDITOR'S PICKER, THE THREE
+ * ACTIONS, THE TICKED ROW, AND THE ROUNDED CORNER.
+ * ======================================================================== */
+
+/* --- A. THE COUNT IS PART OF THE NAME, NOT A COLUMN. -------------------- */
+/* IT WAS A SIBLING FLEX ITEM AND A HOST RULE GROWING THE NAME PINNED IT TO
+ * THE COLUMN EDGE. Inside the name there is no flex distribution to lose, and
+ * it sits on the name's baseline because it is in the same line box. Both
+ * faults, one change, and the check is that it is INSIDE. */
+check(
+    2 === preg_match_all( '/<span><\?php echo esc_html\( \$[og]->name \); \?><\?php if \( null !== \$n \) : \?> <span class="uc-who-count"/', $code ),
+    'a count is back outside its name, where a host rule can push it to the column edge and the row can top-align it'
+);
+check(
+    ! preg_match( '/\.uc-who-count \{[^}]*(margin-left|flex:)/s', $cssc ),
+    'the count has flex or margin again, which only an element laid out beside the name would need'
+);
+/* AND THE NAME MAY NOT GROW. The belt to that markup change's braces. */
+check(
+    (bool) preg_match( '/\.uc-who-panel \.uc-who-opt > span \{[^}]*flex:\s*0 1 auto/s', $cssc ),
+    'the name span may grow again, which is what pushed the count to the column edge in the first place'
+);
+
+/* --- B. ONE FONT IN A PASTED DESCRIPTION. ------------------------------- */
+check(
+    (bool) preg_match( '/\.uc-single \.uc-single-body \[style\*="font-family"\]/', $cssc ),
+    'a pasted font-family is no longer overridden, so an event page is in whatever Word sent'
+);
+check(
+    (bool) preg_match( '/font-family:\s*inherit\s*!important/', $cssc ),
+    'the font override is no longer !important or no longer inherit; a style attribute beats every selector, and a named face would flatten our own headings'
+);
+/* NOTHING IS STRIPPED ON SAVE. The whole decision was to override, because
+ * stripping cannot be undone and fixes only what is saved after it. A sanitizer
+ * that started removing style attributes would make this rule pointless and the
+ * loss invisible. */
+check(
+    false === strpos( $code_richtext, 'font-family' ),
+    'the rich text sanitizer has started touching fonts; the decision was to override on display, not to strip on save'
+);
+
+/* --- C. THE EVENT EDITOR USES THE REQUEST FORM'S PICKER. ---------------- */
+check(
+    (bool) preg_match( '/if \( \$inline \) :.*?SFAF_Media::picker\( array\(/s', $code_portal ),
+    'the event editor no longer calls the shared picker, so it is back on the media modal or on a second implementation'
+);
+check(
+    (bool) preg_match( "/'inline'\s*=> true,\s*'inline_series' => \\\$picker_tag,/", $code_portal ),
+    'the event editor does not pass its series to the picker, so the list is not narrowed to the event'
+);
+/* THE WAY PAST THE FILTER IS RENDERED VISIBLE AND HIDDEN BY SCRIPT, never the
+ * other way round: a control rendered `hidden` and revealed by script is how
+ * the last one stayed invisible for sixteen releases. */
+check(
+    (bool) preg_match( '/<button type="button" class="uc-btn uc-btn-sm uc-picker-show-all" data-uc-image-show-all>/', $code_media ),
+    'the way past the series filter is gone from the picker'
+);
+check(
+    ! preg_match( '/data-uc-image-show-all[^>]*\shidden/', $code_media ),
+    'the show-all control is rendered hidden again, which is how the 3.74.0 one was never seen'
+);
+check(
+    false !== strpos( $portal_js, 'initFixedSeriesImageFilter' ),
+    'nothing narrows the editor picker to the event series'
+);
+check(
+    false !== strpos( $portal_js, "run('fixedSeriesImageFilter', initFixedSeriesImageFilter);" ),
+    'the fixed-series filter is declared and never started, which is a control built and unreachable'
+);
+/* AND IT USES THE ONE HIDING MECHANISM. A second scheme here would be the
+ * search box and the series filter fighting over the same rows again. */
+check(
+    (bool) preg_match( "/function initFixedSeriesImageFilter\(\)[\s\S]*?setAttribute\('data-uc-off-series'/", $portal_js ),
+    'the editor picker hides rows some other way than data-uc-off-series, so two things own hidden again'
+);
+
+/* --- E. THREE ACTIONS, ONE ROW, COLOURED BY CONSEQUENCE. ---------------- */
+/* THE POINT IS THAT THE THREE DIFFER. Cancel and Delete were both red, which
+ * is the fault under the mess: the two actions with the most different
+ * consequences looked identical. */
+foreach ( array(
+    'uc-btn-go'      => '#15803D',
+    'uc-btn-caution' => '#B45309',
+    'uc-btn-stop'    => '#c0392b',
+) as $cls => $fill ) {
+    check(
+        (bool) preg_match( '/\.uc-portal \.' . preg_quote( $cls, '/' ) . ' \{[^}]*background:\s*' . preg_quote( $fill, '/' ) . '/s', $cssp ),
+        sprintf( 'the %s button is no longer %s, and that colour was measured against white text', $cls, $fill )
+    );
+}
+/* SAVE REACHES ITS FORM BY ID, which is what lets the row sit outside the form
+ * at all. Without it the row is three buttons and one of them does nothing. */
+check(
+    (bool) preg_match( '/<button type="submit" form="<\?php echo esc_attr\( \$form_id \); \?>" name="save_mode"/', $code_portal ),
+    'Save no longer names the form it submits, so a row outside the form cannot save'
+);
+check(
+    (bool) preg_match( '/<form method="post" id="<\?php echo esc_attr\( \$form_id \); \?>"/', $code_portal ),
+    'the event form has no id for Save to reach it by'
+);
+/* THE CANCEL DISCLOSURE IS THE BUTTON, not a second control that opens one. */
+/* THE SUMMARY IS THE BUTTON, and the check is that nothing but whitespace and
+ * a stripped comment stands between the two. A separate button in the row that
+ * opened a disclosure below would be the easy version and would leave two
+ * things on the screen that both say cancel. */
+check(
+    (bool) preg_match( '/<details class="uc-cancel-inline"[^>]*>[\s\S]{0,200}?<summary class="uc-btn uc-btn-caution/', $code_portal ),
+    'the cancel control is no longer a details whose summary is the button, so either it is expanded by default or there are two cancel controls'
+);
+check(
+    (bool) preg_match( '/\.uc-cancel-inline\[open\] \{[^}]*flex:\s*1 1 100%/s', $cssp ),
+    'the open cancel panel no longer takes the row width, so its options shoulder the buttons aside'
+);
+/* AND DELETE POSTS A FORM IT IS NOT INSIDE. */
+check(
+    (bool) preg_match( '/<button type="submit" form="uc-delete-event-<\?php echo \(int\) \$event_id; \?>"/', $code_portal ),
+    'the Delete button no longer names its form, so it submits whatever form encloses it'
+);
+
+/* --- I. A TICKED ROW IS VISIBLE. ---------------------------------------- */
+/* A TINT ALONE CANNOT DO IT: brand teal over white tops out near 1.3:1 before
+ * the name starts losing contrast. The edge is the half that carries it, and
+ * the colour is the one that clears the 3:1 non-text floor. */
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*box-shadow:\s*inset 3px 0 0 var\(--uc-teal-text\)/s', $cssc ),
+    'the ticked row lost its edge, and a tint on its own measures under 1.2:1 against the panel'
+);
+check(
+    ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*background:\s*var\(--uc-bg\)/s', $cssc ),
+    'the ticked row is back on --uc-bg, which is 1.06:1 against the panel and is white with a rounding error'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt input\[type="checkbox"\] \{[^}]*accent-color:\s*var\(--uc-teal-text\)/s', $cssc ),
+    'the tick itself is no longer brand ink'
+);
+
+/* --- H. "SEE ALL EVENTS" CLEARS THE ROUNDED CORNER. --------------------- */
+/* MEASURED IN ALL FOUR STATES: the standalone card's 14px bottom padding
+ * against its own 14px radius left 2px of clearance, and two pixels is a
+ * coincidence rather than a clearance. Both previous diagnoses measured the
+ * COMBINED view, where this element has no box at all. */
+if ( preg_match( '/\.uc-sidebar \{[^}]*padding:\s*var\(--uc-sidebar-pad-t\) var\(--uc-sidebar-pad-x\) (\d+)px/s', $cssc, $m ) ) {
+    check(
+        (int) $m[1] >= 20,
+        sprintf( 'the sidebar bottom padding is %dpx against a 14px corner radius; the link then sits on the curve, which has been reported three times', (int) $m[1] )
+    );
+} else {
+    check( false, 'the standalone sidebar has no bottom padding declaration, so nothing holds the link off the corner' );
+}
+
 if ( $fails ) {
     echo 'FAIL: ' . count( $fails ) . "\n";
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }

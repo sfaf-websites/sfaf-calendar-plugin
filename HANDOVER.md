@@ -6,554 +6,139 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-16, at 3.93.0, released.
+**Last updated:** 2026-09-16, at 3.94.0, released.
 
 ---
 
 ## What shipped last
 
-**3.93.0 IS RELEASED** and is what sites are being offered.
+**3.94.0 IS RELEASED.** The filter dropdown's counts moved inside the name and
+onto its baseline, pasted fonts are normalised on event pages, the event editor
+uses the request form's picture picker instead of the WordPress media modal, the
+editor's three bottom actions are one row coloured by consequence, a ticked row
+in the dropdown is visible, and "See all events" clears the card's rounded
+corner. **`readme.txt` is the changelog** and carries the reasoning for each.
 
-> **CHECK BOXES ARE TOP ALIGNED AND THIS WAS THE THIRD REPORT.** Twenty-two
-> rules set the alignment of a box against a label; fourteen said centre or
-> baseline. **The fix is a different SHAPE, not a fourteenth value**: each
-> stylesheet sets `align-self` on the BOX, which beats `align-items` on the row
-> outright because they are different properties on different elements. A new
-> centred row cannot take it back. `.claude/checkbox-align-test.php` reads the
-> box-bearing classes out of the source rather than holding a list, so a control
-> written next month is covered without anybody knowing the file exists.
+**Three things from it a new session needs, because each retires or reverses
+something:**
 
-> **THE MID-WORD BREAK IS NOT OURS AND THAT IS THE MEASURED ANSWER.** Against
-> the REAL terms, "Transformaciones" is 123.6px and the sub-column gives a name
-> 161.5px at the embed width. It fits everywhere. `word-break`, `overflow-wrap`
-> and `hyphens` are inherited and we never declared them, so sfaf.org's own
-> stylesheet was setting them. Declared now. **If Mark still sees a broken word,
-> that is important**, because it means the cause is not what was measured;
-> `TESTING.md` 1.137 asks for the name and the width.
+> **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, deliberately, and the
+> media modal went with it. Pictures are added on the Images screen and chosen
+> here. **What went with it is the 3.87.0 tagging that ran on upload from this
+> path**: a picture added on the Images screen is not tagged to a series
+> automatically. Both public forms keep their own upload and are unaffected.
 
-> **THE REAL TERM NAMES ARE MUCH LONGER THAN THE ONES 3.92.0 WAS MEASURED
-> AGAINST**, which is why its 520px cap was wrong. Eleven of thirty-five take
-> two lines and three take three. The panel wants 532px and the cap is 580px.
-> **Read the real ones off `resources.sfaf.org/wp-json/wp/v2/uc_organizer` and
-> `/uc_series`** rather than inventing any again.
+> **"USE THIS IMAGE" ON THE PENDING ROW IS BROKEN AND WAS NOT FIXED.** It sets
+> the thumbnail; the calendar folder rule then refuses it, because the file is in
+> `calendar-submissions/` and the rule is anchored on `calendar/`; the event falls
+> back to its series picture. The row then says "This is the event's picture."
+> It also deletes any typed image URL on the way past. **Reported and awaiting
+> Mark's answer on the remedy.** `PROJECT.md` 8, "Agreed, not built".
 
-> **CLEAR ALL MOVED OUT OF THE FOOTER AND SAVED 46px**, the heading band saved
-> another 4, and ticked items no longer float to the top. **Three reorder
-> implementations were removed, not one**: the renderer's `$sorter` and both
-> scripts, because a sort left on one path is the split that has cost five
-> faults.
+> **TWO ITEMS IN THAT BRIEF WERE ALREADY BUILT.** The five minute time step has
+> been on all twelve time controls since 3.72.0, and the dashboard's count of
+> published events with no organizer has been in Needs attention since 3.86.0:
+> organizers only, linked, and saves do not refuse. Both were asked for again.
+> **Check the installed version before building anything reported missing.**
 
-> **FIVE MINUTE TIME STEPS: NOTHING WAS BUILT AND NOTHING WAS LOST, AGAIN.**
-> All twelve controls have carried `sfaf_time_step_attr()` since 3.72.0 and the
-> committed test has been green since it was written. The only suppression is
-> the deliberate one: a control already holding an off-boundary time gets no
-> step, because `step="300"` on a field holding 6:07 makes the form
-> unsubmittable. **On a blank request form it cannot fire.** `TESTING.md` 1.139
-> is about finding out what Mark is actually looking at, browser included.
+---
 
-> **BOTH FORMS TAKE A PLACE NAME NOW, AND NEITHER MAY MAKE A VENUE.** The name
-> is text on the event, composed into the address by the one reader rather than
-> at the four writers. **An approver promotes it from the pending row**, and the
-> event then points at the venue and keeps no text of its own, which is the
-> whole reason to promote: a corrected venue address reaches every event held
-> there.
+## What is actually confirmed on the site
 
-> **A SUBMITTED PICTURE UNDER 1200px IS TAKEN AND FLAGGED** rather than refused.
-> The old rule refused the whole submission along with the picture. The warning
-> lands on the pending row beside the photo.
+- **The whole submission path, end to end**: submit, alert, approve with both
+  ticks, publish, notice to the submitter, live on the calendar. Registration
+  too, both messages.
+- **The scheduled path works unassisted.** A morning-of reminder went out at
+  6:58am on 2026-08-18. Cron is a reliability question from here, not a
+  correctness one.
+- **The hover preview works on sfaf.org.** The import has run: **287 drafts
+  across 32 series**, confirmed accurate, trash emptied.
+- **The block has 700px on sfaf.org**, measured 2026-09-14, so the combined view
+  STACKS there. Anything reported about that layout should be read as the stacked
+  shape first. Comments naming 770px in `.claude/combined-panel-parity.php` and
+  `.claude/embed-modes-test.php` are out of date in the number only.
 
-**3.92.0** put counts in the picker and is unchanged by this, except that its
-520px cap was measured against invented names and is now 580px.
+> **THE CALENDAR FOLDER HOLDS SIX PICTURES AND NONE IS TAGGED OR NAMED.** Every
+> picker narrows by series, so every series shows "No images are available for
+> that series yet" and no pictures at all. **That is the feature working against
+> an untagged folder, not a broken picker**, and from 3.94.0 it is what the event
+> editor shows too. `TESTING.md` 1.74 clears it, and no picker should be judged
+> until it is done.
 
-> **THE FILTER DROPDOWN SHOWS A COUNT BESIDE EVERY NAME, AND IT COSTS TWO
-> QUERIES.** One id query and one that resolves both taxonomies over the whole
-> id set, then a tally in PHP. A count per name would have been thirty-four
-> queries on every render; it also replaced fifty that were already there, in
-> the narrowing map. **Nothing about the counts can be checked in this
-> environment**, so `TESTING.md` 1.132 and 1.133 are the ones that matter.
+> **NO TICK PICKER WORKED IN A BROWSER BEFORE 3.81.0.** `portal.js` threw on
+> every page from 3.77.0. Anything asserted about a tick picker before 3.81.0 was
+> asserted about markup, not behaviour.
 
-> **WHAT THE COUNTS MEAN, IF ANYONE ASKS.** Upcoming and published only, built
-> from the list's own `build_query_args()`. Category, search and block scope all
-> narrow them. **An organizer's count ignores the organizer ticks** on purpose,
-> or every unticked organizer would read (0) the moment one was ticked; a
-> group's count does respect them. A zero is hidden, which is the rule the panel
-> already had, **except for a ticked row and except for a group whose events
-> name no organizer**, which is the 3.85.0 narrowing rule and which a plain zero
-> rule would have quietly reversed.
-
-> **THE SCROLLBAR CANNOT GO, AND IT NOW DOES NOT FIRE.** Both halves measured:
-> the panel wants 460px and the cap was 460px, so it clipped by a hair, drew a
-> scrollbar, and the scrollbar took 15px off every row and wrapped three more
-> names. The cap is 520px and on a 900px window there is no scroll region at
-> all. On a 630px window 70vh is 441px and it scrolls, which is what the
-> overflow is for. **If anyone proposes removing it, that measurement is the
-> answer.**
-
-> **THE ROWS ARE 31px AND THE TAP TARGET IS THE ROW.** 220 by 31 on the left,
-> 202 by 31 in each group sub-column, against WCAG's 24 by 24. The 13px checkbox
-> has never met that on its own. **Do not replace the `<label>` with a div and a
-> click handler**; it is what makes the tightening safe.
-
-> **THE WIDTH THE COUNTS COST CAME OUT OF THE GUTTERS, NOT THE NAMES.** Eleven
-> of thirty-four names wrapped to a second line once counts were added; the
-> column gap, divider padding and sub-column gap each came down 4px and it is
-> three now. **The names were measured with invented data**, so if Mark's real
-> ones wrap more than that, the gutters are where to look, not truncation.
-
-> **THE HEADINGS ARE TEAL AND NOTHING ELSE IS.** Two coloured words separate two
-> sections; thirty-four coloured rows would be a field of teal. There is an
-> assertion against the rows taking it. **The weights are still pinned** by the
-> 3.91.0 assertion and were not touched again.
-
-**3.91.0** made three appearance changes and is unchanged by this.
-
-> **THREE APPEARANCE CHANGES, ALL ON SHARED RENDERERS.** The list card became a
-> table row, the month tile shows its whole title, and the filter dropdown got
-> separators. All three are the one PHP renderer and the one stylesheet the
-> embed adopts, so there is no second implementation to disagree. Measurements
-> were taken at 700px, which is the embed's width on sfaf.org.
-
-> **THE MONTH TILE REVERSES 3.89.0 AND THAT WAS RIGHT.** Cutting the title to
-> one line with an ellipsis was wrong: a column of ellipses tells nobody what
-> anything is, and hover neither helps scanning nor exists on a phone. **If
-> anyone proposes truncating it again to tidy up busy days, that is the argument
-> to have first.**
-
-> **THE DROPDOWN NEEDED SEPARATION, NOT LIGHTENING**, and measuring first is
-> what established it: the headings had been sitting 0px above the first row
-> since 3.85.0, because `.uc-calendar p { margin: 0 }` at (0,1,1) beat the
-> heading's own rule at (0,1,0). The weights were NOT touched and an assertion
-> says so. If it now reads over-ruled, the hairlines are one edit; going back to
-> the weights is the wrong direction.
-
-> **THE LIST IS A GRID OF DIVS, NOT A TABLE, DELIBERATELY.** Both scripts append
-> rows into a div, so a real `<tr>` would have meant changing the container and
-> the append target in `calendar.js` AND `embed.js`. That split has cost five
-> faults, and infinite scroll and the no-script path were left untouched because
-> of it. A phone gets two columns rather than a sideways scroll.
-
-**3.90.0** fixed the picture resolution and is unchanged by this.
-
-> **THE CYCLE TO ZERO PICTURE WAS PINNED TO AN ATTACHMENT THAT NO LONGER
-> EXISTED.** Replacing a picture left the old id in the term meta, a stale id is
-> truthy, so it won and the tag fallback never ran. **The previous
-> investigation said nothing was tagged and that was wrong.** A tag existed and
-> could not be reached. `TESTING.md` 1.125: it should come back with nothing
-> re-saved, and possibly on other series too.
->
-> **The general shape**: when a chain has a preferred source and a fallback, ask
-> whether the preferred one still ANSWERS, not just whether it is set.
-
-> **THE PICKER WAS A DEAD END BUILT FROM THREE CORRECT DECISIONS.** The series
-> screen narrowed to its own series (circular), the empty grid said nothing, and
-> the way out has been rendered `hidden` since 3.74.0 and never revealed, which
-> is the SIXTH built-and-unreachable control here. All three fixed.
-
-> **A CALADMIN UPLOAD NOW ALSO GOES INTO THE MEDIA LIBRARY'S CALENDAR FOLDER**,
-> by DISCOVERING the taxonomy rather than naming it: WP Media Folder is
-> commercial and not on the build machine, so its taxonomy name could not be
-> verified. **This is the one thing in the release that cannot be proved from
-> here.** If it does not appear, the fix is the `sfaf_library_folder_term`
-> filter and no release. `TESTING.md` 1.128.
->
-> **The nine already on disk are not retrofitted**, deliberately. No files were
-> moved and no stored path was rewritten.
-
-> **THE MONTH GRID IS LINES NOW, AND IT IS THE ONE THING WAITING ON MARK'S EYE.**
-> A dot, a title, a time, at 21px a row against 42px before. The structure is
-> the part that took the work; the spacing, the dot size and the weight are one
-> edit each if it reads wrong. `TESTING.md` 1.123 asks the right question, which
-> is whether nine lines are CLEAN AND CLEAR rather than whether they fit.
-
-> **THE FOURTH FIX TO REACH ONE SCRIPT AND NOT THE OTHER.** The filter panel
-> shut on every tick on the embed, because 3.87.0 carried the open state across
-> the redraw in `calendar.js` only. **The pair test was green and blind**: it
-> lists the behaviours fixed the day it was written, and this one shipped a
-> release earlier. **Anything touching the filter bar in one script adds its
-> pair to `.claude/embed-filters-test.php` in the SAME release.**
-
-> **A SECOND FAULT FOUND WHILE FIXING IT, in BOTH scripts.** The narrowing is an
-> attribute on rows the redraw replaces, so hidden groups came back one frame
-> after being hidden. Neither script reapplied it.
-
-> **A STALE embed.js NOW SAYS SO IN THE CONSOLE.** This is why 3.86.0 and
-> 3.87.0 looked broken when they were correct. **The script URL stays
-> unversioned on purpose**: a version in a pasted snippet PINS it, which was the
-> 2.10.1 defect. Preventing a stale script is still open and needs Mark, with
-> three costed options in `PROJECT.md` §8; naming it is built.
-
-> **THE EMBED HAS ITS OWN SCRIPT AND ITS OWN ROUTE. READ THIS BEFORE FIXING
-> ANYTHING ON THE FILTER BAR.** Search and the merged dropdown did nothing on an
-> embed for three releases while both were provably correct on this site,
-> because `embed.js` asked its REST route for `mode=items` and nothing else, and
-> had no handler for the merged control at all. **That is the third time**: the
-> list card and the toggle went the same way. The renderers are shared and the
-> two scripts are not.
->
-> **`.claude/embed-filters-test.php` now asserts the PAIRS.** Anything added to
-> one script belongs in that file as a pair, and it asserts the handler is
-> CALLED rather than merely present, because a planted rename passed the first
-> draft.
-
-> **THE EMBED HAS TWO CACHES AND THEY ARE NOT THE SAME ONE.** The server's
-> `cache_identity()` has carried every narrowing for releases and was never the
-> fault. The CLIENT's `monthCacheKey()` in `embed.js` carried only the category.
-> When a payload looks stale, ask which of the two is answering.
-
-> **THE EMBED CACHE NOW FLUSHES ON A PLUGIN UPDATE.** Flagged twice, built here.
-> A release is installed and then immediately looked at, which is exactly the
-> window it covers. `TESTING.md` 1.120 is one deliberate check of something that
-> is invisible when it works.
-
-> **AN EVENT-EDITOR UPLOAD WAS NEVER LOST, AND THE OBVIOUS DIAGNOSIS WAS WRONG.**
-> The file always landed in `uploads/calendar/` and was always on the Images
-> screen. It vanished from the PICKER, because wp.media refreshes its library
-> the instant an upload finishes and for an event in a series that query narrows
-> on `uc_series`, which a picture uploaded two seconds ago cannot answer. It is
-> tagged with the series as it arrives now. `TESTING.md` 1.115.
-
-> **SEARCH ON THIS SITE WAS ALWAYS CORRECT, AND 3.87.0 PROVING IT WAS THE USEFUL
-> HALF.** The admin-ajax chain was driven in Chrome and executed in PHP and holds
-> end to end. What that verification could not see is that an EMBED never calls
-> it. The lesson is not "the proof was wrong", it is that proving one path says
-> nothing about the other, which is what 3.88.0's pair test exists for.
-
-> **THE APPLY BUTTON IS GONE AND THE PANEL HAD TO SURVIVE ITS OWN REDRAW.**
-> `reloadBlock()` replaces the whole block and the server renders the control
-> closed, so without care every tick would have shut the panel. Debounced at
-> 350ms. If Mark reports the panel closing when he ticks something, that is the
-> thing that broke.
-
-> **IT WAS NOT THE ANCHOR POSITIONING API**, which this plugin has never used.
-> The panel was `position: fixed` at 0,0 until a script moved it from the
-> popover's `toggle` event, and it was HIDDEN by `:not(:popover-open)`, which a
-> browser without the API discards along with the whole rule. So it could open
-> in the corner OR stand open permanently. It is a `<details>` now, placed by
-> the stylesheet, with no popover, no anchor positioning and no script involved
-> in opening it. **Check it in Safari and Firefox**: Chrome supported the thing
-> that broke, so Chrome proves nothing here. `TESTING.md` 1.108.
-
-> **THE HOVER PREVIEW DOES NOT HAVE THE SAME PROBLEM.** It probes for
-> `showPopover` and returns before building anything, and its visible state is a
-> class it controls rather than `:popover-open`, so without the API it degrades
-> to nothing rather than to a panel in a corner. Popover is supported in Safari
-> 17+ and Firefox 125+ anyway. Nothing to do.
-
-> **CLOSURES COULD NOT BE EDITED AND THE MODEL ALWAYS COULD.** `save()` has taken
-> an existing id since it was written; the form hardcoded an empty one. That is
-> the FIFTH control found built and unreachable in this project. It was checked
-> before being rebuilt, which is the only reason it took one edit.
-
-> **NO COMMUNITY SUBMISSION HAS EVER CARRIED AN ORGANIZER, AND THE REPORTED
-> CAUSE WAS WRONG.** The brief said the form resolved the organizer and threw it
-> away. It did not: it wrote it, and has since 3.76.0. The event was its OWN
-> SOURCE. `create_event()` joined the event to the series and then asked the
-> series for its organizers, which answers from the series' most recent event
-> and counts pending ones, so the newest event was the submission itself with no
-> organizer yet. Proved by running it, not by reading it.
-
-> **THE HUNDRED ARE NOT BLOCKED, AND THAT IS THE THING TO CHECK.** An organizer
-> is required now, on the server, but the rule is about DIRECTION: an event that
-> had none and still has none saves normally and stays published. If somebody
-> reports being unable to edit an old event, that rule has broken and it matters
-> more than anything else in the release. `TESTING.md` 1.104.
-
-> **THE FILTER BAR HAS NEVER WORKED WITH SCRIPT OFF.** Not a regression, a fact:
-> there was no form, no submit and no noscript anywhere in the file. 3.85.0 adds
-> a real GET form, so this is new capability and has never been seen working.
-> `TESTING.md` 1.107.
-
-> **GROUPS ARE A FIRST-LEVEL FILTER NOW.** They used to appear only after a
-> category was chosen, deliberately, so nobody saw two taxonomies at once.
-> Merging the controls ended that. If it reads wrong, `render_group_row()` is
-> still in the file with no caller and the old row can come back.
-
-> **MOST OF 3.84.0's ORGANIZER BRIEF WAS ALREADY BUILT, IN 3.40.0.** The brief
-> asked for co-hosting and for the cost of undoing the single-organizer decision
-> to be reported before building. That decision was undone thirty-six releases
-> earlier: the taxonomy is multi, the event page prints the joined phrase, the
-> caladmin editor is tick boxes, and the filter has always matched one of
-> several. **Nothing there was rebuilt.** What was missing was the two public
-> forms, and the reason is worth carrying: the staff form's organizer field was
-> added in 3.76.0, AFTER the decision, as a single select. A settled decision
-> does not propagate to code written after it.
-
-> **NEITHER FORM COULD HAVE LOST A STORED ORGANIZER.** Both create a pending
-> event and neither edits one, so there was no existing set to replace. What was
-> lost was what the requester said, before it was stored. This is a smaller
-> fault than 3.40.0's and should not be reported to Mark as data loss.
-
-> **`combined-panel-parity` HAD BEEN FAILING SINCE 3.83.0 AND SHIPPED ANYWAY.**
-> That release moved picture resolution into `sfaf_event_own_image_url()`, and
-> the harness had never stubbed `get_post_thumbnail_id()`. `run-all.sh` reported
-> it correctly and exits 1 on it. The stub is added in 3.84.0. **The gate was
-> working; the output was not read.**
-
-> **THE 270 IMPORTED PICTURE REFERENCES ARE NOT CLEARED, AND DO NOT NEED TO BE.**
-> 3.83.0 enforces the calendar folder rule where a picture is RESOLVED, so a
-> stored reference to a picture outside the folder simply resolves to nothing
-> and the chain falls to the series picture. Nothing was deleted, no file was
-> touched, and another import cannot undo it.
-> `.claude/import/clear-outside-folder.php` is still there and is now optional
-> housekeeping rather than a fix.
-
-> **THE 73 IMPORTED PICTURE REFERENCES ARE NOT CLEARED YET.** The script is
-> `.claude/import/clear-outside-folder.php` and it has to be run ON THE SITE:
-> there is no WordPress and no database in the build environment, so nothing
-> here can do it or count it. Report mode writes nothing and prints the before
-> count; `apply` clears; `undo` puts every value back. **Read the report first**,
-> because it separates what the import set from what it did not.
-
-> **THE BLOCK IS AT 700px BECAUSE OF A HOST SETTING, NOT A CALENDAR FAULT.**
-> Teal's embed block carries a `:width-narrow` class, which Mark is raising with
-> them. It means he is looking at the STACKED layout, which nobody had looked at
-> until 2026-09-14, and three faults turned up in it on the first pass. **Treat
-> the stacked case as untested ground rather than a variation of the side by
-> side one.**
-
-> **3.81.0 IS THE ONE TO INSTALL FIRST.** It fixes a single misplaced brace that
-> made `portal.js` throw on every page from 3.77.0, which killed
-> `requestPrefill`, `calendarTick` and **every tick picker on every screen**: the
-> schedule's bulk publish from 3.72.0, the events list's bulk category from
-> 3.73.0, the Images screen's Tag button from 3.78.0 and the events list's bulk
-> publish from 3.79.0. All of them were dead for four releases and none of them
-> has ever been seen working.
-
-> **3.79.0 WAS NEVER RELEASED AND DOES NOT NEED TO BE.** Its work is in 3.80.0,
-> which is a later tag over the same branch, so a site updating from 3.78.0 gets
-> both. There is no 3.79.0 release on GitHub and nothing is missing.
-
-> **WHAT TO PRESS ON THE SITE.** Plugins > SFAF Calendar > **Check for updates**,
-> then Update now. **Not** Dashboard > Updates: WordPress's own "Check again"
-> clears its caches and not `sfaf_updater_release`, so it answers from ours and
-> can never see a new version. That cost a release in 3.73.0.
-
-> **THE HOVER PREVIEW WORKS ON sfaf.org**, confirmed 2026-09-11: it appears, it
-> positions itself, it clears the site header and it stays open while the
-> pointer moves onto it. The top layer, the positioning and the embed copy are
-> settled. **What has never been pressed is what it goes to**: 3.77.0 gave it a
-> destination and 3.78.0 made that two targets rather than one.
-
-| | |
-|---|---|
-| **3.93.0** | **Check boxes are top aligned everywhere, and the fix is a different shape from the last two.** Twenty-two rules set a box against its label and fourteen said centre or baseline; each stylesheet now aligns the BOX with `align-self`, which a later `align-items` on the row cannot take back, and `.claude/checkbox-align-test.php` reads the box-bearing classes out of the source rather than holding a list. **The mid-word break in the dropdown is inherited from the host page**: measured against the real terms, the sub-column fits the longest word at every width, so `word-break`, `overflow-wrap` and `hyphens` are declared on the rows now, with a 190px floor under the sub-column so arithmetic cannot become the cause either. **The headings sit on a tinted band** at the measured 18% ceiling, because coloured text was reported as not being separation. **Ticked items no longer float to the top**, and all three reorder implementations went with the on-open timing that existed only to protect them. **Clear all moved out of the footer**, saving 46px against a cap that had been measured on invented names and is 580px now. **Both request forms take a place name**, composed into the address by the one reader, with an approver-only promotion to a real venue that leaves the event pointing at it. **A submitted picture under 1200px warns instead of refusing.** And the five minute time step was never built or lost: twelve of twelve since 3.72.0. |
-| **3.92.0** | **The filter dropdown carries a count beside every name, in two queries rather than thirty-four.** One id query plus one that resolves both taxonomies across the whole id set; it also replaced the fifty the narrowing map was already spending. Upcoming and published only, from the list own args, narrowed by category, search and block scope; an organizer count ignores the organizer ticks and a group count respects them. A zero is hidden, except a ticked row and except a group whose events name no organizer, which is the 3.85.0 narrowing rule a plain zero rule would have reversed. **The headings take palette teal and nothing else does.** **Rows are 31px with the whole label as the target**, 220x31 and 202x31 against WCAG 24x24. **The scrollbar cannot go and no longer fires**: the panel wants 460px, the cap was 460px so it clipped and the scrollbar then wrapped three more names; the cap is 520px and 70vh still binds on a short window. |
-| **3.91.0** | **The list view is a table of rows**: thumbnail, title, date and time, venue, replacing the card rather than joining it, with no excerpt and no footer button. A grid of divs rather than a `<table>`, so infinite scroll and both scripts append targets were untouched and a phone gets two columns instead of a sideways scroll. Measured 900x90 at 1100px, 700x111 at 700px, 380x158 on a phone. **The month tile shows its whole title**, reversing 3.89.0: a column of ellipses tells nobody what anything is, and the time moved under the title so it stops taking width the title needs. **And the filter dropdown got separation rather than more lightening**, which measuring first is what established: the headings had been flush against the first row since 3.85.0, because the paragraph reset beat them on specificity. The weights were not touched. |
-| **3.90.0** | **The Cycle to Zero picture was pinned to an attachment that no longer existed.** Replacing it left the old id in the term meta, and a stale id is truthy, so it won the chain and the tag fallback never ran: every surface went dark at once while a correctly tagged picture sat unused. An order problem, not the empty state the previous investigation reported. A stored id that no longer resolves is treated as absent now, falling through rather than being cleared, and the series screen asks the same chain the calendar asks. **The picker was a dead end built from three correct decisions**: the series screen narrowed to its own series, the empty grid explained nothing, and the way out has been rendered `hidden` since 3.74.0, the sixth built-and-unreachable control here. All three fixed, and choosing a series picture now tags it. **And a caladmin upload is filed into the media library's Calendar folder too**, by discovering that taxonomy rather than naming it, because WP Media Folder is commercial and could not be inspected from the build machine. No files were moved. |
-| **3.89.0** | **The filter panel shut on every tick on the embed**, because 3.87.0 carried the open state across the redraw in `calendar.js` only. Fourth fix to reach one script and not the other, and **the pair test was green and blind**: it covers the pairs somebody enumerated, and this behaviour shipped a release before the test existed. A second fault turned up in BOTH scripts while fixing it: the narrowing is an attribute on rows the redraw replaces, so hidden groups came back a frame later. **The month grid is lines, not cards**: a dot, a title, a time, measured at 21px a row against 42px before, with four things other than a border keeping nine of them readable and the category still carried as text rather than by colour alone. **And a stale `embed.js` now names itself in the console**, which is why two correct releases looked broken; the script URL stays unversioned because a version in a pasted snippet pins it, which was the 2.10.1 defect. |
-| **3.88.0** | **Search and the merged dropdown did nothing on the EMBED, and both fixes had gone to the other path.** `embed.js` asked its own REST route for `mode=items` only, so the month grid never moved, and it had no handler for the merged Organizers and Groups control at all, still listening for the two controls 3.85.0 replaced. Third time a correct change reached the shortcode and not the embed. **Nothing was missing from the server's cache key**; the CLIENT's month cache key carried only the category. A narrowed response is no longer publicly cacheable, which is where Mark's 304 came from. **And the embed cache retires on a plugin update**, flagged twice and now built, so a release is not served from a payload built before it. `.claude/embed-filters-test.php` asserts both scripts as pairs, and that the handler is called rather than merely present. |
-| **3.87.0** | **An image uploaded from the event editor was never lost.** It landed in the calendar folder correctly; it vanished from the PICKER, because wp.media refreshes its library on upload and for an event in a series that query narrows on `uc_series`, which a brand new picture cannot answer. It is tagged with the series as it arrives now. **Search in calendar view: nothing changed, deliberately**, because the whole chain was proved correct in a browser and by execution, and the remaining candidates are the SQL and the install. **The filter panel is lighter and the Apply button is gone**, inside `<noscript>` rather than hidden, with the open panel surviving the redraw and the rebuild debounced at 350ms. **The upload panel is the picture on the left and the typed fields on the right**, which is what actually fixes an alignment fault two arrangements had not. |
-| **3.86.0** | **The merged filter control opened in the top left of the viewport**, and it was not the anchor positioning API: it was `position: fixed` at 0,0 placed by script from a popover `toggle` event, hidden by a selector older browsers discard. It is a `<details>` placed by the stylesheet now, with nothing platform-specific in how it opens, and measured with no script on the page at all. **Two columns, one third and two thirds**, held by grid fractions so narrowing cannot make them jump. **Closures can be edited**, which the model always allowed and the form never offered, the fifth control found built and unreachable. **Search narrows the month grid and the sidebar**, which needed three separate places to carry the term and a cache key to include it. Plus **name and alt text at upload** on a panel laid out as a grid, **top-aligned tick boxes** in one shared rule, and **a dashboard count of published events with no organizer** that links to them. |
-| **3.85.0** | **No community submission has ever carried an organizer, and the write was never the problem.** The event was its OWN SOURCE: it joined the series and then asked the series for its organizers, which answers from the most recent event and counts pending ones. Proved by running it. **An organizer is required on the server now**, with a rule about direction rather than state, so the hundred published events with none save normally and stay published. **Organizers and groups are one popover in the top layer**, multi-select, narrowing one way from the events actually in each group, reordering on open rather than on click, and **the filter bar works with script off for the first time**, which needed a GET form the file never had. |
-
-**Older releases are in `readme.txt`, which is the changelog.** This table is
-not a history: it is the handful of releases somebody opening a fresh chat still
-needs to know about, and it was running to twenty rows.
-
-## What has actually been seen on the site
-
-- **THE HOVER PREVIEW WORKS ON sfaf.org.** It appears, positions itself, clears
-  the site header, and stays open while the pointer moves onto it. The top
-  layer, the positioning and the embed copy are all settled.
-- **3.75.0 AND 3.76.0 ARE INSTALLED, THROUGH THE UPDATER.** The palette, the
-  icon set, calendar-as-default and the mobile fixes are all confirmed working.
-- **THE WHOLE SUBMISSION PATH IS CONFIRMED END TO END.** Submit, alert to the
-  submissions address, approve with both ticks, publish, published notice to the
-  submitter, event live on the public calendar. **Registration is confirmed
-  too**, both the attendee's confirmation and the organizer's alert.
-- **On a phone the calendar shows with the list below it, and tapping a date
-  updates that list.**
-- **THE IMAGE FOLDER HOLDS SIX PICTURES AND NONE IS TAGGED OR NAMED.** That is
-  why the chooser shows one ungrouped list of file names: the filter has nothing
-  to filter on and the title rule has nothing to prefer. Both are correct and
-  both read as broken. `TESTING.md` 1.74 is Mark naming and tagging the six,
-  which is the thing that makes 3.74.0's and 3.76.0's picture work visible.
-
-  > **AND FROM 3.80.0 THIS CHANGES WHAT THE PUBLIC FORMS SHOW, SO READ IT BEFORE
-  > REPORTING A FAULT.** The picker HIDES by series now instead of grouping. With
-  > none of the six tagged, every series will show **"No images are available for
-  > that series yet. Contact MarCom for an event image to be added."** and no
-  > pictures at all. That is the feature working against an untagged folder, not
-  > a broken picker, and it is the exact state 1.74 clears. **Tag at least one
-  > picture to one series before judging 3.80.0's picker**, or the only path the
-  > screen can take is the empty one.
-- **THE IMPORT HAS RUN.** 2026-09-03. The site holds **287 drafts across 32
-  series** and Mark has confirmed they look accurate. Trash emptied.
-  **`TESTING.md` 2.18 and 2.19 are deliberately still open:** deleting the
-  import folder from the server and reading a no-mail notification card are
-  separate actions and neither has been reported back on.
-- **3.71.0's BULK PUBLISH READS CORRECTLY** on a real series. 3.72.0 put
-  per-row ticks on it and those have not been seen.
-
-  > **NO TICK PICKER ANYWHERE HAS EVER WORKED IN A BROWSER, AND 3.81.0 IS WHY.**
-  > `portal.js` has thrown on every page since 3.77.0, so the counts, select-all
-  > and the disabled state were dead on all four screens that carry them. The
-  > boxes themselves were fine and posted correctly, so anything actually ticked
-  > was acted on. **Everything asserted about a tick picker before 3.81.0 was
-  > asserted about markup, not behaviour.**
-
-**The scheduled path works end to end.** A morning-of reminder went out
-unassisted at 6:58am on 2026-08-18. Cron is a reliability question from here.
-
-**THE BLOCK HAS 700px ON sfaf.org RIGHT NOW, AND THE COMBINED VIEW STACKS
-THERE.** Measured in the console, 2026-09-14. The two panels need about 864px
-side by side, so stacking at 700px is the mode working rather than a fault, and
-anything reported about it should be read that way first.
-
-> **700px IS NEW AND IS BEING TRACED.** It follows a change on Teal's side that
-> Mark has not got to the bottom of yet. Everything in this repository that
-> names **770px as sfaf.org's width is now out of date**: the comments and
-> fixtures in `.claude/combined-panel-parity.php` and the named width in
-> `.claude/embed-modes-test.php`. Both still assert the right THING, which is
-> that the mode must work at whatever sfaf.org gives it and must stack rather
-> than squeeze the grid; only the number has moved, and it has moved in the
-> direction those checks already cover. Update them when the cause is found and
-> the width settles, rather than chasing it now.
-
-> **AND NOBODY HAS SEEN THE STACKED SHAPE YET.** Mark is on 3.80.0 and every
-> report so far, the sidebar card included, came from the SIDE BY SIDE layout.
-> So 3.81.0's stacked work, the column filling the width instead of staying
-> 380px, is unverified by anybody. `TESTING.md` 1.87 covers it; at 700px it is
-> now the default shape rather than something to go looking for.
+---
 
 ## In flight
 
-**FOLLOWING A SERIES IS HALF BUILT AND PART 2 IS NOT STARTED.** 3.53.0
-established who the followers are; **nothing sends them anything**. Somebody can
-follow today and hear nothing, which is the expected state, and the whole of the
-design is in `PROJECT.md` 8. Its one dependency was met in 3.64.1;
-`TESTING.md` 1.22 should be done before part 2 is designed on top of it.
+- **Following a series is half built.** 3.53.0 established who the followers
+  are; nothing sends them anything. The design is in `PROJECT.md` 8. `TESTING.md`
+  1.22 before part 2 is designed on top of it.
+- **The external cron ping does not exist.** Only visitor traffic and the
+  page-view nudge drive the runner. `PROJECT.md` 4 has the order it has to be
+  switched on in; the wrong order leaves the site with no scheduler at all.
+- **Automated fetching is ON and its own copy says it should not be.** Either the
+  removal it was waiting on has been watched, or the switch is ahead of its
+  safeguard. Only Mark can say. A fetch can unpublish a live event unattended,
+  four times an hour. `TESTING.md` 2.8.
+- **Online events are a first pass (3.62.0).** Per-registrant approval was
+  deliberately not half built. Two things want saying to the team, `PROJECT.md` 2.
 
-**THE EXTERNAL CRON PING DOES NOT EXIST YET.** Until it does, the only things
-driving the runner are visitor traffic and the page-view nudge from sfaf.org.
-`PROJECT.md` 4 has the order it has to be switched on in; getting that order
-wrong leaves the site with no scheduler at all.
+---
 
-**AUTOMATED FETCHING IS ON, AND ITS OWN COPY STILL SAYS IT SHOULD NOT BE.** The
-toggle under **Settings > Scheduled Tasks** reads "Leave this off for now ...
-switch it on by hand once one removal has been seen go through correctly", and
-`TESTING.md` 2.8 says the same. **Either that removal has been watched and both
-should be updated, or the switch is ahead of its safeguard.** Only Mark can say
-which. The risk is real: a fetch can unpublish a live event when its source stops
-returning it, unattended, four times an hour.
+## Outstanding, and only Mark can move it
 
-**TWO THINGS ABOUT THE QUEUES WERE NEVER REPORTED BACK ON.** What 3.58.0 refuses
-has never been seen against the real campaign list: press **Fetch updates** once
-and read the report (`TESTING.md` 2.13). And 3.59.0 predicted Pending would go
-from 6 rows to 3 and Dismissed would stop showing SFAF Board Impact. **If a row
-with a past start date is still there the diagnosis was wrong**, and the cause is
-something other than the end date.
+**`TESTING.md` holds the manual testing backlog and its count.** Two want doing
+first, in this order: **1.74**, naming and tagging the six pictures, which is
+what makes every picker's work visible at all, and **1.80**, the preview's two
+targets. Assume everything else unverified.
 
-**3.62.0 IS A FIRST PASS AT ONLINE EVENTS.** Everybody who registers gets the
-meeting link if the manager ticked the message carrying it; per-registrant
-approval was deliberately not half built. **Two things about it want saying to
-the team**, both in `PROJECT.md` 2 under "Online events, and a meeting link that
-is a credential".
+**Waiting on a decision or an address**, each with its reasoning in `PROJECT.md`
+8 unless another section is named:
 
-**Two things that were here and are now in `PROJECT.md` 6**, because neither is
-about the current situation and both will still be true in a year: **the events
-a save cancelled between 3.36.0 and 3.40.0**, where the damage outlives the fix
-because a second save silently un-cancelled one, and **the four things waiting
-on somebody** (the GFMP campaign image, the Turnstile keys, the Cycle to Zero
-series, and the live test event).
+- **The calendar home URL.** Until it is filled in, "All Events" on an event page
+  falls back to the archive on resources.sfaf.org, which is not a public surface.
+  Settings, Display, Calendar home URL.
+- **What "Use this image" should do**, now that it is known to be broken: copy
+  the file into the calendar folder on use, or remove the button.
+- **Two pieces of public copy nobody has read**: the rejection notice and the
+  "this event is back on" message. Both unticked by default, so nothing can send
+  while they wait. `TESTING.md` 2.21 and 2.24.
+- **Español as a category.** It supplies the colour and icon to every event it is
+  on, because it sorts first. That is the rule working. Three answers costed.
+- **The community form's age options**, its **two email fields**, and **what
+  either public form should require**.
+- **222 published event addresses die with The Events Calendar.** A redirect
+  table built from the export is the cheapest answer.
+- **Four things the calendar publicly asserts that are untrue**, from
+  `SFAF_Seo`. Take first: a cancelled event still says `EventScheduled`.
+  `PROJECT.md` 3.
 
-## Outstanding testing
+**Named in the 3.94.0 brief and designed nowhere yet**, so this is the only
+record of them:
 
-**`TESTING.md` holds the manual testing backlog.** The count is at the top of
-that file and moves with it. Nothing in the build can settle any of them.
+- **The help icon audit.** Which sections already carry a help icon and which
+  need one. Nobody has walked the screens.
+- **A help section in caladmin**, searchable, written for somebody creating an
+  event rather than for an administrator. **The content is the work, not the
+  screen.**
+- **Hybrid events**: attendable in person or online, a separate RSVP for each,
+  its own capacity for each, and the meeting link reaching only the online ones.
+  That is a change to the registration model, not a display option.
+- **Whether an event with no description falls back to its series description.**
+  Nobody knows, and the answer changes how Mark uses both fields.
+- **The nine images on disk that are not in the media library's Calendar
+  folder**, and the options for retrofitting them.
 
-**TWO WANT DOING FIRST AND THEY ARE IN ORDER**, because the second is what makes
-most of the picture work visible at all:
-
-- **1.80**, the preview's two targets and the tint. The panel and its
-  positioning are confirmed; what has never been pressed is the picture and the
-  pill, which were not links at all until 3.77.0 and were the wrong shape of
-  link until 3.78.0.
-- **1.74**, Mark naming and tagging the six pictures, and **1.81** with it,
-  which is the case that did not work: a picture whose file is already named
-  after it, like `cycle-to-zero.jpg` given the name "Cycle To Zero". Until the
-  six are named and tagged the chooser correctly shows one ungrouped list of
-  file names, which is what has been reported twice as a fault and is the empty
-  state of two rules working.
-
-Then **1.82** (the Images screen laid out, which is where the naming happens),
-**1.79** (the new prefill control on the staff form, whose caladmin twin sat
-dead for twenty-six releases, so it is worth pressing rather than glancing at),
-**1.76** (the organizer on that form, which writes a term) and **1.62** (the FAQ
-set answers).
-
-**Assume unverified rather than assuming the reported faults were the only
-ones.** What 3.73.0 and 3.74.0 have confirmed is listed above and is genuinely
-confirmed; the rest of both, the icon actions, the cancel landing and the RSVP
-tick, has not been reported back on.
-
-> **AND ONE OF THOSE UNVERIFIED THINGS HAD NEVER WORKED AT ALL.** The bulk
-> category control was in that list from 3.73.0 to 3.79.0, and it could not have
-> been used by anybody: the ticks were absent. A build that ships a control
-> nobody has pressed is a build whose test list is load bearing. `TESTING.md`
-> 1.83 is the first press of both bulk actions.
-
-## Open decisions
-
-**TWO PIECES OF COPY HAVE NOT BEEN READ BY MARK, AND BOTH GO TO THE PUBLIC.**
-The **rejection notice**, which is the only message this calendar sends that
-tells somebody no, and the **"this event is back on"** message added in 3.73.0.
-Both are built, both are unticked by default, and neither can send without an
-explicit yes, so nothing is at risk while they wait. Each is quoted in full:
-`TESTING.md` 2.21 for the first, `TESTING.md` 2.24 for the second.
-
-**ESPAÑOL IS A LANGUAGE AND THE OTHER SIX SAY WHAT AN EVENT IS**, and because
-the first category alphabetically supplies the colour and the icon, and Español
-sorts before every other category this calendar has, **a Spanish-language
-support group is drawn as Español everywhere**: card, placeholder, month tile
-and chip. That is the rule working rather than failing. Whether a language
-belongs as a category at all is Mark's call, and the three answers with the cost
-of each are in `PROJECT.md` 8. Nothing was changed.
-
-**THE COMMUNITY FORM'S AGE RESTRICTION OPTIONS ARE MARK'S CALL.** Reported and
-deliberately not changed, because two of the five were named in isolation and
-one of them opens a required field. The five, what each does, and a proposed
-replacement set are in `PROJECT.md` 8. It is one array, read by the control and
-the validator alike, so the stored values do not move and no event changes.
-
-**222 PUBLISHED EVENT ADDRESSES DIE WITH THE EVENTS CALENDAR.** They are live at
-`resources.sfaf.org/event/<slug>/` and stop resolving when TEC is removed; the
-import creates events at different slugs and nothing maps one to the other.
-Whether that matters depends on what links to them, which the repository cannot
-say. The cheapest answer is a redirect table built from the export.
-
-**MARK HAS TO FILL IN THE CALENDAR HOME URL SETTING.** Until he does, "All
-Events" on an event page lands on the event archive, which is not a public
-surface. Settings, Display, Calendar home URL. `PROJECT.md` 1.
-
-**WHAT THE TWO PUBLIC FORMS REQUIRE IS STILL MARK'S CALL.** The location half is
-answered: both forms land in Pending either way and 3.68.0 marks a request that
-arrived with no location. The rest of the inventory is in `PROJECT.md` 8. The
-constraint is that a field somebody cannot answer means an abandoned form.
-
-**THE COMMUNITY FORM'S TWO EMAIL FIELDS STILL NEED NAMING.** Both do unrelated
-jobs. `PROJECT.md` 8 has the table.
-
-**Four things the calendar publicly asserts that are untrue or incomplete**,
-from reading `SFAF_Seo`, listed in full in `PROJECT.md` 3. **The one worth
-taking first is that a cancelled event still tells the world `EventScheduled`**,
-which 3.72.0 and 3.73.0 have made conspicuous by marking cancellation on every
-other surface.
-
-**Three smaller calls, each recorded in `PROJECT.md` with its reasoning.**
-Whether saving an imported event should keep it in the queue (one line, and
-deliberately not made; use **Save these fields** on the queue meanwhile);
-whether ticketed events are worth building when GoFundMe Pro already handles
-payment; and whether "open events at their source" should be the default,
-which would change where every imported card sends a visitor.
+---
 
 ## Queued work
 
-**The three standing jobs moved to `PROJECT.md` 8 in 3.72.0**, under "The
-three jobs queued behind everything else": the rest of the caladmin design
-audit, simplifying the event editor, and the Tailwind greys still in
-`portal.css`. None of them is about today, and carrying them here release after
-release is what kept this file at twice its cap.
+**The three standing jobs are in `PROJECT.md` 8**: the rest of the caladmin
+design audit, simplifying the event editor, and the Tailwind greys still in
+`portal.css`. None is about today.
 
 ## Before touching anything
 
@@ -563,7 +148,8 @@ with the lessons that each cost more than one build.
 ---
 
 *When the situation changes, update this file in the same commit. A build that
-ships moves something out of "in flight". A decision moves out of "open". An
-answer from Aaron or Val, and a finished test, are both deletions from
-`TESTING.md`, and its count at the top of that file moves with them. If what you
-are writing would still be true in six months, it belongs in `PROJECT.md`.*
+ships moves something out of "in flight"; a decision moves out of "outstanding";
+a finished test is a deletion from `TESTING.md` and its count moves with it. If
+what you are writing would still be true in six months, it belongs in
+`PROJECT.md`. This file was 569 lines in 3.93.0 against a 150 cap, because every
+release added a block and none ever left. A history belongs in `readme.txt`.*

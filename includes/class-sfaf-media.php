@@ -752,6 +752,24 @@ class SFAF_Media {
             /* True where the series cannot change on this page, which is what
              * lets the server do the hiding on its own. See below. */
             'series_locked' => false,
+            /*
+             * A THIRD CASE, FOR THE EVENT EDITOR (3.94.0): the series cannot
+             * change AND there has to be a way to see past it.
+             *
+             * Locked emits only that series' pictures, which is right on a
+             * public form where there is nothing else on offer. In caladmin
+             * the escape has to exist, so every row is written out with its
+             * series on it and the script hides what does not match, exactly
+             * as it does for the staff form's select. The difference is only
+             * where the id comes from: an attribute rather than a control.
+             *
+             * Pass a term id. It is ignored unless series_locked is false,
+             * because the two are answers to the same question.
+             */
+            'series_fixed' => 0,
+            /* Renders the way past the filter. Only meaningful with
+             * series_fixed, since without it nothing is filtered. */
+            'show_all' => false,
         ), $args );
 
         $chosen = (int) $args['chosen'];
@@ -831,7 +849,14 @@ class SFAF_Media {
         $offered = ( $locked && ! empty( $mine ) ) ? $mine : ( $locked ? array() : $rows );
         $none    = ( $series && empty( $mine ) );
         ?>
-        <details class="uc-picker uc-image-picker" data-uc-image-picker>
+        <details class="uc-picker uc-image-picker" data-uc-image-picker<?php
+            /* THE FIXED SERIES TRAVELS AS AN ATTRIBUTE, so the narrowing has
+             * one implementation whether the id comes from a select or from
+             * here. See initFixedSeriesImageFilter() in portal.js. */
+            if ( ! $locked && (int) $args['series_fixed'] ) {
+                echo ' data-uc-image-series-fixed="' . (int) $args['series_fixed'] . '"';
+            }
+        ?>>
             <summary class="uc-picker-toggle">
                 <span class="uc-picker-label"><?php echo esc_html( $args['label'] ); ?></span>
                 <?php self::summary_row( $current ); ?>
@@ -967,6 +992,24 @@ class SFAF_Media {
                     No images are available for that series yet. Contact MarCom for an event image to be added.
                 </p>
                 <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>
+                <?php if ( ! empty( $args['show_all'] ) ) : ?>
+                    <?php
+                    /*
+                     * THE WAY PAST THE SERIES FILTER.
+                     *
+                     * RENDERED VISIBLE AND HIDDEN BY THE SCRIPT, never the
+                     * other way round. A control rendered with the `hidden`
+                     * attribute and revealed by script is how the last one of
+                     * these stayed
+                     * invisible for sixteen releases: nothing ever removed the
+                     * attribute. With no script at all the list is unfiltered
+                     * anyway, so a button reading "show everything" on a list
+                     * already showing everything is harmless, and is the
+                     * honest no-script state.
+                     */
+                    ?>
+                    <button type="button" class="uc-btn uc-btn-sm uc-picker-show-all" data-uc-image-show-all>All calendar images</button>
+                <?php endif; ?>
             </div>
         </details>
         <?php

@@ -467,6 +467,55 @@
 .uc-single .uc-single-body h4 { font-size: 16px; }
 
 .uc-single .uc-single-body a, .uc-single .uc-faq-a a { color: var(--uc-teal-text); text-decoration: underline; }
+
+/* ===========================================================================
+ * ONE FONT IN A PASTED DESCRIPTION (3.94.0).
+ *
+ * WHAT ARRIVES. People write these in Word, in Outlook and in a browser and
+ * paste them in, and a paste carries the source's font with it as an inline
+ * style on nearly every element: `<p style="font-family:Calibri,sans-serif">`,
+ * and from older sources `<font face="Arial">`. The result is a calendar whose
+ * event pages are in four different typefaces.
+ *
+ * OVERRIDDEN ON DISPLAY, NOT STRIPPED ON SAVE, and that is the load-bearing
+ * decision rather than the selector.
+ *
+ *   . STRIPPING CANNOT BE UNDONE. It rewrites what somebody wrote, and the
+ *     next thing anybody asks for is the bold or the link that went with it.
+ *   . STRIPPING ONLY FIXES THE FUTURE. Every description already saved would
+ *     stay wrong until somebody opened and re-saved it, and there are about a
+ *     hundred of them.
+ *   . AN OVERRIDE IS REVERSIBLE BY DELETING ONE RULE, and it fixes what is
+ *     already there the moment it ships.
+ *
+ * `inherit`, NOT A NAMED FACE, AND THAT IS WHY OUR OWN RULES SURVIVE. An
+ * element told to inherit takes its parent's computed font, so a paragraph
+ * takes the body face from .uc-single-body and a span inside an <h3> takes the
+ * HEADING face from the rule twenty lines up. Naming var(--uc-font-body) here
+ * would have flattened our own headings into body text, which is the same
+ * class of mistake as the paste.
+ *
+ * `!important` IS REQUIRED AND IS NOT A SHORTCUT. A style attribute beats
+ * every selector in the cascade whatever its specificity; the only author-level
+ * thing that outranks it is !important. There is no version of this rule that
+ * wins without it.
+ *
+ * COLOUR AND SIZE ARE DELIBERATELY NOT TOUCHED. A pasted colour and a pasted
+ * font-size still come through exactly as pasted, because they were not asked
+ * for and because both are sometimes meant: somebody emphasising a line in red
+ * chose that, where nobody has ever chosen Calibri on purpose. If they turn out
+ * to be a problem too, they are two more properties in this same rule.
+ * ======================================================================== */
+.uc-single .uc-single-body,
+.uc-single .uc-faq-a { font-family: var(--uc-font-body); }
+.uc-single .uc-single-body [style*="font-family"],
+.uc-single .uc-single-body [style*="font:"],
+.uc-single .uc-single-body font,
+.uc-single .uc-single-body [face],
+.uc-single .uc-faq-a [style*="font-family"],
+.uc-single .uc-faq-a [style*="font:"],
+.uc-single .uc-faq-a font,
+.uc-single .uc-faq-a [face] { font-family: inherit !important; }
 .uc-single .uc-single-body a:hover, .uc-single .uc-faq-a a:hover { color: #0B666F; text-decoration: underline; }
 .uc-single .uc-single-body a:focus-visible, .uc-single .uc-faq-a a:focus-visible {
     outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px;
@@ -1186,19 +1235,66 @@
    divider padding, the sub-column gap and the row padding puts it at three. A
    wrapped row is 50px against 31px, so this is the difference between an even
    list and a ragged one. */
+/* THE COUNT IS INLINE INSIDE THE NAME NOW (3.94.0), so it follows the text
+   rather than a column edge and shares the name's baseline. It is no longer a
+   flex item, so it has no margin, no flex and nothing to be distributed by.
+   Tabular figures so a column of them does not jitter, and secondary grey so it
+   loses to the name it belongs to. */
 .uc-who-count {
-    margin-left: 2px; flex: 0 0 auto;
     font-size: 11px; color: var(--uc-secondary);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+/* AND THE NAME MAY NOT GROW. This is the belt to the markup change's braces:
+   the count moved inside the name because a host rule was growing the name span
+   and pushing the count to the column edge, and this says out loud that the
+   name is sized by its text. Two classes, so an ordinary theme rule loses. */
+.uc-who-panel .uc-who-opt > span { flex: 0 1 auto; min-width: 0; }
 .uc-who-opt:last-child { border-bottom: 0; }
 /* THE HOVER IS A ROUNDED TINT INSET FROM THE EDGE, not a full-bleed band. A
    band that runs wall to wall is what makes a list read as a table of cells;
    an inset rounded fill reads as one row being pointed at. */
 .uc-who-opt:hover { background: var(--uc-bg); }
-/* A ticked row is the one thing in the panel that has to be findable without
-   reading it, so it carries a tint that survives the pointer moving away. */
-.uc-who-opt:has(input:checked) { background: var(--uc-bg); font-weight: 600; }
+/* A TICKED ROW HAS TO BE FINDABLE WITHOUT READING IT, AND A TINT ALONE IS NOT
+   ENOUGH (3.94.0).
+
+   WHAT IT WAS: --uc-bg #F7F8FA, which measures 1.06:1 against the panel. That
+   is not a light background, it is white with a rounding error, and with
+   thirty-five rows in two columns somebody could not see what they had picked.
+
+   AND NO TINT WAS GOING TO FIX IT ON ITS OWN. Measured up the range, brand
+   teal over white tops out at about 1.3:1 before the name starts losing
+   contrast. A fill that light cannot carry a selection by itself:
+
+       10%  #E8F9FA   1.08:1 on white
+       18%  #D5F3F6   1.17:1
+       36%  #ABE8EE   1.35:1, and by here the tint is doing the reading
+
+   SO IT IS BOTH, AND THE EDGE IS THE HALF THAT CARRIES IT. DESIGN.md asks for
+   shape and mark before colour, and a solid 3px rule down the left of a row is
+   a shape: --uc-teal-text at 5.35:1 against the panel, which clears the 3:1
+   WCAG asks of a non-text indicator with room, where the brand fill #16BECF
+   would have been 2.26:1 and failed it. Scanning a column, the edges line up
+   and read as a set; the tint says which whole row is in it.
+
+   AN INSET SHADOW, NOT A BORDER, so the edge costs no layout: a border would
+   move every ticked row 3px right and make the list shift as somebody clicks.
+
+   THE TINT IS THE HEADING BAND TOKEN, not a second teal. One tint in the panel
+   is one thing to recognise, and a ticked row is never mistaken for a heading:
+   it has a box, ink-coloured text and no uppercase.
+
+   AND THE COUNT TAKES THE TEAL INK ON A TICKED ROW. Secondary grey on the tint
+   measures 4.14:1, under the 4.5:1 an 11px number needs; the teal is 4.58:1
+   and reads as part of the selection rather than in spite of it. */
+.uc-who-opt:has(input:checked) {
+    background: var(--uc-band-heading); font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--uc-teal-text);
+}
+.uc-who-opt:has(input:checked) .uc-who-count { color: var(--uc-teal-text); }
+/* The tick itself, in the same ink. accent-color is one property and it is the
+   only thing that colours a native box without replacing it, so what a keyboard
+   and a screen reader get is unchanged. */
+.uc-calendar .uc-who-opt input[type="checkbox"] { accent-color: var(--uc-teal-text); }
 /* A hidden option is hidden, not greyed. Mark's reasoning: every option is
    visible when the panel opens, so somebody already knows they are there, and
    a greyed row still costs a line of a list that is thirty-four long. */
@@ -3502,10 +3598,32 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    with the padding it is already zeroing. One value, one place, and a context
    that changes the padding cannot forget to change the escape.
    ------------------------------------------------------------------------ */
+/* THE BOTTOM PADDING CLEARS THE ROUNDED CORNER, AND 14px DID NOT (3.94.0).
+
+   "See all events sits on the rounded corner" was reported three times and
+   diagnosed twice, and both diagnoses measured the COMBINED view, where this
+   element has border: 0 and padding: 0 because the panel around it carries the
+   box. There the link clears the card by 21px and always has. THE STANDALONE
+   SIDEBAR, WHICH CARRIES ITS OWN BOX, WAS NEVER MEASURED.
+
+   Measured now, in all four states, at 700px:
+
+       card radius              14px, so 13px on the padding box
+       link bottom to that edge 15px
+       clearance                2px
+
+   A CORNER IS A SQUARE, NOT A POINT. A 14px radius means the card is still
+   coming in for the whole last 14px, so a full-width link ending 2px above
+   that reads as sitting on the curve whatever the arithmetic says it clears.
+   Two pixels is not a clearance, it is a coincidence.
+
+   20px TAKES IT TO 21px OF CLEARANCE, which is the number the combined view
+   has always had and which nobody has ever reported. It is the same answer in
+   both modes rather than a new one for this one. */
 .uc-sidebar { font-family: var(--uc-font-heading); min-width: 200px; max-width: 380px;
     --uc-sidebar-pad-x: 14px; --uc-sidebar-pad-t: 6px; --uc-sidebar-head-radius: 13px;
     background: #fff; border: 1px solid var(--uc-border-strong);
-    border-radius: 14px; padding: var(--uc-sidebar-pad-t) var(--uc-sidebar-pad-x) 14px;
+    border-radius: 14px; padding: var(--uc-sidebar-pad-t) var(--uc-sidebar-pad-x) 20px;
     box-shadow: var(--uc-lift); }
 .uc-sidebar-list { display: flex; flex-direction: column; }
 

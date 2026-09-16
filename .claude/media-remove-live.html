@@ -147,6 +147,7 @@ function ucDismissOnBackdrop(dialog) {
         // may reset the choice back to that row, so the row has to be right
         // before this runs.
         run('seriesImageFilter', initSeriesImageFilter);
+        run('fixedSeriesImageFilter', initFixedSeriesImageFilter);
         // Last of the three: it reads whatever the other two settled on.
         run('formBanner', initFormBanner);
         run('uploadPreview', initUploadPreview);
@@ -737,6 +738,93 @@ function ucDismissOnBackdrop(dialog) {
 
         select.addEventListener('change', apply);
         apply();
+    }
+
+
+    /* ---------------------------------------------------------------------
+     * THE SAME NARROWING, FROM AN ATTRIBUTE RATHER THAN A SELECT (3.94.0)
+     *
+     * The event editor uses the request form's picker now instead of wp.media,
+     * and its series cannot change on the page: it is a property of the event
+     * being edited. So there is no <select> to listen to, and the id arrives on
+     * the picker as data-uc-image-series-fixed.
+     *
+     * EVERYTHING ELSE IS THE SAME MECHANISM ON PURPOSE. It sets
+     * data-uc-off-series on the rows it wants gone and asks initFilterLists()
+     * to run, exactly as initSeriesImageFilter() does, because one owner of
+     * `hidden` is what stopped the search box and the series filter fighting
+     * over the same rows. A second hiding scheme here would be that fight
+     * again.
+     *
+     * AND THERE IS A WAY PAST IT, which the public forms do not need and an
+     * approver does. Pressing it clears the narrowing for good rather than
+     * toggling: somebody who has asked to see everything has answered the
+     * question, and a control that puts the filter back is one more thing to
+     * understand on a screen that already has enough.
+     * ------------------------------------------------------------------ */
+    function initFixedSeriesImageFilter() {
+        var picker = document.querySelector('[data-uc-image-picker][data-uc-image-series-fixed]');
+        if (!picker) { return; }
+
+        var id = String(picker.getAttribute('data-uc-image-series-fixed') || '').trim();
+        var scope = picker.querySelector('[data-uc-filter-scope]') || picker;
+        var list = picker.querySelector('[data-uc-filter-list]');
+        var all = picker.querySelector('[data-uc-image-show-all]');
+        var note = picker.querySelector('[data-uc-image-none]');
+        if (!list) { return; }
+
+        var rows = list.querySelectorAll('[data-uc-image-series]');
+        if (!rows.length) { return; }
+
+        /* WITH NO SERIES THERE IS NOTHING TO NARROW TO, so nothing is hidden
+         * and the escape is pointless. Same branch the select version has. */
+        if (!id || '0' === id) {
+            if (all) { all.hidden = true; }
+            return;
+        }
+
+        var narrowed = false;
+
+        function apply(on) {
+            var shown = 0;
+            Array.prototype.forEach.call(rows, function (opt) {
+                var keep = !on;
+                if (!keep) {
+                    var mine = opt.getAttribute('data-uc-image-series') || '';
+                    keep = mine.indexOf(' ' + id + ' ') !== -1;
+                }
+                if (keep) {
+                    opt.removeAttribute('data-uc-off-series');
+                    shown++;
+                } else {
+                    opt.setAttribute('data-uc-off-series', '');
+                }
+            });
+            narrowed = on;
+            /* THE CHOSEN PICTURE IS NEVER HIDDEN. It is what the event is
+             * already using, so hiding it would make the panel disagree with
+             * the summary row above it, and unticking is the only way back. */
+            var picked = list.querySelector('input[type="radio"]:checked');
+            if (picked) {
+                var row = picked.closest('[data-uc-image-series]');
+                if (row && row.hasAttribute('data-uc-off-series')) {
+                    row.removeAttribute('data-uc-off-series');
+                    shown++;
+                }
+            }
+            if (note) { note.hidden = !(on && 0 === shown); }
+            if (all) { all.hidden = !on; }
+            scope.dispatchEvent(new CustomEvent('uc:refilter'));
+        }
+
+        if (all) {
+            all.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (narrowed) { apply(false); }
+            });
+        }
+
+        apply(true);
     }
 
     /* ---------------------------------------------------------------------

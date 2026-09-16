@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 166 items.** Quick 140, needs real conditions 23, blocked on other
+**Outstanding: 172 items.** Quick 146, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -2059,6 +2059,94 @@ run before it is used in anger.**
 - **"Use this image" should still work** on it. The warning is information, not a
   block.
 - **Send one over 1200 as well** and confirm there is no warning on that row.
+
+### 1.143 The dropdown's counts, after the move (3.94.0)
+
+- **Open it and look down a column.** Each `(n)` should sit immediately after its
+  name with the same small gap on every row, and its digits should sit on the
+  same line as the name rather than higher.
+- **If a count is still pinned to the right edge**, that is important: it would
+  mean something other than a flex-grow on the name is doing it, and the whole
+  diagnosis was wrong. Say so, and say at what window width.
+- **Count the wrapped names.** Nine of thirty-five is expected against the real
+  terms. If it is many more, the gutters are where to look, not truncation.
+
+### 1.144 A ticked row can be seen at a glance (3.94.0)
+
+- **Tick two or three things in different columns and step back from the
+  screen.** Each ticked row should have a teal left edge and a light teal fill,
+  and the set should be findable without reading the names.
+- **If it now reads as too loud**, say so: the edge is the half carrying it and
+  the fill could come down without losing the effect.
+- **The tick itself should be teal**, not the browser's default blue.
+- **The name must still be easy to read on the fill.** It measures 14.5:1, so
+  this is a look rather than a check, but say if it is not.
+
+### 1.145 An event description is in one font (3.94.0)
+
+**This needs a real pasted description, which is the whole point.**
+
+- **Find an event whose description was pasted from Word or Outlook** and open
+  its public page. All of it should be in the calendar's serif.
+- **Bold, italic, links, bullets and numbered lists must all survive.** Only the
+  typeface is being overridden. If any of those has gone, that is a defect.
+- **Paste something new from Word into the editor, save, and look at the page.**
+  Same result.
+- **Pasted colour and pasted text size still come through as pasted.** That is
+  deliberate and not a fault. Say whether they should be next.
+- **Check an FAQ answer too**, which takes the same rule.
+
+### 1.146 Choose Image on an event uses the new picker (3.94.0)
+
+**READ 1.74 FIRST. With none of the six pictures tagged to a series, this picker
+will correctly show "No images are available for that series yet" and nothing
+else. That is the feature working, and it cannot be judged until tagging is
+done.**
+
+- **Open an event in a series that has a tagged picture** and press the picture
+  chooser. It should open inline, not as a WordPress modal, showing that
+  series' pictures with a search box.
+- **Press "All calendar images".** The rest of the folder should appear, and the
+  button should go.
+- **Choose one and save.** The event's picture should change. Then reopen: the
+  chosen one should be selected.
+- **Choose "The series picture" and save.** The event should go back to
+  inheriting.
+- **The Remove button should still work** on an event with its own picture.
+- **There is no upload here any more.** If you need a new picture, it goes on the
+  Images screen first. Confirm that reads clearly rather than looking broken.
+- **The series screen still uses the old modal** and is unchanged. Check it
+  still opens.
+
+### 1.147 The three buttons at the foot of the event editor (3.94.0)
+
+- **Save changes is green, Cancel is amber, Delete is red**, on one line.
+- **Press Save.** It must still save. The row sits outside the form now and
+  reaches it by id, so this is the one thing that would be quietly broken.
+- **Press Cancel.** The options should appear below the three buttons rather
+  than beside them, and the button should become the panel's heading.
+- **Press Delete on an event with no registrations.** It should ask first, then
+  delete.
+- **Open an event that HAS registrations and is not cancelled.** There should be
+  no Delete button at all, and a sentence saying why.
+- **Open an event that is already cancelled.** The cancelled state should still
+  be a prominent block with "Put it back on", not hidden behind anything.
+- **Try it with a keyboard.** Tab should reach all three.
+
+### 1.148 See all events, clear of the corner (3.94.0)
+
+**Reported three times. The fix is on the STANDALONE sidebar, which is the one
+nobody had measured.**
+
+- **Find a page with the sidebar block on its own** and look at the bottom of
+  the card. "See all events" should sit clearly inside it, with visible space
+  between the link and where the card starts curving.
+- **Check it with events listed AND with none.** The empty state is where it was
+  first noticed.
+- **Check the combined view too**, which was always 21px clear and should be
+  unchanged.
+- **If it still looks wrong, say which of the two you are looking at.** That
+  distinction is what took three attempts.
 
 ---
 ## 2. Needs real conditions

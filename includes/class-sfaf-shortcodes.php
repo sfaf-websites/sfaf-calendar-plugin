@@ -2388,9 +2388,39 @@ class SFAF_Shortcodes {
                                                value="<?php echo esc_attr( $o->slug ); ?>"
                                                data-uc-who-organizer
                                                <?php checked( $on ); ?> />
-                                        <span><?php echo esc_html( $o->name ); ?></span>
+<?php
+                                        /*
+                                         * THE COUNT IS INSIDE THE NAME, NOT BESIDE
+                                         * IT (3.94.0), AND ONE CHANGE FIXES TWO
+                                         * FAULTS.
+                                         *
+                                         * IT WAS A SIBLING FLEX ITEM. Measured in a
+                                         * browser here it sat 10px after the name on
+                                         * every row, which is right; on sfaf.org it
+                                         * was pinned to the column's right edge,
+                                         * which means a host rule is growing the
+                                         * name span. That is the third time this
+                                         * panel has been hit by a value set outside
+                                         * it, and a flex item is exactly what a
+                                         * theme rule giving spans a flex-grow
+                                         * reaches. Inline inside the name there is
+                                         * no flex distribution left to lose.
+                                         *
+                                         * AND IT NOW SITS ON THE NAME'S BASELINE for
+                                         * free. As a flex item it took the row's
+                                         * align-items: flex-start, so an 11px count
+                                         * and a 14px name had their BOX tops level
+                                         * and their text on different lines. Inline
+                                         * text shares the name's baseline because it
+                                         * is in the same line box.
+                                         *
+                                         * The space before it is a real space in the
+                                         * markup, for the same reason: a margin is a
+                                         * property something else can override.
+                                         */
+                                        ?>
+                                        <span><?php echo esc_html( $o->name ); ?><?php if ( null !== $n ) : ?> <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span><?php endif; ?></span>
                                         <?php if ( null !== $n ) : ?>
-                                            <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span>
                                             <span class="uc-visually-hidden"><?php echo esc_html( sprintf( _n( '%d upcoming event', '%d upcoming events', $n ), $n ) ); ?></span>
                                         <?php endif; ?>
                                     </label>
@@ -2446,9 +2476,9 @@ class SFAF_Shortcodes {
                                                value="<?php echo esc_attr( $g->slug ); ?>"
                                                data-uc-who-group
                                                <?php checked( $on ); ?> />
-                                        <span><?php echo esc_html( $g->name ); ?></span>
+<?php /* Inside the name, for the two reasons the organizer loop above gives. */ ?>
+                                        <span><?php echo esc_html( $g->name ); ?><?php if ( null !== $n ) : ?> <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span><?php endif; ?></span>
                                         <?php if ( null !== $n ) : ?>
-                                            <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span>
                                             <span class="uc-visually-hidden"><?php echo esc_html( sprintf( _n( '%d upcoming event', '%d upcoming events', $n ), $n ) ); ?></span>
                                         <?php endif; ?>
                                     </label>
