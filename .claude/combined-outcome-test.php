@@ -148,6 +148,9 @@ function sfaf_ap_time( $t ) { return (string) $t; }
 function sfaf_category_shades( $hex ) { return array( 'ink' => '#0C666F', 'media' => '#D5F3F6', 'chip' => '#E3F7F9' ); }
 function sfaf_event_category_color( $id ) { return '#0E7680'; }
 function sfaf_day_event_thumb( $id ) { return '<span class="uc-day-event-thumb"></span>'; }
+/* The grid tile is a dot, a title and a time since 3.89.0. The thumb stub above
+   stays because the helper is kept for one release; nothing renders it. */
+function sfaf_day_event_dot( $id ) { return '<span class="uc-de-dot"></span>'; }
 function sfaf_event_image_url( $id ) { return ''; }
 function sfaf_event_location( $id ) { return sfaf_event_location_short( $id ); }
 function sfaf_normalize_faqs( $f ) { return array(); }

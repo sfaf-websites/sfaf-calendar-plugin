@@ -2744,12 +2744,47 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    without it is a title that simply wraps and makes the row taller, which is
    the same direction this design already goes in and not a broken layout.
    ------------------------------------------------------------------------ */
-.uc-calendar .uc-day-events { display: flex; flex-direction: column; gap: 4px; }
-.uc-calendar .uc-day-event a { display: flex; align-items: flex-start; gap: 8px;
-    padding: 4px; border: 1px solid var(--uc-border); border-radius: 6px; background: #fff;
-    font-size: 11px; line-height: 1.25; color: var(--uc-text); text-decoration: none; }
-.uc-calendar .uc-day-event a:hover { background: var(--uc-bg); border-color: var(--cat-ink, var(--uc-teal-text)); }
+/* ---------------------------------------------------------------------------
+   AN EVENT ON THE GRID IS A LINE, NOT A CARD (3.89.0).
+
+   WHAT WAS WRONG. Each event was a bordered box with a 32px picture, a title
+   clamped to two lines and a time on its own line: about 44px each. Nine on one
+   Wednesday made a row tall enough to push the rest of the month off screen.
+
+   THE RISK IS THE OBVIOUS ONE, and it is the condition this was asked under:
+   nine undifferentiated lines of text is not an improvement on nine boxes. Four
+   things keep them readable at 20px a row, and none of them is a border:
+
+     . THE DOT IS THE LEFT MARGIN. Every line starts at the same x, so the
+       titles form a column the eye can run down. That alignment is what a
+       border used to do and it costs no height.
+     . ONE LINE EACH, ELLIPSIS ON THE OVERFLOW. Uniform row height is what
+       makes a stack scannable; a title wrapping to three lines breaks the
+       rhythm exactly where the day is busiest.
+     . THE TIME IS RIGHT ALIGNED AND QUIET. Pinned rather than trailing the
+       title, so the times also form a column, and in the secondary colour so
+       the titles stay the thing being read.
+     . THE HOVER IS THE WHOLE ROW. One tinted band, full bleed inside the cell,
+       which is a bigger and more obvious target than the old 1px border edge.
+   ------------------------------------------------------------------------ */
+.uc-calendar .uc-day-events { display: flex; flex-direction: column; gap: 1px; }
+.uc-calendar .uc-day-event a {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 3px 4px; border: 0; border-radius: 4px; background: none;
+    font-size: 11px; line-height: 1.35; color: var(--uc-text); text-decoration: none;
+}
+.uc-calendar .uc-day-event a:hover { background: var(--uc-bg); }
 .uc-calendar .uc-day-event a:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 1px; }
+
+/* THE DOT. align-items is baseline for the text, which a round span has no
+   useful one of, so it is nudged by hand: 7px on a 15px line box sits on the
+   lowercase x-height rather than the descender. flex: 0 0 auto so a long title
+   can never squeeze it to an oval. */
+.uc-calendar .uc-de-dot {
+    flex: 0 0 auto; align-self: flex-start;
+    width: 7px; height: 7px; margin-top: 4px; border-radius: 50%;
+    background: var(--cat-ink, var(--uc-teal-text));
+}
 
 /* The thumbnail. flex: 0 0 auto so it never gives up its width to a long
    title, which is what would turn a 32px mark into a 4px sliver. */
@@ -2775,10 +2810,33 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-calendar .uc-de-thumb-ph { display: flex; align-items: center; justify-content: center;
     background: var(--cat-media, var(--uc-bg)); color: var(--cat-ink, var(--uc-teal-text)); }
 
+/* .uc-day-event-text is not emitted on the grid any more (3.89.0): it stacked a
+   title above a time beside a picture, and there is nothing left to stack. The
+   rule stays because the day panel's markup still carries one. */
 .uc-calendar .uc-day-event-text { min-width: 0; flex: 1 1 auto; }
-.uc-day-event-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden; font-weight: 700; overflow-wrap: anywhere; }
-.uc-day-event-time { display: block; margin-top: 1px; font-weight: 600; font-size: 10px; color: var(--uc-secondary); }
+
+/* ONE LINE, AND THE OVERFLOW IS CUT RATHER THAN WRAPPED. A title like "Opioid
+   Overdose Prevention and Naloxone Training" will not fit at 11px in a seventh
+   of a calendar, and no size it could be cut to would. Wrapping it is what made
+   the rows enormous, so it is truncated: uniform row height is what makes nine
+   of them scannable, and the ellipsis says there is more.
+
+   NOTHING IS LOST TO THE CUT. The full title is on the hover preview, which
+   reads data-uc-pv-title off this same link, and on the event page one click
+   away. A screen reader gets the whole text: this is overflow, not content. */
+.uc-day-event-title {
+    flex: 1 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 600;
+}
+/* PINNED RIGHT SO THE TIMES FORM THEIR OWN COLUMN, and never squeezed: it is
+   four or five characters and it is the second thing being compared down a
+   busy day. */
+.uc-day-event-time {
+    flex: 0 0 auto; margin-top: 0;
+    font-weight: 500; font-size: 10px; color: var(--uc-secondary);
+    font-variant-numeric: tabular-nums;
+}
 
 /* Dots are the MOBILE treatment. Hidden here on purpose: this rule not
    reaching the embed is what put a stray dot after every date on sfaf.org. */
@@ -2853,9 +2911,15 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    The category is not lost: the day panel below the grid on a phone shows the
    full entry, thumbnail included, and the entry still links to the event.
    ------------------------------------------------------------------------ */
+/* NOTHING TO HIDE AT 930px ANY MORE (3.89.0). This hid the 32px thumbnail in a
+   narrow cell and then set `gap: 0`, because with the picture gone the 8px was
+   dead space at the start of the line. The grid tile has no thumbnail now, and
+   the gap it would have closed is the one between the DOT and the title, which
+   is not dead space at any width. Both rules are gone rather than narrowed:
+   a rule that closes a gap nothing opened is a rule whose reason has to be
+   reconstructed by the next person. */
 @container uc-calendar (max-width: 930px) {
-    .uc-calendar .uc-day-events .uc-de-thumb { display: none; }
-    .uc-calendar .uc-day-event a { gap: 0; }
+    .uc-calendar .uc-day-event a { padding-left: 2px; padding-right: 2px; }
 }
 
 @container uc-calendar (max-width: 560px) {
@@ -2881,26 +2945,25 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     .uc-calendar .uc-day-panel-empty { margin: 0; font-size: 13px; color: var(--uc-secondary); }
     .uc-calendar .uc-month-day-panel .uc-day-events { display: flex; gap: 6px; }
     .uc-calendar .uc-month-day-panel .uc-day-event a { padding: 10px 12px; font-size: 14px; text-align: left; }
-    /* THE THUMBNAIL COMES BACK HERE. The panel is full width and is the whole
-       reason the grid is allowed to collapse to dots at this size, so it shows
-       the entry in full: the rule above hides the thumbnail in a 40px cell, and
-       this is not one. -webkit-line-clamp comes off too, because there is room
-       for the whole title. */
-    .uc-calendar .uc-month-day-panel .uc-de-thumb { display: block; }
-    /* AND THE GAP COMES BACK WITH IT (3.75.0). The rule that hides the
-       thumbnail in a 40px cell also sets `gap: 0` on every .uc-day-event a,
-       because with no thumbnail the 8px would be dead space at the start of
-       the line. That rule is right about the cell and reaches the panel, where
-       this one has just put the thumbnail back: the picture ended up flush
-       against the title, which is what a phone actually showed.
+    /* THE THUMBNAIL RULE IS GONE (3.89.0). It brought the 32px picture back in
+       this panel, because the grid cell hid it at this width and the panel is
+       full width. There is no picture in this markup any more: the tile is a
+       dot, a title and a time, and the picture moved to the hover preview. The
+       title still wraps here, because this panel has room for the whole of it
+       and the grid cell does not. */
+    /* A WIDER GAP, NOW BETWEEN THE DOT AND THE TITLE (3.89.0). This was written
+       in 3.75.0 to undo a `gap: 0` that the thumbnail-hiding rule set, and both
+       of those are gone with the thumbnail. It stays because the panel is at
+       14px where the grid is at 11px, and 6px beside larger text reads tight.
 
-       THE SAME SHAPE AS THE CASCADE FAULTS IN PROJECT.md 7, from the other
-       direction. Nothing here lost on specificity and nothing was missing: a
-       rule written for one context was correct there and wrong one selector
-       along, and the only way to see it is to look at the context where the
-       thing it assumes is false. (0,3,1) against that rule's (0,2,1). */
-    .uc-calendar .uc-month-day-panel .uc-day-event a { gap: 8px; }
-    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; -webkit-line-clamp: none; display: block; }
+       The 3.75.0 lesson it was written for is kept in PROJECT.md 7 rather than
+       here: a rule written for one context was correct there and wrong one
+       selector along, which is the cascade fault from the other direction. */
+    .uc-calendar .uc-month-day-panel .uc-day-event a { gap: 9px; }
+    /* THE TITLE WRAPS HERE. The grid cuts it because uniform row height is what
+       makes nine of them scannable in a seventh of a calendar; this panel is
+       full width and showing the whole title is the reason it exists. */
+    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; overflow: visible; text-overflow: clip; }
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
     .uc-month-head { align-items: flex-start; }
@@ -3532,26 +3595,25 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
     .uc-calendar .uc-day-panel-empty { margin: 0; font-size: 13px; color: var(--uc-secondary); }
     .uc-calendar .uc-month-day-panel .uc-day-events { display: flex; gap: 6px; }
     .uc-calendar .uc-month-day-panel .uc-day-event a { padding: 10px 12px; font-size: 14px; text-align: left; }
-    /* THE THUMBNAIL COMES BACK HERE. The panel is full width and is the whole
-       reason the grid is allowed to collapse to dots at this size, so it shows
-       the entry in full: the rule above hides the thumbnail in a 40px cell, and
-       this is not one. -webkit-line-clamp comes off too, because there is room
-       for the whole title. */
-    .uc-calendar .uc-month-day-panel .uc-de-thumb { display: block; }
-    /* AND THE GAP COMES BACK WITH IT (3.75.0). The rule that hides the
-       thumbnail in a 40px cell also sets `gap: 0` on every .uc-day-event a,
-       because with no thumbnail the 8px would be dead space at the start of
-       the line. That rule is right about the cell and reaches the panel, where
-       this one has just put the thumbnail back: the picture ended up flush
-       against the title, which is what a phone actually showed.
+    /* THE THUMBNAIL RULE IS GONE (3.89.0). It brought the 32px picture back in
+       this panel, because the grid cell hid it at this width and the panel is
+       full width. There is no picture in this markup any more: the tile is a
+       dot, a title and a time, and the picture moved to the hover preview. The
+       title still wraps here, because this panel has room for the whole of it
+       and the grid cell does not. */
+    /* A WIDER GAP, NOW BETWEEN THE DOT AND THE TITLE (3.89.0). This was written
+       in 3.75.0 to undo a `gap: 0` that the thumbnail-hiding rule set, and both
+       of those are gone with the thumbnail. It stays because the panel is at
+       14px where the grid is at 11px, and 6px beside larger text reads tight.
 
-       THE SAME SHAPE AS THE CASCADE FAULTS IN PROJECT.md 7, from the other
-       direction. Nothing here lost on specificity and nothing was missing: a
-       rule written for one context was correct there and wrong one selector
-       along, and the only way to see it is to look at the context where the
-       thing it assumes is false. (0,3,1) against that rule's (0,2,1). */
-    .uc-calendar .uc-month-day-panel .uc-day-event a { gap: 8px; }
-    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; -webkit-line-clamp: none; display: block; }
+       The 3.75.0 lesson it was written for is kept in PROJECT.md 7 rather than
+       here: a rule written for one context was correct there and wrong one
+       selector along, which is the cascade fault from the other direction. */
+    .uc-calendar .uc-month-day-panel .uc-day-event a { gap: 9px; }
+    /* THE TITLE WRAPS HERE. The grid cuts it because uniform row height is what
+       makes nine of them scannable in a seventh of a calendar; this panel is
+       full width and showing the whole title is the reason it exists. */
+    .uc-calendar .uc-month-day-panel .uc-day-event-title { white-space: normal; overflow: visible; text-overflow: clip; }
     .uc-calendar .uc-month-day-panel .uc-day-event-time { font-size: 12px; }
 
     .uc-month-head { align-items: flex-start; }

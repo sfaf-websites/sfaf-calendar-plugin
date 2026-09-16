@@ -477,11 +477,83 @@
         container.className = kept.join(' ');
     }
 
+    /*
+     * THE VERSION THIS FILE WAS SHIPPED AS (3.89.0).
+     *
+     * IT IS NOT A CACHE BUSTER AND MUST NOT BECOME ONE. The script URL is
+     * deliberately unversioned, because a version in a snippet somebody pasted
+     * once PINS it rather than busting it, which was a real defect in 2.10.1.
+     * See SFAF_Embed::script_url().
+     *
+     * WHAT IT IS FOR. Two releases of correct work were invisible on the embed
+     * because the browser was running a cached copy of this file from before
+     * them. That failure is indistinguishable from the fix not working, and
+     * nobody thinks to hard refresh. The payload carries the version the SERVER
+     * is on, fetched fresh on every load and impossible to pin, so the two can
+     * be compared and the mismatch NAMED.
+     *
+     * It is kept honest by .claude/embed-filters-test.php, which fails the
+     * build if this string is not SFAF_VERSION. It cannot drift by being
+     * forgotten at release time.
+     */
+    var EMBED_JS_VERSION = '3.89.0';
+    var staleReported = false;
+
+    /**
+     * Say so, once, when this script is older than the site it is talking to.
+     *
+     * A WARNING, NOT A RELOAD. A script that refetches itself when it dislikes
+     * a number can loop against a CDN serving two versions from two edges, on a
+     * page this plugin does not own. The remedy is a hard refresh or an expired
+     * cache, and both are somebody's decision rather than this file's.
+     */
+    function reportIfStale(serverVersion) {
+        if (staleReported || !serverVersion || serverVersion === EMBED_JS_VERSION) {
+            return;
+        }
+        staleReported = true;
+        if (window.console && window.console.warn) {
+            window.console.warn(
+                'SFAF Calendar: this page is running embed.js ' + EMBED_JS_VERSION
+                + ' while the calendar site is on ' + serverVersion
+                + '. The browser is holding a cached copy of the script, so anything '
+                + 'fixed since ' + EMBED_JS_VERSION + ' will not be on this page until it is '
+                + 'reloaded without the cache.'
+            );
+        }
+    }
+
     /** Replace the whole block (first load, and numbered page navigation). */
     function loadBlock(container, page, scrollIntoView) {
         request(container, page, 'block', function (data) {
             adoptStylesheet(data.css_url);
+            reportIfStale(data.js_version);
+
+            /*
+             * THE OPEN FILTER PANEL SURVIVES THE SWAP (3.89.0).
+             *
+             * innerHTML below replaces everything, and the server renders the
+             * Organizers and groups control CLOSED, because a <details> is
+             * closed unless it says otherwise. So every tick shut the panel and
+             * choosing two organizers meant reopening it between them.
+             *
+             * calendar.js has done this since 3.87.0 and embed.js did not,
+             * which is the fourth time a fix reached one script and not the
+             * other. Read before the swap and put back after it, in the one
+             * place that does the swapping.
+             */
+            var whoOpen = !!container.querySelector('[data-uc-who][open]');
+
             container.innerHTML = data.html;
+
+            if (whoOpen) {
+                var who = container.querySelector('[data-uc-who]');
+                if (who) { who.open = true; }
+            }
+            /* The rows are new markup, so the hiding has to be reapplied or the
+               groups the chosen organizers do not run come back one frame after
+               being hidden. See narrowWho(). */
+            narrowWho(container);
             applyCardStyle(container, data.card_style);
             /*
              * The block arrives already showing what was asked for, so the
@@ -1294,39 +1366,53 @@
      * DELEGATED ON THE CONTAINER, like every other handler in this file, so a
      * block redrawn by loadBlock() keeps it.
      */
+    function whoChosen(container, sel) {
+        var panel = container.querySelector('[data-uc-who-panel]');
+        if (!panel) { return []; }
+        return Array.prototype.slice.call(panel.querySelectorAll(sel))
+            .filter(function (b) { return b.checked; })
+            .map(function (b) { return b.value; })
+            .filter(Boolean);
+    }
+
+    /**
+     * Hide the groups the chosen organizers do not run.
+     *
+     * MODULE LEVEL BECAUSE loadBlock() HAS TO CALL IT TOO (3.89.0). This lived
+     * inside bindWho(), which runs once when the block is mounted. The hiding
+     * is an ATTRIBUTE ON EACH ROW and the redraw replaces every row, so after a
+     * tick the server's freshly rendered options came back unhidden and the
+     * narrowing silently undid itself one frame after being applied.
+     *
+     * The rules are calendar.js's and have to stay identical: a group with no
+     * organizered events is ALWAYS shown, because an empty list is missing
+     * information rather than a mismatch, and a ticked group is never hidden or
+     * the filter runs with nothing on screen to clear it by.
+     */
+    function narrowWho(container) {
+        var panel = container.querySelector('[data-uc-who-panel]');
+        if (!panel) { return; }
+        var orgs = whoChosen(container, '[data-uc-who-organizer]');
+        var opts = panel.querySelectorAll('[data-uc-who-group-orgs]');
+        var shown = 0;
+        Array.prototype.forEach.call(opts, function (opt) {
+            var mine = (opt.getAttribute('data-uc-who-group-orgs') || '').split(/\s+/).filter(Boolean);
+            var box = opt.querySelector('input');
+            var keep = !orgs.length || !mine.length || (box && box.checked)
+                || mine.some(function (s) { return orgs.indexOf(s) > -1; });
+            opt.hidden = !keep;
+            if (keep) { shown++; }
+        });
+        var none = panel.querySelector('[data-uc-who-none]');
+        if (none) { none.hidden = shown > 0 || !opts.length; }
+    }
+
     function bindWho(container) {
         function panelIn() { return container.querySelector('[data-uc-who-panel]'); }
 
-        function chosen(sel) {
-            var panel = panelIn();
-            if (!panel) { return []; }
-            return Array.prototype.slice.call(panel.querySelectorAll(sel))
-                .filter(function (b) { return b.checked; })
-                .map(function (b) { return b.value; })
-                .filter(Boolean);
-        }
+        function chosen(sel) { return whoChosen(container, sel); }
 
-        /* The same rules as calendar.js, and they have to be the same: a group
-           with no organizered events is ALWAYS shown, because an empty list is
-           missing information rather than a mismatch, and a ticked group is
-           never hidden or the filter runs with nothing to clear it by. */
-        function narrow() {
-            var panel = panelIn();
-            if (!panel) { return; }
-            var orgs = chosen('[data-uc-who-organizer]');
-            var opts = panel.querySelectorAll('[data-uc-who-group-orgs]');
-            var shown = 0;
-            Array.prototype.forEach.call(opts, function (opt) {
-                var mine = (opt.getAttribute('data-uc-who-group-orgs') || '').split(/\s+/).filter(Boolean);
-                var box = opt.querySelector('input');
-                var keep = !orgs.length || !mine.length || (box && box.checked)
-                    || mine.some(function (s) { return orgs.indexOf(s) > -1; });
-                opt.hidden = !keep;
-                if (keep) { shown++; }
-            });
-            var none = panel.querySelector('[data-uc-who-none]');
-            if (none) { none.hidden = shown > 0 || !opts.length; }
-        }
+        function narrow() { narrowWho(container); }
 
         function relabel() {
             var panel = panelIn();

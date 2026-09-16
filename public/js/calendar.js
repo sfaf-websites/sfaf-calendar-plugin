@@ -733,6 +733,46 @@
      * links. Stamping data-uc-who-live is what hides Apply, so the button is
      * only ever hidden once something is actually listening.
      */
+    /**
+     * Hide the groups the chosen organizers do not run.
+     *
+     * MODULE LEVEL BECAUSE reloadBlock() HAS TO CALL IT TOO (3.89.0). This was
+     * inside initWhoPicker(), which runs once at ready. The hiding is an
+     * ATTRIBUTE ON EACH ROW and reloadBlock() replaces every row, so after a
+     * tick the server's freshly rendered options came back unhidden and the
+     * narrowing undid itself one frame after being applied. The handlers are
+     * delegated and survived; the state they had written did not.
+     *
+     * THE TWO RULES ARE DECISIONS, NOT IMPLEMENTATION. A group with no
+     * organizered events is ALWAYS shown, because an empty list is missing
+     * information rather than a mismatch, and on the current data it is about a
+     * third of them. A ticked group is never hidden, or a filter runs with
+     * nothing on screen to see it by or clear it with. embed.js carries the
+     * same two, in its own narrowWho().
+     */
+    function narrowWho(root) {
+        var panel = $(root).find('[data-uc-who-panel]')[0];
+        if (!panel) { return; }
+        var orgs = $(panel).find('[data-uc-who-organizer]').filter(':checked').map(function () {
+            return String(this.value || '');
+        }).get().filter(Boolean);
+        var $opts = $(panel).find('[data-uc-who-group-orgs]');
+        var shown = 0;
+
+        $opts.each(function () {
+            var mine = String($(this).attr('data-uc-who-group-orgs') || '').split(/\s+/).filter(Boolean);
+            var box = $(this).find('input')[0];
+            var keep = !orgs.length
+                || !mine.length
+                || (box && box.checked)
+                || mine.some(function (s) { return orgs.indexOf(s) > -1; });
+            $(this).prop('hidden', !keep);
+            if (keep) { shown++; }
+        });
+
+        $(panel).find('[data-uc-who-none]').prop('hidden', shown > 0 || !$opts.length);
+    }
+
     function initWhoPicker() {
         /* Shared by the change handler below, declared here so a redraw that
            re-enters this function cannot orphan a pending redraw. */
@@ -777,26 +817,7 @@
          * A TICKED GROUP IS NEVER HIDDEN. Hiding something already selected
          * would leave a filter running with no way to see or clear it.
          */
-        function narrow(root) {
-            var panel = $(root).find('[data-uc-who-panel]')[0];
-            if (!panel) { return; }
-            var orgs = selected(panel, '[data-uc-who-organizer]');
-            var $opts = $(panel).find('[data-uc-who-group-orgs]');
-            var shown = 0;
-
-            $opts.each(function () {
-                var mine = String($(this).attr('data-uc-who-group-orgs') || '').split(/\s+/).filter(Boolean);
-                var box = $(this).find('input')[0];
-                var keep = !orgs.length
-                    || !mine.length
-                    || (box && box.checked)
-                    || mine.some(function (s) { return orgs.indexOf(s) > -1; });
-                $(this).prop('hidden', !keep);
-                if (keep) { shown++; }
-            });
-
-            $(panel).find('[data-uc-who-none]').prop('hidden', shown > 0 || !$opts.length);
-        }
+        function narrow(root) { narrowWho(root); }
 
         /* REORDER ON OPEN, NEVER WHILE SOMEBODY IS CLICKING. A list that moves
            the row just ticked out from under the cursor makes the next click
@@ -1146,6 +1167,10 @@
                 var $fresh = $(resp.html);
                 $block.replaceWith($fresh);
                 if (whoWasOpen) { $fresh.find('[data-uc-who]').prop('open', true); }
+                /* The rows are new markup, so the hiding is reapplied or the
+                   groups the chosen organizers do not run come back one frame
+                   after being hidden. See narrowWho(). */
+                $fresh.find('[data-uc-who]').each(function () { narrowWho(this); });
                 initViewsFor($fresh);
             },
             complete: function () {

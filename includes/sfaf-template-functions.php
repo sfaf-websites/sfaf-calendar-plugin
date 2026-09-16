@@ -3087,6 +3087,45 @@ function sfaf_list_card_media( $post_id, $cat_name = '' ) {
  * @param int $post_id
  * @return string
  */
+/**
+ * The category dot for one event on the month grid (3.89.0).
+ *
+ * WHAT IT REPLACES AND WHY. Every event on the grid was a bordered card with a
+ * 32px picture, a title clamped to two lines and a time on a line of its own,
+ * about 44px tall. Nine of those on one Wednesday makes a row that pushes the
+ * rest of the month off the screen, which is the whole reason this changed.
+ *
+ * THE DOT IS NOT THE ONLY CARRIER OF THE CATEGORY, which is a rule this project
+ * already holds: colour alone cannot state a fact. The name is emitted beside
+ * it as text, in the accessibility tree rather than on screen, because there is
+ * no room for a word at this size and the title is the thing a reader is
+ * scanning for. The dot reinforces; it does not inform on its own.
+ *
+ * THE PICTURE IS NOT LOST, it moves. sfaf_day_event_thumb() drew it here and
+ * the hover preview draws it now, from data-uc-pv-img on the same link, which
+ * is a place with room for a picture rather than a 32px square.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_day_event_dot( $post_id ) {
+    $primary  = sfaf_event_primary_category( $post_id );
+    $cat_name = $primary ? $primary->name : '';
+
+    $out = '<span class="uc-de-dot" aria-hidden="true"></span>';
+    if ( '' !== $cat_name ) {
+        $out .= '<span class="uc-visually-hidden">' . esc_html( $cat_name ) . '</span>';
+    }
+    return $out;
+}
+
+/**
+ * NO LONGER ON THE MONTH GRID (3.89.0), and kept for one release rather than
+ * deleted. sfaf_day_event_dot() took its place there. The day panel and the
+ * embed both render the same markup, so if the line treatment turns out to be
+ * wrong this is what comes back, and rebuilding it from a changelog is worse
+ * than an unreferenced function somebody can see. PROJECT.md says so.
+ */
 function sfaf_day_event_thumb( $post_id ) {
     $url = sfaf_event_image_url( $post_id );
     if ( '' !== $url ) {

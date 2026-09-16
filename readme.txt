@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.88.0
+Stable tag: 3.89.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,49 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.89.0 =
+
+**THE FILTER PANEL SHUT ON EVERY TICK, ON THE EMBED, AND THAT IS THE FOURTH TIME.** 3.87.0 carried the open state across the redraw in `calendar.js`, because the server renders a `<details>` closed and the redraw replaces it. `embed.js` does its own swap, with `innerHTML`, and never got the fix. Choosing two organizers meant reopening the panel between them.
+
+**WHY THE PAIR TEST PASSED WHILE THE BEHAVIOUR WAS MISSING**, which is the part worth keeping. `.claude/embed-filters-test.php` was written in 3.88.0 and lists the behaviours being fixed THAT DAY: the merged control, the narrowing, the month redraw, the cache keys. Carrying the open state was added a release earlier and was never on the list, so its absence from the other script was not something the file could notice. **It was green and it was blind.** A pair test only covers the pairs somebody enumerated, and the remedy is not a better list: anything touching the filter bar in one script adds its pair in the same release, which is now in PROJECT.md rather than left to memory.
+
+**A SECOND FAULT FOUND WHILE FIXING THE FIRST, in both scripts.** The narrowing is an attribute on each row and the redraw replaces every row, so the groups hidden by a tick came back one frame after being hidden. Neither script reapplied it: the handlers are delegated and survived, the state they had written did not. `narrowWho()` is now module level in both and is called from the one place that does the swapping.
+
+**THE MONTH GRID IS LINES, NOT CARDS.** Each event was a bordered box with a 32px picture, a title clamped to two lines and a time on its own line, which cannot be shorter than 42px. Nine on one Wednesday made a row that pushed the rest of the month off screen. It is one line now: a category dot, the title, the time.
+
+**MEASURED IN CHROME AGAINST THE RENDERER'S OWN MARKUP**, nine events in one cell:
+
+```
+one row          21px
+row pitch        22px
+nine events      196px   (the old tile could not be under 42px each)
+border           0px     background  transparent
+title lefts      1 distinct   time rights  1 distinct
+longest title    one line, ellipsis, time still visible and inside the cell
+```
+
+**FOUR THINGS KEEP NINE LINES READABLE, and none of them is a border**, because "clean and clear" was the condition this was asked under and nine undifferentiated lines of text is not an improvement on nine boxes. The dot is a left margin, so every title starts at the same x and they form a column the eye runs down, which is what the border used to do and costs no height. One line each, so the rhythm holds where the day is busiest. The time is right aligned and quiet, so the times form their own column. The hover is the whole row rather than a 1px edge.
+
+**THE DOT IS NOT THE ONLY CARRIER OF THE CATEGORY**, which is a rule this project already holds: colour alone cannot state a fact. The category name is emitted beside it as text, in the accessibility tree, because there is no room for a word at this size. The title is the fact; the dot reinforces it.
+
+**A TITLE THAT WILL NOT FIT IS CUT, NOT WRAPPED.** "Opioid Overdose Prevention and Naloxone Training" does not fit at 11px in a seventh of a calendar and no size it could be cut to would. Wrapping it is what made the rows enormous. Nothing is lost: the full title is on the hover preview, on the event page, and in the accessibility tree, which reads the text and not the box. **The day panel still wraps**, because it is full width and showing the whole title is the reason it exists.
+
+**The picture is not lost either, it moves.** The hover preview already carried it, from the same link, in a place with room for a picture rather than a 32px square.
+
+**A STALE embed.js NOW SAYS SO, AND THE SCRIPT URL STAYS UNVERSIONED.** Two releases of correct work were invisible until Mark hard refreshed, because the browser was running a cached copy of that file. The obvious remedy is a version on the script URL, and **that remedy is banned here by a defect**: a URL baked into a snippet somebody pasted once is PINNED by a version rather than busted by it, which is exactly what went wrong in 2.10.1 and left an old script loading an old stylesheet.
+
+**So the version travels in the payload**, which is fetched fresh on every load and cannot be pinned. `embed.js` carries the version it was shipped as and names the mismatch in the console. That does not make a stale script fresh, and it is not claimed to: it turns the failure from INVISIBLE into NAMED, which is the thing that cost four releases, because a fix that is live on a page that is not looks exactly like a fix that does not work.
+
+**A WARNING RATHER THAN A RELOAD.** A script that refetches itself when it dislikes a number can loop against a CDN serving two versions from two edges, on a page this plugin does not own.
+
+**AND THE CONSTANT CANNOT DRIFT**, which is the only thing that makes it worth having. `.claude/embed-filters-test.php` fails the build when `EMBED_JS_VERSION` is not `SFAF_VERSION`, so it cannot be forgotten at release time and then report nonsense forever. Planted and caught.
+
+**Eight faults planted across the release and every one caught by name**, including the two that shipped. **Three escaped a first draft and all three were the same trap**: asserting that a handler's code exists rather than that it is CALLED. That trap has now been met three times in one file and each assertion is written against the call site.
+
+**Four committed guards asserted arrangements this release reverses** and were rewritten to assert the new ones more strongly rather than weakened: the day tile's thumbnail became the dot plus the rule that the dot is not the category's only carrier, and the two-line clamp became one line with an ellipsis plus the day panel still wrapping.
+
+**Unchanged and confirmed working**: search filtering the grid, the dropdown filtering, the event-editor upload and its tagging, the upload panel layout, and closure editing.
 
 = 3.88.0 =
 

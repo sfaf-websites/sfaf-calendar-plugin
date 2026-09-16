@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 145 items.** Quick 119, needs real conditions 23, blocked on other
+**Outstanding: 148 items.** Quick 122, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -1719,6 +1719,61 @@ two previous fixes went to the other one.
 **On the embedded calendar.** Search for something that matches nothing in the
 month on screen. The grid should name your term back rather than saying nothing
 is scheduled. Do the same with an organizer that has no events that month.
+
+---
+### 1.122 The filter panel stays open while you tick, ON THE EMBED (3.89.0)
+
+**On the embedded calendar.** It shut on every tick and had to be reopened
+between selections.
+
+- **Open it and tick three organizers one after another.** The panel must stay
+  open the whole time and the calendar should rebuild about a third of a second
+  after the last one.
+- **Untick one.** Still open.
+- **Watch the groups as you tick.** Groups the chosen organizers do not run
+  should disappear AND STAY disappeared after the calendar redraws. If they
+  come back a moment later, that is the second half of this fix and it is the
+  thing to report.
+- **Then the same on resources.sfaf.org**, which had the open state since
+  3.87.0 but had the same re-narrowing fault.
+
+---
+
+### 1.123 The month grid reads well on a busy day (3.89.0)
+
+**This is the one that needs Mark's eye rather than a check.** Each event is now
+a line: a coloured category dot, the title, the time. No box, no picture.
+
+- **Find the busiest day** and look at the whole month. The row should no longer
+  push the rest of the calendar off the screen.
+- **The question is whether it is CLEAN AND CLEAR**, which was the condition:
+  nine lines of text must not read as a wall. Look at whether the titles line up
+  down the left, whether the times line up down the right, and whether the dots
+  help or just add noise.
+- **A long title is cut with an ellipsis** rather than wrapping. Check that the
+  time is still visible on those rows and has not been pushed out.
+- **Hover a cut title**: the preview should show the whole thing.
+- **On a phone**, tap a day and check the panel below the grid still shows the
+  full title wrapped rather than cut.
+- **If the lines read as too tight or too plain**, say so with a screenshot.
+  The spacing, the dot size and the weight are all one edit; the structure is
+  the part that took the work.
+
+---
+
+### 1.124 A stale embed.js now announces itself (3.89.0)
+
+**This is why two releases looked broken when they were not.**
+
+- **After the next release lands**, open an embedded page and look at the
+  browser console. If the page is running an old cached `embed.js` there will be
+  a warning naming both versions and saying a reload without the cache is what
+  fixes it.
+- **It does not fix itself**, deliberately. The warning is the fix: it tells you
+  which of "the release did not work" and "this page has not got the release yet"
+  you are looking at.
+- **Worth one deliberate check** that the warning appears when it should and
+  does NOT appear once the page has the current script.
 
 ---
 ## 2. Needs real conditions

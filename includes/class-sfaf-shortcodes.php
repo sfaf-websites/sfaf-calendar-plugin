@@ -1558,16 +1558,26 @@ class SFAF_Shortcodes {
                                                    data-uc-pv-place="<?php echo esc_attr( sfaf_event_location_short( $id ) ); ?>"
                                                    <?php echo $ev_off ? ' data-uc-pv-off="Cancelled"' : ''; ?>
                                                    style="--cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>; --cat-media: <?php echo esc_attr( $shades['media'] ); ?>">
-                                                    <?php echo sfaf_day_event_thumb( $id ); ?>
-                                                    <span class="uc-day-event-text">
-                                                        <?php if ( $ev_off ) : ?>
-                                                            <span class="uc-day-event-off">Cancelled</span>
-                                                        <?php endif; ?>
-                                                        <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
-                                                        <?php if ( '' !== $start ) : ?>
-                                                            <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
-                                                        <?php endif; ?>
-                                                    </span>
+                                                    <?php
+                                                    /*
+                                                     * A LINE, NOT A CARD (3.89.0). Dot, title, time,
+                                                     * in that reading order, with the time last
+                                                     * because it is what somebody scanning a day
+                                                     * checks after deciding the title is the one.
+                                                     *
+                                                     * .uc-day-event-text is gone from this tile: it
+                                                     * existed to stack a title above a time beside a
+                                                     * picture, and there is nothing left to stack.
+                                                     */
+                                                    echo sfaf_day_event_dot( $id );
+                                                    ?>
+                                                    <?php if ( $ev_off ) : ?>
+                                                        <span class="uc-day-event-off">Cancelled</span>
+                                                    <?php endif; ?>
+                                                    <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
+                                                    <?php if ( '' !== $start ) : ?>
+                                                        <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
+                                                    <?php endif; ?>
                                                     <?php echo sfaf_new_tab_note(); ?>
                                                 </a>
                                             </li>

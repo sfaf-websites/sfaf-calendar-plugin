@@ -139,6 +139,36 @@ class SFAF_Embed {
     }
 
     /**
+     * The plugin version, for a running embed.js to compare itself against.
+     *
+     * WHY THIS EXISTS RATHER THAN A ?ver= ON THE URL ABOVE (3.89.0). Two
+     * releases of correct work were invisible on the embed until Mark hard
+     * refreshed, because the browser was running a cached embed.js from before
+     * them. The obvious remedy is a version on the script URL, and that remedy
+     * is BANNED HERE by the note above, which is not a style preference: a URL
+     * baked into a snippet somebody pasted once is PINNED by a version, not
+     * busted by it, and that was a real defect in 2.10.1.
+     *
+     * SO THE VERSION TRAVELS IN THE PAYLOAD, which is fetched fresh on every
+     * page load and cannot be pinned by anything. embed.js carries the version
+     * it was built as and says so in the console when the two disagree. That
+     * does not make a stale script fresh. What it does is turn the failure from
+     * INVISIBLE into NAMED, which is the thing that cost four releases: a fix
+     * that is live and a page that is not looks exactly like a fix that does
+     * not work, and nobody thinks to hard refresh.
+     *
+     * A WARNING RATHER THAN A RELOAD, deliberately. A script that refetches
+     * itself when it dislikes a number is a script that can loop on a CDN
+     * serving two versions from two edges, on a page this plugin does not own.
+     *
+     * .claude/embed-filters-test.php asserts that embed.js's constant equals
+     * SFAF_VERSION, so the number cannot drift by being forgotten at release.
+     */
+    public static function js_version() {
+        return SFAF_VERSION;
+    }
+
+    /**
      * URL of the stylesheet the embed needs, as the RUNNING plugin sees it.
      *
      * Sent in every payload so a possibly-stale embed.js does not have to guess
@@ -320,6 +350,10 @@ class SFAF_Embed {
         // URL for the rest of its TTL, which is a smaller version of exactly
         // the staleness this whole fix is about.
         $payload['css_url'] = self::style_url();
+        /* Stamped after the cache for the same reason css_url is: a payload
+         * cached under the previous release would otherwise report that
+         * release's version and a stale script would agree with it. */
+        $payload['js_version'] = self::js_version();
 
         $response = new WP_REST_Response( $payload, 200 );
 

@@ -6,13 +6,36 @@ the plugin IS and why, `DESIGN.md` is color and layout, `TESTING.md` is what
 still needs a person to check, and `CLAUDE.md` is the working rules. Anything
 here that is still true in six months belongs in one of those instead.
 
-**Last updated:** 2026-09-15, at 3.88.0, released.
+**Last updated:** 2026-09-16, at 3.89.0, released.
 
 ---
 
 ## What shipped last
 
-**3.88.0 IS RELEASED** and is what sites are being offered.
+**3.89.0 IS RELEASED** and is what sites are being offered.
+
+> **THE MONTH GRID IS LINES NOW, AND IT IS THE ONE THING WAITING ON MARK'S EYE.**
+> A dot, a title, a time, at 21px a row against 42px before. The structure is
+> the part that took the work; the spacing, the dot size and the weight are one
+> edit each if it reads wrong. `TESTING.md` 1.123 asks the right question, which
+> is whether nine lines are CLEAN AND CLEAR rather than whether they fit.
+
+> **THE FOURTH FIX TO REACH ONE SCRIPT AND NOT THE OTHER.** The filter panel
+> shut on every tick on the embed, because 3.87.0 carried the open state across
+> the redraw in `calendar.js` only. **The pair test was green and blind**: it
+> lists the behaviours fixed the day it was written, and this one shipped a
+> release earlier. **Anything touching the filter bar in one script adds its
+> pair to `.claude/embed-filters-test.php` in the SAME release.**
+
+> **A SECOND FAULT FOUND WHILE FIXING IT, in BOTH scripts.** The narrowing is an
+> attribute on rows the redraw replaces, so hidden groups came back one frame
+> after being hidden. Neither script reapplied it.
+
+> **A STALE embed.js NOW SAYS SO IN THE CONSOLE.** This is why 3.86.0 and
+> 3.87.0 looked broken when they were correct. **The script URL stays
+> unversioned on purpose**: a version in a pasted snippet PINS it, which was the
+> 2.10.1 defect. Preventing a stale script is still open and needs Mark, with
+> three costed options in `PROJECT.md` §8; naming it is built.
 
 > **THE EMBED HAS ITS OWN SCRIPT AND ITS OWN ROUTE. READ THIS BEFORE FIXING
 > ANYTHING ON THE FILTER BAR.** Search and the merged dropdown did nothing on an
@@ -174,6 +197,7 @@ here that is still true in six months belongs in one of those instead.
 
 | | |
 |---|---|
+| **3.89.0** | **The filter panel shut on every tick on the embed**, because 3.87.0 carried the open state across the redraw in `calendar.js` only. Fourth fix to reach one script and not the other, and **the pair test was green and blind**: it covers the pairs somebody enumerated, and this behaviour shipped a release before the test existed. A second fault turned up in BOTH scripts while fixing it: the narrowing is an attribute on rows the redraw replaces, so hidden groups came back a frame later. **The month grid is lines, not cards**: a dot, a title, a time, measured at 21px a row against 42px before, with four things other than a border keeping nine of them readable and the category still carried as text rather than by colour alone. **And a stale `embed.js` now names itself in the console**, which is why two correct releases looked broken; the script URL stays unversioned because a version in a pasted snippet pins it, which was the 2.10.1 defect. |
 | **3.88.0** | **Search and the merged dropdown did nothing on the EMBED, and both fixes had gone to the other path.** `embed.js` asked its own REST route for `mode=items` only, so the month grid never moved, and it had no handler for the merged Organizers and Groups control at all, still listening for the two controls 3.85.0 replaced. Third time a correct change reached the shortcode and not the embed. **Nothing was missing from the server's cache key**; the CLIENT's month cache key carried only the category. A narrowed response is no longer publicly cacheable, which is where Mark's 304 came from. **And the embed cache retires on a plugin update**, flagged twice and now built, so a release is not served from a payload built before it. `.claude/embed-filters-test.php` asserts both scripts as pairs, and that the handler is called rather than merely present. |
 | **3.87.0** | **An image uploaded from the event editor was never lost.** It landed in the calendar folder correctly; it vanished from the PICKER, because wp.media refreshes its library on upload and for an event in a series that query narrows on `uc_series`, which a brand new picture cannot answer. It is tagged with the series as it arrives now. **Search in calendar view: nothing changed, deliberately**, because the whole chain was proved correct in a browser and by execution, and the remaining candidates are the SQL and the install. **The filter panel is lighter and the Apply button is gone**, inside `<noscript>` rather than hidden, with the open panel surviving the redraw and the rebuild debounced at 350ms. **The upload panel is the picture on the left and the typed fields on the right**, which is what actually fixes an alignment fault two arrangements had not. |
 | **3.86.0** | **The merged filter control opened in the top left of the viewport**, and it was not the anchor positioning API: it was `position: fixed` at 0,0 placed by script from a popover `toggle` event, hidden by a selector older browsers discard. It is a `<details>` placed by the stylesheet now, with nothing platform-specific in how it opens, and measured with no script on the page at all. **Two columns, one third and two thirds**, held by grid fractions so narrowing cannot make them jump. **Closures can be edited**, which the model always allowed and the form never offered, the fifth control found built and unreachable. **Search narrows the month grid and the sidebar**, which needed three separate places to carry the term and a cache key to include it. Plus **name and alt text at upload** on a panel laid out as a grid, **top-aligned tick boxes** in one shared rule, and **a dashboard count of published events with no organizer** that links to them. |

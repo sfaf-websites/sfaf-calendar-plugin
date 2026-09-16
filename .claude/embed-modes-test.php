@@ -636,13 +636,35 @@ check(
     ! preg_match( '/\.uc-calendar \.uc-de-thumb \{[^}]*var\(--cat-color/', $css ),
     'the ring uses the raw category colour, six of which fall under 3:1 on white'
 );
+/*
+ * ONE LINE, CUT, NOT TWO LINES WRAPPED (3.89.0). These two asserted the
+ * opposite and are reversed deliberately rather than deleted.
+ *
+ * WHY THE OLD RULE WAS RIGHT AND IS NOT ANY MORE. Two lines was the right
+ * answer for a card carrying a 32px picture: the row was already 42px, so a
+ * second line of text cost little. With the card gone the row is 21px and a
+ * title wrapping to three lines is the thing that makes a busy day enormous,
+ * which is the whole reason this changed. Uniform row height is what makes nine
+ * of them scannable.
+ *
+ * NOTHING IS LOST TO THE CUT, and that is what makes it allowed: the full title
+ * is on the hover preview via data-uc-pv-title on the same link, on the event
+ * page, and in the accessibility tree, which reads the text not the box.
+ */
 check(
-    (bool) preg_match( '/\.uc-day-event-title \{[^}]*-webkit-line-clamp:\s*2/', $css ),
-    'the day event title does not clamp to two lines'
+    (bool) preg_match( '/\.uc-day-event-title \{[^}]*white-space:\s*nowrap/s', $css ),
+    'the day event title wraps again, so one long title makes the row three lines tall'
 );
 check(
-    ! preg_match( '/\.uc-day-event-title \{[^}]*white-space:\s*nowrap/', $css ),
-    'the day event title is still nowrap, so it truncates at one line rather than wrapping to two'
+    (bool) preg_match( '/\.uc-day-event-title \{[^}]*text-overflow:\s*ellipsis/s', $css ),
+    'a cut title does not say it was cut'
+);
+/* AND THE DAY PANEL STILL WRAPS, because it is full width and showing the whole
+ * title is the reason that panel exists. One rule, two contexts, opposite
+ * answers, which is the shape PROJECT.md 7 keeps warning about. */
+check(
+    (bool) preg_match( '/\.uc-month-day-panel \.uc-day-event-title \{[^}]*white-space:\s*normal/s', $css ),
+    'the day panel truncates the title too, where there is room for all of it'
 );
 check(
     false !== strpos( $css, '@container uc-calendar (max-width: 930px)' ),
@@ -658,9 +680,32 @@ check(
     false !== strpos( $code, 'sfaf_category_shades( sfaf_event_category_color( $id ) )' ),
     'the day event does not resolve its colours through sfaf_category_shades()'
 );
+/*
+ * A DOT, NOT A THUMBNAIL (3.89.0), AND THIS ASSERTION REVERSED WITH IT.
+ *
+ * The tile was a bordered card with a 32px picture, a title clamped to two
+ * lines and a time on its own line, about 42px each. Nine on one Wednesday made
+ * a row that pushed the rest of the month off screen. It is one 21px line now:
+ * a category dot, the title, the time.
+ *
+ * THE CLAIM IS STRONGER THAN THE ONE IT REPLACES, not weaker. The old check
+ * asked only that a helper was called. These ask that the dot is drawn AND that
+ * the category is not left to colour alone, which is the rule that governs the
+ * whole change and the one somebody removing "a redundant hidden span" would
+ * break without noticing.
+ */
 check(
-    false !== strpos( $code, 'sfaf_day_event_thumb( $id )' ),
-    'the day event does not render a thumbnail'
+    false !== strpos( $code, 'sfaf_day_event_dot( $id )' ),
+    'the day event does not render its category dot'
+);
+$tpl = file_get_contents( dirname( __DIR__ ) . '/includes/sfaf-template-functions.php' );
+check(
+    (bool) preg_match( '/function sfaf_day_event_dot\(.*?uc-visually-hidden/s', $tpl ),
+    'the category dot is the only carrier of the category; the name must be there as text too'
+);
+check(
+    false === strpos( $code, 'sfaf_day_event_thumb( $id )' ),
+    'the 32px thumbnail is back in the day tile, which is what made a busy day push the month off screen'
 );
 check(
     ! preg_match( '/uc-day-events.*?array_slice|uc-day-events.*?more<|\+\s*\$more/s', $code ),

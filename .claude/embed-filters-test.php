@@ -128,6 +128,53 @@ if ( ! preg_match( '#function monthCacheKey\([^)]*\)\s*\{(.*?)\n    \}#s', $emb,
     }
 }
 
+/* ---------------------------------------------------------------------------
+ * 3b. THE PANEL SURVIVES THE REDRAW, IN BOTH (3.89.0).
+ *
+ * WHY THIS FILE PASSED WHILE THE BEHAVIOUR WAS MISSING FROM ONE SCRIPT, which
+ * is worth writing down because it is the limit of the whole idea. A pair test
+ * only covers the pairs SOMEBODY ENUMERATED. When this file was written in
+ * 3.88.0 it listed the behaviours being fixed that day: the merged control, the
+ * narrowing, the month redraw, the cache keys. Carrying the open state across a
+ * redraw was added to calendar.js in 3.87.0, a release earlier, and was never
+ * in the list, so its absence from embed.js was not something the file could
+ * notice. It was green and it was blind.
+ *
+ * THE REMEDY IS NOT "WRITE A BETTER LIST". It is that anything touching the
+ * filter bar in ONE script adds its pair here in the SAME release, which is now
+ * recorded in PROJECT.md rather than left to memory.
+ *
+ * TWO CLAIMS PER SCRIPT, because they fail separately and look identical:
+ *   . the open state is READ BEFORE the swap and PUT BACK after it;
+ *   . the narrowing is REAPPLIED after it, because the hiding is an attribute
+ *     on rows the swap has just replaced.
+ * ------------------------------------------------------------------------ */
+if ( ! preg_match( '#var whoWasOpen#', $cal ) || ! preg_match( "#\\\$fresh\.find\(\s*'\[data-uc-who\]'\s*\)\.prop\(\s*'open',\s*true\s*\)#", $cal ) ) {
+    $fails[] = 'calendar.js no longer carries the open filter panel across a redraw, so every tick shuts it';
+}
+if ( ! preg_match( '#var whoOpen#', $emb ) || ! preg_match( '#who\.open = true;#', $emb ) ) {
+    $fails[] = 'embed.js no longer carries the open filter panel across a redraw, so every tick shuts it on an embed';
+}
+if ( ! preg_match( '#function narrowWho#', $cal ) ) {
+    $fails[] = 'calendar.js narrowing is not reachable from the redraw, so the hidden groups come back after a tick';
+}
+if ( ! preg_match( '#function narrowWho#', $emb ) ) {
+    $fails[] = 'embed.js narrowing is not reachable from the redraw, so the hidden groups come back after a tick';
+}
+/* AND IT IS ACTUALLY CALLED FROM THE SWAP. Declaring it is not calling it,
+ * which is the trap that let a planted rename pass this file's first draft. */
+/* MATCHED ON WHAT IT OPERATES ON, NOT ON PROXIMITY. The first draft looked for
+ * narrowWho() anywhere after replaceWith(), with a lazy match that ran to the
+ * end of the file, so deleting the call still found a later mention and the
+ * plant escaped. Narrowing $fresh is inherently after the swap, because $fresh
+ * is what the swap put there. */
+if ( ! preg_match( "#\\\$fresh\.find\(\s*'\[data-uc-who\]'\s*\)\.each\([^)]*\)\s*\{\s*narrowWho\(#", $cal ) ) {
+    $fails[] = 'calendar.js does not reapply the narrowing to the block it just swapped in';
+}
+if ( ! preg_match( '#container\.innerHTML = data\.html;(.|\n)*?narrowWho\(\s*container\s*\)#', $emb ) ) {
+    $fails[] = 'embed.js does not reapply the narrowing after replacing the block';
+}
+
 echo "The route and its caching\n";
 
 /* ---------------------------------------------------------------------------
@@ -174,6 +221,52 @@ if ( false === strpos( $php, 'sfaf_calendar_activated' ) ) {
 $boot = file_get_contents( $root . '/sfaf-calendar.php' );
 if ( false === strpos( $boot, "do_action( 'sfaf_calendar_activated' )" ) ) {
     $fails[] = 'nothing fires sfaf_calendar_activated, so the activation flush never runs';
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. A STALE embed.js SAYS SO (3.89.0).
+ *
+ * Two releases of correct work were invisible until a hard refresh, because the
+ * browser was running a cached copy of that file. The script URL is deliberately
+ * UNVERSIONED and must stay so: a version in a pasted snippet pins it rather
+ * than busting it, which was a real defect in 2.10.1. So the version travels in
+ * the payload instead and the mismatch is named in the console.
+ *
+ * THE CONSTANT CANNOT DRIFT, which is the only thing that makes this worth
+ * having: if it were bumped by hand at release time it would be forgotten once
+ * and then report nonsense forever. The build fails instead.
+ * ------------------------------------------------------------------------ */
+if ( ! preg_match( "#var EMBED_JS_VERSION = '([0-9.]+)';#", $emb, $js_v ) ) {
+    $fails[] = 'embed.js no longer records the version it was shipped as, so a cached copy cannot be detected';
+} else {
+    $plugin_v = '';
+    if ( preg_match( "#define\(\s*'SFAF_VERSION',\s*'([0-9.]+)'\s*\)#", file_get_contents( $root . '/sfaf-calendar.php' ), $pv ) ) {
+        $plugin_v = $pv[1];
+    }
+    if ( $js_v[1] !== $plugin_v ) {
+        $fails[] = 'embed.js says it is ' . $js_v[1] . ' and the plugin is ' . $plugin_v
+            . '; the constant is bumped with the version or it reports nonsense';
+    }
+}
+/* THE CALL, NOT THE DECLARATION. Deleting the call left the function defined
+ * and a name check still found it, which is the third time this trap has been
+ * met in this file. It has to be invoked with what the payload carries. */
+if ( ! preg_match( '#reportIfStale\(\s*data\.js_version\s*\)#', $emb ) ) {
+    $fails[] = 'nothing compares the running script against the site, so a cached embed.js stays invisible';
+}
+if ( false === strpos( $php, 'js_version' ) ) {
+    $fails[] = 'the payload no longer carries the version, so the script has nothing to compare itself against';
+}
+/* AND IT DOES NOT RELOAD ITSELF. A script that refetches when it dislikes a
+ * number can loop against a CDN serving two versions from two edges. */
+if ( preg_match( '#reportIfStale[\s\S]{0,600}?location\.reload#', $emb ) ) {
+    $fails[] = 'embed.js reloads the page when it finds itself stale, which can loop on a page this plugin does not own';
+}
+/* THE SCRIPT URL STAYS UNVERSIONED. Reversing 2.10.1 would pin every snippet
+ * already pasted to whatever the plugin was on the day it was copied. */
+if ( preg_match( "#function script_url\(\)[^}]*embed\.js'\s*\.\s*'\?ver#", $php )
+    || preg_match( "#embed\.js\?ver#", $php ) ) {
+    $fails[] = 'the embed script URL carries a version again, which PINS every pasted snippet rather than busting its cache';
 }
 
 /* ------------------------------------------------------------------------ */

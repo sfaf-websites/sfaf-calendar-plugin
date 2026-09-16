@@ -1093,6 +1093,56 @@ hidden until a category was chosen so that nobody was looking at two taxonomies
 at once. Merging necessarily ends that, because the organizer half was always
 first-level. `render_group_row()` has no caller and is kept one release.
 
+### An event on the month grid is a line, not a card (3.89.0)
+
+**A dot, the title, the time**, at 21px a row, measured. Each event was a
+bordered box with a 32px picture, a title clamped to two lines and a time on its
+own line, which cannot be shorter than 42px; nine on one Wednesday pushed the
+rest of the month off screen.
+
+**FOUR THINGS KEEP NINE LINES READABLE AND NONE OF THEM IS A BORDER**, which is
+the part to preserve if this is ever adjusted: the dot acts as a left margin so
+the titles form a column, one line each keeps the rhythm uniform, the time is
+right aligned so the times form their own column, and the hover is the whole row.
+Remove any one of those and it becomes nine undifferentiated lines of text,
+which is not an improvement on nine boxes.
+
+**THE DOT IS NOT THE ONLY CARRIER OF THE CATEGORY.** The name is emitted beside
+it as text in the accessibility tree. Colour alone cannot state a fact, which is
+recorded elsewhere in this file and is why the hidden span is not redundant.
+
+**A TITLE THAT WILL NOT FIT IS CUT, NOT WRAPPED**, because wrapping is what made
+the rows enormous and uniform height is what makes a stack scannable. Nothing is
+lost: the hover preview, the event page and the accessibility tree all have the
+whole title. **The day panel wraps**, because it is full width and showing the
+whole title is the reason that panel exists. One rule, two contexts, opposite
+answers.
+
+`sfaf_day_event_thumb()` is kept for one release with no caller, because the
+line treatment is the part most likely to be reversed.
+
+### A stale embed.js says so, and the URL stays unversioned (3.89.0)
+
+**The script URL must not carry a version**, and this is a decision made by a
+defect rather than a preference. That URL is baked into a snippet somebody
+pastes once, so a version PINS it to whatever the plugin was on the day it was
+copied rather than busting anything. In 2.10.1 that left host pages loading an
+old script, and an old stylesheet with it, because the script derived the
+stylesheet URL from its own src.
+
+**So the version travels in the payload**, which is fetched fresh on every load
+and cannot be pinned, and `embed.js` names the mismatch in the console.
+
+> **IT DOES NOT MAKE A STALE SCRIPT FRESH AND DOES NOT CLAIM TO.** It turns the
+> failure from invisible into named. Four fixes have looked arbitrary because a
+> release was live and the page was not, and nobody thinks to hard refresh.
+
+**A warning rather than a reload**: a script that refetches itself when it
+dislikes a number can loop against a CDN serving two versions from two edges, on
+a page this plugin does not own. **And the constant cannot drift**, because the
+build fails when it is not `SFAF_VERSION`, which is the only thing that makes it
+worth having.
+
 ### The embed has its own script, and that is where fixes go missing
 
 **THREE TIMES NOW a correct change reached the shortcode and not the embed**: the
@@ -1110,8 +1160,25 @@ route for `mode=items` and nothing else.
 `.claude/embed-filters-test.php` asserts that for each thing the filter bar does,
 BOTH scripts do it: the merged control handled AND actually called, the month
 redrawn from the search handler rather than merely reachable, every narrowing in
-both month cache keys. Anything added to one script from here belongs in that
-file as a pair.
+both month cache keys, the open panel carried across the redraw and the
+narrowing reapplied after it.
+
+> **A PAIR TEST ONLY COVERS THE PAIRS SOMEBODY ENUMERATED, and that is its
+> limit rather than a flaw to fix by trying harder.** The file was green in
+> 3.88.0 while the open state was missing from one script, because that
+> behaviour shipped a release earlier and was never on the list. It was green
+> and it was blind.
+>
+> **THE RULE THAT FOLLOWS: anything touching the filter bar in ONE script adds
+> its pair to that file in the SAME release.** Not afterwards, not when it next
+> breaks. This is the fourth fix to reach one path and not the other, and the
+> only reason the fourth was found is that Mark used it.
+
+**"DECLARED" IS NOT "CALLED", AND THIS FILE HAS MET THAT TRAP THREE TIMES.**
+Every assertion about a handler is written against its CALL SITE, because
+planted renames and deleted calls leave all the strings a name check looks for
+sitting in the file. If an assertion can pass with the feature unreachable, it
+is asserting the wrong thing.
 
 **A HANDLER THAT EXISTS IS NOT A HANDLER THAT RUNS.** `embed.js` held the code
 for the merged control and never called it during one planted fault, and the
@@ -5120,23 +5187,27 @@ and rewrite `_wp_attached_file`, the GUID and every stored `_uc_image_url`.
 both directions, because until that exists nobody knows how many files are in
 which state.
 
-### embed.js is served with no version at all (found 3.84.0)
+### A cached embed.js is named, not prevented (3.89.0, still open)
 
-`SFAF_Embed::script_url()` returns `public/js/embed.js` with NO query string,
-while `style_url()` beside it carries `?ver=`. An embedding site therefore
-cannot tell from the Network tab which `embed.js` is running, and a browser or
-CDN may hold an old one indefinitely.
+**PART OF THIS IS NOW BUILT** and is described in the body: the payload carries
+the plugin version, `embed.js` carries the version it shipped as, and the
+mismatch is named in the console. That makes a stale script DIAGNOSABLE.
 
-**This is now the likeliest way a fix goes missing on an embed**, because
-3.88.0 moved real behaviour into that file: the merged filter control and the
-month redraw on search both live there. A stale `embed.js` is a stale filter
-bar, which is the exact symptom that took three releases to find the first time.
+**What is still open is preventing it**, and the obvious remedy is banned.
+`?ver=` on the script URL would pin every snippet already pasted rather than
+bust its cache, which is the 2.10.1 defect. The options that remain all have a
+cost somebody has to choose:
 
-**Why it is still not built.** Adding `?ver=` changes the URL in every snippet
-already pasted on other sites, and those snippets are HTML this plugin cannot
-see or update. The note at `script_url()` records that a block pasted before
-2.10.1 still carries an old pinned URL. Deciding what happens to those is the
-part that needs Mark rather than code.
+- **Serve `embed.js` through a PHP endpoint** so the plugin controls its cache
+  headers. New URL, so every pasted snippet needs re-copying, and it puts a
+  static file behind WordPress on every embed page view.
+- **Set the headers at the web server**, which is a `.htaccess` or an nginx
+  rule outside this plugin and outside its ability to verify.
+- **Accept it**, now that it announces itself, and hard refresh when a release
+  does not appear.
+
+**The third is the current state and is defensible**, because the failure is no
+longer silent. Moving off it needs Mark rather than code.
 
 ### The list view, rebuilt on a horizontal card (3.82.0)
 
