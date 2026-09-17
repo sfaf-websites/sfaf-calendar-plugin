@@ -172,6 +172,13 @@ echo "=== third-party RSVPs, and the button row ==="
 run "source-rsvps --self-test" php .claude/source-rsvps-test.php --self-test
 
 echo
+# Every submit button resolves to a form on its own page. The 3.94.0 fault was
+# a relationship between two elements, which no question asked one element at a
+# time could see.
+echo "=== form owners ==="
+run "form-owner --self-test" php .claude/form-owner-audit.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

@@ -177,14 +177,50 @@ if ( null === $pairs ) {
 	 * submission activates the first submit button in the form, so whatever
 	 * that button does is what pressing Enter in a text field does. It must
 	 * not be a button that unpublishes.
+	 *
+	 * THE PHP IS TAKEN OUT FIRST, AND 3.97.1 IS WHY. This matched with
+	 * `[^>]*` between the attributes, and `[^>]*` cannot cross the `>` in
+	 * `?>`. So it only ever matched a button whose whole tag was literal, and
+	 * for four releases that was PUBLISH, not Save draft: it reported the
+	 * value of whichever button its pattern could parse and called it the
+	 * first one. The moment Publish gained a `form="<?php … ?>"` attribute,
+	 * nothing matched at all and this failed on a form that was correct.
+	 *
+	 * Replacing each PHP block with a placeholder that contains no angle
+	 * bracket leaves the attribute ORDER intact and lets the scan see every
+	 * button, which is what "the first one" was supposed to mean.
 	 */
-	if ( preg_match( '#<button[^>]*type="submit"[^>]*name="save_mode"[^>]*value="([^"]*)"#', $editor, $m ) ) {
+	$flat = preg_replace( '#<\?php.*?\?>#s', '{PHP}', $editor );
+	if ( preg_match( '#<button[^>]*type="submit"[^>]*name="save_mode"[^>]*value="([^"]*)"#', $flat, $m ) ) {
 		$first = $m[1];
 		if ( false !== strpos( $first, 'draft' ) && false === strpos( $first, 'keep' ) ) {
 			$fails[] = 'the first submit button in the event form posts save_mode=draft unconditionally. That is the button a browser presses when somebody hits Enter in a text field, so Enter would take a published event off the calendar.';
 		}
 	} else {
 		$fails[] = 'no save_mode submit button was found in the event form, so which button Enter would activate is unknown';
+	}
+
+	/*
+	 * AND EVERY save_mode BUTTON NAMES THE EVENT FORM (3.97.1).
+	 *
+	 * The row is outside the form, so each of these is associated by its
+	 * `form=` attribute and by nothing else. Publish and Submit for Review
+	 * went without one from 3.94.0 to 3.97.0 and did nothing when pressed.
+	 * Counted, not found: two of three carrying it is the shape that shipped.
+	 */
+	$save_buttons = preg_match_all( '#<button[^>]*name="save_mode"[^>]*>#', $flat, $sb );
+	$with_form    = 0;
+	foreach ( $sb[0] as $tag ) {
+		if ( false !== strpos( $tag, 'form=' ) ) { $with_form++; }
+	}
+	if ( $save_buttons < 1 ) {
+		$fails[] = 'the event form emits no save_mode button at all';
+	} elseif ( $with_form !== $save_buttons ) {
+		$fails[] = sprintf(
+			'%d of the %d save_mode buttons carry a form attribute. The row is outside the form, so one without it has no form owner and does nothing when pressed.',
+			$with_form,
+			$save_buttons
+		);
 	}
 }
 

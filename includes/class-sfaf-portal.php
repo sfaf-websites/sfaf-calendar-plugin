@@ -3573,7 +3573,24 @@ class SFAF_Portal {
 
             <div class="uc-portal-main">
                 <header class="uc-portal-topbar">
-                    <button class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><?php echo sfaf_icon( 'menu', array( 'size' => '22px' ) ); ?></button>
+                    <?php
+                    /*
+                     * type="button", BECAUSE A <button> WITH NO TYPE IS A
+                     * SUBMIT BUTTON (3.97.1).
+                     *
+                     * It does nothing today: it sits outside every form, so it
+                     * has no form owner and there is nothing for it to submit.
+                     * That is luck rather than design. The moment this header
+                     * is drawn inside a form, or a form grows to enclose it,
+                     * the menu toggle silently posts that form, and the symptom
+                     * is a page that saves itself when somebody opens the menu.
+                     *
+                     * The default is the trap, so it is stated. Found by
+                     * .claude/form-owner-audit.php while sweeping for the
+                     * 3.94.0 fault.
+                     */
+                    ?>
+                    <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><?php echo sfaf_icon( 'menu', array( 'size' => '22px' ) ); ?></button>
                     <?php
                     // The name and the access level moved to the sidebar foot,
                     // where they are one block instead of two halves of an
@@ -12944,10 +12961,27 @@ class SFAF_Portal {
                             data-uc-ask-title="Reject this event?"
                             data-uc-ask-confirm="Reject" data-uc-ask-danger>Reject</button>
                 <?php elseif ( $show_publish ) : ?>
+                    <?php
+                    /*
+                     * form= ON BOTH OF THESE, AND IT IS NOT DECORATION (3.97.1).
+                     *
+                     * THIS ROW IS OUTSIDE THE EVENT FORM. 3.94.0 moved it there
+                     * and gave Save draft the attribute; these two were not
+                     * touched, so from 3.94.0 to 3.97.0 they had NO FORM OWNER
+                     * and pressing either did nothing at all. Not an error, not
+                     * a refusal: no submit event fired, so nothing in portal.js
+                     * ran either, because every handler there listens on a
+                     * form.
+                     *
+                     * A submit button outside a form is inert. The attribute is
+                     * the only thing that associates it with one, and it is the
+                     * same $form_id Save draft points at.
+                     */
+                    ?>
                     <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
-                        <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
+                        <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
                     <?php else : ?>
-                        <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish"
+                        <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish"
                                 <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
                                 <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
                     <?php endif; ?>
