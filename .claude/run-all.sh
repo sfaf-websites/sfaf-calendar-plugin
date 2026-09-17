@@ -148,6 +148,12 @@ echo "=== extra submitted pictures ==="
 run "extra-images --self-test" php .claude/extra-images-test.php --self-test
 
 echo
+# The third format: three modes, two capacities, and the rule that no message
+# carries both the address and the meeting link.
+echo "=== hybrid events ==="
+run "hybrid --self-test" php .claude/hybrid-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

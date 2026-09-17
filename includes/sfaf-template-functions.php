@@ -1087,6 +1087,31 @@ function sfaf_rsvp_block( $post_id ) {
             'attrs'   => array(
                 'data-event-id'    => (int) $post_id,
                 'data-event-title' => get_the_title( $post_id ),
+                /*
+                 * WHICH FORMATS THE FORM MAY OFFER (3.96.0), and which of them
+                 * are already full. Stamped by the server on the button that
+                 * opens the modal, because the modal is built once for the
+                 * whole page and has no idea which event it is about to
+                 * describe until this is pressed.
+                 *
+                 * A FULL FORMAT IS STILL LISTED, in the second attribute rather
+                 * than by being left out of the first. The form has to say
+                 * "that one is full" rather than quietly not mentioning it:
+                 * somebody who came to join online and sees only "in person"
+                 * has been told nothing about why.
+                 *
+                 * THE SERVER DECIDES BOTH. The script reads them and draws
+                 * them; it never works out for itself what a format is or
+                 * whether one has room, so the answer cannot differ between
+                 * what the page shows and what submit() will accept.
+                 */
+                'data-uc-formats' => implode( ',', sfaf_event_formats( $post_id ) ),
+                'data-uc-full'    => implode( ',', array_values( array_filter(
+                    sfaf_event_formats( $post_id ),
+                    function ( $f ) use ( $post_id ) {
+                        return sfaf_format_full( $post_id, $f );
+                    }
+                ) ) ),
             ),
         ) );
 

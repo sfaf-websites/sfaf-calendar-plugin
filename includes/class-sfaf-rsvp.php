@@ -129,6 +129,10 @@ class SFAF_RSVP {
             // absent field is a "no", which is the safe reading and the one an
             // unchecked checkbox actually produces.
             'optin'      => ! empty( $_POST['optin'] ),
+            // How they said they would attend. Only a hybrid event asks, and
+            // submit() validates this against that event's own list rather
+            // than trusting it. See the capacity block there.
+            'format'     => isset( $_POST['format'] ) ? sanitize_key( wp_unslash( $_POST['format'] ) ) : '',
         ) );
 
         wp_send_json( $result );
@@ -278,13 +282,47 @@ class SFAF_RSVP {
             return array( 'success' => false, 'message' => 'You have already registered for this event.' );
         }
 
-        // Check capacity
-        $capacity = (int) get_post_meta( $data['event_id'], '_uc_capacity', true );
-        if ( $capacity > 0 ) {
-            $current = sfaf_get_rsvp_count( $data['event_id'] );
-            if ( $current >= $capacity ) {
-                return array( 'success' => false, 'message' => 'This event is at capacity.' );
+        /*
+         * WHICH FORMAT THIS PERSON IS IN, AND THE CAPACITY THAT BELONGS TO IT.
+         *
+         * A HYBRID EVENT ASKS AND EVERYTHING ELSE DOES NOT. So the answer is
+         * taken from the post only when the event actually has two formats, and
+         * it is validated against the event's own list rather than trusted: a
+         * posted "online" on an in-person event would otherwise count against a
+         * capacity that event has never set, which is a limit of zero, which is
+         * unlimited. Anything unrecognised falls back to the first format the
+         * event offers, so a form posted without the field still registers
+         * somebody rather than failing silently.
+         *
+         * A NON-HYBRID EVENT STORES '', which is what every existing row holds
+         * and what the counters expect. See the `format` column's note in
+         * sfaf-calendar.php.
+         */
+        $formats = sfaf_event_formats( $data['event_id'] );
+        $hybrid  = SFAF_Online::is_hybrid( $data['event_id'] );
+        $format  = '';
+        if ( $hybrid ) {
+            $asked  = isset( $data['format'] ) ? (string) $data['format'] : '';
+            $format = in_array( $asked, $formats, true ) ? $asked : $formats[0];
+        }
+        $data['format'] = $format;
+
+        /*
+         * CAPACITY IS PER FORMAT, AND "THE EVENT IS FULL" IS A DIFFERENT
+         * QUESTION. Somebody picking a full format on an event whose other
+         * format has room is told about the format, not about the event: the
+         * form can still take them, and turning them away would refuse a
+         * registration the event wanted.
+         */
+        if ( sfaf_format_full( $data['event_id'], $hybrid ? $format : '' ) ) {
+            if ( $hybrid && ! sfaf_event_full( $data['event_id'] ) ) {
+                $other = ( SFAF_Online::MODE_ONLINE === $format ) ? 'in person' : 'online';
+                return array(
+                    'success' => false,
+                    'message' => 'That option is full. There are still places to attend ' . $other . '.',
+                );
             }
+            return array( 'success' => false, 'message' => 'This event is at capacity.' );
         }
 
         // Insert RSVP.
@@ -314,7 +352,9 @@ class SFAF_RSVP {
             'status'     => 'confirmed',
             'token'      => $token,
             'created_at' => current_time( 'mysql' ),
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+            // '' on every event that never asked. See the column's note.
+            'format'     => $data['format'],
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         if ( $inserted ) {
             /*

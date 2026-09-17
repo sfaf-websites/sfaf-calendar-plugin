@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.96.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '6' );
+define( 'SFAF_DB_VERSION', '7' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -842,11 +842,33 @@ function sfaf_install_tables() {
         token char(32) NOT NULL DEFAULT '',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         cancelled_at datetime NULL,
+        format varchar(20) NOT NULL DEFAULT '',
         PRIMARY KEY (id),
         KEY event_id (event_id),
         KEY email (email),
-        KEY token (token)
+        KEY token (token),
+        KEY event_format (event_id, format)
     ) $charset;";
+    /*
+     * `format` IS HOW A HYBRID REGISTRANT ANSWERED (3.96.0), and EMPTY IS THE
+     * ANSWER FOR EVERY EVENT THAT NEVER ASKED.
+     *
+     * A hybrid event asks each registrant whether they are coming in person or
+     * joining online, and what they picked decides which capacity they count
+     * against and which of the address or the meeting link they are sent. An
+     * in-person or online event does not ask, so its rows carry '' and every
+     * existing row keeps the meaning it already had: "this event has one
+     * format and this person is in it".
+     *
+     * NOT BACKFILLED, DELIBERATELY. Setting every existing row to the event's
+     * current format would be writing an answer nobody gave, and it would be
+     * wrong the moment an event's format is changed afterwards. The readers ask
+     * the EVENT what its format is and only consult this column when the answer
+     * is hybrid, so an empty value is never ambiguous.
+     *
+     * KEY event_format, because the count per format runs on every render of a
+     * hybrid event's form and on every registration.
+     */
 
     // THE REMINDER LEDGER, AND THE UNIQUE KEY THAT IS THE SEND-ONCE GUARANTEE.
     //
@@ -1247,6 +1269,177 @@ function &sfaf_rsvp_count_store() {
 function sfaf_clear_rsvp_count_cache( $event_id ) {
     $store =& sfaf_rsvp_count_store();
     unset( $store[ (int) $event_id ] );
+
+    /*
+     * THE PER-FORMAT COUNTS GO WITH IT (3.96.0), and forgetting that is how
+     * this fault comes back wearing a different hat. A hybrid cancellation
+     * releases a place in ONE format; leaving that format's memoized count
+     * behind means the form goes on saying "online is full" to the next person
+     * in the same request, which is exactly the staleness this function exists
+     * to prevent. Both stores are cleared by the one caller, together.
+     */
+    $by_format =& sfaf_rsvp_format_count_store();
+    foreach ( array_keys( $by_format ) as $key ) {
+        if ( 0 === strpos( (string) $key, (int) $event_id . ':' ) ) {
+            unset( $by_format[ $key ] );
+        }
+    }
+}
+
+/**
+ * Helper: shared per-request store for confirmed RSVP counts BY FORMAT.
+ *
+ * A SECOND STORE RATHER THAN A COMPOUND KEY IN THE FIRST, because the first is
+ * primed in bulk by list screens and handed out by sfaf_get_rsvp_count(), and a
+ * key shaped "12:online" arriving in there would be read as an event id by
+ * anything iterating it. Cleared alongside it; see above.
+ */
+function &sfaf_rsvp_format_count_store() {
+    static $store = array();
+    return $store;
+}
+
+/**
+ * Confirmed registrations in one format of one event.
+ *
+ * ONLY A HYBRID EVENT HAS FORMATS. Everything else stored '' when it took the
+ * registration, because it never asked the question, so asking this of a
+ * non-hybrid event would count nothing. The callers gate on
+ * SFAF_Online::is_hybrid() and this does not second-guess them: it answers
+ * exactly what was asked, which is "how many rows say this format".
+ *
+ * @param int    $event_id
+ * @param string $format SFAF_Online::MODE_IN_PERSON or MODE_ONLINE.
+ * @return int
+ */
+function sfaf_get_rsvp_count_by_format( $event_id, $format ) {
+    $event_id = (int) $event_id;
+    $format   = (string) $format;
+    if ( ! $event_id || '' === $format ) {
+        return 0;
+    }
+    $store =& sfaf_rsvp_format_count_store();
+    $key   = $event_id . ':' . $format;
+    if ( isset( $store[ $key ] ) ) {
+        return $store[ $key ];
+    }
+    global $wpdb;
+    $table = $wpdb->prefix . 'uc_rsvps';
+    $store[ $key ] = (int) $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(*) FROM $table WHERE event_id = %d AND status = 'confirmed' AND format = %s",
+        $event_id,
+        $format
+    ) );
+    return $store[ $key ];
+}
+
+/**
+ * The meta key holding the capacity for one format.
+ *
+ * ONE PLACE DECIDES WHICH KEY A FORMAT USES, so the editor, the save, the
+ * registration check and the messages cannot disagree about where a number
+ * lives. In person keeps `_uc_capacity`, which every existing event already
+ * carries and which nothing has to migrate.
+ *
+ * @param string $format
+ * @return string
+ */
+function sfaf_capacity_meta_key( $format ) {
+    return ( SFAF_Online::MODE_ONLINE === (string) $format )
+        ? '_uc_capacity_online'
+        : '_uc_capacity';
+}
+
+/**
+ * How many places one format of an event has. 0 means unlimited.
+ *
+ * WHICH FORMATS AN EVENT HAS IS THE EVENT'S QUESTION, not this one's. Asked for
+ * the online capacity of an in-person event, this answers with whatever is
+ * stored under that key, which is nothing. The callers gate on the mode.
+ *
+ * @param int    $event_id
+ * @param string $format '' means "this event's only format".
+ * @return int
+ */
+function sfaf_event_capacity( $event_id, $format = '' ) {
+    $event_id = (int) $event_id;
+    if ( ! $event_id ) {
+        return 0;
+    }
+    if ( '' === $format ) {
+        // A non-hybrid event has one capacity, and it is stored under the key
+        // its own format uses.
+        $format = SFAF_Online::is_online( $event_id )
+            ? SFAF_Online::MODE_ONLINE
+            : SFAF_Online::MODE_IN_PERSON;
+    }
+    return max( 0, (int) get_post_meta( $event_id, sfaf_capacity_meta_key( $format ), true ) );
+}
+
+/**
+ * Which formats this event takes registrations in.
+ *
+ * ONE LIST, so the form, the capacity check and the "is it full" question all
+ * enumerate the same thing. A hybrid event has two; everything else has one.
+ *
+ * @param int $event_id
+ * @return string[]
+ */
+function sfaf_event_formats( $event_id ) {
+    $mode = SFAF_Online::mode( (int) $event_id );
+    if ( SFAF_Online::MODE_HYBRID === $mode ) {
+        return array( SFAF_Online::MODE_IN_PERSON, SFAF_Online::MODE_ONLINE );
+    }
+    return array( $mode );
+}
+
+/**
+ * Is this one format full?
+ *
+ * "WHATEVER FULL MEANS TODAY, PER FORMAT" is the brief, and today it means a
+ * capacity above zero with at least that many confirmed rows. Zero is
+ * unlimited and can never be full, which is the rule the editor's hint states
+ * and the one a capacity of 0 has always meant here.
+ *
+ * ON A HYBRID EVENT THE COUNT IS PER FORMAT; anywhere else it is the event's
+ * whole count, because those rows carry no format and counting by one would
+ * count nothing.
+ *
+ * @param int    $event_id
+ * @param string $format
+ * @return bool
+ */
+function sfaf_format_full( $event_id, $format ) {
+    $event_id = (int) $event_id;
+    $capacity = sfaf_event_capacity( $event_id, $format );
+    if ( $capacity <= 0 ) {
+        return false;
+    }
+    $taken = SFAF_Online::is_hybrid( $event_id )
+        ? sfaf_get_rsvp_count_by_format( $event_id, $format )
+        : sfaf_get_rsvp_count( $event_id );
+    return ( $taken >= $capacity );
+}
+
+/**
+ * Is the whole event full, meaning every format it offers is?
+ *
+ * A HYBRID EVENT WITH ONE FORMAT FULL IS NOT FULL. That is the whole reason
+ * this is a separate question from sfaf_format_full(): the form still has
+ * somewhere to send the next person, and saying "this event is at capacity"
+ * to somebody who could have joined online is turning away a registration the
+ * event wanted.
+ *
+ * @param int $event_id
+ * @return bool
+ */
+function sfaf_event_full( $event_id ) {
+    foreach ( sfaf_event_formats( $event_id ) as $format ) {
+        if ( ! sfaf_format_full( $event_id, $format ) ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**

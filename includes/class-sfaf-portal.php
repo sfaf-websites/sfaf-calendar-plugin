@@ -2121,14 +2121,41 @@ class SFAF_Portal {
          */
         $handled = false;
         if ( ! $is_locked( 'location' ) && isset( $_POST['uc_online_present'] ) ) {
+            /*
+             * TWO TICKS, THREE MODES, AND THE SERVER FOLDS THEM (3.96.0).
+             *
+             * Four combinations arrive and only three mean anything. HYBRID
+             * WINS over online, because hybrid is the one that keeps the
+             * address: reading "both ticked" as online would clear a venue
+             * somebody had just filled in beside a tick saying they wanted to
+             * keep it, and clearing an address is the change nothing here can
+             * undo. The exclusivity is decided here rather than in the script,
+             * so a form posted with the script blocked, or by a back button,
+             * cannot reach SFAF_Online::mode() as a state it has to invent an
+             * answer for.
+             */
             $want_online = ( '1' === (string) wp_unslash( $_POST['uc_online'] ) );
+            $want_hybrid = isset( $_POST['uc_hybrid'] ) && ( '1' === (string) wp_unslash( $_POST['uc_hybrid'] ) );
+            if ( $want_hybrid ) {
+                $want_mode = SFAF_Online::MODE_HYBRID;
+            } elseif ( $want_online ) {
+                $want_mode = SFAF_Online::MODE_ONLINE;
+            } else {
+                $want_mode = SFAF_Online::MODE_IN_PERSON;
+            }
             SFAF_Online::set(
                 $event_id,
-                $want_online,
+                $want_mode,
                 isset( $_POST['meeting_url'] ) ? wp_unslash( $_POST['meeting_url'] ) : '',
                 isset( $_POST['meeting_send'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['meeting_send'] ) ) : array()
             );
-            $handled = $want_online;
+            /*
+             * ONLY A PURELY ONLINE EVENT SKIPS THE PLACE BLOCK BELOW. A hybrid
+             * one has an address and must go through the venue and location
+             * save exactly as an in-person event does, which is what leaving
+             * $handled false does.
+             */
+            $handled = ( SFAF_Online::MODE_ONLINE === $want_mode );
         }
 
         if ( ! $handled && ! $is_locked( 'location' ) && isset( $_POST['location_mode'] ) ) {
@@ -13081,6 +13108,7 @@ class SFAF_Portal {
         $mode     = $venue_id ? 'venue' : 'custom';
 
         $online     = $event_id ? SFAF_Online::is_online( $event_id ) : false;
+        $hybrid     = $event_id ? SFAF_Online::is_hybrid( $event_id ) : false;
         $meet_link  = $event_id ? SFAF_Online::link( $event_id ) : '';
         $sends      = $event_id ? SFAF_Online::sends( $event_id ) : array();
         ?>
@@ -13117,6 +13145,30 @@ class SFAF_Portal {
             </label>
             <p class="uc-hint">
                 The venue and address will be cleared. You'll need to re-enter them if you switch back.
+            </p>
+            <?php
+            /*
+             * AND THE THIRD FORMAT, BESIDE THE SECOND (3.96.0).
+             *
+             * EXCLUSIVE WITH IT, AND THE SERVER DECIDES THAT, NOT THE SCRIPT.
+             * Two ticks have four combinations and only three of them mean
+             * anything; save_event_from_post() folds them into one of three
+             * modes with hybrid winning, so a form posted with both, by a
+             * script that did not load or by somebody's back button, cannot
+             * store a state SFAF_Online::mode() has to invent an answer for.
+             *
+             * ITS OWN HIDDEN 0, for the reason the online tick has one: the
+             * save may only speak for what the form showed.
+             */
+            ?>
+            <input type="hidden" name="uc_hybrid" value="0" />
+            <label class="uc-check uc-online-check">
+                <input type="checkbox" name="uc_hybrid" value="1" data-uc-hybrid-toggle <?php checked( $hybrid ); ?> />
+                This is a hybrid event
+            </label>
+            <p class="uc-hint">
+                The venue and address are kept, and a meeting link is asked for below. People choose
+                in person or online when they register, and each choice has its own number of places.
             </p>
 
             <div class="uc-online-panel" data-uc-online-panel>
@@ -13367,7 +13419,19 @@ class SFAF_Portal {
      * @return string[]
      */
     private function rsvp_setting_fields( $ctx ) {
-        $fields = array( 'rsvp_enabled', 'capacity' );
+        /*
+         * TWO CAPACITIES SINCE 3.96.0, AND BOTH ARE ALWAYS ON THE LIST.
+         *
+         * A hybrid event has a limit per format. An in-person or online one has
+         * a limit for the single format it runs, and it is stored under that
+         * format's key, so the editor draws ONE box in the place that format's
+         * controls live. Both names stay on the shared list whatever the event
+         * is, because the list is what guarantees every setting is rendered
+         * exactly once and saved from one place; which of them the Location
+         * card asks for by name is the card's business, and the catch-all
+         * further down draws anything it did not claim.
+         */
+        $fields = array( 'rsvp_enabled', 'capacity', 'capacity_online' );
         if ( $ctx['event_id'] && ! $ctx['imported'] ) {
             $fields[] = 'notify';
             $fields[] = 'replyto';
@@ -13430,14 +13494,47 @@ class SFAF_Portal {
                 break;
 
             case 'capacity':
-                $s_cap = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
+                $s_cap  = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
+                $hybrid = $event_id ? SFAF_Online::is_hybrid( $event_id ) : false;
                 ?>
                 <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cap ) ); ?>">
-                    <span class="uc-field-label">Capacity <?php echo $this->field_badge( $s_cap, $ctx['prov']['label'] ); ?></span>
+                    <span class="uc-field-label">
+                        <?php echo $hybrid ? 'Places in person' : 'Capacity'; ?>
+                        <?php echo $this->field_badge( $s_cap, $ctx['prov']['label'] ); ?>
+                    </span>
                     <input type="number" name="capacity" min="0" value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>"<?php echo $this->field_disabled( $s_cap ); ?> />
                     <?php // Stays inline: it is four words, and it stops
                           // somebody typing 0 meaning "nobody". ?>
                     <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
+                </label>
+                <?php
+                break;
+
+            /*
+             * THE ONLINE LIMIT, AND IT IS DRAWN ONLY WHERE IT APPLIES.
+             *
+             * A hybrid event counts each format against its own number, so it
+             * gets both boxes: this one sits under the meeting link, the other
+             * under the address, each beside the thing it limits. An in-person
+             * event has no online places to limit and an online event's single
+             * limit is the 'capacity' box above, stored under that format's own
+             * key, so neither draws this at all.
+             *
+             * IT STILL ANSWERS THE LIST. Returning nothing from a case is how a
+             * shared-list field says "not on this event", and the save is
+             * guarded by the same marker either way, so a form that did not
+             * draw it leaves the value alone rather than clearing it.
+             */
+            case 'capacity_online':
+                if ( ! $event_id || ! SFAF_Online::is_hybrid( $event_id ) ) {
+                    break;
+                }
+                $s_cap_on = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
+                ?>
+                <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cap_on ) ); ?>">
+                    <span class="uc-field-label">Places online <?php echo $this->field_badge( $s_cap_on, $ctx['prov']['label'] ); ?></span>
+                    <input type="number" name="capacity_online" min="0" value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap_on ); ?> />
+                    <span class="uc-hint uc-hint-spec">0 means unlimited. Leave it empty for no limit online.</span>
                 </label>
                 <?php
                 break;
@@ -13521,6 +13618,21 @@ class SFAF_Portal {
 
         if ( ! $is_locked( 'capacity' ) && isset( $_POST['capacity'] ) ) {
             update_post_meta( $event_id, '_uc_capacity', sanitize_text_field( wp_unslash( $_POST['capacity'] ) ) );
+        }
+        /*
+         * THE ONLINE LIMIT, GUARDED BY ITS OWN PRESENCE (3.96.0).
+         *
+         * Drawn only on a hybrid event, so a form from any other event does not
+         * carry it and this leaves whatever is stored alone. Same discipline as
+         * every other control on these two screens: a form may only speak for
+         * the fields it actually showed.
+         *
+         * IT LOCKS WITH THE OTHER CAPACITY. A platform that owns one owns both,
+         * because the number of places is one fact about the event as far as an
+         * importer is concerned.
+         */
+        if ( ! $is_locked( 'capacity' ) && isset( $_POST['capacity_online'] ) ) {
+            update_post_meta( $event_id, '_uc_capacity_online', sanitize_text_field( wp_unslash( $_POST['capacity_online'] ) ) );
         }
 
         if ( isset( $_POST['uc_rsvp_toggle_present'] ) ) {

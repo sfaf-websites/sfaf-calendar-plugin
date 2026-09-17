@@ -102,6 +102,14 @@ class SFAF_Online {
     /** Which messages carry the link: an array of keys from deliveries(). */
     const META_SEND = '_uc_online_send';
 
+    /**
+     * "This event runs both formats at once."
+     *
+     * A SEPARATE KEY FROM `_uc_online`, never both. See the block below
+     * meta_keys() for why hybrid must not answer yes to is_online().
+     */
+    const META_HYBRID = '_uc_hybrid';
+
     /** What renders wherever an address would have. */
     const LABEL = 'Online Event';
 
@@ -115,7 +123,126 @@ class SFAF_Online {
      * @return string[]
      */
     public static function meta_keys() {
-        return array( self::META, self::META_LINK, self::META_SEND );
+        return array( self::META, self::META_HYBRID, self::META_LINK, self::META_SEND );
+    }
+
+    /* =====================================================================
+     * THE THIRD FORMAT (3.96.0)
+     *
+     * AN EVENT IS IN PERSON, ONLINE, OR HYBRID, and hybrid runs both at once.
+     * It is a THIRD MODE rather than a second tick on top of online, because
+     * the two ticks would have four combinations and only three of them mean
+     * anything. mode() answers with one of three words and every reader asks
+     * it, so "online and hybrid at the same time" is not a state that exists.
+     *
+     * HYBRID IS NOT `_uc_online`, AND THAT IS THE WHOLE REASON IT IS A SEPARATE
+     * KEY. is_online() is what clears the address and puts "Online Event"
+     * wherever a place would go, on every one of the surfaces this file's
+     * header lists. A hybrid event HAS a place, so it must not answer yes to
+     * that question, or the address it keeps would never be drawn.
+     *
+     * WHAT HYBRID SHARES WITH ONLINE IS THE LINK, so the two questions are
+     * separated: is_online() is "has no place" and has_online_format() is "some
+     * registrants join by link". link() and sends() gate on the second, which
+     * is how the meeting link reaches a hybrid event without a second reader
+     * of the meta being written. The whitelist in online-events-test.php is
+     * unchanged, because link() is still the only thing that reads the key.
+     * ================================================================== */
+
+    const MODE_IN_PERSON = 'in_person';
+    const MODE_ONLINE    = 'online';
+    const MODE_HYBRID    = 'hybrid';
+
+    /**
+     * The three formats, key => label, in the order the editor offers them.
+     *
+     * @return array<string,string>
+     */
+    public static function modes() {
+        return array(
+            self::MODE_IN_PERSON => 'In person',
+            self::MODE_ONLINE    => 'Online',
+            self::MODE_HYBRID    => 'Hybrid',
+        );
+    }
+
+    /**
+     * Which of the three this event is. THE ONE READER OF BOTH KEYS.
+     *
+     * HYBRID IS ASKED FIRST. The two keys cannot both be set by set(), but a
+     * direct write, an import or a half-finished migration could leave both,
+     * and answering "online" for an event carrying the hybrid key would take
+     * its address away. Deciding an order here means there is no combination
+     * that has no answer.
+     *
+     * @param int $event_id
+     * @return string One of the MODE_ constants.
+     */
+    public static function mode( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return self::MODE_IN_PERSON;
+        }
+        if ( '1' === (string) get_post_meta( $event_id, self::META_HYBRID, true ) ) {
+            return self::MODE_HYBRID;
+        }
+        if ( '1' === (string) get_post_meta( $event_id, self::META, true ) ) {
+            return self::MODE_ONLINE;
+        }
+        return self::MODE_IN_PERSON;
+    }
+
+    /** Whether this event runs both formats at once. */
+    public static function is_hybrid( $event_id ) {
+        return self::MODE_HYBRID === self::mode( (int) $event_id );
+    }
+
+    /**
+     * Whether ANY registrant joins by link: online or hybrid.
+     *
+     * This is the question the meeting link, the delivery ticks and the join
+     * copy all actually ask. is_online() asks the narrower one, "has no
+     * place", and only the address and location renderers want that.
+     *
+     * @param int $event_id
+     * @return bool
+     */
+    public static function has_online_format( $event_id ) {
+        $mode = self::mode( (int) $event_id );
+        return ( self::MODE_ONLINE === $mode || self::MODE_HYBRID === $mode );
+    }
+
+    /**
+     * Whether ANY registrant turns up somewhere: in person or hybrid.
+     *
+     * @param int $event_id
+     * @return bool
+     */
+    public static function has_in_person_format( $event_id ) {
+        $mode = self::mode( (int) $event_id );
+        return ( self::MODE_IN_PERSON === $mode || self::MODE_HYBRID === $mode );
+    }
+
+    /**
+     * Normalize whatever a caller passed into one of the three modes.
+     *
+     * TRUE AND FALSE STILL MEAN WHAT THEY MEANT, because the import and the
+     * older tests pass them and "online or not" was the only question when
+     * they were written. Anything unrecognised is in person, which is the mode
+     * that grants nothing.
+     *
+     * @param mixed $mode
+     * @return string
+     */
+    public static function normalize_mode( $mode ) {
+        if ( true === $mode ) {
+            return self::MODE_ONLINE;
+        }
+        if ( false === $mode || null === $mode ) {
+            return self::MODE_IN_PERSON;
+        }
+        $mode = (string) $mode;
+        return array_key_exists( $mode, self::modes() ) ? $mode : self::MODE_IN_PERSON;
     }
 
     /**
@@ -170,7 +297,13 @@ class SFAF_Online {
      */
     public static function link( $event_id ) {
         $event_id = (int) $event_id;
-        if ( ! self::is_online( $event_id ) ) {
+        /*
+         * THE WIDER QUESTION, BECAUSE A HYBRID EVENT HAS A LINK (3.96.0).
+         * is_online() is "has no place", which a hybrid event answers no to
+         * while still needing its link read. has_online_format() is the
+         * question this actually asks: does anybody join by link.
+         */
+        if ( ! self::has_online_format( $event_id ) ) {
             return '';
         }
         return trim( (string) get_post_meta( $event_id, self::META_LINK, true ) );
@@ -192,7 +325,9 @@ class SFAF_Online {
      * @return string[]
      */
     public static function sends( $event_id ) {
-        if ( ! self::is_online( (int) $event_id ) ) {
+        // Hybrid too: the ticks select which message carries the link, and a
+        // hybrid event has one. See link().
+        if ( ! self::has_online_format( (int) $event_id ) ) {
             return array();
         }
         $stored = get_post_meta( (int) $event_id, self::META_SEND, true );
@@ -241,7 +376,17 @@ class SFAF_Online {
             return;
         }
 
-        if ( ! $online ) {
+        /*
+         * $online IS A MODE NOW (3.96.0), and true and false still mean what
+         * they always meant. One entry point still, for the reason above: the
+         * format, the place, the link and the delivery ticks are not
+         * independent, and hybrid is the case that makes that plainest. It
+         * keeps the place AND takes a link, which is exactly the combination
+         * the online branch below exists to make impossible.
+         */
+        $mode = self::normalize_mode( $online );
+
+        if ( self::MODE_IN_PERSON === $mode ) {
             /*
              * OFF CLEARS EVERYTHING THIS FEATURE OWNS.
              *
@@ -257,19 +402,38 @@ class SFAF_Online {
             return;
         }
 
-        update_post_meta( $event_id, self::META, '1' );
+        /*
+         * EXACTLY ONE OF THE TWO KEYS, ALWAYS. Written as a set-and-clear pair
+         * rather than as two independent writes, so there is no ordering in
+         * which an event briefly carries both and no path that leaves the one
+         * it is moving away from behind.
+         */
+        if ( self::MODE_HYBRID === $mode ) {
+            update_post_meta( $event_id, self::META_HYBRID, '1' );
+            delete_post_meta( $event_id, self::META );
+        } else {
+            update_post_meta( $event_id, self::META, '1' );
+            delete_post_meta( $event_id, self::META_HYBRID );
+        }
 
         /*
-         * THE PLACE GOES, ALL OF IT.
+         * THE PLACE GOES, ALL OF IT, AND ONLY FOR A PURELY ONLINE EVENT.
          *
          * The term, the composed line and the four parts, in one place, so no
          * combination of them survives into a state that says the event has no
          * address. See the file header and class-sfaf-venues.php.
+         *
+         * A HYBRID EVENT KEEPS EVERY ONE OF THEM, because half its registrants
+         * are turning up there. That is the whole difference between the two
+         * modes on this side of the class, and it is why hybrid could not be a
+         * second tick sitting on top of online: this block would have run.
          */
-        SFAF_Venues::set_for_event( $event_id, 0 );
-        delete_post_meta( $event_id, '_uc_location' );
-        foreach ( sfaf_location_part_keys() as $key ) {
-            delete_post_meta( $event_id, $key );
+        if ( self::MODE_ONLINE === $mode ) {
+            SFAF_Venues::set_for_event( $event_id, 0 );
+            delete_post_meta( $event_id, '_uc_location' );
+            foreach ( sfaf_location_part_keys() as $key ) {
+                delete_post_meta( $event_id, $key );
+            }
         }
 
         $clean = esc_url_raw( trim( (string) $link ) );
@@ -310,8 +474,25 @@ class SFAF_Online {
      * @param string $kind A key from deliveries().
      * @return string
      */
-    public static function joining_html( $event_id, $kind ) {
+    public static function joining_html( $event_id, $kind, $format = '' ) {
         if ( ! self::sends_with( $event_id, $kind ) ) {
+            return '';
+        }
+        /*
+         * AND NOT TO SOMEBODY WHO SAID THEY ARE COMING IN PERSON (3.96.0).
+         *
+         * A hybrid event has an address and a meeting link, and the rule is
+         * that no message carries both. The address half is refused in
+         * SFAF_Notifications::facts(); this is the other half, and the two are
+         * the same decision read from opposite ends.
+         *
+         * THE LINK IS A CREDENTIAL, so the gate is written as "only when the
+         * person asked for it" rather than "unless they did not". An empty
+         * format, which is what every non-hybrid event stores, is not an
+         * in-person answer: it means the event never asked, and a purely online
+         * event's registrants must still be sent the link.
+         */
+        if ( self::is_hybrid( $event_id ) && self::MODE_ONLINE !== (string) $format ) {
             return '';
         }
         $url  = self::link( $event_id );
@@ -339,8 +520,25 @@ class SFAF_Online {
      * @param string $kind
      * @return string
      */
-    public static function joining_text( $event_id, $kind ) {
+    public static function joining_text( $event_id, $kind, $format = '' ) {
         if ( ! self::sends_with( $event_id, $kind ) ) {
+            return '';
+        }
+        /*
+         * AND NOT TO SOMEBODY WHO SAID THEY ARE COMING IN PERSON (3.96.0).
+         *
+         * A hybrid event has an address and a meeting link, and the rule is
+         * that no message carries both. The address half is refused in
+         * SFAF_Notifications::facts(); this is the other half, and the two are
+         * the same decision read from opposite ends.
+         *
+         * THE LINK IS A CREDENTIAL, so the gate is written as "only when the
+         * person asked for it" rather than "unless they did not". An empty
+         * format, which is what every non-hybrid event stores, is not an
+         * in-person answer: it means the event never asked, and a purely online
+         * event's registrants must still be sent the link.
+         */
+        if ( self::is_hybrid( $event_id ) && self::MODE_ONLINE !== (string) $format ) {
             return '';
         }
         $url = self::link( $event_id );
@@ -410,11 +608,28 @@ class SFAF_Online {
      * @param int $event_id
      * @return string
      */
-    public static function ics_url_with_link( $event_id ) {
+    public static function ics_url_with_link( $event_id, $format = '' ) {
         $event_id = (int) $event_id;
         $url      = sfaf_ics_url( $event_id );
 
         if ( ! self::sends_with( $event_id, 'confirmation' ) || ! self::has_link( $event_id ) ) {
+            return $url;
+        }
+        /*
+         * AND NOT TO SOMEBODY WHO SAID THEY ARE COMING IN PERSON (3.96.0).
+         *
+         * THE SAME GATE AS joining_html(), AND IT HAS TO BE HERE AS WELL. The
+         * calendar file is a SECOND way the link leaves, and a wider one: an
+         * .ics syncs to the person's phone, their laptop and any calendar they
+         * have shared. Gating the email and not the file would have handed the
+         * credential to every in-person registrant of every hybrid event, in
+         * the one copy that spreads furthest.
+         *
+         * WRITTEN AS AN ALLOW, like the other one: an empty format means the
+         * event never asked, which is every non-hybrid event, and those must
+         * keep working exactly as they did.
+         */
+        if ( self::is_hybrid( $event_id ) && self::MODE_ONLINE !== (string) $format ) {
             return $url;
         }
         $token = self::ics_join_token( $event_id );

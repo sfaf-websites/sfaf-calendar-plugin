@@ -218,18 +218,69 @@ class SFAF_Notifications {
     }
 
     /** The event's facts, once, for every builder. */
-    private static function facts( $event_id ) {
+    private static function facts( $event_id, $format = '' ) {
         $date  = (string) get_post_meta( $event_id, '_uc_event_date', true );
         $start = (string) get_post_meta( $event_id, '_uc_start_time', true );
         $end   = (string) get_post_meta( $event_id, '_uc_end_time', true );
+
+        /*
+         * THE ADDRESS GOES TO THE PEOPLE COMING TO IT, AND TO NOBODY ELSE
+         * (3.96.0).
+         *
+         * A hybrid event has a place AND a meeting link, and the rule is that
+         * no message carries both. Somebody who said they are joining online is
+         * not being sent a street address they are not going to; they get the
+         * link, through SFAF_Online::joining_html(), which refuses the other
+         * half of the same pair.
+         *
+         * IT IS DECIDED HERE BECAUSE THIS IS WHERE THE LOCATION IS READ. Every
+         * message in this class builds its rows from these facts, so replacing
+         * the value once means the confirmation, the reminder, the change
+         * notice and the reinstated message all obey it without four separate
+         * conditions that could disagree.
+         *
+         * "Online Event" RATHER THAN NOTHING, because a row that vanishes reads
+         * as a message that forgot to say where, and this person does know
+         * where: in the joining block below it.
+         */
+        /*
+         * THE EMPTY CASE IS ANSWERED FIRST AND COSTS NOTHING. Every message to
+         * every registrant of every non-hybrid event arrives here with no
+         * format, which is the overwhelming majority of them, and none of them
+         * needs a meta read to find out it is not hybrid.
+         */
+        $location = sfaf_event_location( $event_id );
+        if ( '' !== (string) $format
+            && SFAF_Online::MODE_ONLINE === (string) $format
+            && SFAF_Online::is_hybrid( $event_id ) ) {
+            $location = SFAF_Online::LABEL;
+        }
 
         return array(
             'title'    => get_the_title( $event_id ),
             'date'     => sfaf_ap_date( $date, 'full' ),
             'time'     => sfaf_ap_time_range( $start, $end ),
-            'location' => sfaf_event_location( $event_id ),
+            'location' => $location,
             'url'      => (string) get_permalink( $event_id ),
         );
+    }
+
+    /**
+     * Which format one recipient is in, for a hybrid event.
+     *
+     * '' FOR EVERY EVENT THAT NEVER ASKED, which is what the row stores and
+     * what every reader downstream treats as "this event has one format". A
+     * person object with no format field, which is what the test send and the
+     * older callers hand over, is the same case.
+     *
+     * @param object|array $person
+     * @return string
+     */
+    private static function person_format( $person ) {
+        if ( is_array( $person ) ) {
+            return isset( $person['format'] ) ? (string) $person['format'] : '';
+        }
+        return isset( $person->format ) ? (string) $person->format : '';
     }
 
     /** The detail rows every message shows, in the same order every time. */
@@ -263,7 +314,7 @@ class SFAF_Notifications {
      * photograph at all and would render a flat colour block in its place.
      */
     private static function build_confirmation( $event_id, $person ) {
-        $f = self::facts( $event_id );
+        $f = self::facts( $event_id, self::person_format( $person ) );
 
         /*
          * THE GREETING IS THE FIRST NAME. "You are registered, Mark." is how a
@@ -307,7 +358,7 @@ class SFAF_Notifications {
          * offered here and nowhere else, so "the link is only in the reminder"
          * means it is in no calendar file. See SFAF_Online and sfaf_output_ics().
          */
-        $ics = SFAF_Online::ics_url_with_link( $event_id );
+        $ics = SFAF_Online::ics_url_with_link( $event_id, self::person_format( $person ) );
 
         $custom = self::custom_body( $event_id, 'confirmation' );
 
@@ -328,7 +379,7 @@ class SFAF_Notifications {
          * sentence saying one is coming, which is what somebody who has just
          * registered for a meeting with no address needs to be told.
          */
-        $html .= SFAF_Online::joining_html( $event_id, 'confirmation' );
+        $html .= SFAF_Online::joining_html( $event_id, 'confirmation', self::person_format( $person ) );
 
         /*
          * ADD TO CALENDAR: A HEADING AND TWO SHORT LABELS.
@@ -367,7 +418,7 @@ class SFAF_Notifications {
             $text .= "We have your place. Here are the details.\n\n";
         }
         $text .= self::detail_text( $f ) . "\n\n";
-        $text .= SFAF_Online::joining_text( $event_id, 'confirmation' );
+        $text .= SFAF_Online::joining_text( $event_id, 'confirmation', self::person_format( $person ) );
         if ( $gcal || $ics ) { $text .= "Add to calendar\n"; }
         if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
         if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
@@ -386,7 +437,7 @@ class SFAF_Notifications {
 
     /** (b) THE MORNING-OF REMINDER. */
     private static function build_reminder( $event_id, $person ) {
-        $f      = self::facts( $event_id );
+        $f      = self::facts( $event_id, self::person_format( $person ) );
         $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
         $staff  = ( $person && ! empty( $person->is_staff ) );
         $custom = self::custom_body( $event_id, 'reminder' );
@@ -413,7 +464,7 @@ class SFAF_Notifications {
          * withholding the address of their own event to be careful would be
          * carefulness pointed at the wrong people.
          */
-        $html .= SFAF_Online::joining_html( $event_id, 'reminder' );
+        $html .= SFAF_Online::joining_html( $event_id, 'reminder', self::person_format( $person ) );
 
         if ( $f['url'] ) {
             $html .= SFAF_Email::button( $f['url'], 'See the event page', 'primary' );
@@ -432,7 +483,7 @@ class SFAF_Notifications {
             $text .= "This is the copy of the reminder everybody registered has just been sent.\n\n";
         }
         $text .= self::detail_text( $f ) . "\n\n";
-        $text .= SFAF_Online::joining_text( $event_id, 'reminder' );
+        $text .= SFAF_Online::joining_text( $event_id, 'reminder', self::person_format( $person ) );
         if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
         if ( $cancel ) {
             $text .= "\nCannot make it? Cancel your registration so somebody else can take your place. We will ask you to confirm: " . $cancel . "\n";
@@ -687,7 +738,7 @@ class SFAF_Notifications {
      *                       Keyed by the field label, already formatted.
      */
     private static function build_changed( $event_id, $person, $context = array() ) {
-        $f       = self::facts( $event_id );
+        $f       = self::facts( $event_id, self::person_format( $person ) );
         $changes = ( isset( $context['changes'] ) && is_array( $context['changes'] ) ) ? $context['changes'] : array();
         $cancel  = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
 
@@ -814,7 +865,7 @@ class SFAF_Notifications {
      * }
      */
     private static function build_reinstated( $event_id, $person, $context = array() ) {
-        $f      = self::facts( $event_id );
+        $f      = self::facts( $event_id, self::person_format( $person ) );
         $was    = isset( $context['was'] ) ? trim( (string) $context['was'] ) : '';
         $moved  = ( '' !== $was && $was !== (string) get_post_meta( $event_id, '_uc_event_date', true ) );
         $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';

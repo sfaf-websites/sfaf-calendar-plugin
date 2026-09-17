@@ -1500,6 +1500,24 @@
                     '<h3>Register for this Event</h3>' +
                     '<p class="uc-modal-subtitle" id="uc-rsvp-event-title"></p>' +
                     '<div class="uc-rsvp-form">' +
+                        // HOW WILL YOU ATTEND, ON A HYBRID EVENT AND NOWHERE
+                        // ELSE (3.96.0).
+                        //
+                        // FIRST, BECAUSE IT CHANGES WHAT THE REST OF THE FORM
+                        // MEANS. What somebody picks here decides which
+                        // capacity they take a place in and whether they are
+                        // sent the address or the meeting link, so asking it
+                        // after their name and email would be asking the one
+                        // question that matters last.
+                        //
+                        // EMPTY AND HIDDEN UNTIL THE BUTTON SAYS OTHERWISE. The
+                        // modal is built once for the whole page and does not
+                        // know which event it is about to describe; the button
+                        // that opens it carries data-uc-formats and
+                        // data-uc-full, both decided by the server. Nothing
+                        // here works out for itself what a format is or whether
+                        // one has room.
+                        '<div class="uc-rsvp-format" id="uc-rsvp-format" hidden></div>' +
                         // TWO FIELDS, AND THE SECOND IS GENUINELY OPTIONAL.
                         //
                         // Somebody registering for an HIV testing session or a
@@ -1599,6 +1617,11 @@
             }
             $('#uc-rsvp-event-title').text(title);
 
+            // WHICH FORMATS THIS EVENT OFFERS, from the button the server
+            // stamped. Drawn before the reset below, so the reset clears these
+            // radios too and no previous event's choice survives into this one.
+            renderFormatChoice(this);
+
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
             $('#uc-rsvp-first-name, #uc-rsvp-last-name, #uc-rsvp-email, #uc-rsvp-phone').val('');
@@ -1645,6 +1668,65 @@
         currentEventId = null;
     }
 
+    /**
+     * Draw "How will you attend?" for a hybrid event, and nothing otherwise.
+     *
+     * ONE FORMAT MEANS NO QUESTION. An in-person or online event has one
+     * answer, so asking is asking somebody to confirm the only thing they could
+     * have said. The block is emptied and hidden, which also clears whatever
+     * the previous event left in it.
+     *
+     * A FULL FORMAT IS SHOWN AND DISABLED, NOT OMITTED. Somebody who came to
+     * join online needs to be told that online is full; leaving the option out
+     * tells them nothing and reads as the event simply not offering it. When
+     * both are full the whole form is beside the point, and the server refuses
+     * anyway, so the question is drawn with both marked and the message says so.
+     *
+     * THE SERVER DECIDED BOTH LISTS. This reads two attributes and draws them.
+     * It does not ask what a format is or count anything, so what is on the
+     * screen and what SFAF_RSVP::submit() will accept cannot drift apart.
+     */
+    function renderFormatChoice(btn) {
+        var box = $('#uc-rsvp-format');
+        var formats = ($(btn).attr('data-uc-formats') || '').split(',').filter(Boolean);
+        var full = ($(btn).attr('data-uc-full') || '').split(',').filter(Boolean);
+
+        box.empty();
+        if (formats.length < 2) {
+            box.attr('hidden', 'hidden');
+            return;
+        }
+
+        var labels = { in_person: 'In person', online: 'Online' };
+        var html = '<fieldset class="uc-rsvp-format-set">' +
+            '<legend>How will you attend? *</legend>';
+        var open = 0;
+        for (var i = 0; i < formats.length; i++) {
+            var f = formats[i];
+            var isFull = (full.indexOf(f) !== -1);
+            if (!isFull) { open++; }
+            html += '<label class="uc-rsvp-format-opt' + (isFull ? ' is-full' : '') + '">' +
+                '<input type="radio" name="uc_rsvp_format" value="' + f + '"' +
+                (isFull ? ' disabled' : '') + ' />' +
+                '<span>' + (labels[f] || f) + (isFull ? ' (full)' : '') + '</span>' +
+                '</label>';
+        }
+        if (0 === open) {
+            html += '<p class="uc-rsvp-note">Both options are full.</p>';
+        } else if (open === 1) {
+            html += '<p class="uc-rsvp-note">One option is full. The other still has places.</p>';
+        }
+        html += '</fieldset>';
+        box.html(html).removeAttr('hidden');
+
+        // WITH ONE OPTION LEFT IT IS CHOSEN, NOT LEFT BLANK. There is nothing to
+        // decide, and making somebody press the only button there is before the
+        // form will take them is a step that answers nothing.
+        if (1 === open) {
+            box.find('input[type="radio"]').not('[disabled]').prop('checked', true);
+        }
+    }
+
     function submitRSVP() {
         var first = $('#uc-rsvp-first-name').val().trim();
         var last  = $('#uc-rsvp-last-name').val().trim();
@@ -1664,6 +1746,23 @@
          * the label, in this function and in SFAF_RSVP::submit(), and a check
          * added here would be the one that quietly made it required.
          */
+        /*
+         * THE FORMAT IS ASKED FIRST AND CHECKED FIRST, because it is the
+         * question the rest of the form depends on. Only a hybrid event draws
+         * it, so on every other event this block sees no radios and says
+         * nothing. The server validates it again against the event's own list.
+         */
+        var formatBox = $('#uc-rsvp-format');
+        var format = '';
+        if (formatBox.length && !formatBox.attr('hidden')) {
+            format = formatBox.find('input[type="radio"]:checked').val() || '';
+            if (!format) {
+                $('#uc-rsvp-error').text('Please choose whether you are attending in person or online.').show();
+                formatBox.find('input[type="radio"]').not('[disabled]').first().focus();
+                return;
+            }
+        }
+
         if (!first) {
             $('#uc-rsvp-error').text('Please fill in your first name.').show();
             $('#uc-rsvp-first-name').focus();
@@ -1694,7 +1793,10 @@
                 last_name:  last,
                 email:      email,
                 phone:      phone,
-                optin:      optin
+                optin:      optin,
+                // '' on every event that did not ask. submit() validates it
+                // against the event's own formats rather than trusting it.
+                format:     format
             },
             success: function(response) {
                 if (response.success) {
