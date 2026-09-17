@@ -87,6 +87,9 @@ add_action( 'admin_notices', 'sfaf_render_fatal_notice' );
 $sfaf_includes = array(
     'includes/class-sfaf-credentials.php',
     'includes/sfaf-template-functions.php',
+    // The event video: one link, two services, and the resolver every surface
+    // reads. Before SFAF_Series, whose save_meta() asks it whether a link parses.
+    'includes/class-sfaf-video.php',
     'includes/class-sfaf-series.php',
     'includes/class-sfaf-venues.php',
     // Online events. After SFAF_Venues, whose set_for_event() it calls to clear

@@ -775,6 +775,20 @@ class SFAF_Request {
             );
         }
 
+        /* ---- The video. ----
+         *
+         * REFUSED WITH THE SAME MESSAGE THE EDITOR GIVES, from the same
+         * validator, so a requester and a member of staff are told the same
+         * thing about the same link. Empty is fine: the field is optional.
+         */
+        $clean['video'] = trim( (string) ( $post['video_url'] ?? '' ) );
+        if ( '' !== $clean['video'] ) {
+            $video_ok = SFAF_Video::validate( $clean['video'] );
+            if ( is_wp_error( $video_ok ) ) {
+                $errors['video_url'] = $video_ok->get_error_message();
+            }
+        }
+
         /* ---- RSVP. ---- */
         $clean['rsvp']     = ! empty( $post['rsvp'] );
         $clean['capacity'] = 0;
@@ -1127,6 +1141,10 @@ class SFAF_Request {
             SFAF_Teams::set_access_for_event( $event_id, $c['teams'] );
         }
 
+        // Validated in clean(), so a value here has already parsed.
+        if ( ! empty( $c['video'] ) ) {
+            update_post_meta( $event_id, SFAF_Video::META, $c['video'] );
+        }
         update_post_meta( $event_id, SFAF_Submissions::META_KIND, SFAF_Submissions::KIND_STAFF );
         update_post_meta( $event_id, self::META_NAME, $c['name'] );
         update_post_meta( $event_id, self::META_EMAIL, $email );
@@ -1799,6 +1817,24 @@ class SFAF_Request {
                     <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
                     <?php self::field_error( $err( 'description' ) ); ?>
                 </div>
+
+                <?php
+                /*
+                 * OFFERED HERE AND NOT ON THE COMMUNITY FORM, the same split
+                 * the FAQ picker has and for a plainer reason: this form is
+                 * behind an emailed token to an sfaf.org address, so whoever
+                 * fills it in is staff. The community form is open to anybody
+                 * with the link, and a URL field on an open form is a place to
+                 * put a link to something else.
+                 */
+                ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Video</span>
+                    <input type="url" name="video_url" maxlength="300" value="<?php echo esc_attr( $v( 'video' ) ); ?>"
+                           placeholder="https://www.youtube.com/watch?v=&hellip;" />
+                    <span class="uc-hint">A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.</span>
+                    <?php self::field_error( $err( 'video_url' ) ); ?>
+                </label>
 
                 <?php $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) ); ?>
                 <?php if ( ! is_wp_error( $cats ) && ! empty( $cats ) ) : ?>

@@ -136,6 +136,12 @@ echo "=== time controls ==="
 run "time-step --self-test" php .claude/time-step-test.php --self-test
 
 echo
+# The event video: what the field accepts, and which of the three possible
+# videos an event actually shows.
+echo "=== the event video ==="
+run "video --self-test" php .claude/video-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

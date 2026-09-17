@@ -524,6 +524,11 @@ class SFAF_Series {
         return $t ? (int) $t->term_id : 0;
     }
 
+    /** No series in this world carries a video; the editor still asks. */
+    public static function video( $term_id ) {
+        return '';
+    }
+
     public static function name_for_event( $post_id ) {
         $t = self::for_event( $post_id );
         return $t ? $t->name : '';
@@ -570,6 +575,7 @@ require_once $root . '/includes/class-sfaf-categories.php';
 require_once $root . '/includes/class-sfaf-organizers.php';
 require_once $root . '/includes/class-sfaf-venues.php';
 require_once $root . '/includes/class-sfaf-faq-sets.php';
+require_once $root . "/includes/class-sfaf-video.php";
 require_once $root . '/includes/class-sfaf-online.php';
 require_once $root . '/includes/class-sfaf-cancellation.php';
 require_once $root . '/includes/class-sfaf-notifications.php';

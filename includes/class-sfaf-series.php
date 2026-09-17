@@ -54,6 +54,21 @@ class SFAF_Series {
     const META_FAQ_SET = '_sfaf_series_faq_set';
 
     /**
+     * Term meta: one video link every event in the series shows.
+     *
+     * INHERITED, NOT COPIED, which is the opposite of how the FAQ set works and
+     * the difference is deliberate. A FAQ set is copied onto the event at
+     * creation so editing the set later does not rewrite events somebody has
+     * already adjusted. A video is one recording of one group, and correcting
+     * its link should correct it everywhere at once, so it is read through
+     * SFAF_Video::resolve() at render time and stored in exactly one place.
+     *
+     * An event overrides it with its own link, or refuses it outright with the
+     * "no video" tick. See SFAF_Video.
+     */
+    const META_VIDEO = '_sfaf_series_video';
+
+    /**
      * Term meta: the post ID of the uc_event that used to BE this series.
      *
      * THIS IS WHAT KEEPS EXISTING EMBED CODE WORKING. Every [sfaf_calendar]
@@ -418,6 +433,21 @@ class SFAF_Series {
      */
     public static function default_faq_set( $term_id ) {
         return (string) get_term_meta( (int) $term_id, self::META_FAQ_SET, true );
+    }
+
+    /**
+     * The series' video link, as it was typed.
+     *
+     * READ THROUGH SFAF_Video::resolve() RATHER THAN DIRECTLY. This is the
+     * storage; the rule about which video an event shows lives in one place and
+     * that place is not here. A surface calling this directly would show a
+     * series video on an event that had turned it off.
+     *
+     * @param int $term_id
+     * @return string
+     */
+    public static function video( $term_id ) {
+        return (string) get_term_meta( (int) $term_id, self::META_VIDEO, true );
     }
 
     /**
@@ -942,6 +972,21 @@ class SFAF_Series {
                 update_term_meta( $term_id, self::META_FAQ_SET, $set );
             } else {
                 delete_term_meta( $term_id, self::META_FAQ_SET );
+            }
+        }
+        if ( array_key_exists( 'video', $args ) ) {
+            /*
+             * STORED ONLY IF IT PARSES. The editor validates and refuses with a
+             * message before reaching here, so this is the second of the two
+             * gates rather than the first: it stops a caller that skipped the
+             * form putting an address in that no renderer will ever draw.
+             * Anything else clears, which is how the field is emptied.
+             */
+            $video = trim( (string) $args['video'] );
+            if ( '' !== $video && SFAF_Video::parse( $video ) ) {
+                update_term_meta( $term_id, self::META_VIDEO, $video );
+            } else {
+                delete_term_meta( $term_id, self::META_VIDEO );
             }
         }
         if ( ! empty( $args['legacy_id'] ) ) {

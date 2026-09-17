@@ -2200,6 +2200,43 @@ class SFAF_Portal {
             update_post_meta( $event_id, '_uc_gofundme_url', esc_url_raw( wp_unslash( $_POST['gofundme_url'] ) ) );
         }
         /*
+         * THE VIDEO, AND THE TICK THAT REFUSES AN INHERITED ONE.
+         *
+         * REJECTED AND REPORTED, NEVER STORED, which is the reply-to rule and
+         * it is the right one for the same reason: an address no player can
+         * open is worse than an empty field, because the field at least says
+         * out loud that there is no video. The refusal names both services,
+         * because somebody holding a Facebook link needs to know what to do
+         * next rather than that they were wrong.
+         *
+         * The value is stored EXACTLY AS TYPED. What is parsed out of it is
+         * re-derived on every render, so correcting a link corrects the video.
+         */
+        if ( isset( $_POST['uc_video_present'] ) ) {
+            $raw = trim( (string) wp_unslash( $_POST['video_url'] ) );
+            if ( '' === $raw ) {
+                delete_post_meta( $event_id, SFAF_Video::META );
+            } else {
+                $ok = SFAF_Video::validate( $raw );
+                if ( is_wp_error( $ok ) ) {
+                    set_transient(
+                        'sfaf_video_rejected_' . $user->ID . '_' . $event_id,
+                        array( 'raw' => $raw, 'why' => $ok->get_error_message() ),
+                        5 * MINUTE_IN_SECONDS
+                    );
+                } else {
+                    update_post_meta( $event_id, SFAF_Video::META, $raw );
+                }
+            }
+            // The tick travels with the field, so it is answered exactly when
+            // the control was on the form.
+            if ( ! empty( $_POST['video_none'] ) ) {
+                update_post_meta( $event_id, SFAF_Video::META_NONE, '1' );
+            } else {
+                delete_post_meta( $event_id, SFAF_Video::META_NONE );
+            }
+        }
+        /*
          * WHO GETS TOLD ON A NEW REGISTRATION.
          *
          * NO LONGER A FIELD OF ITS OWN. Until 3.25.0 this was a checkbox and a
@@ -7957,7 +7994,27 @@ class SFAF_Portal {
             'image_id'    => intval( $_POST['series_image_id'] ?? 0 ),
             'image_url'   => wp_unslash( $_POST['series_image_url'] ?? '' ),
             'faq_set'     => sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ?? '' ) ),
+            'video'       => trim( (string) wp_unslash( $_POST['series_video'] ?? '' ) ),
         );
+
+        /*
+         * A VIDEO THAT DOES NOT PARSE IS REPORTED AND NOT STORED, the same rule
+         * the event's field follows. save_meta() would silently drop it; saying
+         * so is the difference between a field that did not take and a field
+         * somebody thinks took.
+         */
+        if ( '' !== $args['video'] ) {
+            $ok = SFAF_Video::validate( $args['video'] );
+            if ( is_wp_error( $ok ) ) {
+                set_transient(
+                    'sfaf_video_rejected_series_' . $user->ID . '_' . $term_id,
+                    array( 'raw' => $args['video'], 'why' => $ok->get_error_message() ),
+                    5 * MINUTE_IN_SECONDS
+                );
+                // Leave whatever is stored alone rather than clearing it.
+                unset( $args['video'] );
+            }
+        }
         $name = wp_unslash( $_POST['series_name'] ?? '' );
 
         if ( $term_id ) {
@@ -8555,6 +8612,38 @@ class SFAF_Portal {
                     <?php SFAF_Rich_Text::render( 'uc-series-desc', 'series_desc', $term ? $term->description : '', array( 'rows' => 8 ) ); ?>
                     <span class="uc-hint">Shown on the series page, including while it has no dates scheduled.</span>
                 </div>
+
+                <?php
+                /*
+                 * ONE VIDEO FOR EVERY EVENT IN THE SERIES. Read at render time
+                 * through SFAF_Video::resolve() rather than copied onto each
+                 * event, so correcting the link here corrects every occurrence.
+                 * An event overrides it with its own, or refuses it with the
+                 * "no video" tick in its editor.
+                 */
+                $series_video    = $term_id ? SFAF_Series::video( $term_id ) : '';
+                $series_video_no = $term_id ? get_transient( 'sfaf_video_rejected_series_' . $user->ID . '_' . $term_id ) : false;
+                if ( $series_video_no ) {
+                    delete_transient( 'sfaf_video_rejected_series_' . $user->ID . '_' . $term_id );
+                    $series_video = isset( $series_video_no['raw'] ) ? $series_video_no['raw'] : $series_video;
+                }
+                ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Video</span>
+                    <input type="url" name="series_video" id="uc-series-video"
+                           value="<?php echo esc_attr( $series_video ); ?>"
+                           placeholder="https://www.youtube.com/watch?v=&hellip;"
+                           <?php echo $series_video_no ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-series-video-error"' : ''; ?> />
+                    <?php if ( $series_video_no ) : ?>
+                        <p class="uc-field-error" id="uc-series-video-error" data-uc-for="uc-series-video" role="alert">
+                            <?php echo esc_html( $series_video_no['why'] ); ?>
+                        </p>
+                    <?php endif; ?>
+                    <span class="uc-hint">
+                        A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
+                        It plays on every event in this series unless that event has its own.
+                    </span>
+                </label>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Default FAQ set</span>
@@ -12124,6 +12213,7 @@ class SFAF_Portal {
                     </label>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
+                    <?php $this->render_video_field( $user, $event_id ); ?>
                 </section>
 
                 <?php
@@ -12869,6 +12959,74 @@ class SFAF_Portal {
     private function recurrence_from_post() {
         return SFAF_Recurrence::from_post( $_POST );
     }
+
+    /**
+     * The Video field, and the tick that refuses an inherited one.
+     *
+     * TWO CONTROLS FOR ONE ANSWER, AND THE SECOND IS NOT OPTIONAL. A series
+     * carries a video every event in it shows, so an EMPTY box here means
+     * "use the series' one". That leaves no way to say "this occurrence has
+     * none" without also clearing the series, which would take the video off
+     * every other date. The tick is the only thing that can say it.
+     *
+     * WHAT IS RESOLVED IS SHOWN BACK. If the box is empty and a series video is
+     * being inherited, the hint says which one is playing, because otherwise
+     * the editor shows an empty field for a page that has a video on it.
+     *
+     * A REJECTED VALUE COMES BACK IN THE BOX with the reason, in the same shape
+     * the reply-to rejection uses, so the person can see what they pasted
+     * rather than losing it to a blank field.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_video_field( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        $own      = $event_id ? SFAF_Video::own( $event_id ) : '';
+        $none     = $event_id ? SFAF_Video::is_none( $event_id ) : false;
+
+        $rejected = $event_id ? get_transient( 'sfaf_video_rejected_' . $user->ID . '_' . $event_id ) : false;
+        if ( $rejected ) {
+            delete_transient( 'sfaf_video_rejected_' . $user->ID . '_' . $event_id );
+        }
+        $value = ( is_array( $rejected ) && isset( $rejected['raw'] ) ) ? $rejected['raw'] : $own;
+
+        // What a visitor would see today, so the hint can name it.
+        $inherited = '';
+        if ( '' === $own && ! $none && $event_id ) {
+            $inherited = SFAF_Video::resolve( $event_id );
+        }
+        ?>
+        <?php // The marker travels WITH the controls, so a form that did not
+              // draw them leaves both alone rather than clearing them. ?>
+        <input type="hidden" name="uc_video_present" value="1" />
+        <label class="uc-field">
+            <span class="uc-field-label">Video</span>
+            <input type="url" name="video_url" id="uc-event-video"
+                   value="<?php echo esc_attr( $value ); ?>"
+                   placeholder="https://www.youtube.com/watch?v=&hellip;"
+                   <?php echo $rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-video-error"' : ''; ?> />
+            <?php if ( $rejected ) : ?>
+                <p class="uc-field-error" id="uc-event-video-error" data-uc-for="uc-event-video" role="alert">
+                    <?php echo esc_html( $rejected['why'] ); ?>
+                </p>
+            <?php endif; ?>
+            <span class="uc-hint">
+                A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
+                <?php if ( '' !== $inherited ) : ?>
+                    Leave this empty and the series video plays here:
+                    <?php echo esc_html( $inherited ); ?>
+                <?php endif; ?>
+            </span>
+        </label>
+        <label class="uc-check">
+            <input type="checkbox" name="video_none" value="1" <?php checked( $none ); ?> />
+            This event has no video
+        </label>
+        <span class="uc-hint uc-hint-spec">Nothing plays here, even if the series has a video.</span>
+        <?php
+    }
+
 
     /**
      * Where the event happens: a venue, or somewhere one-off.

@@ -144,6 +144,24 @@ while ( have_posts() ) :
                         <div class="uc-single-image"><?php echo sfaf_event_thumbnail( $post_id, 'large' ); ?></div>
                     <?php endif; ?>
 
+                    <?php
+                    /*
+                     * THE VIDEO, ABOVE THE DESCRIPTION AND ON THIS PAGE ONLY.
+                     *
+                     * SFAF_Video::resolve() is the whole rule about which video
+                     * an event shows, so this asks nothing about series or ticks
+                     * and cannot disagree with anything else. It returns an
+                     * empty string when there is nothing to draw, which is every
+                     * event that has not been given one.
+                     *
+                     * No card, no list row, no hover preview and no email calls
+                     * this. A frame is 16:9 of somebody's screen and a card is
+                     * 300px of a column; in mail it is an empty box, because no
+                     * mail client runs an iframe.
+                     */
+                    echo SFAF_Video::embed_html( $post_id );
+                    ?>
+
                     <div class="uc-single-body">
                         <?php the_content(); ?>
                     </div>
