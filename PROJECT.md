@@ -3236,6 +3236,69 @@ and in `SFAF_Portal::apply_to_group()`, like the address it replaces. The
 recurrence list holds literals rather than a call, because a static property
 initializer is a constant expression; the test asserts the two lists agree.
 
+### Hybrid events are a third mode, not a second tick (3.96.0)
+
+An event is **in person, online, or hybrid**, and hybrid runs both formats at
+once. `SFAF_Online::mode()` answers with one of three words and every reader
+asks it, so "online and hybrid at the same time" is not a state that exists.
+
+**It is a third MODE because two ticks have four combinations and only three of
+them mean anything.** The editor still draws two checkboxes, because that is
+what Mark asked for and it reads better than a three-way control, but the
+server folds them: `save_event_from_post()` turns the pair into one mode and
+**hybrid wins the impossible fourth**, because hybrid is the mode that KEEPS the
+address and clearing an address is the change nothing here can undo.
+
+**HYBRID IS NOT `_uc_online`, AND THAT IS THE WHOLE REASON IT IS A SEPARATE
+KEY.** `is_online()` is what clears the place and puts "Online Event" wherever
+an address would go, on every surface listed above. A hybrid event HAS a place,
+so it must not answer yes to that question. What it shares with online is the
+link, so the two questions are split:
+
+```
+is_online()            has no place
+has_online_format()    some registrants join by link   (online OR hybrid)
+has_in_person_format() some registrants turn up        (in person OR hybrid)
+```
+
+`link()` and `sends()` gate on the second, which is how the meeting link reaches
+a hybrid event **without a second reader of the meta being written**. The
+whitelist in `.claude/online-events-test.php` is unchanged and still passes,
+because `link()` is still the only thing that reads the key.
+
+**NO MESSAGE CARRIES BOTH HALVES, AND THAT IS TWO REFUSALS AT OPPOSITE ENDS.**
+`SFAF_Notifications::facts()` refuses the ADDRESS to an online registrant;
+`SFAF_Online::joining_html()` refuses the LINK to an in-person one. Either alone
+leaves a message carrying both, so both are asserted in both directions and
+planted separately in `.claude/plant-hybrid.php`.
+
+> **THE CALENDAR FILE WAS THE THIRD WAY OUT.** `ics_url_with_link()` did not
+> know who it was for, so a hybrid event with the confirmation ticked would have
+> handed the join copy to every in-person registrant, in the copy that travels
+> furthest: an `.ics` syncs to a phone, a laptop and any shared calendar. It
+> takes the same gate. **When a credential is gated in the email, check the
+> calendar file in the same breath.**
+
+**THE GATE IS WRITTEN AS AN ALLOW, NOT A DENY**, and that is load bearing. An
+empty format is what every non-hybrid event stores, because it never asked, and
+it is **not** an in-person answer. Written as "unless they said in person" it
+would have stopped every purely online event sending its link.
+
+**CAPACITY IS PER FORMAT, AND ONE FULL FORMAT IS NOT A FULL EVENT.** In person
+keeps `_uc_capacity`, so nothing migrates; online is `_uc_capacity_online`.
+`sfaf_format_full()` answers one format and `sfaf_event_full()` answers the
+event, and the form still has somewhere to send the next person when only one is
+full. That is why Mark's open question answered itself: one number cannot say
+"online is full, there are still places in person".
+
+**The `format` column on `uc_rsvps` is NOT backfilled.** Setting every existing
+row to its event's current format would be writing an answer nobody gave, and it
+would be wrong the moment an event's format changed afterwards. Readers ask the
+EVENT whether it is hybrid and only consult the column when it is.
+
+**Deliberately not built, and these are decisions rather than gaps:** a
+registrant changing format after registering, the two public forms offering
+hybrid, and per-registrant approval.
 ### Private events are unlisted links, not access control
 
 One checkbox on the event, default off (`_uc_private`).

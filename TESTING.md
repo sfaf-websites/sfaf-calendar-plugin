@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 175 items.** Quick 149, needs real conditions 23, blocked on other
+**Outstanding: 178 items.** Quick 151, needs real conditions 24, blocked on other
 people 3.
 
 ---
@@ -2202,6 +2202,35 @@ by a person on sfaf.org.**
 - **Tick and untick while watching the rows below.** Nothing should move.
 
 ---
+
+### 1.153 A series video on every occurrence, and one event refusing it (3.96.0)
+
+Put a YouTube link on a series with several upcoming dates and open two of those
+event pages. The same video plays above the description on both. Then open one
+of them, paste a different YouTube link into its Video field, and check that
+event alone changes. Then clear that field, tick **This event has no video** on
+it, and check the video is gone from that one page and still on the others.
+
+**Why it needs a person:** the resolver is unit tested, but nothing here can
+open an event page on sfaf.org and watch a frame load. What is being checked is
+that the page the resolver feeds is the page a visitor sees, and that a
+`youtube-nocookie.com` frame is not blocked by anything on the live site.
+
+Also paste embed code into the field and confirm it is refused with the message
+naming both services, rather than stripped or accepted.
+
+### 1.154 Two extra pictures on a submission, on both surfaces (3.96.0)
+
+Send a community submission with a featured picture and two others. On the
+pending row, check the featured one is the large thumbnail and the two others
+appear under **Also sent**, each opening the full size file in a new tab. Open
+the event in the editor and check the request panel shows the same three, the
+featured one first.
+
+**Why it needs a person:** it needs a real upload of three real files through a
+browser, which the build environment has no way to do. **The half that is NOT
+testable yet is putting one of them into a description through Insert image**,
+because that control is part of the same brief and is not built.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -2502,6 +2531,31 @@ confirming here is that a real log reaches it.
 
 ---
 
+
+### 2.14 A hybrid event registered in both formats, end to end (3.96.0)
+
+Create an event, tick **This is a hybrid event**, give it a venue AND a meeting
+link, tick the confirmation delivery, and set **Places in person** to 1 and
+**Places online** to 1. Then, from two different addresses:
+
+1. Register choosing **In person**. The confirmation must carry the address and
+   **must not carry the meeting link anywhere**, including in the calendar file
+   it offers. Open that .ics and read it.
+2. Register choosing **Online**. That confirmation must carry the link and say
+   "Online Event" where the address would be.
+3. Open the form a third time. Both options now read (full) and the form says
+   so. Cancel one registration and check that format alone opens again.
+
+**Why it needs a person:** there is no WordPress, no database, no browser and no
+mail here, and this is the one path where getting it wrong sends a meeting link
+to somebody who said they were coming in person. The gates are unit tested and
+sixteen planted faults are caught; what a person is checking is that the message
+that actually arrives in an inbox obeys them.
+
+**Also check the morning-of summary and the registration alert.** Both are
+listed as NOT built for hybrid in `HANDOVER.md`: the alert does not name the
+registrant's format and the summary does not group by it. Confirm that is still
+true rather than assuming it, and that neither leaks the link.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
