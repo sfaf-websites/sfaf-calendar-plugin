@@ -11938,21 +11938,28 @@ class SFAF_Portal {
             // ---- THE SIDE COLUMN, built now and printed further down. ------
             ob_start();
             ?>
-                <?php // ---- Capacity: how many, and whether to take names. -- ?>
-                <section class="uc-bento-card">
-                    <h2 class="uc-bento-title">Capacity</h2>
-                    <?php
-                    /*
-                     * DRAWN FROM THE SHARED RSVP SETTINGS, not written out
-                     * here. The registrations screen offers the same four
-                     * controls so nobody has to come back to the editor to
-                     * change a capacity, and neither screen holds a list of
-                     * what they are. Same rule as the manager-owned fields.
-                     */
-                    $rsvp_ctx    = $this->rsvp_settings_context( $user, $event_id );
-                    $rsvp_placed = $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled', 'capacity' ) );
-                    ?>
-                </section>
+                <?php
+                /*
+                 * THE CAPACITY CARD IS GONE (3.96.0), AND ITS CONTROLS MOVED
+                 * RATHER THAN CHANGED.
+                 *
+                 * It held "Accept RSVPs" and one capacity box, in the side
+                 * column, three cards away from the address that capacity was
+                 * a limit on. A hybrid event has TWO limits on two different
+                 * things, and a card headed "Capacity" could not say which
+                 * number belonged to which. They are drawn inside the Location
+                 * card now, each beside the thing it limits, from the same
+                 * shared list by the same renderer down the same save path.
+                 *
+                 * THE CONTEXT IS STILL BUILT HERE, because the side column is
+                 * assembled before the main one and the Location card needs it.
+                 * $rsvp_placed comes back from that card and reaches the
+                 * catch-all under Notifications, so a setting neither claimed
+                 * still appears exactly once.
+                 */
+                $rsvp_ctx    = $this->rsvp_settings_context( $user, $event_id );
+                $rsvp_placed = array();
+                ?>
 
                 <?php
                 // ---- Donate ------------------------------------------------
@@ -12401,7 +12408,15 @@ class SFAF_Portal {
                 <?php $s_loc = $st( 'location' ); ?>
                 <section class="uc-bento-card">
                     <h2 class="uc-bento-title">Location</h2>
-                    <?php $this->render_location_field( $event_id, $s_loc, $prov ); ?>
+                    <?php
+                    // The RSVP controls are drawn inside this field now, each
+                    // beside the thing it limits. What it placed comes back so
+                    // the catch-all below can draw whatever it did not.
+                    $rsvp_placed = array_merge(
+                        $rsvp_placed,
+                        (array) $this->render_location_field( $event_id, $s_loc, $prov, $rsvp_ctx )
+                    );
+                    ?>
                 </section>
 
                 <?php
@@ -13077,8 +13092,40 @@ class SFAF_Portal {
      * @param string $state Field state from field_state().
      * @param array  $prov
      */
-    private function render_location_field( $event_id, $state, $prov ) {
+    private function render_location_field( $event_id, $state, $prov, $rsvp_ctx = null ) {
         $imported = ( '' !== $prov['source'] );
+        /*
+         * THE RSVP CONTROLS LIVE HERE NOW (3.96.0), AND THEY ARE STILL THE
+         * SHARED ONES.
+         *
+         * "Accept RSVPs" and the capacities were a Capacity card in the side
+         * column. They are drawn from render_rsvp_settings() exactly as they
+         * were, by name, so the registrations screen offers the identical
+         * controls, the save path is unchanged and neither screen holds a list
+         * of what they are. What moved is WHERE they are drawn, not what draws
+         * them.
+         *
+         * WHY HERE: a capacity is a limit on a PLACE. The in-person number
+         * belongs under the address it limits and the online number under the
+         * meeting link it limits, and on a hybrid event those are two different
+         * limits on two different things. Read in a card of its own, "Capacity:
+         * 12" could not say which.
+         *
+         * $rsvp_placed IS RETURNED so the caller can pass it to the catch-all,
+         * which is what keeps the 3.2.0 guarantee true: every shared setting is
+         * rendered exactly once, and one this card did not claim appears under
+         * Notifications rather than vanishing.
+         */
+        $rsvp_placed = array();
+        $draw_rsvp   = function ( $only ) use ( $rsvp_ctx, &$rsvp_placed ) {
+            if ( null === $rsvp_ctx ) {
+                return;
+            }
+            $rsvp_placed = array_merge(
+                $rsvp_placed,
+                $this->render_rsvp_settings( $rsvp_ctx, $only, $rsvp_placed )
+            );
+        };
         $text     = $event_id ? (string) get_post_meta( $event_id, '_uc_location', true ) : '';
 
         if ( $imported ) {
@@ -13100,7 +13147,22 @@ class SFAF_Portal {
                 </span>
             </label>
             <?php
-            return;
+            /*
+             * AND ITS RSVP CONTROLS, BEFORE THIS RETURNS (3.96.0).
+             *
+             * An imported event has no online tick and no venue panel, so this
+             * branch leaves early. It still takes registrations and still has a
+             * capacity, and until the Capacity card was removed those two
+             * controls were drawn unconditionally in the side column. Leaving
+             * them out here would have taken them off every imported event: the
+             * catch-all that would otherwise have caught them is inside the
+             * Notifications card, which native events only.
+             *
+             * No online capacity: an imported event cannot be hybrid, because
+             * SFAF_Sources::import_event() refuses all four of the keys.
+             */
+            $draw_rsvp( array( 'rsvp_enabled', 'capacity' ) );
+            return $rsvp_placed;
         }
 
         $venues   = SFAF_Venues::all();
@@ -13136,6 +13198,17 @@ class SFAF_Portal {
              * prefers the radio. So this degrades to three controls and a rule
              * rather than to nothing.
              */
+            ?>
+            <?php
+            /*
+             * WHETHER TO TAKE NAMES AT ALL, ABOVE THE FORMAT QUESTION.
+             *
+             * It governs BOTH capacities, so it cannot sit under either one:
+             * under the address it would read as "accept in-person RSVPs".
+             * First in the card for the same reason the online tick is first,
+             * which is that it decides whether the controls below it apply.
+             */
+            $draw_rsvp( array( 'rsvp_enabled' ) );
             ?>
             <input type="hidden" name="uc_online_present" value="1" />
             <input type="hidden" name="uc_online" value="0" />
@@ -13244,6 +13317,16 @@ class SFAF_Portal {
                      */
                     ?>
                 </div>
+                <?php
+                /*
+                 * AND HOW MANY MAY JOIN BY IT. Under the link, because that is
+                 * what it limits. Drawn only on a hybrid event: an online
+                 * event's single limit is the box under the address, stored
+                 * under the same key it has always used. See
+                 * render_rsvp_setting()'s 'capacity_online' case.
+                 */
+                $draw_rsvp( array( 'capacity_online' ) );
+                ?>
             </div>
 
             <div class="uc-location-place" data-uc-location-place>
@@ -13346,9 +13429,20 @@ class SFAF_Portal {
                     <p class="uc-hint">Shows as: <strong><?php echo esc_html( $text ); ?></strong></p>
                 <?php endif; ?>
             </div>
+            <?php
+            /*
+             * AND HOW MANY MAY COME TO IT. Under the address, because that is
+             * what it limits. On an event that is not hybrid this is the only
+             * capacity box there is, and it is in its format's place: an online
+             * event has no address panel, so it draws here with the venue
+             * controls hidden around it, which is where its one limit belongs.
+             */
+            $draw_rsvp( array( 'capacity' ) );
+            ?>
             </div><?php // uc-location-place: everything the online tick replaces. ?>
         </div>
         <?php
+        return $rsvp_placed;
     }
 
     /* =====================================================================

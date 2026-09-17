@@ -154,6 +154,12 @@ echo "=== hybrid events ==="
 run "hybrid --self-test" php .claude/hybrid-test.php --self-test
 
 echo
+# The RSVP toggle after the controls moved card: it still decides which of the
+# two calendar routes an event has.
+echo "=== the RSVP toggle and the calendar file ==="
+run "rsvp-toggle-calendar --self-test" php .claude/rsvp-toggle-calendar-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 
