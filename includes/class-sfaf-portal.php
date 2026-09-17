@@ -16126,6 +16126,17 @@ class SFAF_Portal {
                         ?>
                     </div>
                 <?php endif; ?>
+                <?php
+                /*
+                 * AND ANYTHING ELSE THEY SENT, beside the featured one and
+                 * labelled as its own group. Outside the featured picture's
+                 * block, because a submission can carry extras with no featured
+                 * picture at all, and only submissions have any of this.
+                 */
+                if ( 'submission' === $shape ) {
+                    $this->render_submitted_extras( $id, 'thumbnail' );
+                }
+                ?>
 
                 <div class="uc-queue-id">
                     <h3 class="uc-queue-title">
@@ -16453,6 +16464,81 @@ class SFAF_Portal {
      * @param array   $prov     SFAF_Sources::provenance() for this event.
      */
     /**
+     * The extra pictures a submission sent, wherever they are shown.
+     *
+     * ONE RENDER FOR BOTH SURFACES, the pending row and the editor's request
+     * panel, so a rule about how these look cannot be true on one screen and
+     * not the other. The size differs because the two surfaces differ; nothing
+     * else does.
+     *
+     * LABELLED AS A GROUP, WHICH IS WHAT DISTINGUISHES THE FEATURED ONE. The
+     * featured picture already carries its own label on both surfaces. Putting
+     * a second label on the rest is what stops three thumbnails in a row
+     * reading as three equal candidates, because they are not candidates at
+     * all: nothing chooses one and approval copies none of them.
+     *
+     * EACH IS AN ANCHOR TO THE FULL FILE IN A NEW TAB, because the only thing
+     * anybody can do with one of these is look at it properly and then download
+     * it. A thumbnail with no link is a picture somebody has to go and find on
+     * the server.
+     *
+     * A FILE THAT HAS GONE IS SIMPLY NOT DRAWN. The submissions folder is meant
+     * to be emptied, so SFAF_Uploads::url() answering '' is the normal end of
+     * one of these rather than an error.
+     *
+     * @param int    $event_id
+     * @param string $size Thumbnail size for the list.
+     */
+    private function render_submitted_extras( $event_id, $size = 'thumbnail' ) {
+        $ids = SFAF_Submit::extras( $event_id );
+        if ( empty( $ids ) ) {
+            return;
+        }
+        $notes = SFAF_Submit::extra_notes( $event_id );
+
+        $shown = array();
+        foreach ( $ids as $i => $extra_id ) {
+            $thumb = SFAF_Uploads::url( $extra_id, $size );
+            if ( '' === $thumb ) {
+                continue;
+            }
+            $shown[] = array(
+                'id'    => $extra_id,
+                'thumb' => $thumb,
+                'note'  => isset( $notes[ $i ] ) ? (string) $notes[ $i ] : '',
+            );
+        }
+        if ( empty( $shown ) ) {
+            return;
+        }
+        ?>
+        <div class="uc-submitted-extras">
+            <span class="uc-field-label">Also sent<?php echo ( count( $shown ) > 1 ) ? ' (' . (int) count( $shown ) . ')' : ''; ?></span>
+            <div class="uc-submitted-extras-list">
+                <?php foreach ( $shown as $n => $x ) : ?>
+                    <a class="uc-submitted-thumb"
+                       href="<?php echo esc_url( SFAF_Uploads::url( $x['id'], 'full' ) ); ?>"
+                       target="_blank" rel="noopener"
+                       title="<?php echo esc_attr( 'Other picture ' . ( $n + 1 ) ); ?>">
+                        <img src="<?php echo esc_url( $x['thumb'] ); ?>" alt="" loading="lazy" />
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <?php
+            /* THE SIZE WARNING TRAVELS WITH THESE TOO. It matters less than it
+             * does for the featured picture, because none of these is going to
+             * be the event's thumbnail, but somebody putting one into a
+             * description still wants to know it is small. */
+            $said = array_values( array_filter( wp_list_pluck( $shown, 'note' ) ) );
+            if ( $said ) :
+                ?>
+                <p class="uc-hint uc-hint-warn"><?php echo esc_html( implode( ' ', array_unique( $said ) ) ); ?></p>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
      * What a staff request asked for, above the form that answers it.
      *
      * TWO THINGS THE EVENT ITSELF CANNOT HOLD. The repeat answer is in plain
@@ -16600,6 +16686,14 @@ class SFAF_Portal {
                     <p class="uc-hint">Download it, size it, and add it on the Images screen. This file is not used on the event.</p>
                 </div>
             <?php endif; ?>
+            <?php
+            /*
+             * AND ANYTHING ELSE THEY SENT. Drawn whether or not there is a
+             * featured picture, because the two are independent: a submission
+             * may carry extras and no featured one at all.
+             */
+            $this->render_submitted_extras( $event_id, 'medium' );
+            ?>
         </div>
         <?php
     }

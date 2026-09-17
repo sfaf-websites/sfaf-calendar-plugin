@@ -226,6 +226,13 @@ class SFAF_Submissions {
     public static function image_field( $error = '' ) {
         echo '<input type="file" name="uc_image" data-uc-test-upload-field />';
     }
+    /* The extra pictures (3.96.0). Stubbed like the featured one and for the
+     * same reason: what must be proved here is that it is rendered beside the
+     * picker, and .claude/extra-images-test.php owns what it contains. */
+    public static function extra_images_field( $errors = array() ) {
+        echo '<input type="file" name="uc_image_extra_1" data-uc-test-extra-field />';
+        echo '<input type="file" name="uc_image_extra_2" data-uc-test-extra-field />';
+    }
     public static function page_open( $t, $a = array() ) {}
     public static function page_close( $a = array() ) {}
 }

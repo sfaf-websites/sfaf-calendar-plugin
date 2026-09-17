@@ -69,6 +69,131 @@ class SFAF_Submit {
     const META_SERIES  = '_uc_submitted_series';
 
     /**
+     * UP TO TWO MORE PICTURES, AND THEY ARE NOT CANDIDATES FOR ANYTHING.
+     *
+     * The featured picture answers "what should this event look like". These
+     * answer "here are some other photographs of it", and the difference is
+     * that nothing chooses between them: no picker lists them, no approval
+     * copies one anywhere, and nothing reads them looking for a thumbnail. The
+     * only way one is ever used is somebody downloading it, sizing it, and
+     * putting it into a description through Insert image.
+     *
+     * STORED AS AN ARRAY OF ATTACHMENT IDS, with the warnings in a second array
+     * in the same order. Two keys rather than one array of pairs, because the
+     * ids are what every reader wants and a reader that has to unpack a shape
+     * to get them is a reader that will one day unpack it wrong.
+     *
+     * THEY LIVE IN THE SUBMISSIONS FOLDER like the featured one, so the whole
+     * folder can still be emptied at any time and a row whose files have gone
+     * simply draws fewer thumbnails.
+     */
+    const META_IMAGE_EXTRA      = '_uc_submitted_image_extra';
+    const META_IMAGE_EXTRA_NOTE = '_uc_submitted_image_extra_note';
+
+    /** How many extras a form offers. Two, and the forms render this many. */
+    const MAX_EXTRA = 2;
+
+    /**
+     * The file input names for the extra pictures.
+     *
+     * TWO SEPARATE SINGLE-FILE INPUTS, NOT ONE MULTIPLE. SFAF_Uploads::inspect()
+     * reads $_FILES[ $field ] as one file, and a `multiple` input gives it
+     * arrays in every slot. Two inputs mean the whole upload path, every one of
+     * its thirteen checks, runs exactly as it does for the featured picture
+     * with nothing changed and nothing duplicated.
+     *
+     * @return string[]
+     */
+    public static function extra_fields() {
+        $out = array();
+        for ( $i = 1; $i <= self::MAX_EXTRA; $i++ ) {
+            $out[] = 'uc_image_extra_' . $i;
+        }
+        return $out;
+    }
+
+    /**
+     * Put the extra pictures through the same upload code the featured one uses.
+     *
+     * THE SAME LIMITER, DELIBERATELY. Three files is three uploads, and the
+     * rate limit counts uploads. Somebody attaching three pictures uses three
+     * of their allowance, which is the honest accounting; sharing one slot
+     * across a submission would let a form be the unit and a form can carry
+     * three files.
+     *
+     * A REFUSED EXTRA DOES NOT REFUSE THE SUBMISSION. The error is returned
+     * against its own field so the form can say which picture it was.
+     *
+     * @param callable|null $limiter
+     * @return array{ids:int[],warnings:string[],errors:array<string,string>}
+     */
+    public static function store_extras( $limiter = null ) {
+        $ids      = array();
+        $warnings = array();
+        $errors   = array();
+
+        foreach ( self::extra_fields() as $field ) {
+            $up = SFAF_Uploads::store( $field, $limiter );
+            if ( '' !== $up['error'] ) {
+                $errors[ $field ] = $up['error'];
+                continue;
+            }
+            if ( ! $up['id'] ) {
+                continue;   // Nothing was attached to this input.
+            }
+            $ids[]      = (int) $up['id'];
+            $warnings[] = (string) $up['warning'];
+        }
+
+        return array( 'ids' => $ids, 'warnings' => $warnings, 'errors' => $errors );
+    }
+
+    /**
+     * The extra pictures on an event, as attachment ids.
+     *
+     * @param int $event_id
+     * @return int[]
+     */
+    public static function extras( $event_id ) {
+        $raw = get_post_meta( (int) $event_id, self::META_IMAGE_EXTRA, true );
+        if ( ! is_array( $raw ) ) {
+            return array();
+        }
+        return array_values( array_filter( array_map( 'intval', $raw ) ) );
+    }
+
+    /**
+     * What was wrong with each extra picture, in the same order as extras().
+     *
+     * @param int $event_id
+     * @return string[]
+     */
+    public static function extra_notes( $event_id ) {
+        $raw = get_post_meta( (int) $event_id, self::META_IMAGE_EXTRA_NOTE, true );
+        return is_array( $raw ) ? array_values( array_map( 'strval', $raw ) ) : array();
+    }
+
+    /**
+     * Store what store_extras() produced, and say nothing when there is nothing.
+     *
+     * @param int      $event_id
+     * @param int[]    $ids
+     * @param string[] $warnings
+     */
+    public static function save_extras( $event_id, $ids, $warnings ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id || empty( $ids ) ) {
+            return;
+        }
+        update_post_meta( $event_id, self::META_IMAGE_EXTRA, array_values( array_map( 'intval', $ids ) ) );
+        // Only when one of them has something to say, so an absent key means
+        // every extra was fine.
+        if ( array_filter( $warnings ) ) {
+            update_post_meta( $event_id, self::META_IMAGE_EXTRA_NOTE, array_values( $warnings ) );
+        }
+    }
+
+    /**
      * Everybody the submitter asked to have told about registrations.
      *
      * THE FIRST OF THESE IS THE SUBMITTER, AND IT IS NOT STORED TWICE. The
@@ -690,21 +815,37 @@ class SFAF_Submit {
             $checked['errors']['uc_image'] = $upload['error'];
         }
 
+        // The extras, through the same upload code and the same limiter.
+        $extra = self::store_extras( function () {
+            return SFAF_Submissions::allow( 'upload_ip', SFAF_Submissions::client(), 10, HOUR_IN_SECONDS );
+        } );
+        if ( ! empty( $extra['errors'] ) ) {
+            $checked['errors'] = array_merge( $checked['errors'], $extra['errors'] );
+        }
+
         if ( ! empty( $checked['errors'] ) ) {
             /*
              * A REJECTED SUBMISSION THAT UPLOADED A FILE DOES NOT KEEP IT. The
              * form cannot put a file back into a file input, so the visitor has
              * to choose it again anyway, and keeping the first one would leave
              * an orphan on disk for every failed attempt.
+             *
+             * THE EXTRAS GO THE SAME WAY, for the same reason and with the same
+             * force: every one of them is a file this submission uploaded and
+             * no submission exists to own them.
              */
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
+            }
+            foreach ( $extra['ids'] as $extra_id ) {
+                wp_delete_attachment( $extra_id, true );
             }
             self::render_form( $series, $checked['clean'], $checked['errors'] );
             return;
         }
 
         $event_id = self::create_event( $checked['clean'], $series, (int) $upload['id'] );
+        self::save_extras( $event_id, $extra['ids'], $extra['warnings'] );
         /* THE WARNING IS KEPT, NOT SHOWN TO THE SUBMITTER. They have already
          * sent it and cannot act on it from the thank-you page; the person
          * who can act on it is the approver, looking at the picture. */
@@ -714,6 +855,9 @@ class SFAF_Submit {
         if ( ! $event_id ) {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
+            }
+            foreach ( $extra['ids'] as $extra_id ) {
+                wp_delete_attachment( $extra_id, true );
             }
             self::render_form( $series, $checked['clean'], array(
                 'form' => 'Something went wrong saving that. Try once more, and if it happens again let the organizers know.',
@@ -1617,6 +1761,7 @@ class SFAF_Submit {
                         <p class="uc-hint">Or send your own, and somebody will size it for the calendar.</p>
                         <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
                     </div>
+                    <?php SFAF_Submissions::extra_images_field( $errors ); ?>
                 </fieldset>
 
                 <?php

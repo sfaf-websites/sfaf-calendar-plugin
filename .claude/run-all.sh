@@ -142,6 +142,12 @@ echo "=== the event video ==="
 run "video --self-test" php .claude/video-test.php --self-test
 
 echo
+# The two extra pictures a submission may send, and the much longer list of
+# things they are not.
+echo "=== extra submitted pictures ==="
+run "extra-images --self-test" php .claude/extra-images-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

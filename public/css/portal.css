@@ -1412,6 +1412,32 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-request-shot img { max-width: 100%; height: auto; margin-top: 6px;
     border-radius: 10px; border: 1px solid var(--p-border, #D1D3D4); display: block; }
 .uc-request-shot .uc-hint { margin-top: 6px; }
+
+/* THE EXTRA PICTURES A SUBMISSION SENT (3.96.0).
+ *
+ * A GROUP WITH ITS OWN LABEL, which is the whole of what distinguishes these
+ * from the featured picture. Three thumbnails in a row with no label read as
+ * three candidates for the event's image, and none of these is a candidate at
+ * all: no picker lists them and approval copies none of them anywhere.
+ *
+ * THE THUMBNAILS ARE THE SAME 46px SQUARE the queue already uses, through the
+ * same .uc-submitted-thumb class, so the featured one and these are the same
+ * object drawn twice rather than two things that happen to look alike. Only the
+ * label above them differs.
+ *
+ * FLOAT IS UNDONE, for the reason the queue row already undoes it: this list is
+ * a flex row and a floated child in one is laid out twice and believed once. */
+.uc-submitted-extras { flex: 0 0 auto; }
+.uc-submitted-extras .uc-field-label { display: block; margin-bottom: 4px; }
+.uc-submitted-extras-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.uc-submitted-extras-list > .uc-submitted-thumb { float: none; margin: 0; }
+/* In the editor's panel the featured picture is shown at its own size, so the
+   extras take a size of their own rather than the 46px a queue row uses: the
+   panel is a column somebody is reading, not a list they are scanning. */
+.uc-request-panel .uc-submitted-extras { margin-top: 14px; }
+.uc-request-panel .uc-submitted-extras-list > .uc-submitted-thumb img {
+    width: 120px; height: 90px; border-radius: 8px;
+}
 .uc-request-panel .uc-request-who { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
 .uc-request-panel .uc-request-who .uc-muted { margin-left: 6px; }
 .uc-request-notes { margin-top: 12px; padding: 12px 14px; border-radius: 10px;

@@ -501,8 +501,22 @@ if ( preg_match( '/SFAF_Submissions::allow\(\s*[\'"]([a-z_]+)[\'"]\s*,\s*([^,]+)
         fail( 'a rate limiter is keyed on an address, so five addresses would be five allowances' );
     }
 }
-if ( preg_match_all( '/SFAF_Submissions::allow\(/', $submit_rate_src ) !== 3 ) {
-    fail( 'the submission form no longer makes exactly three rate-limited calls; check none is per address' );
+/*
+ * FOUR SINCE 3.96.0, and the fourth is the extra pictures. Two gate the post
+ * itself, one limits the featured upload and one limits the extras, all four
+ * keyed on the client or the campaign and none on an address.
+ *
+ * THE EXTRAS SHARE THE FEATURED PICTURE'S KEY AND CAP DELIBERATELY. Three files
+ * is three uploads and the limiter counts uploads; giving a submission one
+ * allowance to spend across three files would make the FORM the unit, and a
+ * form can carry three files.
+ *
+ * AN EMPTY FILE INPUT COSTS NOTHING. SFAF_Uploads::inspect() returns at step 1
+ * when there is no file, and the rate limit is step 3, so somebody who attaches
+ * one picture spends one of their ten rather than three.
+ */
+if ( preg_match_all( '/SFAF_Submissions::allow\(/', $submit_rate_src ) !== 4 ) {
+    fail( 'the submission form no longer makes exactly four rate-limited calls; check none is per address' );
 }
 
 /* =========================================================================

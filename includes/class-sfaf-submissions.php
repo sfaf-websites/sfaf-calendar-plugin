@@ -839,4 +839,41 @@ if ( $args['editor'] ) {
         </label>
         <?php
     }
+
+    /**
+     * The extra pictures, beside the featured one. Both forms.
+     *
+     * A DIFFERENT QUESTION FROM THE ONE ABOVE, and the label has to carry that
+     * or the two controls read as "picture" and "picture again". The one above
+     * answers what the event should look like. These are other photographs of
+     * it, and nothing chooses between them: no picker lists them and approval
+     * copies none of them anywhere.
+     *
+     * SO THE HINT SAYS WHAT WILL HAPPEN TO THEM. Somebody attaching two photos
+     * to a form is entitled to know they will not appear on the page by
+     * themselves, and the sentence that says so is also the one that says how
+     * they DO get used.
+     *
+     * @param array $errors field name => message, from store_extras().
+     */
+    public static function extra_images_field( $errors = array() ) {
+        $fields = SFAF_Submit::extra_fields();
+        $mb     = (int) round( SFAF_Uploads::MAX_BYTES / 1048576 );
+        ?>
+        <div class="uc-field uc-field-upload uc-extra-images">
+            <span class="uc-field-label">Any other pictures</span>
+            <?php foreach ( $fields as $i => $field ) : ?>
+                <input type="file" name="<?php echo esc_attr( $field ); ?>"
+                       accept="image/jpeg,image/png,image/gif,image/webp"
+                       aria-label="<?php echo esc_attr( 'Other picture ' . ( $i + 1 ) ); ?>" />
+                <?php self::field_error( isset( $errors[ $field ] ) ? $errors[ $field ] : '' ); ?>
+            <?php endforeach; ?>
+            <span class="uc-hint">
+                Up to <?php echo (int) SFAF_Submit::MAX_EXTRA; ?>, same formats and size limit as above.
+                These are not shown on the event page. Somebody adds one to the description by hand
+                with Insert image if it belongs there.
+            </span>
+        </div>
+        <?php
+    }
 }

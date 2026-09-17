@@ -989,18 +989,31 @@ class SFAF_Request {
             $checked['errors']['uc_image'] = $upload['error'];
         }
 
+        // The extras, through the same upload code and the same limiter.
+        $extra = SFAF_Submit::store_extras( function () use ( $token ) {
+            return SFAF_Submissions::allow( 'upload_tok', $token, 10, self::TOKEN_TTL );
+        } );
+        if ( ! empty( $extra['errors'] ) ) {
+            $checked['errors'] = array_merge( $checked['errors'], $extra['errors'] );
+        }
+
         if ( ! empty( $checked['errors'] ) ) {
             /* A file input cannot be refilled by the server, so the visitor has
              * to choose it again anyway; keeping this one would leave an orphan
-             * on disk for every rejected attempt. */
+             * on disk for every rejected attempt. The extras go with it, for
+             * the same reason: no submission exists to own them. */
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
+            }
+            foreach ( $extra['ids'] as $extra_id ) {
+                wp_delete_attachment( $extra_id, true );
             }
             self::render_form( $token, $email, $checked['clean'], $checked['errors'] );
             return;
         }
 
         $event_id = self::create_event( $checked['clean'], $email, (int) $upload['id'] );
+        SFAF_Submit::save_extras( $event_id, $extra['ids'], $extra['warnings'] );
         /* Same as the community form: the approver is the one who can act on
          * it, so it is kept on the event rather than said to the sender. */
         if ( $event_id && '' !== (string) $upload['warning'] ) {
@@ -1009,6 +1022,9 @@ class SFAF_Request {
         if ( ! $event_id ) {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
+            }
+            foreach ( $extra['ids'] as $extra_id ) {
+                wp_delete_attachment( $extra_id, true );
             }
             self::render_form( $token, $email, $checked['clean'], array(
                 'form' => 'Something went wrong saving that. Try once more, and if it happens again email the MarCom team.',
@@ -1786,7 +1802,7 @@ class SFAF_Request {
                  * Organizer, then series, then picture, which is the order
                  * these three actually depend on each other.
                  */
-                self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ), (int) $v( 'series' ) );
+                self::render_image_choice( (int) $v( 'image' ), $err( 'uc_image' ), (int) $v( 'series' ), $errors );
                 ?>
 
                 <fieldset class="uc-form-section-group">
@@ -2185,7 +2201,7 @@ class SFAF_Request {
      * @param int    $chosen
      * @param string $upload_error
      */
-    private static function render_image_choice( $chosen, $upload_error = '', $series = 0 ) {
+    private static function render_image_choice( $chosen, $upload_error = '', $series = 0, $extra_errors = array() ) {
         $any = SFAF_Media_Folder::has_any();
         ?>
         <?php // NO .uc-field ON A SECTION, for the reason given on the team
@@ -2222,6 +2238,7 @@ class SFAF_Request {
                 <p class="uc-hint">Or send your own, and somebody will size it for the calendar.</p>
                 <?php SFAF_Submissions::image_field( $upload_error ); ?>
             </div>
+            <?php SFAF_Submissions::extra_images_field( $extra_errors ); ?>
         </fieldset>
         <?php
     }
