@@ -4,14 +4,15 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-17, at 3.97.0, released.
+**Last updated:** 2026-09-17, at 3.97.1, released.
 
 ---
 
 ## What shipped last
 
-**3.97.0** locked registrations on imported events and reordered the event
-editor's button row. **3.96.0 is the big one**: hybrid events end to end, the
+**3.97.1** gave Publish and Submit for Review a form again: both had been dead
+since 3.94.0. **3.97.0** locked registrations on imported events and reordered
+the event editor's button row. **3.96.0 is the big one**: hybrid events end to end, the
 event video, two extra pictures on a submission, pictures inside descriptions,
 capacity moved beside the thing it limits, and the dropdown's ticked edge
 removed. **`readme.txt` is the changelog** and has the reasoning for all of it.
@@ -23,6 +24,12 @@ removed. **`readme.txt` is the changelog** and has the reasoning for all of it.
 > nobody**: registrations already taken are still on the registrations screen.
 > **A hand-made event is untouched whatever links it carries.** `PROJECT.md` 3.
 
+> **THE EDITOR'S BUTTON ROW IS OUTSIDE THE EVENT FORM**, so every button in it
+> lives or dies by its `form=` attribute. Publish and Submit for Review had none
+> from 3.94.0 to 3.97.0 and **did nothing at all when pressed**: no submit event,
+> so nothing in portal.js ran either. Fixed in 3.97.1, and
+> `.claude/form-owner-audit.php` now sweeps all 78 submit buttons. **Never add a
+> button to that row without a form attribute.**
 > **THE EDITOR'S BUTTON ROW IS Delete, Cancel, Save draft, Publish (3.97.0)**,
 > with yellow on Save draft and green on Publish. That inverts DESIGN.md's rule
 > about yellow and is **Mark's decision**, recorded there by name so a later

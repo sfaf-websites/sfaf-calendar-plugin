@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.97.0
+Stable tag: 3.97.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,55 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.97.1 =
+
+**PUBLISH DID NOTHING. IT HAD DONE NOTHING SINCE 3.94.0, THROUGH FOUR RELEASES.**
+
+**THE CAUSE, READ OFF THE DIFF RATHER THAN GUESSED.** 3.94.0 moved the event editor's three actions into one row **outside** the event form. Three things happened in that commit and only two of them were noticed:
+
+```
+</form>         moved UP, to above the row
+Save draft      GAINED form="<?php echo esc_attr( $form_id ); ?>"
+Publish         not touched
+Submit for      not touched
+Review
+```
+
+**A submit button outside a form is inert.** Its form owner is nothing, so pressing it fires no submit event at all. There was no error, no refusal and no console message, and because every handler in portal.js listens on a FORM, none of them ran either: the confirmation prompt, the completeness warning and the notify question were all downstream of an event that never happened. Dead in **3.94.0, 3.95.0, 3.95.1, 3.96.0 and 3.97.0**.
+
+Both buttons now carry the same attribute Save draft does. **Nothing else about the row changes**: the order, the colours and the sizes are exactly as 3.97.0 left them.
+
+**WHY NOTHING CAUGHT IT.** The file parses. The callable audit is clean. The button is present, it is a submit, it has a label, its class is right, and a rendering test that counts buttons finds it. What was wrong is a **relationship between two elements**, and a relationship is invisible to every question asked one element at a time.
+
+**SO EVERY SUBMIT BUTTON IN THE PLUGIN IS NOW SWEPT**, and the sweep found two more things.
+
+**THE CALADMIN MENU TOGGLE HAD NO `type`.** A `<button>` with no type attribute **is a submit button**: that is the HTML default. It does nothing today only because it sits outside every form, which is luck rather than design. Drawn inside one, or enclosed by a form that grows, it would silently post that form, and the symptom would be a page saving itself when somebody opens the menu. It says `type="button"` now.
+
+**AND THE PUBLIC FILTER BAR'S APPLY BUTTON IS FINE, WHICH THE FIRST VERSION OF THE AUDIT DENIED.** It is written in `render_who_picker()`, and that method is CALLED from inside `<form class="uc-filter-form">` further down the same file. Read as one flat stream it looks ownerless. **A checker that calls a healthy control broken is worse than no checker**, because the next person learns to ignore it, so the audit follows one level of method call: a method whose every call site is inside an open form has its buttons treated as inside one. A button three renderers deep is still reported, and should be, because nobody can follow that by eye either.
+
+**THE AUDIT READS THE TAG STREAM, NOT LINES.** The whole question is ORDER across a file: a form opened at line 12079 had closed by line 12950, and no pattern applied to a single line can see that. `token_get_all()` hands back the literal markup separated from the code, so a `<form>` written inside a PHP comment or a PHP string is never mistaken for a real one, which is the trap a raw-text scanner falls into. **78 submit buttons across eleven renderers**, seven of them relying on a form attribute, every one resolving.
+
+> **THIS IS THE THIRD TIME A CHECKER OF THIS SHAPE HAS BEEN WRITTEN**, after the two 3.79.0 attempts PROJECT.md 7 records, and both of those failed for the same reason: a regex over a line asked to answer a question about order.
+
+**AND ONE EXISTING ASSERTION HAD BEEN WRONG THE WHOLE TIME.** `save-outcome-test.php` found "the first submit button" with `[^>]*` between the attributes, and `[^>]*` cannot cross the `>` in `?>`. So it only ever matched a button whose entire tag was literal HTML, and for four releases that was **Publish**, not Save draft. It reported the value of whichever button its pattern happened to be able to parse and called it the first one.
+
+**Fixing Publish is what exposed it**: the button gained a PHP attribute, nothing matched any more, and the check failed on a form that was now correct. It strips the PHP before scanning now, and it gained a second assertion that counts how many `save_mode` buttons carry a form attribute, which catches the shipped fault on its own and reports it as "2 of the 3".
+
+**CONFIRMED IN A BROWSER, against the real markup and with the real portal.js loaded:**
+
+```
+                        before                  after
+Save changes            SUBMITTED  keep         SUBMITTED  keep
+Publish                 DID NOTHING             SUBMITTED  publish
+Save draft, new event   SUBMITTED  draft        SUBMITTED  draft
+Submit for Review       DID NOTHING             SUBMITTED  review
+Delete                  SUBMITTED               SUBMITTED
+Publish, pending screen SUBMITTED               SUBMITTED
+```
+
+The pending screen's Publish is a different path, inside its own form, and was never affected.
+
 
 = 3.97.0 =
 
