@@ -69,3 +69,32 @@ body#tinymce.mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::befo
     color: #6B6B6B;
     font-style: italic;
 }
+
+/* ---------------------------------------------------------------------------
+   A PICTURE INSIDE A DESCRIPTION (3.96.0).
+
+   ONE SHAPE, AND THE EDITOR FRAME SHOWS IT. Full width of the column, 14px
+   corners, no float and no alignment. This rule and the one in calendar.css
+   under `.uc-single .uc-single-body` say the same thing, so what somebody sees
+   while writing is what a visitor sees, which is the whole reason this
+   stylesheet exists.
+
+   NO FLOAT OPTIONS, AND THAT IS A DECISION RATHER THAN AN OMISSION. A floated
+   picture in a column this narrow leaves a gutter of three or four words beside
+   it, and on a phone it is the full width anyway. Offering the control would be
+   offering a choice that looks different in the editor from every place it is
+   read.
+
+   height: auto IS LOAD BEARING. A picture uploaded at 1600px wide carries width
+   and height attributes; without this the browser honours the height and the
+   picture is squashed to the column width at its original height.
+   ------------------------------------------------------------------------ */
+body#tinymce img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 1.2em 0;
+    border-radius: 14px;
+    float: none;
+}

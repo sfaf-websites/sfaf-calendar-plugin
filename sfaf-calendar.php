@@ -110,6 +110,10 @@ $sfaf_includes = array(
     // Files sent by people with no account, and what the two public forms
     // share. Both load before the forms that call them.
     'includes/class-sfaf-uploads.php',
+    // Pictures that go INSIDE a description: a third folder, beside the other
+    // two rather than inside either. After SFAF_Uploads, whose inspect() is the
+    // one guard it puts in front of its own upload.
+    'includes/class-sfaf-desc-images.php',
     'includes/class-sfaf-turnstile.php',
     'includes/class-sfaf-submissions.php',
     'includes/class-sfaf-request.php',

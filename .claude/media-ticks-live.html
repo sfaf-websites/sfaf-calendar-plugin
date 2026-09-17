@@ -143,8 +143,120 @@ function ucDismissOnBackdrop(dialog) {
         run('requestPrefill', initRequestPrefill);
         run('calendarTick', initCalendarTick);
         run('tickPickers', initTickPickers);
+        run('descImages', initDescImages);
     });
 
+
+    /* ---------------------------------------------------------------------
+     * INSERT IMAGE, ON THE CALADMIN DESCRIPTION EDITOR (3.96.0)
+     *
+     * WHAT THE SERVER ALREADY RENDERED is a working control with no script at
+     * all: a file input and a list of pictures, inside a <details>. What this
+     * adds is the one part a browser has to do, which is putting the chosen
+     * picture INTO the editor. Without it somebody can still upload a file and
+     * still see what is in the folder; they just cannot place it.
+     *
+     * THE MARKUP IS BUILT HERE, FROM A URL. The endpoint answers with an
+     * address and nothing else, so it cannot be used to put arbitrary HTML into
+     * a description by replying with it. The <img> this writes carries no
+     * width, no style and no alignment: the stylesheet gives every picture in a
+     * description the full width of the column and 14px corners, in the editor
+     * frame and on the event page from the same rule, so a size written here
+     * would be a second answer to a question already settled.
+     *
+     * EVERY ENDPOINT DETAIL COMES OFF THE ELEMENT, the way the fetch control on
+     * the pending screen does it. Nothing is read from a global.
+     * ------------------------------------------------------------------ */
+    function initDescImages() {
+        var box = document.querySelector('[data-uc-desc-images]');
+        if (!box) { return; }
+
+        var editorId = box.getAttribute('data-uc-editor') || 'uc-description';
+        var status   = box.querySelector('[data-uc-desc-status]');
+
+        function say(message, isError) {
+            if (!status) { return; }
+            status.textContent = message;
+            status.hidden = !message;
+            status.classList.toggle('is-error', !!isError);
+        }
+
+        /*
+         * INTO TinyMCE IF IT IS RUNNING, INTO THE TEXTAREA IF IT IS NOT.
+         * The editor may be the rich one or the plain fallback, and a paste
+         * into the wrong one is a picture that silently does not save.
+         */
+        function insert(url, alt) {
+            var img = '<img src="' + url + '" alt="' + (alt || '').replace(/"/g, '&quot;') + '" />';
+            var ed = (window.tinymce && window.tinymce.get) ? window.tinymce.get(editorId) : null;
+            if (ed && !ed.isHidden()) {
+                ed.execCommand('mceInsertContent', false, img);
+                return true;
+            }
+            var ta = document.getElementById(editorId);
+            if (ta) {
+                ta.value = ta.value + '\n' + img;
+                return true;
+            }
+            return false;
+        }
+
+        // Pick one already uploaded.
+        var picks = box.querySelectorAll('[data-uc-desc-pick]');
+        for (var i = 0; i < picks.length; i++) {
+            picks[i].addEventListener('click', function () {
+                if (insert(this.getAttribute('data-uc-desc-pick'), this.getAttribute('data-uc-desc-alt'))) {
+                    say('Added to the description.', false);
+                    box.removeAttribute('open');
+                }
+            });
+        }
+
+        // Or upload one.
+        var file = box.querySelector('[data-uc-desc-upload]');
+        if (!file) { return; }
+
+        file.addEventListener('change', function () {
+            if (!this.files || !this.files.length) { return; }
+
+            var url = box.getAttribute('data-uc-ajax');
+            var action = box.getAttribute('data-uc-action');
+            var field = box.getAttribute('data-uc-field');
+            var nonce = box.getAttribute('data-uc-ajax-nonce');
+            if (!url || !action || !field) { return; }
+
+            var data = new FormData();
+            data.append('action', action);
+            data.append('nonce', nonce || '');
+            data.append(field, this.files[0]);
+
+            var input = this;
+            input.disabled = true;
+            say('Uploading\u2026', false);
+
+            fetch(url, { method: 'POST', credentials: 'same-origin', body: data })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    input.disabled = false;
+                    input.value = '';
+                    if (!res || !res.success || !res.data || !res.data.url) {
+                        say((res && res.data && res.data.message) || 'That image could not be saved.', true);
+                        return;
+                    }
+                    if (insert(res.data.url, '')) {
+                        // The size note is information, not a refusal: the
+                        // picture is in and this says what is worth knowing
+                        // about it. Same rule as a submitted picture's warning.
+                        say(res.data.warning || 'Added to the description.', false);
+                        box.removeAttribute('open');
+                    }
+                })
+                .catch(function () {
+                    input.disabled = false;
+                    say('That upload did not finish. Try it again.', true);
+                });
+        });
+    }
     /* ---------------------------------------------------------------------
      * WHICH DRAFTS THE PUBLISH BUTTON IS ABOUT TO PUBLISH (3.72.0)
      *
@@ -1650,6 +1762,7 @@ function ucDismissOnBackdrop(dialog) {
                      * idempotent, so the controls outside the region that were
                      * already bound are left alone. */
                     run('tickPickers', initTickPickers);
+        run('descImages', initDescImages);
                     run('confirmButtons', initConfirmButtons);
                 }).catch(function () {
                     if (mine !== seq) { return; }

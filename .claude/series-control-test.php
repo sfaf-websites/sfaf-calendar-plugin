@@ -581,6 +581,10 @@ require_once $root . '/includes/class-sfaf-cancellation.php';
 require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
+/* Pictures inside a description (3.96.0): the editor draws the chooser, so
+ * the class has to exist for the form to render at all. The real one, which
+ * needs nothing at load time. */
+require_once $root . '/includes/class-sfaf-desc-images.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
 require_once $root . '/includes/class-sfaf-portal.php';

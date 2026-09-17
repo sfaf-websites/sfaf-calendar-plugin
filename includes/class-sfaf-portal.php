@@ -62,6 +62,18 @@ class SFAF_Portal {
         // POST route is still in dispatch_post() and still works without
         // JavaScript.
         add_action( 'wp_ajax_sfaf_portal_fetch', array( $this, 'ajax_fetch_sources' ) );
+        /*
+         * THE DESCRIPTION IMAGE UPLOAD (3.96.0).
+         *
+         * wp_ajax_ ONLY, NEVER wp_ajax_nopriv_. An upload endpoint reachable
+         * with no account is the highest-risk thing this plugin could carry,
+         * which is the whole reason SFAF_Uploads exists for the two public
+         * forms and why what it takes is a working copy in a folder nothing
+         * points at. This one writes into a permanent folder that an event page
+         * renders from, so it is for signed-in calendar people and the handler
+         * checks that again rather than trusting the hook name.
+         */
+        add_action( 'wp_ajax_' . SFAF_Desc_Images::ACTION, array( $this, 'ajax_description_image' ) );
     }
 
     /**
@@ -75,6 +87,49 @@ class SFAF_Portal {
      * target reads, so there is exactly one piece of report-rendering code and
      * the AJAX and non-AJAX routes cannot drift apart.
      */
+    /**
+     * Take a picture for a description, and answer with its URL.
+     *
+     * THE GATE IS can_create(), WHICH IS THE THREE CALENDAR ROLES. Anybody who
+     * may write an event may put a picture in its description; anybody who may
+     * not has no editor to put one into. Asked here rather than inferred from
+     * the hook name, because wp_ajax_ only means "signed in", and a WordPress
+     * site has subscribers.
+     *
+     * THE FILE IS CHECKED BY SFAF_Uploads::inspect() INSIDE
+     * SFAF_Desc_Images::store(). Being signed in is not what makes a file safe:
+     * a crafted image is a crafted image whoever uploaded it, so all eight
+     * decisions run exactly as they do for a stranger's file.
+     *
+     * IT RETURNS A URL, NOT MARKUP. What goes into the editor is built in the
+     * browser from that URL, so this endpoint cannot be used to put arbitrary
+     * HTML into somebody's description by answering with it.
+     */
+    public function ajax_description_image() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( array( 'message' => 'You are signed out. Sign in again and retry.' ), 403 );
+        }
+        if ( ! check_ajax_referer( SFAF_Desc_Images::ACTION, 'nonce', false ) ) {
+            wp_send_json_error( array( 'message' => 'This page has been open a while and its security token expired. Reload and try again.' ), 403 );
+        }
+        $user = wp_get_current_user();
+        if ( ! $this->can_create( $user ) ) {
+            wp_send_json_error( array( 'message' => 'You do not have permission to add pictures.' ), 403 );
+        }
+
+        $result = SFAF_Desc_Images::store( SFAF_Desc_Images::FIELD );
+        if ( '' !== $result['error'] || ! $result['id'] ) {
+            wp_send_json_error( array( 'message' => $result['error'] ), 400 );
+        }
+
+        wp_send_json_success( array(
+            'url'     => $result['url'],
+            // The size note travels with the success, the way a submitted
+            // picture's does: it is information, not a refusal.
+            'warning' => $result['warning'],
+        ) );
+    }
+
     public function ajax_fetch_sources() {
         if ( ! is_user_logged_in() ) {
             wp_send_json_error( array( 'message' => 'You are signed out. Sign in again and retry.' ), 403 );
@@ -2045,7 +2100,18 @@ class SFAF_Portal {
             $postarr['post_title'] = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ) ?: '(untitled event)';
         }
         if ( ! $is_locked( 'description' ) ) {
-            $postarr['post_content'] = wp_kses_post( wp_unslash( $_POST['description'] ?? '' ) );
+            /*
+             * THE DESCRIPTION GOES THROUGH ONE PASS ON THE WAY IN (3.96.0).
+             *
+             * wp_kses_post() as before, and then every picture that did not
+             * come from `calendar-descriptions/` is dropped. A pasted <img> is
+             * usually a hotlink to somebody else's server or a base64 blob
+             * measured in megabytes, and either one ends up served from an
+             * event page as though the calendar had chosen it. There is no way
+             * to tell a pasted picture from a chosen one after the fact, so the
+             * rule is the source. See SFAF_Desc_Images.
+             */
+            $postarr['post_content'] = SFAF_Desc_Images::sanitize_description( wp_unslash( $_POST['description'] ?? '' ) );
         }
 
         if ( $is_new ) {
@@ -6442,6 +6508,122 @@ class SFAF_Portal {
             $ctx['post'] ? $ctx['post']->post_content : '',
             array( 'rows' => 10, 'locked' => ( 'locked' === $state ) )
         );
+
+        /*
+         * INSERT IMAGE, ON THIS EDITOR AND NO OTHER (3.96.0).
+         *
+         * IT IS RENDERED HERE RATHER THAN IN SFAF_Rich_Text BECAUSE THAT CLASS
+         * IS SHARED. Both public forms draw their descriptions through
+         * SFAF_Rich_Text::render(), so a button added there would appear on a
+         * page reached by a link on somebody's phone with no account, offering
+         * an upload endpoint to anybody holding the URL. The control belongs to
+         * the screen that has a logged-in user, and this is that screen.
+         *
+         * NOT ON A LOCKED FIELD either: a description a platform owns is
+         * rewritten within the hour, so a picture put into it would vanish and
+         * nobody would know why.
+         */
+        if ( 'locked' !== $state ) {
+            $this->description_image_chooser();
+        }
+    }
+
+    /**
+     * Upload a picture, or pick one already uploaded, and put it in the prose.
+     *
+     * TWO WAYS TO ANSWER ONE QUESTION, IN ONE PANEL. "I have a file" and "I
+     * used one before" are the same intention arriving from two directions, and
+     * splitting them into two controls makes somebody decide which control they
+     * want before they can say what they want.
+     *
+     * ONE FOLDER BEHIND BOTH. The upload lands in
+     * `calendar-descriptions/` and the list below is that folder, so a picture
+     * uploaded here is the picture offered here next time. It is never the
+     * calendar folder and never the submissions folder: see SFAF_Desc_Images
+     * for why those three are separate, and why the featured picker needed no
+     * change to keep this one out of it.
+     *
+     * A <details> OF RADIOS, WHICH IS THE PICKER PATTERN THIS PROJECT ALREADY
+     * HAS. It works with no script at all as a list and a file input; what the
+     * script adds is putting the chosen picture into the editor, which is the
+     * one part that cannot be done without it. See initDescImages() in
+     * portal.js.
+     */
+    private function description_image_chooser() {
+        $library = SFAF_Desc_Images::library();
+        ?>
+        <?php
+        /*
+         * THE ENDPOINT AND ITS NONCE RIDE ON THE ELEMENT, which is how the
+         * fetch control on the pending screen already does it. Nothing is
+         * localised into a global, so the script reads what it needs off the
+         * control it was given and there is no second place for the two to
+         * disagree about which action they are talking to.
+         */
+        ?>
+        <details class="uc-desc-images" data-uc-desc-images
+                 data-uc-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+                 data-uc-action="<?php echo esc_attr( SFAF_Desc_Images::ACTION ); ?>"
+                 data-uc-field="<?php echo esc_attr( SFAF_Desc_Images::FIELD ); ?>"
+                 data-uc-ajax-nonce="<?php echo esc_attr( wp_create_nonce( SFAF_Desc_Images::ACTION ) ); ?>"
+                 data-uc-editor="uc-description">
+            <?php
+            /*
+             * THE CHEVRON IS NOT DECORATION. A <summary> that looks like a
+             * button reads as something that DOES a thing, and this one opens a
+             * panel. Every disclosure on these screens carries the same mark for
+             * the same reason, and control-standard-audit.php fails a summary
+             * without one, which is how this was caught here rather than by
+             * somebody meeting it.
+             */
+            ?>
+            <summary class="uc-btn uc-btn-quiet uc-desc-images-open">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
+                Insert image
+            </summary>
+            <div class="uc-desc-images-panel">
+                <?php
+                /*
+                 * THE UPLOAD IS FIRST because it is the case somebody is in
+                 * when they press this: they have a picture and they want it in
+                 * the description. The list below is the smaller case.
+                 */
+                ?>
+                <label class="uc-field uc-field-upload">
+                    <span class="uc-field-label">Upload a picture</span>
+                    <input type="file" data-uc-desc-upload
+                           accept="image/jpeg,image/png,image/gif,image/webp" />
+                    <span class="uc-hint">
+                        JPEG, PNG, GIF or WebP, up to <?php echo (int) round( SFAF_Uploads::MAX_BYTES / 1048576 ); ?>MB.
+                        It goes full width of the description, so a wide picture reads best.
+                    </span>
+                </label>
+                <p class="uc-desc-images-status" data-uc-desc-status role="status" hidden></p>
+
+                <?php if ( ! empty( $library ) ) : ?>
+                    <div class="uc-field">
+                        <span class="uc-field-label">Or one already uploaded</span>
+                        <div class="uc-desc-images-list">
+                            <?php foreach ( $library as $img ) :
+                                $thumb = wp_get_attachment_image_url( $img->ID, 'thumbnail' );
+                                $full  = wp_get_attachment_url( $img->ID );
+                                if ( ! $thumb || ! $full ) {
+                                    continue;
+                                }
+                                ?>
+                                <button type="button" class="uc-desc-image-pick"
+                                        data-uc-desc-pick="<?php echo esc_url( $full ); ?>"
+                                        data-uc-desc-alt="<?php echo esc_attr( get_post_meta( $img->ID, '_wp_attachment_image_alt', true ) ); ?>"
+                                        title="<?php echo esc_attr( get_the_title( $img->ID ) ); ?>">
+                                    <img src="<?php echo esc_url( $thumb ); ?>" alt="" loading="lazy" />
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </details>
+        <?php
     }
 
     private function faq_set_picker() {

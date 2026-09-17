@@ -520,7 +520,35 @@
 .uc-single .uc-single-body a:focus-visible, .uc-single .uc-faq-a a:focus-visible {
     outline: 2px solid var(--uc-teal-text); outline-offset: 2px; border-radius: 4px;
 }
-.uc-single .uc-single-body img { border-radius: 10px; }
+/* A PICTURE INSIDE A DESCRIPTION (3.96.0), AND THIS IS WHERE IT IS ENFORCED.
+
+   THE SAME RULE AS editor-content.css, deliberately duplicated rather than
+   shared, because the two stylesheets are loaded into two different documents:
+   one is the TinyMCE iframe and one is sfaf.org. What matters is that they say
+   the same thing, which is what makes the editor an honest preview, and the
+   description-images test asserts both carry it.
+
+   FULL WIDTH, 14px CORNERS, NO FLOAT. The chooser writes an <img> with no
+   width, no style and no alignment, so this is the only thing sizing it. A
+   float in a column this narrow leaves a gutter of three or four words beside
+   the picture, and on a phone it is full width regardless.
+
+   width: 100% AND height: auto TOGETHER. A picture uploaded at 1600px carries
+   width and height attributes; without the height the browser honours the
+   original and squashes the picture into the column width at its old height.
+
+   IT OVERRIDES A THEME, WHICH IS WHY IT IS NOT JUST max-width. This renders
+   inside sfaf.org's own page and 3.24.2 records what a host theme does to an
+   <img> it was not told about. */
+.uc-single .uc-single-body img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 1.2em 0;
+    border-radius: 14px;
+    float: none;
+}
 
 /* ---------------------------------------------------------------------------
    WHAT A MANAGER CAN PASTE, AND WHAT IT DOES TO A PHONE (3.75.0)

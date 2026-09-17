@@ -160,6 +160,12 @@ echo "=== the RSVP toggle and the calendar file ==="
 run "rsvp-toggle-calendar --self-test" php .claude/rsvp-toggle-calendar-test.php --self-test
 
 echo
+# Pictures inside a description: three folders that do not overlap, and the
+# rule that every picture in a description came through the button.
+echo "=== pictures in descriptions ==="
+run "desc-images --self-test" php .claude/desc-images-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 
