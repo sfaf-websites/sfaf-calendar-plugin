@@ -4,52 +4,29 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-17. **Released: 3.95.1. In the tree: 3.96.0, half
-built.**
-
----
-
-## 3.96.0 IS HALF BUILT AND NOT RELEASED. READ THIS FIRST.
-
-**The version is bumped in all three places and the branch is pushed, but
-`publish.sh` has NOT been run and no zip exists.** Nothing is on sfaf.org.
-
-```
-F  dropdown edge         DONE, measured before and after
-C  event video           DONE, 10 plants caught
-E  two extra pictures    DONE, 11 plants caught
-A  hybrid events         MOSTLY. Model, registration, capacity and messages
-                         done, 16 plants caught. NOT done: the display
-                         wording, the alert naming the format, the summary
-                         grouping by format
-B  capacity into Location  PART. Both capacities exist and save; the CARD
-                         MOVE is not done, so they still draw from Capacity
-D  pictures in descriptions  NOT STARTED
-```
-
-**WHAT IS SAFE ABOUT STOPPING HERE.** Nothing half-written is reachable by a
-visitor and the hybrid tick works end to end. The credential gates were finished
-first and tested hardest, the calendar file included, found open on the way past.
-
-**THREE HYBRID DECISIONS, NOT GAPS**, recorded so they are not re-opened as
-oversights: a registrant cannot change format after registering, neither public
-form offers hybrid, and there is no per-registrant approval. **And Mark's open
-question answered itself: it is one capacity PER FORMAT**, because the form has
-to be able to say "online is full, there are still places in person" and one
-number cannot say that.
-**WHAT TO DO NEXT.** Finish A's three display items and B's card move, build D,
-then release. `readme.txt` has no 3.96.0 entry yet: the release is not cut.
+**Last updated:** 2026-09-17, at 3.96.0, released.
 
 ---
 
 ## What shipped last
 
-**3.95.1**, the last release, fixed the public list view at the embed width and
-made the calendar and list views one width. **3.94.0 is the release with the
-substance in it**: the dropdown counts, pasted fonts, the editor's picture
-picker and its three bottom actions. **`readme.txt` is the changelog** and has
-the reasoning for every one of them.
+**3.96.0 IS THE BIG ONE AND IT IS RELEASED**: hybrid events end to end, the
+event video, two extra pictures on a submission, pictures inside descriptions,
+capacity moved beside the thing it limits, and the dropdown's ticked edge
+removed. **`readme.txt` is the changelog** and has the reasoning for all six.
 
+**THREE FOLDERS OF PICTURES NOW, AND NONE IS INSIDE ANOTHER**: `calendar/` for
+featured pictures, `calendar-submissions/` for what strangers send,
+`calendar-descriptions/` for what goes inside prose. `PROJECT.md` 1 has why the
+names are siblings and why that is what keeps each out of the others' pickers.
+
+> **HYBRID EVENTS ARE SHIPPED, AND THREE THINGS ARE DELIBERATELY NOT IN THEM.**
+> A registrant cannot change format after registering, neither public form
+> offers hybrid, and there is no per-registrant approval. **These are decisions,
+> not gaps**, so do not re-open them as oversights. Mark's open question
+> answered itself: it is one capacity PER FORMAT, because the form has to say
+> "online is full, there are still places in person" and one number cannot.
+> `PROJECT.md` 2 has the model and the credential rule.
 **Three things a new session needs, each retiring or reversing something:**
 
 > **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, deliberately, with the

@@ -2227,10 +2227,21 @@ appear under **Also sent**, each opening the full size file in a new tab. Open
 the event in the editor and check the request panel shows the same three, the
 featured one first.
 
-**Why it needs a person:** it needs a real upload of three real files through a
-browser, which the build environment has no way to do. **The half that is NOT
-testable yet is putting one of them into a description through Insert image**,
-because that control is part of the same brief and is not built.
+**Then take one of them the whole way.** Download it, size it, and put it into
+the event's description with **Insert image**: press the button, upload the
+sized file, and check it appears in the description at the full width of the
+column with rounded corners, both in the editor and on the published event page.
+Then reopen Insert image and check that same picture is now offered in the list
+under "Or one already uploaded".
+
+**And check the two folders stay apart.** The picture you just added must NOT
+appear in the featured picture picker or on the Images screen, and the Insert
+image list must NOT offer any calendar picture or any submitted one.
+
+**Why it needs a person:** it needs a real upload of real files through a
+browser, and the folder separation is a claim about what two different pickers
+show on a real media library. The build environment has no WordPress, no media
+library and no browser upload.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

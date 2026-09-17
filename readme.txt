@@ -531,6 +531,61 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.96.0 =
+
+**SIX PIECES, AND THE ONE WORTH READING FIRST IS THE THIRD WAY A MEETING LINK ALMOST LEFT.**
+
+**A. HYBRID EVENTS.** An event is in person, online, or hybrid, and hybrid runs both at once. **It is a third MODE rather than a second tick**, because two booleans have four combinations and only three of them mean anything; `SFAF_Online::mode()` answers with one of three words and every reader asks it. The editor still draws two checkboxes, which is what Mark asked for and reads better than a three-way control, and the server folds them. **Hybrid wins the impossible fourth**, because hybrid is the mode that KEEPS the address and clearing an address is the change nothing here can undo.
+
+**HYBRID IS A SEPARATE KEY FROM `_uc_online`, AND THAT IS THE WHOLE DESIGN.** `is_online()` is what clears the place and puts "Online Event" wherever an address would go, on the event page, the cards, the sidebar, the month grid, the five emails, the .ics, the JSON-LD and the rest. A hybrid event HAS a place, so it must not answer yes to that question. What it shares with online is the link, so the two questions were split:
+
+```
+is_online()             has no place
+has_online_format()     some registrants join by link    online OR hybrid
+has_in_person_format()  some registrants turn up         in person OR hybrid
+```
+
+`link()` and `sends()` gate on the second, so the meeting link reaches a hybrid event **without a second reader of the meta being written**, and the whitelist in `online-events-test.php` is unchanged and still passes.
+
+**NO MESSAGE CARRIES BOTH HALVES, AND THAT IS TWO REFUSALS AT OPPOSITE ENDS.** `facts()` refuses the ADDRESS to an online registrant; `joining_html()` refuses the LINK to an in-person one. Either one alone leaves a message carrying both, so both are asserted in both directions and planted separately.
+
+**AND THE CALENDAR FILE WAS THE THIRD WAY OUT.** `ics_url_with_link()` did not know who it was for. A hybrid event with the confirmation ticked would have handed the join copy to **every in-person registrant**, in the copy that travels furthest: an .ics syncs to a phone, a laptop and any calendar shared with a partner or a household. It takes the same gate now. **When a credential is gated in the email, check the calendar file in the same breath.**
+
+**THE GATE IS AN ALLOW, NOT A DENY**, and that is load bearing. An empty format is what every non-hybrid event stores, because it never asked, and it is not an in-person answer. Written as "unless they said in person" it would have stopped every purely online event sending its link.
+
+Capacity is per format and **one full format is not a full event**: the form still has somewhere to send the next person, and saying "this event is at capacity" to somebody who could have joined online turns away a registration the event wanted. The `format` column is **not backfilled**, because setting every existing row to its event's current format would be writing an answer nobody gave.
+
+The registration alert names the format and counts the one it named: "11 of 12 places taken" beside "Online" reports the room at somebody joining by link, and whoever reads it sets out a chair. The morning-of summary groups by format, and **the grouping is a partition**: a registration taken before the event became hybrid gets a group of its own rather than being folded in or quietly dropped.
+
+**AND A BUG FOUND ON THE WAY PAST.** The capacity resolver chose its key by the event's FORMAT, so a purely ONLINE event's capacity was written to `_uc_capacity` by the editor and read back from `_uc_capacity_online`, which nothing had ever written. Every online event with a limit reported as unlimited and the RSVP button would never have said full. The split belongs to HYBRID, not to online, which is also what makes the whole change need no migration.
+
+**B. CAPACITY MOVES IN BESIDE THE THING IT LIMITS.** "Accept RSVPs" and the capacities were a card in the side column, three cards away from the address the capacity was a limit on. A hybrid event has two limits on two different things, and a card headed "Capacity" could not say which number belonged to which. The in-person number is under the address now, the online number under the meeting link, and Accept RSVPs above both, because it governs both and under either one it would read as "accept in-person RSVPs". Same controls, same meta, same save path.
+
+**AN IMPORTED EVENT WOULD HAVE LOST THEM.** That branch of the location field returns early, and the catch-all that would otherwise have caught the two settings is inside the Notifications card, which is native events only. So the early return draws them before it returns.
+
+**AND THE TEST IS ABOUT THE CALENDAR FILE, NOT THE CAPACITY.** When registrations are on, the event page's Add to Calendar button is REMOVED, because the confirmation carries both destinations at the moment the place is actually held. A toggle that stopped being saved would take the button AND the confirmation, and the calendar route would disappear with nothing on any screen to show for it. The assertions name no card, which is the point: a test naming the Capacity card would have been rewritten by the move and would have proved nothing about it.
+
+**C. THE EVENT VIDEO.** A Video field on the event and the same field on the series, each taking one YouTube or Vimeo page address, stored exactly as typed. **Never embed code**: an `<iframe>` pasted in is markup somebody else wrote, served from our own domain, so the field takes an address and this plugin builds the frame. It is refused outright rather than stripped, and it gets its own message, because "that is not a YouTube link" is wrong when somebody has pasted a YouTube frame.
+
+**RESOLUTION IS AN ORDER, NOT THREE ANSWERS**: the "no video" tick, then the event's own link, then the series'. The tick has to exist, because inheritance makes an empty field mean "use the series' one" and there would otherwise be no way to say that one occurrence has none. The event page embeds it above the description and nothing else shows one, which is swept from source rather than listed. YouTube goes through the no-cookie host: a visitor reading an event page has not asked to be tracked by Google for having read it.
+
+**D. PICTURES INSIDE DESCRIPTIONS.** An Insert image button on the caladmin description editor, which either uploads a file from the person's computer or picks one already uploaded, both against a third folder of their own.
+
+**THE NAME IS A SIBLING, NOT A CHILD, AND THAT IS THE WHOLE DESIGN.** `calendar-descriptions/` does not begin with `calendar/`, so the featured picker's anchored prefix excludes it with no change to that rule at all. A folder called `calendar/descriptions/` would have put every floor plan and flyer in front of somebody choosing an event's face. That is exactly the trap `calendar-submissions/` was named to avoid, and it is avoided the same way. So the exclusions are structural rather than a list, and the assertion guarding it is a NAME assertion, because by the time it is a query the pictures are already in the wrong picker.
+
+**THE BUTTON IS NOT IN THE SHARED RICH TEXT CONTROL.** Both public forms draw their descriptions through it, so a button added there would appear on a page reached by a link on somebody's phone with no account, offering an upload endpoint to anybody holding the URL. The upload goes through `SFAF_Uploads::inspect()`, which is the one guard between a file and the disk: being signed in does not make a crafted image safe.
+
+**PASTED PICTURES ARE DROPPED ON THE WAY IN, AND THE RULE IS THE SOURCE**, because there is no way to tell a pasted picture from a chosen one after the fact. The whole tag goes, not the src: an `<img>` with no source is a broken image icon in the middle of somebody's prose. **It fails CLOSED** when it cannot read the uploads URL, because a pass that fails open is not a pass. The two public forms needed nothing at all: their whitelist has never allowed an `img`, and there is now an assertion saying so rather than an assumption.
+
+**E. TWO MORE PICTURES A SUBMISSION CAN SEND.** Both public forms take up to two more beside the featured one. Two separate single-file inputs rather than one `multiple`, because the upload guard reads `$_FILES[$field]` as one file and a multiple input hands it arrays in every slot. **They are candidates for nothing**: no picker lists them, approval copies none of them anywhere, nothing reads them looking for a thumbnail, and nothing about them touches `_uc_image_url`. That last one is not hypothetical, which is why it is asserted from both sides.
+
+**F. THE TICKED ROW IN THE DROPDOWN IS A FILL AND NOTHING ELSE.** 3.94.0 added a 3px teal edge because the fill it had then measured 1.06:1 against the panel. The fill is the heading band token now and it rides with 600 weight and a teal count, so the edge was a second mark for a job one mark already does. Measured before and after: fill, weight, radius, count ink and row geometry all unchanged, and ticking still shifts nothing in either axis.
+
+**MEASURED, AT 630, 700 AND 900px.** The video frame: ratio 1.800 at every width, 14px corners with `overflow: hidden` so the player is clipped too, shadow `rgba(0,0,0,0.1)` at `0 0 28px 2px` so no offset and no colour, and `animation: none 0s` under `prefers-reduced-motion`. A description picture: 14px corners, `display: block`, no float, full column width, and the height freed so a 1600x900 upload is not squashed by its own attributes, identical in the editor frame and on the event page apart from the editor's own `margin: 12px 14px`.
+
+**Sixty-four faults planted across five plant runners and every one caught**, though eleven went past on a first run, and each of those was a test weakness rather than a hole in the code: assertions that matched a function which still existed while returning nothing, a name that survived in a comment above the call being checked for, a row key whose value had been emptied, a cap the test declared itself instead of lifting, a tidy-up check that found one of two paths rather than counting them, and a branch a fixed stub could never reach. **A value a test also declares is not under test.**
+
+
 = 3.95.1 =
 
 **THE DATE BREAKS WHERE IT IS TOLD TO, AND THE COLUMN WAS NEVER GOING TO HOLD IT.** Measured in Merriweather at 13px/600, which is what that column renders in:

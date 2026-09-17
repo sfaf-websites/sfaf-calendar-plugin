@@ -2198,15 +2198,61 @@ reason.
 **WHICH FOLDER A FILE LANDS IN IS THE WHOLE DECISION.**
 
 ```
-calendar/               curated, approved, offered by every picker
-calendar-submissions/   working copies from people with no account
+calendar/                curated, approved, offered by every FEATURED picker
+                         and by the Images screen
+calendar-submissions/    working copies from people with no account, offered
+                         by no picker at all
+calendar-descriptions/   pictures that go INSIDE prose, offered only by the
+                         Insert image chooser on the caladmin editor
 ```
+
+**THREE FOLDERS SINCE 3.96.0, AND EVERY ONE OF THEM IS A SIBLING.** None is
+inside another, and that is not tidiness: `SFAF_Media_Folder` matches on an
+ANCHORED `^calendar/`, so anything under `calendar/` is offered by the featured
+picker and by the Images screen. A folder named `calendar/descriptions/` would
+have put every floor plan and flyer in front of somebody choosing an event's
+face. `calendar-submissions/` was named for that reason in the first place, and
+`calendar-descriptions/` is named for it again.
+
+> **SO THE EXCLUSIONS ARE STRUCTURAL RATHER THAN A LIST.** Nothing had to be
+> told about the third folder to keep it out of the featured pickers; its name
+> does the work. What had to be WRITTEN is the opposite direction:
+> `SFAF_Desc_Images::library()` is anchored on its own prefix, so the Insert
+> image chooser cannot offer a calendar picture or a submitted one. The
+> assertion that guards this is a NAME assertion, because by the time it is a
+> query the pictures are already in the wrong picker.
+
+**WHY A DESCRIPTION PICTURE IS NOT A CALENDAR PICTURE.** A featured picture is
+16:9 and is the event's face. A picture inside prose is whatever shape the prose
+needs: a floor plan, a flyer, a photograph of a poster. Mixed into one folder,
+every featured picker would offer floor plans and every description chooser
+would offer event faces, and the person choosing would have to tell them apart
+by looking.
+
+**EVERY PICTURE IN A DESCRIPTION CAME THROUGH THE BUTTON.**
+`SFAF_Desc_Images::sanitize_description()` is the pass the caladmin description
+goes through on the way in: `wp_kses_post()` and then every `<img>` whose source
+is not a file in `calendar-descriptions/` is dropped, whole tag and all. There
+is no way to tell a pasted picture from a chosen one after the fact, so the
+question asked is not "was this pasted" but "is this ours". It fails CLOSED: with
+no uploads URL to compare against it keeps nothing, because a pass that fails
+open is not a pass. The two public forms needed no change, because
+`SFAF_Submissions::prose()` has never allowed an `img` at all.
+
+**THE UPLOAD IS THE SAME GUARD WITH A DIFFERENT DESTINATION**, which is exactly
+what `inspect()` was split out for. What differs is that there IS a logged-in
+user, so core's `media_handle_upload()` does the move and attributes the
+attachment to them. The endpoint is `wp_ajax_` only, never `nopriv`, and the
+handler asks the calendar role again rather than trusting the hook name.
 
 **A picture chosen from the calendar folder becomes the event's thumbnail
 straight away**, on both public forms, because it is already approved and already
 the right shape. **An uploaded one does not**, because it is a working copy in a
-folder meant to be emptied, and nothing may point at it permanently. "Use this
-image" on the pending row is how one gets promoted.
+folder meant to be emptied, and nothing may point at it permanently. **There is
+no button that promotes one**: "Use this image" was removed in 3.95.0 because it
+never worked and deleted a typed image URL on the way past, and the way to use a
+submitted picture is to download it, size it and add it on the Images screen.
+The entry below on where a submitted picture lives has the reasoning.
 
 **`SFAF_Uploads::inspect()` is the one guard between a form and the disk.** Is
 there a file, did PHP finish it, is it really an upload, is it small enough, do
