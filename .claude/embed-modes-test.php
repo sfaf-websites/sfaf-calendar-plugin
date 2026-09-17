@@ -1583,18 +1583,23 @@ check(
 );
 
 /* --- I. A TICKED ROW IS VISIBLE. ---------------------------------------- */
-/* A TINT ALONE CANNOT DO IT: brand teal over white tops out near 1.3:1 before
- * the name starts losing contrast. The edge is the half that carries it, and
- * the colour is the one that clears the 3:1 non-text floor. */
-/* THE EDGE, NOT THE PROPERTY THAT DRAWS IT. This named the inset box-shadow
- * 3.94.0 used. 3.95.1 replaced it with a pseudo-element, because an inset
- * shadow follows the row's 6px radius and the edge curved away at both ends.
- * The contract is unchanged and is what is asserted here: a ticked row carries
- * a 3px teal edge, and the tint on its own cannot do the job. How it is drawn
- * is asserted on its own terms further down, with the reason. */
+/* THE FILL IS THE WHOLE MARK NOW (3.96.0), AND THIS ASSERTION REVERSED WITH THE
+ * BEHAVIOUR IT PINNED. 3.94.0 added a 3px teal edge because the fill it had
+ * then, --uc-bg, measures 1.06:1 against the panel, and 3.95.1 straightened
+ * that edge into a pseudo-element. Mark asked for the edge off and the row fill
+ * to be the only mark, so the contract is the fill and the two things that ride
+ * with it. The edge is asserted ABSENT further down, with the reason. */
 check(
-    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)(::before)? \{[^}]*(box-shadow:\s*inset 3px 0 0 var\(--uc-teal-text\)|width:\s*3px[^}]*background:\s*var\(--uc-teal-text\))/s', $cssc ),
-    'the ticked row lost its edge, and a tint on its own measures under 1.2:1 against the panel'
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*background:\s*var\(--uc-band-heading\)/s', $cssc ),
+    'the ticked row lost its fill, and with the edge gone there is nothing marking it at all'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*font-weight:\s*600/s', $cssc ),
+    'the ticked row is no longer bolder, so a 1.17:1 tint is carrying the selection alone'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\) \.uc-who-count \{[^}]*color:\s*var\(--uc-teal-text\)/s', $cssc ),
+    'the count on a ticked row is back to secondary grey, 4.14:1 on the tint against the 4.5:1 an 11px number needs'
 );
 check(
     ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*background:\s*var\(--uc-bg\)/s', $cssc ),
@@ -1744,41 +1749,38 @@ if ( preg_match( '/(\.uc-calendar \.uc-lrow-[a-z]+,\s*)+\.uc-calendar \.uc-lrow-
     );
 }
 
-/* --- 4. THE TICKED EDGE IS STRAIGHT. ------------------------------------ */
-/* AN INSET SHADOW FOLLOWS THE BOX IT IS INSET INTO, and the row has a 6px
- * radius for its hover fill, so the edge curved at both ends. A pseudo-element
- * is its own box and ignores it. Measured: this keeps the ticked fill at 6px,
- * matching hover and unticked, where removing the row's radius would square it
- * and give a ticked row a different shape from a hovered one. */
+/* --- 4. THE TICKED EDGE IS GONE. ---------------------------------------- */
+/* 3.94.0 DREW IT, 3.95.1 STRAIGHTENED IT, AND 3.96.0 TOOK IT OFF, because Mark
+ * asked for the row fill to be the only mark. So what is asserted here is
+ * absence, in both shapes the edge has ever had: the inset shadow it was born
+ * as and the pseudo-element it became. One of the two alone would let the other
+ * come back.
+ *
+ * Measured before and after: the fill, the 600 weight and the teal count are
+ * unchanged, and ticking still moves nothing, because the thing that was out of
+ * flow is the thing that went.
+ *
+ * `position: relative` WENT WITH IT. The edge was the only thing in this panel
+ * anchoring to it, and a positioning context left behind is how an unrelated
+ * absolute element later resolves against the wrong box. */
 check(
-    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*width:\s*3px/s', $cssc ),
-    'the ticked edge is not a pseudo-element, so it follows the row radius and curves away at both ends'
-);
-check(
-    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*border-radius:\s*0/s', $cssc ),
-    'the ticked edge has a radius again'
-);
-check(
-    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*top:\s*0;\s*bottom:\s*0/s', $cssc ),
-    'the ticked edge no longer runs the full row height'
-);
-check(
-    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*position:\s*absolute/s', $cssc ),
-    'the ticked edge is in flow, so ticking a row now moves the list'
-);
-check(
-    (bool) preg_match( '/\.uc-who-opt \{ position: relative; \}/', $cssc ),
-    'the row is not positioned, so the absolute edge anchors to something else entirely'
-);
-/* AND THE FILL IS UNCHANGED, which is what chose the pseudo-element over
- * taking the radius off. */
-check(
-    ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*border-radius:\s*0/s', $cssc ),
-    'the ticked row has had its radius squared, so a ticked row and a hovered row are two different shapes'
+    ! preg_match( '/\.uc-who-opt:has\(input:checked\)::before/', $cssc ),
+    'the ticked edge is drawn again as a pseudo-element, and the fill is meant to be the only mark'
 );
 check(
     ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*box-shadow:\s*inset/s', $cssc ),
-    'the inset shadow is back beside the pseudo-element, which is two edges drawn over each other'
+    'the ticked edge is drawn again as an inset shadow, which is the shape it had in 3.94.0'
+);
+check(
+    ! preg_match( '/\.uc-who-opt \{ position: relative; \}/', $cssc ),
+    'the row is positioned again, which is a containing block left behind by an edge that no longer exists'
+);
+/* AND THE FILL KEEPS ITS SHAPE. The hover fill, the ticked fill and an
+ * untouched row are all 6px, so a ticked row is the same shape as a hovered
+ * one and only the colour tells them apart. */
+check(
+    ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*border-radius:\s*0/s', $cssc ),
+    'the ticked row has had its radius squared, so a ticked row and a hovered row are two different shapes'
 );
 
 

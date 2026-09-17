@@ -1270,30 +1270,19 @@
    band that runs wall to wall is what makes a list read as a table of cells;
    an inset rounded fill reads as one row being pointed at. */
 .uc-who-opt:hover { background: var(--uc-bg); }
-/* A TICKED ROW HAS TO BE FINDABLE WITHOUT READING IT, AND A TINT ALONE IS NOT
-   ENOUGH (3.94.0).
+/* A TICKED ROW IS A FILL, AND ONLY A FILL (3.96.0).
 
-   WHAT IT WAS: --uc-bg #F7F8FA, which measures 1.06:1 against the panel. That
-   is not a light background, it is white with a rounding error, and with
-   thirty-five rows in two columns somebody could not see what they had picked.
+   THE EDGE IS GONE. 3.94.0 added a 3px teal rule down the left of a ticked row
+   because the fill it had then, --uc-bg #F7F8FA, measures 1.06:1 against the
+   panel: white with a rounding error, and with thirty-five rows in two columns
+   somebody could not see what they had picked. The edge was the half carrying
+   the selection, and 3.95.1 straightened it.
 
-   AND NO TINT WAS GOING TO FIX IT ON ITS OWN. Measured up the range, brand
-   teal over white tops out at about 1.3:1 before the name starts losing
-   contrast. A fill that light cannot carry a selection by itself:
-
-       10%  #E8F9FA   1.08:1 on white
-       18%  #D5F3F6   1.17:1
-       36%  #ABE8EE   1.35:1, and by here the tint is doing the reading
-
-   SO IT IS BOTH, AND THE EDGE IS THE HALF THAT CARRIES IT. DESIGN.md asks for
-   shape and mark before colour, and a solid 3px rule down the left of a row is
-   a shape: --uc-teal-text at 5.35:1 against the panel, which clears the 3:1
-   WCAG asks of a non-text indicator with room, where the brand fill #16BECF
-   would have been 2.26:1 and failed it. Scanning a column, the edges line up
-   and read as a set; the tint says which whole row is in it.
-
-   AN INSET SHADOW, NOT A BORDER, so the edge costs no layout: a border would
-   move every ticked row 3px right and make the list shift as somebody clicks.
+   WHAT CHANGED IS THE FILL, NOT THE ARGUMENT. The tint is the heading band
+   token at #D5F3F6, 1.17:1 on white, and it is no longer alone: a ticked row
+   also takes 600 weight and teal ink on its count. The row is found by the
+   band across it rather than by a mark at its edge, which is what Mark asked
+   for, and scanning the column the fills read as a set.
 
    THE TINT IS THE HEADING BAND TOKEN, not a second teal. One tint in the panel
    is one thing to recognise, and a ticked row is never mistaken for a heading:
@@ -1301,33 +1290,13 @@
 
    AND THE COUNT TAKES THE TEAL INK ON A TICKED ROW. Secondary grey on the tint
    measures 4.14:1, under the 4.5:1 an 11px number needs; the teal is 4.58:1
-   and reads as part of the selection rather than in spite of it. */
-/* THE EDGE IS A STRAIGHT LINE, NOT A CURVED ONE (3.95.1).
+   and reads as part of the selection rather than in spite of it.
 
-   An inset box-shadow follows the box it is inset into, and the row has a 6px
-   radius for its hover fill, so the 3px edge curved away at both ends and read
-   as an accent rather than a rule.
-
-   TWO WAYS TO STRAIGHTEN IT, AND THE FILL IS WHAT DECIDES. Taking the radius
-   off a ticked row straightens the edge and squares the fill with it, so a
-   ticked row and a hovered row would be two different shapes. A pseudo-element
-   is its own box: it ignores the row radius, and the fill behind it keeps the
-   6px it has everywhere else. Measured both ways, that is the only difference
-   between them, and it is the one that matters.
-
-   OUT OF FLOW, SO NOTHING SHIFTS. The row stays the same size ticked or not,
-   which is why this was an inset in the first place.
-
-   THE COLOUR IS UNCHANGED at --uc-teal-text, 5.35:1 against the panel, well
-   over the 3:1 WCAG asks of a non-text indicator. */
-.uc-who-opt { position: relative; }
+   `position: relative` WENT WITH THE EDGE, because the edge was the only thing
+   anchoring to it. Nothing else in this panel is out of flow, so leaving a
+   positioning context behind would be a containing block nobody asked for. */
 .uc-who-opt:has(input:checked) {
     background: var(--uc-band-heading); font-weight: 600;
-}
-.uc-who-opt:has(input:checked)::before {
-    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
-    width: 3px; border-radius: 0;
-    background: var(--uc-teal-text);
 }
 .uc-who-opt:has(input:checked) .uc-who-count { color: var(--uc-teal-text); }
 /* The tick itself, in the same ink. accent-color is one property and it is the
