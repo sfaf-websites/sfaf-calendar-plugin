@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.95.0
+Stable tag: 3.95.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,103 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.95.1 =
+
+**THE DATE BREAKS WHERE IT IS TOLD TO, AND THE COLUMN WAS NEVER GOING TO HOLD IT.** Measured in Merriweather at 13px/600, which is what that column renders in:
+
+```
+"Wednesday, September 16, 2026"   217.3px
+"Wednesday,"                       81.7px
+"September 16, 2026"              132.3px
+the column                        160px at 700px, 170px at 900px
+```
+
+So the whole date has never fitted at either width. It wrapped at the last space it could reach and left the day and the year alone on the second line: **"Wednesday, September 16," then "2026"**, on every row. It is two parts in the markup now, each held to one line, so the space between them is the only break point there is. **"Wednesday," then "September 16, 2026"**, on every row, at any width where the column cannot hold the whole thing. At 630px the column is the full row width and it draws on one line with no rule doing anything.
+
+**TWO FORMATTER STYLES, NOT A FORMAT STRING AT THE CALL SITE.** `weekday_comma` and `day_year` join the eight already there, and the renderer asks for them by name, so the date sweep stays at zero. **They compose to exactly what `full` returns**, and the check runs the formats over fourteen consecutive days rather than reading them: two spellings of one date is how one surface ends up disagreeing with another about what day it is. The comma belongs to the format rather than the template, because punctuation that belongs to a date belongs with the date.
+
+**THE CATEGORY CHIP AND THE ORGANIZER ARE ONE LINE ON EVERY ROW.** The meta line was `flex-wrap: wrap`, so a long organizer left the chip's line entirely and dropped underneath it. Measured with the real terms at 700px: **twelve of fourteen rows shared a line and two did not**, which is 22px of row height appearing and disappearing down a list.
+
+**THE SHRINKING HAPPENS INSIDE THE ORGANIZER NOW.** The chip is `flex: 0 0 auto`, so it is never squeezed and never wraps: a pill broken across two lines is not a pill. The organizer takes what is left and wraps inside its own box. `min-width: 0` is what allows that: a flex item's default floor is its own content, and without lifting it the line cannot shrink and the whole thing overflows the column instead. **And `word-break`, `overflow-wrap` and `hyphens` are declared on it**, for the reason 3.93.0 records: they are inherited, this renders inside somebody else's page, and a host that sets `break-word` would split an organizer's name in half. The longest word in any real organizer name is "Northwest", so the fallback is never reached.
+
+**ONE VERTICAL RULE FOR EVERY COLUMN IN A ROW.** Above 860px the row centred its columns; between 640 and 860, which is where the embed actually renders, it started them. So the date and the venue sat level with the top of a picture inside a two-row block half as tall again, and the text read as hanging off the top of the row.
+
+**CENTRED, WHICH IS THE RULE THE WIDER SHAPE ALREADY HAD**, and applied with `align-self` on each of the four items rather than `align-items` on the row. The 860px block already overrides the row's alignment once; a property set on the item is the thing a later rule naming the row cannot take back. Same shape of fix as the check box alignment in 3.93.0.
+
+**THE PHONE STACK IS DELIBERATELY NOT THIS.** Below 640px every column is in one stack beside a picture spanning all three rows, and centring that picture would float it against the middle of a 130px block instead of sitting it beside the title. There the picture is a marker next to a heading rather than a column. One rule per shape, and the same rule for every column within a shape.
+
+**MEASURED BEFORE AND AFTER, with the real terms, titles, categories and venues, at three widths. At 700px:**
+
+```
+                        before                     after
+date                    2 lines, "…16," / "2026"   2 lines, "Wednesday," / "September 16, 2026"
+chip and organizer      12 of 14 on one line       14 of 14
+row heights             111.4 to 133.4, 3 distinct 111.4 to 126.4, 3 distinct
+columns vs picture top  main 0, when 0             main -16.2, when -3.3   (centred)
+```
+
+Row heights still vary, and that is the organizer wrapping inside its own box on the two longest rows, which is what it is meant to do. The spread came down from 22px to 15px.
+
+**AND THE TICKED ROW IN THE FILTER DROPDOWN HAS A STRAIGHT EDGE.** An inset box-shadow follows the box it is inset into, and the row carries a 6px radius for its hover fill, so 3.94.0's edge curved away at both ends and read as an accent rather than a rule. **Two ways to straighten it, and the fill decided between them:**
+
+```
+                              ticked fill   hovered fill
+a pseudo-element              6px           6px
+radius removed from the row   0px           6px
+```
+
+Taking the radius off squares the fill with the edge and gives a ticked row a different shape from a hovered one. A pseudo-element is its own box, ignores the row's radius, and leaves the fill exactly as it was. It is absolutely positioned, so ticking a row moves nothing: measured at 0px of change on the same row before and after. The colour is unchanged at 5.35:1 against the panel, well over the 3:1 a non-text indicator needs.
+
+**Nineteen faults planted and every one caught**, including one that puts a format string back at the call site, which the date sweep catches rather than the modes test. One existing assertion had to reverse with the behaviour: 3.94.0's check named the box-shadow that drew the edge rather than the edge, so it now asserts the contract and the drawing is asserted separately with its reason.
+
+**AND TWO MORE THINGS ON THE SAME SURFACES.**
+
+**SWITCHING BETWEEN THE CALENDAR AND THE LIST NO LONGER CHANGES THE WIDTH OF THE BLOCK.** Two separate causes, both measured.
+
+**THE CAP WAS KEYED TO THE PANEL SHOWING RATHER THAN TO THE MODE.** `.uc-view-combined` is rewritten by the view toggle, so pressing List took it off, the 1200px cap fell back to the 900px one, and the whole block narrowed under somebody's hand. It is keyed to `data-uc-combined` now, which the server sets once on the wrapper and nothing rewrites, so the cap describes what the block IS rather than which half is showing.
+
+**AND THE SHARED CARD WAS BEING STRIPPED FOR A LONE LIST.** 3.82.0 took the wrapper class off so a list was not sitting inside a card. **The card is what sizes the panels inside it**, so with its border gone the list drew 2px wider than the grid and sidebar it replaces. Both scripts keep it now, which is that decision reversed, and the list is sized by the same container the other two share rather than by a rule of its own. That also fixed something nobody had noticed: `monthParams()` in calendar.js asked the CLASS whether a block was combined, and found nothing whenever the list was showing.
+
+**The outer box of the content, before and after, in both shapes:**
+
+```
+container   shape          grid + sidebar   list    before        after
+630px       stacked        628              628     2px apart     equal
+700px       stacked        698              698     2px apart     equal
+900px       side by side   898              898     2px apart     equal
+1200px      side by side   1198             1198    298px apart   equal
+```
+
+**And the toggle moved 150px sideways at 1200px. It does not move at all now.**
+
+**A CLOSED DAY SHOWS ITS WHOLE NOTE.** It was cut three times over: `note_short()` took it to 32 characters and added an ellipsis, a two line clamp took what was left of that, and `overflow: hidden` cut whatever the clamp missed. The full text lived in a `title` attribute, which is to say it lived on a mouse. **All three are gone and the cell grows to hold the note**, which is the decision 3.91.0 made about the event titles in these same tiles and for the same reason: a column of cut-off notes tells nobody what any of them says. The title attribute went with the cut, because with the text all on screen it was the same string twice.
+
+**Measured with a realistic note and a 200 character one, at both widths:**
+
+```
+container   note        cell height   clipped   characters shown
+630px       76 chars    139.6px       no        76 of 76
+630px       201 chars   229.6px       no        201 of 201
+700px       76 chars    128.4px       no        76 of 76
+700px       201 chars   195.9px       no        201 of 201
+```
+
+**AND THE DAY PANEL CARRIES THE CLOSURE, WHICH IT NEVER DID.** It cloned only the events out of the cell, so a closed day arrived there saying nothing about being closed. That panel is the readable surface at exactly the widths where the cell hides its own closure line, so it was the one place the note most needed to be and the one place it was absent. Both scripts, and the note is sized for a panel rather than for a grid cell. **The hatch and the word "Closed" are unchanged everywhere, and the list card already showed the note in full and was not touched.**
+
+**AND THE SENTENCE THAT PARAGRAPH RESTS ON HAD TO BE MADE TRUE AGAIN.** "The widths where the cell hides its own closure line" stopped being true inside this release. The rule that lets a note fill its cell is unconditional `.uc-day-closed-mark .uc-closed-note` at (0,2,0), and it sits later in the stylesheet than the two phone copies that hide it, which were the same (0,2,0). **Equal specificity, later wins**, so both phone copies were dead the moment the fill rule was written:
+
+```
+container   note        cell height   before the raise   after
+500px       65 chars    the cell      125.3px            56.8px
+500px       220 chars   the cell      282.8px            56.8px
+500px       220 chars   the panel     105px, whole       105px, whole
+```
+
+A 200 character note drew in full inside an 80px cell and took the row to 283px, while the closure NAME beside it stayed hidden, because nothing later sets `display` on that one. **Both copies take one more class**, the container query's and the media query's, and the name does not, because nothing is fighting it. This is the trap the media-query block's own comment names, arriving from the other side: a query changes WHEN a rule applies and never how strongly, so a rule added later anywhere in the file outranks it.
+
+**Thirty-one faults planted in total and every one caught.**
+
 
 = 3.95.0 =
 

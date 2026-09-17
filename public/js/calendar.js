@@ -309,15 +309,19 @@
         $block.find('.uc-panel-list').prop('hidden', panelHiddenFor(view, 'list'));
         $block.find('.uc-panel-calendar').prop('hidden', panelHiddenFor(view, 'calendar'));
 
-        /* The two pieces only a combined block has, and the wrapper class that
-         * makes it a two-column card. The twin of the block in embed.js's
-         * showView(), where the reasoning is written out. */
+        /* The two pieces only a combined block has. The twin of the block in
+         * embed.js's showView(), where the reasoning is written out.
+         *
+         * THE WRAPPER CLASS NO LONGER COMES OFF (3.95.1). It used to, so that
+         * a lone list was not sitting inside a card; the cost was that the
+         * list panel then lost the sizing the card gave it and drew 2px wider
+         * than the grid and sidebar it replaces. The card is the container all
+         * three share, and the list is sized by it like the other two. */
         var $panels = $block.find('.uc-view-panels[data-uc-combined="1"]');
         if ($panels.length) {
             var toCombined = (view === 'combined');
             $block.find('.uc-combined-head').prop('hidden', !toCombined);
             $block.find('.uc-panel-sidebar').prop('hidden', !toCombined);
-            $panels.toggleClass('uc-view-panels-combined', toCombined);
         }
         // Every mode named, so applying one removes the last rather than
         // leaving the block wearing two.
@@ -346,7 +350,11 @@
         /* The combined mode redraws both halves, so the request has to say so
            and has to carry what the sidebar was built with. See
            ajax_load_month(). */
-        var $panels = $block.find('.uc-view-panels-combined');
+        /* THE ATTRIBUTE, NOT THE CLASS. "Is this combined" is a fact about the
+           block and the server states it once; reading the class meant this
+           lookup found nothing while the list was showing, which is a second
+           thing the class toggle was quietly breaking. */
+        var $panels = $block.find('.uc-view-panels[data-uc-combined="1"]');
         return {
             action: 'uc_load_month',
             nonce: ucData.nonce,
@@ -509,9 +517,21 @@
         $panel.append($('<h4 class="uc-day-panel-title"></h4>')
             .text(($cell.attr('aria-label') || '').split('.')[0]));
 
+        /* THE CLOSURE COMES WITH THE DAY (3.95.1). The twin of the block in
+           embed.js renderDayPanel(), where the reasoning is written out: this
+           panel is the readable surface at the widths where the cell hides its
+           own closure line, and a closed day was arriving here saying nothing
+           about being closed. */
+        var $closed = $cell.find('.uc-day-closed-mark');
+        if ($closed.length) {
+            $panel.append($closed.clone().removeAttr('aria-hidden').attr('class', 'uc-day-panel-closed'));
+        }
+
         var $events = $cell.find('.uc-day-events');
         if (!$events.length || !$events.children().length) {
-            $panel.append('<p class="uc-day-panel-empty">Nothing scheduled on this day.</p>');
+            if (!$closed.length) {
+                $panel.append('<p class="uc-day-panel-empty">Nothing scheduled on this day.</p>');
+            }
             return;
         }
         $panel.append($events.clone());

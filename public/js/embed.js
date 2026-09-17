@@ -496,7 +496,7 @@
      * build if this string is not SFAF_VERSION. It cannot drift by being
      * forgotten at release time.
      */
-    var EMBED_JS_VERSION = '3.95.0';
+    var EMBED_JS_VERSION = '3.95.1';
     var staleReported = false;
 
     /**
@@ -801,16 +801,20 @@
          * nothing about them, and leaving them on screen under a list is the
          * fault this whole change exists to avoid repeating.
          *
-         * THE WRAPPER'S CLASS GOES WITH THEM. `.uc-view-panels-combined` is
-         * what makes that element a two-column flex card with a border and a
-         * divider; with one panel left in it, that is a card drawn round a list
-         * for no reason. Taking the class off puts the wrapper back to what
-         * every other mode uses, so the list renders exactly as it does in a
-         * list block, and putting it back restores the layout.
+         * THE WRAPPER'S CLASS STAYS PUT (3.95.1), AND IT USED TO COME OFF.
          *
-         * DONE HERE RATHER THAN IN CSS. A rule keyed to the view class would be
-         * a second place deciding what the combined mode is, and this file
-         * already owns that decision for the two panels above.
+         * 3.82.0 took it off so a lone list was not sitting inside a card.
+         * Measured, the cost of that was the thing this release is fixing: the
+         * card is what sizes the panels inside it, so with the border gone the
+         * list drew 2px wider than the grid and sidebar it replaces, and the
+         * edge of the block moved as somebody toggled.
+         *
+         * THE CARD IS THE CONTAINER ALL THREE SHARE. Sizing the list from it
+         * like the other two is what makes the two views the same width, and it
+         * is one owner rather than a class that means one thing to the CSS and
+         * another to whatever reads it next. monthParams() in calendar.js was
+         * reading that class to decide whether the block was combined, and was
+         * finding nothing whenever the list was showing.
          * ------------------------------------------------------------- */
         var panels = container.querySelector('.uc-view-panels');
         if (panels && panels.getAttribute('data-uc-combined') === '1') {
@@ -819,7 +823,6 @@
             var side = panelOf(container, 'sidebar');
             if (head) { head.hidden = !toCombined; }
             if (side) { side.hidden = !toCombined; }
-            panels.classList.toggle('uc-view-panels-combined', toCombined);
         }
 
         block.setAttribute('data-view', view);
@@ -1190,12 +1193,28 @@
         heading.textContent = (cell.getAttribute('aria-label') || '').split('.')[0];
         panel.appendChild(heading);
 
+        /* THE CLOSURE COMES WITH THE DAY (3.95.1), AND IT WAS NOT HERE AT ALL.
+           This panel is the readable surface at the widths where the cell hides
+           its own closure line, so a closed day arrived here saying nothing
+           about being closed. aria-hidden comes off the clone: it is set in the
+           cell because the cell aria-label already carries the sentence, and
+           this panel has no such label. */
+        var closed = cell.querySelector('.uc-day-closed-mark');
+        if (closed) {
+            var mark = closed.cloneNode(true);
+            mark.removeAttribute('aria-hidden');
+            mark.className = 'uc-day-panel-closed';
+            panel.appendChild(mark);
+        }
+
         var events = cell.querySelector('.uc-day-events');
         if (!events || !events.children.length) {
-            var none = document.createElement('p');
-            none.className = 'uc-day-panel-empty';
-            none.textContent = 'Nothing scheduled on this day.';
-            panel.appendChild(none);
+            if (!closed) {
+                var none = document.createElement('p');
+                none.className = 'uc-day-panel-empty';
+                none.textContent = 'Nothing scheduled on this day.';
+                panel.appendChild(none);
+            }
             return;
         }
         panel.appendChild(events.cloneNode(true));

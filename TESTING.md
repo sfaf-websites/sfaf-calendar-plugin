@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 173 items.** Quick 147, needs real conditions 23, blocked on other
+**Outstanding: 175 items.** Quick 149, needs real conditions 23, blocked on other
 people 3.
 
 ---
@@ -2170,6 +2170,36 @@ that replaces it has never been walked end to end by anybody.**
 - **Send a submission with a picture under 1200 pixels wide** and look at the
   queue row. The amber warning should be a readable sentence beside the row, not
   squeezed into the narrow picture column.
+
+### 1.151 The list view at the embed width (3.95.1)
+
+**All three of these were measured in a headless browser and none has been seen
+by a person on sfaf.org.**
+
+- **Open the calendar on sfaf.org in list view** and read down the date column.
+  Every date should be two lines, the weekday on the first and the rest on the
+  second: "Wednesday," then "September 16, 2026". **Never "16, 2026" alone.**
+- **Widen the browser until the calendar has more room.** At a wide enough
+  column the date should draw on one line. If it stays two lines everywhere,
+  say so.
+- **Read down the line under each title.** The category chip and the organizer
+  should be side by side on every row, including the long ones. A long organizer
+  wraps inside its own space; it must not drop underneath the chip.
+- **Look at where the date and the venue sit against the picture.** They should
+  be centred against it, not level with its top.
+- **Then look at it on a phone.** The picture should still sit beside the title
+  at the top of the row, not floating against the middle of the text. That shape
+  is deliberately not centred and is the one to check for a regression.
+
+### 1.152 The ticked edge in the filter dropdown (3.95.1)
+
+- **Tick something in Organizers and groups.** The teal edge should be a
+  straight vertical line, square at both ends, running the full height of the
+  row.
+- **The row fill should still have its soft corners**, the same as a row you are
+  hovering. If the ticked row is squared off and a hovered one is not, the wrong
+  one of the two fixes went in.
+- **Tick and untick while watching the rows below.** Nothing should move.
 
 ---
 ## 2. Needs real conditions

@@ -1439,28 +1439,34 @@ class SFAF_Shortcodes {
                                      */
                                     $closed_name = SFAF_Closures::name( $closed_row );
                                     /*
-                                     * THE NOTE, SHORTENED FOR THE CELL (3.84.0).
-                                     * note_short() cuts on a word boundary and
-                                     * marks the cut with an ellipsis; the title
-                                     * carries the whole thing, and the aria-label
-                                     * above already has it in full, so nothing is
-                                     * only available to a mouse.
+                                     * THE WHOLE NOTE (3.95.1), REVERSING 3.84.0.
                                      *
-                                     * Dropped below 560px by the same rule as the
-                                     * name line, where the cell has no room. The
-                                     * day panel and the list card both still
-                                     * carry it.
+                                     * It was cut to 32 characters on a word
+                                     * boundary with an ellipsis, and clamped to two
+                                     * lines on top of that, with the full text in a
+                                     * title attribute. Two of those three hid text,
+                                     * and the third was only available to a mouse.
+                                     *
+                                     * SAME DECISION AS THE EVENT TITLES IN THESE
+                                     * TILES IN 3.91.0, for the same reason: a column
+                                     * of cut-off notes tells nobody what any of them
+                                     * says, and a closure note is the whole of what
+                                     * a closed day has to say. The cell grows.
+                                     *
+                                     * THE TITLE ATTRIBUTE GOES WITH THE CUT. With
+                                     * the text all there it would be the same string
+                                     * twice, and a tooltip repeating what is already
+                                     * on screen is noise on hover.
                                      */
-                                    $closed_note  = SFAF_Closures::note( $closed_row );
-                                    $closed_brief = SFAF_Closures::note_short( $closed_row );
+                                    $closed_note = SFAF_Closures::note( $closed_row );
                                     ?>
                                     <span class="uc-day-closed-mark" aria-hidden="true">
                                         <span class="uc-closed-word">Closed</span>
                                         <?php if ( '' !== $closed_name ) : ?>
                                             <span class="uc-closed-name"><?php echo esc_html( $closed_name ); ?></span>
                                         <?php endif; ?>
-                                        <?php if ( '' !== $closed_brief ) : ?>
-                                            <span class="uc-closed-note" title="<?php echo esc_attr( $closed_note ); ?>"><?php echo esc_html( $closed_brief ); ?></span>
+                                        <?php if ( '' !== $closed_note ) : ?>
+                                            <span class="uc-closed-note"><?php echo esc_html( $closed_note ); ?></span>
                                         <?php endif; ?>
                                     </span>
                                 <?php endif; ?>
@@ -4350,7 +4356,30 @@ class SFAF_Shortcodes {
 
             <div class="uc-lrow-when">
                 <?php if ( $date_ts ) : ?>
-                    <span class="uc-lrow-date"><?php echo esc_html( sfaf_ap_date( $date_ts, 'full' ) ); ?></span>
+                    <?php
+                    /*
+                     * THE DATE IS TWO PARTS SO THE BREAK IS DECIDED HERE
+                     * (3.95.1), not by wherever the column happens to run out.
+                     *
+                     * The column is 160px at the embed width and the longest
+                     * real date is 217.3px, so it always wrapped, and it
+                     * wrapped at the last space it could reach: "Wednesday,
+                     * September 16," then "2026". Each half is held to one
+                     * line in the stylesheet, so the only break available is
+                     * the one between them, and a column wide enough for the
+                     * whole thing still draws it on one line.
+                     *
+                     * TWO CALLS TO THE FORMATTER, NOT A FORMAT STRING. The
+                     * styles compose to exactly what 'full' returns and
+                     * ap-format-crosscheck.php asserts that, so the date sweep
+                     * stays at zero and the two cannot drift apart.
+                     */
+                    ?>
+                    <span class="uc-lrow-date"><span class="uc-lrow-dow"><?php
+                        echo esc_html( sfaf_ap_date( $date_ts, 'weekday_comma' ) );
+                    ?></span> <span class="uc-lrow-dmy"><?php
+                        echo esc_html( sfaf_ap_date( $date_ts, 'day_year' ) );
+                    ?></span></span>
                 <?php endif; ?>
                 <?php if ( '' !== $time ) : ?>
                     <span class="uc-lrow-time"><?php echo esc_html( $time ); ?></span>

@@ -632,7 +632,23 @@
    Both views that show a grid, because the combined mode's left half is this
    same renderer and wants the same room.
    ------------------------------------------------------------------------ */
-.uc-calendar.uc-view-calendar, .uc-calendar.uc-view-combined { max-width: 1200px; }
+/* THE CAP IS A PROPERTY OF THE MODE, NOT OF THE PANEL SHOWING (3.95.1).
+
+   `.uc-view-combined` is rewritten by the view toggle, so it named the block
+   only while the calendar half was on screen. Switching to the list took it
+   off, the cap fell back to 900px, and the whole block changed width under
+   somebody pressing a toggle. Measured at a 1200px container: the grid and
+   sidebar occupied 1198px and the list 900px, a 298px jump, and the toggle
+   itself moved 150px sideways.
+
+   `data-uc-combined` IS THE FACT. The server sets it once on the wrapper and
+   nothing rewrites it, so a cap keyed to it is keyed to what the block IS.
+   :has() is already how this stylesheet asks a parent about its children.
+
+   A CALENDAR-ONLY BLOCK KEEPS ITS OWN CLASS, because there the view and the
+   mode are the same thing and there is no toggle to move between them. */
+.uc-calendar.uc-view-calendar { max-width: 1200px; }
+.uc-calendar:has(.uc-view-panels[data-uc-combined="1"]) { max-width: 1200px; }
 
 /* ---------------------------------------------------------------------------
    Brand typography (p.10). Set explicitly rather than by inheritance: an
@@ -1286,9 +1302,32 @@
    AND THE COUNT TAKES THE TEAL INK ON A TICKED ROW. Secondary grey on the tint
    measures 4.14:1, under the 4.5:1 an 11px number needs; the teal is 4.58:1
    and reads as part of the selection rather than in spite of it. */
+/* THE EDGE IS A STRAIGHT LINE, NOT A CURVED ONE (3.95.1).
+
+   An inset box-shadow follows the box it is inset into, and the row has a 6px
+   radius for its hover fill, so the 3px edge curved away at both ends and read
+   as an accent rather than a rule.
+
+   TWO WAYS TO STRAIGHTEN IT, AND THE FILL IS WHAT DECIDES. Taking the radius
+   off a ticked row straightens the edge and squares the fill with it, so a
+   ticked row and a hovered row would be two different shapes. A pseudo-element
+   is its own box: it ignores the row radius, and the fill behind it keeps the
+   6px it has everywhere else. Measured both ways, that is the only difference
+   between them, and it is the one that matters.
+
+   OUT OF FLOW, SO NOTHING SHIFTS. The row stays the same size ticked or not,
+   which is why this was an inset in the first place.
+
+   THE COLOUR IS UNCHANGED at --uc-teal-text, 5.35:1 against the panel, well
+   over the 3:1 WCAG asks of a non-text indicator. */
+.uc-who-opt { position: relative; }
 .uc-who-opt:has(input:checked) {
     background: var(--uc-band-heading); font-weight: 600;
-    box-shadow: inset 3px 0 0 var(--uc-teal-text);
+}
+.uc-who-opt:has(input:checked)::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 0;
+    background: var(--uc-teal-text);
 }
 .uc-who-opt:has(input:checked) .uc-who-count { color: var(--uc-teal-text); }
 /* The tick itself, in the same ink. accent-color is one property and it is the
@@ -1611,6 +1650,93 @@
 .uc-calendar .uc-lrow-note { color: var(--uc-secondary); }
 .uc-calendar .uc-lrow-donate { align-self: flex-start; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); }
 
+/* ===========================================================================
+ * THREE THINGS ABOUT A LIST ROW, ALL MEASURED AT THE EMBED WIDTH (3.95.1).
+ *
+ * 1. THE DATE BREAKS WHERE IT IS TOLD TO.
+ *
+ * Measured in Merriweather at 13px/600, which is what this column renders in:
+ *
+ *     "Wednesday, September 16, 2026"   217.3px
+ *     "Wednesday,"                       81.7px
+ *     "September 16, 2026"              132.3px
+ *     the column                        160px at 700px, 170px at 900px
+ *
+ * The whole date has never fitted at either width, so it wrapped at the last
+ * space it could reach and left "2026" alone on the second line. Each half is
+ * nowrap here, so the space between them is the only break point there is: two
+ * lines where the column cannot hold it, one line where it can, and never a
+ * break inside either half. At 630px the column is the full row width and it
+ * draws on one line with no rule doing anything.
+ *
+ * NOWRAP ON THE PARTS, NOT A <br>. A <br> is a break that happens at every
+ * width including the ones where the whole date fits, and it is in the markup
+ * where a stylesheet cannot reach it.
+ * ======================================================================== */
+.uc-calendar .uc-lrow-dow,
+.uc-calendar .uc-lrow-dmy { white-space: nowrap; }
+
+/* ---------------------------------------------------------------------------
+ * 2. THE CHIP AND THE ORGANIZER ARE ONE LINE, ALWAYS.
+ *
+ * `.uc-lrow-meta` was `flex-wrap: wrap`, so a long organizer left the chip's
+ * line entirely and dropped underneath it. Measured with the real terms at
+ * 700px: twelve of fourteen rows shared a line and two did not, which is 22px
+ * of row height appearing and disappearing down a list and three distinct row
+ * heights in fourteen rows.
+ *
+ * NOWRAP ON THE ROW, AND THE SHRINKING HAPPENS INSIDE THE ORGANIZER. The chip
+ * is `flex: 0 0 auto`, so it is never squeezed and never wraps: it is one word
+ * or two and a pill broken across lines is not a pill. The organizer takes what
+ * is left and wraps inside its own box, which costs the same height the old
+ * behaviour did in the worst case and costs nothing in every other.
+ *
+ * `min-width: 0` BECAUSE A FLEX ITEM WILL NOT SHRINK BELOW ITS CONTENT
+ * OTHERWISE. Without it the default `min-width: auto` is min-content, the line
+ * cannot shrink, and the whole thing overflows the column instead of wrapping.
+ *
+ * AND THE THREE INHERITED PROPERTIES ARE DECLARED, for the reason 3.93.0
+ * records: they are inherited, this renders inside somebody else's page, and a
+ * host that sets `break-word` or `break-all` on its body would split an
+ * organizer's name in half. The longest word in any real organizer name is
+ * "Northwest", so `normal` never has anything to fall back from.
+ * ------------------------------------------------------------------------ */
+.uc-calendar .uc-lrow-meta { flex-wrap: nowrap; }
+.uc-calendar .uc-lrow-meta > .uc-lc-chip { flex: 0 0 auto; white-space: nowrap; }
+.uc-calendar .uc-lrow-byline {
+    flex: 0 1 auto; min-width: 0;
+    overflow-wrap: normal; word-break: normal; hyphens: manual;
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. ONE VERTICAL RULE FOR EVERY COLUMN IN THE ROW.
+ *
+ * Above 860px the row centred its columns; between 640 and 860, where the
+ * embed actually renders, it started them. So the date and the venue sat level
+ * with the top of a picture that is 54px tall inside a two-row block about
+ * 89px tall, and the text read as hanging off the top of the row.
+ *
+ * CENTRED, WHICH IS THE RULE THE WIDER SHAPE ALREADY HAD. The picture spans
+ * both grid rows and so does the date, so centring puts both against the middle
+ * of the title-and-venue block rather than against the top of it.
+ *
+ * ON THE ITEMS, NOT ON THE ROW. `align-items` is a parent's suggestion and the
+ * 860px block already overrides it once; `align-self` on each item is the thing
+ * a later rule naming the row cannot take back. Same reasoning as the check box
+ * alignment in 3.93.0 and the same shape of fix.
+ *
+ * THE PHONE STACK IS DELIBERATELY NOT THIS. Below 640px every column is in one
+ * stack beside a picture that spans all three rows, and centring that picture
+ * would float it against the middle of a 130px block instead of sitting it
+ * beside the title. There the picture is a marker next to a heading rather than
+ * a column, so it starts, and so does everything else. One rule per shape, and
+ * the rule is the same for every column within a shape.
+ * ------------------------------------------------------------------------ */
+.uc-calendar .uc-lrow-media,
+.uc-calendar .uc-lrow-main,
+.uc-calendar .uc-lrow-when,
+.uc-calendar .uc-lrow-where { align-self: center; }
+
 /* A MIDDLE STEP, BECAUSE FOUR COLUMNS AT 700px IS TIGHT AND MEASURABLY SO.
    Measured: at 700px the title track fell to 170px and rows ran to 136px,
    because the date and venue tracks are fixed and take their width first. The
@@ -1644,6 +1770,13 @@
         align-items: start;
     }
     .uc-calendar .uc-lrow-media { width: 72px; grid-column: 1; grid-row: 1 / span 3; }
+    /* START, ON THE ITEMS, for the reason the centring block gives: here the
+       picture is a marker beside a heading rather than a column, and centring
+       it against a 130px stack would put it level with the venue line. */
+    .uc-calendar .uc-lrow-media,
+    .uc-calendar .uc-lrow-main,
+    .uc-calendar .uc-lrow-when,
+    .uc-calendar .uc-lrow-where { align-self: start; }
     .uc-calendar .uc-lrow-title { font-size: 15px; }
     /* Date and venue become two quiet lines under the title rather than
        columns, and the row is read top to bottom like everything else on a
@@ -3404,8 +3537,20 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        Kept in step with it. */
     .uc-day-closed-mark { margin-top: 1px; padding: 2px 3px; text-align: center; }
     .uc-day-closed-mark .uc-closed-word { font-size: 9px; letter-spacing: .02em; }
-    .uc-day-closed-mark .uc-closed-name,
-    .uc-day-closed-mark .uc-closed-note { display: none; }
+    .uc-day-closed-mark .uc-closed-name { display: none; }
+    /* THE NOTE TAKES ONE MORE CLASS THAN THE NAME DOES (3.95.1).
+
+       The rule that lets a note fill its cell is unconditional
+       `.uc-day-closed-mark .uc-closed-note` at (0,2,0), and it sits LATER in
+       this file, so an equal-specificity hide here loses on source order: a
+       200 character note drew in full in an 80px phone cell and took the row
+       to 283px. The name has no such rule and needs no raise, so it does not
+       get one.
+
+       This is the trap the comment on the media-query copy names, arriving
+       from the other side: a query changes WHEN a rule applies and never how
+       strongly, so a rule added later anywhere in the file outranks it. */
+    .uc-calendar .uc-day-closed-mark .uc-closed-note { display: none; }
 
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
     .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
@@ -4074,8 +4219,11 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        container-query copy above. */
     .uc-day-closed-mark { margin-top: 1px; padding: 2px 3px; text-align: center; }
     .uc-day-closed-mark .uc-closed-word { font-size: 9px; letter-spacing: .02em; }
-    .uc-day-closed-mark .uc-closed-name,
-    .uc-day-closed-mark .uc-closed-note { display: none; }
+    .uc-day-closed-mark .uc-closed-name { display: none; }
+    /* The note needs the extra class for the reason the container-query copy
+       above gives in full: the unconditional rule that fills a cell with the
+       note is later in this file and outranks an equal-specificity hide. */
+    .uc-calendar .uc-day-closed-mark .uc-closed-note { display: none; }
 
     /* Dots replace the event blocks at this width, one per event. */
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
@@ -4436,13 +4584,25 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 .uc-day-closed-mark .uc-closed-name {
     font-size: 9.5px; line-height: 1.2; font-weight: 500; color: var( --uc-secondary );
 }
-/* THE NOTE IN A CELL. Already shortened by note_short() on the way in, so this
-   caps the damage rather than doing the shortening: two lines at most, and the
-   ellipsis the shortener added says there is more. The title attribute and the
-   cell's aria-label both carry the whole thing. */
+/* THE NOTE IN A CELL, IN FULL (3.95.1).
+
+   IT WAS CUT THREE TIMES OVER: note_short() took it to 32 characters with an
+   ellipsis, this rule clamped what was left to two lines, and overflow: hidden
+   cut whatever that missed. The whole text lived in a title attribute, which
+   is to say it lived on a mouse.
+
+   THE CLAMP AND THE OVERFLOW ARE BOTH GONE and the cell grows to hold the
+   note. That is the decision 3.91.0 made about the event titles in these same
+   tiles: uniform row height is not worth a column of text nobody can read.
+   Nothing here sets a height, so the row takes what the tallest cell in it
+   needs.
+
+   overflow-wrap: anywhere STAYS, and it is the one break this panel wants: a
+   cell is a seventh of the grid and a note can contain a URL or a long word
+   with no space to break at. That is a different question from a NAME being
+   split in half, which is what 3.93.0 forbade in the filter dropdown. */
 .uc-day-closed-mark .uc-closed-note {
-    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
     margin-top: 1px;
     font-size: 9px; line-height: 1.25; font-weight: 400; font-style: italic;
     color: var( --uc-secondary );
@@ -4451,6 +4611,22 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 /* A closed day is not clickable and must not offer to be. The grid gives
    every cell a pointer and a hover; a closed one with no events takes
    neither back, because a closed day WITH an event is still openable. */
+/* THE CLOSURE IN THE DAY PANEL (3.95.1). The cell clone keeps the hatch and
+   the word "Closed"; what changes is that it is read at panel size rather than
+   cell size, because this is the surface a phone actually reads. Nothing is
+   clamped and nothing is hidden: the panel is as tall as the note needs. */
+.uc-calendar .uc-day-panel-closed {
+    display: block; margin: 0 0 8px; padding: 8px 10px;
+    background: #fff;
+    border: 1px solid var( --uc-closed-edge );
+    border-radius: 7px;
+}
+.uc-calendar .uc-day-panel-closed .uc-closed-word { font-size: 12px; line-height: 1.3; }
+.uc-calendar .uc-day-panel-closed .uc-closed-name { display: block; font-size: 12px; line-height: 1.35; }
+.uc-calendar .uc-day-panel-closed .uc-closed-note {
+    display: block; margin-top: 3px;
+    font-size: 12px; line-height: 1.45;
+}
 .uc-day-closed.uc-day-empty { cursor: default; }
 .uc-day-closed.uc-day-empty:hover { background: #F3F4F6; }
 

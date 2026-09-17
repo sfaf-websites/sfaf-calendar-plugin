@@ -160,12 +160,26 @@ if ( ! preg_match( '/"uc-closure-note"/', $sc_code ) ) {
 if ( ! preg_match( '/"uc-closed-note"/', $sc_code ) ) {
     $fails[] = 'the month grid no longer renders a closure note';
 }
-if ( ! preg_match( '/SFAF_Closures::note_short\(/', $sc_code ) ) {
-    $fails[] = 'the month grid renders the full note rather than the shortened one, which overflows a cell';
+/* EVERY SURFACE SHOWS THE WHOLE NOTE (3.95.1), AND THIS ASSERTION REVERSED
+ * WITH THE BEHAVIOUR IT PINNED.
+ *
+ * It used to REQUIRE note_short() in the grid, on the reasoning that a cell has
+ * no room and a shortened note plus a title attribute was the honest trade. The
+ * trade was not honest: the note was cut to 32 characters, clamped to two lines
+ * on top of that, and clipped by overflow, and the whole text was reachable
+ * only by a mouse. A closure note is the whole of what a closed day has to say.
+ *
+ * The cell grows now, which is what 3.91.0 decided about the event titles in
+ * these same tiles. So the requirement is the opposite one: NOTHING shortens a
+ * note on any surface, and note_short() has no callers left. */
+if ( preg_match( '/SFAF_Closures::note_short\(/', $sc_code ) ) {
+    $fails[] = 'a surface shortens the closure note again; every one of them shows it whole and the cell grows to hold it';
 }
-/* The card is the surface with room, so it must NOT be the shortened one. */
+if ( ! preg_match( '/\$closed_note\s*=\s*SFAF_Closures::note\(/', $sc_code ) ) {
+    $fails[] = 'the month grid no longer reads the full note';
+}
 if ( ! preg_match( '/\$note\s*=\s*SFAF_Closures::note\(/', $sc_code ) ) {
-    $fails[] = 'the list card no longer reads the full note, so both surfaces now show the shortened one';
+    $fails[] = 'the list card no longer reads the full note';
 }
 
 /* ---- EDITING (3.86.0). ----

@@ -2976,6 +2976,28 @@ function sfaf_ap_date( $when, $style = 'full' ) {
         'short_year' => 'M j, Y',
         'month_year' => 'F Y',
         'weekday'    => 'D',
+        /*
+         * THE TWO HALVES OF 'full', FOR A COLUMN THAT CANNOT HOLD IT (3.95.1).
+         *
+         * The list view's date column is 160px at the embed width and the
+         * longest real date, "Wednesday, September 16, 2026", is 217.3px in
+         * Merriweather at 13px/600. It was wrapping wherever it ran out of
+         * room, which put "16, 2026" on the second line and orphaned the day
+         * and the year. The renderer composes these two instead, each held to
+         * one line, so the only break available is the one between them.
+         *
+         * THEY MUST COMPOSE TO 'full' EXACTLY, and ap-format-crosscheck.php
+         * asserts it: the pair joined by a space is the same string 'full'
+         * returns for the same timestamp. Two spellings of one date is how a
+         * surface ends up disagreeing with another about what day it is.
+         *
+         * THE COMMA IS IN THE FORMAT, NOT AT THE CALL SITE. Punctuation that
+         * belongs to a date belongs with the date, and a template holding half
+         * of it is the format string the sweep exists to keep out. ',' is not
+         * a date format character, so it passes through literally.
+         */
+        'weekday_comma' => 'l,',
+        'day_year'      => 'F j, Y',
         'month'      => 'M',
         'daynum'     => 'j',
     );

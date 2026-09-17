@@ -1586,8 +1586,14 @@ check(
 /* A TINT ALONE CANNOT DO IT: brand teal over white tops out near 1.3:1 before
  * the name starts losing contrast. The edge is the half that carries it, and
  * the colour is the one that clears the 3:1 non-text floor. */
+/* THE EDGE, NOT THE PROPERTY THAT DRAWS IT. This named the inset box-shadow
+ * 3.94.0 used. 3.95.1 replaced it with a pseudo-element, because an inset
+ * shadow follows the row's 6px radius and the edge curved away at both ends.
+ * The contract is unchanged and is what is asserted here: a ticked row carries
+ * a 3px teal edge, and the tint on its own cannot do the job. How it is drawn
+ * is asserted on its own terms further down, with the reason. */
 check(
-    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*box-shadow:\s*inset 3px 0 0 var\(--uc-teal-text\)/s', $cssc ),
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)(::before)? \{[^}]*(box-shadow:\s*inset 3px 0 0 var\(--uc-teal-text\)|width:\s*3px[^}]*background:\s*var\(--uc-teal-text\))/s', $cssc ),
     'the ticked row lost its edge, and a tint on its own measures under 1.2:1 against the panel'
 );
 check(
@@ -1646,6 +1652,224 @@ $img_url_deletes = substr_count( $code_portal, "delete_post_meta( \$event_id, '_
 check(
     2 === $img_url_deletes,
     sprintf( 'the typed image URL is deleted in %d places rather than the two the editor form owns', $img_url_deletes )
+);
+
+
+/* ===========================================================================
+ * THE LIST ROW AT THE EMBED WIDTH, AND THE TICKED EDGE (3.95.1).
+ * ======================================================================== */
+
+/* --- 1. THE DATE BREAKS WHERE IT IS TOLD TO. ---------------------------- */
+/* TWO PARTS IN THE MARKUP, EACH HELD TO ONE LINE, so the space between them is
+ * the only break point. The column is 160px at the embed width and the longest
+ * real date is 217.3px, so it always breaks there; a wider column draws it on
+ * one line with no rule doing anything. */
+check(
+    false !== strpos( $code, 'class="uc-lrow-dow"' ) && false !== strpos( $code, 'class="uc-lrow-dmy"' ),
+    'the list date is one string again, so it breaks wherever the column runs out and orphans the year'
+);
+check(
+    (bool) preg_match( '/\.uc-lrow-dow,\s*\.uc-calendar \.uc-lrow-dmy \{[^}]*white-space:\s*nowrap/s', $cssc ),
+    'the two halves of the date can break inside themselves again, which is the fault this replaced'
+);
+/* AND THE PARTS COMPOSE TO WHAT 'full' RETURNS. Two spellings of one date is
+ * how one surface ends up disagreeing with another about what day it is. The
+ * formatter is loaded and run rather than read, because a format string that
+ * looks right and is not is the whole reason the formatter exists. */
+if ( ! function_exists( 'date_i18n' ) ) {
+    function date_i18n( $fmt, $ts = null ) { return date( $fmt, null === $ts ? time() : (int) $ts ); }
+}
+$fmts = array();
+if ( preg_match( "/\\\$formats = array\(\s*(.*?)\n    \);/s", $code_tf, $fm ) ) {
+    if ( preg_match_all( "/'([a-z_]+)'\s*=>\s*'([^']*)'/", $fm[1], $rows, PREG_SET_ORDER ) ) {
+        foreach ( $rows as $r ) { $fmts[ $r[1] ] = $r[2]; }
+    }
+}
+check(
+    isset( $fmts['full'], $fmts['weekday_comma'], $fmts['day_year'] ),
+    'one of the three date styles the list composes from is gone from the formatter'
+);
+if ( isset( $fmts['full'], $fmts['weekday_comma'], $fmts['day_year'] ) ) {
+    $drift = array();
+    /* Every weekday and a month with a long name, so a format that is right on
+     * a Monday in May and wrong on a Wednesday in September is caught. */
+    for ( $d = 0; $d < 14; $d++ ) {
+        $t = mktime( 18, 0, 0, 9, 14 + $d, 2026 );
+        $whole    = date( $fmts['full'], $t );
+        $composed = date( $fmts['weekday_comma'], $t ) . ' ' . date( $fmts['day_year'], $t );
+        if ( $whole !== $composed ) { $drift[] = $whole . ' vs ' . $composed; }
+    }
+    check(
+        empty( $drift ),
+        'the two date halves no longer compose to the whole one: ' . implode( '; ', array_slice( $drift, 0, 2 ) )
+    );
+}
+
+/* --- 2. THE CHIP AND THE ORGANIZER ARE ONE LINE. ------------------------ */
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-lrow-meta \{[^}]*flex-wrap:\s*nowrap/s', $cssc ),
+    'the meta line wraps again, so a long organizer drops under the chip and the row grows by a line'
+);
+check(
+    (bool) preg_match( '/\.uc-lrow-meta > \.uc-lc-chip \{[^}]*flex:\s*0 0 auto/s', $cssc ),
+    'the chip can be shrunk again; a pill broken across two lines is not a pill'
+);
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-lrow-byline \{[^}]*min-width:\s*0/s', $cssc ),
+    'the organizer cannot shrink below its content, so a nowrap line overflows the column instead of wrapping inside it'
+);
+/* THE THREE INHERITED PROPERTIES, declared for the 3.93.0 reason: this renders
+ * inside somebody else's page and a host that sets break-word reaches it. */
+foreach ( array( 'overflow-wrap:\s*normal', 'word-break:\s*normal', 'hyphens:\s*manual' ) as $prop ) {
+    check(
+        (bool) preg_match( '/\.uc-calendar \.uc-lrow-byline \{[^}]*' . $prop . '/s', $cssc ),
+        'the organizer no longer declares ' . str_replace( ':\s*', ': ', $prop ) . ', so the host page decides whether a name is split in half'
+    );
+}
+
+/* --- 3. ONE VERTICAL RULE, ON THE ITEMS. -------------------------------- */
+/* ON THE ITEMS RATHER THAN THE ROW, because align-items is a parent's
+ * suggestion and the 860px block already overrides it once. Same shape of fix
+ * as the check box alignment in 3.93.0. */
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-lrow-media,\s*\.uc-calendar \.uc-lrow-main,\s*\.uc-calendar \.uc-lrow-when,\s*\.uc-calendar \.uc-lrow-where \{[^}]*align-self:\s*center/s', $cssc ),
+    'the list columns no longer share one vertical rule, so the date and the venue sit level with the top of a picture they are beside'
+);
+/* AND ALL FOUR ARE NAMED. Three of four is the fault this fixes, wearing a
+ * different name. */
+if ( preg_match( '/(\.uc-calendar \.uc-lrow-[a-z]+,\s*)+\.uc-calendar \.uc-lrow-[a-z]+ \{\s*align-self:\s*center/s', $cssc, $m ) ) {
+    check(
+        4 === substr_count( $m[0], '.uc-lrow-' ),
+        sprintf( 'only %d of the four list columns take the vertical rule', substr_count( $m[0], '.uc-lrow-' ) )
+    );
+}
+
+/* --- 4. THE TICKED EDGE IS STRAIGHT. ------------------------------------ */
+/* AN INSET SHADOW FOLLOWS THE BOX IT IS INSET INTO, and the row has a 6px
+ * radius for its hover fill, so the edge curved at both ends. A pseudo-element
+ * is its own box and ignores it. Measured: this keeps the ticked fill at 6px,
+ * matching hover and unticked, where removing the row's radius would square it
+ * and give a ticked row a different shape from a hovered one. */
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*width:\s*3px/s', $cssc ),
+    'the ticked edge is not a pseudo-element, so it follows the row radius and curves away at both ends'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*border-radius:\s*0/s', $cssc ),
+    'the ticked edge has a radius again'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*top:\s*0;\s*bottom:\s*0/s', $cssc ),
+    'the ticked edge no longer runs the full row height'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt:has\(input:checked\)::before \{[^}]*position:\s*absolute/s', $cssc ),
+    'the ticked edge is in flow, so ticking a row now moves the list'
+);
+check(
+    (bool) preg_match( '/\.uc-who-opt \{ position: relative; \}/', $cssc ),
+    'the row is not positioned, so the absolute edge anchors to something else entirely'
+);
+/* AND THE FILL IS UNCHANGED, which is what chose the pseudo-element over
+ * taking the radius off. */
+check(
+    ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*border-radius:\s*0/s', $cssc ),
+    'the ticked row has had its radius squared, so a ticked row and a hovered row are two different shapes'
+);
+check(
+    ! preg_match( '/\.uc-who-opt:has\(input:checked\) \{[^}]*box-shadow:\s*inset/s', $cssc ),
+    'the inset shadow is back beside the pseudo-element, which is two edges drawn over each other'
+);
+
+
+/* --- 5. THE TWO VIEWS ARE THE SAME WIDTH. ------------------------------- */
+/* THE CAP IS KEYED TO THE MODE, NOT TO THE PANEL SHOWING. `uc-view-combined`
+ * is rewritten by the toggle, so a cap keyed to it fell to 900px the moment
+ * somebody pressed List. Measured at a 1200px container: the grid and sidebar
+ * occupied 1198px and the list 900px, and the toggle moved 150px sideways. */
+check(
+    (bool) preg_match( '/\.uc-calendar:has\(\.uc-view-panels\[data-uc-combined="1"\]\) \{[^}]*max-width:\s*1200px/s', $cssc ),
+    'the combined cap is keyed to the view class again, so the block changes width when somebody presses the toggle'
+);
+check(
+    ! preg_match( '/\.uc-calendar\.uc-view-combined \{[^}]*max-width/s', $cssc ),
+    'the cap is back on uc-view-combined, which the toggle rewrites'
+);
+/* AND NEITHER SCRIPT STRIPS THE SHARED CONTAINER. The card is what sizes the
+ * panels inside it; taking it off for a lone list left the list 2px wider than
+ * the grid and sidebar it replaces. Both scripts, because a change that reaches
+ * one path and not the other is the split that has cost five faults. */
+foreach ( array( 'calendar.js' => $cal_code, 'embed.js' => $emb_code ) as $which => $js ) {
+    check(
+        false === strpos( $js, "toggleClass('uc-view-panels-combined'" )
+        && false === strpos( $js, "classList.toggle('uc-view-panels-combined'" ),
+        $which . ' strips the combined wrapper class again, which takes the card off and resizes the list panel with it'
+    );
+}
+/* AND "IS THIS COMBINED" IS ASKED OF THE ATTRIBUTE. Reading the class meant
+ * monthParams() found nothing whenever the list was showing. */
+check(
+    false === strpos( $cal_code, "find('.uc-view-panels-combined')" ),
+    'calendar.js asks the class whether a block is combined again, and that class used to come and go'
+);
+
+/* --- 6. A CLOSURE NOTE IS NOT CUT. -------------------------------------- */
+/* THREE CUTS, ALL GONE: a 32 character shortener with an ellipsis, a two line
+ * clamp, and overflow: hidden. Same decision as the event titles in these tiles
+ * in 3.91.0. */
+check(
+    false === strpos( $code, 'SFAF_Closures::note_short(' ),
+    'the month cell shortens its closure note again, and a cut note is the whole of what a closed day had to say'
+);
+check(
+    ! preg_match( '/\.uc-day-closed-mark \.uc-closed-note \{[^}]*line-clamp/s', $cssc ),
+    'the closure note is clamped again'
+);
+check(
+    ! preg_match( '/\.uc-day-closed-mark \.uc-closed-note \{[^}]*overflow:\s*hidden/s', $cssc ),
+    'the closure note is clipped again'
+);
+check(
+    ! preg_match( '/class="uc-closed-note" title=/', $code ),
+    'the closure note carries a title attribute again, which is the same string twice once the text is all on screen'
+);
+/* AND THE DAY PANEL CARRIES IT, which it never did: that panel is the readable
+ * surface at the widths where the cell hides its own closure line, and a closed
+ * day arrived there saying nothing about being closed. Both scripts. */
+foreach ( array( 'calendar.js' => $cal_code, 'embed.js' => $emb_code ) as $which => $js ) {
+    check(
+        false !== strpos( $js, 'uc-day-closed-mark' ) && false !== strpos( $js, 'uc-day-panel-closed' ),
+        $which . ' no longer copies the closure into the day panel, so a closed day says nothing there'
+    );
+}
+check(
+    (bool) preg_match( '/\.uc-calendar \.uc-day-panel-closed \.uc-closed-note \{[^}]*font-size:\s*12px/s', $cssc ),
+    'the day panel closure note is not sized for the panel, so it renders at the 9px a grid cell uses'
+);
+
+/* AND THE PHONE RULE STILL OUTRANKS THE ONE THAT FILLS A CELL (3.95.1).
+ *
+ * "The widths where the cell hides its own closure line" is the sentence the
+ * block above rests on, and it stopped being true inside this same release.
+ * The rule letting a note fill its cell is unconditional
+ * `.uc-day-closed-mark .uc-closed-note` at (0,2,0), and it sits later in the
+ * stylesheet than both phone copies, which were the same (0,2,0). Equal
+ * specificity, later wins: a 200 character note drew in full in an 80px cell
+ * and took the row to 283px, while the closure NAME beside it stayed hidden,
+ * because nothing later sets display on that one.
+ *
+ * Measured at a 500px container after the raise: the cell is 56.8px whether
+ * the note is 65 characters or 220, and the day panel carries the whole note.
+ *
+ * BOTH COPIES, because the container query and the media query are the same
+ * rule for two kinds of host and drift is what makes one of them a surprise. */
+$phone_hides = preg_match_all(
+    '/\.uc-calendar \.uc-day-closed-mark \.uc-closed-note \{[^}]*display:\s*none/s',
+    $cssc
+);
+check(
+    2 === $phone_hides,
+    'a phone copy of the closure-note hide is back to (0,2,0), so the unconditional fill rule later in the file outranks it and a long note grows a phone cell'
 );
 
 if ( $fails ) {
