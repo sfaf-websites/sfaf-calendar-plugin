@@ -2453,4 +2453,54 @@ class SFAF_Sources {
             'imported_at' => (int) get_post_meta( $post_id, self::META_IMPORTED_AT, true ),
         );
     }
+
+    /**
+     * Does this event take its registrations somewhere else? (3.97.0)
+     *
+     * THE ONE READER OF THIS RULE, and every surface asks it: the editor
+     * control, the save that refuses, the capacity boxes that hide, the event
+     * page's primary action and the one-time pass on install. Written once so
+     * "which events cannot take RSVPs here" has one answer and cannot be true
+     * on the editor and false in the save.
+     *
+     * IT KEYS ON THE IMPORT SOURCE AND NOTHING ELSE. A GoFundMe Pro campaign or
+     * an Eventbrite listing takes registrations on its own page: that is where
+     * the tickets are, where the capacity is counted and where the attendee
+     * list lives. A second registration here would be a second list nobody
+     * reconciles, and somebody who registered on this calendar would not be on
+     * the platform's door list.
+     *
+     * A HAND-MADE EVENT IS UNTOUCHED WHATEVER LINKS IT CARRIES. An event with a
+     * Donate URL, an external marker or a registration link typed into its
+     * description is still this calendar's own event, and its manager may still
+     * take names here. Keying on anything but the import source would lock
+     * events nobody imported, which is the fault worth being most careful
+     * about: it takes a working feature away from somebody who was using it.
+     *
+     * @param int $post_id
+     * @return bool
+     */
+    public static function takes_rsvps_at_source( $post_id ) {
+        return ( '' !== (string) get_post_meta( (int) $post_id, self::META_SOURCE, true ) );
+    }
+
+    /**
+     * Where somebody registers instead, when the source owns registration.
+     *
+     * THE PAGE THE IMPORT ALREADY CARRIES. `source_url` is in both adapters'
+     * owned_fields(), so it is written on every fetch and is always the current
+     * address: nothing new is stored for this and nothing can go stale.
+     *
+     * Returns '' when there is no source or no URL, and the caller draws
+     * nothing rather than an empty button.
+     *
+     * @param int $post_id
+     * @return string
+     */
+    public static function registration_url( $post_id ) {
+        if ( ! self::takes_rsvps_at_source( $post_id ) ) {
+            return '';
+        }
+        return (string) get_post_meta( (int) $post_id, self::META_SOURCE_URL, true );
+    }
 }

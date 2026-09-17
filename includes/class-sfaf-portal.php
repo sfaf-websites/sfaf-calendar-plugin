@@ -105,6 +105,44 @@ class SFAF_Portal {
      * browser from that URL, so this endpoint cannot be used to put arbitrary
      * HTML into somebody's description by answering with it.
      */
+    /**
+     * What the one-time RSVP pass touched, on the screen about sources.
+     *
+     * "HOW MANY DID THAT TOUCH" IS THE FIRST QUESTION, and the answer cannot be
+     * reconstructed later: the pass wrote '0' over the '1' it found, so after it
+     * has run the database no longer records what it changed. The count is
+     * stored at the moment it is known and this is where it is read.
+     *
+     * WRITTEN EVEN WHEN IT IS ZERO, so "nothing needed doing" and "it never ran"
+     * are different answers on the screen rather than the same silence. A site
+     * that never had an imported event with RSVPs on says so.
+     *
+     * ON THE SOURCES CARD, because that is the screen about imported events and
+     * this is a fact about imported events. It is a statement, not a control:
+     * nothing here re-runs it.
+     */
+    private function render_source_rsvp_migration_note() {
+        $done = get_option( 'sfaf_source_rsvp_migration' );
+        if ( ! is_array( $done ) ) {
+            return;
+        }
+        $n = isset( $done['touched'] ) ? (int) $done['touched'] : 0;
+        ?>
+        <p class="uc-hint">
+            <?php if ( ! empty( $done['skipped'] ) ) : ?>
+                <strong>The one-time RSVP pass did not run:</strong>
+                <?php echo esc_html( (string) $done['skipped'] ); ?>
+            <?php elseif ( $n > 0 ) : ?>
+                <strong>Registrations here were switched off on <?php echo (int) $n; ?>
+                imported <?php echo ( 1 === $n ) ? 'event' : 'events'; ?></strong>
+                that had them on. People already registered are still listed on those
+                events; nobody was removed.
+            <?php else : ?>
+                No imported event had registrations switched on, so nothing needed changing.
+            <?php endif; ?>
+        </p>
+        <?php
+    }
     public function ajax_description_image() {
         if ( ! is_user_logged_in() ) {
             wp_send_json_error( array( 'message' => 'You are signed out. Sign in again and retry.' ), 403 );
@@ -4577,6 +4615,15 @@ class SFAF_Portal {
      * @param SFAF_Source_Adapter[] $active_sources
      */
     private function render_fetch_report( $user, $active_sources ) {
+        /*
+         * FIRST, AND OUTSIDE EVERY BRANCH BELOW. This was inside the "no
+         * sources connected" case, which is the one state a site with imported
+         * events is never in, so the count would have been invisible on exactly
+         * the sites whose events the pass touched. It is a fact about this
+         * screen's subject and it does not depend on whether a fetch just ran.
+         */
+        $this->render_source_rsvp_migration_note();
+
         $key     = 'sfaf_fetch_report_' . $user->ID;
         $results = get_transient( $key );
 
@@ -12841,7 +12888,7 @@ class SFAF_Portal {
                  * button somebody reaches for to save a typo.
                  */
                 ?>
-                <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn uc-btn-go"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
+                <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn uc-btn-primary uc-editor-save"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -12900,7 +12947,7 @@ class SFAF_Portal {
                     <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
                         <button type="submit" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
                     <?php else : ?>
-                        <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-primary"
+                        <button type="submit" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish"
                                 <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
                                 <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
                     <?php endif; ?>
@@ -13043,7 +13090,7 @@ class SFAF_Portal {
         }
         ?>
         <button type="submit" form="uc-delete-event-<?php echo (int) $event_id; ?>"
-                class="uc-btn uc-btn-stop"
+                class="uc-btn uc-btn-stop uc-editor-delete"
                 data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
         <?php
     }
@@ -13758,18 +13805,60 @@ class SFAF_Portal {
         switch ( $field ) {
 
             case 'rsvp_enabled':
+                /*
+                 * A THIRD-PARTY EVENT TAKES ITS REGISTRATIONS AT THE SOURCE
+                 * (3.97.0), SO THIS IS LOCKED AND OFF.
+                 *
+                 * Not hidden. A control that vanishes leaves somebody looking
+                 * for it and wondering whether they have the wrong screen; one
+                 * that is visible, off and disabled answers the question they
+                 * came with, and the line under it says where registration
+                 * actually happens.
+                 *
+                 * THE MARKER STILL TRAVELS, and the disabled box deliberately
+                 * submits nothing. That pair is what makes the save able to
+                 * tell "this form showed the control and nobody ticked it" from
+                 * "this form never asked", which is the rule every control on
+                 * these two screens follows. The save refuses this field for a
+                 * source event anyway, whatever arrives: the disabled attribute
+                 * is what the screen says, never what makes it true.
+                 */
+                $at_source = $event_id ? SFAF_Sources::takes_rsvps_at_source( $event_id ) : false;
                 ?>
                 <?php // The marker travels WITH the checkbox, so it is present
                       // exactly when the control is. ?>
                 <input type="hidden" name="uc_rsvp_toggle_present" value="1" />
-                <label class="uc-check">
-                    <input type="checkbox" name="rsvp_enabled" value="1" <?php checked( $g( '_uc_rsvp_enabled' ), '1' ); ?> />
+                <label class="uc-check<?php echo $at_source ? ' uc-check-locked' : ''; ?>">
+                    <input type="checkbox" name="rsvp_enabled" value="1"
+                           <?php checked( ! $at_source && '1' === (string) $g( '_uc_rsvp_enabled' ) ); ?>
+                           <?php disabled( $at_source ); ?> />
                     Accept RSVPs
                 </label>
+                <?php if ( $at_source ) : ?>
+                    <span class="uc-hint uc-hint-spec">
+                        People register on <?php echo esc_html( $ctx['prov']['label'] ); ?>, on this event's own page there.
+                    </span>
+                <?php endif; ?>
                 <?php
                 break;
 
             case 'capacity':
+                /*
+                 * BOTH CAPACITY BOXES ARE HIDDEN ON A THIRD-PARTY EVENT
+                 * (3.97.0), and hidden rather than locked, which is the
+                 * opposite treatment from the tick above it.
+                 *
+                 * THE DIFFERENCE IS WHETHER THE CONTROL HAS AN ANSWER. "Accept
+                 * RSVPs" has one, and the answer is no, so it is shown saying
+                 * no. A capacity has no answer at all: there is no number of
+                 * places this calendar could hold for an event whose places are
+                 * counted somewhere else, and a disabled box reading 0 would be
+                 * a number that looks like a limit. Nothing to say is not the
+                 * same as something to say quietly.
+                 */
+                if ( $event_id && SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
+                    break;
+                }
                 $s_cap  = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
                 $hybrid = $event_id ? SFAF_Online::is_hybrid( $event_id ) : false;
                 ?>
@@ -13802,7 +13891,11 @@ class SFAF_Portal {
              * draw it leaves the value alone rather than clearing it.
              */
             case 'capacity_online':
-                if ( ! $event_id || ! SFAF_Online::is_hybrid( $event_id ) ) {
+                // Hidden on a third-party event for the reason the box above
+                // gives, and an imported event cannot be hybrid anyway:
+                // import_event() refuses all four of the format keys.
+                if ( ! $event_id || ! SFAF_Online::is_hybrid( $event_id )
+                    || SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
                     break;
                 }
                 $s_cap_on = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
@@ -13912,7 +14005,29 @@ class SFAF_Portal {
         }
 
         if ( isset( $_POST['uc_rsvp_toggle_present'] ) ) {
-            update_post_meta( $event_id, '_uc_rsvp_enabled', isset( $_POST['rsvp_enabled'] ) ? '1' : '0' );
+            /*
+             * A THIRD-PARTY EVENT NEVER TAKES RSVPS HERE, WHATEVER IS POSTED
+             * (3.97.0).
+             *
+             * THE DISABLED ATTRIBUTE IS WHAT THE SCREEN SAYS, NOT WHAT MAKES
+             * THIS TRUE. A disabled box is a rendering decision: it is absent
+             * from a hand-edited POST, from a form left open while somebody
+             * else changed the source, and from anything that did not come out
+             * of a browser at all. This is the rule, and it is written as a
+             * WRITE OF '0' rather than as a skip, because skipping would leave
+             * an event that already had RSVPs on still carrying them.
+             *
+             * REGISTRATIONS ALREADY IN THE TABLE ARE NOT TOUCHED. Turning the
+             * switch off stops the form being offered; it does not delete
+             * anybody's place, and the registrations screen still lists them.
+             * Deleting rows is not something a save should do as a side effect
+             * of a field changing.
+             */
+            if ( SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
+                update_post_meta( $event_id, '_uc_rsvp_enabled', '0' );
+            } else {
+                update_post_meta( $event_id, '_uc_rsvp_enabled', isset( $_POST['rsvp_enabled'] ) ? '1' : '0' );
+            }
         }
 
         /*

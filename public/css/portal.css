@@ -3472,6 +3472,49 @@ body.uc-modal-open { overflow: hidden; }
 .uc-portal .uc-btn-stop { background: #c0392b; border-color: #c0392b; color: #fff; }
 .uc-portal .uc-btn-stop:hover { background: #a33025; border-color: #a33025; color: #fff; }
 
+/* ---------------------------------------------------------------------------
+   THE ROW READS DESTRUCTIVE TO PRIMARY, LEFT TO RIGHT (3.97.0).
+
+       Delete        Cancel        Save draft        Publish
+       red           amber         YELLOW            GREEN
+
+   ORDER ON SCREEN AND ORDER IN THE MARKUP ARE DIFFERENT THINGS, AND THAT IS
+   THE WHOLE REASON THIS IS `order` AND NOT A REWRITE OF THE PHP. A browser
+   sends an Enter keypress in a text field to the form's FIRST SUBMIT BUTTON in
+   DOCUMENT order, and Delete must never be that button. Save draft is first in
+   the markup and stays first, so Enter still saves a draft, which is the safe
+   answer and the one 3.94.0 already chose. Moving Delete to the left of the row
+   visually costs nothing, because `order` does not move it in the document.
+
+   > DELETE IS ALSO NOT A SUBMIT OF THIS FORM AT ALL. It carries
+   > `form="uc-delete-event-N"`, so its form owner is the delete form emitted
+   > after this one, and implicit submission of the event form cannot reach it
+   > whatever the order. Two mechanisms, and the test asserts both, because the
+   > `form=` attribute is one edit away from being dropped by somebody tidying.
+
+   YELLOW ON SAVE DRAFT AND GREEN ON PUBLISH IS MARK'S DECISION, and it inverts
+   what DESIGN.md says about yellow being the primary action. DESIGN.md records
+   the exception by name so a later pass does not "correct" it back. The short
+   version: on this row yellow marks the IN-BETWEEN action, the one you press
+   while you are still working, and green marks the thing that puts the event in
+   front of the public.
+
+   PUBLISH IS THE LARGEST, which is the part that carries "this is the main
+   action" now that it is not the only coloured button. Size, not hue.
+   ------------------------------------------------------------------------ */
+.uc-editor-actions .uc-editor-delete  { order: 1; }
+.uc-editor-actions .uc-cancel-inline  { order: 2; }
+.uc-editor-actions .uc-editor-save    { order: 3; }
+.uc-editor-actions .uc-editor-publish { order: 4; }
+/* Open, the cancel panel still takes the whole width and drops to the end. The
+   rule below sets order: 20, which is past every one of these. */
+
+/* THE MAIN ACTION IS THE BIGGEST THING IN THE ROW. Padding and type size, so it
+   grows in both axes rather than becoming a long thin bar. */
+.uc-editor-actions .uc-editor-publish {
+    padding: 13px 30px;
+    font-size: 15px;
+}
 /* THE CANCEL DISCLOSURE IS ONE OF THE THREE BUTTONS, AND THEN IT IS A PANEL.
    Closed it is a flex item the size of its label. Open it takes the row's whole
    width and moves to the end of it, so the options lay out under the buttons

@@ -3703,6 +3703,63 @@ exclusion a rule the framework enforces rather than a coincidence of the current
 mapping. That is what it used to be, and it was one well-meaning "fix the gap"
 commit away from silently overwriting somebody's copy.
 
+### Registrations belong to the source, and that is a third kind of ownership (3.97.0)
+
+`owned_fields()` and `manager_fields()` split the FIELDS between the platform
+and a person. Registration is neither: it is not a field the platform writes on
+every fetch, and it is not a decision a manager may take here. **An imported
+event takes its registrations on its own page, and this calendar does not take
+them at all.**
+
+**WHY IT IS A REFUSAL AND NOT A DEFAULT.** A GoFundMe Pro campaign or an
+Eventbrite listing counts its places, issues its tickets and holds its attendee
+list on the platform. A second registration here would be a second list nobody
+reconciles, and somebody who signed up on this calendar would not be on the door
+list the organizer actually reads. Turning it on is not a thing a manager should
+be able to do by accident, so the control is locked rather than merely unticked.
+
+```
+SFAF_Sources::takes_rsvps_at_source()   the one reader of the rule
+SFAF_Sources::registration_url()        where they go instead: source_url,
+                                        which both adapters already own
+```
+
+**IT KEYS ON THE IMPORT SOURCE AND NOTHING ELSE.** A hand-made event is this
+calendar's own whatever links it carries: a Donate URL, an external marker, a
+registration address typed into its description. Keying on any of those would
+lock events nobody imported, and **that is the failure worth being most careful
+about**, because it takes a working feature away from somebody who was using it
+rather than leaving one switched on.
+
+**FOUR PLACES ENFORCE IT, AND THE LAST TWO ARE NOT BELT AND BRACES.**
+
+- The editor renders "Accept RSVPs" locked and off, with a line naming the
+  platform. Both capacity boxes are HIDDEN rather than locked: a capacity has no
+  answer at all for an event counted somewhere else, and a disabled box reading
+  0 is a number that looks like a limit.
+- The save writes `'0'`, whatever is posted. **A write, not a skip**, or an
+  event that already had them on would keep them.
+- `sfaf_event_takes_rsvps()` refuses as well, which is what every surface
+  actually asks. The stored value is what the writers agree to; the reader is
+  what the button, the confirmation and the `.ics` read.
+- The event page offers the source's own registration link **in place of** the
+  RSVP button, above the guard that would otherwise return first.
+
+**A ONE-TIME PASS ON INSTALL** switches RSVPs off on imported events that
+already had them on, reports the count on the Sources screen, and **deletes
+nothing**. Somebody registered for one of these in good faith: turning the
+switch off stops the form being offered and leaves their place on the
+registrations screen where an organizer can see it and tell them. A migration
+that quietly removed people from a list would be the worst reading of "locked".
+
+> **THE COUNT IS RECORDED BECAUSE IT CANNOT BE RECONSTRUCTED.** The pass writes
+> `'0'` over the `'1'` it found, so afterwards the database no longer says what
+> it changed. It is written even when it is zero, so "nothing needed doing" and
+> "it never ran" are different answers.
+
+**A fetch never changes any of this**, because none of it is a field an adapter
+writes. The rule applies in the pending queue's editor and after approval alike:
+it is a property of where the event came from, not of what state it is in.
 ### GoFundMe Pro
 
 Supplies: title, dates and times, location, source URL, donate URL, FAQs, and

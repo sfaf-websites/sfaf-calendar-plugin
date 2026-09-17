@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.96.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '7' );
+define( 'SFAF_DB_VERSION', '8' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -972,6 +972,7 @@ function sfaf_install_tables() {
     }
 
     sfaf_migrate_notification_lists();
+    sfaf_migrate_source_rsvps();
 
     update_option( 'sfaf_db_version', SFAF_DB_VERSION );
 }
@@ -1098,6 +1099,85 @@ function sfaf_retire_satellite_key() {
     }
 }
 
+/**
+ * Switch RSVPs off on every imported event that has them on. (3.97.0)
+ *
+ * WHY THERE IS A PASS AT ALL. The rule is new and the events are not. An
+ * Eventbrite listing sitting in the pending queue today has the box open,
+ * because nothing stopped it before, and somebody may already have ticked it.
+ * The editor and the save refuse from now on, but neither reaches an event
+ * nobody opens, and the event page reads the stored value.
+ *
+ * WHAT IT TOUCHES AND WHAT IT LEAVES. It writes '0' to `_uc_rsvp_enabled` on
+ * events that carry an import source and currently say '1'. It does NOT delete
+ * a single row from the registrations table. Somebody registered for one of
+ * these in good faith; turning the switch off stops the form being offered and
+ * leaves their place on the registrations screen where the organizer can see
+ * it, and where they can be told. A migration that quietly deleted people from
+ * a list would be the worst possible reading of "locked".
+ *
+ * IT REPORTS THE COUNT, in an option the Sources screen reads, because "how
+ * many did that touch" is the first question and reconstructing it afterwards
+ * means comparing against a database nobody kept a copy of. Written even when
+ * the count is zero, so "nothing needed doing" and "it never ran" are different
+ * answers.
+ *
+ * IDEMPOTENT. A second run finds nothing at '1' and writes the same zero.
+ *
+ * ONE QUERY, NOT A LOOP OVER EVERY EVENT. The meta_query names both conditions,
+ * so a site with three thousand events reads the handful that match rather than
+ * every post.
+ */
+function sfaf_migrate_source_rsvps() {
+    /*
+     * THE KEY COMES FROM THE CLASS, NOT FROM A LITERAL TYPED HERE. It is
+     * `_uc_external_source`, which is not the name anybody guesses, and a
+     * migration querying the wrong key finds nothing, writes nothing, reports
+     * zero and looks exactly like a migration that had nothing to do. That is
+     * the worst shape a one-time pass can fail in, because it is silent and it
+     * never runs again.
+     *
+     * The class is loaded by the time this runs: the includes are at file
+     * scope and the installer fires on activation or on a version bump, both
+     * of which are after them. The guard is belt to that brace, and it refuses
+     * rather than guessing a key.
+     */
+    if ( ! class_exists( 'SFAF_Sources' ) ) {
+        update_option( 'sfaf_source_rsvp_migration', array(
+            'touched' => 0,
+            'at'      => current_time( 'mysql' ),
+            'skipped' => 'SFAF_Sources was not loaded, so the source key could not be read.',
+        ), false );
+        return 0;
+    }
+
+    $q = new WP_Query( array(
+        'post_type'      => 'uc_event',
+        'post_status'    => 'any',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'meta_query'     => array(
+            'relation' => 'AND',
+            array( 'key' => SFAF_Sources::META_SOURCE, 'compare' => 'EXISTS' ),
+            array( 'key' => SFAF_Sources::META_SOURCE, 'value' => '', 'compare' => '!=' ),
+            array( 'key' => '_uc_rsvp_enabled', 'value' => '1', 'compare' => '=' ),
+        ),
+    ) );
+
+    $touched = 0;
+    foreach ( $q->posts as $event_id ) {
+        update_post_meta( (int) $event_id, '_uc_rsvp_enabled', '0' );
+        $touched++;
+    }
+
+    update_option( 'sfaf_source_rsvp_migration', array(
+        'touched' => $touched,
+        'at'      => current_time( 'mysql' ),
+    ), false );
+
+    return $touched;
+}
 /**
  * Run the installer when the stored schema version is behind the code's.
  *

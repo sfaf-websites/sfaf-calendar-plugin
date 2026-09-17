@@ -166,6 +166,12 @@ echo "=== pictures in descriptions ==="
 run "desc-images --self-test" php .claude/desc-images-test.php --self-test
 
 echo
+# Registrations on a third-party event belong to the source, and the editor's
+# button row reads destructive to primary without Delete taking the Enter key.
+echo "=== third-party RSVPs, and the button row ==="
+run "source-rsvps --self-test" php .claude/source-rsvps-test.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 

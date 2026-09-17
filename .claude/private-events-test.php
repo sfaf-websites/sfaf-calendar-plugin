@@ -557,6 +557,17 @@ $WHITELIST = array(
      * private event's notification list would not be migrated.
      */
     'sfaf-calendar.php::sfaf_migrate_notification_lists' => 'the 3.25.0 notification list upgrade, which must reach every event',
+    /*
+     * AND THE 3.97.0 ONE, FOR THE SAME REASON THE ONE ABOVE IS HERE. It
+     * switches registrations off on imported events that still have them on,
+     * and a PRIVATE imported event is exactly the one whose open form nobody
+     * would notice. Excluding private events would leave the state this pass
+     * exists to end, on the events least likely to be checked.
+     *
+     * It selects ids and writes one meta key. It renders nothing to anybody, so
+     * seeing a private event here discloses nothing.
+     */
+    'sfaf-calendar.php::sfaf_migrate_source_rsvps' => 'the 3.97.0 third-party RSVP pass, which must reach every imported event including private ones',
 );
 
 $files = array_merge(

@@ -112,6 +112,33 @@ the sidebar (the pending queue), and nowhere decorative.
   yellow.
 - White on Yellow: **1.38:1**. Never.
 
+#### The one exception: the event editor's button row (3.97.0)
+
+**On that row yellow marks the IN-BETWEEN action and green marks the primary
+one, and that is Mark's decision.** It is written down here because it inverts
+the rule above, and a later pass reading only the rule would "correct" it back.
+
+```
+Delete          Cancel          Save draft       Publish
+red             amber           YELLOW           GREEN
+#c0392b         #B45309         #FFD900          #15803D
+white 5.44:1    white 5.02:1    dark gray 8.92:1 white 5.02:1
+```
+
+**The reasoning, so it is not re-argued from scratch.** Save draft is the button
+somebody presses while they are still working, over and over; Publish is the one
+that puts an event in front of the public, once. Green for the thing that goes
+out and yellow for the thing you press on the way there reads as a traffic
+sequence rather than as two competing primaries.
+
+**PUBLISH CARRIES "MAIN ACTION" BY SIZE, NOT BY HUE.** It is the largest control
+in the row, which is what the yellow used to be saying on its own.
+
+**Caladmin is where this is allowed at all.** The system colours on that row are
+states rather than brand, for the reason the block above gives: what a visitor
+sees on the public calendar is the palette's business, and caladmin is a set of
+controls for one person doing a job. **Nothing on the public side changes**, and
+yellow stays the single primary action there.
 ### Teal is the single structural accent
 
 One accent, used for structure: focus rings, the active indicator, heading

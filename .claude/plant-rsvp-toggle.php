@@ -11,10 +11,16 @@ $plants = array(
         'from' => "\$ics = SFAF_Online::ics_url_with_link( \$event_id, self::person_format( \$person ) );",
         'to'   => "\$ics = '';",
     ),
+    /*
+     * THE WRITE MOVES OUTSIDE THE GUARD, which is the shape this fault actually
+     * has now that 3.97.0 put a branch inside it. Replacing the guard's
+     * condition with `true` no longer matches the source, and a plant that does
+     * not match proves nothing.
+     */
     'the RSVP toggle is saved without its marker' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "        if ( isset( \$_POST['uc_rsvp_toggle_present'] ) ) {\n            update_post_meta( \$event_id, '_uc_rsvp_enabled'",
-        'to'   => "        if ( true ) {\n            update_post_meta( \$event_id, '_uc_rsvp_enabled'",
+        'from' => "        if ( isset( \$_POST['uc_rsvp_toggle_present'] ) ) {",
+        'to'   => "        update_post_meta( \$event_id, '_uc_rsvp_enabled', isset( \$_POST['rsvp_enabled'] ) ? '1' : '0' );\n        if ( isset( \$_POST['uc_rsvp_toggle_present'] ) ) {",
     ),
     'the marker stops travelling with the control' => array(
         'file' => 'includes/class-sfaf-portal.php',

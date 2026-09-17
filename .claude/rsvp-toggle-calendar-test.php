@@ -131,12 +131,41 @@ $portal = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
  * all, so without this "nobody ticked it" and "this form did not ask" are the
  * same POST, and saving from a screen that did not show the control would clear
  * it. This is the mechanism the move had to leave alone. */
-check( (bool) preg_match( '/case \'rsvp_enabled\':[\s\S]{0,600}?name="uc_rsvp_toggle_present"[\s\S]{0,400}?name="rsvp_enabled"/', $portal ),
-    'the "I was on the form" marker no longer travels with the Accept RSVPs control, so a screen that did not draw it can clear it' );
+/* MATCHED WITHOUT A CHARACTER BUDGET. This looked for the marker within 600
+ * characters of the case label, and 3.97.0 put a comment between them that
+ * pushed it past the window, so the check failed on a control that was
+ * perfectly correct. A distance in characters is not the relationship being
+ * asserted; the relationship is that the marker and the checkbox are in the
+ * same case, in that order. */
+if ( preg_match( '/case \'rsvp_enabled\':([\s\S]*?)\n\s*break;/', $portal, $m ) ) {
+    $case = $m[1];
+    $at_marker = strpos( $case, 'name="uc_rsvp_toggle_present"' );
+    $at_box    = strpos( $case, 'name="rsvp_enabled"' );
+    check( false !== $at_marker && false !== $at_box && $at_marker < $at_box,
+        'the "I was on the form" marker no longer travels with the Accept RSVPs control, so a screen that did not draw it can clear it' );
+} else {
+    check( false, 'the rsvp_enabled case could not be read at all' );
+}
 
 /* AND THE SAVE IS GUARDED BY THAT MARKER, not by the checkbox's presence. */
-check( (bool) preg_match( '/if \( isset\( \$_POST\[\'uc_rsvp_toggle_present\'\] \) \) \{\s*\n\s*update_post_meta\( \$event_id, \'_uc_rsvp_enabled\'/', $portal ),
-    'the RSVP toggle is saved without its marker, so a form that never showed the control now turns registrations off' );
+/* THE GUARD, NOT THE LINE THAT FOLLOWS IT. This required the write to be the
+ * very next statement after the marker check, and 3.97.0 put the third-party
+ * refusal between them, so it failed on a save that is more correct than the
+ * one it was written against. What must hold is that EVERY write of the switch
+ * is inside the marker's guard. */
+if ( preg_match( '/if \( isset\( \$_POST\[\'uc_rsvp_toggle_present\'\] \) \) \{([\s\S]*?)\n        \}/', $portal, $m ) ) {
+    $guarded = $m[1];
+    $writes_in_guard = substr_count( $guarded, "update_post_meta( \$event_id, '_uc_rsvp_enabled'" );
+    $writes_total    = substr_count( $portal, "update_post_meta( \$event_id, '_uc_rsvp_enabled'" );
+    check( $writes_in_guard > 0 && $writes_in_guard === $writes_total,
+        sprintf(
+            'the RSVP toggle is written in %d places and only %d are inside the marker guard, so a form that never showed the control can turn registrations off',
+            $writes_total,
+            $writes_in_guard
+        ) );
+} else {
+    check( false, 'the RSVP toggle save could not be read at all' );
+}
 
 /* =========================================================================
  * 5. AND THE CONTROL IS STILL DRAWN, ON EVERY SHAPE OF EVENT.

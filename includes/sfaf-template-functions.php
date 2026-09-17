@@ -639,6 +639,22 @@ function sfaf_show_feature( $post_id, $feature ) {
  * @return bool
  */
 function sfaf_event_takes_rsvps( $post_id ) {
+    /*
+     * A THIRD-PARTY EVENT NEVER TAKES RSVPS HERE (3.97.0), AND THIS IS THE
+     * SECOND MECHANISM.
+     *
+     * The save already refuses to store '1' for one of these, so this should
+     * never have anything to override. It is here for the same reason
+     * SFAF_Online::link() checks the format after set() has already cleared the
+     * key: the stored value is what the writers agree to, and the reader is
+     * what every surface actually asks. An event imported after its RSVPs were
+     * switched on, a row written by something that predates this rule, or a
+     * direct meta write would all reach here, and this is the one place that
+     * settles it for the button, the confirmation, the .ics and the rest.
+     */
+    if ( class_exists( 'SFAF_Sources' ) && SFAF_Sources::takes_rsvps_at_source( $post_id ) ) {
+        return false;
+    }
     return '1' === (string) get_post_meta( $post_id, '_uc_rsvp_enabled', true )
         && sfaf_show_feature( $post_id, 'rsvp' );
 }
@@ -1052,6 +1068,44 @@ function sfaf_rsvp_block( $post_id ) {
      */
     if ( SFAF_Cancellation::is_cancelled( $post_id ) ) {
         return '';
+    }
+
+    /*
+     * A THIRD-PARTY EVENT SENDS PEOPLE TO THE SOURCE INSTEAD (3.97.0).
+     *
+     * IN PLACE OF THE RSVP BUTTON, NOT BESIDE IT. Two registration controls on
+     * one page is two lists nobody reconciles, and the one on this calendar
+     * would not be the one the platform checks at the door. This is the primary
+     * action for these events because it is the only action: there is nothing
+     * else somebody can do here to hold a place.
+     *
+     * ABOVE the takes_rsvps() guard, because that answers false for these
+     * events by design and returning early would leave the page with no way to
+     * register at all, which is worse than the RSVP button it replaces.
+     */
+    $at_source = SFAF_Sources::registration_url( $post_id );
+    if ( '' !== $at_source ) {
+        $prov = SFAF_Sources::provenance( $post_id );
+        return '<div class="uc-card-rsvp uc-card-rsvp-source">'
+            . sfaf_action_button( array(
+                'label'   => 'Register on ' . $prov['label'],
+                'href'    => $at_source,
+                'variant' => 'primary',
+                /*
+                 * external => true RATHER THAN HAND-WRITTEN ATTRIBUTES. It
+                 * emits target and rel="noopener noreferrer", which PROJECT.md
+                 * 1 records as load bearing, AND it adds the note saying the
+                 * link opens a new tab. Writing the attributes here would have
+                 * got the rel right and dropped the note, which is the half a
+                 * screen reader depends on.
+                 *
+                 * NOT nofollow ugc. That pair is for a link somebody typed into
+                 * a form, like a venue website. This is a platform the calendar
+                 * deliberately imports from.
+                 */
+                'external' => true,
+            ) )
+            . '</div>';
     }
 
     if ( ! sfaf_event_takes_rsvps( $post_id ) ) {

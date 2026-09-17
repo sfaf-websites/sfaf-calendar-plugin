@@ -139,6 +139,9 @@ function __checked_selected_helper( $a, $b, $echo, $type ) {
 }
 function checked( $a, $b = true, $e = true ) { return __checked_selected_helper( $a, $b, $e, 'checked' ); }
 function selected( $a, $b = true, $e = true ) { return __checked_selected_helper( $a, $b, $e, 'selected' ); }
+/* disabled() joins them in 3.97.0: the Accept RSVPs control is rendered
+ * disabled on a third-party event, and core's helper takes the same shape. */
+function disabled( $a, $b = true, $e = true ) { return __checked_selected_helper( $a, $b, $e, 'disabled' ); }
 function wp_nonce_field( $a = -1, $n = '_wpnonce', $r = true, $e = true ) { return ''; }
 function wp_create_nonce( $a = -1 ) { return 'n'; }
 function wp_verify_nonce( $n, $a = -1 ) { return 1; }
@@ -347,6 +350,20 @@ class SFAF_Sources {
     const STATUS_DISMISSED = 'uc_dismissed';
     const META_REMOVED_AT  = '_uc_removed_at';
     const META_SOURCE      = '_uc_source';
+
+    /*
+     * REGISTRATIONS BELONG TO THE SOURCE (3.97.0). Modelled on the same meta
+     * this stub already uses for provenance, so an event that reports a source
+     * here also reports as registering there, and the two cannot disagree
+     * inside this world.
+     */
+    public static function takes_rsvps_at_source( $id ) {
+        return ( '' !== (string) get_post_meta( $id, self::META_SOURCE, true ) );
+    }
+    public static function registration_url( $id ) {
+        if ( ! self::takes_rsvps_at_source( $id ) ) { return ''; }
+        return 'https://example.org/campaign/' . (int) $id;
+    }
 
     public static function provenance( $id ) {
         $source = (string) get_post_meta( $id, self::META_SOURCE, true );
