@@ -106,6 +106,54 @@ $plants = array(
         'to'   => "            \$format = \$asked;",
     ),
 
+    /* ---- THE DISPLAY, THE ALERT AND THE SUMMARY (3.96.0). --------------- */
+    'the hybrid line is folded into the address, where it reaches the maps query' => array(
+        'file' => 'includes/sfaf-template-functions.php',
+        'from' => "function sfaf_event_format_line( \$post_id ) {\n    return SFAF_Online::is_hybrid( (int) \$post_id ) ? 'In person and online' : '';",
+        'to'   => "function sfaf_event_format_line( \$post_id ) {\n    return '';",
+    ),
+
+    'the event page stops saying a hybrid event is also online' => array(
+        'file' => 'templates/single-uc_event.php',
+        'from' => "\$format_line = sfaf_event_format_line( \$post_id );",
+        'to'   => "\$format_line = '';",
+    ),
+
+    'the list location column stops saying a hybrid event is also online' => array(
+        'file' => 'includes/class-sfaf-shortcodes.php',
+        'from' => "\$format_line = sfaf_event_format_line( \$post_id );",
+        'to'   => "\$format_line = '';",
+    ),
+
+    'the alert reports the whole-event count beside a named format' => array(
+        'file' => 'includes/class-sfaf-notifications.php',
+        'from' => "\$count  = (int) sfaf_get_rsvp_count_by_format( \$event_id, \$format );",
+        'to'   => "\$count  = (int) sfaf_get_rsvp_count( \$event_id );",
+    ),
+
+    'the alert stops naming the format' => array(
+        'file' => 'includes/class-sfaf-notifications.php',
+        'from' => "            \$rows['Attending'] = ( SFAF_Online::MODE_ONLINE === \$format ) ? 'Online' : 'In person';",
+        'to'   => "            \$rows['Attending'] = '';",
+    ),
+
+    'the summary lists every hybrid registrant twice' => array(
+        'file' => 'includes/class-sfaf-notifications.php',
+        'from' => "        if ( ! \$hybrid ) {\n            foreach ( \$rows as \$row ) {",
+        'to'   => "        if ( true ) {\n            foreach ( \$rows as \$row ) {",
+    ),
+
+    'a registration with no recorded format vanishes from the summary' => array(
+        'file' => 'includes/class-sfaf-notifications.php',
+        'from' => "                if ( ! isset( \$groups[ \$rf ] ) ) {\n                    \$rf = '';\n                }",
+        'to'   => "                if ( ! isset( \$groups[ \$rf ] ) ) {\n                    continue;\n                }",
+    ),
+
+    'an online event reads its capacity from a key nothing writes' => array(
+        'file' => 'sfaf-calendar.php',
+        'from' => "    if ( ! SFAF_Online::is_hybrid( \$event_id ) ) {\n        return max( 0, (int) get_post_meta( \$event_id, '_uc_capacity', true ) );\n    }",
+        'to'   => "    if ( '' === \$format ) {\n        \$format = SFAF_Online::is_online( \$event_id ) ? SFAF_Online::MODE_ONLINE : SFAF_Online::MODE_IN_PERSON;\n    }",
+    ),
     /* ---- THE FORM. ------------------------------------------------------ */
     'the form decides for itself which formats an event has' => array(
         'file' => 'includes/sfaf-template-functions.php',

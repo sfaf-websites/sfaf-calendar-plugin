@@ -522,12 +522,36 @@ class SFAF_Notifications {
         $f     = self::facts( $event_id );
         $who   = ( $person && ! empty( $person->name ) ) ? (string) $person->name : 'Somebody';
         $email = ( $person && ! empty( $person->email ) ) ? (string) $person->email : '';
-        $count = (int) sfaf_get_rsvp_count( $event_id );
-        $cap   = (int) get_post_meta( $event_id, '_uc_capacity', true );
+        /*
+         * WHICH FORMAT THEY PICKED, AND THE NUMBER THAT BELONGS TO IT (3.96.0).
+         *
+         * THIS MESSAGE GOES TO STAFF, so naming the format is not a disclosure:
+         * the list already receives the registrant's name and address. What it
+         * needs is the fact somebody organizing the room actually acts on,
+         * which is whether this person is coming to it.
+         *
+         * AND THE COUNT HAS TO MATCH THE FORMAT, or the sentence is worse than
+         * no sentence. "Lee registered. 11 of 12 places taken" beside "Online"
+         * reports the room's capacity at somebody joining by link, and whoever
+         * reads it sets out a chair.
+         */
+        $format = self::person_format( $person );
+        $hybrid = SFAF_Online::is_hybrid( $event_id );
 
-        $places = $cap > 0
-            ? sprintf( '%d of %d places taken', $count, $cap )
-            : sprintf( '%d registered so far', $count );
+        if ( $hybrid && '' !== $format ) {
+            $count  = (int) sfaf_get_rsvp_count_by_format( $event_id, $format );
+            $cap    = (int) sfaf_event_capacity( $event_id, $format );
+            $word   = ( SFAF_Online::MODE_ONLINE === $format ) ? 'online' : 'in person';
+            $places = $cap > 0
+                ? sprintf( '%d of %d places taken %s', $count, $cap, $word )
+                : sprintf( '%d registered %s so far', $count, $word );
+        } else {
+            $count  = (int) sfaf_get_rsvp_count( $event_id );
+            $cap    = (int) sfaf_event_capacity( $event_id );
+            $places = $cap > 0
+                ? sprintf( '%d of %d places taken', $count, $cap )
+                : sprintf( '%d registered so far', $count );
+        }
 
         $can_view = ! empty( $context['can_view_all'] );
         if ( $can_view ) {
@@ -538,7 +562,14 @@ class SFAF_Notifications {
             $label = 'Open this event';
         }
 
-        $rows = array( 'Name' => $who, 'Email' => $email ) + self::detail_rows( $f );
+        $rows = array( 'Name' => $who, 'Email' => $email );
+        // Its own row on a hybrid event, and absent everywhere else: a row
+        // reading "In person" on an event that offers nothing else is a line of
+        // noise on every alert the calendar sends.
+        if ( $hybrid && '' !== $format ) {
+            $rows['Attending'] = ( SFAF_Online::MODE_ONLINE === $format ) ? 'Online' : 'In person';
+        }
+        $rows = $rows + self::detail_rows( $f );
 
         $html  = SFAF_Email::heading( sprintf( 'New registration for %s', $f['title'] ) );
         $html .= SFAF_Email::para( $places . '.' );
@@ -551,6 +582,11 @@ class SFAF_Notifications {
         $text .= $places . ".\n\n";
         $text .= 'Name: ' . $who . "\n";
         if ( $email ) { $text .= 'Email: ' . $email . "\n"; }
+        // The other half of the same message. A rule that holds in the HTML and
+        // not in the text part is not a rule.
+        if ( $hybrid && '' !== $format ) {
+            $text .= 'Attending: ' . ( ( SFAF_Online::MODE_ONLINE === $format ) ? 'Online' : 'In person' ) . "\n";
+        }
         $text .= self::detail_text( $f ) . "\n\n";
         if ( $link ) {
             $text .= $label . ': ' . $link . "\n";
@@ -975,8 +1011,60 @@ class SFAF_Notifications {
             return null;
         }
 
-        $cap    = (int) get_post_meta( $event_id, '_uc_capacity', true );
-        $places = $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
+        /*
+         * WHO IS COMING, AND ON A HYBRID EVENT HOW (3.96.0).
+         *
+         * This is the list an organizer reads before the doors open, so the
+         * thing they need first is how many chairs. One number cannot say that
+         * for an event where half the registrants are joining by link, so a
+         * hybrid event gets both counts in the sentence and two labelled
+         * groups in the list.
+         *
+         * THE GROUPING IS A PARTITION, and that is asserted rather than
+         * assumed: every row lands in exactly one group and the groups add up
+         * to $n. A row whose format was never recorded, which is any
+         * registration taken before the event became hybrid, gets a group of
+         * its own rather than being folded into one of the two or quietly
+         * dropped. Somebody is expecting those people too.
+         */
+        $hybrid = SFAF_Online::is_hybrid( $event_id );
+        $groups = array();
+        if ( $hybrid ) {
+            $groups = array(
+                SFAF_Online::MODE_IN_PERSON => array( 'label' => 'In person', 'rows' => array() ),
+                SFAF_Online::MODE_ONLINE    => array( 'label' => 'Online',    'rows' => array() ),
+                ''                          => array( 'label' => 'Format not recorded', 'rows' => array() ),
+            );
+            foreach ( $rows as $row ) {
+                $rf = isset( $row->format ) ? (string) $row->format : '';
+                if ( ! isset( $groups[ $rf ] ) ) {
+                    $rf = '';
+                }
+                $groups[ $rf ]['rows'][] = $row;
+            }
+            // A group with nobody in it is not a heading.
+            $groups = array_filter( $groups, function ( $g ) { return ! empty( $g['rows'] ); } );
+        }
+
+        if ( $hybrid ) {
+            $counted = array();
+            foreach ( $groups as $g ) {
+                $counted[] = count( $g['rows'] ) . ' ' . strtolower( $g['label'] );
+            }
+            $places = implode( ', ', $counted );
+            $cap_in = (int) sfaf_event_capacity( $event_id, SFAF_Online::MODE_IN_PERSON );
+            $cap_on = (int) sfaf_event_capacity( $event_id, SFAF_Online::MODE_ONLINE );
+            if ( $cap_in > 0 || $cap_on > 0 ) {
+                $places .= sprintf(
+                    ' (%s in person, %s online)',
+                    $cap_in > 0 ? 'of ' . $cap_in : 'no limit',
+                    $cap_on > 0 ? 'of ' . $cap_on : 'no limit'
+                );
+            }
+        } else {
+            $cap    = (int) sfaf_event_capacity( $event_id );
+            $places = $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
+        }
 
         if ( ! empty( $context['can_edit_event'] ) ) {
             $link  = SFAF_Portal::link( 'events/edit/' . (int) $event_id );
@@ -989,20 +1077,45 @@ class SFAF_Notifications {
         $html  = SFAF_Email::heading( sprintf( '%s starts soon', $f['title'] ) );
         $html .= SFAF_Email::para( sprintf( '%s. Here is who to expect.', $places ) );
         $html .= SFAF_Email::details( self::detail_rows( $f ) );
-        $html .= SFAF_Email::people_table( $rows );
+        if ( $hybrid ) {
+            // One table per group, each under its own heading, so the list is
+            // read the way the room is set up rather than alphabetically across
+            // two different kinds of attendance.
+            foreach ( $groups as $g ) {
+                $html .= SFAF_Email::label( $g['label'] . ' (' . count( $g['rows'] ) . ')' );
+                $html .= SFAF_Email::people_table( $g['rows'] );
+            }
+        } else {
+            $html .= SFAF_Email::people_table( $rows );
+        }
         if ( $link ) {
             $html .= SFAF_Email::button( $link, $label, 'primary' );
         }
 
         $text  = sprintf( "%s starts soon\n\n%s. Here is who to expect.\n\n", $f['title'], $places );
         $text .= self::detail_text( $f ) . "\n\n";
-        foreach ( $rows as $row ) {
-            // The full name here, and in the HTML table beside it: this is the
-            // list an organizer reads at the door, where telling two people
-            // apart is the point. display_name() is the one place that joins
-            // the pair.
-            $name = SFAF_RSVP::display_name( $row );
-            $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
+        if ( $hybrid ) {
+            foreach ( $groups as $g ) {
+                $text .= $g['label'] . ' (' . count( $g['rows'] ) . ")\n";
+                foreach ( $g['rows'] as $row ) {
+                    $name = SFAF_RSVP::display_name( $row );
+                    $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
+                }
+                $text .= "\n";
+            }
+        }
+        // The flat list, for an event with one format. The grouped one above has
+        // already written every row for a hybrid event, and writing them twice
+        // is the fault this whole section is guarding against.
+        if ( ! $hybrid ) {
+            foreach ( $rows as $row ) {
+                // The full name here, and in the HTML table beside it: this is
+                // the list an organizer reads at the door, where telling two
+                // people apart is the point. display_name() is the one place
+                // that joins the pair.
+                $name = SFAF_RSVP::display_name( $row );
+                $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
+            }
         }
         if ( $link ) {
             $text .= "\n" . $label . ': ' . $link . "\n";

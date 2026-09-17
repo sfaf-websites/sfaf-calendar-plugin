@@ -2245,6 +2245,32 @@ function sfaf_event_location_parts( $post_id ) {
 }
 
 /**
+ * How a visitor can attend, when the address alone does not say.
+ *
+ * DISPLAY ONLY, AND SEPARATE FROM sfaf_event_location() ON PURPOSE. That
+ * function is the single reader behind the Google Maps query string, the
+ * JSON-LD PostalAddress and the .ics LOCATION property, so prose appended to
+ * what it returns would go into a maps lookup, into structured data and into
+ * somebody's calendar entry. A hybrid event needs a SENTENCE beside its
+ * address, not a longer address.
+ *
+ * ONLY A HYBRID EVENT HAS ANYTHING TO SAY HERE. An in-person event's address is
+ * already the answer and an online one already reads "Online Event", so both
+ * return '' and neither surface draws anything. The ambiguous case is the only
+ * case: an event showing a street address that half its registrants will never
+ * go to.
+ *
+ * IT NEVER NAMES THE MEETING LINK. This is a public surface and the link is a
+ * credential; see SFAF_Online. What a visitor is told is that joining online is
+ * possible, and the link reaches them after they register and say so.
+ *
+ * @param int $post_id
+ * @return string '' unless the event runs both formats.
+ */
+function sfaf_event_format_line( $post_id ) {
+    return SFAF_Online::is_hybrid( (int) $post_id ) ? 'In person and online' : '';
+}
+/**
  * The shortest honest answer to "where is this".
  *
  * WHY THIS EXISTS. sfaf_event_location() returns "Strut, 470 Castro St, San

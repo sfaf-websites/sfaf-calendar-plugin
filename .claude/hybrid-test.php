@@ -343,6 +343,99 @@ check( false !== strpos( $tpl, "'data-uc-full'" ),
     'the RSVP button no longer says which formats are full' );
 
 /* =========================================================================
+ * 7. THE DISPLAY, THE ALERT AND THE SUMMARY.
+ * ====================================================================== */
+
+/* THE FORMAT LINE IS DISPLAY ONLY AND SEPARATE FROM THE ADDRESS.
+ *
+ * sfaf_event_location() is the single reader behind the Google Maps query
+ * string, the JSON-LD PostalAddress and the .ics LOCATION. Prose appended to
+ * what it returns goes into a maps lookup, into structured data and into
+ * somebody's calendar entry, so the sentence beside a hybrid address has to be
+ * a different function. This asserts they stay different. */
+/* THE FUNCTION MUST STILL SAY SOMETHING, not merely exist: a body returning ''
+ * matched "the function is there" perfectly, and the plant that emptied it went
+ * straight past. */
+check( false !== strpos( $tpl, "is_hybrid( (int) \$post_id ) ? 'In person and online' : ''" ),
+    'the hybrid format line no longer says anything, so a hybrid event shows a street address and nothing about joining online' );
+check( ! preg_match( '/function sfaf_event_location\([^)]*\)\s*\{[\s\S]{0,2500}?is_hybrid/', $tpl ),
+    'sfaf_event_location() answers the hybrid question itself, and its answer goes into a maps query, the JSON-LD address and the .ics' );
+
+/* AND IT NEVER NAMES THE LINK. It is a public surface. */
+$fmt_fn = '';
+$fn_at  = strpos( $tpl, 'function sfaf_event_format_line(' );
+if ( false !== $fn_at ) {
+    $open  = strpos( $tpl, '{', $fn_at );
+    $depth = 0;
+    for ( $i = $open; $i < strlen( $tpl ); $i++ ) {
+        if ( '{' === $tpl[ $i ] ) { $depth++; }
+        if ( '}' === $tpl[ $i ] ) {
+            $depth--;
+            if ( 0 === $depth ) { $fmt_fn = substr( $tpl, $fn_at, $i - $fn_at + 1 ); break; }
+        }
+    }
+}
+check( '' !== $fmt_fn, 'the format line could not be read' );
+check( false === strpos( $fmt_fn, 'link' ) && false === strpos( $fmt_fn, 'META_LINK' ),
+    'the public format line reaches for the meeting link, which is a credential' );
+
+/* BOTH SURFACES DRAW IT: the event page and the list view's location column. */
+$single = file_get_contents( $root . '/templates/single-uc_event.php' );
+$short  = file_get_contents( $root . '/includes/class-sfaf-shortcodes.php' );
+/* THE CALL, NOT THE NAME. The name survives in the comment above the call, so
+ * checking for it passed while the call itself had been replaced with ''. */
+check( false !== strpos( $single, '$format_line = sfaf_event_format_line(' ),
+    'the event page no longer CALLS the format line, so a hybrid event says nothing about joining online' );
+check( false !== strpos( $short, '$format_line = sfaf_event_format_line(' ),
+    "the list view's location column no longer CALLS the format line" );
+
+/* THE ALERT NAMES THE FORMAT, AND COUNTS THE ONE IT NAMED.
+ *
+ * A count that does not match the format is worse than no count: "11 of 12
+ * places taken" beside "Online" reports the room at somebody joining by link,
+ * and whoever reads it sets out a chair. */
+/* THE VALUES, NOT THE KEY. Setting the row to '' left the key in place and the
+ * check passed while the alert said nothing. */
+check( false !== strpos( $notif, "\$rows['Attending'] = ( SFAF_Online::MODE_ONLINE === \$format ) ? 'Online' : 'In person';" ),
+    'the registration alert no longer names which format the registrant picked; the key alone is not the answer' );
+check( (bool) preg_match( '/\$count\s*=\s*\(int\) sfaf_get_rsvp_count_by_format\( \$event_id, \$format \)/', $notif ),
+    'the alert reports the whole-event count beside a named format' );
+check( (bool) preg_match( "/\\\$text \.= 'Attending: '/", $notif ),
+    'the plain text half of the alert does not name the format, and a rule that holds in one half is not a rule' );
+
+/* THE SUMMARY GROUPS BY FORMAT, AND THE GROUPING IS A PARTITION.
+ *
+ * Every row lands in exactly one group. A row whose format was never recorded,
+ * which is any registration taken before the event became hybrid, gets a group
+ * of its own rather than being folded in or dropped: somebody is expecting
+ * those people too. */
+check( false !== strpos( $notif, "'Format not recorded'" ),
+    'a registration taken before the event became hybrid vanishes from the summary' );
+check( (bool) preg_match( '/if \( ! isset\( \$groups\[ \$rf \] \) \) \{\s*\n\s*\$rf = \'\';/', $notif ),
+    'an unrecognised format in the summary is dropped rather than put in the group for it' );
+/* NOBODY IS LISTED TWICE. The flat list is skipped entirely when the grouped
+ * one has run, which is the "counting a format twice" fault in its real shape. */
+check( (bool) preg_match( '/if \( ! \$hybrid \) \{\s*\n\s*foreach \( \$rows as \$row \) \{/', $notif ),
+    'the summary writes the flat list as well as the grouped one, so every hybrid registrant appears twice' );
+check( (bool) preg_match( '/sfaf_event_capacity\( \$event_id, SFAF_Online::MODE_IN_PERSON \)/', $notif )
+    && (bool) preg_match( '/sfaf_event_capacity\( \$event_id, SFAF_Online::MODE_ONLINE \)/', $notif ),
+    'the summary does not give both capacities' );
+
+/* =========================================================================
+ * 8. A NON-HYBRID EVENT HAS ONE CAPACITY AND IT IS `_uc_capacity`.
+ * ====================================================================== */
+/* THIS WAS WRONG FOR ONE RELEASE. sfaf_event_capacity() chose the key by the
+ * event's FORMAT, so a purely ONLINE event's capacity was written to
+ * `_uc_capacity` by the editor and read back from `_uc_capacity_online`, which
+ * nothing had ever written. Every online event with a limit reported as
+ * unlimited and the RSVP button never said full.
+ *
+ * The split belongs to HYBRID, not to online, which is also what makes the
+ * change need no migration. */
+check( (bool) preg_match( '/if \( ! SFAF_Online::is_hybrid\( \$event_id \) \) \{\s*\n\s*return max\( 0, \(int\) get_post_meta\( \$event_id, \'_uc_capacity\', true \) \);/', $main ),
+    'a non-hybrid event reads its capacity from a key that depends on its format again, so an online event with a limit reports as unlimited' );
+
+/* =========================================================================
  * SELF-TEST.
  * ====================================================================== */
 if ( $self_test ) {

@@ -4390,6 +4390,20 @@ class SFAF_Shortcodes {
                 <?php if ( '' !== $location ) : ?>
                     <span class="uc-lrow-venue"><?php echo esc_html( $location ); ?></span>
                 <?php endif; ?>
+                <?php
+                /*
+                 * AND HOW THEY CAN ATTEND, WHEN THE ADDRESS DOES NOT SAY
+                 * (3.96.0). Empty on every event that is only one thing, so
+                 * this draws nothing at all unless the event is hybrid and its
+                 * address would otherwise be the whole answer for people who
+                 * are never going there. Never the meeting link: see
+                 * sfaf_event_format_line().
+                 */
+                $format_line = sfaf_event_format_line( $post_id );
+                ?>
+                <?php if ( '' !== $format_line ) : ?>
+                    <span class="uc-lrow-format"><?php echo esc_html( $format_line ); ?></span>
+                <?php endif; ?>
                 <?php if ( '' !== $note ) : ?>
                     <span class="uc-lrow-note"><?php echo esc_html( $note ); ?></span>
                 <?php endif; ?>

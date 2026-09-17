@@ -255,6 +255,30 @@ while ( have_posts() ) :
                                     <span><?php echo esc_html( $place_name ); ?></span>
                                 </li>
                             <?php endif; ?>
+                            <?php
+                            /*
+                             * HOW THEY CAN ATTEND, ABOVE THE ADDRESS (3.96.0).
+                             *
+                             * Only a hybrid event has anything to say: an
+                             * in-person event's address is the answer and an
+                             * online one already reads "Online Event" below.
+                             * Above the address rather than under it, because
+                             * somebody who is joining online needs to know that
+                             * before they read a street they are not going to.
+                             *
+                             * The same video icon the online line uses, because
+                             * it is the same fact about the same event. It is
+                             * never the meeting link; see
+                             * sfaf_event_format_line().
+                             */
+                            $format_line = sfaf_event_format_line( $post_id );
+                            ?>
+                            <?php if ( '' !== $format_line ) : ?>
+                                <li>
+                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'video' ); ?></span>
+                                    <span><?php echo esc_html( $format_line ); ?></span>
+                                </li>
+                            <?php endif; ?>
                             <?php if ( SFAF_Online::is_online( $post_id ) ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'video' ); ?></span>

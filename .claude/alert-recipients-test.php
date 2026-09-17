@@ -217,6 +217,24 @@ $GLOBALS['sfaf_editors'] = $EDITORS;
 $GLOBALS['sfaf_claims']  = array();
 
 require $root . '/includes/class-sfaf-email.php';
+
+/* CAPACITY, WHICH MOVED INTO THE MAIN FILE IN 3.96.0 (sfaf_event_capacity).
+ * Stubbed rather than loaded, because the main file is the whole plugin. The
+ * value is the same key this harness has always written, so nothing about the
+ * world it builds changes: a non-hybrid event has one capacity and it is
+ * `_uc_capacity`. */
+function sfaf_event_capacity( $event_id, $format = '' ) {
+    return max( 0, (int) get_post_meta( (int) $event_id, '_uc_capacity', true ) );
+}
+function sfaf_get_rsvp_count_by_format( $event_id, $format ) {
+    return 0;
+}
+
+/* SFAF_Online, because build_alert() asks whether the event is hybrid
+ * before it decides which count to report (3.96.0). The real class, not a
+ * stub: a stub answering "not hybrid" would make this harness unable to
+ * ever see the branch it is now covering. */
+require_once $root . '/includes/class-sfaf-online.php';
 require $root . '/includes/class-sfaf-notifications.php';
 
 $GLOBALS['sfaf_meta'] = array(

@@ -1366,12 +1366,24 @@ function sfaf_event_capacity( $event_id, $format = '' ) {
     if ( ! $event_id ) {
         return 0;
     }
-    if ( '' === $format ) {
-        // A non-hybrid event has one capacity, and it is stored under the key
-        // its own format uses.
-        $format = SFAF_Online::is_online( $event_id )
-            ? SFAF_Online::MODE_ONLINE
-            : SFAF_Online::MODE_IN_PERSON;
+    /*
+     * ONLY A HYBRID EVENT SPLITS ITS CAPACITY. Everything else has ONE number
+     * and it is `_uc_capacity`, whichever format the event runs.
+     *
+     * THIS WAS WRONG FOR ONE RELEASE AND THE FAULT IS WORTH KEEPING. It read
+     * the key that matched the event's FORMAT, so a purely online event's
+     * capacity was written to `_uc_capacity` by the editor and read back from
+     * `_uc_capacity_online`, which nothing had ever written. Every online event
+     * with a limit reported as unlimited, the RSVP button never said full, and
+     * the form would have gone on taking registrations past the cap.
+     *
+     * The split belongs to HYBRID, not to online: `_uc_capacity` is "this
+     * event's places" everywhere, and on a hybrid event it narrows to mean "in
+     * person" with `_uc_capacity_online` beside it. That is also what makes the
+     * change need no migration, which is the claim PROJECT.md 2 makes.
+     */
+    if ( ! SFAF_Online::is_hybrid( $event_id ) ) {
+        return max( 0, (int) get_post_meta( $event_id, '_uc_capacity', true ) );
     }
     return max( 0, (int) get_post_meta( $event_id, sfaf_capacity_meta_key( $format ), true ) );
 }

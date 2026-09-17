@@ -190,6 +190,9 @@ function sfaf_new_tab_attrs() { return ' target="_blank" rel="noopener"'; }
 function sfaf_new_tab_note() { return '<span class="uc-sr-only"> (opens in a new tab)</span>'; }
 function sfaf_event_location_short( $id ) { return ''; }
 function sfaf_event_location( $id ) { return ''; }
+/* The hybrid line beside the address (3.96.0). Empty here for the reason
+ * the location above is empty: this harness is about which rows appear. */
+function sfaf_event_format_line( $id ) { return ''; }
 function sfaf_icon( $n, $a = array() ) { return ''; }
 function sfaf_ap_date( $d, $style = 'full' ) {
     $d = (string) $d;
