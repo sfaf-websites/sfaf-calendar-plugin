@@ -4,16 +4,31 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-17, at 3.96.0, released.
+**Last updated:** 2026-09-17, at 3.97.0, released.
 
 ---
 
 ## What shipped last
 
-**3.96.0 IS THE BIG ONE AND IT IS RELEASED**: hybrid events end to end, the
+**3.97.0** locked registrations on imported events and reordered the event
+editor's button row. **3.96.0 is the big one**: hybrid events end to end, the
 event video, two extra pictures on a submission, pictures inside descriptions,
 capacity moved beside the thing it limits, and the dropdown's ticked edge
-removed. **`readme.txt` is the changelog** and has the reasoning for all six.
+removed. **`readme.txt` is the changelog** and has the reasoning for all of it.
+
+> **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** GoFundMe Pro and
+> Eventbrite count their own places. The tick is locked and off, both capacity
+> boxes are hidden, the event page offers the source's own link instead, and a
+> one-time pass switched it off on events that already had it on. **It deleted
+> nobody**: registrations already taken are still on the registrations screen.
+> **A hand-made event is untouched whatever links it carries.** `PROJECT.md` 3.
+
+> **THE EDITOR'S BUTTON ROW IS Delete, Cancel, Save draft, Publish (3.97.0)**,
+> with yellow on Save draft and green on Publish. That inverts DESIGN.md's rule
+> about yellow and is **Mark's decision**, recorded there by name so a later
+> pass does not revert it. **Delete must never be first in the MARKUP**: Enter
+> in a text field presses the form's first submit, and the left-to-right order
+> is CSS `order`, which moves neither the document nor the keyboard.
 
 **THREE FOLDERS OF PICTURES NOW, AND NONE IS INSIDE ANOTHER**: `calendar/` for
 featured pictures, `calendar-submissions/` for what strangers send,

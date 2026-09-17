@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.96.0
+Stable tag: 3.97.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,62 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.97.0 =
+
+**A THIRD-PARTY EVENT TAKES ITS REGISTRATIONS ON ITS OWN PAGE, AND THIS CALENDAR DOES NOT TAKE THEM AT ALL.**
+
+A GoFundMe Pro campaign or an Eventbrite listing counts its places, issues its tickets and holds its attendee list on the platform. **A second registration here would be a second list nobody reconciles**, and somebody who signed up on this calendar would not be on the door list the organizer actually reads at the event.
+
+**IT KEYS ON THE IMPORT SOURCE AND NOTHING ELSE.** A hand-made event is this calendar's own whatever links it carries: a Donate URL, an external marker, a registration address typed into its description. Keying on any of those would lock events nobody imported, and **that is the failure worth being most careful about**, because it takes a working feature away from somebody who was using it rather than leaving one switched on. Both directions are planted: a source event saving with RSVPs on, and a hand-made event locked by mistake.
+
+**FOUR PLACES ENFORCE IT, AND THE LAST TWO ARE NOT BELT AND BRACES.**
+
+```
+the editor    the tick renders locked and off, with one line naming the
+              platform. Both capacity boxes are HIDDEN, not locked
+the save      writes '0', whatever is posted
+the reader    sfaf_event_takes_rsvps() refuses as well
+the page      offers the source's own link IN PLACE OF the RSVP button
+```
+
+**THE CAPACITY BOXES ARE HIDDEN RATHER THAN LOCKED, and that is the opposite treatment from the tick above them.** The difference is whether the control has an answer. "Accept RSVPs" has one, and the answer is no, so it is shown saying no. A capacity has no answer at all: there is no number of places this calendar could hold for an event counted somewhere else, and a disabled box reading 0 is a number that looks like a limit. Nothing to say is not the same as something to say quietly.
+
+**THE SAVE WRITES, IT DOES NOT SKIP.** Skipping would leave an event that already had RSVPs on still carrying them, which is the state this whole piece exists to end. And the disabled attribute is what the screen says, never what makes it true: a disabled box is absent from a hand-edited POST, from a form left open while somebody else changed the source, and from anything that did not come out of a browser.
+
+**A ONE-TIME PASS ON INSTALL** switches registrations off on imported events that already had them on, because the rule is new and the events are not: an Eventbrite listing sitting in the pending queue today has the box open, and somebody may already have ticked it. **It deletes nothing.** Somebody registered for one of these in good faith; turning the switch off stops the form being offered and leaves their place on the registrations screen where an organizer can see it and tell them. A migration that quietly removed people from a list would be the worst possible reading of "locked".
+
+**IT REPORTS THE COUNT, on the Sources screen, and it reports zero too.** The pass writes '0' over the '1' it found, so afterwards the database no longer records what it changed, and "nothing needed doing" and "it never ran" have to be different answers rather than the same silence.
+
+> **AND THE MIGRATION READS THE KEY OFF THE CLASS.** It is `_uc_external_source`, which is not the name anybody guesses. A one-time pass querying the wrong key finds nothing, writes nothing, reports zero and looks exactly like one that had nothing to do, which is the worst shape this kind of thing can fail in, because it is silent and it never runs again.
+
+**A fetch never changes any of this**, because none of it is a field an adapter writes. It applies in the pending queue's editor and after approval alike: it is a property of where the event came from, not of what state it is in. PROJECT.md 3 records it beside the field ownership contract, as a third kind of ownership that is neither `owned_fields()` nor `manager_fields()`.
+
+**AND THE EVENT EDITOR'S BUTTON ROW READS DESTRUCTIVE TO PRIMARY, LEFT TO RIGHT.**
+
+```
+            before                          after
+on screen   Save draft, Publish,            Delete, Cancel,
+            Cancel, Delete                  Save draft, Publish
+Delete      red     #c0392b                 red     #c0392b   unchanged
+Cancel      amber   #B45309                 amber   #B45309   unchanged
+Save draft  green   #15803D                 YELLOW  #FFD900   dark gray ink
+Publish     yellow  #FFD900                 GREEN   #15803D   white
+Publish     79.1 x 39.6                     110.4 x 49        the largest
+```
+
+**ORDER ON SCREEN AND ORDER IN THE MARKUP ARE DIFFERENT THINGS, AND THAT IS THE WHOLE REASON THIS IS CSS `order`.** A browser sends Enter in a text field to the form's FIRST SUBMIT BUTTON in DOCUMENT order, and Delete must never be that button. Save draft is first in the markup and stays first, so Enter still saves a draft. Moving Delete to the left of the row costs nothing, because `order` moves neither the document nor the keyboard.
+
+> **DELETE IS ALSO NOT A SUBMIT OF THAT FORM AT ALL.** It carries `form="uc-delete-event-N"`, so its form owner is the delete form emitted after the event form, and implicit submission cannot reach it whatever the order. Both mechanisms are asserted, because the `form=` attribute is one tidy-up away from being dropped by somebody who does not know what it is holding up.
+
+**PUBLISH CARRIES "MAIN ACTION" BY SIZE, NOT BY HUE**, now that it is not the only coloured button in the row. Both colours are 700 weights already measured on this screen: green 5.02:1 and red 5.44:1 on white, and the yellow keeps the dark gray ink that is the only text colour it takes, at 8.92:1.
+
+**YELLOW ON SAVE DRAFT INVERTS WHAT DESIGN.md SAYS ABOUT YELLOW**, which is that it is the primary action and appears once per view. **DESIGN.md records the exception by name, as Mark's decision**, so a later pass reading only the rule does not "correct" it back. The short version: Save draft is the button somebody presses while they are still working, over and over, and Publish is the one that puts an event in front of the public, once.
+
+**Seventeen faults planted and every one caught, but two went past on the first run and they were the two that mattered most**: the test MODELLED both readers instead of lifting them from source, so editing the shipped functions changed nothing it could see. **A reader a test also writes is not under test**, which is the same lesson 3.96.0 recorded about a value a test declares.
+
+**And two existing assertions had to be rewritten rather than satisfied.** Both measured a distance in characters or an adjacency of lines between two things, and a comment inserted between them failed a control that was more correct than the one they were written against. A distance is not the relationship being asserted.
+
 
 = 3.96.0 =
 
