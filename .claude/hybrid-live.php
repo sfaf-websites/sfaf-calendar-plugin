@@ -281,10 +281,18 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     $block = function ( $label ) use ( $report ) {
         $at = strpos( $report, $label );
         if ( false === $at ) { return ''; }
-        /* WIDE ENOUGH FOR THE WHOLE BLOCK. Each state() prints a dozen lines
-         * now, and a window that ends mid-block reports the lines past it as
-         * missing, which is a test failing for its own reason. */
-        return substr( $report, $at, 900 );
+        /*
+         * ENDING AT ITS OWN BLANK LINE, NEVER A FIXED WINDOW.
+         *
+         * A window too SHORT reports the lines past it as missing, which is a
+         * test failing for its own reason. A window too LONG runs into the NEXT
+         * block, so an assertion about one state is satisfied by the state
+         * after it, which is a test PASSING for its own reason and is the worse
+         * of the two. A plant on the video preview caught exactly that. Every
+         * state() ends with a blank line, which is the real boundary.
+         */
+        $end = strpos( $report, "\n\n", $at );
+        return ( false === $end ) ? substr( $report, $at ) : substr( $report, $at, $end - $at );
     };
 
     hl_check( false !== strpos( $report, 'bound            yes' ),

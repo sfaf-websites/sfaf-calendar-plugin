@@ -206,6 +206,21 @@ class SFAF_Video {
     }
 
     /**
+     * The player address for a link, or '' when it is not one we take.
+     *
+     * THE ONE WAY OUT OF parse() FOR A CALLER THAT ONLY WANTS THE SRC. The
+     * editor's live preview needs it, and reaching into parse()'s array from
+     * four places is how the no-cookie host gets forgotten in one of them.
+     *
+     * @param string $url
+     * @return string
+     */
+    public static function embed_url( $url ) {
+        $parsed = self::parse( $url );
+        return ( is_array( $parsed ) && ! empty( $parsed['embed'] ) ) ? (string) $parsed['embed'] : '';
+    }
+
+    /**
      * Is this something we will take, and if not, what do we say?
      *
      * An EMPTY value is valid: it is how somebody clears the field. The caller

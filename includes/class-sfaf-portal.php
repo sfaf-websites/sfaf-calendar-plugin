@@ -13373,11 +13373,51 @@ class SFAF_Portal {
         }
         $value = ( is_array( $rejected ) && isset( $rejected['raw'] ) ) ? $rejected['raw'] : $own;
 
-        // What a visitor would see today, so the hint can name it.
+        /*
+         * EVERY SERIES' VIDEO, FOR THE LIVE PREVIEW (3.98.0).
+         *
+         * THE SERIES CAN BE CHANGED WITHOUT SAVING, so what the event would
+         * show is a question about the select's CURRENT value rather than about
+         * stored meta, and only the browser knows that. The map is id => player
+         * address, built by SFAF_Video::embed_url() so the no-cookie host and
+         * the two services' shapes are decided in one place and never parsed
+         * twice. A series with no video is not in the map at all.
+         *
+         * NOT THE PREFILL PAYLOAD. That one is "what to COPY into a new event"
+         * and is built only where the offer is made; this is "what this event
+         * would show", which an existing event asks just as often. Putting the
+         * video in the prefill set would also have copied the series' link into
+         * the event's own field, which is the one thing E must not do: the
+         * event would then have a video of its own that nobody chose.
+         */
+        $series_videos = array();
+        foreach ( SFAF_Series::all() as $term ) {
+            $embed = SFAF_Video::embed_url( SFAF_Series::video( $term->term_id ) );
+            if ( '' !== $embed ) {
+                $series_videos[ (string) $term->term_id ] = $embed;
+            }
+        }
+
+        // What a visitor would see today, so the preview can start filled.
         $inherited = '';
         if ( '' === $own && ! $none && $event_id ) {
             $inherited = SFAF_Video::resolve( $event_id );
         }
+        $start_embed = SFAF_Video::embed_url( '' !== $value ? $value : $inherited );
+        $from_series = ( '' === $own && '' !== $inherited );
+        /*
+         * THE TICK IS OFFERED ONLY WHERE THERE IS SOMETHING TO REFUSE.
+         *
+         * "This event has no video" was drawn on every event, including ones
+         * whose series has none, where it turned off something that was never
+         * going to play. A control whose only effect is nothing is a control
+         * that makes somebody wonder what they have missed.
+         *
+         * THE SERVER DECIDES THE FIRST DRAW AND THE SCRIPT KEEPS IT HONEST
+         * afterwards, because the series can change under it without a save.
+         */
+        $series_now  = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
+        $series_has  = ( $series_now && isset( $series_videos[ (string) $series_now ] ) );
         ?>
         <?php // The marker travels WITH the controls, so a form that did not
               // draw them leaves both alone rather than clearing them. ?>
@@ -13395,17 +13435,47 @@ class SFAF_Portal {
             <?php endif; ?>
             <span class="uc-hint">
                 A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
-                <?php if ( '' !== $inherited ) : ?>
-                    Leave this empty and the series video plays here:
-                    <?php echo esc_html( $inherited ); ?>
-                <?php endif; ?>
             </span>
         </label>
-        <label class="uc-check">
-            <input type="checkbox" name="video_none" value="1" <?php checked( $none ); ?> />
-            This event has no video
+        <?php
+        /*
+         * THE PREVIEW, AND IT IS WHAT THE HINT USED TO BE (3.98.0).
+         *
+         * The series case used to be a sentence with a URL in it, which asks
+         * somebody to read an address and picture the video. Showing the video
+         * is both shorter and the actual answer, and it arrives the moment a
+         * series is chosen rather than after a save.
+         *
+         * ONE LINE ABOVE IT WHEN IT IS THE SERIES', because a player with no
+         * caption is a video the manager may believe they attached themselves.
+         */
+        ?>
+        <div class="uc-video-preview" data-uc-video-preview<?php echo '' === $start_embed ? ' hidden' : ''; ?>>
+            <p class="uc-hint uc-video-preview-note" data-uc-video-from-series<?php echo $from_series ? '' : ' hidden'; ?>>
+                This event will show the series video.
+            </p>
+            <div class="uc-video-frame">
+                <iframe data-uc-video-frame
+                        src="<?php echo esc_url( $start_embed ); ?>"
+                        title="Video preview" loading="lazy"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+            </div>
+        </div>
+        <?php
+        /*
+         * THE MAP THE SCRIPT READS. JSON_HEX_TAG so a "<" can never close this
+         * block early, whatever a future series name or address turns out to
+         * contain, which is the same discipline the completeness payload uses.
+         */
+        ?>
+        <script type="application/json" data-uc-series-videos><?php
+            echo wp_json_encode( $series_videos, JSON_HEX_TAG | JSON_HEX_AMP );
+        ?></script>
+        <label class="uc-check" data-uc-video-none-row<?php echo $series_has ? '' : ' hidden'; ?>>
+            <input type="checkbox" name="video_none" value="1" <?php checked( $none ); ?> data-uc-video-none />
+            Don't show the series video on this event
         </label>
-        <span class="uc-hint uc-hint-spec">Nothing plays here, even if the series has a video.</span>
         <?php
     }
 

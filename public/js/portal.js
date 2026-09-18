@@ -125,8 +125,143 @@ function ucDismissOnBackdrop(dialog) {
         run('calendarTick', initCalendarTick);
         run('tickPickers', initTickPickers);
         run('descImages', initDescImages);
+        run('videoPreview', initVideoPreview);
     });
 
+
+    /* ---------------------------------------------------------------------
+     * THE VIDEO PREVIEW, AND THE TICK THAT ONLY APPEARS WHEN IT CAN DO
+     * SOMETHING (3.98.0)
+     *
+     * THREE INPUTS, ONE ANSWER. What plays on this event is decided by the
+     * event's own link, the "don't show the series video" tick, and the SERIES
+     * CURRENTLY CHOSEN IN THE SELECT, which is the one that cannot be read off
+     * stored meta because it can change without a save.
+     *
+     *     the event's own link   wins outright
+     *     the tick               nothing plays
+     *     the chosen series      its video, with a line saying so
+     *     none of those          no preview at all
+     *
+     * AND THE TICK IS HIDDEN WHERE IT WOULD DO NOTHING. It used to be drawn on
+     * every event, including ones whose series has no video, where it turned
+     * off something that was never going to play.
+     *
+     * THE PARSER IS A SECOND COPY OF SFAF_Video::parse() AND THAT IS A DEBT.
+     * It is the smallest one that answers "what is the player address for this
+     * link", and it exists because the preview has to react to typing, which no
+     * server can. .claude/video-parse-crosscheck.php runs BOTH against the same
+     * list of addresses and fails on any disagreement, which is the same
+     * arrangement the recurrence engine has had since 3.14.0. Change one and
+     * the cross-check tells you about the other.
+     * ------------------------------------------------------------------ */
+    var UC_YT_ID = /^[A-Za-z0-9_-]{11}$/;
+
+    function ucVideoEmbed(url) {
+        url = String(url == null ? '' : url).trim();
+        if (!url) { return ''; }
+        /* Embed code is refused before anything else looks at it: a pasted
+         * iframe contains a perfectly good src. The presence of a tag is the
+         * whole test, exactly as in the PHP. */
+        if (url.indexOf('<') !== -1 || url.indexOf('>') !== -1) { return ''; }
+
+        var u;
+        try { u = new URL(url); } catch (e) { return ''; }
+        if (!u.host) { return ''; }
+
+        var host = u.host.toLowerCase().replace(/^www\./, '');
+        var path = u.pathname || '';
+
+        if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+            if (path === '/watch') {
+                var v = u.searchParams.get('v') || '';
+                return UC_YT_ID.test(v) ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(v) : '';
+            }
+            var shorts = path.match(/^\/shorts\/([A-Za-z0-9_-]{11})$/);
+            if (shorts) { return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(shorts[1]); }
+            /* /embed/ID is refused, for the reason the PHP gives: it is the
+             * address out of embed code rather than out of a browser bar. */
+            return '';
+        }
+        if (host === 'youtu.be') {
+            var short = path.match(/^\/([A-Za-z0-9_-]{11})$/);
+            return short ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(short[1]) : '';
+        }
+        if (host === 'vimeo.com') {
+            var vm = path.match(/^\/(\d{6,})(?:\/[A-Za-z0-9]+)?$/);
+            return vm ? 'https://player.vimeo.com/video/' + encodeURIComponent(vm[1]) : '';
+        }
+        return '';
+    }
+
+    function initVideoPreview() {
+        var field   = document.getElementById('uc-event-video');
+        var preview = document.querySelector('[data-uc-video-preview]');
+        var frame   = document.querySelector('[data-uc-video-frame]');
+        var note    = document.querySelector('[data-uc-video-from-series]');
+        var noneRow = document.querySelector('[data-uc-video-none-row]');
+        var none    = document.querySelector('[data-uc-video-none]');
+        var select  = document.querySelector('[data-uc-series-select]');
+        var mapEl   = document.querySelector('[data-uc-series-videos]');
+
+        if (!field || !preview || !frame) { return; }
+
+        var map = {};
+        if (mapEl) {
+            try { map = JSON.parse(mapEl.textContent || '{}') || {}; } catch (e) { map = {}; }
+        }
+
+        function seriesEmbed() {
+            if (!select) { return ''; }
+            var id = String(select.value || '');
+            return (id && Object.prototype.hasOwnProperty.call(map, id)) ? map[id] : '';
+        }
+
+        function apply() {
+            var fromSeries = seriesEmbed();
+
+            /* THE TICK APPEARS ONLY WHERE THERE IS A SERIES VIDEO TO REFUSE.
+             * Unticked on the way out, because a hidden tick that is still on
+             * would go on suppressing a video with no control saying so. */
+            if (noneRow) {
+                var offer = ('' !== fromSeries);
+                noneRow.hidden = !offer;
+                if (!offer && none && none.checked) { none.checked = false; }
+            }
+
+            var own   = ucVideoEmbed(field.value);
+            var embed = '';
+            var isSeries = false;
+
+            if (own) {
+                embed = own;
+            } else if (none && none.checked) {
+                embed = '';
+            } else if (fromSeries) {
+                embed = fromSeries;
+                isSeries = true;
+            }
+
+            if (note) { note.hidden = !isSeries; }
+
+            /* THE SRC IS ONLY WRITTEN WHEN IT CHANGES. Assigning the same
+             * address again reloads the player, which restarts a video
+             * somebody is part way through every time they type a character
+             * anywhere else in the form. */
+            if (embed) {
+                if (frame.getAttribute('src') !== embed) { frame.setAttribute('src', embed); }
+                preview.hidden = false;
+            } else {
+                preview.hidden = true;
+                if (frame.getAttribute('src')) { frame.setAttribute('src', ''); }
+            }
+        }
+
+        field.addEventListener('input', apply);
+        if (none) { none.addEventListener('change', apply); }
+        if (select) { select.addEventListener('change', apply); }
+        apply();
+    }
 
     /* ---------------------------------------------------------------------
      * INSERT IMAGE, ON THE CALADMIN DESCRIPTION EDITOR (3.96.0)

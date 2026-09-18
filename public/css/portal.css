@@ -1956,6 +1956,37 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-location-on .uc-location-place[hidden] { display: none; }
 
 /* ---------------------------------------------------------------------------
+   THE VIDEO PREVIEW (3.98.0).
+
+   IT REPLACES A SENTENCE WITH A URL IN IT. The series case used to read "Leave
+   this empty and the series video plays here: https://..." , which asks
+   somebody to read an address and picture the video. Showing it is shorter and
+   is the actual answer.
+
+   16:9 BY ASPECT-RATIO, NOT BY THE PADDING TRICK. Both services hand back a
+   16:9 player, and `aspect-ratio` on the wrapper with the frame filling it is
+   the declaration that says so once. The old percentage-padding idiom needs an
+   absolutely positioned child, and an absolutely positioned iframe inside a
+   flex column is the shape that collapsed the card in 3.24.1.
+
+   CAPPED, BECAUSE IT IS A PREVIEW. 420px is about the width at which a
+   thumbnail stops being a check and starts being something somebody watches in
+   the editor, and the field it sits in is a form control rather than a player.
+   ------------------------------------------------------------------------ */
+.uc-video-preview { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; }
+.uc-video-preview[hidden] { display: none; }
+.uc-video-preview-note[hidden] { display: none; }
+.uc-video-frame {
+    width: 100%; max-width: 420px;
+    aspect-ratio: 16 / 9;
+    background: var(--p-sunken, #EDEDED);
+    border: 1px solid var(--p-edge, #8C8D8E);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.uc-video-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+/* ---------------------------------------------------------------------------
    CAPACITY IS ONE ROW (3.98.0).
 
    It was two fields in two places, "Places in person" under the address and
