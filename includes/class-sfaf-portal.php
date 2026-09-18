@@ -13512,7 +13512,23 @@ class SFAF_Portal {
         $online     = $event_id ? SFAF_Online::is_online( $event_id ) : false;
         $hybrid     = $event_id ? SFAF_Online::is_hybrid( $event_id ) : false;
         $meet_link  = $event_id ? SFAF_Online::link( $event_id ) : '';
-        $sends      = $event_id ? SFAF_Online::sends( $event_id ) : array();
+        /*
+         * BOTH DELIVERY TICKS DEFAULT TO ON (3.98.0).
+         *
+         * A link nobody is sent is the one shape of this feature that helps
+         * nobody, and it was the state a new online event started in: the
+         * organizer entered a meeting link, saved, and the confirmation said "a
+         * link will be sent before the event" because neither tick was set.
+         *
+         * ON A NEW EVENT ONLY, and that is what `! $event_id` means here. An
+         * existing event answers with what it has stored, so somebody who
+         * deliberately unticked both keeps them unticked and this release
+         * changes no event that already exists. The other half of the default,
+         * switching an EXISTING event to online or hybrid, is in portal.js at
+         * the moment the format tick is set, because that is a transition
+         * rather than a stored state.
+         */
+        $sends      = $event_id ? SFAF_Online::sends( $event_id ) : array_keys( SFAF_Online::deliveries() );
         ?>
         <div class="uc-field uc-location-field" data-uc-location>
             <span class="uc-field-label">Location
@@ -13658,14 +13674,6 @@ class SFAF_Portal {
                     ?>
                 </div>
                 <?php
-                /*
-                 * AND HOW MANY MAY JOIN BY IT. Under the link, because that is
-                 * what it limits. Drawn only on a hybrid event: an online
-                 * event's single limit is the box under the address, stored
-                 * under the same key it has always used. See
-                 * render_rsvp_setting()'s 'capacity_online' case.
-                 */
-                $draw_rsvp( array( 'capacity_online' ) );
                 ?>
             </div>
 
@@ -13769,17 +13777,24 @@ class SFAF_Portal {
                     <p class="uc-hint">Shows as: <strong><?php echo esc_html( $text ); ?></strong></p>
                 <?php endif; ?>
             </div>
+            </div><?php // uc-location-place: everything the online tick replaces. ?>
             <?php
             /*
-             * AND HOW MANY MAY COME TO IT. Under the address, because that is
-             * what it limits. On an event that is not hybrid this is the only
-             * capacity box there is, and it is in its format's place: an online
-             * event has no address panel, so it draws here with the venue
-             * controls hidden around it, which is where its one limit belongs.
+             * CAPACITY, ONE ROW, BELOW THE ADDRESS AND THE MEETING LINK
+             * (3.98.0).
+             *
+             * OUTSIDE BOTH PANELS, which is what makes it one row rather than
+             * two. It used to be drawn twice, once inside the online panel and
+             * once inside the place panel, so the two numbers a hybrid event
+             * has were separated by the whole venue picker and could not be
+             * read together. Being outside also means the online tick, which
+             * hides the place panel, no longer takes the capacity with it.
+             *
+             * LAST IN THE CARD, because it is the question that only makes
+             * sense once the format and the place are settled.
              */
             $draw_rsvp( array( 'capacity' ) );
             ?>
-            </div><?php // uc-location-place: everything the online tick replaces. ?>
         </div>
         <?php
         return $rsvp_placed;
@@ -13999,17 +14014,71 @@ class SFAF_Portal {
                 }
                 $s_cap  = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
                 $hybrid = $event_id ? SFAF_Online::is_hybrid( $event_id ) : false;
+                /*
+                 * ONE ROW, ONE LABEL, ONE OR TWO BOXES (3.98.0).
+                 *
+                 * IT WAS TWO FIELDS IN TWO PLACES, "Places in person" under the
+                 * address and "Places online" under the meeting link, each
+                 * beside the thing it limits. That read well for one format at
+                 * a time and badly for the event: on a hybrid event the two
+                 * numbers are one decision about how many people are coming,
+                 * and they sat in different halves of the card with a venue
+                 * picker between them, so nobody could see both at once.
+                 *
+                 * THE LABEL IS "Capacity" AND THE BOXES CARRY THE FORMATS, so a
+                 * non-hybrid event reads as one labelled box rather than as a
+                 * box whose label names a format nobody chose. "Places in
+                 * person" on a purely online event was the wrong word in the
+                 * only place that word appeared.
+                 *
+                 * THE ONLINE BOX IS ALWAYS IN THE DOM AND HIDDEN, so ticking
+                 * hybrid reveals it without a save. Same discipline as the
+                 * meeting link panel beside it, and the reason 3.97.2 had to
+                 * fix this control once already.
+                 *
+                 * THE STORAGE DOES NOT MOVE. `capacity` is `_uc_capacity` on
+                 * every event, narrowing to mean "in person" on a hybrid one,
+                 * and `capacity_online` is `_uc_capacity_online`, which only a
+                 * hybrid event has. sfaf_capacity_meta_key() is still the one
+                 * place that decides, and nothing migrates.
+                 */
+                $s_cap_on = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
+                $at_src   = ( $event_id && SFAF_Sources::takes_rsvps_at_source( $event_id ) );
                 ?>
-                <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cap ) ); ?>">
+                <div class="uc-field uc-capacity-row<?php echo esc_attr( $this->field_class( $s_cap ) ); ?>" data-uc-capacity-row>
                     <span class="uc-field-label">
-                        <?php echo $hybrid ? 'Places in person' : 'Capacity'; ?>
+                        Capacity
                         <?php echo $this->field_badge( $s_cap, $ctx['prov']['label'] ); ?>
                     </span>
-                    <input type="number" name="capacity" min="0" value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>"<?php echo $this->field_disabled( $s_cap ); ?> />
+                    <div class="uc-capacity-boxes">
+                        <label class="uc-capacity-box">
+                            <?php /* Hidden until there are two of them: with one box
+                                     the row's own label is the whole name. */ ?>
+                            <span class="uc-capacity-box-label" data-uc-capacity-label<?php echo $hybrid ? '' : ' hidden'; ?>>In person</span>
+                            <input type="number" name="capacity" min="0"
+                                   aria-label="<?php echo esc_attr( $hybrid ? 'Capacity, in person' : 'Capacity' ); ?>"
+                                   data-uc-capacity-in-person
+                                   value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>"<?php echo $this->field_disabled( $s_cap ); ?> />
+                        </label>
+                        <?php
+                        /*
+                         * NOT DRAWN AT ALL ON A THIRD-PARTY EVENT, which can
+                         * never become hybrid: import_event() refuses every one
+                         * of the format keys, so there is no tick to reveal it.
+                         */
+                        if ( ! $at_src ) : ?>
+                            <label class="uc-capacity-box" data-uc-online-capacity<?php echo $hybrid ? '' : ' hidden'; ?>>
+                                <span class="uc-capacity-box-label">Online</span>
+                                <input type="number" name="capacity_online" min="0"
+                                       aria-label="Capacity, online"
+                                       value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap_on ); ?> />
+                            </label>
+                        <?php endif; ?>
+                    </div>
                     <?php // Stays inline: it is four words, and it stops
                           // somebody typing 0 meaning "nobody". ?>
                     <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
-                </label>
+                </div>
                 <?php
                 break;
 
@@ -14043,19 +14112,18 @@ class SFAF_Portal {
                  * one can never become hybrid: import_event() refuses every one
                  * of the format keys, so there is no tick that would reveal it.
                  */
-                if ( ! $event_id || SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
-                    break;
-                }
-                $s_cap_on  = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
-                $hybrid_on = SFAF_Online::is_hybrid( $event_id );
-                ?>
-                <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cap_on ) ); ?>"
-                       data-uc-online-capacity<?php echo $hybrid_on ? '' : ' hidden'; ?>>
-                    <span class="uc-field-label">Places online <?php echo $this->field_badge( $s_cap_on, $ctx['prov']['label'] ); ?></span>
-                    <input type="number" name="capacity_online" min="0" value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap_on ); ?> />
-                    <span class="uc-hint uc-hint-spec">0 means unlimited. Leave it empty for no limit online.</span>
-                </label>
-                <?php
+                /*
+                 * DRAWN BY THE 'capacity' CASE NOW (3.98.0), which renders both
+                 * boxes in one row so the two numbers can be read together.
+                 *
+                 * THIS CASE STAYS IN THE LIST AND RENDERS NOTHING, which is not
+                 * the same as deleting it. The shared field list is what the
+                 * save reads to decide which fields the form spoke for, and a
+                 * key removed from the list is a key the save stops handling:
+                 * `capacity_online` would then be left alone on every save
+                 * rather than written. Returning nothing from a case is how a
+                 * field in that list says "somewhere else draws me".
+                 */
                 break;
 
             case 'notify':

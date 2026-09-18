@@ -37,10 +37,13 @@ $plants = array(
         'from' => "            \$draw_rsvp( array( 'rsvp_enabled' ) );",
         'to'   => "",
     ),
-    'the online capacity is no longer drawn under the meeting link' => array(
+    /* CAPACITY IS ONE ROW NOW (3.98.0), drawn once below the address and the
+     * meeting link rather than once inside each panel, so what proves the
+     * online box exists is the input itself rather than a second draw call. */
+    'the online capacity box is no longer drawn at all' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                \$draw_rsvp( array( 'capacity_online' ) );",
-        'to'   => "",
+        'from' => "<input type=\"number\" name=\"capacity_online\" min=\"0\"",
+        'to'   => "<input type=\"hidden\" name=\"ignored_capacity_online\" min=\"0\"",
     ),
     'what the Location card placed is thrown away, so the catch-all draws it twice' => array(
         'file' => 'includes/class-sfaf-portal.php',

@@ -1690,6 +1690,8 @@ function ucDismissOnBackdrop(dialog) {
             var place  = root.querySelector('[data-uc-location-place]');
             var panel  = root.querySelector('[data-uc-online-panel]');
             var onlineCap = document.querySelector('[data-uc-online-capacity]');
+            var capLabel  = document.querySelector('[data-uc-capacity-label]');
+            var capInPer  = document.querySelector('[data-uc-capacity-in-person]');
 
             if (!modes.length && !online) {
                 return;
@@ -1714,6 +1716,35 @@ function ucDismissOnBackdrop(dialog) {
                 if (changed === hybrid && hybrid.checked) { online.checked = false; }
             }
 
+            /* THE LINK GOES OUT BY DEFAULT (3.98.0).
+             *
+             * A meeting link nobody is sent is the one shape of this feature
+             * that helps nobody, and it was what an event switched to online
+             * started in: the organizer entered a link, saved, and the
+             * confirmation still said one would be sent before the event.
+             *
+             * ON THE TRANSITION, NOT ON THE STATE. This fires only when a
+             * format tick goes from off to ON, so somebody who unticks a
+             * delivery box while online stays ticked keeps it unticked: apply()
+             * runs on every change and a rule written against the state would
+             * re-tick it under their hands. Switching the format off and on
+             * again is a fresh decision and does set them again.
+             *
+             * THE SERVER HAS THE OTHER HALF, a new event rendering both ticked,
+             * so this is not what makes the default true and a blocked script
+             * loses nothing on the case that matters most. */
+            var wasOnAFormat = !!((online && online.checked) || (hybrid && hybrid.checked));
+            function defaultDeliveries() {
+                var nowOn = !!((online && online.checked) || (hybrid && hybrid.checked));
+                if (nowOn && !wasOnAFormat) {
+                    Array.prototype.forEach.call(
+                        document.querySelectorAll('input[name="meeting_send[]"]'),
+                        function (box) { box.checked = true; }
+                    );
+                }
+                wasOnAFormat = nowOn;
+            }
+
             function apply() {
                 var isHybrid = !!(hybrid && hybrid.checked);
                 var isOnline = !!(online && online.checked);
@@ -1724,7 +1755,15 @@ function ucDismissOnBackdrop(dialog) {
                 if (place) { place.hidden = isOnline && !isHybrid; }
                 /* The online capacity is a hybrid control: a non-hybrid event's
                  * single limit is the box under the address. */
+                /* CAPACITY IS ONE ROW, AND HYBRID IS WHAT PUTS TWO BOXES IN IT
+                 * (3.98.0). With one box the row label "Capacity" is the whole
+                 * name, so the format names appear only when there are two of
+                 * them to tell apart. The in-person input's accessible name
+                 * moves with them: a visible label that comes and goes is no
+                 * use to somebody who is not looking at it. */
                 if (onlineCap) { onlineCap.hidden = !isHybrid; }
+                if (capLabel)  { capLabel.hidden  = !isHybrid; }
+                if (capInPer)  { capInPer.setAttribute('aria-label', isHybrid ? 'Capacity, in person' : 'Capacity'); }
 
                 var chosen = 'custom';
                 modes.forEach(function (m) { if (m.checked) { chosen = m.value; } });
@@ -1737,10 +1776,10 @@ function ucDismissOnBackdrop(dialog) {
 
             modes.forEach(function (m) { m.addEventListener('change', apply); });
             if (online) {
-                online.addEventListener('change', function () { exclusive(online); apply(); });
+                online.addEventListener('change', function () { exclusive(online); defaultDeliveries(); apply(); });
             }
             if (hybrid) {
-                hybrid.addEventListener('change', function () { exclusive(hybrid); apply(); });
+                hybrid.addEventListener('change', function () { exclusive(hybrid); defaultDeliveries(); apply(); });
             }
             root.classList.add('uc-location-on');
             apply();

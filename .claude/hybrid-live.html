@@ -42,6 +42,11 @@
   <div class="uc-online-panel" data-uc-online-panel>
     <label class="uc-field"><span class="uc-field-label">Meeting link</span>
       <input type="url" name="meeting_url" value="" /></label>
+    <div class="uc-field">
+      <span class="uc-field-label">When the link goes out</span>
+      <label class="uc-check"><input type="checkbox" name="meeting_send[]" value="confirmation" /> With the confirmation</label>
+      <label class="uc-check"><input type="checkbox" name="meeting_send[]" value="reminder" /> With the reminder</label>
+    </div>
   </div>
 
   <div class="uc-location-place" data-uc-location-place>
@@ -60,10 +65,21 @@
   </div>
 </div>
 
-<label class="uc-field" data-uc-online-capacity hidden>
-  <span class="uc-field-label">Places online</span>
-  <input type="number" name="capacity_online" min="0" value="" />
-</label>
+<div class="uc-field uc-capacity-row" data-uc-capacity-row>
+  <span class="uc-field-label">Capacity</span>
+  <div class="uc-capacity-boxes">
+    <label class="uc-capacity-box">
+      <span class="uc-capacity-box-label" data-uc-capacity-label hidden>In person</span>
+      <input type="number" name="capacity" min="0" aria-label="Capacity"
+             data-uc-capacity-in-person value="" />
+    </label>
+    <label class="uc-capacity-box" data-uc-online-capacity hidden>
+      <span class="uc-capacity-box-label">Online</span>
+      <input type="number" name="capacity_online" min="0" aria-label="Capacity, online" value="" />
+    </label>
+  </div>
+  <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
+</div>
 
 <div class="uc-card">
   <label class="uc-check" data-uc-rsvp-show-check>
@@ -1752,6 +1768,8 @@ function ucDismissOnBackdrop(dialog) {
             var place  = root.querySelector('[data-uc-location-place]');
             var panel  = root.querySelector('[data-uc-online-panel]');
             var onlineCap = document.querySelector('[data-uc-online-capacity]');
+            var capLabel  = document.querySelector('[data-uc-capacity-label]');
+            var capInPer  = document.querySelector('[data-uc-capacity-in-person]');
 
             if (!modes.length && !online) {
                 return;
@@ -1776,6 +1794,35 @@ function ucDismissOnBackdrop(dialog) {
                 if (changed === hybrid && hybrid.checked) { online.checked = false; }
             }
 
+            /* THE LINK GOES OUT BY DEFAULT (3.98.0).
+             *
+             * A meeting link nobody is sent is the one shape of this feature
+             * that helps nobody, and it was what an event switched to online
+             * started in: the organizer entered a link, saved, and the
+             * confirmation still said one would be sent before the event.
+             *
+             * ON THE TRANSITION, NOT ON THE STATE. This fires only when a
+             * format tick goes from off to ON, so somebody who unticks a
+             * delivery box while online stays ticked keeps it unticked: apply()
+             * runs on every change and a rule written against the state would
+             * re-tick it under their hands. Switching the format off and on
+             * again is a fresh decision and does set them again.
+             *
+             * THE SERVER HAS THE OTHER HALF, a new event rendering both ticked,
+             * so this is not what makes the default true and a blocked script
+             * loses nothing on the case that matters most. */
+            var wasOnAFormat = !!((online && online.checked) || (hybrid && hybrid.checked));
+            function defaultDeliveries() {
+                var nowOn = !!((online && online.checked) || (hybrid && hybrid.checked));
+                if (nowOn && !wasOnAFormat) {
+                    Array.prototype.forEach.call(
+                        document.querySelectorAll('input[name="meeting_send[]"]'),
+                        function (box) { box.checked = true; }
+                    );
+                }
+                wasOnAFormat = nowOn;
+            }
+
             function apply() {
                 var isHybrid = !!(hybrid && hybrid.checked);
                 var isOnline = !!(online && online.checked);
@@ -1786,7 +1833,15 @@ function ucDismissOnBackdrop(dialog) {
                 if (place) { place.hidden = isOnline && !isHybrid; }
                 /* The online capacity is a hybrid control: a non-hybrid event's
                  * single limit is the box under the address. */
+                /* CAPACITY IS ONE ROW, AND HYBRID IS WHAT PUTS TWO BOXES IN IT
+                 * (3.98.0). With one box the row label "Capacity" is the whole
+                 * name, so the format names appear only when there are two of
+                 * them to tell apart. The in-person input's accessible name
+                 * moves with them: a visible label that comes and goes is no
+                 * use to somebody who is not looking at it. */
                 if (onlineCap) { onlineCap.hidden = !isHybrid; }
+                if (capLabel)  { capLabel.hidden  = !isHybrid; }
+                if (capInPer)  { capInPer.setAttribute('aria-label', isHybrid ? 'Capacity, in person' : 'Capacity'); }
 
                 var chosen = 'custom';
                 modes.forEach(function (m) { if (m.checked) { chosen = m.value; } });
@@ -1799,10 +1854,10 @@ function ucDismissOnBackdrop(dialog) {
 
             modes.forEach(function (m) { m.addEventListener('change', apply); });
             if (online) {
-                online.addEventListener('change', function () { exclusive(online); apply(); });
+                online.addEventListener('change', function () { exclusive(online); defaultDeliveries(); apply(); });
             }
             if (hybrid) {
-                hybrid.addEventListener('change', function () { exclusive(hybrid); apply(); });
+                hybrid.addEventListener('change', function () { exclusive(hybrid); defaultDeliveries(); apply(); });
             }
             root.classList.add('uc-location-on');
             apply();
@@ -5777,6 +5832,9 @@ var hybrid  = document.querySelector('[data-uc-hybrid-toggle]');
 var panel   = document.querySelector('[data-uc-online-panel]');
 var place   = document.querySelector('[data-uc-location-place]');
 var cap     = document.querySelector('[data-uc-online-capacity]');
+var capLbl  = document.querySelector('[data-uc-capacity-label]');
+var capIn   = document.querySelector('[data-uc-capacity-in-person]');
+var sendBox = document.querySelectorAll('input[name="meeting_send[]"]');
 var accept  = document.querySelector('[data-uc-rsvp-accept-check] input');
 var showBox = document.querySelector('[data-uc-rsvp-show-check] input');
 var note    = document.querySelector('[data-uc-rsvp-hybrid-note]');
@@ -5793,6 +5851,11 @@ function state(label) {
   say('  meeting panel    ' + vis(panel));
   say('  venue+address    ' + vis(place));
   say('  places online    ' + vis(cap));
+  say('  in person label  ' + vis(capLbl));
+  say('  capacity name    "' + (capIn ? capIn.getAttribute('aria-label') : 'ABSENT') + '"');
+  var on = 0;
+  Array.prototype.forEach.call(sendBox, function (b) { if (b.checked) { on++; } });
+  say('  link delivery    ' + on + ' of ' + sendBox.length + ' ticked');
   say('  accept rsvps     ' + tick(accept) + ', ' + lock(accept));
   say('  display rsvp     ' + tick(showBox) + ', ' + lock(showBox));
   say('  hybrid notes     accept=' + vis(note) + ' display=' + vis(shown));

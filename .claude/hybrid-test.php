@@ -458,7 +458,7 @@ check( (bool) preg_match( '/onlineCap\.hidden = !isHybrid;/', $js ),
 /* AND THE ONLINE CAPACITY IS IN THE DOM TO BE SHOWN. It used to be rendered
  * only when the event was ALREADY hybrid, so ticking the box revealed a control
  * that did not exist yet and it only appeared after a save. */
-check( (bool) preg_match( '/data-uc-online-capacity<\?php echo \$hybrid_on \? \'\' : \' hidden\'; \?>/', $portal ),
+check( (bool) preg_match( '/data-uc-online-capacity<\?php echo \$hybrid \? \'\' : \' hidden\'; \?>/', $portal ),
     'the online capacity is not rendered hidden, so ticking hybrid cannot reveal it' );
 /* WITHOUT A CHARACTER WINDOW. The first version allowed 700 characters between
  * the case label and the guard, and the comment explaining the change is longer

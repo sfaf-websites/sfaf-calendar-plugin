@@ -181,8 +181,14 @@ check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled', 'capacity' \
     'an imported event leaves the location field without its RSVP controls, and nothing downstream draws them for it' );
 check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'capacity' \) \);/", $portal ),
     'the Location card no longer draws the in-person capacity' );
-check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'capacity_online' \) \);/", $portal ),
-    'the Location card no longer draws the online capacity' );
+/* ONE ROW DRAWS BOTH BOXES (3.98.0). `capacity_online` is still in the shared
+ * field list, because that list is what the SAVE reads to decide which fields
+ * the form spoke for, but its case renders nothing and the `capacity` case
+ * draws the pair. So what is asserted is the markup, not a second draw call. */
+check( (bool) preg_match( '/data-uc-online-capacity/', $portal ),
+    'the Location card no longer draws the online capacity box' );
+check( (bool) preg_match( '/name="capacity_online"/', $portal ),
+    'the online capacity has no input, so a hybrid event cannot be given one' );
 
 /* THE CATCH-ALL STILL RUNS AND IS STILL FED WHAT THIS CARD PLACED, which is
  * what keeps "exactly once" true rather than "at least once". */

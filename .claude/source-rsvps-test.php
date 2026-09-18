@@ -198,7 +198,14 @@ check( (bool) preg_match( '/People register on <\?php echo esc_html\( \$ctx\[.pr
  * places this calendar could hold for an event counted somewhere else. */
 check( (bool) preg_match( "/if \( \\\$event_id && SFAF_Sources::takes_rsvps_at_source\( \\\$event_id \) \) \{\s*\n\s*break;/", $portal ),
     'the in-person capacity box is still drawn on a source event' );
-check( (bool) preg_match( "/\|\| SFAF_Sources::takes_rsvps_at_source\( \\\$event_id \) \) \{\s*\n\s*break;/", $portal ),
+/* THE ONLINE BOX IS GUARDED SEPARATELY INSIDE THE ROW (3.98.0). Capacity is one
+ * row now, so the whole row is refused by the guard above and the online box
+ * inside it is refused again by its own: an imported event can never be hybrid,
+ * because import_event() refuses every one of the format keys. Two guards, and
+ * the inner one is the assertion, because the outer one already has its own. */
+check( (bool) preg_match( '/\$at_src   = \( \$event_id && SFAF_Sources::takes_rsvps_at_source\( \$event_id \) \);/', $portal ),
+    'the capacity row no longer asks whether the event registers at its source' );
+check( (bool) preg_match( '/if \( ! \$at_src \) : \?>/', $portal ),
     'the online capacity box is still drawn on a source event' );
 
 /* =========================================================================

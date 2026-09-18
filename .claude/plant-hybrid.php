@@ -179,10 +179,15 @@ $plants = array(
         'to'   => "                if (place) { place.hidden = isOnline; }",
     ),
 
+    /* THE ONLINE BOX IS REVEALED BY ITS `hidden` ATTRIBUTE (3.98.0), not by
+     * being rendered at all. Drawing it only when the event is ALREADY hybrid
+     * is the 3.97.2 fault returning: ticking the box would reveal a control
+     * that does not exist on the page yet, and it would appear only after a
+     * save. */
     'the online capacity goes back to appearing only after a save' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                if ( ! \$event_id || SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                    break;\n                }\n                \$s_cap_on  = \$this->field_state",
-        'to'   => "                if ( ! \$event_id || ! SFAF_Online::is_hybrid( \$event_id )\n                    || SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                    break;\n                }\n                \$s_cap_on  = \$this->field_state",
+        'from' => "<label class=\"uc-capacity-box\" data-uc-online-capacity<?php echo \$hybrid ? '' : ' hidden'; ?>>",
+        'to'   => "<?php if ( \$hybrid ) : ?><label class=\"uc-capacity-box\" data-uc-online-capacity><?php endif; ?>",
     ),
 
     'HYBRID SAVES WITH RSVPS OFF' => array(

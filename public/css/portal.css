@@ -1956,6 +1956,39 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-location-on .uc-location-place[hidden] { display: none; }
 
 /* ---------------------------------------------------------------------------
+   CAPACITY IS ONE ROW (3.98.0).
+
+   It was two fields in two places, "Places in person" under the address and
+   "Places online" under the meeting link, each beside the thing it limits. On a
+   hybrid event that put the two halves of ONE decision, how many people are
+   coming, at opposite ends of the card with a venue picker between them.
+
+   ONE LABEL, ONE OR TWO BOXES. A non-hybrid event shows one box and no format
+   name, because with one box the row's own label is the whole name. Ticking
+   hybrid reveals the second box and both format names.
+
+   THE BOXES SHARE THE ROW EQUALLY AND HAVE A FLOOR. `1 1 0` with a
+   `min-width` is the pair that makes two number inputs split a row without
+   either collapsing: a bare `flex: 1` lets an input shrink below its own
+   intrinsic width, and a number input that has lost its spinner is a box
+   nobody can tell is editable. Below 380px they stack, which is the width at
+   which two boxes and their labels stop fitting side by side.
+   ------------------------------------------------------------------------ */
+.uc-capacity-boxes { display: flex; gap: 12px; align-items: flex-end; }
+.uc-capacity-box { display: flex; flex-direction: column; gap: 4px; flex: 1 1 0; min-width: 120px; }
+/* THE HELPER STEP, 12/400 MUTED, not a second field label. These name the two
+   boxes under the row's own "Capacity", so they sit BELOW it in the hierarchy;
+   13/600 would have made them equal to the label they sit under, and 12/600 is
+   between two steps, which is what type-scale-sweep.php refuses. */
+.uc-capacity-box-label { font-size: 12px; font-weight: 400; color: var(--p-muted); }
+.uc-capacity-box input[type="number"] { width: 100%; }
+.uc-capacity-box[hidden],
+.uc-capacity-box-label[hidden] { display: none; }
+@media (max-width: 380px) {
+    .uc-capacity-boxes { flex-wrap: wrap; }
+}
+
+/* ---------------------------------------------------------------------------
    CATEGORIES (Series & Categories screen).
 
    Each row leads with the thing the category actually IS on the calendar: its

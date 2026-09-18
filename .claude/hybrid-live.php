@@ -75,6 +75,11 @@ $screen = <<<'HTML'
   <div class="uc-online-panel" data-uc-online-panel>
     <label class="uc-field"><span class="uc-field-label">Meeting link</span>
       <input type="url" name="meeting_url" value="" /></label>
+    <div class="uc-field">
+      <span class="uc-field-label">When the link goes out</span>
+      <label class="uc-check"><input type="checkbox" name="meeting_send[]" value="confirmation" /> With the confirmation</label>
+      <label class="uc-check"><input type="checkbox" name="meeting_send[]" value="reminder" /> With the reminder</label>
+    </div>
   </div>
 
   <div class="uc-location-place" data-uc-location-place>
@@ -93,10 +98,21 @@ $screen = <<<'HTML'
   </div>
 </div>
 
-<label class="uc-field" data-uc-online-capacity hidden>
-  <span class="uc-field-label">Places online</span>
-  <input type="number" name="capacity_online" min="0" value="" />
-</label>
+<div class="uc-field uc-capacity-row" data-uc-capacity-row>
+  <span class="uc-field-label">Capacity</span>
+  <div class="uc-capacity-boxes">
+    <label class="uc-capacity-box">
+      <span class="uc-capacity-box-label" data-uc-capacity-label hidden>In person</span>
+      <input type="number" name="capacity" min="0" aria-label="Capacity"
+             data-uc-capacity-in-person value="" />
+    </label>
+    <label class="uc-capacity-box" data-uc-online-capacity hidden>
+      <span class="uc-capacity-box-label">Online</span>
+      <input type="number" name="capacity_online" min="0" aria-label="Capacity, online" value="" />
+    </label>
+  </div>
+  <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
+</div>
 
 <div class="uc-card">
   <label class="uc-check" data-uc-rsvp-show-check>
@@ -124,6 +140,9 @@ var hybrid  = document.querySelector('[data-uc-hybrid-toggle]');
 var panel   = document.querySelector('[data-uc-online-panel]');
 var place   = document.querySelector('[data-uc-location-place]');
 var cap     = document.querySelector('[data-uc-online-capacity]');
+var capLbl  = document.querySelector('[data-uc-capacity-label]');
+var capIn   = document.querySelector('[data-uc-capacity-in-person]');
+var sendBox = document.querySelectorAll('input[name="meeting_send[]"]');
 var accept  = document.querySelector('[data-uc-rsvp-accept-check] input');
 var showBox = document.querySelector('[data-uc-rsvp-show-check] input');
 var note    = document.querySelector('[data-uc-rsvp-hybrid-note]');
@@ -140,6 +159,11 @@ function state(label) {
   say('  meeting panel    ' + vis(panel));
   say('  venue+address    ' + vis(place));
   say('  places online    ' + vis(cap));
+  say('  in person label  ' + vis(capLbl));
+  say('  capacity name    "' + (capIn ? capIn.getAttribute('aria-label') : 'ABSENT') + '"');
+  var on = 0;
+  Array.prototype.forEach.call(sendBox, function (b) { if (b.checked) { on++; } });
+  say('  link delivery    ' + on + ' of ' + sendBox.length + ' ticked');
   say('  accept rsvps     ' + tick(accept) + ', ' + lock(accept));
   say('  display rsvp     ' + tick(showBox) + ', ' + lock(showBox));
   say('  hybrid notes     accept=' + vis(note) + ' display=' + vis(shown));
@@ -226,6 +250,9 @@ foreach ( array(
     'data-uc-online-panel',
     'data-uc-location-place',
     'data-uc-online-capacity',
+    'data-uc-capacity-row',
+    'data-uc-capacity-label',
+    'data-uc-capacity-in-person',
     'data-uc-rsvp-accept-check',
     'data-uc-rsvp-show-check',
     'data-uc-rsvp-hybrid-note',
@@ -254,7 +281,10 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     $block = function ( $label ) use ( $report ) {
         $at = strpos( $report, $label );
         if ( false === $at ) { return ''; }
-        return substr( $report, $at, 400 );
+        /* WIDE ENOUGH FOR THE WHOLE BLOCK. Each state() prints a dozen lines
+         * now, and a window that ends mid-block reports the lines past it as
+         * missing, which is a test failing for its own reason. */
+        return substr( $report, $at, 900 );
     };
 
     hl_check( false !== strpos( $report, 'bound            yes' ),
@@ -262,12 +292,23 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     hl_check( false !== strpos( $report, 'script errors    none' ),
         'the editor script threw while the ticks were being driven' );
 
+    /* EVERY BLOCK UP FRONT. They were sliced out one at a time beside the
+     * assertions that read them, which put two of them after their own first
+     * use: an undefined variable is an empty string, and strpos('', ...) is
+     * false, so those assertions FAILED FOR THEIR OWN REASON and said the
+     * screen was wrong. Defining them together costs five lines and removes
+     * the ordering entirely. */
+    $arrival = $block( 'ARRIVAL' );
+    $a1      = $block( 'A1.' );
+    $a2      = $block( 'A2.' );
+    $a3      = $block( 'A3.' );
+    $b1      = $block( 'B1.' );
+    $b2      = $block( 'B2.' );
+
     /* ONE TICK AT A TIME, BOTH ORDERS. */
-    $a2 = $block( 'A2.' );
     hl_check( false !== strpos( $a2, 'online tick      clear' ),
         'ticking hybrid left the online tick on, so both formats are ticked at once' );
     hl_check( false !== strpos( $a2, 'hybrid tick      ticked' ), 'ticking hybrid did not tick hybrid' );
-    $b2 = $block( 'B2.' );
     hl_check( false !== strpos( $b2, 'hybrid tick      clear' ),
         'ticking online left the hybrid tick on, so the exclusivity works one way round only' );
     hl_check( false !== strpos( $b2, 'online tick      ticked' ), 'ticking online did not tick online' );
@@ -280,8 +321,32 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     hl_check( false !== strpos( $a2, 'places online    shown' ),
         'a hybrid event hides the online capacity' );
 
+    /* CAPACITY IS ONE ROW, AND HYBRID PUTS TWO BOXES IN IT (3.98.0). With one
+     * box the row's own label is the whole name, so the format names appear
+     * only when there are two of them to tell apart, and the in-person input's
+     * ACCESSIBLE name moves with the visible one. */
+    hl_check( false !== strpos( $a2, 'in person label  shown' ),
+        'a hybrid event shows two capacity boxes and does not name which is which' );
+    hl_check( false !== strpos( $a2, 'capacity name    "Capacity, in person"' ),
+        "the in-person capacity box does not tell a screen reader which format it is, on the one event where there are two" );
+    hl_check( false !== strpos( $a1, 'in person label  hidden' ),
+        'a single-format event names its one capacity box "In person", which on an online event is the wrong word' );
+    hl_check( false !== strpos( $a1, 'capacity name    "Capacity"' ),
+        'a single-format event gives its one capacity box a format-specific accessible name' );
+    hl_check( false !== strpos( $a3, 'in person label  hidden' ),
+        'the format names stay on screen after hybrid is unticked, beside a box that is gone' );
+
+    /* THE LINK GOES OUT BY DEFAULT (3.98.0), on the TRANSITION to a format that
+     * has a link. A meeting link nobody is sent helps nobody, and it was what an
+     * event switched to online started in. */
+    hl_check( false !== strpos( $arrival, 'link delivery    0 of 2 ticked' ),
+        'the delivery ticks start on, so this proves nothing about the default' );
+    hl_check( false !== strpos( $a1, 'link delivery    2 of 2 ticked' ),
+        'ticking online does not turn the two link delivery ticks on, so a link is entered and sent nowhere' );
+    hl_check( false !== strpos( $b1, 'link delivery    2 of 2 ticked' ),
+        'ticking hybrid does not turn the two link delivery ticks on' );
+
     /* A PURELY ONLINE EVENT SHOWS ONE HALF. */
-    $a1 = $block( 'A1.' );
     hl_check( false !== strpos( $a1, 'venue+address    hidden' ),
         'a purely online event still shows the venue and address' );
     hl_check( false !== strpos( $a1, 'places online    hidden' ),
@@ -302,7 +367,6 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
      * THIS IS THE ONE THAT NEEDED A BROWSER. Accept RSVPs arrived CLEAR, and an
      * event whose manager tried hybrid and changed their mind must not be left
      * taking registrations they never asked for. */
-    $a3 = $block( 'A3.' );
     hl_check( false !== strpos( $a3, 'accept rsvps     clear, free' ),
         'unticking hybrid left Accept RSVPs TICKED, so an event that took no registrations now takes them' );
     hl_check( false !== strpos( $a3, 'display rsvp     ticked, free' ),
