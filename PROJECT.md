@@ -2354,6 +2354,42 @@ plain text so this never bit, and it would have bitten every card on the public
 calendar and in every embed the day this shipped. `sfaf_flatten_html()` turns
 block tags into spaces **before** stripping, which is the only order that works.
 
+**`post_excerpt` IS NEVER THE EVENT'S OWN TEXT, and no screen offers it.**
+`save_event_from_post()` writes `post_content` from the description field and
+touches the excerpt nowhere, so the only things that ever put a value in it copy
+one from another post: the duplicate action, and `SFAF_Recurrence`, which hands
+every generated occurrence the SEED's excerpt alongside the seed's content. An
+occurrence whose description is later edited therefore carries its own
+`post_content` and the seed's `post_excerpt` for the rest of its life, and
+nobody editing the event can correct it, because the field is not on the form.
+Anything reading the excerpt in preference to the content is reading the text
+the whole series shares. **When the excerpt is empty the two agree**, because
+WordPress auto-trims the content to build one, which is why this looks
+intermittent rather than constant.
+
+**So a calendar entry asks `sfaf_event_calendar_description()`**, which is the
+event's own `post_content`, flattened. The `.ics` and the Google Calendar URL
+both ask it, because they are two buttons in one row and must not describe one
+event two ways. It does **not** fall back to the excerpt: that would put the
+copied text back on exactly the events that have one.
+
+**AN EVENT WITH NO DESCRIPTION FALLS BACK TO NOTHING**, and this answers a
+question that sat open in the handover. `single-uc_event.php` calls
+`the_content()` with nothing behind it, and no filter anywhere in the plugin
+substitutes a series description. The series supplies the **image**, the **FAQ
+set** and the **video** when an event has none of its own, and those three only;
+`SFAF_Series::prefill_data()` copies the series description into a NEW event's
+`post_content` at creation, which is a one-time copy the manager can then edit,
+not a display-time fallback.
+
+**Two readers still prefer the excerpt** and have the same fault for the same
+reason: `SFAF_Seo` builds the meta description and JSON-LD from
+`get_the_excerpt()` with a `post_content` fallback, and the card summary in
+`SFAF_Shortcodes` does the same. Both fall back only when the excerpt is EMPTY,
+so both still show the seed's text on a generated occurrence whose seed had one.
+Out of scope in 3.97.2, which was about the calendar file; the fix is the same
+one function.
+
 ### "Has this field been filled in" is asked in two languages, off one list
 
 `SFAF_Sources::completeness_fields()` is that list. The server reads storage
@@ -3345,6 +3381,34 @@ EVENT whether it is hybrid and only consult the column when it is.
 **Deliberately not built, and these are decisions rather than gaps:** a
 registrant changing format after registering, the two public forms offering
 hybrid, and per-registrant approval.
+
+**A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2).** The format question, in person
+or online, is asked on the registration form and nowhere else, so a hybrid event
+with registrations switched off has no way for anybody to answer it and the two
+capacities are limits on a question nobody is ever asked. **Accept RSVPs** is
+rendered on and disabled while hybrid is ticked, the Display card's **RSVP**
+toggle is locked on with it one step later for the same reason, and the SAVE
+writes `_uc_rsvp_enabled` to `'1'` on whatever is posted, because a disabled
+input is absent from a hand-edited POST and from anything that did not come out
+of a browser. It is the third-party lock in reverse: **on** and disabled rather
+than **off** and disabled, and a source event wins where they could ever meet,
+which they cannot, since `import_event()` refuses every one of the format keys.
+
+**THE TWO TICKS CLEAR EACH OTHER ON SCREEN AS WELL AS ON THE SERVER.** The fold
+above is what makes exclusivity true; the script is what stops the form saying
+something `mode()` has no word for while somebody is looking at it. Hybrid shows
+**both** halves at once, the meeting link and the online capacity beside the
+venue and the address, which is the visible statement that hybrid is online AND
+in person.
+
+> **THE RSVP LOCK MUST GIVE BACK THE VALUE THE BOX ARRIVED WITH.** Setting
+> `checked` on the way in and moving only `disabled` on the way out leaves the
+> box enabled and ticked, so an event that took no registrations, made hybrid
+> and then not, ends up taking them. **Every source-reading assertion passed
+> while that was true**, because all the handlers were correctly wired: the
+> defect was the state of a checkbox after a sequence of clicks, which is not a
+> question any of them asks. `.claude/hybrid-live.php` drives the real
+> `portal.js` in headless Chrome and reads the box back, in both tick orders.
 ### Private events are unlisted links, not access control
 
 One checkbox on the event, default off (`_uc_private`).
@@ -5386,6 +5450,36 @@ has used since 3.64.0. **The month arrows use it; these do not yet**, and the
 list is here rather than left to a search: the filter bar's search field and
 dropdown, the group pills, the groups disclosure, the RSVP modal's cancel and
 its secondary add-to-calendar button, and the month tabs under the sidebar.
+
+### A bare constant parses, and neither gate asks about it (3.97.2)
+
+An editing accident left the token `FROM1_END` on a line of its own in the
+Display card, between a completed statement and the `?>` that follows it:
+
+```
+    $lock = ( 'show_calendar' === $f && $takes_rsvps )
+        || ( 'show_rsvp' === $f && $event_id && ( ! $accepts || $hybrid_show ) );
+FROM1_END
+    ?>
+```
+
+**It parses.** A closing tag supplies the implicit semicolon, so this is a
+complete expression statement: a constant fetch. `php -l` reports no error and
+the whole file lints clean. **On PHP 8 an undefined constant is an `Error`**, so
+the screen would have fatalled the moment it was rendered.
+
+**Both committed gates miss it, and they miss it for the reasons they exist.**
+The linter proves each file PARSES, and this file parses. The callable audit
+proves the things a file CALLS exist, and this calls nothing: it is not a
+function, not a method, not a callback. It sits in the gap between the two
+questions, which is the first defect to land there.
+
+**The cheap check is `get_defined_constants()` against every `T_STRING` the
+tokenizer hands back in a constant-fetch position.** It is not built, because
+one instance is not yet a pattern and a gate nobody trusts is worse than one
+fewer gate. What is written down is the SHAPE, so the next one is recognised:
+**a bare identifier on a line of its own, near a `?>`.** If it happens twice,
+build the check.
 
 ### Balance is not validity in JavaScript either (3.77.0, found 3.81.0)
 

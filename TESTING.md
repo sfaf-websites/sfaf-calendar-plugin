@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 178 items.** Quick 151, needs real conditions 24, blocked on other
+**Outstanding: 181 items.** Quick 153, needs real conditions 25, blocked on other
 people 3.
 
 ---
@@ -2242,6 +2242,48 @@ image list must NOT offer any calendar picture or any submitted one.
 browser, and the folder separation is a claim about what two different pickers
 show on a real media library. The build environment has no WordPress, no media
 library and no browser upload.
+### 1.155 The two format ticks on the real editor screen (3.97.2)
+
+Open an event in the editor and work the two ticks in the Location card.
+
+1. Tick **This is an online event**. The meeting link panel appears and the
+   venue and address go.
+2. Tick **This is a hybrid event**. The online tick must CLEAR itself, and the
+   venue, the address, the meeting link and **Places online** must all be on
+   screen together.
+3. Untick hybrid. The address stays, the link panel and **Places online** go.
+4. Now do it the other way round: hybrid first, then online. The hybrid tick
+   must clear, and the address must go.
+
+**And watch Accept RSVPs while you do it.** Start from an event with it OFF.
+While hybrid is ticked it must be ticked and greyed, with the Display card's
+**RSVP** toggle ticked and greyed too, each saying why. **Unticking hybrid must
+give it back OFF**, not leave it ticked. Save from a hybrid state and reopen:
+the event must be taking RSVPs.
+
+**Why it needs a person:** `.claude/hybrid-live.php` drives the real `portal.js`
+in headless Chrome and asserts all of this, but against markup this repository
+reconstructs. What nobody has checked is that `render_event_form()` puts the
+same attributes on the same real screen, with the real stylesheet, at a real
+window width.
+
+### 1.156 The calendar file on a generated occurrence whose description was edited (3.97.2)
+
+This is the fault 3.97.2 fixed, and it needs data only the site has.
+
+Find a REPEATING event whose **seed** has a manual excerpt, or give one an
+excerpt in WP admin and regenerate. Open one of the generated dates, change its
+description to something unmistakable, and save. Then, on that date's public
+page, press **Add to calendar**.
+
+Open the downloaded `.ics` in a text editor and read `DESCRIPTION`. It must be
+**the text you just typed**, not the seed's. Then press the **Google Calendar**
+button beside it and check its notes say the same thing.
+
+**Why it needs a person:** it needs a real repeating event with a real seed
+excerpt, which is a state no test here can construct: there is no WordPress and
+no database, and the excerpt is not a field any screen in this plugin offers.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -2567,6 +2609,28 @@ that actually arrives in an inbox obeys them.
 listed as NOT built for hybrid in `HANDOVER.md`: the alert does not name the
 registrant's format and the summary does not group by it. Confirm that is still
 true rather than assuming it, and that neither leaks the link.
+### 2.15 A hybrid event's meeting link in the calendar file it offers (3.97.2)
+
+3.97.2 widened the calendar file's gate from `is_online()` to
+`has_online_format()`, so a HYBRID event's online registrant now gets the link
+in the `.ics` attached to their confirmation. Nothing about the token changed,
+and that is the half worth checking.
+
+On a hybrid event with a meeting link and the **confirmation** delivery ticked:
+
+1. Register choosing **Online**. Open the `.ics` the confirmation offers. It
+   must carry `Join:` in the description and a `CONFERENCE` line, and the
+   description must also say the event is in person and online.
+2. Register choosing **In person**. That confirmation's `.ics` must carry
+   **neither**, and must still carry the address.
+3. Take the `?uc_ics=` URL from the ONLINE registrant's mail, strip the `j=`
+   parameter, and load it in a private window. It must return the ordinary
+   public file with **no link in it at all**.
+
+**Why it needs a person:** there is no mail and no database here, and step 3 is
+the one that matters: it is the check that widening WHICH events can carry a
+link did not widen WHO is handed one.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.

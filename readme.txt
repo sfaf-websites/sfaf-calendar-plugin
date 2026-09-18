@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.97.1
+Stable tag: 3.97.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,36 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.97.2 =
+
+**THREE FAULTS ON HYBRID EVENTS, AND A FOURTH THAT ONLY A BROWSER FOUND.**
+
+**ONLINE AND HYBRID COULD BOTH BE TICKED.** They cannot both be true: an event is in person, online, or hybrid. The save has folded a posted pair since 3.96.0, with hybrid winning because hybrid is the mode that KEEPS the address and clearing an address is the change nothing here can undo. What was missing was the live half, so the form on screen could say something the model has no word for. Ticking one now clears the other, both ways round.
+
+**AND HYBRID SHOWS BOTH SIDES,** because hybrid is online AND in person: the meeting link and the online capacity, and the venue, the address and the in-person capacity, all at once. The online capacity used to be rendered only when the event was ALREADY hybrid, so ticking the box revealed a control that did not exist on the page yet and only appeared after a save.
+
+**A HYBRID EVENT ALWAYS TAKES RSVPS.** The format question, in person or online, is asked on the registration form and nowhere else, so a hybrid event with registrations switched off has no way for anybody to answer it, and the two capacities are limits on a question nobody is ever asked. **Accept RSVPs** is on and locked while hybrid is ticked, and the Display card's **RSVP** toggle is on and locked with it one step later, for the same reason. The save writes it on whatever is posted, so a hand-edited form changes nothing. Both come back when hybrid is unticked. It is the third-party lock in reverse: on and disabled rather than off and disabled.
+
+**THE CALENDAR FILE CARRIED THE SERIES' DESCRIPTION.** Every field the .ics writes was compared against what the event page shows for the same event.
+
+```
+SUMMARY      get_the_title()                   the event's        correct
+LOCATION     sfaf_event_location()             the event's        correct, same function as the page
+DTSTART/END  sfaf_event_datetimes()            the event's        correct
+URL          get_permalink()                   the event's        correct
+DESCRIPTION  get_the_excerpt()                 THE SEED'S         wrong
+```
+
+**`post_excerpt` IS NEVER THE EVENT'S OWN TEXT ON THIS POST TYPE.** The editor writes `post_content` from the description field and touches the excerpt nowhere, so the only values it ever holds are copies from another post, and **SFAF_Recurrence hands every generated occurrence the SEED's excerpt**. Edit one date's description and the event page showed the edited text, from `the_content()`, while the calendar entry showed the text every other date in the series still carries. Nobody editing the event could correct it, because the field it came from is not on the form. When the excerpt was empty the two agreed anyway, because WordPress auto-trims the content to build one, which is why it looked intermittent.
+
+The file now reads the event's own description, through one resolver the **Google Calendar** button asks as well, so the two buttons in one row cannot describe one event two ways. It does **not** fall back to the excerpt, because the event page does not fall back either. The series is still consulted for the image, the FAQ set and the video, and a calendar file carries none of those.
+
+**A HYBRID EVENT'S MEETING LINK REACHES ITS CALENDAR FILE.** The file asked `is_online()`, the narrow question, "has no place", which a hybrid event answers no to by design so that it keeps its address. The question it wanted was "does anybody join by link", so an online registrant of a hybrid event got a confirmation carrying the link and a calendar file that silently dropped it. **Nothing about the gate relaxes**: the token is still required, and only a registrant whose format is online is ever handed one.
+
+**THE FOURTH FAULT, AND WHY IT NEEDED A BROWSER.** The RSVP lock set the box on the way in and moved only the disabled attribute on the way out, so it came back **enabled and ticked**. A manager whose event took no registrations, who tried hybrid and changed their mind, was left with a registration form they never asked for. Every source-reading assertion passed while that was true, because all the handlers were correctly wired: what was wrong was the state of a checkbox after a sequence of clicks, which is not a question any of them asks. `.claude/hybrid-live.php` drives the real `portal.js` in headless Chrome and reads the box back.
+
+**A stray `FROM1_END`** left in the Display card **parsed**, because `?>` supplies the implicit semicolon, and would have fatalled at runtime as an undefined constant. The linter proves each file parses and the callable audit proves the things it calls exist; **neither proves a bare constant exists**, and this is the first defect to land in that gap.
 
 = 3.97.1 =
 

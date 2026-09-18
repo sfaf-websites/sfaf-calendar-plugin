@@ -4,15 +4,18 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-17, at 3.97.1, released.
+**Last updated:** 2026-09-18, at 3.97.2, released.
 
 ---
 
 ## What shipped last
 
-**3.97.1** gave Publish and Submit for Review a form again: both had been dead
-since 3.94.0. **3.97.0** locked registrations on imported events and reordered
-the event editor's button row. **3.96.0 is the big one**: hybrid events end to end, the
+**3.97.2** fixed three faults on hybrid events: the two format ticks are
+exclusive on screen as well as on the server, a hybrid event always takes RSVPs,
+and the calendar file carries the event's own description instead of the
+series'. **3.97.1** gave Publish and Submit for Review a form again: both had
+been dead since 3.94.0. **3.97.0** locked registrations on imported events and
+reordered the event editor's button row. **3.96.0 is the big one**: hybrid events end to end, the
 event video, two extra pictures on a submission, pictures inside descriptions,
 capacity moved beside the thing it limits, and the dropdown's ticked edge
 removed. **`readme.txt` is the changelog** and has the reasoning for all of it.
@@ -25,17 +28,13 @@ removed. **`readme.txt` is the changelog** and has the reasoning for all of it.
 > **A hand-made event is untouched whatever links it carries.** `PROJECT.md` 3.
 
 > **THE EDITOR'S BUTTON ROW IS OUTSIDE THE EVENT FORM**, so every button in it
-> lives or dies by its `form=` attribute. Publish and Submit for Review had none
-> from 3.94.0 to 3.97.0 and **did nothing at all when pressed**: no submit event,
-> so nothing in portal.js ran either. Fixed in 3.97.1, and
-> `.claude/form-owner-audit.php` now sweeps all 78 submit buttons. **Never add a
-> button to that row without a form attribute.**
-> **THE EDITOR'S BUTTON ROW IS Delete, Cancel, Save draft, Publish (3.97.0)**,
-> with yellow on Save draft and green on Publish. That inverts DESIGN.md's rule
-> about yellow and is **Mark's decision**, recorded there by name so a later
-> pass does not revert it. **Delete must never be first in the MARKUP**: Enter
-> in a text field presses the form's first submit, and the left-to-right order
-> is CSS `order`, which moves neither the document nor the keyboard.
+> lives or dies by its `form=` attribute; **never add one without it**.
+> `.claude/form-owner-audit.php` sweeps all 78. The row is **Delete, Cancel,
+> Save draft, Publish (3.97.0)**, yellow on Save draft and green on Publish,
+> which inverts DESIGN.md and is **Mark's decision**, recorded there by name.
+> **Delete must never be first in the MARKUP**: Enter in a text field presses
+> the form's first submit, and the left-to-right order is CSS `order`, which
+> moves neither the document nor the keyboard.
 
 **THREE FOLDERS OF PICTURES NOW, AND NONE IS INSIDE ANOTHER**: `calendar/` for
 featured pictures, `calendar-submissions/` for what strangers send,
@@ -49,6 +48,9 @@ names are siblings and why that is what keeps each out of the others' pickers.
 > answered itself: it is one capacity PER FORMAT, because the form has to say
 > "online is full, there are still places in person" and one number cannot.
 > `PROJECT.md` 2 has the model and the credential rule.
+> **A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2)**, locked on in the editor and
+> written by the save, because the in-person-or-online question is asked on the
+> registration form and nowhere else.
 **Three things a new session needs, each retiring or reversing something:**
 
 > **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, deliberately, with the
@@ -128,8 +130,6 @@ record of them:
 - **The help icon audit.** Nobody has walked the screens.
 - **A help section in caladmin**, for somebody creating an event rather than an
   administrator. **The content is the work.**
-- **Whether an event with no description falls back to its series description.**
-  Nobody knows, and the answer changes how Mark uses both fields.
 - **The nine images on disk that are not in the Calendar folder**, and how to
   retrofit them.
 
