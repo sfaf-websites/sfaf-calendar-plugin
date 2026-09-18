@@ -569,7 +569,26 @@ class SFAF_Online {
      */
     public static function ics_join_token( $event_id ) {
         $event_id = (int) $event_id;
-        if ( ! $event_id || ! self::is_online( $event_id ) ) {
+        /*
+         * has_online_format(), NOT is_online() (3.97.3).
+         *
+         * THIS MINTS AND VERIFIES, so the narrow question broke both ends at
+         * once: a HYBRID event answers no to is_online() by design, because
+         * that is the question that takes an address away, so no token could be
+         * made for one and no token presented for one could ever be accepted.
+         * The calendar file offered to a hybrid event's ONLINE registrant could
+         * not carry the link whatever the callers did.
+         *
+         * 3.97.2 WIDENED THE READER IN sfaf_output_ics() AND STOPPED THERE,
+         * which fixed the half that decides whether to look for a token and
+         * left the half that decides whether one exists. Both had to move, and
+         * this is the one that had no test on it.
+         *
+         * NOTHING ABOUT WHO GETS ONE CHANGES. ics_url_with_link() still refuses
+         * to mint for anybody whose format is not online on a hybrid event, so
+         * widening what CAN carry a token does not widen who is handed one.
+         */
+        if ( ! $event_id || ! self::has_online_format( $event_id ) ) {
             return '';
         }
         return substr( hash_hmac( 'sha256', 'sfaf-ics-join|' . $event_id, wp_salt( 'auth' ) ), 0, 32 );

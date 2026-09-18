@@ -343,7 +343,24 @@ class SFAF_Reminders {
      * morning-of reminder for one occurrence was the button doing something
      * nobody asked it for.
      *
-     * @return array<string,string> lowercased email => type ('rsvp' | 'notify')
+     * THE VALUE IS A PAIR NOW (3.97.3), `type` AND `format`.
+     *
+     * It was the type alone, so the morning-of reminder had no way to know
+     * which format a registrant was in and every recipient of every hybrid
+     * event reached the builder looking like somebody whose event never asked.
+     * The gate then refused the meeting link to the one person it is for. The
+     * format has to come from the SAME query as the address, or the two would
+     * be separate reads that can disagree about the same row.
+     *
+     * A STAFF MEMBER'S FORMAT IS '' AND THAT IS DELIBERATE. Somebody on the
+     * notification list holds no place and never answered the question, so on a
+     * hybrid event the gate gives them no link, which is the right answer for a
+     * credential: they did not say they were joining online. On every
+     * non-hybrid event '' has always meant "the event never asked" and they are
+     * told exactly as before.
+     *
+     * @return array<string,array{type:string,format:string}> lowercased email =>
+     *         pair, type being 'rsvp' or 'notify'
      */
     public static function recipients( $event_id ) {
         global $wpdb;
@@ -351,7 +368,7 @@ class SFAF_Reminders {
         $table = $wpdb->prefix . 'uc_rsvps';
 
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT email FROM $table WHERE event_id = %d AND status = 'confirmed'",
+            "SELECT email, format FROM $table WHERE event_id = %d AND status = 'confirmed'",
             $event_id
         ) );
         foreach ( (array) $rows as $row ) {
@@ -359,12 +376,15 @@ class SFAF_Reminders {
             if ( '' === $email || isset( $out[ $email ] ) ) {
                 continue;
             }
-            $out[ $email ] = 'rsvp';
+            $out[ $email ] = array(
+                'type'   => 'rsvp',
+                'format' => isset( $row->format ) ? (string) $row->format : '',
+            );
         }
 
         foreach ( self::notify_list( $event_id ) as $email => $label ) {
             if ( ! isset( $out[ $email ] ) ) {
-                $out[ $email ] = 'notify';
+                $out[ $email ] = array( 'type' => 'notify', 'format' => '' );
             }
         }
 
@@ -536,7 +556,9 @@ class SFAF_Reminders {
             return $result;
         }
 
-        foreach ( self::recipients( $event_id ) as $email => $type ) {
+        foreach ( self::recipients( $event_id ) as $email => $who ) {
+            $type   = $who['type'];
+            $format = $who['format'];
             $result['recipients']++;
 
             $claim = self::claim( $event_id, $email, $type );
@@ -547,7 +569,7 @@ class SFAF_Reminders {
                 continue;
             }
 
-            $sent = self::send_one( $event_id, $email, $type, $claim['token'] );
+            $sent = self::send_one( $event_id, $email, $type, $claim['token'], $format );
             self::finish( $claim['id'], $sent );
             if ( $sent ) {
                 $result['sent']++;
@@ -636,7 +658,7 @@ class SFAF_Reminders {
      * wp_mail filter can take delivery over later without a line changing here.
      * No provider is named or depended on anywhere in this file.
      */
-    private static function send_one( $event_id, $email, $type, $token ) {
+    private static function send_one( $event_id, $email, $type, $token, $format = '' ) {
         /*
          * THE CANCEL LINK BELONGS TO PEOPLE WHO HOLD A PLACE. A staff member on
          * the notification list has nothing to cancel, so the token is left out
@@ -650,6 +672,15 @@ class SFAF_Reminders {
             'email'    => $email,
             'token'    => $holds_a_place ? $token : '',
             'is_staff' => ! $holds_a_place,
+            /*
+             * WHICH FORMAT THEY REGISTERED IN (3.97.3), carried from the row
+             * recipients() read rather than looked up again here. Without it
+             * every recipient of a hybrid event looked to the gate like
+             * somebody whose event never asked, and the morning-of reminder
+             * sent no meeting link to anybody. '' for a staff member, who
+             * holds no place and answered no question.
+             */
+            'format'   => (string) $format,
         );
 
         $built = SFAF_Notifications::build( 'reminder', $event_id, $person );

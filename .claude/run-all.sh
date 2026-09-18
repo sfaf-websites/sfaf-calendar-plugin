@@ -152,6 +152,11 @@ echo
 # carries both the address and the meeting link.
 echo "=== hybrid events ==="
 run "hybrid --self-test" php .claude/hybrid-test.php --self-test
+# The JOIN between the registration row and the gate: the glob above ran this
+# against the real sources, and this is its self-test, which is the half that
+# proves the reader can tell a person object WITH a format from one without.
+# The fault it was built for passed every check that read either end alone.
+run "link-delivery --self-test" php .claude/hybrid-link-delivery-test.php --self-test
 
 echo
 # The RSVP toggle after the controls moved card: it still decides which of the

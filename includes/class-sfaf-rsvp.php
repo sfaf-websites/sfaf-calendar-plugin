@@ -442,6 +442,26 @@ class SFAF_RSVP {
             'last_name'  => isset( $data['last_name'] ) ? (string) $data['last_name'] : '',
             'email'      => isset( $data['email'] ) ? (string) $data['email'] : '',
             'token'      => isset( $data['token'] ) ? (string) $data['token'] : '',
+            /*
+             * AND WHICH FORMAT THEY REGISTERED IN (3.97.3).
+             *
+             * THIS FIELD'S ABSENCE WAS THE WHOLE OF THE BUG. Both gates that
+             * decide whether somebody is handed the meeting link read the
+             * recipient's format, and both treat '' as "this event never
+             * asked", which is correct for every non-hybrid event and was what
+             * every hybrid registrant looked like, because this object carried
+             * five fields and this was not one of them. The gates were right,
+             * the row was right, and nothing joined them: the online registrant
+             * of a hybrid event got a confirmation with no link, a calendar
+             * file with no link, and the street address they should not have
+             * had.
+             *
+             * IT IS '' ON EVERY NON-HYBRID EVENT, which is what submit()
+             * normalises it to and what the column stores, so nothing about a
+             * purely online event changes: its registrants have always been
+             * told by the gate's "the event never asked" branch and still are.
+             */
+            'format'     => isset( $data['format'] ) ? (string) $data['format'] : '',
         );
 
         /*

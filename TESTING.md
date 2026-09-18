@@ -2605,10 +2605,15 @@ to somebody who said they were coming in person. The gates are unit tested and
 sixteen planted faults are caught; what a person is checking is that the message
 that actually arrives in an inbox obeys them.
 
-**Also check the morning-of summary and the registration alert.** Both are
-listed as NOT built for hybrid in `HANDOVER.md`: the alert does not name the
-registrant's format and the summary does not group by it. Confirm that is still
-true rather than assuming it, and that neither leaks the link.
+**Also check the morning-of summary and the registration alert.** Both WERE
+built for hybrid, and the alert's half was dead until 3.97.3: it names the
+registrant's format and counts that format's places, but the person object it
+reads never carried a format, so it always fell through to the whole-event
+count. The summary was never affected, because it reads the `format` column off
+the rows rather than off a person object. Check the alert now says "Online" or
+"In person" and that its count matches that format, and that neither message
+carries the link.
+
 ### 2.15 A hybrid event's meeting link in the calendar file it offers (3.97.2)
 
 3.97.2 widened the calendar file's gate from `is_online()` to
