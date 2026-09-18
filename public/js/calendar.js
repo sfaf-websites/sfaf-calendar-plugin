@@ -1697,20 +1697,38 @@
             return;
         }
 
+        /* THE CALENDAR'S PICK-ONE CONTROL, NOT TWO LOOSE RADIOS (3.98.0).
+         *
+         * The filter bar's row is the same question in the same shape: one of
+         * these, and the chosen one FILLS. Two bare dots with labels beside
+         * them read as "tick what applies", which is exactly what this is not,
+         * and the format row had no gap between the dot and its word either.
+         *
+         * THE RADIOS ARE STILL THERE, UNDER THE SEGMENTS. They are what a
+         * keyboard arrows through, what a screen reader announces as a radio
+         * group, and what the form submits; the segments are their labels
+         * wearing the calendar's chosen-item styling. Nothing here is a
+         * div pretending to be a control, so none of that had to be rebuilt.
+         *
+         * FULL IS A DISABLED RADIO AND A WORD, not a missing segment: somebody
+         * looking for the option they wanted needs to see that it exists and is
+         * full, rather than wonder whether the form forgot it. */
         var labels = { in_person: 'In person', online: 'Online' };
         var html = '<fieldset class="uc-rsvp-format-set">' +
-            '<legend>How will you attend? *</legend>';
+            '<legend>How will you attend? *</legend>' +
+            '<div class="uc-segmented">';
         var open = 0;
         for (var i = 0; i < formats.length; i++) {
             var f = formats[i];
             var isFull = (full.indexOf(f) !== -1);
             if (!isFull) { open++; }
-            html += '<label class="uc-rsvp-format-opt' + (isFull ? ' is-full' : '') + '">' +
+            html += '<label class="uc-segment' + (isFull ? ' is-full' : '') + '">' +
                 '<input type="radio" name="uc_rsvp_format" value="' + f + '"' +
                 (isFull ? ' disabled' : '') + ' />' +
-                '<span>' + (labels[f] || f) + (isFull ? ' (full)' : '') + '</span>' +
+                '<span class="uc-segment-label">' + (labels[f] || f) + (isFull ? ' (full)' : '') + '</span>' +
                 '</label>';
         }
+        html += '</div>';
         if (0 === open) {
             html += '<p class="uc-rsvp-note">Both options are full.</p>';
         } else if (open === 1) {
