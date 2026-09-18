@@ -228,24 +228,19 @@ $plants = array(
      * description is edited. This is the read that put it in the file. */
     'THE SERIES DESCRIPTION REACHES THE CALENDAR FILE' => array(
         'file' => 'sfaf-calendar.php',
-        'from' => "    \$description = sfaf_event_calendar_description( \$post_id );",
+        'from' => "    \$description = sfaf_event_description_text( \$post_id );",
         'to'   => "    \$description = sfaf_flatten_html( get_the_excerpt( \$post_id ) );",
     ),
 
     'the Google Calendar button keeps the series copy' => array(
         'file' => 'includes/sfaf-template-functions.php',
-        'from' => "        'details'  => sfaf_event_calendar_description( \$post_id ),",
+        'from' => "        'details'  => sfaf_event_description_text( \$post_id ),",
         'to'   => "        'details'  => sfaf_flatten_html( get_the_excerpt( \$post_id ) ),",
     ),
 
-    /* AND THE RESOLVER REACHING BACK FOR IT. Falling back to the excerpt when
-     * the event has no content of its own puts the copied text back on exactly
-     * the events that carry one, which is every date in a generated series. */
-    'the calendar description falls back to the excerpt' => array(
-        'file' => 'includes/sfaf-template-functions.php',
-        'from' => "    return sfaf_flatten_html( \$post->post_content );",
-        'to'   => "    return sfaf_flatten_html( \$post->post_content ?: get_the_excerpt( \$post_id ) );",
-    ),
+    /* THE RESOLVER'S OWN RUNGS moved to .claude/plant-description.php in
+     * 3.98.0, with the test that runs them. What stays here is the calendar
+     * file's wiring to it, which is the part this suite is about. */
 
     /* ---- THE LOCK THAT DOES NOT GIVE THE VALUE BACK. -------------------- */
     /* CAUGHT BY A BROWSER, NOT BY READING. Every handler was wired correctly

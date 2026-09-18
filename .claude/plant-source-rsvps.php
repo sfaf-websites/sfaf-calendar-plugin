@@ -106,10 +106,24 @@ $plants = array(
     ),
 
     /* ---- THE COLOURS. --------------------------------------------------- */
-    'Save draft goes back to green and Publish to yellow' => array(
+    /* THE TWO ROWS SWAP THEIR COLOURS (3.98.0). Green and largest mark whichever
+     * button puts the event in front of people, which is Publish on a draft and
+     * Save changes on an existing event; yellow marks the in-between save and
+     * belongs only to the draft row. Inverting the ternary gives a draft a green
+     * Save draft beside a green Publish, and an existing event a yellow Save
+     * changes that is the only safe button in a row of two reds. */
+    'the save button takes the wrong colour for the row it is in' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "class=\"uc-btn uc-btn-primary uc-editor-save\"",
-        'to'   => "class=\"uc-btn uc-btn-go uc-editor-save\"",
+        'from' => "\$save_main = \$keep_status ? ' uc-btn-go uc-editor-save-main' : ' uc-btn-primary';",
+        'to'   => "\$save_main = \$keep_status ? ' uc-btn-primary' : ' uc-btn-go uc-editor-save-main';",
+    ),
+
+    /* AND CANCEL EVENT GOING BACK TO AMBER, which reads as "careful" for the
+     * control that mails every registrant. */
+    'Cancel event goes back to amber' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "<summary class=\"uc-btn uc-btn-stop uc-cancel-inline-toggle\"",
+        'to'   => "<summary class=\"uc-btn uc-btn-caution uc-cancel-inline-toggle\"",
     ),
 
     'Publish stops being the largest control in the row' => array(

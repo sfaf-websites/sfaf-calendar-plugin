@@ -112,27 +112,45 @@ the sidebar (the pending queue), and nowhere decorative.
   yellow.
 - White on Yellow: **1.38:1**. Never.
 
-#### The one exception: the event editor's button row (3.97.0)
+#### The one exception: the event editor's button row (3.97.0, 3.98.0)
 
-**On that row yellow marks the IN-BETWEEN action and green marks the primary
-one, and that is Mark's decision.** It is written down here because it inverts
-the rule above, and a later pass reading only the rule would "correct" it back.
+**On that row GREEN marks the main action and YELLOW the in-between one, and
+that is Mark's decision.** It is written down here because it inverts the rule
+above, and a later pass reading only the rule would "correct" it back.
+
+**THERE ARE TWO ROWS, AND ONE RULE COVERS BOTH.**
 
 ```
-Delete          Cancel          Save draft       Publish
-red             amber           YELLOW           GREEN
-#c0392b         #B45309         #FFD900          #15803D
-white 5.44:1    white 5.02:1    dark gray 8.92:1 white 5.02:1
+a draft         Delete          Save draft       Publish
+                red             YELLOW           GREEN, largest
+                #c0392b         #FFD900          #15803D
+                white 5.44:1    dark gray 8.92:1 white 5.02:1
+
+an existing     Delete          Cancel event     Save changes
+event           red             RED              GREEN, largest
+                #c0392b         #c0392b          #15803D
+                white 5.44:1    white 5.44:1     white 5.02:1
 ```
 
-**The reasoning, so it is not re-argued from scratch.** Save draft is the button
-somebody presses while they are still working, over and over; Publish is the one
-that puts an event in front of the public, once. Green for the thing that goes
-out and yellow for the thing you press on the way there reads as a traffic
-sequence rather than as two competing primaries.
+**GREEN AND LARGEST MARK WHATEVER PUTS THE EVENT IN FRONT OF PEOPLE.** On a
+draft that is Publish. On an existing event there IS no Publish, so it is Save
+changes, which was yellow until 3.98.0 and left that row with a red Delete, a
+red Cancel event and its only safe button the quietest thing on screen.
 
-**PUBLISH CARRIES "MAIN ACTION" BY SIZE, NOT BY HUE.** It is the largest control
-in the row, which is what the yellow used to be saying on its own.
+**YELLOW MARKS THE IN-BETWEEN ACTION**, the one somebody presses while they are
+still working, over and over. It appears only on the draft row, beside the green
+that is not it. Green for the thing that goes out and yellow for the thing you
+press on the way there reads as a traffic sequence rather than as two competing
+primaries.
+
+**CANCEL EVENT IS RED, NOT AMBER (3.98.0).** It takes the event off the public
+calendar and mails everybody who registered, which is Delete's neighbourhood of
+consequence rather than "careful". The two reds are told apart by their labels
+and by the chevron, which only Cancel event carries because only it opens
+something rather than doing it.
+
+**THE MAIN ACTION CARRIES "MAIN" BY SIZE, NOT BY HUE.** It is the largest
+control in its row, which is what the yellow used to be saying on its own.
 
 **Caladmin is where this is allowed at all.** The system colours on that row are
 states rather than brand, for the reason the block above gives: what a visitor

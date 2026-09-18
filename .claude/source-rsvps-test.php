@@ -317,10 +317,19 @@ foreach ( array(
 /* =========================================================================
  * 6. THE BUTTON ROW: THE COLOURS AND THE SIZE.
  * ====================================================================== */
-/* Delete red, Save draft YELLOW, Publish GREEN. The last two invert what
- * DESIGN.md says about yellow, which is why DESIGN.md records the exception. */
-check( (bool) preg_match( '/class="uc-btn uc-btn-primary uc-editor-save"/', $portal ),
-    'Save draft is no longer yellow' );
+/* TWO ROWS, ONE RULE (3.98.0). A draft ends in Publish; an existing event has
+ * no Publish and ends in Save changes. GREEN AND LARGEST mark whichever of the
+ * two puts the event in front of people, YELLOW the in-between save, and yellow
+ * therefore appears only on the draft row. Both invert what DESIGN.md says
+ * about yellow, which is why DESIGN.md records the exception by name.
+ *
+ * ASSERTED AS THE TERNARY, NOT AS ONE RENDERED CLASS STRING. The class is now
+ * decided per state, so matching one literal spelling would pass for whichever
+ * row happened to be written first and say nothing about the other. */
+check( (bool) preg_match( '/\$save_main = \$keep_status \? \x27 uc-btn-go uc-editor-save-main\x27 : \x27 uc-btn-primary\x27;/', $portal ),
+    'the save button no longer picks its colour from the event state, so one of the two rows is wrong' );
+check( (bool) preg_match( '/class="uc-btn<\?php echo esc_attr\( \$save_main \); \?> uc-editor-save"/', $portal ),
+    'the save button stopped taking the class the state chose' );
 check( (bool) preg_match( '/class="uc-btn uc-btn-go uc-editor-publish"/', $portal ),
     'Publish is no longer green' );
 check( (bool) preg_match( '/class="uc-btn uc-btn-stop uc-editor-delete"/', $portal ),
@@ -336,10 +345,20 @@ check( (bool) preg_match( '/\.uc-portal \.uc-btn-stop \{ background: #c0392b;/',
 check( (bool) preg_match( '/\.uc-btn-primary,\s*\n\.uc-form-links-open \{ background: var\(--uc-primary\); border-color: #E0BE00; color: var\(--sfaf-darkgray\); \}/', $css ),
     'the yellow button lost its dark gray ink; white on yellow measures 1.38:1' );
 
-/* PUBLISH CARRIES "MAIN ACTION" BY SIZE now that it is not the only coloured
- * button in the row. */
-check( (bool) preg_match( '/\.uc-editor-actions \.uc-editor-publish \{\s*\n\s*padding: 13px 30px;/', $css ),
-    'Publish is no longer the largest control in the row, so nothing marks the main action' );
+/* THE MAIN ACTION CARRIES "MAIN" BY SIZE now that it is not the only coloured
+ * button in the row, and BOTH rows have one: Publish on a draft, Save changes on
+ * an existing event. One rule, one selector list. */
+check( (bool) preg_match( '/\.uc-editor-actions \.uc-editor-publish,\s*\n\.uc-editor-actions \.uc-editor-save-main \{\s*\n\s*padding: 13px 30px;/', $css ),
+    'the main action is no longer the largest control in its row, so nothing marks it' );
+
+/* AND CANCEL EVENT IS RED, NOT AMBER (3.98.0). It takes the event off the
+ * public calendar and mails everybody who registered, which is Delete's
+ * neighbourhood of consequence rather than "careful". The two reds are told
+ * apart by their labels and by the chevron, which only this one carries. */
+check( (bool) preg_match( '/<summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle"/', $portal ),
+    'Cancel event is amber again, which reads as "careful" for something that mails every registrant' );
+check( false !== strpos( $portal, '<span>Cancel event</span>' ),
+    'the cancel control is labelled just "Cancel", which beside Delete does not say what it cancels' );
 
 /* AND DELETE KEEPS ITS CONFIRMATION. */
 check( (bool) preg_match( '/data-uc-confirm="Delete this event\? Nothing puts it back\."/', $portal ),

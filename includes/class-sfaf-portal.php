@@ -6588,6 +6588,22 @@ class SFAF_Portal {
         );
 
         /*
+         * WHAT WILL BE SHOWN IF THIS IS LEFT EMPTY (3.98.0).
+         *
+         * ONE LINE, AND ONLY WHEN IT IS TRUE: the event has no description of
+         * its own AND its series has one. On every other event there is nothing
+         * to say and nothing is drawn.
+         *
+         * IT IS A STATEMENT OF WHAT WILL HAPPEN, not an explanation of the
+         * fallback and not an argument for it. The series prefill's offer to
+         * COPY the description in is a different control and says its own
+         * thing; this is for somebody who left the box empty on purpose.
+         */
+        if ( ! empty( $ctx['post'] ) && sfaf_event_description_is_series( $ctx['post']->ID ) ) : ?>
+            <p class="uc-hint" data-uc-desc-series-note>This event will show the series description.</p>
+        <?php endif;
+
+        /*
          * INSERT IMAGE, ON THIS EDITOR AND NO OTHER (3.96.0).
          *
          * IT IS RENDERED HERE RATHER THAN IN SFAF_Rich_Text BECAUSE THAT CLASS
@@ -12947,7 +12963,26 @@ class SFAF_Portal {
                  * button somebody reaches for to save a typo.
                  */
                 ?>
-                <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn uc-btn-primary uc-editor-save"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
+                <?php
+                /*
+                 * GREEN AND LARGEST WHEN IT IS THE MAIN ACTION (3.98.0).
+                 *
+                 * ON AN EXISTING EVENT THERE IS NO PUBLISH, so Save changes is
+                 * the thing somebody came to press and it takes the green and
+                 * the size Publish has on the other row. It was yellow, which
+                 * on this row means the IN-BETWEEN action, and it left an
+                 * existing event's row with no main action at all: a red
+                 * Delete, a red Cancel event, and the one safe button the
+                 * quietest thing in the row.
+                 *
+                 * ON A DRAFT IT STAYS YELLOW, because Publish is beside it and
+                 * is the main action there. One rule, two rows: green marks
+                 * what puts the event in front of people, yellow the one you
+                 * press while still working. DESIGN.md records both.
+                 */
+                $save_main = $keep_status ? ' uc-btn-go uc-editor-save-main' : ' uc-btn-primary';
+                ?>
+                <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn<?php echo esc_attr( $save_main ); ?> uc-editor-save"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
                 <?php
                 // WARN, DO NOT BLOCK. There are legitimate reasons to publish a
                 // campaign before its image and description are written — a
@@ -14618,9 +14653,9 @@ class SFAF_Portal {
                    also the only one of the three that opens something rather than doing
                    it, which is exactly what the mark is for. control-standard-audit.php
                    caught its removal. */ ?>
-                <summary class="uc-btn uc-btn-caution uc-cancel-inline-toggle" aria-expanded="<?php echo $came_to_cancel ? 'true' : 'false'; ?>">
+                <summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle" aria-expanded="<?php echo $came_to_cancel ? 'true' : 'false'; ?>">
                     <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
-                    <span>Cancel</span>
+                    <span>Cancel event</span>
                 </summary>
                 <div class="uc-cancel-inline-body">
 
@@ -14937,7 +14972,7 @@ class SFAF_Portal {
             <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Who hears about this event</h4>
                 <p class="uc-hint">
-                    Everybody here is told when somebody registers, gets a copy of the morning-of reminder, and gets the
+                    Everybody here is told when somebody registers, gets one copy of the morning-of reminder, and gets the
                     list of who is coming two hours before. It changes nothing about who can edit this event.
                 </p>
 

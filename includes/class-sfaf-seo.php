@@ -87,9 +87,13 @@ class SFAF_SEO {
      * @return string
      */
     private function description( $id ) {
-        $excerpt = get_the_excerpt( $id );
-        $source  = $excerpt ? $excerpt : get_post_field( 'post_content', $id );
-        return wp_trim_words( sfaf_flatten_html( $source ), 40 );
+        /*
+         * ONE RESOLVER, AND NOT THE EXCERPT (3.98.0). Same fault as the card
+         * summary: on a generated occurrence get_the_excerpt() is the SEED's,
+         * so the meta description and the JSON-LD described the series while
+         * the page described the event. Google reads this one.
+         */
+        return wp_trim_words( sfaf_event_description_text( $id ), 40 );
     }
 
     private function image_url( $id ) {

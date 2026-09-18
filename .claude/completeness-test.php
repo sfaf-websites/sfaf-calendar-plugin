@@ -180,6 +180,13 @@ function sfaf_fundraising_progress_meta_key() { return '_uc_show_fund_progress';
 function sfaf_category_shades( $hex ) { return array( 'ink' => '#0C666F', 'tint' => '#E3F7F9', 'media' => '#D5F3F6' ); }
 function _prime_post_caches( $ids, $a = true, $b = true ) {}
 function sfaf_flatten_html( $html ) { return trim( preg_replace( '/\s+/', ' ', strip_tags( (string) $html ) ) ); }
+/* The description resolver (3.98.0). The event's own words, then its series',
+ * then nothing. These harnesses have no series, so the event's own content is
+ * the whole of it here. */
+function sfaf_event_description_html( $id ) { $p = get_post( $id ); return ( $p && isset( $p->post_content ) ) ? (string) $p->post_content : ''; }
+function sfaf_event_description_text( $id ) { return sfaf_flatten_html( sfaf_event_description_html( $id ) ); }
+function sfaf_event_description_is_series( $id ) { return false; }
+
 function sfaf_help( $id, $text, $what = '' ) { return ''; }
 function sfaf_category_color( $term_id ) { return '#16BECF'; }
 function sfaf_category_icon( $term_id ) { return ''; }

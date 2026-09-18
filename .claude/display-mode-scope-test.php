@@ -180,6 +180,13 @@ function sfaf_normalize_faqs( $f ) { return array(); }
 function sfaf_rsvp_count( $id ) { return 0; }
 function sfaf_get_rsvp_count( $id ) { return 0; }
 function sfaf_flatten_html( $h ) { return trim( strip_tags( (string) $h ) ); }
+/* The description resolver (3.98.0). The event's own words, then its series',
+ * then nothing. These harnesses have no series, so the event's own content is
+ * the whole of it here. */
+function sfaf_event_description_html( $id ) { $p = get_post( $id ); return ( $p && isset( $p->post_content ) ) ? (string) $p->post_content : ''; }
+function sfaf_event_description_text( $id ) { return sfaf_flatten_html( sfaf_event_description_html( $id ) ); }
+function sfaf_event_description_is_series( $id ) { return false; }
+
 function sfaf_external_marker( $id ) { return ''; }
 function sfaf_event_link_is_external( $id ) { return false; }
 function sfaf_source_links_default() { return false; }

@@ -4241,7 +4241,16 @@ class SFAF_Shortcodes {
             $note = sfaf_volunteer_spots_text( $post_id );
         }
 
-        $summary = wp_trim_words( sfaf_flatten_html( get_the_excerpt( $post_id ) ?: get_the_content( null, false, $post_id ) ), 25 );
+        /*
+         * ONE RESOLVER, AND NOT THE EXCERPT (3.98.0). This read
+         * get_the_excerpt() first, which on a generated occurrence is the SEED
+         * event's excerpt copied at generation and never touched again, so an
+         * edited date showed the series text on its card. The `?:` fallback did
+         * not help: it fires only when the excerpt is EMPTY, and the broken
+         * case is the one where it is not. See sfaf_event_description_text(),
+         * which answers the event first and the series second.
+         */
+        $summary = wp_trim_words( sfaf_event_description_text( $post_id ), 25 );
 
         /*
          * A CANCELLED EVENT SAYS SO ON THE CARD (3.72.0).

@@ -523,14 +523,14 @@ function sfaf_output_ics() {
      * This read get_the_excerpt(), which on a generated occurrence is the SEED
      * event's excerpt copied at generation and never touched again, so the file
      * described the series where the page described the event. See
-     * sfaf_event_calendar_description(), which is also what the Google Calendar
+     * sfaf_event_description_text(), which is also what the Google Calendar
      * URL asks, so the two calendar surfaces cannot disagree.
      *
      * FLATTENED, NOT STRIPPED, still: wp_strip_all_tags() joins the text either
      * side of a tag with nothing between, so a two-paragraph description
      * arrived in the calendar file as "...the firstThe second...".
      */
-    $description = sfaf_event_calendar_description( $post_id );
+    $description = sfaf_event_description_text( $post_id );
 
     $lines   = array();
     $lines[] = 'BEGIN:VCALENDAR';

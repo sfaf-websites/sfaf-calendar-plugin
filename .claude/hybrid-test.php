@@ -574,34 +574,20 @@ if ( false !== $loc_at ) {
  * the page, from the_content(), and the seed's on the calendar entry. */
 $tpl = file_get_contents( $root . '/includes/sfaf-template-functions.php' );
 
-check( (bool) preg_match( '/function sfaf_event_calendar_description\( \$post_id \) \{/', $tpl ),
-    'the one calendar description resolver is gone' );
-check( (bool) preg_match( '/return sfaf_flatten_html\( \$post->post_content \);/', $tpl ),
-    "the calendar description no longer reads the event's own post_content" );
-check( false === strpos( $tpl, 'sfaf_flatten_html( get_the_excerpt( $post_id ) )' ),
-    'a calendar surface is reading get_the_excerpt() again, which on a generated occurrence is the seed event\'s' );
-
-/* BOTH CALENDAR SURFACES ASK THE SAME FUNCTION. The .ics and the Google
- * Calendar URL sit in the same button row, so a fix to one that left the other
- * reading the excerpt would have them describing one event two ways. */
-check( (bool) preg_match( '/\$description = sfaf_event_calendar_description\( \$post_id \);/', $main ),
-    'the .ics no longer asks the calendar description resolver' );
-check( (bool) preg_match( "/'details'  => sfaf_event_calendar_description\( \\\$post_id \),/", $tpl ),
-    'the Google Calendar URL still carries the excerpt, so the two calendar buttons disagree' );
-check( false === strpos( $main, 'get_the_excerpt' ) || false !== strpos( $main, 'This read get_the_excerpt()' ),
-    'the .ics reads the excerpt again' );
-
-/* AND IT DOES NOT FALL BACK TO THE EXCERPT. The event PAGE renders
- * the_content() with nothing behind it, so an event with no description of its
- * own shows none; reaching for the excerpt here would put back exactly the
- * copied text this removes, on exactly the events that have one. */
-$fn_at = strpos( $tpl, 'function sfaf_event_calendar_description(' );
-check( false !== $fn_at, 'the calendar description resolver could not be found' );
-if ( false !== $fn_at ) {
-    $body = substr( $tpl, $fn_at, 260 );
-    check( false === strpos( $body, 'get_the_excerpt' ),
-        'the calendar description falls back to the excerpt, which is the copied value it exists to stop reading' );
-}
+/* THE CALENDAR FILE'S TWO SURFACES ASK THE ONE RESOLVER. The .ics and the
+ * Google Calendar URL sit in the same button row, so a fix to one that left the
+ * other reading the excerpt would have them describing one event two ways.
+ *
+ * THE RESOLVER ITSELF IS TESTED IN .claude/description-source-test.php, which
+ * runs it rather than reading it, and covers all five surfaces and the series
+ * rung 3.98.0 added. What is asserted HERE is only that the calendar file is
+ * still wired to it. */
+check( (bool) preg_match( '/\$description = sfaf_event_description_text\( \$post_id \);/', $main ),
+    'the .ics no longer asks the one description resolver' );
+check( (bool) preg_match( "/'details'  => sfaf_event_description_text\( \\\$post_id \),/", $tpl ),
+    'the Google Calendar URL does not ask the one description resolver, so the two calendar buttons can disagree' );
+check( false === strpos( $main, 'sfaf_flatten_html( get_the_excerpt' ),
+    "the .ics reads the excerpt again, which on a generated occurrence is the seed event's" );
 
 /* =========================================================================
  * 8. A NON-HYBRID EVENT HAS ONE CAPACITY AND IT IS `_uc_capacity`.

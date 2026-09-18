@@ -163,7 +163,32 @@ while ( have_posts() ) :
                     ?>
 
                     <div class="uc-single-body">
-                        <?php the_content(); ?>
+                        <?php
+                        /*
+                         * THE SERIES DESCRIPTION WHEN THE EVENT HAS NONE
+                         * (3.98.0).
+                         *
+                         * A date in a programme with nothing specific to say
+                         * about itself showed an empty column, and the words
+                         * that belong there were already stored on its series.
+                         *
+                         * the_content() IS KEPT FOR THE ORDINARY CASE rather
+                         * than replaced by apply_filters() on the resolved
+                         * string, because it also handles the more tag, paging
+                         * and the global post, and an event with its own
+                         * description must render exactly as it did. Only the
+                         * empty case takes the other branch.
+                         *
+                         * SAME RESOLVER AS THE CARD, THE META TAG AND THE
+                         * CALENDAR FILE, so all five surfaces answer this
+                         * question the same way.
+                         */
+                        if ( '' !== trim( (string) get_post_field( 'post_content', $post_id ) ) ) {
+                            the_content();
+                        } else {
+                            echo apply_filters( 'the_content', sfaf_event_description_html( $post_id ) );
+                        }
+                        ?>
                     </div>
 
                     <?php

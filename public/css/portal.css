@@ -3473,10 +3473,19 @@ body.uc-modal-open { overflow: hidden; }
 .uc-portal .uc-btn-stop:hover { background: #a33025; border-color: #a33025; color: #fff; }
 
 /* ---------------------------------------------------------------------------
-   THE ROW READS DESTRUCTIVE TO PRIMARY, LEFT TO RIGHT (3.97.0).
+   THE ROW READS DESTRUCTIVE TO PRIMARY, LEFT TO RIGHT (3.97.0, 3.98.0).
 
-       Delete        Cancel        Save draft        Publish
-       red           amber         YELLOW            GREEN
+       a draft        Delete   Save draft     Publish
+                      red      YELLOW         GREEN, largest
+
+       an existing    Delete   Cancel event   Save changes
+       event          red      RED            GREEN, largest
+
+   CANCEL EVENT IS RED, NOT AMBER (3.98.0), because it takes the event off the
+   public calendar and mails everybody who registered. Amber said "careful" for
+   something that belongs beside Delete in consequence; the two reds together
+   are the honest reading, and they are told apart by their labels and by the
+   chevron, which only Cancel event has because only it opens something.
 
    ORDER ON SCREEN AND ORDER IN THE MARKUP ARE DIFFERENT THINGS, AND THAT IS
    THE WHOLE REASON THIS IS `order` AND NOT A REWRITE OF THE PHP. A browser
@@ -3510,8 +3519,18 @@ body.uc-modal-open { overflow: hidden; }
    rule below sets order: 20, which is past every one of these. */
 
 /* THE MAIN ACTION IS THE BIGGEST THING IN THE ROW. Padding and type size, so it
-   grows in both axes rather than becoming a long thin bar. */
-.uc-editor-actions .uc-editor-publish {
+   grows in both axes rather than becoming a long thin bar.
+
+   TWO ROWS, TWO MAIN ACTIONS (3.98.0). A draft's row ends in Publish; an
+   existing event's has no Publish at all and ends in Save changes, which is
+   then the thing somebody came to press. Both are green and both are the
+   largest thing in their row, which is one rule rather than a special case:
+   GREEN AND BIG MARK WHATEVER PUTS THE EVENT IN FRONT OF PEOPLE, yellow marks
+   the in-between save. Before this, an existing event's row was a red Delete, a
+   red Cancel event and a yellow Save changes, so the only safe button in it was
+   also the quietest. */
+.uc-editor-actions .uc-editor-publish,
+.uc-editor-actions .uc-editor-save-main {
     padding: 13px 30px;
     font-size: 15px;
 }

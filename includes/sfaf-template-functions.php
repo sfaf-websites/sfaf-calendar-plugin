@@ -729,47 +729,88 @@ function sfaf_flatten_html( $html ) {
 }
 
 /**
- * THE EVENT'S OWN DESCRIPTION, FLATTENED, FOR A CALENDAR ENTRY (3.97.2).
+ * THE EVENT'S DESCRIPTION, WITH THE SERIES AS THE FALLBACK (3.97.2, 3.98.0).
  *
- * NOT get_the_excerpt(), AND THAT IS THE WHOLE POINT OF THIS FUNCTION.
+ * ONE RESOLVER, FIVE SURFACES: the event page, the card summary, the search
+ * engine summary, the .ics and the Google Calendar URL. Before 3.98.0 those
+ * five answered the question four different ways, and three of them were wrong
+ * in the same direction.
  *
- * `post_excerpt` IS NEVER THIS EVENT'S OWN TEXT ON THIS POST TYPE. Nothing in
- * the editor writes it: save_event_from_post() writes `post_content` from the
- * description field and touches the excerpt nowhere. The only two things that
- * ever put a value in it COPY ONE FROM ANOTHER POST, the duplicate action and
- * SFAF_Recurrence, which hands every generated occurrence the SEED's excerpt
- * alongside the seed's content.
+ * RUNG ONE: THE EVENT'S OWN `post_content`, which is what the editor writes and
+ * the only field on the form.
  *
- * SO THE STALE CASE IS THE ORDINARY ONE, not a corner. Generate a repeating
- * event, edit one occurrence's description, and that occurrence now has its own
- * `post_content` and the seed's `post_excerpt`. The event page renders
- * the_content() and showed the edited text; the calendar file asked for the
- * excerpt and handed out the seed's, which is the text every other date in the
- * series still carries and reads as the series' own. Nobody editing the event
- * had any way to correct it, because the field it came from is not on the form.
+ * RUNG TWO: THE SERIES DESCRIPTION. A date in a programme that has nothing
+ * specific to say about itself should carry the programme's own words rather
+ * than nothing, which is what every surface showed before. The prefill's offer
+ * to COPY the series description into a new event is unchanged and is a
+ * different thing: that makes the words the event's own, and editable.
  *
- * WHEN THE EXCERPT IS EMPTY the two agreed anyway, because WordPress auto-trims
- * `post_content` to build one. That is why this only ever showed up on events
- * whose seed had an excerpt, and why it looked intermittent.
- *
- * THE PAGE IS THE ANSWER, AND IT DOES NOT FALL BACK. single-uc_event.php calls
- * the_content() with nothing behind it, so an event with no description of its
- * own shows none, and this returns '' for the same event rather than reaching
- * for something the page would not have shown. The series is consulted for the
- * image, the FAQ set and the video, and a calendar file carries none of those.
- *
- * ONE FUNCTION FOR BOTH CALENDAR SURFACES, the .ics and the Google Calendar
- * URL, so the two cannot drift into describing the same event differently.
+ * AND NEVER `post_excerpt`, WHICH IS NOT THIS EVENT'S TEXT ON THIS POST TYPE.
+ * Nothing in the editor writes it: save_event_from_post() writes post_content
+ * and touches the excerpt nowhere. The only two things that ever put a value in
+ * it COPY ONE FROM ANOTHER POST, the duplicate action and SFAF_Recurrence,
+ * which hands every generated occurrence the SEED's excerpt. So an occurrence
+ * whose description was edited kept its own content and the seed's excerpt for
+ * life, and anything reading the excerpt showed the text the whole series
+ * shares. When the excerpt is empty the two agreed anyway, because WordPress
+ * auto-trims the content to build one, which is why it looked intermittent.
  *
  * @param int $post_id
- * @return string Flat text, '' when the event has no description.
+ * @return string Stored HTML, '' when neither the event nor its series has one.
  */
-function sfaf_event_calendar_description( $post_id ) {
-    $post = get_post( (int) $post_id );
-    if ( ! $post ) {
+function sfaf_event_description_html( $post_id ) {
+    $post_id = (int) $post_id;
+    $post    = get_post( $post_id );
+    $own     = $post ? trim( (string) $post->post_content ) : '';
+    if ( '' !== $own ) {
+        return $own;
+    }
+
+    /* THE SERIES, AND ONLY WHEN THE EVENT HAS NOTHING. for_event() is
+     * get_the_terms(), which is cached per request, so this costs nothing on
+     * the events that never reach it. */
+    if ( ! class_exists( 'SFAF_Series' ) ) {
         return '';
     }
-    return sfaf_flatten_html( $post->post_content );
+    $term = SFAF_Series::for_event( $post_id );
+    if ( ! $term || is_wp_error( $term ) || empty( $term->description ) ) {
+        return '';
+    }
+    return trim( (string) $term->description );
+}
+
+/**
+ * Whether what the resolver above returned came from the series.
+ *
+ * THE EDITOR IS THE ONLY CALLER, and it needs the question answered without
+ * comparing two strings: the hint under an empty description field says the
+ * event will show the series description, and it must not appear on an event
+ * that happens to have typed the same words.
+ *
+ * @param int $post_id
+ * @return bool
+ */
+function sfaf_event_description_is_series( $post_id ) {
+    $post_id = (int) $post_id;
+    $post    = get_post( $post_id );
+    if ( $post && '' !== trim( (string) $post->post_content ) ) {
+        return false;
+    }
+    return ( '' !== sfaf_event_description_html( $post_id ) );
+}
+
+/**
+ * The same thing as flat text, for a calendar entry, a card or a meta tag.
+ *
+ * FLATTENED, NOT STRIPPED: wp_strip_all_tags() joins the text either side of a
+ * tag with nothing between, so a two-paragraph description became
+ * "...the firstThe second...". See sfaf_flatten_html().
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_description_text( $post_id ) {
+    return sfaf_flatten_html( sfaf_event_description_html( $post_id ) );
 }
 
 /**
@@ -810,10 +851,10 @@ function sfaf_google_calendar_url( $post_id ) {
         'text'     => get_the_title( $post_id ),
         'dates'    => $start_utc->format( 'Ymd\THis\Z' ) . '/' . $end_utc->format( 'Ymd\THis\Z' ),
         // The event's own description, flattened: see
-        // sfaf_event_calendar_description(). Google shows this as the event's
+        // sfaf_event_description_text(). Google shows this as the event's
         // notes, and this button sits beside the .ics one, so the two answer
         // the same question the same way.
-        'details'  => sfaf_event_calendar_description( $post_id ),
+        'details'  => sfaf_event_description_text( $post_id ),
         'location' => sfaf_event_location( $post_id ),
     );
 

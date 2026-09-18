@@ -1569,7 +1569,7 @@ check(
  * opened a disclosure below would be the easy version and would leave two
  * things on the screen that both say cancel. */
 check(
-    (bool) preg_match( '/<details class="uc-cancel-inline"[^>]*>[\s\S]{0,200}?<summary class="uc-btn uc-btn-caution/', $code_portal ),
+    (bool) preg_match( '/<details class="uc-cancel-inline"[^>]*>[\s\S]{0,200}?<summary class="uc-btn uc-btn-stop/', $code_portal ),
     'the cancel control is no longer a details whose summary is the button, so either it is expanded by default or there are two cancel controls'
 );
 check(
