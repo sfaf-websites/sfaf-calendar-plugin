@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.97.2
+Stable tag: 3.97.3
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,34 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.97.3 =
+
+**THE MEETING LINK WAS NOT REACHING THE PEOPLE IT EXISTS FOR.** On a hybrid event with both delivery ticks on, somebody registering **online** received a confirmation with no link, a calendar file with no link, and the street address they should not have had. The morning-of reminder sent no link to anybody. Broken since **3.96.0**, which is every hybrid event there has ever been.
+
+**THE GATE WAS NEVER WRONG, AND THAT IS WHY READING IT FOUND NOTHING.** Three places decide whether somebody is handed the link, and all three ask the same correct question: is this recipient's format `online`? All three treat an empty format as "this event never asked", which is right for every non-hybrid event. **Nobody ever told them the format.**
+
+```
+the radio          sends "online"          correct
+$_POST['format']   stored on the row       correct
+the person object  five fields, no format  <- the fault
+the gate           refuses, correctly      correct
+```
+
+**CAUSE ONE: THE JOIN.** `SFAF_RSVP::route_submission()` assembles the person object that both the confirmation and the registration alert are built from. It carried the name, first name, last name, email and token. It did not carry the format, so `person_format()` read nothing and **every recipient of every hybrid event looked like somebody whose event never asked**. The same field was missing from the reminder's person object, and its recipient query did not select the column to pass on, so the morning-of reminder had nothing to work with either.
+
+**CAUSE TWO: THE TOKEN.** `ics_join_token()` asked `is_online()`, the narrow question meaning "has no place", which a hybrid event answers no to **by design** so that it keeps its address. That one function both mints and verifies, so no token could be created for a hybrid event and none presented for one could ever be accepted. **3.97.2 widened the reader in `sfaf_output_ics()` and stopped there**, fixing the half that decides whether to look for a token and leaving the half that decides whether one exists.
+
+**PLAIN ONLINE EVENTS WERE NEVER AFFECTED.** `is_hybrid()` is false on one, so the gate's "the event never asked" branch passed them and the link was always sent; and `is_online()` is true on one, so the join token was always minted. Both directions are now asserted rather than assumed.
+
+**THE REGISTRATION ALERT'S PER-FORMAT SENTENCE WAS BUILT IN 3.96.0 AND HAS BEEN DEAD EVER SINCE.** It names the registrant's format and counts that format's places, so that "11 of 12 places taken" beside "Online" cannot report the room's capacity at somebody joining by link. It read the same starved person object, so it always fell through to the whole-event count. It works now. **The morning-of summary was never affected**, because it reads the `format` column off the rows rather than off a person object.
+
+**WHAT NOW PROVES IT.** Two new checks, because the fault was a JOIN and every existing check read one end or the other:
+
+- `.claude/hybrid-link-delivery-test.php` drives the **real** `route_submission()` with the notifier replaced by a recorder, asks what the person object actually contained, and then proves all four cases on all three surfaces: hybrid registered online gets the link and no address, hybrid registered in person gets the address and no link, a plain online event gets the link, an in-person event gets neither. **Eleven planted faults, all caught**, including the exact 3.96.0 omission and the exact 3.97.2 miss.
+- `.claude/rsvp-format-live.php` drives the **real** RSVP form in headless Chrome and reads the payload the page was about to send. It proved the client was innocent, which is the step that turned a search into a diagnosis.
+
+**THE LESSON, WHICH IS THE REUSABLE PART.** Both ends were correct and individually tested, and the fault was the join between them. A test that builds its own person object asserts the gate and ships the bug, which is what the hybrid suite had been doing since 3.96.0. **A check on a handover has to run one side into the other.**
 
 = 3.97.2 =
 

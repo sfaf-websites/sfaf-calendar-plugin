@@ -3409,6 +3409,50 @@ in person.
 > defect was the state of a checkbox after a sequence of clicks, which is not a
 > question any of them asks. `.claude/hybrid-live.php` drives the real
 > `portal.js` in headless Chrome and reads the box back, in both tick orders.
+
+**THE RECIPIENT'S FORMAT HAS TO TRAVEL WITH THE RECIPIENT (3.97.3).** Three
+places decide whether somebody is handed the meeting link, and each asks the
+same question of the person in front of it:
+
+```
+SFAF_Online::joining_html()        the confirmation and reminder, HTML
+SFAF_Online::joining_text()        the same, plain text
+SFAF_Online::ics_url_with_link()   the calendar file the confirmation offers
+```
+
+Each is written as an ALLOW: the link goes out only when the recipient's format
+is `online`, and `''` means "this event never asked", which is every non-hybrid
+event. That shape is deliberate and must not be inverted to "unless they said in
+person", because it would stop every purely online event's link.
+
+**SO EVERY PERSON OBJECT THAT REACHES A BUILDER CARRIES `format`.** There are
+two, and both had to learn it: the one `SFAF_RSVP::route_submission()` assembles
+for the confirmation and the alert, and the one `SFAF_Reminders::send_one()`
+assembles for the morning-of reminder, whose `recipients()` selects the column
+in the same query as the address so the two cannot disagree about one row. **A
+staff member's format is `''` on purpose**: they hold no place and answered no
+question, so a hybrid event's link is not theirs.
+
+**THE MORNING-OF SUMMARY IS THE EXCEPTION AND DOES NOT USE A PERSON OBJECT.** It
+reads the `format` column straight off the confirmed rows and groups by it, so
+it was never affected by any of this. Anything else asking "which format is this
+person in" goes through `person_format()`.
+
+> **THIS WAS BROKEN FROM 3.96.0 TO 3.97.3, AND BOTH ENDS WERE CORRECT THE WHOLE
+> TIME.** The radio sent `online`, the column stored `online`, and the gate
+> asked for `online`. The person object in the middle carried five fields and
+> the format was not one of them, so every hybrid registrant looked like
+> somebody whose event never asked and the link reached nobody. **The existing
+> hybrid suite built its own person object**, which asserted the gate and shipped
+> the bug for four releases. `.claude/hybrid-link-delivery-test.php` drives the
+> real `route_submission()` with the notifier recorded, which is the only shape
+> of check that can see a join.
+>
+> **AND `ics_join_token()` ASKED `is_online()`**, which a hybrid event answers no
+> to by design. It mints AND verifies, so no hybrid event could have a token at
+> either end. 3.97.2 widened the reader in `sfaf_output_ics()` and left this one,
+> which is the recurring shape: **a question asked in two places, moved in one.**
+
 ### Private events are unlisted links, not access control
 
 One checkbox on the event, default off (`_uc_private`).
@@ -5450,6 +5494,39 @@ has used since 3.64.0. **The month arrows use it; these do not yet**, and the
 list is here rather than left to a search: the filter bar's search field and
 dropdown, the group pills, the groups disclosure, the RSVP modal's cancel and
 its secondary add-to-calendar button, and the month tabs under the sidebar.
+
+### Both ends can be right and the join still broken (3.96.0, found 3.97.3)
+
+The meeting link did not reach the online registrant of any hybrid event for
+four releases. Every piece of it was individually correct and individually
+tested:
+
+```
+the radio               sent "online"                  tested, in a browser
+$_POST['format']        stored on the row              tested
+the gate                refused unless "online"        tested, both directions
+the person object       FIVE FIELDS, NO FORMAT         tested by nothing
+```
+
+**A JOIN IS NOT AN END, AND NOTHING THAT READS ONE END CAN SEE IT.** The hybrid
+suite asserted the gate by handing it a person object it built itself, with the
+format set. That is a test of the gate, and the gate was fine. It could never
+have failed, whatever the shipped code did, because the shipped code was not the
+thing supplying the value.
+
+**THE REMEDY IS A CHECK THAT RUNS ONE SIDE INTO THE OTHER.**
+`.claude/hybrid-link-delivery-test.php` slices the real `route_submission()` out
+of the file, rebinds it with `SFAF_Notifications` replaced by a recorder, and
+asks what the person object ACTUALLY contained. Then it feeds that same shape to
+the real builders. The slice matters: a copy of the method written into the test
+would pass forever.
+
+**THE SMELL TO LOOK FOR** is a value that changes shape as it crosses a boundary:
+a row becomes an object, an array becomes a parameter list, a query result
+becomes a person. Every field that does not survive one of those crossings is
+invisible to both sides. When adding a field to a record, **follow it to every
+place it is re-packaged**, and put a check on the crossing rather than on the
+ends.
 
 ### A bare constant parses, and neither gate asks about it (3.97.2)
 

@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 181 items.** Quick 153, needs real conditions 25, blocked on other
+**Outstanding: 182 items.** Quick 153, needs real conditions 26, blocked on other
 people 3.
 
 ---
@@ -2635,6 +2635,34 @@ On a hybrid event with a meeting link and the **confirmation** delivery ticked:
 **Why it needs a person:** there is no mail and no database here, and step 3 is
 the one that matters: it is the check that widening WHICH events can carry a
 link did not widen WHO is handed one.
+
+### 2.16 The meeting link actually arriving, on all three messages (3.97.3)
+
+3.97.3 fixed the fault where the format never travelled with the registrant, so
+no hybrid event ever sent its meeting link. Everything about it is asserted
+here and eleven planted faults are caught, but no message has left this machine.
+
+On a hybrid event with a link entered and BOTH delivery ticks on, from two
+different addresses:
+
+1. Register **Online**. The confirmation must carry the joining block with the
+   link, and must say "Online Event" where the address would be. Open the
+   calendar file it offers: it must carry `Join:` and a `CONFERENCE` line.
+2. Register **In person**. That confirmation must carry the street address and
+   the link **nowhere**, including in its calendar file.
+3. **Let the morning-of reminder run** for that event, or trigger it. The online
+   registrant's reminder must carry the link; the in-person one must not; and a
+   staff member on the notification list must get neither the link nor a cancel
+   link, because they hold no place.
+
+**Also read the registration alert** that went out for each. It must name the
+format, "Online" or "In person", and its count must be that format's count, not
+the whole event's. That sentence was built in 3.96.0 and was dead until now.
+
+**Why it needs a person:** there is no mail here, and the reminder runs from
+cron against a real event on a real day. Step 3 is the one nothing else covers:
+the reminder's recipient list is a database query, and whether it carries the
+format through to the message can only be settled by a message arriving.
 
 ## 3. Blocked on other people
 

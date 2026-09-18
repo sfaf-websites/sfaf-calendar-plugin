@@ -4,21 +4,22 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-18, at 3.97.2, released.
+**Last updated:** 2026-09-18, at 3.97.3, released.
 
 ---
 
 ## What shipped last
 
-**3.97.2** fixed three faults on hybrid events: the two format ticks are
-exclusive on screen as well as on the server, a hybrid event always takes RSVPs,
-and the calendar file carries the event's own description instead of the
-series'. **3.97.1** gave Publish and Submit for Review a form again: both had
-been dead since 3.94.0. **3.97.0** locked registrations on imported events and
-reordered the event editor's button row. **3.96.0 is the big one**: hybrid events end to end, the
-event video, two extra pictures on a submission, pictures inside descriptions,
-capacity moved beside the thing it limits, and the dropdown's ticked edge
-removed. **`readme.txt` is the changelog** and has the reasoning for all of it.
+**3.97.3** got the meeting link to a hybrid event's online registrant: the
+format never travelled with the person, so every gate refused them, broken
+since 3.96.0. **3.97.2** fixed three hybrid faults: the format ticks are
+exclusive on screen too, a hybrid event always takes RSVPs, and the calendar
+file carries the event's own description, not the series'. **3.97.1** gave
+Publish and Submit for Review a form again, dead since 3.94.0. **3.97.0**
+locked registrations on imported events. **3.96.0 is the big one**: hybrid
+events end to end, the event video, two extra pictures on a submission,
+pictures inside descriptions, and capacity beside the thing it limits.
+**`readme.txt` is the changelog** and has the reasoning for all of it.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** GoFundMe Pro and
 > Eventbrite count their own places. The tick is locked and off, both capacity
@@ -48,9 +49,11 @@ names are siblings and why that is what keeps each out of the others' pickers.
 > answered itself: it is one capacity PER FORMAT, because the form has to say
 > "online is full, there are still places in person" and one number cannot.
 > `PROJECT.md` 2 has the model and the credential rule.
-> **A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2)**, locked on in the editor and
-> written by the save, because the in-person-or-online question is asked on the
-> registration form and nowhere else.
+> **A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2)**: the format question is asked
+> on the registration form and nowhere else. **AND EVERY PERSON OBJECT REACHING
+> A MAIL BUILDER CARRIES `format` (3.97.3)**, or the gates refuse the link to
+> the one person it is for. `PROJECT.md` 7 has that shape.
+
 **Three things a new session needs, each retiring or reversing something:**
 
 > **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, deliberately, with the
@@ -91,16 +94,14 @@ names are siblings and why that is what keeps each out of the others' pickers.
   nudge drive the runner. `PROJECT.md` 4 has the order to switch it on in; the
   wrong order leaves the site with no scheduler.
 - **Automated fetching is ON and its own copy says it should not be**, and only
-  Mark can say which. A fetch can unpublish a live event unattended, four times
-  an hour. `TESTING.md` 2.8.
-- **Online events are a first pass (3.62.0).** Per-registrant approval was
-  deliberately not half built. `PROJECT.md` 2.
+  Mark can say which: it can unpublish a live event unattended, four times an
+  hour. `TESTING.md` 2.8.
 
 ---
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 178 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 182 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.
