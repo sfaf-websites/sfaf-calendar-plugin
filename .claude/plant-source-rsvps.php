@@ -20,14 +20,14 @@ $plants = array(
     /* ---- THE REFUSAL. --------------------------------------------------- */
     'a source event saves with RSVPs on' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "            if ( SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '0' );\n            } else {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', isset( \$_POST['rsvp_enabled'] ) ? '1' : '0' );\n            }",
+        'from' => "            if ( SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '0' );\n            } elseif ( SFAF_Online::is_hybrid( \$event_id ) ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '1' );\n            } else {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', isset( \$_POST['rsvp_enabled'] ) ? '1' : '0' );\n            }",
         'to'   => "            update_post_meta( \$event_id, '_uc_rsvp_enabled', isset( \$_POST['rsvp_enabled'] ) ? '1' : '0' );",
     ),
 
     'the save SKIPS a source event rather than forcing it off' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "            if ( SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '0' );\n            } else {",
-        'to'   => "            if ( SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                // left alone\n            } else {",
+        'from' => "            if ( SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '0' );\n            } elseif (",
+        'to'   => "            if ( SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                // left alone\n            } elseif (",
     ),
 
     'a hand-made event is locked by mistake' => array(
@@ -44,13 +44,13 @@ $plants = array(
 
     'the control can render ticked on a source event' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "<?php checked( ! \$at_source && '1' === (string) \$g( '_uc_rsvp_enabled' ) ); ?>",
+        'from' => "<?php checked( \$rsvp_forced || ( ! \$at_source && '1' === (string) \$g( '_uc_rsvp_enabled' ) ) ); ?>",
         'to'   => "<?php checked( \$g( '_uc_rsvp_enabled' ), '1' ); ?>",
     ),
 
     'the control stops being disabled' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                           <?php disabled( \$at_source ); ?> />",
+        'from' => "                           <?php disabled( \$at_source || \$rsvp_forced ); ?> />",
         'to'   => " />",
     ),
 

@@ -1622,6 +1622,55 @@ function ucDismissOnBackdrop(dialog) {
      * so with scripting off the screen shows two controls and a choice rather
      * than nothing.
      * ------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------
+     * A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2)
+     *
+     * The format question, in person or online, is asked on the registration
+     * form and nowhere else, so an event with registrations switched off has
+     * no way for anybody to answer it, and the two capacities are limits on a
+     * question nobody is ever asked.
+     *
+     * SO BOTH TICKS GO ON AND LOCK while hybrid is ticked, and BOTH COME BACK
+     * when it is unticked. What comes back is the stored value rather than a
+     * default: only the disabled attribute moves on the way out, so somebody
+     * who had registrations off before trying hybrid still has them off after
+     * changing their mind.
+     *
+     * IT IS NOT WHAT MAKES IT TRUE. The save asks the stored format and writes
+     * the value either way, so with scripting off, or with the attribute
+     * removed by hand, nothing about what is saved changes. This only keeps the
+     * screen honest, which is the arrangement initCalendarTick() documents one
+     * control along.
+     *
+     * AND IT MUST NOT UNLOCK WHAT THE THIRD-PARTY RULE LOCKED. An imported
+     * event's Accept RSVPs is rendered off and disabled by the server and can
+     * never be hybrid, so a box that is already disabled AND unticked is left
+     * exactly as it is.
+     * ------------------------------------------------------------------ */
+    function applyHybridRsvpLock(isHybrid) {
+        var accept = document.querySelector('[data-uc-rsvp-accept-check]');
+        var show   = document.querySelector('[data-uc-rsvp-show-check]');
+        var note   = document.querySelector('[data-uc-rsvp-hybrid-note]');
+        var shown  = document.querySelector('[data-uc-rsvp-hybrid-show-note]');
+        var plain  = document.querySelector('[data-uc-rsvp-show-note]');
+
+        var pairs = [[accept, note], [show, shown]];
+        for (var i = 0; i < pairs.length; i++) {
+            var label = pairs[i][0];
+            var hint  = pairs[i][1];
+            if (!label) { continue; }
+            var box = label.querySelector('input');
+            if (!box) { continue; }
+            if (box.disabled && !box.checked && !isHybrid) { continue; }
+            if (isHybrid) { box.checked = true; }
+            box.disabled = isHybrid;
+            label.classList.toggle('uc-check-locked', isHybrid);
+            if (hint) { hint.hidden = !isHybrid; }
+        }
+
+        /* Two causes, two sentences, and only one of them may be on screen. */
+        if (plain && isHybrid) { plain.hidden = true; }
+    }
     function initLocationPicker() {
         document.querySelectorAll('[data-uc-location]').forEach(function (root) {
             var modes = Array.prototype.slice.call(root.querySelectorAll('[data-uc-location-mode]'));
@@ -1631,27 +1680,62 @@ function ucDismissOnBackdrop(dialog) {
              * this only hides the half that does not apply. An imported event
              * has neither control and drops out here. */
             var online = root.querySelector('[data-uc-online-toggle]');
+            var hybrid = root.querySelector('[data-uc-hybrid-toggle]');
             var place  = root.querySelector('[data-uc-location-place]');
             var panel  = root.querySelector('[data-uc-online-panel]');
+            var onlineCap = document.querySelector('[data-uc-online-capacity]');
 
             if (!modes.length && !online) {
                 return;
             }
 
+            /* HYBRID IS ONLINE AND IN PERSON, WHICH IS WHY IT SHOWS BOTH HALVES.
+             *
+             *     online only   the meeting link, no venue and no address
+             *     hybrid        the meeting link AND the venue and address,
+             *                   with the online capacity beside the link
+             *     neither       the venue and address
+             *
+             * AND THE TWO TICKS ARE EXCLUSIVE. They cannot both be true: an
+             * event is in person, online, or hybrid. Ticking one clears the
+             * other here, and save_event_from_post() folds a posted pair the
+             * same way with hybrid winning, so a form sent with the script
+             * blocked cannot store a state mode() would have to invent an
+             * answer for. */
+            function exclusive(changed) {
+                if (!online || !hybrid) { return; }
+                if (changed === online && online.checked) { hybrid.checked = false; }
+                if (changed === hybrid && hybrid.checked) { online.checked = false; }
+            }
+
             function apply() {
+                var isHybrid = !!(hybrid && hybrid.checked);
                 var isOnline = !!(online && online.checked);
-                if (panel) { panel.hidden = !isOnline; }
-                if (place) { place.hidden = isOnline; }
+
+                /* The link panel belongs to both formats that have a link. */
+                if (panel) { panel.hidden = !(isOnline || isHybrid); }
+                /* The place is hidden only by a PURELY online event. */
+                if (place) { place.hidden = isOnline && !isHybrid; }
+                /* The online capacity is a hybrid control: a non-hybrid event's
+                 * single limit is the box under the address. */
+                if (onlineCap) { onlineCap.hidden = !isHybrid; }
 
                 var chosen = 'custom';
                 modes.forEach(function (m) { if (m.checked) { chosen = m.value; } });
                 Array.prototype.forEach.call(root.querySelectorAll('[data-uc-location-panel]'), function (p) {
                     p.hidden = (p.getAttribute('data-uc-location-panel') !== chosen);
                 });
+
+                applyHybridRsvpLock(isHybrid);
             }
 
             modes.forEach(function (m) { m.addEventListener('change', apply); });
-            if (online) { online.addEventListener('change', apply); }
+            if (online) {
+                online.addEventListener('change', function () { exclusive(online); apply(); });
+            }
+            if (hybrid) {
+                hybrid.addEventListener('change', function () { exclusive(hybrid); apply(); });
+            }
             root.classList.add('uc-location-on');
             apply();
         });

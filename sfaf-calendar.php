@@ -557,14 +557,51 @@ function sfaf_output_ics() {
      * the RFC 7986 CONFERENCE property, which is the property that means "the
      * URI you join at" and is what a client offers as a Join button.
      */
+    /*
+     * has_online_format(), NOT is_online() (3.97.2).
+     *
+     * A HYBRID EVENT HAS A MEETING LINK AND WAS NEVER GIVEN IT HERE.
+     * is_online() is the narrow question, "has no place", which a hybrid event
+     * answers no to by design so that it keeps its address. This is the wider
+     * one, "does anybody join by link", which is what the calendar file is
+     * actually asking. SFAF_Online::link() and sends() were widened when hybrid
+     * was built; this reader was not, so an online registrant of a hybrid event
+     * got a confirmation carrying the link and a calendar file that silently
+     * dropped it.
+     *
+     * NOTHING ABOUT THE GATE ITSELF RELAXES. The token is still required, and
+     * ics_url_with_link() still only mints one for a registrant whose format is
+     * online, so a hybrid event's IN-PERSON registrant is handed no token and
+     * this still gives them nothing.
+     */
     $join = '';
-    if ( SFAF_Online::is_online( $post_id ) && SFAF_Online::has_link( $post_id ) ) {
+    if ( SFAF_Online::has_online_format( $post_id ) && SFAF_Online::has_link( $post_id ) ) {
         $asked = isset( $_GET[ SFAF_Online::ICS_JOIN_ARG ] )
             ? sanitize_text_field( wp_unslash( $_GET[ SFAF_Online::ICS_JOIN_ARG ] ) )
             : '';
         if ( SFAF_Online::sends_with( $post_id, 'confirmation' ) && SFAF_Online::ics_join_ok( $post_id, $asked ) ) {
             $join = SFAF_Online::link( $post_id );
         }
+    }
+    /*
+     * AND THE FILE SAYS WHAT THE PAGE SAYS ABOUT THE FORMAT (3.97.2).
+     *
+     * The event page puts "In person and online" above the address on a hybrid
+     * event. The file said only the address, so a calendar entry gave no hint
+     * the event could be joined at all, which is the half of the event a
+     * registrant may have chosen.
+     *
+     * IN THE DESCRIPTION, NOT IN LOCATION. A calendar client hands LOCATION to
+     * a map, so prose appended there becomes a failed map lookup. The same
+     * reason sfaf_event_format_line() is a separate function from
+     * sfaf_event_location() rather than a longer address.
+     *
+     * ONE SENTENCE FROM ONE PLACE, so the file and the page cannot drift into
+     * saying different things about the same event.
+     */
+    $format_line = sfaf_event_format_line( $post_id );
+    if ( '' !== $format_line ) {
+        $description = $format_line . ( '' !== $description ? "\n\n" . $description : '' );
     }
     if ( '' !== $join ) {
         $description = 'Join: ' . $join . ( '' !== $description ? "\n\n" . $description : '' );

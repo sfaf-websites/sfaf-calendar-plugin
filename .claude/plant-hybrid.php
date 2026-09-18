@@ -154,6 +154,79 @@ $plants = array(
         'from' => "    if ( ! SFAF_Online::is_hybrid( \$event_id ) ) {\n        return max( 0, (int) get_post_meta( \$event_id, '_uc_capacity', true ) );\n    }",
         'to'   => "    if ( '' === \$format ) {\n        \$format = SFAF_Online::is_online( \$event_id ) ? SFAF_Online::MODE_ONLINE : SFAF_Online::MODE_IN_PERSON;\n    }",
     ),
+    /* ---- THE THREE FAULTS 3.97.2 FIXED. --------------------------------- */
+    'both format ticks can be saved at once' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "            if ( \$want_hybrid ) {\n                \$want_mode = SFAF_Online::MODE_HYBRID;\n            } elseif ( \$want_online ) {",
+        'to'   => "            if ( \$want_online ) {\n                \$want_mode = SFAF_Online::MODE_ONLINE;\n            } elseif ( \$want_hybrid ) {",
+    ),
+
+    'the two ticks stop clearing each other on screen' => array(
+        'file' => 'public/js/portal.js',
+        'from' => "                if (changed === online && online.checked) { hybrid.checked = false; }\n                if (changed === hybrid && hybrid.checked) { online.checked = false; }",
+        'to'   => "                return;",
+    ),
+
+    'a hybrid event hides the meeting link' => array(
+        'file' => 'public/js/portal.js',
+        'from' => "                if (panel) { panel.hidden = !(isOnline || isHybrid); }",
+        'to'   => "                if (panel) { panel.hidden = !isOnline; }",
+    ),
+
+    'a hybrid event hides its venue and address' => array(
+        'file' => 'public/js/portal.js',
+        'from' => "                if (place) { place.hidden = isOnline && !isHybrid; }",
+        'to'   => "                if (place) { place.hidden = isOnline; }",
+    ),
+
+    'the online capacity goes back to appearing only after a save' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "                if ( ! \$event_id || SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                    break;\n                }\n                \$s_cap_on  = \$this->field_state",
+        'to'   => "                if ( ! \$event_id || ! SFAF_Online::is_hybrid( \$event_id )\n                    || SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                    break;\n                }\n                \$s_cap_on  = \$this->field_state",
+    ),
+
+    'HYBRID SAVES WITH RSVPS OFF' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "            } elseif ( SFAF_Online::is_hybrid( \$event_id ) ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '1' );",
+        'to'   => "            } elseif ( false ) {\n                update_post_meta( \$event_id, '_uc_rsvp_enabled', '1' );",
+    ),
+
+    'a hybrid event can hide its RSVP button, leaving the format unaskable' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "            if ( 'show_rsvp' === \$field && SFAF_Online::is_hybrid( \$event_id ) ) {\n                update_post_meta( \$event_id, \$key, '1' );\n                continue;\n            }",
+        'to'   => "",
+    ),
+
+    'the editor stops locking Accept RSVPs on for hybrid' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "<?php disabled( \$at_source || \$rsvp_forced ); ?>",
+        'to'   => "<?php disabled( \$at_source ); ?>",
+    ),
+
+    'THE CALENDAR FILE DROPS A HYBRID EVENT\'S LINK' => array(
+        'file' => 'sfaf-calendar.php',
+        'from' => "    if ( SFAF_Online::has_online_format( \$post_id ) && SFAF_Online::has_link( \$post_id ) ) {",
+        'to'   => "    if ( SFAF_Online::is_online( \$post_id ) && SFAF_Online::has_link( \$post_id ) ) {",
+    ),
+
+    'the calendar file hands out the link with no token' => array(
+        'file' => 'sfaf-calendar.php',
+        'from' => "        if ( SFAF_Online::sends_with( \$post_id, 'confirmation' ) && SFAF_Online::ics_join_ok( \$post_id, \$asked ) ) {",
+        'to'   => "        if ( true ) {",
+    ),
+
+    'the calendar file stops saying a hybrid event is also online' => array(
+        'file' => 'sfaf-calendar.php',
+        'from' => "    \$format_line = sfaf_event_format_line( \$post_id );",
+        'to'   => "    \$format_line = '';",
+    ),
+
+    'the format sentence is put into LOCATION, which a client hands to a map' => array(
+        'file' => 'sfaf-calendar.php',
+        'from' => "    \$lines[] = 'LOCATION:' . sfaf_ics_escape( sfaf_event_location( \$post_id ) );",
+        'to'   => "    \$lines[] = 'LOCATION:' . sfaf_ics_escape( sfaf_event_location( \$post_id ) . ' ' . \$format_line );",
+    ),
+
     /* ---- THE FORM. ------------------------------------------------------ */
     'the form decides for itself which formats an event has' => array(
         'file' => 'includes/sfaf-template-functions.php',

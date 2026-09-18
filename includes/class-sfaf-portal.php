@@ -2460,6 +2460,20 @@ class SFAF_Portal {
                 && '1' !== (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) ) {
                 continue;
             }
+            /*
+             * AND A HYBRID EVENT KEEPS ITS RSVP BUTTON (3.97.2). The tick is
+             * rendered on and disabled, so it posts nothing, and the loop below
+             * would read that as "unticked" and hide the one button the format
+             * question is asked on. Written rather than skipped, so an event
+             * that had it off before becoming hybrid gets it on.
+             *
+             * ORDER IS SAFE: _uc_rsvp_enabled and the format were both written
+             * above, so this reads THIS save's values.
+             */
+            if ( 'show_rsvp' === $field && SFAF_Online::is_hybrid( $event_id ) ) {
+                update_post_meta( $event_id, $key, '1' );
+                continue;
+            }
             update_post_meta( $event_id, $key, isset( $_POST[ $field ] ) ? '1' : '0' );
         }
 
@@ -12345,11 +12359,22 @@ class SFAF_Portal {
                     $accepts = $event_id
                         ? ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) )
                         : false;
+                    /*
+                     * A HYBRID EVENT LOCKS THIS TICK ON (3.97.2), one step
+                     * after Accept RSVPs locks on for the same reason. The
+                     * format question is asked on the registration form, so an
+                     * event with no RSVP button has nowhere to ask it. Locked
+                     * ON here, where the third-party rule locks the one above
+                     * OFF, and both come back when the cause is removed.
+                     */
+                    $hybrid_show = ( $event_id && SFAF_Online::is_hybrid( $event_id ) );
+                    if ( $hybrid_show ) { $accepts = true; }
 
                     foreach ( $feat as $f => $lbl ) :
                         $on   = $event_id ? sfaf_show_feature( $event_id, str_replace( 'show_', '', $f ) ) : true;
+                        if ( 'show_rsvp' === $f && $hybrid_show ) { $on = true; }
                         $lock = ( 'show_calendar' === $f && $takes_rsvps )
-                            || ( 'show_rsvp' === $f && $event_id && ! $accepts );
+                            || ( 'show_rsvp' === $f && $event_id && ( ! $accepts || $hybrid_show ) );
                         ?>
                         <label class="uc-check<?php echo $lock ? ' uc-check-locked' : ''; ?>"<?php
                             echo 'show_calendar' === $f ? ' data-uc-calendar-check' : ''; ?><?php
@@ -12368,8 +12393,25 @@ class SFAF_Portal {
                              * card on their own.
                              */
                             ?>
-                            <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note<?php echo $lock ? '' : ' hidden'; ?>>
-                                This event is not accepting RSVPs, so there is no button to show. Turn on <strong>Accept RSVPs</strong> under Capacity.
+                            <?php
+                            /*
+                             * TWO CAUSES, TWO SENTENCES. A greyed tick that
+                             * says the wrong reason is worse than one that says
+                             * none: somebody would go looking for a control to
+                             * turn on that is already on.
+                             *
+                             * AND IT NAMES THE LOCATION CARD, NOT CAPACITY.
+                             * The Capacity card was removed in 3.96.0 and these
+                             * controls moved beside the thing they limit, so
+                             * this had been pointing at a card that no longer
+                             * exists.
+                             */
+                            ?>
+                            <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note<?php echo ( $lock && ! $hybrid_show ) ? '' : ' hidden'; ?>>
+                                This event is not accepting RSVPs, so there is no button to show. Turn on <strong>Accept RSVPs</strong> in the Location card.
+                            </p>
+                            <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-hybrid-show-note<?php echo $hybrid_show ? '' : ' hidden'; ?>>
+                                A hybrid event needs its registration button: choosing in person or online is part of registering.
                             </p>
                         <?php endif; ?>
                         <?php if ( 'show_calendar' === $f ) : ?>
@@ -13858,14 +13900,36 @@ class SFAF_Portal {
                  * is what the screen says, never what makes it true.
                  */
                 $at_source = $event_id ? SFAF_Sources::takes_rsvps_at_source( $event_id ) : false;
+                /*
+                 * AND A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2).
+                 *
+                 * THE FORMAT CHOICE LIVES ON THE REGISTRATION FORM. "In person
+                 * or online?" is asked there and nowhere else, so a hybrid
+                 * event with registrations switched off has no way for anybody
+                 * to say which one they are doing, and the two capacities below
+                 * are limits on a question nobody is ever asked.
+                 *
+                 * SO IT IS THE THIRD-PARTY LOCK IN REVERSE: on and disabled
+                 * rather than off and disabled, and for the same kind of
+                 * reason, which is that the answer is not the manager's to
+                 * give while the event is this shape. Unticking hybrid gives
+                 * the control back.
+                 *
+                 * A SOURCE EVENT WINS, and the two cannot both be true anyway:
+                 * SFAF_Sources::import_event() refuses every one of the format
+                 * keys, so an imported event is never hybrid. The order is
+                 * written down rather than left to chance.
+                 */
+                $rsvp_forced = ( ! $at_source && $event_id && SFAF_Online::is_hybrid( $event_id ) );
                 ?>
                 <?php // The marker travels WITH the checkbox, so it is present
                       // exactly when the control is. ?>
                 <input type="hidden" name="uc_rsvp_toggle_present" value="1" />
-                <label class="uc-check<?php echo $at_source ? ' uc-check-locked' : ''; ?>">
+                <label class="uc-check<?php echo ( $at_source || $rsvp_forced ) ? ' uc-check-locked' : ''; ?>"
+                       data-uc-rsvp-accept-check>
                     <input type="checkbox" name="rsvp_enabled" value="1"
-                           <?php checked( ! $at_source && '1' === (string) $g( '_uc_rsvp_enabled' ) ); ?>
-                           <?php disabled( $at_source ); ?> />
+                           <?php checked( $rsvp_forced || ( ! $at_source && '1' === (string) $g( '_uc_rsvp_enabled' ) ) ); ?>
+                           <?php disabled( $at_source || $rsvp_forced ); ?> />
                     Accept RSVPs
                 </label>
                 <?php if ( $at_source ) : ?>
@@ -13873,6 +13937,11 @@ class SFAF_Portal {
                         People register on <?php echo esc_html( $ctx['prov']['label'] ); ?>, on this event's own page there.
                     </span>
                 <?php endif; ?>
+                <?php // Shown by the script the moment hybrid is ticked, so the
+                      // reason arrives with the lock rather than after a save. ?>
+                <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note<?php echo $rsvp_forced ? '' : ' hidden'; ?>>
+                    A hybrid event has to take RSVPs: choosing in person or online is part of registering.
+                </span>
                 <?php
                 break;
 
@@ -13925,16 +13994,28 @@ class SFAF_Portal {
              * draw it leaves the value alone rather than clearing it.
              */
             case 'capacity_online':
-                // Hidden on a third-party event for the reason the box above
-                // gives, and an imported event cannot be hybrid anyway:
-                // import_event() refuses all four of the format keys.
-                if ( ! $event_id || ! SFAF_Online::is_hybrid( $event_id )
-                    || SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
+                /*
+                 * ALWAYS IN THE DOM, HIDDEN UNTIL HYBRID IS TICKED (3.97.2).
+                 *
+                 * It used to be rendered only when the event was ALREADY
+                 * hybrid, so ticking the box revealed nothing: the control did
+                 * not exist on the page yet and only appeared after a save.
+                 * The meeting link panel beside it has always been rendered and
+                 * hidden, which is why that one appears the moment the tick
+                 * changes, and this now matches it.
+                 *
+                 * STILL NOT DRAWN AT ALL ON A THIRD-PARTY EVENT, because that
+                 * one can never become hybrid: import_event() refuses every one
+                 * of the format keys, so there is no tick that would reveal it.
+                 */
+                if ( ! $event_id || SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
                     break;
                 }
-                $s_cap_on = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
+                $s_cap_on  = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
+                $hybrid_on = SFAF_Online::is_hybrid( $event_id );
                 ?>
-                <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cap_on ) ); ?>">
+                <label class="uc-field<?php echo esc_attr( $this->field_class( $s_cap_on ) ); ?>"
+                       data-uc-online-capacity<?php echo $hybrid_on ? '' : ' hidden'; ?>>
                     <span class="uc-field-label">Places online <?php echo $this->field_badge( $s_cap_on, $ctx['prov']['label'] ); ?></span>
                     <input type="number" name="capacity_online" min="0" value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap_on ); ?> />
                     <span class="uc-hint uc-hint-spec">0 means unlimited. Leave it empty for no limit online.</span>
@@ -14057,8 +14138,23 @@ class SFAF_Portal {
              * Deleting rows is not something a save should do as a side effect
              * of a field changing.
              */
+            /*
+             * THREE ANSWERS, AND ONLY THE LAST IS THE MANAGER'S (3.97.2).
+             *
+             * A third-party event never takes RSVPs here and a HYBRID one
+             * always does, so on both the posted value is ignored. The disabled
+             * attribute on each control is what the screen says; this is what
+             * makes it true, and a disabled input is absent from a hand-edited
+             * POST, from a form left open while somebody else changed the
+             * format, and from anything that did not come out of a browser.
+             *
+             * SOURCE FIRST, because an imported event can never be hybrid and
+             * saying which wins costs one line.
+             */
             if ( SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
                 update_post_meta( $event_id, '_uc_rsvp_enabled', '0' );
+            } elseif ( SFAF_Online::is_hybrid( $event_id ) ) {
+                update_post_meta( $event_id, '_uc_rsvp_enabled', '1' );
             } else {
                 update_post_meta( $event_id, '_uc_rsvp_enabled', isset( $_POST['rsvp_enabled'] ) ? '1' : '0' );
             }

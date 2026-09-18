@@ -161,10 +161,34 @@ check( (bool) preg_match( "/\} else \{\s*\n\s*update_post_meta\( \\\$event_id, '
  * question they came with. */
 check( (bool) preg_match( "/\\\$at_source = \\\$event_id \? SFAF_Sources::takes_rsvps_at_source\( \\\$event_id \) : false;/", $portal ),
     'the Accept RSVPs control no longer asks whether the event takes registrations at its source' );
-check( (bool) preg_match( '/<\?php disabled\( \$at_source \); \?>/', $portal ),
+/* ASSERTED AS A RELATIONSHIP, NOT AS THE BYTES (3.97.2).
+ *
+ * These two read `disabled( $at_source )` and `checked( ! $at_source && ... )`
+ * literally, so 3.97.2 broke them by widening both expressions to admit the
+ * hybrid lock, WITHOUT changing what either does on a source event. A test that
+ * fails when nothing it is about has changed gets edited to match rather than
+ * read, which is how the next real break gets waved through.
+ *
+ * WHAT ACTUALLY HAS TO HOLD is that a source event is disabled whatever else is
+ * true, and is never ticked. That is two facts about the expressions rather
+ * than one fact about their spelling:
+ *
+ *   disabled(...)  NAMES $at_source, so the source event locks whatever the
+ *                  other disjunct is doing.
+ *   $rsvp_forced   OPENS with `! $at_source`, so the term that could tick the
+ *                  box is false on a source event, and the tick falls back to
+ *                  the `! $at_source && ...` it always was.
+ */
+check( (bool) preg_match( '/disabled\( \$at_source(?: \|\| [^)]+)? \)/', $portal ),
     'the Accept RSVPs control is no longer disabled on a source event' );
-check( (bool) preg_match( "/checked\( ! \\\$at_source && '1' === \(string\) \\\$g\( '_uc_rsvp_enabled' \) \)/", $portal ),
+check( (bool) preg_match( '/checked\([^)]*! \$at_source && .1. === \(string\) \$g\( ._uc_rsvp_enabled. \)/', $portal ),
     'the Accept RSVPs control can still render TICKED on a source event, which says the opposite of what the save will do' );
+/* AND THE HYBRID TERM CANNOT REACH A SOURCE EVENT. It is the only other thing
+ * that ticks this box, and an imported event can never be hybrid anyway:
+ * import_event() refuses every one of the format keys. Written down rather than
+ * left to that, because the ORDER of the two rules is the assertion. */
+check( (bool) preg_match( '/\$rsvp_forced = \( ! \$at_source &&/', $portal ),
+    'the hybrid RSVP lock is no longer gated on the event not being a source event, so an imported event could render ticked' );
 /* AND IT SAYS WHERE REGISTRATION HAPPENS. One line, naming the platform. */
 check( (bool) preg_match( '/People register on <\?php echo esc_html\( \$ctx\[.prov.\]\[.label.\] \); \?>/', $portal ),
     'the locked control no longer says where people actually register' );

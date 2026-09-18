@@ -422,6 +422,123 @@ check( (bool) preg_match( '/sfaf_event_capacity\( \$event_id, SFAF_Online::MODE_
     'the summary does not give both capacities' );
 
 /* =========================================================================
+ * 7b. ONLINE AND HYBRID ARE EXCLUSIVE, AND HYBRID SHOWS BOTH SIDES (3.97.2).
+ * ====================================================================== */
+/* THE TWO TICKS CANNOT BOTH BE TRUE. The save already folds a posted pair with
+ * hybrid winning; what was missing was the live half, so both could be ticked
+ * on screen and the form said something the model has no word for. */
+/* Read here as well as further down: this block runs before the sections
+ * that load them, and a test reading an undefined variable asserts
+ * nothing at all. */
+$portal = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
+$main   = file_get_contents( $root . '/sfaf-calendar.php' );
+$js = file_get_contents( $root . '/public/js/portal.js' );
+
+check( false !== strpos( $js, 'data-uc-hybrid-toggle' ),
+    'the editor script does not read the hybrid tick at all, so ticking it changes nothing on screen' );
+/* AND A POSTED PAIR FOLDS TO HYBRID. The script clears one tick as the other is
+ * pressed, but a form sent with the script blocked, or by a back button, can
+ * still carry both. Hybrid wins because it is the mode that KEEPS the address,
+ * and clearing an address is the change nothing here can undo. Asserted as an
+ * ORDER, because reading online first is the whole of the fault. */
+check( false !== strpos( $portal, "if ( \$want_hybrid ) {\n                \$want_mode = SFAF_Online::MODE_HYBRID;\n            } elseif ( \$want_online ) {" ),
+    'a posted pair of format ticks no longer folds to hybrid, so ticking hybrid with no script would clear the address' );
+check( (bool) preg_match( '/function exclusive\(changed\)[\s\S]{0,400}?hybrid\.checked = false;[\s\S]{0,200}?online\.checked = false;/', $js ),
+    'ticking one format no longer clears the other, so both can be ticked at once' );
+
+/* HYBRID IS ONLINE AND IN PERSON, so it shows every control BOTH formats have:
+ * the meeting link and the online capacity, and the venue and the address. */
+check( (bool) preg_match( '/panel\.hidden = !\(isOnline \|\| isHybrid\);/', $js ),
+    'the meeting link panel is hidden on a hybrid event, which has a meeting link' );
+check( (bool) preg_match( '/place\.hidden = isOnline && !isHybrid;/', $js ),
+    'the venue and address are hidden on a hybrid event, which has a place' );
+check( (bool) preg_match( '/onlineCap\.hidden = !isHybrid;/', $js ),
+    'the online capacity does not follow the hybrid tick' );
+
+/* AND THE ONLINE CAPACITY IS IN THE DOM TO BE SHOWN. It used to be rendered
+ * only when the event was ALREADY hybrid, so ticking the box revealed a control
+ * that did not exist yet and it only appeared after a save. */
+check( (bool) preg_match( '/data-uc-online-capacity<\?php echo \$hybrid_on \? \'\' : \' hidden\'; \?>/', $portal ),
+    'the online capacity is not rendered hidden, so ticking hybrid cannot reveal it' );
+/* WITHOUT A CHARACTER WINDOW. The first version allowed 700 characters between
+ * the case label and the guard, and the comment explaining the change is longer
+ * than that, so the plant restoring the old guard sat outside the window and
+ * went straight past. The guard's own text is the thing being asserted. */
+check( false === strpos( $portal, "! SFAF_Online::is_hybrid( \$event_id )\n                    || SFAF_Sources::takes_rsvps_at_source" ),
+    'the online capacity is again rendered only when the event is ALREADY hybrid, so ticking the box reveals nothing until a save' );
+
+/* =========================================================================
+ * 7c. A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2).
+ * ====================================================================== */
+/* THE FORMAT CHOICE LIVES ON THE REGISTRATION FORM. An event with RSVPs off has
+ * no way for anybody to say which format they are in, and the two capacities
+ * are limits on a question nobody is asked. */
+check( (bool) preg_match( "/\\\$rsvp_forced = \( ! \\\$at_source && \\\$event_id && SFAF_Online::is_hybrid\( \\\$event_id \) \);/", $portal ),
+    'the editor no longer forces Accept RSVPs on for a hybrid event' );
+check( (bool) preg_match( '/disabled\( \$at_source \|\| \$rsvp_forced \)/', $portal ),
+    'Accept RSVPs is not locked on a hybrid event, so it can be turned off' );
+
+/* THE SAVE IS WHAT MAKES IT TRUE, not the disabled attribute: a disabled input
+ * is absent from a hand-edited POST and from anything that did not come out of
+ * a browser. Written as a WRITE of '1', not a skip. */
+check( (bool) preg_match( "/\} elseif \( SFAF_Online::is_hybrid\( \\\$event_id \) \) \{\s*\n\s*update_post_meta\( \\\$event_id, '_uc_rsvp_enabled', '1' \);/", $portal ),
+    'the save no longer forces RSVPs on for a hybrid event, so a posted form can turn them off' );
+/* AND THE DISPLAY TICK ONE STEP LATER, for the same reason: an event with no
+ * RSVP button has nowhere to ask the format question. */
+check( (bool) preg_match( "/if \( 'show_rsvp' === \\\$field && SFAF_Online::is_hybrid\( \\\$event_id \) \) \{\s*\n\s*update_post_meta\( \\\$event_id, \\\$key, '1' \);/", $portal ),
+    'the RSVP button can be hidden on a hybrid event, which leaves the format question unaskable' );
+check( (bool) preg_match( '/\$hybrid_show = \( \$event_id && SFAF_Online::is_hybrid\( \$event_id \) \);/', $portal ),
+    'the Display card does not lock its RSVP tick for a hybrid event' );
+
+/* BOTH COME BACK WHEN HYBRID IS UNTICKED, and what comes back is the stored
+ * value rather than a default: only the disabled attribute moves. */
+check( (bool) preg_match( '/box\.disabled = isHybrid;/', $js ),
+    'the lock is not lifted when hybrid is unticked' );
+/* AND IT MUST NOT UNLOCK WHAT THE THIRD-PARTY RULE LOCKED. */
+check( (bool) preg_match( '/if \(box\.disabled && !box\.checked && !isHybrid\) \{ continue; \}/', $js ),
+    "the hybrid lock reaches into a third-party event's Accept RSVPs, which the server locked OFF" );
+
+/* =========================================================================
+ * 7d. THE CALENDAR FILE CARRIES THE EVENT, AND ITS LINK (3.97.2).
+ * ====================================================================== */
+/* EVERY FIELD WAS THE EVENT'S ALREADY. Title, description, location, dates,
+ * times and URL all read event meta with no series fallback anywhere, and a
+ * run of the shipped builder with the series given different values for all of
+ * them produced none of those values. What was actually wrong is the LINK.
+ *
+ * is_online() IS THE NARROW QUESTION, "has no place", which a hybrid event
+ * answers no to by design so it keeps its address. The file was asking that one
+ * and should have been asking "does anybody join by link", so an online
+ * registrant of a hybrid event got a confirmation carrying the link and a
+ * calendar file that silently dropped it. */
+check( (bool) preg_match( '/if \( SFAF_Online::has_online_format\( \$post_id \) && SFAF_Online::has_link\( \$post_id \) \)/', $main ),
+    'the calendar file asks is_online() again, so a hybrid event never gets its meeting link' );
+check( ! preg_match( '/if \( SFAF_Online::is_online\( \$post_id \) && SFAF_Online::has_link/', $main ),
+    'the narrow gate is back on the calendar file' );
+
+/* THE TOKEN STILL DECIDES. Widening which events CAN carry a link must not
+ * widen who gets one: ics_url_with_link() mints a token only for a registrant
+ * whose format is online, so a hybrid event's in-person registrant is handed
+ * none and this still gives them nothing. */
+check( (bool) preg_match( '/SFAF_Online::sends_with\( \$post_id, \'confirmation\' \) && SFAF_Online::ics_join_ok\( \$post_id, \$asked \)/', $main ),
+    'the calendar file no longer requires the join token, so the endpoint hands the link to anybody who asks' );
+
+/* AND THE FILE SAYS WHAT THE PAGE SAYS ABOUT THE FORMAT, from the same
+ * function, so the two cannot drift. In the DESCRIPTION and never in LOCATION:
+ * a client hands LOCATION to a map. */
+check( (bool) preg_match( '/\$format_line = sfaf_event_format_line\( \$post_id \);/', $main ),
+    'the calendar file no longer says a hybrid event is also online' );
+$loc_at = strpos( $main, "\$lines[] = 'LOCATION:'" );
+$fmt_at = strpos( $main, '$format_line = sfaf_event_format_line( $post_id );' );
+check( false !== $loc_at && false !== $fmt_at,
+    'the LOCATION line or the format line could not be found' );
+if ( false !== $loc_at ) {
+    $loc_line = substr( $main, $loc_at, 120 );
+    check( false === strpos( $loc_line, 'format_line' ),
+        'the format sentence was put into LOCATION, which a calendar client hands to a map' );
+}
+
+/* =========================================================================
  * 8. A NON-HYBRID EVENT HAS ONE CAPACITY AND IT IS `_uc_capacity`.
  * ====================================================================== */
 /* THIS WAS WRONG FOR ONE RELEASE. sfaf_event_capacity() chose the key by the
