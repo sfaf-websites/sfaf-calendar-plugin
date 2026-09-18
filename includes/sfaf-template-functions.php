@@ -729,6 +729,50 @@ function sfaf_flatten_html( $html ) {
 }
 
 /**
+ * THE EVENT'S OWN DESCRIPTION, FLATTENED, FOR A CALENDAR ENTRY (3.97.2).
+ *
+ * NOT get_the_excerpt(), AND THAT IS THE WHOLE POINT OF THIS FUNCTION.
+ *
+ * `post_excerpt` IS NEVER THIS EVENT'S OWN TEXT ON THIS POST TYPE. Nothing in
+ * the editor writes it: save_event_from_post() writes `post_content` from the
+ * description field and touches the excerpt nowhere. The only two things that
+ * ever put a value in it COPY ONE FROM ANOTHER POST, the duplicate action and
+ * SFAF_Recurrence, which hands every generated occurrence the SEED's excerpt
+ * alongside the seed's content.
+ *
+ * SO THE STALE CASE IS THE ORDINARY ONE, not a corner. Generate a repeating
+ * event, edit one occurrence's description, and that occurrence now has its own
+ * `post_content` and the seed's `post_excerpt`. The event page renders
+ * the_content() and showed the edited text; the calendar file asked for the
+ * excerpt and handed out the seed's, which is the text every other date in the
+ * series still carries and reads as the series' own. Nobody editing the event
+ * had any way to correct it, because the field it came from is not on the form.
+ *
+ * WHEN THE EXCERPT IS EMPTY the two agreed anyway, because WordPress auto-trims
+ * `post_content` to build one. That is why this only ever showed up on events
+ * whose seed had an excerpt, and why it looked intermittent.
+ *
+ * THE PAGE IS THE ANSWER, AND IT DOES NOT FALL BACK. single-uc_event.php calls
+ * the_content() with nothing behind it, so an event with no description of its
+ * own shows none, and this returns '' for the same event rather than reaching
+ * for something the page would not have shown. The series is consulted for the
+ * image, the FAQ set and the video, and a calendar file carries none of those.
+ *
+ * ONE FUNCTION FOR BOTH CALENDAR SURFACES, the .ics and the Google Calendar
+ * URL, so the two cannot drift into describing the same event differently.
+ *
+ * @param int $post_id
+ * @return string Flat text, '' when the event has no description.
+ */
+function sfaf_event_calendar_description( $post_id ) {
+    $post = get_post( (int) $post_id );
+    if ( ! $post ) {
+        return '';
+    }
+    return sfaf_flatten_html( $post->post_content );
+}
+
+/**
  * URL that triggers the .ics download for a single event.
  */
 function sfaf_ics_url( $post_id ) {
@@ -765,9 +809,11 @@ function sfaf_google_calendar_url( $post_id ) {
         'action'   => 'TEMPLATE',
         'text'     => get_the_title( $post_id ),
         'dates'    => $start_utc->format( 'Ymd\THis\Z' ) . '/' . $end_utc->format( 'Ymd\THis\Z' ),
-        // Flattened, not stripped: see sfaf_flatten_html(). Google shows this
-        // as the event's notes, and joined words are what stripping gives.
-        'details'  => sfaf_flatten_html( get_the_excerpt( $post_id ) ),
+        // The event's own description, flattened: see
+        // sfaf_event_calendar_description(). Google shows this as the event's
+        // notes, and this button sits beside the .ics one, so the two answer
+        // the same question the same way.
+        'details'  => sfaf_event_calendar_description( $post_id ),
         'location' => sfaf_event_location( $post_id ),
     );
 

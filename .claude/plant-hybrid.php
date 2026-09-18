@@ -221,6 +221,48 @@ $plants = array(
         'to'   => "    \$format_line = '';",
     ),
 
+    /* ---- THE SERIES' TEXT REACHING THE FILE. ---------------------------- */
+    /* THE EXCERPT IS THE SERIES' COPY. SFAF_Recurrence hands every generated
+     * occurrence the SEED's post_excerpt, and the editor never writes that key,
+     * so it stays the seed's for the life of the event however often the
+     * description is edited. This is the read that put it in the file. */
+    'THE SERIES DESCRIPTION REACHES THE CALENDAR FILE' => array(
+        'file' => 'sfaf-calendar.php',
+        'from' => "    \$description = sfaf_event_calendar_description( \$post_id );",
+        'to'   => "    \$description = sfaf_flatten_html( get_the_excerpt( \$post_id ) );",
+    ),
+
+    'the Google Calendar button keeps the series copy' => array(
+        'file' => 'includes/sfaf-template-functions.php',
+        'from' => "        'details'  => sfaf_event_calendar_description( \$post_id ),",
+        'to'   => "        'details'  => sfaf_flatten_html( get_the_excerpt( \$post_id ) ),",
+    ),
+
+    /* AND THE RESOLVER REACHING BACK FOR IT. Falling back to the excerpt when
+     * the event has no content of its own puts the copied text back on exactly
+     * the events that carry one, which is every date in a generated series. */
+    'the calendar description falls back to the excerpt' => array(
+        'file' => 'includes/sfaf-template-functions.php',
+        'from' => "    return sfaf_flatten_html( \$post->post_content );",
+        'to'   => "    return sfaf_flatten_html( \$post->post_content ?: get_the_excerpt( \$post_id ) );",
+    ),
+
+    /* ---- THE LOCK THAT DOES NOT GIVE THE VALUE BACK. -------------------- */
+    /* CAUGHT BY A BROWSER, NOT BY READING. Every handler was wired correctly
+     * and every source assertion passed while unticking hybrid left Accept
+     * RSVPs ticked and enabled. */
+    'unticking hybrid leaves Accept RSVPs ticked' => array(
+        'file' => 'public/js/portal.js',
+        'from' => "            } else if (null !== box.getAttribute('data-uc-was-checked')) {\n                box.checked = ('1' === box.getAttribute('data-uc-was-checked'));\n                box.removeAttribute('data-uc-was-checked');\n            }",
+        'to'   => "            }",
+    ),
+
+    'the remembered RSVP value is overwritten by the lock itself' => array(
+        'file' => 'public/js/portal.js',
+        'from' => "                if (null === box.getAttribute('data-uc-was-checked')) {\n                    box.setAttribute('data-uc-was-checked', box.checked ? '1' : '0');\n                }",
+        'to'   => "                box.setAttribute('data-uc-was-checked', box.checked ? '1' : '0');",
+    ),
+
     'the format sentence is put into LOCATION, which a client hands to a map' => array(
         'file' => 'sfaf-calendar.php',
         'from' => "    \$lines[] = 'LOCATION:' . sfaf_ics_escape( sfaf_event_location( \$post_id ) );",

@@ -1662,7 +1662,26 @@ function ucDismissOnBackdrop(dialog) {
             var box = label.querySelector('input');
             if (!box) { continue; }
             if (box.disabled && !box.checked && !isHybrid) { continue; }
-            if (isHybrid) { box.checked = true; }
+            /* THE VALUE IT ARRIVED WITH IS REMEMBERED, ONCE, AND GIVEN BACK.
+             *
+             * Setting checked on the way in and only moving `disabled` on the
+             * way out leaves the box TICKED: somebody whose event took no
+             * registrations, who tried hybrid and changed their mind, was left
+             * with a registration form they never asked for, and the save
+             * writes whatever the box says once hybrid is gone.
+             *
+             * WRITTEN ONCE, on the first lock. apply() runs on every change of
+             * either tick, so storing it unconditionally would overwrite the
+             * real answer with `true` the second time hybrid was seen ticked. */
+            if (isHybrid) {
+                if (null === box.getAttribute('data-uc-was-checked')) {
+                    box.setAttribute('data-uc-was-checked', box.checked ? '1' : '0');
+                }
+                box.checked = true;
+            } else if (null !== box.getAttribute('data-uc-was-checked')) {
+                box.checked = ('1' === box.getAttribute('data-uc-was-checked'));
+                box.removeAttribute('data-uc-was-checked');
+            }
             box.disabled = isHybrid;
             label.classList.toggle('uc-check-locked', isHybrid);
             if (hint) { hint.hidden = !isHybrid; }

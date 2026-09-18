@@ -490,10 +490,29 @@ check( (bool) preg_match( "/if \( 'show_rsvp' === \\\$field && SFAF_Online::is_h
 check( (bool) preg_match( '/\$hybrid_show = \( \$event_id && SFAF_Online::is_hybrid\( \$event_id \) \);/', $portal ),
     'the Display card does not lock its RSVP tick for a hybrid event' );
 
-/* BOTH COME BACK WHEN HYBRID IS UNTICKED, and what comes back is the stored
- * value rather than a default: only the disabled attribute moves. */
+/* BOTH COME BACK WHEN HYBRID IS UNTICKED, and what comes back is THE VALUE THE
+ * BOX ARRIVED WITH.
+ *
+ * THIS WAS WRONG UNTIL A BROWSER RAN IT. The lock set `checked = true` on the
+ * way in and moved only `disabled` on the way out, so the box came back ENABLED
+ * AND TICKED: a manager whose event took no registrations, who tried hybrid and
+ * changed their mind, was left with a registration form they never asked for,
+ * and the save writes whatever the box says once hybrid is gone. Every
+ * source-reading assertion here passed while that was true, because the
+ * handlers were all correctly wired; see .claude/hybrid-live.php, which drives
+ * the real script and reads the box back. */
 check( (bool) preg_match( '/box\.disabled = isHybrid;/', $js ),
     'the lock is not lifted when hybrid is unticked' );
+check( (bool) preg_match( "/box\.setAttribute\('data-uc-was-checked', box\.checked \? '1' : '0'\);/", $js ),
+    'the RSVP box no longer remembers the value it arrived with, so unticking hybrid cannot give it back' );
+check( (bool) preg_match( "/box\.checked = \('1' === box\.getAttribute\('data-uc-was-checked'\)\);/", $js ),
+    'unticking hybrid leaves Accept RSVPs ticked, so an event that took no registrations now takes them' );
+/* WRITTEN ONCE, on the FIRST lock. apply() runs on every change of either tick,
+ * so an unconditional store overwrites the real answer with `true` the second
+ * time hybrid is seen ticked, and the restore then gives back the lock's own
+ * value. The guard is the assertion. */
+check( (bool) preg_match( "/if \(null === box\.getAttribute\('data-uc-was-checked'\)\) \{/", $js ),
+    'the remembered value is stored on every pass, so it is overwritten by the lock and the restore gives back a tick nobody asked for' );
 /* AND IT MUST NOT UNLOCK WHAT THE THIRD-PARTY RULE LOCKED. */
 check( (bool) preg_match( '/if \(box\.disabled && !box\.checked && !isHybrid\) \{ continue; \}/', $js ),
     "the hybrid lock reaches into a third-party event's Accept RSVPs, which the server locked OFF" );
@@ -536,6 +555,52 @@ if ( false !== $loc_at ) {
     $loc_line = substr( $main, $loc_at, 120 );
     check( false === strpos( $loc_line, 'format_line' ),
         'the format sentence was put into LOCATION, which a calendar client hands to a map' );
+}
+
+/* =========================================================================
+ * 7e. THE CALENDAR FILE CARRIES THE EVENT'S OWN DESCRIPTION (3.97.2).
+ * ====================================================================== */
+/* THE ONE FIELD THAT REALLY DID COME FROM SOMEWHERE ELSE.
+ *
+ * Title, location, dates, times and URL all read the event and only the event,
+ * and none of them has a series fallback anywhere. DESCRIPTION read
+ * get_the_excerpt(), and on this post type `post_excerpt` is NEVER the event's
+ * own text: the editor writes `post_content` from the description field and
+ * touches the excerpt nowhere, so the only values it ever holds are COPIES from
+ * another post. SFAF_Recurrence hands every generated occurrence the SEED's
+ * excerpt, which is the text the whole series shares.
+ *
+ * So an occurrence whose description had been edited showed the edited text on
+ * the page, from the_content(), and the seed's on the calendar entry. */
+$tpl = file_get_contents( $root . '/includes/sfaf-template-functions.php' );
+
+check( (bool) preg_match( '/function sfaf_event_calendar_description\( \$post_id \) \{/', $tpl ),
+    'the one calendar description resolver is gone' );
+check( (bool) preg_match( '/return sfaf_flatten_html\( \$post->post_content \);/', $tpl ),
+    "the calendar description no longer reads the event's own post_content" );
+check( false === strpos( $tpl, 'sfaf_flatten_html( get_the_excerpt( $post_id ) )' ),
+    'a calendar surface is reading get_the_excerpt() again, which on a generated occurrence is the seed event\'s' );
+
+/* BOTH CALENDAR SURFACES ASK THE SAME FUNCTION. The .ics and the Google
+ * Calendar URL sit in the same button row, so a fix to one that left the other
+ * reading the excerpt would have them describing one event two ways. */
+check( (bool) preg_match( '/\$description = sfaf_event_calendar_description\( \$post_id \);/', $main ),
+    'the .ics no longer asks the calendar description resolver' );
+check( (bool) preg_match( "/'details'  => sfaf_event_calendar_description\( \\\$post_id \),/", $tpl ),
+    'the Google Calendar URL still carries the excerpt, so the two calendar buttons disagree' );
+check( false === strpos( $main, 'get_the_excerpt' ) || false !== strpos( $main, 'This read get_the_excerpt()' ),
+    'the .ics reads the excerpt again' );
+
+/* AND IT DOES NOT FALL BACK TO THE EXCERPT. The event PAGE renders
+ * the_content() with nothing behind it, so an event with no description of its
+ * own shows none; reaching for the excerpt here would put back exactly the
+ * copied text this removes, on exactly the events that have one. */
+$fn_at = strpos( $tpl, 'function sfaf_event_calendar_description(' );
+check( false !== $fn_at, 'the calendar description resolver could not be found' );
+if ( false !== $fn_at ) {
+    $body = substr( $tpl, $fn_at, 260 );
+    check( false === strpos( $body, 'get_the_excerpt' ),
+        'the calendar description falls back to the excerpt, which is the copied value it exists to stop reading' );
 }
 
 /* =========================================================================
