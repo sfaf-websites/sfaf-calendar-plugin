@@ -1956,6 +1956,30 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-location-on .uc-location-place[hidden] { display: none; }
 
 /* ---------------------------------------------------------------------------
+   THE TIME CONTROL: AN HOUR LIST BESIDE A MINUTE LIST (3.98.0).
+
+   `<input type="time">` IS GONE FROM ALL TWELVE. Its `step` is a VALIDATION
+   rule, not a picker rule: every browser enforces it on submit and none makes
+   its spinner or its dropdown honour it, so a five-minute step was refusing
+   6:07 while still needing thirty presses to reach 6:30. That is why this was
+   asked for twice and "fixed" twice.
+
+   TWO NATIVE SELECTS, so `:where(.uc-portal) :where(select)` above gives them
+   the chevron and the end cap with no rule here, and the keyboard, the
+   type-ahead and the phone's own wheel are the platform's.
+
+   THE HOUR IS WIDER THAN THE MINUTE because "12 a.m." is a longer word than
+   ":05", and `2fr 1fr` is that ratio said once rather than two widths guessed
+   twice. Below 320px they stack, which is where the pair stops fitting beside
+   a field label.
+   ------------------------------------------------------------------------ */
+.uc-timepick { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; align-items: center; }
+.uc-timepick select { width: 100%; min-width: 0; }
+@media (max-width: 320px) {
+    .uc-timepick { grid-template-columns: 1fr; }
+}
+
+/* ---------------------------------------------------------------------------
    THE VIDEO PREVIEW (3.98.0).
 
    IT REPLACES A SENTENCE WITH A URL IN IT. The series case used to read "Leave

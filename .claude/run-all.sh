@@ -130,10 +130,16 @@ echo "=== image tags ==="
 run "media-tags --self-test" php .claude/media-tags-test.php --self-test
 
 echo
-# Five minute steps on every time control, and the one rule that decides
-# where they are deliberately absent.
+# An hour list beside a minute list, twelve five-minute entries, and the same
+# value out as in. The glob above ran the renderer and the round trip against
+# the real sources; this is its self-test, which is the half that proves the
+# reader can see an off-grid value at all.
+#
+# time-step-test.php went with the control it was about in 3.98.0: it asserted
+# that every <input type="time"> carried sfaf_time_step_attr(), and with no time
+# inputs left it passed on zero controls.
 echo "=== time controls ==="
-run "time-step --self-test" php .claude/time-step-test.php --self-test
+run "time-control --self-test" php .claude/time-control-test.php --self-test
 
 echo
 # The event video: what the field accepts, and which of the three possible

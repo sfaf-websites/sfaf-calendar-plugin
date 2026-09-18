@@ -11352,11 +11352,11 @@ class SFAF_Portal {
                                 </label>
                                 <label class="uc-field">
                                     <span class="uc-field-label">Start time</span>
-                                    <input type="time" name="start_time" value="<?php echo esc_attr( $start ); ?>"<?php echo sfaf_time_step_attr( $start ); ?> />
+                                    <?php echo sfaf_time_field( 'start_time', $start, array( 'label' => 'Start time' ) ); ?>
                                 </label>
                                 <label class="uc-field">
                                     <span class="uc-field-label">End time</span>
-                                    <input type="time" name="end_time" value="<?php echo esc_attr( $end ); ?>"<?php echo sfaf_time_step_attr( $end ); ?> />
+                                    <?php echo sfaf_time_field( 'end_time', $end, array( 'label' => 'End time' ) ); ?>
                                 </label>
                             </div>
 
@@ -11557,11 +11557,11 @@ class SFAF_Portal {
                 <div class="uc-field-row">
                     <label class="uc-field">
                         <span class="uc-field-label">Start time</span>
-                        <input type="time" name="start_time" value="<?php echo esc_attr( $ctx['start'] ); ?>"<?php echo sfaf_time_step_attr( $ctx['start'] ); ?> />
+                        <?php echo sfaf_time_field( 'start_time', $ctx['start'], array( 'label' => 'Start time' ) ); ?>
                     </label>
                     <label class="uc-field">
                         <span class="uc-field-label">End time</span>
-                        <input type="time" name="end_time" value="<?php echo esc_attr( $ctx['end'] ); ?>"<?php echo sfaf_time_step_attr( $ctx['end'] ); ?> />
+                        <?php echo sfaf_time_field( 'end_time', $ctx['end'], array( 'label' => 'End time' ) ); ?>
                     </label>
                 </div>
 
@@ -12610,11 +12610,11 @@ class SFAF_Portal {
                     <div class="uc-field-row">
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
                             <span class="uc-field-label">Start <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
-                            <input type="time" name="start_time" value="<?php echo esc_attr( $g( '_uc_start_time' ) ); ?>"<?php echo sfaf_time_step_attr( $g( '_uc_start_time' ) ); ?><?php echo $this->field_disabled( $s_start ); ?> />
+                            <?php echo sfaf_time_field( 'start_time', $g( '_uc_start_time' ), array( 'label' => 'Start time', 'disabled' => $this->field_disabled( $s_start ) ) ); ?>
                         </label>
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_end ) ); ?>">
                             <span class="uc-field-label">End <?php echo $this->field_badge( $s_end, $prov['label'] ); ?></span>
-                            <input type="time" name="end_time" value="<?php echo esc_attr( $g( '_uc_end_time' ) ); ?>"<?php echo sfaf_time_step_attr( $g( '_uc_end_time' ) ); ?><?php echo $this->field_disabled( $s_end ); ?> />
+                            <?php echo sfaf_time_field( 'end_time', $g( '_uc_end_time' ), array( 'label' => 'End time', 'disabled' => $this->field_disabled( $s_end ) ) ); ?>
                         </label>
                     </div>
 

@@ -3010,44 +3010,213 @@ function sfaf_ap_time( $raw, $meridiem = true ) {
     return $clock . ' ' . strtolower( date_i18n( 'A', $ts ) );
 }
 
-/**
- * The `step` attribute for a time control, five minutes, when it is safe.
+/*
+ * sfaf_time_step_attr() WAS HERE AND IS GONE (3.98.0).
  *
- * WHY FIVE MINUTES. `<input type="time">` steps by one minute by default, so
- * setting an event to 6:30 with the stepper is thirty presses. Nothing on this
- * calendar starts at 6:07.
- *
- * WHAT HAPPENS TO A TIME OFF THE BOUNDARY: THE BROWSER REFUSES IT, and it does
- * so before the form posts, naming the two nearest valid times itself. That is
- * `step` doing what `step` means, and it is the honest outcome to pick: rounding
- * on save would change somebody's answer without telling them, and accepting it
- * would make the attribute a decoration.
- *
- * SO IT IS NOT SET ON A CONTROL ALREADY HOLDING SUCH A TIME. That is the whole
- * of what this function is for. A stored value can predate the rule, and the
- * import wrote its times from an export nobody here has read every row of; a
- * control carrying 6:07 with step="300" on it is a form that cannot be
- * submitted at all until somebody works out that the time field is the reason.
- * The event stays editable and its own time stays sayable, and the moment
- * somebody moves it onto a boundary the control gets the stepper.
- *
- * THE SERVER'S RULE IS UNCHANGED AND STAYS UNCHANGED. SFAF_Request::clean_time()
- * accepts any valid H:i, which is what makes the paragraph above work. This is a
- * property of a CONTROL, not of the data.
- *
- * @param string $value Current H:i value, or ''.
- * @return string ' step="300"' or ''.
+ * It returned ` step="300"` for an `<input type="time">`, and there is no
+ * longer such an input anywhere in the plugin: all twelve time controls are
+ * sfaf_time_field() now. It is deleted rather than kept, because what it did
+ * was never what it was asked for. `step` is a VALIDATION rule: every browser
+ * enforces it on submit and no browser makes its spinner or its dropdown honour
+ * it, so five-minute steps were refusing 6:07 while still taking thirty presses
+ * to reach 6:30. Its test went with it: .claude/time-step-test.php asserted that
+ * every time input carried the call, and with no time inputs left it passed on
+ * zero controls while its own summary repeated the claim that had turned out
+ * false.
  */
-function sfaf_time_step_attr( $value ) {
-    $value = trim( (string) $value );
-    if ( '' === $value ) {
-        return ' step="300"';
+
+/* =============================================================================
+ * THE TIME CONTROL IS OURS NOW (3.98.0)
+ *
+ * WHY, AND WHY IT HAD TO BE REPLACED RATHER THAN FIXED AGAIN. `step="300"` on
+ * an `<input type="time">` is a VALIDATION rule, not a picker rule. Every
+ * browser enforces it on submit, naming the two nearest valid times, and NO
+ * browser makes its spinner or its dropdown honour it: the arrows still move by
+ * one minute and the popover still lists all sixty. So setting an event to 6:30
+ * was thirty presses before, and it still was after the step was added twice.
+ * The attribute was doing the one thing nobody wanted and none of the thing
+ * everybody asked for.
+ *
+ * TWO NATIVE SELECTS, AND NO SCRIPT AT ALL. An hour list beside a minute list.
+ * They are real `<select>` elements, so the keyboard behaviour, the type-ahead,
+ * the phone's own wheel picker and the screen reader announcement are the
+ * platform's and nothing here reproduces any of it. `.uc-portal select` already
+ * carries the chevron and the end cap, so the two arrive in the calendar's own
+ * select style without a rule being written for them.
+ *
+ * THE PAIR POSTS UNDER `<name>_h` AND `<name>_m`, and sfaf_normalize_time_post()
+ * folds them back into `<name>` before anything reads it. That is what makes
+ * "nothing downstream changes" literally true: every save path still reads
+ * `$_POST['start_time']` and still gets `H:i`, the meta keys are untouched, and
+ * there is no migration. It also means the control works with scripting off,
+ * which a hidden field kept in sync by JavaScript would not.
+ *
+ * AN EXISTING TIME OFF THE FIVE-MINUTE GRID KEEPS ITS EXACT MINUTE. The import
+ * wrote times from an export nobody here has read every row of, and rounding
+ * one on the way into the form would change somebody's answer without telling
+ * them. Such a value is added to the minute list as a thirteenth entry, marked,
+ * and the moment somebody chooses a different minute it is gone. Nothing is
+ * ever silently rounded, on screen or on save.
+ * ========================================================================== */
+
+/**
+ * The five-minute grid, as minute strings.
+ *
+ * @return string[] Twelve entries, '00' to '55'.
+ */
+function sfaf_time_minutes() {
+    $out = array();
+    for ( $m = 0; $m < 60; $m += 5 ) {
+        $out[] = sprintf( '%02d', $m );
     }
-    if ( ! preg_match( '/^(\d{1,2}):(\d{2})/', $value, $m ) ) {
-        return '';
-    }
-    return ( 0 === ( (int) $m[2] % 5 ) ) ? ' step="300"' : '';
+    return $out;
 }
+
+/**
+ * Split a stored H:i into its two parts.
+ *
+ * @param string $value
+ * @return array{h:string,m:string} Both '' when there is no usable time.
+ */
+function sfaf_time_parts( $value ) {
+    $value = trim( (string) $value );
+    if ( '' === $value || ! preg_match( '/^(\d{1,2}):(\d{2})/', $value, $m ) ) {
+        return array( 'h' => '', 'm' => '' );
+    }
+    $h = (int) $m[1];
+    $i = (int) $m[2];
+    if ( $h < 0 || $h > 23 || $i < 0 || $i > 59 ) {
+        return array( 'h' => '', 'm' => '' );
+    }
+    return array( 'h' => sprintf( '%02d', $h ), 'm' => sprintf( '%02d', $i ) );
+}
+
+/**
+ * One hour's label, through the calendar's own time formatter.
+ *
+ * ONE FORMATTER, so the list reads the way every other time on the calendar
+ * reads and a change to AP style moves both together.
+ *
+ * @param int $h 0 to 23.
+ * @return string
+ */
+function sfaf_time_hour_label( $h ) {
+    return sfaf_ap_time( sprintf( '%02d:00', (int) $h ) );
+}
+
+/**
+ * The hour list and the minute list, as one labelled control.
+ *
+ * @param string $name  The field name the save already reads, e.g. 'start_time'.
+ * @param string $value Current H:i, or ''.
+ * @param array  $args  label: the accessible name for the pair, required: bool,
+ *                      disabled: a ready-made attribute string, id: for the
+ *                      hour select so an existing label still points at
+ *                      something.
+ * @return string
+ */
+function sfaf_time_field( $name, $value, $args = array() ) {
+    $args = array_merge( array(
+        'label'    => 'Time',
+        'required' => false,
+        'disabled' => '',
+        'id'       => '',
+    ), (array) $args );
+
+    $parts = sfaf_time_parts( $value );
+    $req   = $args['required'] ? ' required' : '';
+    $dis   = (string) $args['disabled'];
+
+    /*
+     * THE STORED MINUTE JOINS THE LIST WHEN IT IS NOT ON THE GRID. Twelve
+     * entries is the rule; a thirteenth exists only for the value this control
+     * is already holding, and only until somebody changes it.
+     */
+    $minutes = sfaf_time_minutes();
+    $off     = ( '' !== $parts['m'] && ! in_array( $parts['m'], $minutes, true ) );
+    if ( $off ) {
+        $minutes[] = $parts['m'];
+        sort( $minutes );
+    }
+
+    ob_start();
+    ?>
+    <span class="uc-timepick" role="group" aria-label="<?php echo esc_attr( $args['label'] ); ?>">
+        <select name="<?php echo esc_attr( $name ); ?>_h"
+                <?php echo '' !== $args['id'] ? 'id="' . esc_attr( $args['id'] ) . '" ' : ''; ?>
+                class="uc-timepick-h"
+                aria-label="<?php echo esc_attr( $args['label'] . ', hour' ); ?>"<?php echo $req . $dis; ?>>
+            <option value=""<?php selected( '', $parts['h'] ); ?>>Hour</option>
+            <?php for ( $h = 0; $h < 24; $h++ ) :
+                $hv = sprintf( '%02d', $h ); ?>
+                <option value="<?php echo esc_attr( $hv ); ?>"<?php selected( $hv, $parts['h'] ); ?>><?php
+                    echo esc_html( sfaf_time_hour_label( $h ) );
+                ?></option>
+            <?php endfor; ?>
+        </select>
+        <select name="<?php echo esc_attr( $name ); ?>_m"
+                class="uc-timepick-m"
+                aria-label="<?php echo esc_attr( $args['label'] . ', minute' ); ?>"<?php echo $req . $dis; ?>>
+            <option value=""<?php selected( '', $parts['m'] ); ?>>Min</option>
+            <?php foreach ( $minutes as $mv ) : ?>
+                <option value="<?php echo esc_attr( $mv ); ?>"<?php selected( $mv, $parts['m'] ); ?>><?php
+                    echo esc_html( ':' . $mv );
+                    /* SAID, NOT JUST SHOWN. A minute off the grid is there
+                     * because the event already had it, and a manager who did
+                     * not set it needs to know why it is in a list of fives. */
+                    echo ( $off && $mv === $parts['m'] ) ? esc_html( ' (current)' ) : '';
+                ?></option>
+            <?php endforeach; ?>
+        </select>
+    </span>
+    <?php
+    return (string) ob_get_clean();
+}
+
+/**
+ * Fold every posted hour/minute pair back into the field the save already reads.
+ *
+ * WRITING TO $_POST IS THE POINT, not a shortcut. Every save path in this
+ * plugin reads `$_POST['start_time']` and expects `H:i`; folding the pair here,
+ * once, before any of them runs, is what lets the control change without
+ * fourteen read sites changing with it. The alternative is fourteen call sites
+ * that must all be found, which is the shape of several entries in PROJECT.md 7.
+ *
+ * IT ONLY ACTS WHERE OUR OWN CONTROL POSTED. The `_h` key exists on no other
+ * form, so a request that did not come from one of these controls is untouched
+ * and `start_time` keeps whatever it already had.
+ *
+ * AN EMPTY HOUR MEANS NO TIME, which is how somebody clears an optional end
+ * time. An hour with no minute is read as the hour exactly, because a form that
+ * refused "6" and demanded "6:00" would be refusing the obvious reading.
+ *
+ * @param string[] $names
+ * @return void
+ */
+function sfaf_normalize_time_post( $names = array( 'start_time', 'end_time', 'uc_start_time', 'uc_end_time' ) ) {
+    foreach ( (array) $names as $name ) {
+        if ( ! isset( $_POST[ $name . '_h' ] ) ) {
+            continue;
+        }
+        $h = preg_replace( '/\D/', '', (string) wp_unslash( $_POST[ $name . '_h' ] ) );
+        $m = isset( $_POST[ $name . '_m' ] )
+            ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST[ $name . '_m' ] ) )
+            : '';
+
+        if ( '' === $h ) {
+            $_POST[ $name ] = '';
+            continue;
+        }
+        $hi = (int) $h;
+        $mi = ( '' === $m ) ? 0 : (int) $m;
+        if ( $hi < 0 || $hi > 23 || $mi < 0 || $mi > 59 ) {
+            $_POST[ $name ] = '';
+            continue;
+        }
+        $_POST[ $name ] = sprintf( '%02d:%02d', $hi, $mi );
+    }
+}
+
 
 /**
  * A start and end as one phrase, AP style.

@@ -1480,12 +1480,12 @@ class SFAF_Submit {
                 <div class="uc-field-row">
                     <label class="uc-field">
                         <span class="uc-field-label">Start</span>
-                        <input type="time" name="start_time" required value="<?php echo esc_attr( $v( 'start' ) ); ?>"<?php echo sfaf_time_step_attr( $v( 'start' ) ); ?> />
+                        <?php echo sfaf_time_field( 'start_time', $v( 'start' ), array( 'label' => 'Start time', 'required' => true ) ); ?>
                         <?php SFAF_Submissions::field_error( $err( 'start_time' ) ); ?>
                     </label>
                     <label class="uc-field">
                         <span class="uc-field-label">End</span>
-                        <input type="time" name="end_time" required value="<?php echo esc_attr( $v( 'end' ) ); ?>"<?php echo sfaf_time_step_attr( $v( 'end' ) ); ?> />
+                        <?php echo sfaf_time_field( 'end_time', $v( 'end' ), array( 'label' => 'End time', 'required' => true ) ); ?>
                         <?php SFAF_Submissions::field_error( $err( 'end_time' ) ); ?>
                     </label>
                 </div>

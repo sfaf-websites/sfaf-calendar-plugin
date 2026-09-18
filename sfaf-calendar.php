@@ -328,6 +328,23 @@ function sfaf_init() {
 }
 add_action( 'init', 'sfaf_init' );
 
+/*
+ * THE TIME CONTROL'S TWO HALVES ARE FOLDED BACK BEFORE ANYTHING READS THEM
+ * (3.98.0).
+ *
+ * PRIORITY 0 ON `init`, WHICH IS BEFORE EVERY SAVE PATH IN THIS PLUGIN. The
+ * portal dispatches on `template_redirect`, both public forms handle their post
+ * on `init` at the default priority, and the WP admin metabox saves on
+ * `save_post`; all three are after this. One call, and every one of the twelve
+ * controls' read sites goes on reading `$_POST['start_time']` as `H:i`, which
+ * is what let the control change without fourteen call sites changing with it.
+ *
+ * IT TOUCHES NOTHING THAT DID NOT COME FROM ONE OF OUR CONTROLS. The `_h` key
+ * exists on no other form on the site, and a request without it is left exactly
+ * as it arrived.
+ */
+add_action( 'init', 'sfaf_normalize_time_post', 0 );
+
 /**
  * Enqueue frontend styles and scripts
  */
