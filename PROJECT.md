@@ -2308,9 +2308,42 @@ the people who registered. A second quiet route to making one disappear is a way
 to do that by accident. Weighed and decided against; if the need arises it gets
 built deliberately.
 
-**DELETE IS A CARD AT THE FOOT OF THE SCREEN, AFTER THE CANCEL CARD.** Not in the
-row of actions, because Save is pressed dozens of times a day and deleting cannot
-be undone from that screen. After cancelling rather than before, because the two
+**THE THREE ACTIONS ARE ONE ROW (3.97.0), AND DELETE'S CARD IS STILL AT THE FOOT
+OF THE SCREEN.** The row holds the buttons; the cards below hold the
+explanations and the forms they post. This section said Delete was not in the
+row at all, which stopped being true in 3.97.0.
+
+```
+a draft          Delete   Save draft     Publish
+                 red      YELLOW         GREEN, largest
+
+an existing      Delete   Cancel event   Save changes
+event            red      RED            GREEN, largest
+```
+
+**GREEN AND LARGEST MARK WHATEVER PUTS THE EVENT IN FRONT OF PEOPLE.** On a
+draft that is Publish; on an existing event there IS no Publish, so it is Save
+changes, which was yellow until 3.98.0 and left that row with two reds and its
+only safe button the quietest thing on screen. Yellow marks the in-between save
+and therefore appears only on the draft row. DESIGN.md records the exception by
+name, because it inverts what that file says about yellow.
+
+**CANCEL EVENT IS RED (3.98.0), NOT AMBER.** It takes the event off the public
+calendar and mails everybody who registered, which is Delete's neighbourhood of
+consequence rather than "careful". The two reds are told apart by their labels
+and by the chevron, which only Cancel event carries because only it opens
+something rather than doing it.
+
+**NEITHER DELETE NOR CANCEL EVENT MAY BE THE FIRST SUBMIT IN THE MARKUP.** A
+browser sends an Enter keypress in a text field to the form's first submit
+button in DOCUMENT order. Save is first and stays first; the left-to-right order
+is CSS `order`, which moves neither the document nor the keyboard. Delete also
+carries `form=` pointing at its own form, so implicit submission cannot reach it
+whatever the order, and Cancel event is a `<summary>` rather than a submit at
+all. Three mechanisms, and the tests assert all three.
+
+**THE EXPLANATIONS AND THE FORMS ARE CARDS BELOW THE ROW**, because Save is
+pressed dozens of times a day and deleting cannot be undone from that screen. After cancelling rather than before, because the two
 read as a ladder in the order somebody should try them: cancelling keeps the
 registrations, closes new ones and offers to tell everybody who signed up;
 deleting keeps nothing and tells nobody. It posts the same route the events list
@@ -2373,22 +2406,81 @@ both ask it, because they are two buttons in one row and must not describe one
 event two ways. It does **not** fall back to the excerpt: that would put the
 copied text back on exactly the events that have one.
 
-**AN EVENT WITH NO DESCRIPTION FALLS BACK TO NOTHING**, and this answers a
-question that sat open in the handover. `single-uc_event.php` calls
-`the_content()` with nothing behind it, and no filter anywhere in the plugin
-substitutes a series description. The series supplies the **image**, the **FAQ
-set** and the **video** when an event has none of its own, and those three only;
-`SFAF_Series::prefill_data()` copies the series description into a NEW event's
-`post_content` at creation, which is a one-time copy the manager can then edit,
-not a display-time fallback.
+**AN EVENT WITH NO DESCRIPTION OF ITS OWN SHOWS ITS SERIES DESCRIPTION**
+(3.98.0), and that is the answer to a question that sat open in the handover for
+months. It was "nothing" until then, which is what every surface showed.
 
-**Two readers still prefer the excerpt** and have the same fault for the same
-reason: `SFAF_Seo` builds the meta description and JSON-LD from
-`get_the_excerpt()` with a `post_content` fallback, and the card summary in
-`SFAF_Shortcodes` does the same. Both fall back only when the excerpt is EMPTY,
-so both still show the seed's text on a generated occurrence whose seed had one.
-Out of scope in 3.97.2, which was about the calendar file; the fix is the same
-one function.
+**ONE RESOLVER, THREE RUNGS, FIVE SURFACES.**
+
+```
+1. the event's own post_content     what the editor writes
+2. its series' description          3.98.0
+3. nothing
+
+the event page      single-uc_event.php
+the card summary    SFAF_Shortcodes
+the SEO summary     SFAF_Seo, the meta description and the JSON-LD
+the .ics            sfaf_output_ics()
+Google Calendar     sfaf_google_calendar_url()
+```
+
+`sfaf_event_description_html()` answers rungs one and two,
+`sfaf_event_description_text()` flattens it for the three that want plain text,
+and `sfaf_event_description_is_series()` answers the editor's one question:
+whether to say "This event will show the series description" under an empty
+field.
+
+**THE EVENT PAGE KEEPS `the_content()` FOR THE ORDINARY CASE** rather than
+running the resolved string through `apply_filters()` in every case, because
+`the_content()` also handles the more tag, paging and the global post. Only the
+empty case takes the other branch, so an event with its own description renders
+by exactly the path it always did.
+
+**THE PREFILL'S OFFER TO COPY THE DESCRIPTION IN IS A DIFFERENT THING and is
+unchanged.** `SFAF_Series::prefill_data()` writes the series description into a
+NEW event's own `post_content`, which makes the words the event's and editable.
+The fallback above is what happens when nobody does that. The series also
+supplies the **image**, the **FAQ set** and the **video** when an event has none
+of its own.
+
+### The time control is ours, and `step` was never going to work (3.98.0)
+
+**`step="300"` ON AN `<input type="time">` IS A VALIDATION RULE, NOT A PICKER
+RULE.** Every browser enforces it on submit, naming the two nearest valid times;
+no browser makes its spinner or its dropdown honour it. So five-minute steps
+refused 6:07 while still taking thirty presses to reach 6:30. **This was asked
+for twice and "fixed" twice**, both times by setting that attribute, which is
+why the shape of the mistake is worth more than the fix.
+
+**ALL TWELVE CONTROLS ARE `sfaf_time_field()`**: an hour list of twenty-four,
+labelled through `sfaf_ap_time()` so they read the way every other time on the
+calendar reads, beside a minute list of exactly twelve. Two native `<select>`
+elements, so the keyboard, the type-ahead, the phone's own wheel picker and the
+screen reader announcement are the platform's, and
+`:where(.uc-portal) :where(select)` gives them the chevron and the end cap with
+no rule written for them.
+
+**NO SCRIPT AT ALL, AND THAT IS THE POINT.** The pair posts under `<name>_h` and
+`<name>_m`, and `sfaf_normalize_time_post()` on `init` at priority 0 folds them
+back into `<name>` before any save path runs. Every read site still reads
+`$_POST['start_time']` and still gets `H:i`; the meta keys are untouched and
+nothing migrates. **Writing to `$_POST` is deliberate**: the alternative was
+fourteen call sites that all had to be found, which is the shape of several
+entries in section 7. A hidden field kept in sync by JavaScript would have given
+up the no-script case for nothing.
+
+> **AN EXISTING TIME OFF THE FIVE-MINUTE GRID KEEPS ITS EXACT MINUTE.** The
+> import wrote times from an export nobody here has read every row of, and
+> rounding one into the form would change somebody's answer without telling
+> them. Such a value joins the minute list as a thirteenth entry marked
+> **(current)** and is gone the moment somebody chooses another. **Nothing is
+> ever silently rounded**, on screen or on save.
+
+**`sfaf_time_step_attr()` AND `.claude/time-step-test.php` ARE DELETED.** The
+function decorated an input type that no longer exists anywhere, and the test
+asserted that every time input carried it: with none left it passed on zero
+controls while its own summary repeated the claim that had turned out false. A
+check that can only pass is worse than no check.
 
 ### "Has this field been filled in" is asked in two languages, off one list
 
@@ -3381,6 +3473,23 @@ EVENT whether it is hybrid and only consult the column when it is.
 **Deliberately not built, and these are decisions rather than gaps:** a
 registrant changing format after registering, the two public forms offering
 hybrid, and per-registrant approval.
+
+**CAPACITY IS ONE ROW (3.98.0), below the address and the meeting link.** The
+label is "Capacity" and it holds one box, or two marked **In person** and
+**Online** when the event is hybrid. It was two fields in two places, each
+beside the thing it limits, which read well for one format at a time and badly
+for the event: on a hybrid event the two numbers are one decision about how many
+people are coming, and they sat in different halves of the card with a venue
+picker between them. "Places in person" was also the wrong word on a purely
+online event, which was the only place that word appeared.
+
+The row is OUTSIDE both panels, which is what makes it one row and also means
+the online tick, which hides the place panel, no longer takes the capacity with
+it. The online box is in the DOM and hidden rather than conditionally rendered,
+so ticking hybrid reveals it without a save. **The storage does not move**:
+`sfaf_capacity_meta_key()` is still the one place that decides, `capacity_online`
+stays in the shared field list because that list is what the save reads to know
+which fields the form spoke for, and nothing migrates.
 
 **A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2).** The format question, in person
 or online, is asked on the registration form and nowhere else, so a hybrid event
@@ -5527,6 +5636,42 @@ becomes a person. Every field that does not survive one of those crossings is
 invisible to both sides. When adding a field to a record, **follow it to every
 place it is re-packaged**, and put a check on the crossing rather than on the
 ends.
+
+### A check can fail, or pass, for its own reasons (3.98.0)
+
+Three checks in this release were wrong about themselves, and **every one was
+found by a planted fault rather than by reading**. They are together because
+they are one shape: the check was asking a question next to the one it meant.
+
+**A FIXED WINDOW FROM A LABEL RUNS INTO THE NEXT BLOCK.** The live harnesses
+read a scenario by taking N characters from its heading. Too short and the lines
+past it are reported missing, which is a check failing for its own reason. **Too
+long and it reads the NEXT scenario**, so an assertion about state 6 was
+satisfied by state 7's answer, a planted fault walked through, and the check
+passed for its own reason. That is the worse of the two, because nothing draws
+attention to it. Both harnesses now cut at the block's own blank line.
+
+**AN ATTRIBUTE NAME MATCHES INSIDE A LONGER ONE.** `strpos( $src,
+'data-uc-series-videos' )` is true of `data-uc-series-videos-off`, so a plant
+that renamed the attribute went straight past the check that existed to notice
+exactly that. An attribute ends at a non-attribute character, and the check says
+so now.
+
+**A FILE THAT EXPLAINS WHAT IT STOPPED DOING STILL CONTAINS THE WORDS.** Three
+checks asserted that `get_the_excerpt()` and an old label were gone, over files
+whose comments say at length that they used to use them and why they stopped. A
+`strpos` over the source reports every one of them as unchanged. **Rendered copy
+is `T_INLINE_HTML` and a call is a token**, so both are read with the tokenizer
+now, which is the same rule section 7 already states for the callable audit.
+
+**THE COMMON CAUSE IS THAT A STRING SEARCH ANSWERS "DOES THIS TEXT APPEAR", and
+almost every question worth asking is narrower than that**: does this element do
+this, in this function, in code rather than in prose. When a check is written
+with `strpos`, the thing to ask is what ELSE would satisfy it.
+
+**AND THE REASON ALL THREE SURFACED AT ONCE** is that this release planted
+faults against new checks before trusting them, which section 7 already requires
+of a new checker. Two of the three were in checks written the same afternoon.
 
 ### A bare constant parses, and neither gate asks about it (3.97.2)
 

@@ -4,21 +4,20 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-18, at 3.97.3, released.
+**Last updated:** 2026-09-18, at 3.98.0, released.
 
 ---
 
 ## What shipped last
 
-**3.97.3** got the meeting link to a hybrid event's online registrant: the
-format never travelled with the person, so every gate refused them, broken
-since 3.96.0. **3.97.2** fixed three hybrid faults: the format ticks are
-exclusive on screen too, a hybrid event always takes RSVPs, and the calendar
-file carries the event's own description, not the series'. **3.97.1** gave
-Publish and Submit for Review a form again, dead since 3.94.0. **3.97.0**
-locked registrations on imported events. **3.96.0 is the big one**: hybrid
-events end to end, the event video, two extra pictures on a submission,
-pictures inside descriptions, and capacity beside the thing it limits.
+**3.98.0** is nine pieces: the RSVP format question is the calendar's pick-one
+control, capacity is one row, an existing event's buttons are Delete / Cancel
+event / Save changes, the video box appears only where it can act and its
+preview is live, an empty description falls back to the series', all twelve time
+controls are an hour list beside a minute list, and the meeting link goes out by
+default. **3.97.3** got that link to a hybrid event's online registrant at all,
+broken since 3.96.0. **3.96.0 is the big one**: hybrid events end to end, the
+event video, pictures inside descriptions.
 **`readme.txt` is the changelog** and has the reasoning for all of it.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** GoFundMe Pro and
@@ -91,8 +90,8 @@ names are siblings and why that is what keeps each out of the others' pickers.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **The external cron ping does not exist.** Visitor traffic and the page-view
-  nudge drive the runner. `PROJECT.md` 4 has the order to switch it on in; the
-  wrong order leaves the site with no scheduler.
+  nudge drive the runner. `PROJECT.md` 4 has the order; the wrong order leaves
+  the site with no scheduler.
 - **Automated fetching is ON and its own copy says it should not be**, and only
   Mark can say which: it can unpublish a live event unattended, four times an
   hour. `TESTING.md` 2.8.
@@ -124,12 +123,14 @@ targets. Assume everything else unverified.
 - **Four things the calendar publicly asserts that are untrue**, from
   `SFAF_Seo`. Take first: a cancelled event still says `EventScheduled`.
   `PROJECT.md` 3.
+- **Existing online and hybrid events with a link delivery tick OFF.** 3.98.0
+  defaults both ON for new events and for one switched to either format, and
+  changed no existing event. `TESTING.md` 1.157 has the query that counts them.
 
-**Named in a brief and designed nowhere yet**, so this is the only
-record of them:
+**Named in a brief and designed nowhere yet**, so this is the only record:
 
 - **The help icon audit.** Nobody has walked the screens.
-- **A help section in caladmin**, for somebody creating an event rather than an
+- **A help section in caladmin**, for an event creator rather than an
   administrator. **The content is the work.**
 - **The nine images on disk that are not in the Calendar folder**, and how to
   retrofit them.
@@ -141,8 +142,7 @@ record of them:
 **The three standing jobs are in `PROJECT.md` 8**: the caladmin design audit,
 simplifying the event editor, and the Tailwind greys in `portal.css`.
 
-**Read `PROJECT.md` 7 first**: four standing hazards, then the lessons that each
-cost more than one build.
+**Read `PROJECT.md` 7 first**: four standing hazards, then the lessons.
 
 ---
 

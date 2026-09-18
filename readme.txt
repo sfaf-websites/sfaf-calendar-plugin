@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.97.3
+Stable tag: 3.98.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,56 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.98.0 =
+
+**Nine pieces: the RSVP form's format control, the editor's capacity row, its button row and labels, a live video preview, where a description comes from, time controls that actually step by five minutes, and the meeting link going out by default.**
+
+**"HOW WILL YOU ATTEND" IS THE CALENDAR'S PICK-ONE CONTROL.** It was two bare radios: nothing styled them, so the only rule reaching the row set `display: block` and the dot sat hard against its word with no gap at all. The pair also read as "tick what applies" for a question with exactly one answer.
+
+It is now the same shape as the public filter bar's row, which asks the same kind of question: **one rounded boundary, two segments, full width of the form, and the chosen one FILLS.** The measured pair is the filter bar's, reused unchanged: `#0E7680` with white ink at **5.35:1**, and the resting segment white with `#0E7680` on it at the same ratio the other way round. Neither is a new colour. The boundary is `--uc-control-edge` at **3.33:1**, not the card hairline at 1.39:1, because this is a control and a control's edge says "this can be pressed".
+
+**THE RADIOS ARE STILL THE CONTROL**, lying transparent across their own segments: what a click lands on, what a keyboard arrows through, what the focus ring marks, what the group announces as, and what the form submits. `opacity`, never `display: none` or `visibility: hidden`, both of which take an input out of the focus order and out of the accessibility tree. **Every tick box on that form was then measured in a browser**: two kinds, the format segments and the opt-in checkbox at an 8px gap. The format row was the only one missing one.
+
+**CAPACITY IS ONE ROW.** It was two fields in two places, "Places in person" under the address and "Places online" under the meeting link, each beside the thing it limits. On a hybrid event that put the two halves of ONE decision at opposite ends of the card with a venue picker between them. It is now **one label, "Capacity", and one or two boxes**, marked In person and Online only when there are two of them to tell apart. "Places in person" was also the wrong word on a purely online event, which was the only place that word appeared. **The storage does not move and nothing migrates.**
+
+**THE BUTTON ROW ON AN EXISTING EVENT** reads **Delete, Cancel event, Save changes**. Save changes takes the green and the size Publish has on the draft row, because an existing event has no Publish and Save changes is then the thing somebody came to press; it was yellow, which left that row with two reds and its only safe button the quietest thing on screen. **"Cancel" is now "Cancel event" and is red**: it takes the event off the public calendar and mails everybody who registered, which is Delete's neighbourhood of consequence rather than "careful". Neither is a submit of the event form, so Enter in a text field still reaches the save. DESIGN.md records both rows under one rule.
+
+**"gets one copy of the morning-of reminder."**
+
+**THE VIDEO BOX APPEARS ONLY WHERE IT CAN DO SOMETHING.** It was drawn on every event, including ones whose series has no video, where it turned off something that was never going to play. It now reads **"Don't show the series video on this event"** and appears only when the chosen series has one.
+
+**AND THE PREVIEW IS LIVE.** Choosing a series with a video fills the editor's preview **at once, before any save**, with one line saying the event will show the series video. Entering a link in the event's own field switches to it and the line goes; clearing it goes back; ticking the box clears it. A new event with no series shows an empty field and nothing else. The series map is deliberately **not** the prefill payload: prefill is "what to COPY into a new event", and putting the video there would have copied the series' link into the event's own field, leaving the event with a video nobody chose.
+
+**WHERE A DESCRIPTION COMES FROM: ONE RESOLVER, THREE RUNGS, FIVE SURFACES.**
+
+```
+1. the event's own post_content     what the editor writes
+2. its series' description          new in 3.98.0
+3. nothing
+```
+
+The **card summary** and the **search engine summary** still read `get_the_excerpt()`, which on a generated occurrence is the **seed event's** and is a field no screen offers and nothing in the editor writes. So an edited date showed the series text on its card and in Google while its own page showed the edited words. Both now ask the resolver, as the event page, the `.ics` and the Google Calendar URL already do.
+
+**AN EVENT WITH NO DESCRIPTION OF ITS OWN NOW SHOWS ITS SERIES DESCRIPTION**, on all five, and the editor says so under an empty field in one line. This answers a question that had sat open in the handover since before 3.94.0. The series prefill's offer to **copy** the description in is unchanged and is a different thing: that makes the words the event's own, and editable.
+
+**TIME CONTROLS THAT ACTUALLY STEP BY FIVE MINUTES, AND WHY THE LAST TWO ATTEMPTS DID NOT.** `step="300"` on an `<input type="time">` is a **validation** rule, not a picker rule. Every browser enforces it on submit and names the two nearest valid times; **no browser makes its spinner or its dropdown honour it**. So the attribute refused 6:07 while still taking thirty presses to reach 6:30, which is the one thing nobody wanted and none of the thing everybody asked for.
+
+**All twelve controls are now an hour list beside a minute list**, two native `<select>` elements, minutes `00` to `55` by fives. Real selects, so the keyboard, the type-ahead, the phone's own wheel picker and the screen reader announcement are the platform's; the calendar's select style, chevron and end cap arrive with no rule written for them. **No script at all**: the pair posts under `<name>_h` and `<name>_m` and is folded back into `<name>` before anything reads it, so every save path still reads `H:i`, the meta keys are untouched, and there is no migration.
+
+**AN IMPORTED TIME OFF THE FIVE-MINUTE GRID KEEPS ITS EXACT MINUTE.** It joins the list as a thirteenth entry marked **(current)** and goes the moment somebody chooses another. **Nothing is ever silently rounded**, on screen or on save.
+
+**THE MEETING LINK GOES OUT BY DEFAULT.** The two ticks under it default to on whenever the online or hybrid tick is set, on a new event and when an existing event is switched to either. A link nobody is sent is the one shape of this feature that helps nobody, and it was what a new online event started in: the organizer entered a link, saved, and the confirmation still said one would be sent before the event. They can still be unticked, and **existing events are not changed by this release**.
+
+**WHAT THE CHECKS FOUND IN THEMSELVES.** Three test faults, each caught by a planted fault rather than by reading:
+
+- **A block reader took a fixed window from a label** and ran into the NEXT block, so an assertion about one state was satisfied by the state after it and a real fault passed. Both live harnesses now cut at the block's own blank line.
+- **An attribute check matched inside longer words**, so renaming `data-uc-series-videos` to `data-uc-series-videos-off` went straight past it.
+- **Three copy checks read the source rather than the rendered output**, and failed on the files' own explanatory comments; they strip comments with the tokenizer now.
+
+**And a measuring page must disable transitions**: `getComputedStyle` returns the current interpolated value, so reading a colour in the tick it changed returns the one it is moving away from.
+
+`sfaf_time_step_attr()` **and its test are deleted.** The function decorated an input type that no longer exists, and the test asserted that every time input carried it: with none left it passed on zero controls while its own summary repeated the claim that had turned out false.
 
 = 3.97.3 =
 

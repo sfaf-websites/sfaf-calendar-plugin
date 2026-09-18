@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 182 items.** Quick 153, needs real conditions 26, blocked on other
+**Outstanding: 185 items.** Quick 156, needs real conditions 26, blocked on other
 people 3.
 
 ---
@@ -2283,6 +2283,94 @@ button beside it and check its notes say the same thing.
 **Why it needs a person:** it needs a real repeating event with a real seed
 excerpt, which is a state no test here can construct: there is no WordPress and
 no database, and the excerpt is not a field any screen in this plugin offers.
+
+### 1.157 Count the online and hybrid events whose link delivery is switched off (3.98.0)
+
+3.98.0 defaults both ticks under the meeting link to ON, on a new event and on
+one switched to online or hybrid. **It changed no existing event**, so any that
+were saved with a tick off still have it off and still send no link.
+
+Run this against the site's database and report the number:
+
+```sql
+SELECT p.ID, p.post_title, p.post_status
+FROM wp_posts p
+WHERE p.post_type = 'uc_event'
+  AND p.post_status IN ('publish','draft','pending','future')
+  AND EXISTS (SELECT 1 FROM wp_postmeta m WHERE m.post_id = p.ID
+              AND m.meta_key IN ('_uc_online','_uc_hybrid') AND m.meta_value = '1')
+  AND (
+    NOT EXISTS (SELECT 1 FROM wp_postmeta s WHERE s.post_id = p.ID
+                AND s.meta_key = '_uc_online_send')
+    OR EXISTS (SELECT 1 FROM wp_postmeta s WHERE s.post_id = p.ID
+               AND s.meta_key = '_uc_online_send'
+               AND (s.meta_value NOT LIKE '%confirmation%' OR s.meta_value NOT LIKE '%reminder%'))
+  );
+```
+
+**Then Mark decides**, which is why this is a count rather than a migration. An
+event whose ticks are off may be off on purpose: the meeting link box also holds
+a link somebody keeps for their own reference and sends nowhere, which is one of
+the four cases the hint under it names.
+
+**Why it needs a person:** there is no database here, and the answer is a
+decision rather than a number.
+
+### 1.158 The nine editor and form changes, on the real screens (3.98.0)
+
+Everything below is asserted here and measured in headless Chrome against
+reconstructed markup. What nobody has seen is the real screens.
+
+**In the event editor, on an EXISTING published event:**
+
+1. The button row reads **Delete, Cancel event, Save changes**, with Save
+   changes green and the largest control in the row. Press **Cancel event** and
+   check it opens rather than doing anything.
+2. **Capacity is one row** below the address and the meeting link, with one box.
+   Tick **This is a hybrid event** and check a second box appears beside it,
+   the two marked **In person** and **Online**, without saving.
+3. Put a number in each, save, reopen, and check both came back.
+4. The **Video** field: on an event whose series has a video, the box reads
+   **"Don't show the series video on this event"** and the preview below the
+   field is playing the series video with one line above it. On an event whose
+   series has none, **the box is not there at all**.
+5. Choose a different series in the picker and check the preview and the box
+   both follow it, without saving.
+6. Paste a YouTube link into the event's own Video field: the preview switches
+   to it and the line goes.
+7. Clear the description and check the line **"This event will show the series
+   description"** appears under the field, and that the published page then
+   shows the series description.
+
+**Every time control**, on all of these screens: the event editor, the schedule
+editor, the add-a-date row, the WP admin metabox, the staff request form and
+the community form. Each is **an hour list beside a minute list**. Open the
+minute list and count: **twelve entries**. Set a time, save, reopen, and check
+it came back exactly.
+
+**Then the RSVP form on the public calendar**, on a hybrid event: the format
+question is one rounded control in two segments, full width, with the chosen one
+filled in dark teal and white text. **Tab to it and use the arrow keys**, which
+is the half that would be lost if the radios underneath had been removed.
+
+**Why it needs a person:** there is no WordPress and no browser rendering the
+real screens here. The harnesses drive the real scripts against markup this
+repository reconstructs; what nobody has checked is that the renderers put the
+same things on the same real screens, with the real stylesheet, at a real width.
+
+### 1.159 A time the import left off the five-minute grid (3.98.0)
+
+Find an event whose start or end time is not on a five-minute boundary, or set
+one through the database. Open it in the editor.
+
+The minute list must offer **thirteen** entries: the twelve fives and that
+event's own minute, marked **(current)**. Save WITHOUT touching the time and
+check the stored value is unchanged. Then choose a different minute, save, and
+check the extra entry is gone on reopening.
+
+**Why it needs a person:** it needs an event holding such a time, which is a
+state no test here can construct, and the thing being checked is that a save
+that did not touch the field did not quietly round it.
 
 ## 2. Needs real conditions
 
