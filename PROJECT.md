@@ -6284,10 +6284,50 @@ half hour. For hourly data that is fine, and no special handling is needed.
    plausible and silent failure mode.
 
 **THE PUBLIC LIST HAS BEEN READ, 2026-09-21. THE TRACKER HAS NOT.** The two
-reads are separate and only one is done. The tracker endpoint and keys were not
-on the build machine, so `private/everyaction.json` was created as an ignored
-template for them and the open questions above still stand. **What follows is
-the public list only, and it is not a substitute for the sample response.**
+reads are separate and only one is done. The open questions above still stand,
+and **what follows is the public list only, not a substitute for the sample
+response.**
+
+#### Why the tracker read failed, 2026-09-21, with the real keys
+
+**THE CREDENTIALS WERE SUPPLIED AND THE READ STILL RETURNED NO DATA.** Val's
+endpoint is not an API endpoint. Record this so the next session does not spend
+the trip establishing it again. Credentials live in `private/everyaction.json`,
+which is gitignored; nothing below carries one.
+
+| What was asked | What came back |
+|---|---|
+| `GET /user/v2/tracker/data?id=...&project_id=...`, the endpoint as given | **302** to `/oauth2/init?provider=35303`, plus a `_felix_session_id` cookie |
+| The same, following the redirect | **200 `text/html`**, a Microsoft Entra ID page titled "Sign in to your account" |
+| `GET /api/v2/tracker/data?id=...&project_id=...`, bearer key | **401**, `text/plain`, no `WWW-Authenticate` |
+| `POST /oauth2/token`, `grant_type=client_credentials` | **400** `unsupported_grant_type` |
+| `POST /api/oauth2/token` | **404** |
+
+**`/user/v2/` IS THE BROWSER SURFACE, NOT THE API.** It redirects to SSO before
+any credential is considered, so no header can ever satisfy it: the 200 that
+comes back is a login page, which is the failure mode worth naming because **it
+is a 200 and it parses as a successful fetch**. An adapter pointed at this URL
+would store a Microsoft login page and report success.
+
+**`/api/v2/` IS THE API**, a Rack application that answers 401 rather than
+redirecting. So the path exists and the credential was refused on it.
+
+**MangoApps issues API tokens from Admin > API > Tokens**, per their developer
+reference, and authenticates with `Authorization: Bearer <token>`. That is
+consistent with `client_credentials` being unsupported: there is no exchange,
+the token is minted in the admin UI. **So the likeliest reading is that the key
+and secret are not an Admin > API token**, or not one scoped to this tracker.
+
+> **WHAT TO ASK VAL, AND IT IS ONE QUESTION.** Not "it did not work". Ask for
+> **the `/api/v2/` path for tracker 162570 in project 1547861, and a token from
+> Admin > API > Tokens with read access to it**. If the tracker can only be
+> reached by a signed-in browser session, then the arrangement in this section
+> does not work at all and the answer is a scheduled export he pushes to us,
+> which is the file-based shape this entry already describes above. **Do not
+> solve this with a stored session cookie**: it expires, it belongs to a person,
+> and it would put an Entra session for the Aging Services tenant in our
+> database, which is the privacy objection that ruled out the API key in the
+> first place, one step worse.
 
 #### The public list at `50plus.sfaf.org/a/asevents` (read 2026-09-21)
 

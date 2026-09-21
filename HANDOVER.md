@@ -111,7 +111,7 @@ targets. Assume everything else unverified.
   resources.sfaf.org archive, not a public surface. Settings, Display.
 - **Two pieces of public copy nobody has read**, the rejection notice and the
   "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.
-- **Español as a category** supplies the colour and icon to every event it is on,
+- **Español as a category** gives its colour and icon to every event it is on,
   because it sorts first. The rule working. Three answers costed.
 - **The community form's age options, its two email fields**, and what the
   public forms require.
@@ -121,11 +121,12 @@ targets. Assume everything else unverified.
   `SFAF_Seo`. First: a cancelled event says `EventScheduled`. `PROJECT.md` 3.
 - **Existing online and hybrid events with a link delivery tick OFF.** 3.98.0
   defaults both ON for new and newly switched events only. `TESTING.md` 1.157.
-- **EveryAction: the public list is read, the TRACKER IS NOT.** The endpoint and
-  keys were not on this machine; `private/everyaction.json` is the ignored
-  template waiting for them, and no adapter starts until the tracker answers.
-  Also **two programs are the same Saturday event under two names**, which
-  would import twice. Both in `PROJECT.md` 8.
+- **EveryAction: VAL'S ENDPOINT IS NOT AN API ENDPOINT.** Keys are in place and
+  the read still got nothing: `/user/v2/` redirects to Microsoft SSO and
+  returns a **login page as a 200**, and `/api/v2/` refuses the key with 401.
+  Ask Val for the `/api/v2/` path plus an Admin > API token. Also **two
+  programs are the same Saturday event under two names**, which would import
+  twice. Both in `PROJECT.md` 8.
 
 **Named in a brief and designed nowhere yet**, so this is the only record:
 
