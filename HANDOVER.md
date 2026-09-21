@@ -56,8 +56,7 @@ pictures, `calendar-submissions/` for what strangers send,
 **Three things a new session needs, each retiring or reversing something:**
 
 > **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, with the media modal,
-> and so is the 3.87.0 tagging on that path: a picture added on the Images
-> screen is not tagged to a series. Both public forms keep their own upload.
+> and so is the 3.87.0 tagging on it. Both public forms keep their own upload.
 
 > **CHECK THE INSTALLED VERSION BEFORE BUILDING ANYTHING REPORTED MISSING.** Two
 > items in the 3.94.0 brief were already built, and were asked for again.
@@ -66,8 +65,7 @@ pictures, `calendar-submissions/` for what strangers send,
 
 ## What is actually confirmed on the site
 
-- **The whole submission path, end to end**, and registration with both
-  messages.
+- **The whole submission path, end to end**, and registration with both mails.
 - **The scheduled path works unassisted**, 2026-08-18. Cron is a reliability
   question from here, not a correctness one.
 - **The hover preview works on sfaf.org.** The import has run: **287 drafts
@@ -112,21 +110,23 @@ targets. Assume everything else unverified.
 - **Two pieces of public copy nobody has read**, the rejection notice and the
   "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.
 - **Español as a category** gives its colour and icon to every event it is on,
-  because it sorts first. The rule working. Three answers costed.
-- **The community form's age options, its two email fields**, and what the
+  because it sorts first. The rule working.
+- **The community form's age options and two email fields**, and what the
   public forms require.
 - **222 published event addresses die with The Events Calendar.** A redirect
   table from the export is cheapest.
-- **Four things the calendar publicly asserts that are untrue**, from
-  `SFAF_Seo`. First: a cancelled event says `EventScheduled`. `PROJECT.md` 3.
+- **Four things the calendar publicly asserts that are untrue** (`SFAF_Seo`).
+  First: a cancelled event says `EventScheduled`. `PROJECT.md` 3.
 - **Existing online and hybrid events with a link delivery tick OFF.** 3.98.0
   defaults both ON for new and newly switched events only. `TESTING.md` 1.157.
-- **EveryAction: VAL'S ENDPOINT IS NOT AN API ENDPOINT.** Keys are in place and
-  the read still got nothing: `/user/v2/` redirects to Microsoft SSO and
-  returns a **login page as a 200**, and `/api/v2/` refuses the key with 401.
-  Ask Val for the `/api/v2/` path plus an Admin > API token. Also **two
-  programs are the same Saturday event under two names**, which would import
-  twice. Both in `PROJECT.md` 8.
+- **EveryAction: STILL NO SAMPLE, AND THE LOGIN FLOW IS ALSO REFUSED.** The
+  documented session login was run with the right body and answers
+  `AUTHENTICATION_ERROR`, base64 or plain alike. `hub.sfaf.org` signs people
+  in through Microsoft Entra, and an Entra account has no MangoApps password
+  for `/api/login.json` to check. **THE PLUGIN NEEDS A SERVICE ACCOUNT**, not
+  a person's login, which dies with their password and carries their whole
+  hub access; that is with Val. Also **two programs are the same Saturday
+  event under two names**, which would import twice. Both in `PROJECT.md` 8.
 
 **Named in a brief and designed nowhere yet**, so this is the only record:
 

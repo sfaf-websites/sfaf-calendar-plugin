@@ -6329,6 +6329,46 @@ and secret are not an Admin > API token**, or not one scoped to this tracker.
 > database, which is the privacy objection that ruled out the API key in the
 > first place, one step worse.
 
+#### The login flow was the right flow, and it was also refused (2026-09-21)
+
+**THE HEADER PROBES ABOVE WERE THE WRONG FLOW.** The documented one, at
+`start.mangoapps.com/apidoc` and matching Val's own script, is a session login
+that yields a cookie. It was run and it authenticates nothing.
+
+```
+POST {hub}/api/login.json          Content-Type: application/json
+  { "ms_request": { "user": {
+      "api_key": "...", "username": "...", "password": "<base64>" } } }
+
+  -> 200  {"ms_errors":{"error":{
+             "message":" Login id or Password is Incorrect.",
+             "error_code":"AUTHENTICATION_ERROR"}}}
+```
+
+**THE REQUEST SHAPE IS CONFIRMED CORRECT**, not guessed: the apidoc's own
+parameter list for `POST /api/login` is `ms_request[user]` carrying `username`,
+`password` and `api_key`, which is exactly what was sent. **The password was
+tried base64 and plain and both were refused identically**, so the encoding is
+not the fault. **No session was established, so no tracker call was made and
+`/api/logout` was not needed.**
+
+> **THE LIKELIEST CAUSE IS SSO, AND IT FOLLOWS FROM WHAT IS ALREADY ABOVE.**
+> `hub.sfaf.org` sends browser logins to `/oauth2/init?provider=35303` and on to
+> Microsoft Entra. **An account provisioned through Entra normally has no
+> MangoApps-local password at all**, and `/api/login.json` checks a local
+> password. So a person can sign in through the browser every day and still have
+> nothing this endpoint can accept: the password they type is Microsoft's, and
+> MangoApps never sees it. That is consistent with every result in this section,
+> including `client_credentials` being unsupported.
+
+**WHAT IS STILL NEEDED IS ONE THING AND IT IS NOT A BETTER GUESS.** A MangoApps
+account that can authenticate without SSO, or a token minted in Admin > API >
+Tokens, either of them scoped to tracker 162570 in project 1547861. **The
+plugin needs a service account for this regardless**, because a person's own
+login is not a credential a scheduled job may hold: it carries their access to
+everything else in the hub, and it dies when they change their password or
+leave. That question is with Val.
+
 #### The public list at `50plus.sfaf.org/a/asevents` (read 2026-09-21)
 
 **It is an EveryAction-hosted page, not ours.** The response sets a cookie on
