@@ -29,25 +29,25 @@ event video, pictures inside descriptions.
 
 > **THE EDITOR'S BUTTON ROW IS OUTSIDE THE EVENT FORM**, so every button in it
 > lives or dies by its `form=` attribute; **never add one without it**.
-> `.claude/form-owner-audit.php` sweeps all 78. The row is **Delete, Cancel,
-> Save draft, Publish (3.97.0)**, yellow on Save draft and green on Publish,
-> which inverts DESIGN.md and is **Mark's decision**, recorded there by name.
+> `.claude/form-owner-audit.php` sweeps all 78. **TWO ROWS (3.98.0)**: a draft
+> is Delete, Save draft, Publish; an existing event is Delete, Cancel event,
+> Save changes. Green and largest marks the main action on both, yellow the
+> in-between save, so yellow is on the draft row only. That inverts DESIGN.md
+> and is **Mark's decision**, recorded there by name.
 > **Delete must never be first in the MARKUP**: Enter in a text field presses
 > the form's first submit, and the left-to-right order is CSS `order`, which
 > moves neither the document nor the keyboard.
 
-**THREE FOLDERS OF PICTURES NOW, AND NONE IS INSIDE ANOTHER**: `calendar/` for
-featured pictures, `calendar-submissions/` for what strangers send,
-`calendar-descriptions/` for what goes inside prose. `PROJECT.md` 1 has why the
-names are siblings and why that is what keeps each out of the others' pickers.
+**THREE FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` for featured
+pictures, `calendar-submissions/` for what strangers send,
+`calendar-descriptions/` for prose. `PROJECT.md` 1 has why.
 
 > **HYBRID EVENTS ARE SHIPPED, AND THREE THINGS ARE DELIBERATELY NOT IN THEM.**
 > A registrant cannot change format after registering, neither public form
 > offers hybrid, and there is no per-registrant approval. **These are decisions,
-> not gaps**, so do not re-open them as oversights. Mark's open question
-> answered itself: it is one capacity PER FORMAT, because the form has to say
-> "online is full, there are still places in person" and one number cannot.
-> `PROJECT.md` 2 has the model and the credential rule.
+> not gaps**, so do not re-open them as oversights. It is one capacity PER
+> FORMAT: the form has to say "online is full, there are still places in person"
+> and one number cannot. `PROJECT.md` 2 has the model and the credential rule.
 > **A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2)**: the format question is asked
 > on the registration form and nowhere else. **AND EVERY PERSON OBJECT REACHING
 > A MAIL BUILDER CARRIES `format` (3.97.3)**, or the gates refuse the link to
@@ -55,10 +55,9 @@ names are siblings and why that is what keeps each out of the others' pickers.
 
 **Three things a new session needs, each retiring or reversing something:**
 
-> **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, deliberately, with the
-> media modal. **So is the 3.87.0 tagging that ran on upload from that path**: a
-> picture added on the Images screen is not tagged to a series automatically.
-> Both public forms keep their own upload and are unaffected.
+> **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, with the media modal,
+> and so is the 3.87.0 tagging on that path: a picture added on the Images
+> screen is not tagged to a series. Both public forms keep their own upload.
 
 > **CHECK THE INSTALLED VERSION BEFORE BUILDING ANYTHING REPORTED MISSING.** Two
 > items in the 3.94.0 brief were already built, and were asked for again.
@@ -100,7 +99,7 @@ names are siblings and why that is what keeps each out of the others' pickers.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 182 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 185 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.
