@@ -6283,6 +6283,70 @@ half hour. For hourly data that is fine, and no special handling is needed.
    cannot catch a half-written file? A partial JSON read on the hour is a
    plausible and silent failure mode.
 
+**THE PUBLIC LIST HAS BEEN READ, 2026-09-21. THE TRACKER HAS NOT.** The two
+reads are separate and only one is done. The tracker endpoint and keys were not
+on the build machine, so `private/everyaction.json` was created as an ignored
+template for them and the open questions above still stand. **What follows is
+the public list only, and it is not a substitute for the sample response.**
+
+#### The public list at `50plus.sfaf.org/a/asevents` (read 2026-09-21)
+
+**It is an EveryAction-hosted page, not ours.** The response sets a cookie on
+`everyaction.com` and loads `static.everyaction.com`, so the markup below is
+theirs and can change without notice. Treat every selector as a fixture to
+assert, not a contract.
+
+**Paging is `?pn=N`, ten entries a page, fifteen pages.** Page one is the bare
+URL and `?pn=1` is not linked. The pager links 2 to 5, an ellipsis, then Last at
+`?pn=15`, so the list holds up to 150 occurrences.
+
+**Each entry is one `div.oa-event-result-container`** carrying:
+
+| Attribute or class | Example from a real entry |
+|---|---|
+| `data-event-id` | `750059398` |
+| `data-event-type` | `50 Plus Event Type` |
+| `data-event-name` | `50-Plus Saturday AM Coffee Social` |
+| `.oa-event-result-name-link` `href` | `https://han.sfaf.org/a/50-plus-saturday-am-coffee-social-12` |
+| `.oa-event-result-startdate` | `September 26, 2026` |
+| `.oa-event-result-starttime` | `10:00 AM` |
+| `.oa-event-result-endtime` | `12:00 PM` |
+| `.oa-event-result-location` | `Maxfield's House of Caffeine, 398 Dolores St, San Francisco, CA 94110` |
+| `.oa-event-result-signup-link` `href` | same as the name link |
+| `.oa-event-result-description` | present on some entries, absent on others |
+
+**`data-event-id` IS DISTINCT PER OCCURRENCE.** Five consecutive Saturdays came
+back as 750059398, 399, 400, 401 and 402. If the tracker carries the same
+number, that is the stable per-occurrence ID the adapter needs and the link
+lookup is a join on it rather than on a title and a date. **Confirm that against
+the tracker before relying on it**, because an ID that exists only on the public
+page cannot key an import whose source is the tracker.
+
+**`data-event-name` is the recurring group**, shared by every occurrence of a
+program and distinct from the per-occurrence slug.
+
+**THE SIGNUP URL IS ON A DIFFERENT HOST FROM THE LIST.** The list is
+`50plus.sfaf.org`; every signup link is `han.sfaf.org/a/<slug>`. The slug is the
+kebab-cased title plus an occurrence number, `-12`, `-13`, and the first
+occurrence of a program can have none at all, as `monthly-community-meal` does.
+**The number is not the date and not derivable from it**, which is the whole
+reason the lookup has to read this page rather than construct the URL.
+
+**No timezone appears anywhere on the page**, and neither does an end date: the
+entries read as same-day local times. The timezone has to come from the tracker
+or be asserted as America/Los_Angeles by us.
+
+> **TWO PROGRAMS ARE THE SAME EVENT UNDER TWO NAMES, AND MARK HAS TO SAY WHICH
+> IS REAL.** "50-Plus Saturday AM Coffee Social" (slugs `-12` to `-16`) and
+> "Saturday AM Coffee Social" (slugs `-8` to `-11`) both run Saturdays 10:00 to
+> 12:00 at Maxfield's, and both were on page one for September 26, October 3, 10
+> and 17 as separate entries with separate ids. **An importer told to take this
+> page would create two events per Saturday.** The two also disagree on
+> description: only the second carries one, and it has a typo, "fotr". The pair
+> ends at different points, so October 24 has only the 50-Plus one. This is a
+> data question for Val and Mark, not something the adapter should try to
+> de-duplicate by matching times.
+
 ### A parameter nothing passes is a feature nothing has (3.73.0)
 
 > **CONFIRMED ON 3.74.0, AFTER THREE RELEASES AS A DEDUCTION.** The reasoning

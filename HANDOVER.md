@@ -108,38 +108,37 @@ targets. Assume everything else unverified.
 8 unless another section is named:
 
 - **The calendar home URL.** Until it is set, "All Events" falls back to the
-  archive on resources.sfaf.org, which is not a public surface. Settings,
-  Display.
-- **Two pieces of public copy nobody has read**: the rejection notice and the
-  "this event is back on" message. Both unticked, so nothing sends while they
-  wait. `TESTING.md` 2.21 and 2.24.
+  resources.sfaf.org archive, not a public surface. Settings, Display.
+- **Two pieces of public copy nobody has read**, the rejection notice and the
+  "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.
 - **Español as a category** supplies the colour and icon to every event it is on,
   because it sorts first. The rule working. Three answers costed.
-- **The community form's age options, its two email fields**, and what either
-  public form should require.
+- **The community form's age options, its two email fields**, and what the
+  public forms require.
 - **222 published event addresses die with The Events Calendar.** A redirect
-  table from the export is the cheapest answer.
+  table from the export is cheapest.
 - **Four things the calendar publicly asserts that are untrue**, from
-  `SFAF_Seo`. Take first: a cancelled event still says `EventScheduled`.
-  `PROJECT.md` 3.
+  `SFAF_Seo`. First: a cancelled event says `EventScheduled`. `PROJECT.md` 3.
 - **Existing online and hybrid events with a link delivery tick OFF.** 3.98.0
-  defaults both ON for new events and for one switched to either format, and
-  changed no existing event. `TESTING.md` 1.157 has the query that counts them.
+  defaults both ON for new and newly switched events only. `TESTING.md` 1.157.
+- **EveryAction: the public list is read, the TRACKER IS NOT.** The endpoint and
+  keys were not on this machine; `private/everyaction.json` is the ignored
+  template waiting for them, and no adapter starts until the tracker answers.
+  Also **two programs are the same Saturday event under two names**, which
+  would import twice. Both in `PROJECT.md` 8.
 
 **Named in a brief and designed nowhere yet**, so this is the only record:
 
 - **The help icon audit.** Nobody has walked the screens.
-- **A help section in caladmin**, for an event creator rather than an
-  administrator. **The content is the work.**
-- **The nine images on disk that are not in the Calendar folder**, and how to
-  retrofit them.
+- **A help section in caladmin**, for an event creator. The content is the work.
+- **The nine images on disk that are not in the Calendar folder.**
 
 ---
 
 ## Queued work, and before touching anything
 
-**The three standing jobs are in `PROJECT.md` 8**: the caladmin design audit,
-simplifying the event editor, and the Tailwind greys in `portal.css`.
+**Three standing jobs in `PROJECT.md` 8**: the caladmin design audit, the event
+editor, the Tailwind greys in `portal.css`.
 
 **Read `PROJECT.md` 7 first**: four standing hazards, then the lessons.
 
