@@ -83,19 +83,26 @@ function sfaf_ap_date( $when, $style = 'full' ) {
     );
     return date( isset( $f[ $style ] ) ? $f[ $style ] : $f['full'], (int) $when );
 }
-function sfaf_ap_time( $raw, $meridiem = true ) {
-    $raw = trim( (string) $raw );
-    if ( '' === $raw ) { return ''; }
-    $ts = strtotime( $raw );
-    if ( false === $ts ) { return ''; }
-    $clock = ( '00' === date( 'i', $ts ) ) ? date( 'g', $ts ) : date( 'g:i', $ts );
-    return $meridiem ? $clock . ' ' . strtolower( date( 'A', $ts ) ) : $clock;
-}
-function sfaf_ap_time_range( $start, $end ) {
-    if ( '' === trim( (string) $start ) ) { return ''; }
-    if ( '' === trim( (string) $end ) ) { return sfaf_ap_time( $start ); }
-    $same = date( 'A', strtotime( $start ) ) === date( 'A', strtotime( $end ) );
-    return sfaf_ap_time( $start, ! $same ) . "\xE2\x80\x93" . sfaf_ap_time( $end );
+/* THE CLOCK IS THE REAL FORMATTER, SLICED OUT OF THE SHIPPED FILE (3.99.0).
+ * It was a copy retyped here, and a copy agrees with itself forever: when
+ * every email time gained its zone, this file would have gone on printing
+ * "6-7:30 pm" and passing. The zone check below is only worth anything if the
+ * thing it reads is what the plugin actually prints. */
+$sfaf_tpl   = file_get_contents( $root . '/includes/sfaf-template-functions.php' );
+$sfaf_slice = function ( $name ) use ( $sfaf_tpl ) {
+    $at = strpos( $sfaf_tpl, 'function ' . $name . '(' );
+    if ( false === $at ) { return ''; }
+    $d = 0;
+    for ( $i = $at; $i < strlen( $sfaf_tpl ); $i++ ) {
+        if ( '{' === $sfaf_tpl[ $i ] ) { $d++; }
+        if ( '}' === $sfaf_tpl[ $i ] ) { $d--; if ( 0 === $d ) { return substr( $sfaf_tpl, $at, $i - $at + 1 ); } }
+    }
+    return '';
+};
+foreach ( array( 'sfaf_ap_time', 'sfaf_ap_time_range', 'sfaf_ap_time_zone', 'sfaf_ap_zoned' ) as $sfaf_fn ) {
+    $sfaf_code = $sfaf_slice( $sfaf_fn );
+    if ( '' === $sfaf_code ) { echo "FAIL: $sfaf_fn() could not be sliced from the formatter.\n"; exit( 1 ); }
+    eval( $sfaf_code );
 }
 function sfaf_event_location( $id ) { return '470 Castro Street, San Francisco, CA 94114'; }
 function sfaf_ics_url( $id ) { return 'https://resources.example.org/?uc_ics=' . (int) $id; }
@@ -322,6 +329,18 @@ foreach ( $cases as $name => $case ) {
             if ( strtolower( $a ) === strtolower( $hex ) ) { $ok = true; break; }
         }
         if ( ! $ok ) { $fails[] = "$name: $hex is not in the brand palette"; }
+    }
+
+    // EVERY TIME CARRIES THE ZONE (3.99.0). A message is read wherever the
+    // reader is, so "6-7:30 pm" is a question and "6-7:30 pm PT" is an answer.
+    // Any clock in either part not followed by the zone fails, which is what a
+    // builder that forgot the style prints. And the event HAS a time, so a
+    // message that shows none at all has not passed this, it has dodged it.
+    if ( preg_match_all( '/\b\d{1,2}(?::\d{2})?(?:\x{2013}\d{1,2}(?::\d{2})?)? (?:am|pm)\b(?! PT)/u', $html . "\n" . $text, $bare ) ) {
+        $fails[] = "$name: a time with no zone: " . implode( ', ', array_unique( $bare[0] ) );
+    }
+    if ( ! preg_match( '/\d (?:am|pm) PT/', $text ) ) {
+        $fails[] = "$name: the event has a time and the plain text shows no zoned clock";
     }
 
     // NO EM DASHES, ANYWHERE, INCLUDING HERE.

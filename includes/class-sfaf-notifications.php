@@ -259,7 +259,7 @@ class SFAF_Notifications {
         return array(
             'title'    => get_the_title( $event_id ),
             'date'     => sfaf_ap_date( $date, 'full' ),
-            'time'     => sfaf_ap_time_range( $start, $end ),
+            'time'     => sfaf_ap_time_range( $start, $end, 'zone' ),
             'location' => $location,
             'url'      => (string) get_permalink( $event_id ),
         );

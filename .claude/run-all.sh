@@ -96,6 +96,9 @@ echo
 # the source and believing it.
 echo "=== the updater ==="
 run "updater --self-test" php .claude/updater-test.php --self-test
+# The zone sweep reads every call to the range formatter with the tokenizer;
+# its self-test proves it tells mail from a page, including a by-ref function.
+run "email-zone --self-test" php .claude/email-zone-test.php --self-test
 
 echo
 # JAVASCRIPT SCOPE. portal.js is four top-level IIFEs and a helper declared in

@@ -1347,7 +1347,7 @@ class SFAF_Request {
         $rows = array(
             'Event'     => $c['title'],
             'Date'      => sfaf_ap_date( $c['date'], 'full' ),
-            'Time'      => sfaf_ap_time_range( $c['start'], $c['end'] ),
+            'Time'      => sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ),
             'Repeats'   => self::repeat_phrase( $c ),
             'Requested by' => $c['name'] . ' (' . $email . ')',
         );
@@ -1363,7 +1363,7 @@ class SFAF_Request {
 
         $text = $c['name'] . " has asked for an event to be added.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
-            . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n\n"
+            . sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ) . "\n\n"
             . "Requested by: " . $c['name'] . ' (' . $email . ")\n\n"
             . "The queue: " . $queue . "\nThis one: " . $edit;
 
@@ -1398,7 +1398,7 @@ class SFAF_Request {
         $rows = array(
             'Event'    => $c['title'],
             'Date'     => sfaf_ap_date( $c['date'], 'full' ),
-            'Time'     => sfaf_ap_time_range( $c['start'], $c['end'] ),
+            'Time'     => sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ),
             'Repeats'  => self::repeat_phrase( $c ),
             'Where'    => $c['venue'] ? SFAF_Venues::display( $c['venue'] ) : $c['venue_other'],
             'RSVP'     => $c['rsvp'] ? ( $c['capacity'] > 0 ? 'Yes, ' . $c['capacity'] . ' places' : 'Yes, no limit on places' ) : 'No',
@@ -1412,7 +1412,7 @@ class SFAF_Request {
 
         $text = "Thanks, that is with the team.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
-            . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n\n"
+            . sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ) . "\n\n"
             . "The MarCom team will look at it. Nothing else happens automatically.";
 
         SFAF_Email::send( $email, 'We have your event request', SFAF_Email::shell( 'Your event request', $html ), $text );

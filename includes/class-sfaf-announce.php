@@ -230,11 +230,21 @@ class SFAF_Announce {
             $start = (string) get_post_meta( $id, '_uc_start_time', true );
             $end   = (string) get_post_meta( $id, '_uc_end_time', true );
             $when  = sfaf_ap_date( $date, 'full' );
-            $clock = sfaf_ap_time_range( $start, $end );
+            $clock = sfaf_ap_time_range( $start, $end, 'zone' );
 
             if ( 'changed' === $type && ! empty( $changes_by_event[ $id ] ) ) {
                 $bits = array();
                 foreach ( $changes_by_event[ $id ] as $label => $pair ) {
+                    /* The pair is the phrase each time was SHOWN as, which the
+                     * page gives without a zone; this is mail, so it gets one.
+                     * "not set" is not a time and stays as it is. */
+                    if ( 'Time' === $label ) {
+                        foreach ( array( 'from', 'to' ) as $end ) {
+                            if ( 'not set' !== $pair[ $end ] ) {
+                                $pair[ $end ] = sfaf_ap_zoned( $pair[ $end ] );
+                            }
+                        }
+                    }
                     $bits[] = strtolower( $label ) . ' ' . $pair['from'] . ' to ' . $pair['to'];
                 }
                 $value = implode( '; ', $bits );

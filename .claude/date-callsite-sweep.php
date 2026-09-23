@@ -31,7 +31,7 @@ $root = dirname( __DIR__ );
 /* The formatter itself, and this checker. A format string inside sfaf_ap_date()
    is the definition, not a call site. */
 $allow_files = array(
-    'includes/sfaf-template-functions.php' => array( 'sfaf_ap_date', 'sfaf_ap_datetime', 'sfaf_ap_time', 'sfaf_ap_time_range', 'sfaf_ap_date_range' ),
+    'includes/sfaf-template-functions.php' => array( 'sfaf_ap_date', 'sfaf_ap_datetime', 'sfaf_ap_time', 'sfaf_ap_time_range', 'sfaf_ap_time_zone', 'sfaf_ap_zoned', 'sfaf_ap_date_range' ),
 );
 
 /* Format characters that put words or ordinals in front of a person: the two

@@ -1120,7 +1120,7 @@ class SFAF_Submit {
             'Event'    => $c['title'],
             'Calendar' => self::series_name( $series ),
             'Date'     => sfaf_ap_date( $c['date'], 'full' ),
-            'Time'     => sfaf_ap_time_range( $c['start'], $c['end'] ),
+            'Time'     => sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ),
             'Where'    => $c['location'],
         );
         $cost_words = self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' );
@@ -1163,7 +1163,7 @@ class SFAF_Submit {
 
         $text = 'A member of the public submitted an event to the ' . self::series_name( $series ) . " calendar.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
-            . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n"
+            . sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ) . "\n"
             . $c['location'] . "\n\n"
             . 'Submitted by: ' . $c['submitter_name'] . ' (' . $c['submitter_email'] . ")\n\n"
             . 'The queue: ' . $queue . "\nThis one: " . $edit;
@@ -1197,7 +1197,7 @@ class SFAF_Submit {
             'Event'    => $c['title'],
             'Calendar' => self::series_name( $series ),
             'Date'     => sfaf_ap_date( $c['date'], 'full' ),
-            'Time'     => sfaf_ap_time_range( $c['start'], $c['end'] ),
+            'Time'     => sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ),
             'Where'    => $c['location'],
         );
         $cost_words = self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' );
@@ -1221,7 +1221,7 @@ class SFAF_Submit {
 
         $text = "Thanks, we have it.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
-            . sfaf_ap_time_range( $c['start'], $c['end'] ) . "\n"
+            . sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ) . "\n"
             . $c['location'] . "\n\n"
             . 'Somebody reviews every submission before it goes on the calendar. '
             . 'Your name and email are not shown there.';

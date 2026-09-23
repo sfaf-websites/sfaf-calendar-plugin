@@ -1306,7 +1306,7 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     $end_raw    = (string) get_post_meta( $event_id, '_uc_end_time', true );
     $start_fmt  = sfaf_ap_time( $start_raw );
     $end_fmt    = sfaf_ap_time( $end_raw );
-    $time_range = sfaf_ap_time_range( $start_raw, $end_raw );
+    $time_range = sfaf_ap_time_range( $start_raw, $end_raw, 'zone' );
 
     // The cancel link is a whole sentence, not a bare URL, so a template can
     // drop it in without having to word it — and it collapses to nothing for a
@@ -3225,32 +3225,88 @@ function sfaf_normalize_time_post( $names = array( 'start_time', 'end_time', 'uc
  *   11 am and 1 pm     ->  "11 am-1 pm"    (different, so both are said)
  *   6 pm and nothing   ->  "6 pm"
  *
+ * THE 'zone' STYLE IS FOR MAIL (3.99.0): "12–2 pm PT". A page is read on the
+ * calendar it belongs to, and the calendar is in one place; an email is read
+ * wherever the reader is, sometimes days later and three hours away. Every
+ * message the plugin sends asks for this style, and nothing else does: the
+ * event page, the cards and the .ics are unchanged. The zone comes from
+ * sfaf_ap_time_zone(), never from the call site.
+ *
  * @param string $start
  * @param string $end
+ * @param string $style '' or 'zone'.
  * @return string
  */
-function sfaf_ap_time_range( $start, $end = '' ) {
+function sfaf_ap_time_range( $start, $end = '', $style = '' ) {
     $start = trim( (string) $start );
     $end   = trim( (string) $end );
     if ( '' === $start ) {
         return '';
     }
-    if ( '' === $end ) {
-        return sfaf_ap_time( $start );
-    }
 
-    $sts = strtotime( $start );
-    $ets = strtotime( $end );
+    $clock = '';
+    $sts   = strtotime( $start );
+    $ets   = ( '' === $end ) ? false : strtotime( $end );
     if ( false === $sts || false === $ets ) {
-        return sfaf_ap_time( $start );
+        $clock = sfaf_ap_time( $start );
+    } else {
+        $dash = "\xE2\x80\x93"; // en dash, U+2013
+        $same = ( date_i18n( 'A', $sts ) === date_i18n( 'A', $ets ) );
+
+        // The rule is "it's OK to omit the FIRST mention", so the meridiem is
+        // dropped from the start and kept on the end.
+        $clock = sfaf_ap_time( $start, ! $same ) . $dash . sfaf_ap_time( $end );
     }
 
-    $dash = "\xE2\x80\x93"; // en dash, U+2013
-    $same = ( date_i18n( 'A', $sts ) === date_i18n( 'A', $ets ) );
+    return ( 'zone' === $style ) ? sfaf_ap_zoned( $clock ) : $clock;
+}
 
-    // The rule is "it's OK to omit the FIRST mention", so the meridiem is
-    // dropped from the start and kept on the end.
-    return sfaf_ap_time( $start, ! $same ) . $dash . sfaf_ap_time( $end );
+/**
+ * A clock already formatted by sfaf_ap_time_range(), with the site's zone
+ * after it: "12–2 pm" becomes "12–2 pm PT". Empty stays empty.
+ *
+ * SEPARATE FROM THE RANGE BECAUSE ONE MESSAGE HAS ONLY THE FORMATTED STRING.
+ * The "this event has moved" email reports what the time WAS, and that is kept
+ * as the phrase it was shown as (SFAF_Portal::movable_facts()), not as the raw
+ * times. The zone is added by this function there too, so no call site ever
+ * writes one.
+ *
+ * @param string $clock
+ * @return string
+ */
+function sfaf_ap_zoned( $clock ) {
+    $clock = trim( (string) $clock );
+    $zone  = sfaf_ap_time_zone();
+    return ( '' === $clock || '' === $zone ) ? $clock : $clock . ' ' . $zone;
+}
+
+/**
+ * The site's time zone as AP writes it after a time: "PT", "ET".
+ *
+ * THE GENERIC NAME, NOT THE SEASONAL ONE. "PDT" is right in August and wrong in
+ * December, and a message about a December event can be sent in August. "PT"
+ * is right all year, which is why AP prefers it when the date is not the point.
+ *
+ * A zone outside the United States keeps its own abbreviation where PHP has
+ * one. A zone PHP can only give as an offset ("+05") says nothing a reader can
+ * use, so it gives '' and the time is shown without one rather than with that.
+ *
+ * @return string
+ */
+function sfaf_ap_time_zone() {
+    $abbr = strtoupper( trim( (string) date_i18n( 'T' ) ) );
+    $generic = array(
+        'EST'  => 'ET', 'EDT'  => 'ET',
+        'CST'  => 'CT', 'CDT'  => 'CT',
+        'MST'  => 'MT', 'MDT'  => 'MT',
+        'PST'  => 'PT', 'PDT'  => 'PT',
+        'AKST' => 'AKT', 'AKDT' => 'AKT',
+        'HST'  => 'HT', 'HDT'  => 'HT',
+    );
+    if ( isset( $generic[ $abbr ] ) ) {
+        return $generic[ $abbr ];
+    }
+    return preg_match( '/^[A-Z]{2,5}$/', $abbr ) ? $abbr : '';
 }
 
 /**

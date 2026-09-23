@@ -365,7 +365,7 @@ class SFAF_Submissions {
             $rows['Date'] = sfaf_ap_date( $date, 'full' );
         }
         if ( '' !== $start ) {
-            $rows['Time'] = sfaf_ap_time_range( $start, $end );
+            $rows['Time'] = sfaf_ap_time_range( $start, $end, 'zone' );
         }
 
         $html = SFAF_Email::heading( 'Your event is on the calendar' )
