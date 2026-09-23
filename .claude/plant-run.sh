@@ -12,14 +12,15 @@ caught=0; missed=0; unplanted=0
 restore() { git checkout -- includes public 2>/dev/null; }
 trap restore EXIT
 
-try() { # plant-name, label, check-script
+try() { # plant-name, label, check-script, [arguments for the check]
   local plant="$1" label="$2" check="$3"
+  shift 3
   restore
   if ! php .claude/plant-one.php "$plant" >/dev/null 2>&1; then
     printf 'NOT PLANTED  %-42s (the planter could not apply it)\n' "$label"
     unplanted=$((unplanted+1)); return
   fi
-  if php "$check" >/dev/null 2>&1; then
+  if php "$check" "$@" >/dev/null 2>&1; then
     printf 'MISSED       %-42s\n' "$label"
     missed=$((missed+1))
   else
@@ -72,6 +73,16 @@ try grid-draws-head "the combined grid draws its own head" .claude/combined-outc
 try range-line-back "the range line comes back"        .claude/combined-outcome-test.php
 try series-order    "the series ordering fault returns" .claude/series-control-test.php
 try series-multi    "the series control goes multi-select" .claude/series-control-test.php
+# 3.99.0. The two browser ones take --run, or the page is only written.
+try req-unmarked    "a required field has no mark"      .claude/required-marks-live.php --run
+try req-optional-marked "an optional field is marked"   .claude/required-marks-live.php --run
+try req-mark-stuck  "a conditional mark never leaves"   .claude/required-marks-live.php --run
+try req-validator-ignores-list "the validator stops reading the list" .claude/submissions-test.php
+try publish-no-category "a publish goes out with no category" .claude/publish-gate-test.php
+try draft-refused   "a draft is refused for a missing description" .claude/publish-gate-test.php
+try email-no-zone-site "one email time has no zone"     .claude/email-zone-test.php
+try email-no-zone-formatter "the formatter drops the zone" .claude/email-render-test.php
+try email-no-zone-formatter "the formatter drops the zone: sweep" .claude/email-zone-test.php
 
 restore
 echo "-------------------------------------------"

@@ -272,6 +272,47 @@ $edits = array(
     'organizer-save' => array( $P,
         "wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );",
         "if ( ! empty( \$_POST['organizer_new'] ) ) { \$orgs[] = (int) SFAF_Organizers::save( 0, \$_POST['organizer_new'] ); }\n            wp_set_object_terms( \$event_id, \$orgs, 'uc_organizer' );" ),
+    /* ---- 3.99.0: required marks, the publish gate, the zone in email. ---- */
+
+    /* A required field loses its mark: the community form's event name. */
+    'req-unmarked' => array( 'includes/class-sfaf-submit.php',
+        "<span class=\"uc-field-label\">Event name<?php echo \$mark( 'title' ); ?></span>",
+        "<span class=\"uc-field-label\">Event name</span>" ),
+
+    /* An optional field gains one, typed onto the label: City. */
+    'req-optional-marked' => array( 'includes/class-sfaf-submit.php',
+        "<span class=\"uc-field-label\">City</span>",
+        "<span class=\"uc-field-label\">City<span class=\"uc-req\" aria-hidden=\"true\">*</span></span>" ),
+
+    /* A conditional mark that never leaves: the engine stops hiding. */
+    'req-mark-stuck' => array( 'public/js/portal.js',
+        "                        m.hidden = !on;",
+        "                        m.hidden = false;" ),
+
+    /* The validator stops reading the list, so a marked field is not refused. */
+    'req-validator-ignores-list' => array( 'includes/class-sfaf-submit.php',
+        "SFAF_Submissions::required_errors( self::required_fields(), self::required_values( \$clean ) ),",
+        "array(),"),
+
+    /* A publish goes through with no category. */
+    'publish-no-category' => array( 'includes/class-sfaf-portal.php',
+        "            \$filled['category'] = ! empty( \$cats );",
+        "            \$filled['category'] = true;" ),
+
+    /* A draft is refused for what it is missing. */
+    'draft-refused' => array( 'includes/class-sfaf-organizers.php',
+        "        return ( 'publish' === \$status ) ? 'hold' : 'ok';\n    }",
+        "        return ( 'publish' === \$status ) ? 'hold' : 'refuse';\n    }" ),
+
+    /* One email call site forgets the zone: the first match is the staff alert. */
+    'email-no-zone-site' => array( 'includes/class-sfaf-submit.php',
+        "            'Time'     => sfaf_ap_time_range( \$c['start'], \$c['end'], 'zone' ),\n            'Where'",
+        "            'Time'     => sfaf_ap_time_range( \$c['start'], \$c['end'] ),\n            'Where'" ),
+
+    /* The formatter ignores the style, so no email carries a zone. */
+    'email-no-zone-formatter' => array( 'includes/sfaf-template-functions.php',
+        "    return ( 'zone' === \$style ) ? sfaf_ap_zoned( \$clock ) : \$clock;",
+        "    return \$clock;" ),
 );
 
 if ( 'off-ladder' === $which ) {
