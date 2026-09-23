@@ -3,13 +3,13 @@
 # Requires a clean tree: restores with git checkout between plants.
 cd "$(dirname "$0")/.." || exit 1
 
-if [ -n "$(git status --porcelain includes public)" ]; then
-  echo "REFUSING: includes/ or public/ has uncommitted changes. Commit first."
+if [ -n "$(git status --porcelain includes public admin)" ]; then
+  echo "REFUSING: includes/, public/ or admin/ has uncommitted changes. Commit first."
   exit 2
 fi
 
 caught=0; missed=0; unplanted=0
-restore() { git checkout -- includes public 2>/dev/null; }
+restore() { git checkout -- includes public admin 2>/dev/null; }
 trap restore EXIT
 
 try() { # plant-name, label, check-script, [arguments for the check]
