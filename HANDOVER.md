@@ -4,24 +4,21 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-23, at 3.100.0, released.
+**Last updated:** 2026-09-23, at 3.100.1, released.
 
 ---
 
 ## What shipped last
 
 **3.100.0** puts an **EveryAction panel** on Settings & Integrations: the hub
-credentials, **Test connection** and a **Tracker probe**. No import. `PROJECT.md` 3.
-**3.99.0** is three pieces. **Both public forms mark every field they refuse
-without**, from one list per form that the validator also reads; conditional
-marks move live. **The editor publishes only a complete event**: a publish
-missing any of eight fields is saved as a draft and one message names them all;
-a draft needs only a title; a live event is saved as it is. **Every time in
-every email says "PT".** `PROJECT.md` 1 and 4.
-**3.98.1** (a category pill reloaded the embed page) was built and never
-released on its own; it ships inside 3.99.0. **3.98.0**: the editor's button
-rows, the time controls, the video box. **3.96.0 is the big one**: hybrid
-events, the event video, pictures inside descriptions.
+credentials, **Test connection** and a **Tracker probe**. No import. **3.100.1**:
+its "HTTP 422" is the hub not recognising the **API key**, reproduced with curl;
+the request was never the problem. `PROJECT.md` 3.
+**3.99.0**: both public forms mark every required field from the validator's
+own list; **the editor publishes only a complete event** (a draft needs only a
+title, a live event is saved as it is); every email time says "PT".
+`PROJECT.md` 1 and 4. **3.98.1** shipped inside 3.99.0. **3.96.0 is the big
+one**: hybrid events, the event video, pictures inside descriptions.
 **`readme.txt` is the changelog** and has the reasoning for all of it.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** The tick is locked off,
@@ -122,9 +119,9 @@ targets. Assume everything else unverified.
   defaults both ON for new and newly switched events only. `TESTING.md` 1.157.
 - **EveryAction: THE CREDENTIAL QUESTION MOVES INTO THE APP (3.100.0).** Type
   the hub credentials into Settings & Integrations and press **Test
-  connection**: the hub answers in its own words. Twice from here it said
-  "Login id or Password is Incorrect"; an account with no SSO is the likely
-  need, with Val. When it connects, the **Tracker probe** is the sample. **Two
+  connection**: the hub answers in its own words. From the site it said
+  **HTTP 422, an API key it does not recognise**: that key is the next
+  question for Val, before any password or SSO question. When it connects, the **Tracker probe** is the sample. **Two
   programs are one Saturday event under two names.** `PROJECT.md` 3 and 8.
 
 **Named in a brief and designed nowhere yet**, so this is the only record:

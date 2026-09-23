@@ -4241,6 +4241,31 @@ credential reached the screen, the status option or PHP's log.
 `everyaction-live.php` runs the real panel and `admin/js/everyaction.js` in
 Chrome, answering each press with the real handler's payload.
 
+**THE LOGIN'S 422 IS THE KEY, NOT THE SHAPE (3.100.1).** The panel reported
+"Login failed: HTTP 422." and the brief read it as a malformed request. It was
+reproduced against the real hub with placeholder credentials before anything
+changed, and **the documented request, sent by curl with curl's headers, got the
+same 422**, with a plain-text body of "ok". So did an empty `{}`, and so did
+the request carrying WordPress 7.1.2's exact headers. The same request with the
+real key was answered 200 with ms_errors ("Login id or Password is Incorrect")
+on 2026-09-23. **The hub answers 422 "ok" to a key it does not recognise, before
+it reads the username or the password**, so a placeholder can never reach the
+structured answer and cannot prove the shape. What the hub does to other
+shapes, for the record: no `.json` suffix is 400 "Please post a valid data
+structure", a form-encoded body or an empty key is a 500, a GET is 401.
+
+**The plugin's bytes were checked, not assumed.** `login()` was run through
+WordPress core's own `WP_Http` and Requests, downloaded, against a local echo
+server: the 144-byte body is identical to curl's, and the only header
+differences are the three WordPress always sends (`User-Agent`,
+`Accept-Encoding`, `Connection: Close`), which the replay showed the hub
+ignores. Two things changed anyway: the JSON keeps a slash in a base64 password
+as a slash, so the bytes are a hand-written body's, and a hub address typed with
+a path is cut to its origin, so `/api/api/login.json` cannot happen.
+`everyaction-test.php` asserts the exact request as bytes. **Any failure now
+gives the status and then what the hub said**, and a login 422 says to check the
+key.
+
 ### Pardot / Salesforce, pending
 
 Events carry `_uc_pardot_campaigns`, a multi-select of campaign IDs, and there
@@ -6503,6 +6528,9 @@ half hour. For hourly data that is fine, and no special handling is needed.
 > is deleted: the plugin is the only home for these credentials. The two failed
 > attempts below stand as the record; the second was repeated on 2026-09-23 with
 > a new account and got the same answer, "Login id or Password is Incorrect".
+> **From the site, the panel's first answer was HTTP 422 (3.100.1): the hub not
+> recognising the API key.** §3 has the reproduction. The key is the next thing
+> to settle with Val.
 > **Do not build the adapter until a probe has returned rows.**
 
 **THE PUBLIC LIST HAS BEEN READ, 2026-09-21. THE TRACKER HAS NOT.** The two

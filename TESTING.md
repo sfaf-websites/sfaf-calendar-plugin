@@ -2854,19 +2854,22 @@ real client. `.claude/email-zone-test.php` proves every mail call site asks
 for the zone and `email-render-test.php` renders the notifications; neither
 sends anything.
 
-### 2.18 Test connection against the real hub (3.100.0)
+### 2.27 Test connection against the real hub (3.100.0)
 
 With the account Val provides saved in the EveryAction panel, press **Test
 connection**. Either "Connected. Tracker reachable, N rows." or a failure that
 names the step and quotes the hub, such as "Login failed: Login id or Password is
 Incorrect." **Report the exact sentence back**: it is the answer to the
-credential question, in the hub's words.
+credential question, in the hub's words. **"HTTP 422, and the hub said "ok""
+means the hub does not recognise the API key** (3.100.1): check the key with Val
+before anything else, because the username and password are not read at all
+until the key is accepted.
 
 **Why it needs real conditions:** the real hub and a real account. Every answer
 the panel can give has been played against a model of the hub; which one the
 real hub gives is the thing still unknown.
 
-### 2.19 Run the tracker probe and keep what it prints (3.100.0)
+### 2.28 Run the tracker probe and keep what it prints (3.100.0)
 
 Once Test connection says Connected, press **Probe tracker**. Copy the whole body
 from the box and save it outside the repository. That body is the sample

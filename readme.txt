@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.100.0
+Stable tag: 3.100.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.100.1 =
+
+**EveryAction's "Login failed: HTTP 422." is the hub not recognising the API key. The request was never the problem, and the panel now says what the hub said.**
+
+**REPRODUCED BEFORE ANYTHING CHANGED.** The report read the 422 as a malformed request, because a curl from Mark's laptop had reached the handler. Against the real hub with placeholder credentials, the documented request sent by curl, with curl's own headers, is answered **422 with a plain-text body of "ok"**. So is an empty `{}`. So is the same request carrying WordPress's exact headers. With the real key, the same request was answered 200 with "Login id or Password is Incorrect" on 2026-09-23. The hub answers 422 to a key it does not recognise, before it reads the username or the password. **A placeholder can never reach the structured answer**, so it cannot prove the request's shape, and the next question for Val is the key itself.
+
+**THE PLUGIN'S BYTES WERE CHECKED, NOT ASSUMED.** The login was run through WordPress core's own HTTP layer, downloaded from wordpress.org, against a local server that records what it receives. The 144-byte body is identical to curl's. The headers differ only in the three WordPress always sends, `User-Agent`, `Accept-Encoding` and `Connection: Close`, and replaying those at the hub changed nothing.
+
+**TWO THINGS TIGHTENED ANYWAY.** The JSON now keeps a slash in the base64 password as a slash rather than `\/`, so the bytes are a hand-written body's, not merely equivalent to one. And a hub address typed with a path, `https://hub.sfaf.org/api/` or the login URL itself, is cut to its origin, so the login cannot go to `/api/api/login.json`.
+
+**EVERY FAILURE NOW SAYS WHAT THE HUB SAID.** "HTTP 422" alone left nobody able to tell what the hub had not liked. A failure gives the status and then the hub's message: a JSON message where there is one, a short plain-text body as it came, or that it sent a web page. A login 422 adds "check the key". Credentials are scrubbed out of all of it, as before.
+
+**THE EXACT REQUEST IS CHECKED.** `everyaction-test.php` asserts the login as bytes: a POST to `{hub}/api/login.json`, exactly two headers, and a JSON string body of `ms_request.user` with the three fields in order, the password base64 of the stored value, untrimmed. It also plays the answers the real hub gave: 422 "ok", a 500, a 400 in plain words, and a web page. Planting a form-encoded body and a missing `ms_request` wrapper each fails it.
 
 = 3.100.0 =
 
