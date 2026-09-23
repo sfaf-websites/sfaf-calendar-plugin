@@ -4,25 +4,22 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-22, at 3.98.1, released.
+**Last updated:** 2026-09-23, at 3.99.0, released.
 
 ---
 
 ## What shipped last
 
-**3.98.1** is one fault, live on sfaf.org since 3.85.0: a category pill filtered
-the embedded list and then reloaded the page on top of it, because a `<button>`
-with no `type` is a submit button and 3.85.0 put a GET form round the bar.
-`PROJECT.md` 1 has the shape.
-
-**3.98.0** is nine pieces: the RSVP format question is the calendar's pick-one
-control, capacity is one row, an existing event's buttons are Delete / Cancel
-event / Save changes, the video box appears only where it can act and its
-preview is live, an empty description falls back to the series', all twelve time
-controls are an hour list beside a minute list, and the meeting link goes out by
-default. **3.97.3** got that link to a hybrid event's online registrant at all,
-broken since 3.96.0. **3.96.0 is the big one**: hybrid events end to end, the
-event video, pictures inside descriptions.
+**3.99.0** is three pieces. **Both public forms mark every field they refuse
+without**, from one list per form that the validator also reads; conditional
+marks move live. **The editor publishes only a complete event**: a publish
+missing any of eight fields is saved as a draft and one message names them all;
+a draft needs only a title; a live event is saved as it is. **Every time in
+every email says "PT".** `PROJECT.md` 1 and 4.
+**3.98.1** (a category pill reloaded the embed page) was built and never
+released on its own; it ships inside 3.99.0. **3.98.0**: the editor's button
+rows, the time controls, the video box. **3.96.0 is the big one**: hybrid
+events, the event video, pictures inside descriptions.
 **`readme.txt` is the changelog** and has the reasoning for all of it.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** The tick is locked off,
@@ -97,7 +94,7 @@ event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 187 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 192 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.
@@ -111,8 +108,10 @@ targets. Assume everything else unverified.
   "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.
 - **Español as a category** gives its colour and icon to every event it is on,
   because it sorts first. The rule working.
-- **The community form's age options and two email fields**, and what the
-  public forms require.
+- **The community form's age options and two email fields.** What the public
+  forms require is settled: unchanged, now shown (3.99.0).
+- **Whether Approve and bulk publish should hold an incomplete event** as the
+  editor now does. They set the status their own way. `PROJECT.md` 1.
 - **222 published event addresses die with The Events Calendar.** A redirect
   table from the export is cheapest.
 - **Four things the calendar publicly asserts that are untrue** (`SFAF_Seo`).

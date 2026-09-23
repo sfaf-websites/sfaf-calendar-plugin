@@ -878,6 +878,21 @@ curve's square. Two pixels is a coincidence, not a clearance. Bottom padding is
 > thing to check is whether it is about the element they are looking at.** All
 > three fixes were correct about the component they measured.
 
+### The required mark is an asterisk in the label's own ink (3.99.0)
+
+`.uc-req`: an asterisk after the label, `color: inherit`, `font-weight:
+inherit`, a 0.2em gap. **Never red.** Red is what an error says, and a required
+field is not an error; a red mark on an empty form reads as a form that is
+already wrong. The mark is decoded by one line at the top of the form, "Fields
+marked * are required." ("... required to publish." on the editor), which is
+what makes it information rather than decoration: the test in "No color a reader
+cannot decode" applied to a glyph.
+
+It is `aria-hidden`. A screen reader hears `required` from the control, or
+"(required)" from a legend where the controls cannot carry it, and a spoken
+"star" adds nothing. The mark is drawn from the form's required list, never
+typed onto a label; `PROJECT.md` 1 has the lists.
+
 ## 5. CSS discipline
 
 Six separate defects where a rule was correct and never reached the screen.

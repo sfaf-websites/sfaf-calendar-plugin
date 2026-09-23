@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 187 items.** Quick 158, needs real conditions 26, blocked on other
+**Outstanding: 192 items.** Quick 162, needs real conditions 27, blocked on other
 people 3.
 
 ---
@@ -2401,6 +2401,53 @@ applied.
 by asking the form for it, which is the right question but is not the same thing
 as a browser with scripting genuinely off rendering the page that comes back.
 
+### 1.162 The asterisks on both public forms, on the real pages (3.99.0)
+
+Open the community form for any series, and a staff request link. Every field
+the form refuses without has an asterisk after its label, in the label's own
+colour, and nothing else has one. On the community form: choose **Something
+else** under Cost and "What it costs" gains a mark; choose Free and it goes.
+Tick **Use my name and email** and the contact marks go with the fields. Pick a
+venue and **Street address** loses its mark. The top of each form says "Fields
+marked * are required."
+
+**Why it needs a person:** `.claude/required-marks-live.php` renders these
+forms in a miniature WordPress with no theme, no TinyMCE and no second plugin on
+the page. The real pages have all three.
+
+### 1.163 A screen reader on the description box (3.99.0)
+
+With NVDA or VoiceOver, tab into the **Description** editor on either public
+form. It should be announced as required. Then tab to **Who is putting this
+on?** on the request form: the group should be announced with "(required)".
+
+**Why it needs a person:** the description is a TinyMCE editor, and the
+announcement comes from portal.js copying aria-required onto the editor's own
+body once it starts. TinyMCE does not run in the headless check.
+
+### 1.164 Publish a new event that is missing a category (3.99.0)
+
+In caladmin, **New Event**: fill in everything except the category and press
+**Publish**. The event is saved as a draft and the message reads "Saved, and
+not published. Add a category, then publish." Tick a category, press Publish,
+and it goes out. Then make another with **only a title** and press **Save
+draft**: it saves, with no message about anything missing. Every field the
+publish needs has an asterisk, and the top of the form says "Fields marked *
+are required to publish."
+
+**Why it needs a person:** `.claude/publish-gate-test.php` runs the real save
+in a miniature WordPress; the redirect, the flash on the real screen and the
+real button row are not in it.
+
+### 1.165 Save an already-published event that has no category (3.99.0)
+
+Find a published event with no category or no organizer (the 3.85.0 "hundred"
+are the likeliest). Change one word of its description and press **Save
+changes**. It must **stay published**, with the ordinary "Event saved."
+
+**Why it needs a person:** the rule is that a publish is held, not that a live
+event is taken down, and only the real data has live events missing these.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -2780,6 +2827,19 @@ the whole event's. That sentence was built in 3.96.0 and was dead until now.
 cron against a real event on a real day. Step 3 is the one nothing else covers:
 the reminder's recipient list is a database query, and whether it carries the
 format through to the message can only be settled by a message arriving.
+
+### 2.17 Every time in a real email says the zone (3.99.0)
+
+Register for an event, submit the community form, and send a staff request, and
+read the mail each produces in a real inbox. Every time reads like "6–7:30 pm
+PT". Then move an event that has a registration by an hour, and tell people:
+the change email reads "time 6–7 pm PT to 7–8 pm PT". **The event page, the
+cards and the calendar file show no zone**, as before.
+
+**Why it needs real conditions:** real mail, sent by the real site, read in a
+real client. `.claude/email-zone-test.php` proves every mail call site asks
+for the zone and `email-render-test.php` renders the notifications; neither
+sends anything.
 
 ## 3. Blocked on other people
 

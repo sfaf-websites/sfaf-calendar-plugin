@@ -2541,6 +2541,81 @@ fault but it was one edit away from being the next one.
 **The three shapes are named in the engine's own comment**, between the markers
 `.claude/completeness-test.php` slices it from. Keep the markers.
 
+### What is required, and where the mark comes from (3.99.0)
+
+**Each public form has ONE list of what it requires**, and everything reads it:
+`SFAF_Request::required_fields()` and `SFAF_Submit::required_fields()`. The
+validator refuses from it, the asterisks and the `required` and aria-required
+attributes are drawn from it, and `initRequiredMarks()` in portal.js re-reads
+the conditional entries as somebody answers. A mark typed onto a label would be
+a second answer to "what is required", free to disagree with the first. The
+machinery is in `SFAF_Submissions`: `required_errors()`, `required_mark()`,
+`required_attr()`, `required_payload()`.
+
+**An entry is keyed by the error key the form already used**, and holds the
+message, the `inputs` (name attributes; answered when ANY has a value, which is
+how "an email or a phone number" is one requirement), a `when` (input =>
+value, all of which must hold) and a `carry`:
+
+- `required` for a control that can take the attribute;
+- `aria` for one that cannot: **the rich text description**, because TinyMCE
+  writes the textarea back only at submit, after the browser has validated, so
+  a `required` one blocks the form with nothing on screen; and **each half of
+  an either-or pair**, because `required` on both would demand both;
+- `legend` for a group of tick boxes, which can carry neither, so the legend
+  says "(required)" in words.
+
+**What is required did not change when the lists were written.** 12,000
+generated submissions produced the same refusals, key and message, from the old
+validators and the new ones. The checks left inline in `validate()` are about
+FORM (a date that has passed, an address that is not one), and they replace
+"missing" for the same field because they are the more specific thing to say.
+
+> **"0" IS AN ANSWER.** The first draft counted "0" as empty everywhere, because
+> it is the venue select's "enter it by hand", and a description of "0" was
+> refused where it had always been accepted. Only the venue means nothing by
+> it, and `SFAF_Submit::required_values()` says so for that field alone.
+
+**The request form's organizer entry exists only when there are organizers to
+tick**, the $offered rule from the other side. The one-field link request page
+is not given the line or a mark: it has one field.
+
+**THE EDITOR PUBLISHES ONLY A COMPLETE EVENT.** `SFAF_Sources::publish_fields()`
+is the list: title, date, start time, end time, an organizer, a category, a
+description, and a location, which is a venue, an address, or the online tick
+(hybrid counts). It sits beside `completeness_fields()` and is not part of it:
+that one is "what did this PLATFORM leave for a manager", empty for a hand-made
+event, and the import warning is unchanged.
+
+- **Asked before anything is written**, by `publish_missing_from_post()`,
+  because the answer decides the status the event is written WITH, and
+  publishing then unpublishing would send mail and generate a series. Each field
+  is read from the POST when the form showed it and the platform does not own
+  it, and from storage otherwise.
+- **`SFAF_Organizers::requirement()` is the one verdict**, extended rather than
+  joined by a second check. It holds a publish for anything missing, refuses
+  only the organizer case it always refused (unticking every organizer on an
+  event that had some), and keeps the direction rule: **an event already
+  published is saved as it is**, exactly as one of the hundred always was.
+- **Held means saved as a draft** (or left at the status it had, for a pending
+  event), with one flash naming every missing field: "Saved, and not published.
+  Add a category and a description, then publish." The keys ride the redirect
+  as `needs` and only keys the list knows are printed.
+- **A draft needs only a title**, and the title field's own `required` is what
+  says so; the editor uses the attribute nowhere else, because the browser would
+  refuse a draft. A save that arrives with no title anyway is still stored as
+  "(untitled event)", as it always was.
+
+**What the gate does not cover.** It is the editor's save. The pending queue's
+Approve, its manager panel's Publish, bulk publish on the events list and on the
+series schedule each set the status by their own route and are not held by it.
+
+**Tested in a miniature WordPress.** `.claude/wp-kit.php` loads the whole
+plugin against an in-memory store, so `publish-gate-test.php` runs the real
+save and asserts the status it wrote, and `required-marks-live.php` renders all
+three forms in Chrome and compares every mark and attribute, through nine states
+of the community form, with the server's own reading of the same list.
+
 ### There is no way to save a half-finished imported event
 
 **An omission, not a decision, and it is worth knowing before somebody loses an
@@ -4204,6 +4279,23 @@ HTTP API, because PHPMailer is never constructed and the action never fires.
 Postmark is the second kind. The hook is attached anyway because it is correct
 wherever PHPMailer is involved, and whether a `text/plain` part actually arrives
 is visible in a delivered message and nowhere else.
+
+### Every time in a message carries the zone (3.99.0)
+
+**"12–2 pm PT".** A page is read on the calendar it belongs to; a message is
+read wherever the reader is, sometimes days later. `sfaf_ap_time_range()` takes
+a `'zone'` style, `sfaf_ap_time_zone()` gives the GENERIC AP name (PT all year,
+because "PDT" is wrong for a December event mailed in August), and
+`sfaf_ap_zoned()` adds it to a phrase already formatted, which is what the
+change email has for the time an event WAS. A zone PHP can only give as an
+offset gives nothing rather than "+05".
+
+**Every mail builder asks for it, and nothing else does.** The event page, the
+cards and the calendar file are unchanged. `.claude/email-zone-test.php` reads
+every call to the range formatter with the tokenizer: a function that builds
+mail must pass the style and one that does not must not. `{event_time_range}`
+in a manager's own template carries it; `{event_time}` and `{event_end_time}`
+are single times and do not.
 
 ### Icons in email are rasters, and never a platform mark
 
@@ -5884,6 +5976,25 @@ new panel rendered its empty state beside a sidebar listing the same events.
 **A feature added to a mode has to be walked against every decision that mode
 already made**, and there were three: the toggle, the pagination and the render
 mode.
+
+### Compare the old rule with the new one on generated input (3.99.0)
+
+**Moving the public forms' required checks into one list was meant to change
+nothing**, and every test passed on the first draft, which had changed
+something: it treated "0" as empty in every field, because that is what the
+venue select means by it, so a description of "0" was refused. The tests were
+written against the new list, so they agreed with it.
+
+**What found it was running the OLD validator beside the new one.** The old
+class, taken from the commit before the change, renamed and evaluated, then
+both handed thousands of generated submissions, half of them valid ones with one
+or two fields broken, and every refusal compared. The first run was 12,000
+cases, nearly all failing somewhere, and matched perfectly; it took the valid
+half to reach the one path that differed.
+
+> **A refactor that is meant to change nothing has an oracle: the code it
+> replaced.** Use it before trusting a suite written for the replacement, and
+> generate cases near "valid", because that is where a single rule shows.
 
 ### A default nobody chose is invisible to every question about what is there (3.98.1)
 

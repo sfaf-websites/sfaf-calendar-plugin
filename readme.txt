@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.98.1
+Stable tag: 3.99.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.99.0 =
+
+**Both public forms mark every field they will not take without, the editor publishes only a complete event, and every time in every email says which zone it is in.**
+
+**A. THE MARK IS DRAWN FROM THE LIST THE VALIDATOR READS.** Nothing on either public form said what was required. Some fields carried the browser's `required`, which a person only discovers by being refused, and the description, the organizer ticks, the "something else" boxes and the contact details carried nothing at all. Each form now has one list, `required_fields()`, and the validator refuses from it, the asterisks are drawn from it, and the `required` and aria-required attributes come from it. A mark typed onto a label would be a second answer to the same question, free to disagree with the first.
+
+**NOTHING ABOUT WHAT IS REQUIRED CHANGED.** The old validators, taken from the commit before, and the new ones were each handed 12,000 generated submissions, half of them valid ones with a field or two broken, and every refusal compared, key and message. They match. The first draft did not: it treated "0" as empty everywhere, because that is what the venue select means by it, and refused a description of "0". The tests written for the new list agreed with it; the old code was the oracle that did not.
+
+**CONDITIONAL MARKS MOVE AS SOMEBODY ANSWERS.** "What it costs" is marked once "Something else" is chosen, the contact fields while "use my details" is off, the street address while no venue is picked, and the organizer ticks only when there are organizers to tick. A small engine in portal.js re-reads those entries on every change, and with script off each mark stays as the server drew it for the answers on the page.
+
+**EVERY REQUIRED CONTROL ANNOUNCES ITSELF.** `required` where the control can carry it. aria-required on the description, because TinyMCE writes its textarea back only after the browser has validated, so `required` there blocks the form with nothing on screen; and on each half of "an email or a phone number", because `required` on both would demand both. The organizer group's legend says "(required)" in words. The asterisk itself is aria-hidden and in the label's own colour, never red: red is what an error says, and the line at the top, "Fields marked * are required.", is what makes the glyph mean something.
+
+**B. THE EDITOR PUBLISHES ONLY A COMPLETE EVENT.** A publish now needs a title, a date, a start and an end time, an organizer, a category, a description, and a venue, an address or the online tick, with hybrid counting as both. Pressing Publish with any of them missing saves the event as a draft and one message names every one: "Saved, and not published. Add a category and a description, then publish." Save draft needs only a title.
+
+**IT IS THE ORGANIZER CHECK, EXTENDED.** `SFAF_Organizers::requirement()` was already the one place that held a publish back for a missing organizer, and it now holds it for anything on `SFAF_Sources::publish_fields()`. It keeps its direction rule: an event that is already published is saved as it is, so fixing a typo on one of the live events without a category does not take it down. The only refusal is still the one it always made, unticking every organizer on an event that had some.
+
+**ASKED BEFORE ANYTHING IS WRITTEN.** The answer decides the status the event is written with, and publishing then unpublishing would send mail and generate a series. Each field is read from the form where the form showed it and the platform does not own it, and from the stored event otherwise.
+
+**THE EDITOR USES `required` ON THE TITLE ALONE**, because the title is the one thing a draft needs and the browser would refuse a draft for anything else. The completeness warning on imported events is unchanged.
+
+**NOT COVERED, AND SAID SO.** The pending queue's Approve, its manager panel's Publish and bulk publish on the events list and the series schedule set the status their own way and are not held by this. Whether they should be is in the handover as a decision.
+
+**C. "12–2 PM PT".** A page is read on the calendar it belongs to; a message is read wherever the reader is. `sfaf_ap_time_range()` takes a `'zone'` style and `sfaf_ap_time_zone()` gives the generic AP name, PT all year, because "PDT" is wrong for a December event mailed in August. Every mail builder asks for it and nothing else does: the event page, the cards and the calendar file are unchanged, and the date sweep stays at zero. The change email reports the time an event WAS as the phrase it was shown as, so `sfaf_ap_zoned()` adds the zone there rather than a call site.
+
+**THE CHECKS.** `.claude/wp-kit.php` is a miniature WordPress that loads the whole plugin against an in-memory store. `publish-gate-test.php` runs the real editor save in it, fourteen ways, and asserts the status it wrote. `required-marks-live.php` renders both public forms and the editor in Chrome and compares every mark and attribute, through nine states of the community form, with the server's own reading of the same list, so the engine is not graded against itself. `email-zone-test.php` reads every call to the range formatter with the tokenizer; `email-render-test.php` now runs the real formatter instead of a retyped copy and fails any clock without its zone. Nine planted faults, from a missing mark to a draft refused to a dropped zone, are each caught.
 
 = 3.98.1 =
 
