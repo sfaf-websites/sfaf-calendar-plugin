@@ -4192,6 +4192,55 @@ is Eventbrite's record rather than a term in our Organizers taxonomy, and
 guessing a mapping between the two would create duplicate terms nobody asked
 for.
 
+### EveryAction, a panel with no importer (3.100.0)
+
+**Settings & Integrations carries an EveryAction panel beside GoFundMe Pro and
+Eventbrite**: hub address (default `https://hub.sfaf.org`), API key, username,
+password, tracker ID (default `162570`), **Test connection**, and a **Tracker
+probe**. **There is no adapter, no fetch on the runner, no pending-queue entry
+and no Auto-Import**, and the panel says so in one line. `SFAF_EveryAction` is
+the class; it is not registered as a source.
+
+> **The brief said "in Automation".** The GoFundMe Pro and Eventbrite panels are
+> on Settings & Integrations (`uc-settings`), and Automation is the runner's
+> screen, so the panel went beside them, which is what "mirror it in shape and
+> placement" asked.
+
+**The flow is the documented session login**, §8 has why: `POST
+{hub}/api/login.json` with `ms_request.user` carrying `api_key`, `username`
+and the password base64-encoded; `ms_response.user._token` becomes the
+`_felix_session_id` cookie; `GET /api/v2/trackers/{id}/fetch-all-entries`;
+`POST /api/logout`, which runs whenever a login succeeded, whatever the read did.
+
+- **Test connection** reads with `limit=1` and says "Connected. Tracker
+  reachable, N rows." when the hub states a total, or how many came back and
+  that it gave none. **A failure names the step** (login, tracker read, logout)
+  and gives **the hub's own message** when the body has one, else the HTTP
+  status, else that the hub could not be reached. **A 200 that is a web page is
+  a failure**: the hub's browser surface answers 200 `text/html` with a sign-in
+  page, and that must never read as a successful fetch. Credentials that pass
+  are stored, like GoFundMe Pro's, so a test without Save loses nothing.
+- **The probe** logs in, reads the first page with no limit, logs out, and
+  prints the body as sent, with the row count and the path it was counted at.
+  **It writes nothing, the status option included.** Nothing about the
+  tracker's shape is assumed anywhere: `count_rows()` takes a stated total
+  first and otherwise counts the first list of records it finds, and says where.
+- **The outcome is kept in `sfaf_everyaction_status`**, disposable, like
+  `sfaf_gfmp_token`.
+
+**No credential leaves the class.** Every message and every body shown goes
+through `scrub()`, which replaces the API key, the password in both forms and the
+session token with their length, for a hub that echoes one. Nothing logs. The
+screen never renders the key or the password, only whether one is stored.
+
+**Tested against a model hub.** `.claude/everyaction-hub.php` stands in for
+`wp_remote_*`; `everyaction-test.php` plays success, no total, four login
+failures, three tracker failures, a failed logout, an echoing hub and nothing
+stored, and checks the requests the hub received, what was stored, and that no
+credential reached the screen, the status option or PHP's log.
+`everyaction-live.php` runs the real panel and `admin/js/everyaction.js` in
+Chrome, answering each press with the real handler's payload.
+
 ### Pardot / Salesforce, pending
 
 Events carry `_uc_pardot_campaigns`, a multi-select of campaign IDs, and there
@@ -4213,14 +4262,16 @@ in play.
 `sfaf_credentials` is autoloaded and never rewritten wholesale: `set()` is a
 read-modify-write of a single key. Adding a credential means adding it to
 `SFAF_Credentials::keys()` with a type (`secret`, write-only and blank-means-
-keep; `url`; or `text`) and reading it with `SFAF_Credentials::get()`.
+keep; `password`, the same but stored exactly as typed and read with `raw()`,
+because `get()` trims and a password can end in a space; `url`; or `text`) and
+reading it with `SFAF_Credentials::get()`.
 `absorb()` runs at the top of `sanitize_settings()` and pulls credentials out of
 the submission without adding them to the returned array. `migrate()` runs on
 `init` and copies anything still in `uc_settings` across without overwriting, so
 it is idempotent and self-healing.
 
 Connection *state* is separate again: `sfaf_gfmp_token`,
-`sfaf_eventbrite_status`. Those are disposable and are meant to be.
+`sfaf_eventbrite_status`, `sfaf_everyaction_status`. Those are disposable and are meant to be.
 
 **Nothing in the plugin deletes credentials, and it must stay that way.** There
 is no `uninstall.php` and no `register_uninstall_hook`. Deactivation only
@@ -6443,6 +6494,16 @@ half hour. For hourly data that is fine, and no special handling is needed.
 2. **Does Val's job write atomically** (temp name, then rename), so a fetch
    cannot catch a half-written file? A partial JSON read on the hour is a
    plausible and silent failure mode.
+
+> **THE TRACKER READ NOW HAPPENS THROUGH THE PROBE (3.100.0).** The panel on
+> Settings & Integrations holds the credentials (§3) and runs the documented
+> login from the site itself. **Test connection answers the credential question
+> in the hub's own words; the Tracker probe prints the first page as sent**,
+> which is the sample this entry has been waiting for. `private/everyaction.json`
+> is deleted: the plugin is the only home for these credentials. The two failed
+> attempts below stand as the record; the second was repeated on 2026-09-23 with
+> a new account and got the same answer, "Login id or Password is Incorrect".
+> **Do not build the adapter until a probe has returned rows.**
 
 **THE PUBLIC LIST HAS BEEN READ, 2026-09-21. THE TRACKER HAS NOT.** The two
 reads are separate and only one is done. The open questions above still stand,

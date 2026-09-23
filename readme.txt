@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.99.0
+Stable tag: 3.100.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,26 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.100.0 =
+
+**An EveryAction panel on Settings & Integrations, with Test connection and a tracker probe. Nothing is imported.**
+
+**THE CREDENTIAL QUESTION MOVES INTO THE APP.** Two reads from the build machine were refused by the hub with "Login id or Password is Incorrect", and every attempt meant a credential file passed around by hand. The panel puts the hub address, the API key, the username, the password and the tracker ID where the other platforms' credentials already live, and a button that asks the hub, from the site, in the documented way. What comes back is the hub's own sentence. `private/everyaction.json` is deleted: the plugin is the only home for these now.
+
+**THE FLOW IS THE DOCUMENTED ONE.** `POST {hub}/api/login.json` with `ms_request.user` carrying the API key, the username and the password base64-encoded; the session token from `ms_response.user._token` goes back as the `_felix_session_id` cookie on the tracker read and on `POST /api/logout`, which runs whenever the login succeeded, whatever the read did.
+
+**TEST CONNECTION SAYS WHICH STEP FAILED, IN THE HUB'S WORDS.** "Connected. Tracker reachable, N rows." on success. Otherwise the login, the tracker read or the logout, and the hub's message when its reply carries one, the HTTP status when it does not, or that the hub could not be reached. **A 200 that is a web page is a failure**: the hub's browser surface answers 200 with a Microsoft sign-in page, and an importer that took that as data would store a login page and report success.
+
+**THE PROBE SHOWS THE TRACKER'S SHAPE.** It logs in, reads the first page, logs out, and prints the body as the hub sent it, with the row count and where in the reply it was counted. It imports nothing and writes nothing. The adapter waits for what it prints.
+
+**NO CREDENTIAL REACHES THE SCREEN OR A LOG.** The key and the password are write-only fields: the screen says whether one is stored, never what it is. Every message and every body shown is scrubbed of the key, the password in both forms and the session token, in case the hub ever echoes one, and nothing is logged.
+
+**THE PASSWORD IS STORED AS TYPED.** It is its own credential type: write-only like a secret, but kept byte for byte, because the trim a secret gets would change a password that ends in a space. It is base64-encoded only inside the login call. A value stored encoded is one some later reader encodes a second time.
+
+**IT IS ON SETTINGS & INTEGRATIONS, NOT AUTOMATION.** The brief said Automation and asked for the panel to mirror GoFundMe Pro in placement; the GoFundMe Pro and Eventbrite panels are on Settings & Integrations, and Automation is the runner's screen, so it went beside them.
+
+**THE CHECKS.** `.claude/everyaction-hub.php` is a model of the hub. `everyaction-test.php` plays success, no total, four login failures, three tracker failures, a failed logout, a hub that echoes the credentials and nothing stored, and checks the exact requests the hub received, what was stored, and that no credential reached the screen, the status option or PHP's error log; a settings save with the fields blank or absent keeps every credential. `everyaction-live.php` runs the real panel and its script in Chrome, each press answered by the real handler's payload. Seven planted faults, from a key rendered on screen to a password stored encoded to a save dropping the key, are each caught.
 
 = 3.99.0 =
 

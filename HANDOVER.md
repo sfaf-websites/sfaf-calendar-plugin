@@ -4,12 +4,14 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-23, at 3.99.0, released.
+**Last updated:** 2026-09-23, at 3.100.0, released.
 
 ---
 
 ## What shipped last
 
+**3.100.0** puts an **EveryAction panel** on Settings & Integrations: the hub
+credentials, **Test connection** and a **Tracker probe**. No import. `PROJECT.md` 3.
 **3.99.0** is three pieces. **Both public forms mark every field they refuse
 without**, from one list per form that the validator also reads; conditional
 marks move live. **The editor publishes only a complete event**: a publish
@@ -94,7 +96,7 @@ events, the event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 192 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 195 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.
@@ -118,14 +120,12 @@ targets. Assume everything else unverified.
   First: a cancelled event says `EventScheduled`. `PROJECT.md` 3.
 - **Existing online and hybrid events with a link delivery tick OFF.** 3.98.0
   defaults both ON for new and newly switched events only. `TESTING.md` 1.157.
-- **EveryAction: STILL NO SAMPLE, AND THE LOGIN FLOW IS ALSO REFUSED.** The
-  documented session login was run with the right body and answers
-  `AUTHENTICATION_ERROR`, base64 or plain alike. `hub.sfaf.org` signs people
-  in through Microsoft Entra, and an Entra account has no MangoApps password
-  for `/api/login.json` to check. **THE PLUGIN NEEDS A SERVICE ACCOUNT**, not
-  a person's login, which dies with their password and carries their whole
-  hub access; that is with Val. Also **two programs are the same Saturday
-  event under two names**, which would import twice. Both in `PROJECT.md` 8.
+- **EveryAction: THE CREDENTIAL QUESTION MOVES INTO THE APP (3.100.0).** Type
+  the hub credentials into Settings & Integrations and press **Test
+  connection**: the hub answers in its own words. Twice from here it said
+  "Login id or Password is Incorrect"; an account with no SSO is the likely
+  need, with Val. When it connects, the **Tracker probe** is the sample. **Two
+  programs are one Saturday event under two names.** `PROJECT.md` 3 and 8.
 
 **Named in a brief and designed nowhere yet**, so this is the only record:
 

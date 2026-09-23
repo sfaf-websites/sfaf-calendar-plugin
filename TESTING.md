@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 192 items.** Quick 162, needs real conditions 27, blocked on other
+**Outstanding: 195 items.** Quick 163, needs real conditions 29, blocked on other
 people 3.
 
 ---
@@ -2448,6 +2448,19 @@ changes**. It must **stay published**, with the ordinary "Event saved."
 **Why it needs a person:** the rule is that a publish is held, not that a live
 event is taken down, and only the real data has live events missing these.
 
+### 1.166 The EveryAction panel keeps what it is given (3.100.0)
+
+On **Settings & Integrations**, open **EveryAction**. Type the API key, the
+username and the password, and press **Save Changes**. After the reload the key
+and password boxes are empty and say "Saved. Leave blank to keep it"; the hub
+address reads `https://hub.sfaf.org` and the tracker ID `162570`. Change the
+**Events per page** setting, save again, and press **Test connection**: it must
+still log in with what was saved, not report the key or password missing.
+
+**Why it needs a person:** the checks here save through the real
+`sanitize_settings()` in a miniature WordPress; the real options screen, its
+redirect and a real database are not in it.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -2840,6 +2853,28 @@ cards and the calendar file show no zone**, as before.
 real client. `.claude/email-zone-test.php` proves every mail call site asks
 for the zone and `email-render-test.php` renders the notifications; neither
 sends anything.
+
+### 2.18 Test connection against the real hub (3.100.0)
+
+With the account Val provides saved in the EveryAction panel, press **Test
+connection**. Either "Connected. Tracker reachable, N rows." or a failure that
+names the step and quotes the hub, such as "Login failed: Login id or Password is
+Incorrect." **Report the exact sentence back**: it is the answer to the
+credential question, in the hub's words.
+
+**Why it needs real conditions:** the real hub and a real account. Every answer
+the panel can give has been played against a model of the hub; which one the
+real hub gives is the thing still unknown.
+
+### 2.19 Run the tracker probe and keep what it prints (3.100.0)
+
+Once Test connection says Connected, press **Probe tracker**. Copy the whole body
+from the box and save it outside the repository. That body is the sample
+`PROJECT.md` 8 has been waiting for, and the adapter is built from it and nothing
+else.
+
+**Why it needs real conditions:** it only exists once the credential works, and
+it carries real people's event data, so it is kept out of the repository.
 
 ## 3. Blocked on other people
 
