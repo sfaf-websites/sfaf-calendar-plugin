@@ -126,10 +126,60 @@ ea_case( 'login without a token', array( 'login' => hub_resp( 200, '{"ms_respons
 ea_case( 'hub unreachable', array( 'login' => function () { return new WP_Error( 'http_request_failed', 'cURL error 6: Could not resolve host: hub.example.org' ); } ),
     'Login failed: could not reach the hub (cURL error 6: Could not resolve host: hub.example.org).', false, array( $LOGIN ) );
 
+/* The two answers the real hub gave well-formed and malformed logins with
+ * placeholder credentials in 3.100.1, word for word: 422 "ok" for a key it does
+ * not recognise, and a 500 for an empty key. The body follows the status. */
+ea_case( 'unknown key, 422', array( 'login' => hub_resp( 422, 'ok', 'text/plain; charset=utf-8' ) ),
+    'Login failed: HTTP 422, and the hub said "ok". The hub answers this way when it does not recognise the API key: check the key.', false, array( $LOGIN ) );
+ea_case( 'hub crash, 500', array( 'login' => hub_resp( 500, '{"status":500,"error":"Internal Server Error"}' ) ),
+    'Login failed: HTTP 500, and the hub said "Internal Server Error".', false, array( $LOGIN ) );
+ea_case( 'a 400 with plain words', array( 'login' => hub_resp( 400, 'Please post a valid data structure', 'text/plain; charset=utf-8' ) ),
+    'Login failed: HTTP 400, and the hub said "Please post a valid data structure".', false, array( $LOGIN ) );
+ea_case( 'a 503 web page', array( 'login' => hub_resp( 503, '<html><body>Down</body></html>', 'text/html' ) ),
+    'Login failed: HTTP 503, and the hub sent a web page.', false, array( $LOGIN ) );
+ea_case( 'a 422 that echoes the key', array( 'login' => hub_resp( 422, 'bad key ' . KEY, 'text/plain' ) ),
+    'Login failed: HTTP 422, and the hub said "bad key [hidden, 40 characters]". The hub answers this way when it does not recognise the API key: check the key.', false, array( $LOGIN ) );
+
+/* ---- 3b. THE EXACT REQUEST (3.100.1). ----
+ *
+ * The one Mark's curl sent and the hub answered, byte for byte in everything
+ * but the values: POST to {hub}/api/login.json, two headers, and a JSON STRING
+ * body of ms_request.user with three fields in that order, the password base64
+ * of the stored value. A string, because WordPress sends a string as it is and
+ * form-encodes an array. Asserted as bytes, not as decoded JSON, because
+ * decoding forgives the differences this is here to catch. */
+function ea_login_sent( $hub_url, $pass ) {
+    $GLOBALS['kit_options'] = array();
+    update_option( SFAF_Credentials::OPTION, array(
+        'everyaction_hub_url' => $hub_url, 'everyaction_api_key' => KEY, 'everyaction_username' => USER,
+        'everyaction_password' => $pass, 'everyaction_tracker_id' => '162570',
+    ) );
+    $GLOBALS['hub'] = array( 'login' => hub_resp( 200, '{"ms_errors":{"error":{"message":"Login id or Password is Incorrect."}}}' ) );
+    ea_ajax( 'ajax_test' );
+    return $GLOBALS['hub_seen'][0];
+}
+$sent = ea_login_sent( 'https://hub.example.org', PASS );
+$want_body = '{"ms_request":{"user":{"api_key":"' . KEY . '","username":"' . USER . '","password":"' . base64_encode( PASS ) . '"}}}';
+ea( 'POST' === $sent['method'], 'the login is not a POST' );
+ea( 'https://hub.example.org/api/login.json' === $sent['url'], 'the login went to ' . $sent['url'] );
+ea( is_string( $sent['args']['body'] ), 'the login body is not a string, so WordPress would form-encode it' );
+ea( $want_body === $sent['args']['body'], 'the login body is not the documented one byte for byte: ' . str_replace( array( KEY, base64_encode( PASS ) ), array( '<key>', '<pass>' ), (string) ( is_string( $sent['args']['body'] ) ? $sent['args']['body'] : json_encode( $sent['args']['body'] ) ) ) );
+ea( array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ) === $sent['args']['headers'], 'the login headers are not exactly Content-Type and Accept, both application/json' );
+foreach ( array( 'https://hub.example.org/', 'https://hub.example.org/api/', 'https://hub.example.org/api/login.json', 'HTTPS://hub.example.org' ) as $typed ) {
+    $s2 = ea_login_sent( $typed, PASS );
+    ea( 'https://hub.example.org/api/login.json' === $s2['url'], 'a hub typed as ' . $typed . ' sent the login to ' . $s2['url'] );
+}
+/* A password whose base64 has a slash: the slash is sent as a slash. */
+$s3 = ea_login_sent( 'https://hub.example.org', '???' );
+ea( false !== strpos( (string) $s3['args']['body'], '"password":"Pz8/"' ), 'a slash in the base64 password was escaped: ' . $s3['args']['body'] );
+/* And a password with spaces at both ends reaches the body with them. */
+$s4 = ea_login_sent( 'https://hub.example.org', '  spaced  ' );
+ea( false !== strpos( (string) $s4['args']['body'], '"password":"' . base64_encode( '  spaced  ' ) . '"' ), 'the password was trimmed before it was encoded' );
+
 /* ---- 4. Every way the tracker read can fail, and the logout still happens. ---- */
 ea_ok_hub();
 $h = $GLOBALS['hub']; $h['tracker'] = hub_resp( 401, '{"ms_errors":{"error":{"message":"Unauthorized access"}}}' );
-ea_case( 'tracker refused', $h, 'Tracker read failed: Unauthorized access.', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
+ea_case( 'tracker refused', $h, 'Tracker read failed: HTTP 401, and the hub said "Unauthorized access".', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
 $h['tracker'] = hub_resp( 403, '' );
 ea_case( 'tracker 403', $h, 'Tracker read failed: HTTP 403.', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
 $h['tracker'] = hub_resp( 200, '<!DOCTYPE html><title>Sign in to your account</title>', 'text/html; charset=utf-8' );
@@ -220,8 +270,10 @@ if ( $fails ) {
     foreach ( $fails as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "against a model hub: success, no total, four login failures, three tracker failures, a failed logout,\n";
+echo "against a model hub: success, no total, nine login failures (the real hub's 422 and 500 among them),\n";
+echo "three tracker failures, a failed logout,\n";
 echo "an echoing hub and nothing stored each print the message they should, and call the hub as they should;\n";
 echo "the probe prints the body as sent and writes nothing; a settings save keeps every credential and\n";
-echo "stores the password as typed; and no credential reaches the screen, the status option or the log.\n";
+echo "stores the password as typed; and no credential reaches the screen, the status option or the log;\n";
+echo "and the login request is the documented one byte for byte: POST, two headers, a JSON string body.\n";
 exit( 0 );

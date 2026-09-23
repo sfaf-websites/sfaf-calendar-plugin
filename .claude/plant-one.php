@@ -345,6 +345,18 @@ $edits = array(
         "                if ( '' === trim( \$raw ) ) {\n                    continue;\n                }\n                \$value = \$raw;",
         "                \$value = \$raw;" ),
 
+    /* ---- 3.100.1: the login request, exactly. ---- */
+
+    /* The body goes as an array, which WordPress form-encodes. */
+    'ea-form-encoded' => array( 'includes/class-sfaf-everyaction.php',
+        '            \'body\'        => wp_json_encode( $body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),',
+        '            \'body\'        => $body,' ),
+
+    /* The ms_request wrapper is left off. */
+    'ea-no-wrapper' => array( 'includes/class-sfaf-everyaction.php',
+        '            \'body\'        => wp_json_encode( $body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),',
+        '            \'body\'        => wp_json_encode( $body[\'ms_request\'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),' ),
+
 );
 
 if ( 'off-ladder' === $which ) {

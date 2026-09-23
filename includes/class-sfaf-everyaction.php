@@ -57,8 +57,23 @@ class SFAF_EveryAction {
 
     /** The hub address, without a trailing slash. */
     public static function hub() {
-        $hub = SFAF_Credentials::get( 'everyaction_hub_url', self::DEFAULT_HUB );
-        return untrailingslashit( $hub );
+        return self::origin( SFAF_Credentials::get( 'everyaction_hub_url', self::DEFAULT_HUB ) );
+    }
+
+    /**
+     * The hub as scheme, host and port, and nothing after it (3.100.1).
+     *
+     * Every call appends its own path, so an address typed with one, such as
+     * `https://hub.sfaf.org/api/` or the login URL itself, would double it:
+     * `/api/api/login.json`. The hub is a host, so only the host is kept.
+     */
+    public static function origin( $url ) {
+        $url   = trim( (string) $url );
+        $parts = wp_parse_url( $url );
+        if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) {
+            return untrailingslashit( $url );
+        }
+        return strtolower( $parts['scheme'] ) . '://' . $parts['host'] . ( ! empty( $parts['port'] ) ? ':' . (int) $parts['port'] : '' );
     }
 
     public static function tracker_id() {
@@ -95,7 +110,7 @@ class SFAF_EveryAction {
             }
             $v = trim( $v );
             if ( '' !== $v ) {
-                $cfg[ $k ] = ( 'hub' === $k ) ? untrailingslashit( $v ) : $v;
+                $cfg[ $k ] = ( 'hub' === $k ) ? self::origin( $v ) : $v;
             }
         }
         return $cfg;
@@ -149,6 +164,11 @@ class SFAF_EveryAction {
         if ( ! is_array( $json ) ) {
             return '';
         }
+        /* {"status":500,"error":"Internal Server Error"}: the hub's own shape
+         * for a crash, with the words as a plain string. */
+        if ( isset( $json['error'] ) && is_string( $json['error'] ) && '' !== trim( $json['error'] ) ) {
+            return trim( $json['error'] );
+        }
         $found = '';
         $walk  = function ( $node ) use ( &$walk, &$found ) {
             if ( '' !== $found || ! is_array( $node ) ) {
@@ -197,10 +217,30 @@ class SFAF_EveryAction {
             return 'could not reach the hub (' . $r['net'] . ')';
         }
         $said = self::hub_message( $r['body'] );
-        if ( '' !== $said ) {
+
+        /* A 2xx that carries ms_errors is the hub's structured refusal, and
+         * its sentence is the whole answer: "Login id or Password is
+         * Incorrect." The status adds nothing. */
+        if ( $r['ok'] && '' !== $said ) {
             return $said;
         }
-        return 'HTTP ' . $r['status'];
+
+        /* ANY OTHER FAILURE GIVES THE STATUS, AND THEN WHAT THE HUB SAID
+         * (3.100.1). "HTTP 422" alone left nobody able to tell what the hub
+         * had not liked; the body is the only place that says. A JSON message
+         * first, then a short plain-text body as it came. A web page is named,
+         * not pasted. The caller scrubs credentials out of all of it. */
+        $out = 'HTTP ' . $r['status'];
+        if ( '' === $said ) {
+            $plain = trim( preg_replace( '/\s+/', ' ', (string) $r['body'] ) );
+            if ( '' !== $plain ) {
+                if ( false !== stripos( $r['type'], 'html' ) || '<' === substr( $plain, 0, 1 ) ) {
+                    return $out . ', and the hub sent a web page';
+                }
+                $said = ( strlen( $plain ) > 300 ) ? substr( $plain, 0, 300 ) . '...' : $plain;
+            }
+        }
+        return '' !== $said ? $out . ', and the hub said "' . $said . '"' : $out;
     }
 
     /**
@@ -220,11 +260,26 @@ class SFAF_EveryAction {
             'timeout'     => self::TIMEOUT,
             'redirection' => 0,
             'headers'     => array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
-            'body'        => wp_json_encode( $body ),
+            // A STRING, SO WORDPRESS SENDS IT AS IT IS. An array here is sent
+            // form-encoded, which is not the request the hub documents. The
+            // two flags make the bytes the ones a hand-written body has: a
+            // slash in the base64 password stays a slash rather than "\/",
+            // and a name stays as typed. Checked against WordPress 7.1.2's own
+            // HTTP layer and against curl in 3.100.1: the bodies match to the
+            // byte. See .claude/everyaction-test.php.
+            'body'        => wp_json_encode( $body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
         ) ) );
 
         if ( ! $r['ok'] || '' !== self::hub_message( $r['body'] ) ) {
-            return new WP_Error( 'sfaf_ea_login', self::why( $r ) );
+            $why = self::why( $r );
+            /* THE ONE STATUS THE HUB HAS BEEN SEEN TO GIVE A WELL-FORMED
+             * LOGIN (3.100.1): 422 with "ok", for an API key it does not
+             * recognise, whatever the username and password. With a key it
+             * knows, the same request is answered 200 with ms_errors. */
+            if ( 422 === $r['status'] ) {
+                $why = self::sentence( $why ) . ' The hub answers this way when it does not recognise the API key: check the key';
+            }
+            return new WP_Error( 'sfaf_ea_login', $why );
         }
         $json  = json_decode( $r['body'], true );
         $token = isset( $json['ms_response']['user']['_token'] ) ? (string) $json['ms_response']['user']['_token'] : '';
