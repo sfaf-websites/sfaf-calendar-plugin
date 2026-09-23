@@ -771,6 +771,175 @@ if ( $args['editor'] ) {
         echo '<span class="uc-field-error">' . esc_html( $message ) . '</span>';
     }
 
+    /* ---------------------------------------------------------------------
+     * REQUIRED FIELDS: ONE LIST PER FORM, READ BY EVERYTHING (3.99.0)
+     *
+     * SFAF_Request::required_fields() and SFAF_Submit::required_fields() are
+     * the lists. The validator refuses from them, the asterisks are drawn from
+     * them, the `required` and `aria-required` attributes come from them, and
+     * the browser re-reads them to move a conditional mark as somebody answers.
+     * A mark typed onto a label would be a second answer to "what is
+     * required", free to disagree with the first the day either changed.
+     *
+     * AN ENTRY, keyed by the error key the form already shows its message under:
+     *
+     *   'message'  what the refusal says.
+     *   'inputs'   `name` attributes, exactly as the form emits them. The field
+     *              is answered when ANY of them has a value, which is how
+     *              "an email or a phone number" is one requirement and not two.
+     *   'when'     input name => value, every one of which must hold for the
+     *              requirement to apply at all. '' means empty or unticked.
+     *   'carry'    'required'  the control takes the attribute itself;
+     *              'aria'      it cannot (a rich text box the browser could not
+     *                          focus, one of an either-or pair), so it is
+     *                          announced with aria-required instead;
+     *              'legend'    a group of tick boxes, which can carry neither,
+     *                          so the legend says it in words.
+     *
+     * VALUES ARE READ BY INPUT NAME. "0" IS AN ANSWER: a title or a description
+     * of "0" was accepted before this list existed and still is. The one place
+     * "0" means "nothing chosen" is the venue select, and the form's own
+     * required_values() says so for that field rather than this saying it for
+     * every field.
+     * ------------------------------------------------------------------- */
+
+    /** Whether a value counts as an answer. */
+    private static function req_filled( $value ) {
+        $value = trim( (string) $value );
+        return '' !== $value;
+    }
+
+    /**
+     * Whether an entry's conditions hold for these values.
+     *
+     * @param array $entry
+     * @param array $values input name => string
+     * @return bool
+     */
+    public static function required_applies( $entry, $values ) {
+        foreach ( (array) ( isset( $entry['when'] ) ? $entry['when'] : array() ) as $input => $want ) {
+            $have = isset( $values[ $input ] ) ? (string) $values[ $input ] : '';
+            if ( ! self::req_filled( $have ) ) {
+                $have = '';
+            }
+            if ( (string) $want !== $have ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The refusals a form's list makes of these values.
+     *
+     * @param array $fields A form's required_fields().
+     * @param array $values input name => string, from the form's required_values().
+     * @return array<string,string> error key => message
+     */
+    public static function required_errors( $fields, $values ) {
+        $errors = array();
+        foreach ( (array) $fields as $key => $entry ) {
+            if ( ! self::required_applies( $entry, $values ) ) {
+                continue;
+            }
+            $answered = false;
+            foreach ( (array) $entry['inputs'] as $input ) {
+                if ( self::req_filled( isset( $values[ $input ] ) ? $values[ $input ] : '' ) ) {
+                    $answered = true;
+                    break;
+                }
+            }
+            if ( ! $answered ) {
+                $errors[ $key ] = (string) $entry['message'];
+            }
+        }
+        return $errors;
+    }
+
+    /**
+     * Whether a field is on the list and applies right now. For controls that
+     * take a boolean rather than markup, such as sfaf_time_field().
+     */
+    public static function is_required( $fields, $key, $values = array() ) {
+        return isset( $fields[ $key ] ) && self::required_applies( $fields[ $key ], $values );
+    }
+
+    /**
+     * The asterisk after a label. Rendered for every conditional entry and
+     * hidden while its condition does not hold, so the browser only ever
+     * toggles it rather than creating it.
+     *
+     * aria-hidden, because the control or the legend says "required" to a
+     * screen reader already and a spoken "star" says nothing more.
+     */
+    public static function required_mark( $fields, $key, $values = array() ) {
+        if ( ! isset( $fields[ $key ] ) ) {
+            return '';
+        }
+        $on   = self::required_applies( $fields[ $key ], $values );
+        $said = ( 'legend' === self::req_carry( $fields[ $key ] ) )
+            ? '<span class="uc-visually-hidden" data-uc-req-said="' . esc_attr( $key ) . '"' . ( $on ? '' : ' hidden' ) . '> (required)</span>'
+            : '';
+        return '<span class="uc-req" data-uc-req-mark="' . esc_attr( $key ) . '" aria-hidden="true"' . ( $on ? '' : ' hidden' ) . '>*</span>' . $said;
+    }
+
+    /**
+     * The attribute a control takes: ` required`, ` aria-required="true"`, or
+     * nothing, as its entry says and as its condition stands.
+     *
+     * @param array  $fields
+     * @param string $key   The entry.
+     * @param array  $values
+     * @return string
+     */
+    public static function required_attr( $fields, $key, $values = array() ) {
+        if ( ! self::is_required( $fields, $key, $values ) ) {
+            return '';
+        }
+        switch ( self::req_carry( $fields[ $key ] ) ) {
+            case 'required':
+                return ' required';
+            case 'aria':
+                return ' aria-required="true"';
+        }
+        return '';
+    }
+
+    private static function req_carry( $entry ) {
+        return isset( $entry['carry'] ) ? (string) $entry['carry'] : 'required';
+    }
+
+    /** The one line at the top of the form. */
+    public static function required_note() {
+        echo '<p class="uc-hint uc-required-note">Fields marked * are required.</p>';
+    }
+
+    /**
+     * The list, handed to the browser for the entries that can change while
+     * somebody fills the form in: the conditional ones and the either-or ones.
+     * Messages are left out; the browser never refuses anything.
+     */
+    public static function required_payload( $fields ) {
+        $live = array();
+        foreach ( (array) $fields as $key => $entry ) {
+            if ( empty( $entry['when'] ) && count( (array) $entry['inputs'] ) < 2 ) {
+                continue;
+            }
+            $live[] = array(
+                'key'    => (string) $key,
+                'inputs' => array_values( (array) $entry['inputs'] ),
+                'when'   => isset( $entry['when'] ) ? (object) $entry['when'] : (object) array(),
+                'carry'  => self::req_carry( $entry ),
+            );
+        }
+        if ( empty( $live ) ) {
+            return;
+        }
+        echo '<script type="application/json" data-uc-required>'
+            . wp_json_encode( $live, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT )
+            . '</script>';
+    }
+
     /**
      * The picked picture, checked the way both forms have to check it.
      *

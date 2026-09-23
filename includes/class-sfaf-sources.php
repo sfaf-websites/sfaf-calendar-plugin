@@ -669,6 +669,41 @@ class SFAF_Sources {
     }
 
     /**
+     * WHAT AN EVENT NEEDS BEFORE THE EDITOR WILL PUBLISH IT (3.99.0).
+     *
+     * A second list beside completeness_fields(), not an extension of it,
+     * because the two answer different questions. That one is "what has this
+     * PLATFORM left for a manager to fill in", and it is empty for a hand-made
+     * event; this one is "what does ANY event need before it goes on the public
+     * calendar". The import warning stays exactly as it was.
+     *
+     * READ BY THREE THINGS: the save, which holds a publish back while any of
+     * these is missing (SFAF_Organizers::requirement()); the flash that names
+     * them; and the editor's asterisks. A draft needs only a title, and the
+     * title field's own `required` is what enforces that.
+     *
+     * A LOCATION IS A VENUE, AN ADDRESS, OR THE ONLINE TICK. Hybrid counts as
+     * both, because it is an online event that also has a room.
+     *
+     * The phrase is how field_phrase() names a key, so the order here is the
+     * order the flash lists them in.
+     *
+     * @return array<string,array{phrase:string}>
+     */
+    public static function publish_fields() {
+        return array(
+            'title'       => array( 'phrase' => 'a title' ),
+            'date'        => array( 'phrase' => 'a date' ),
+            'start_time'  => array( 'phrase' => 'a start time' ),
+            'end_time'    => array( 'phrase' => 'an end time' ),
+            'organizer'   => array( 'phrase' => 'an organizer' ),
+            'category'    => array( 'phrase' => 'a category' ),
+            'description' => array( 'phrase' => 'a description' ),
+            'location'    => array( 'phrase' => 'a location' ),
+        );
+    }
+
+    /**
      * The `$_POST` key a control name arrives under.
      *
      * One line, in one place, so nothing has to remember which way the
@@ -859,7 +894,9 @@ class SFAF_Sources {
     public static function field_phrase( $fields ) {
         // The wording comes off completeness_fields() rather than a second
         // list here, so the browser and the server name a field identically.
-        $words = self::completeness_fields();
+        // publish_fields() adds the two times, which only it names; where a
+        // key is in both, the two phrases are the same words.
+        $words = array_merge( self::publish_fields(), self::completeness_fields() );
 
         $out = array();
         foreach ( (array) $fields as $field ) {

@@ -139,10 +139,10 @@ class SFAF_Rich_Text {
      *                        lowercase letters, numbers and dashes only.
      * @param string $name    The POST field name.
      * @param string $content Stored value.
-     * @param array  $args    'rows', 'locked', 'aria_label'.
+     * @param array  $args    'rows', 'locked', 'aria_label', 'required'.
      */
     public static function render( $id, $name, $content, $args = array() ) {
-        $args = array_merge( array( 'rows' => 8, 'locked' => false, 'aria_label' => '' ), $args );
+        $args = array_merge( array( 'rows' => 8, 'locked' => false, 'aria_label' => '', 'required' => false ), $args );
 
         /*
          * A LOCKED FIELD IS A TEXTAREA, because a disabled TinyMCE is not a
@@ -166,6 +166,19 @@ class SFAF_Rich_Text {
             return;
         }
 
+        /*
+         * REQUIRED IS SAID WITH aria-required, NEVER WITH `required` (3.99.0).
+         * TinyMCE hides the textarea and writes the content back to it only
+         * when the form submits, which is AFTER the browser has validated. A
+         * `required` textarea is therefore empty and unfocusable at the moment
+         * it is checked, and the browser refuses the form with nothing on
+         * screen to say why. wp_editor() takes no attributes, so the one it
+         * prints is amended; portal.js copies it to the editor's own body once
+         * TinyMCE starts, which is the element a screen reader is actually in.
+         */
+        if ( $args['required'] ) {
+            ob_start();
+        }
         wp_editor( (string) $content, $id, array(
             'textarea_name' => $name,
             'textarea_rows' => (int) $args['rows'],
@@ -174,6 +187,9 @@ class SFAF_Rich_Text {
             'quicktags'     => false,
             'tinymce'       => self::settings(),
         ) );
+        if ( $args['required'] ) {
+            echo preg_replace( '/<textarea\b/', '<textarea aria-required="true"', (string) ob_get_clean(), 1 );
+        }
     }
 
     /**

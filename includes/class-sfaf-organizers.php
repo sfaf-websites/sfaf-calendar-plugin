@@ -266,22 +266,45 @@ class SFAF_Organizers {
      *             An event that had none and still has none is left alone at
      *             whatever status it already held.
      *
-     * @param int[]  $posted  Organizer ids this save is offering.
-     * @param int[]  $had     Organizer ids the event holds now. Empty for new.
-     * @param bool   $is_new
-     * @param string $status  The status this save would set.
-     * @param string $current The event's status before this save. '' for new.
+     * FROM 3.99.0 THE HOLD IS FOR EVERY FIELD A PUBLISH NEEDS, not only this
+     * one. SFAF_Sources::publish_fields() is the list, and `$missing` is what
+     * this save would leave empty from it. It is the SAME rule extended rather
+     * than a second check beside it, so there is one answer to "does this save
+     * publish", and the same direction applies to all of it: an event already
+     * published and missing a category is saved as it is, exactly as one of
+     * the hundred is. The refusal stays the organizer's alone, because it is
+     * the one field where a save can take away what was there.
+     *
+     * @param int[]|null $posted  Organizer ids this save is offering, or null
+     *                            when the form did not show the control and so
+     *                            does not speak for organizers at all.
+     * @param int[]      $had     Organizer ids the event holds now. Empty for new.
+     * @param bool       $is_new
+     * @param string     $status  The status this save would set.
+     * @param string     $current The event's status before this save. '' for new.
+     * @param string[]   $missing publish_fields() keys this save would leave
+     *                            empty. 'organizer' is added here when $posted
+     *                            is empty, so a caller cannot forget it.
      * @return string 'ok'|'refuse'|'hold'
      */
-    public static function requirement( $posted, $had, $is_new, $status, $current = '' ) {
-        $posted = array_values( array_filter( array_map( 'intval', (array) $posted ) ) );
-        if ( ! empty( $posted ) ) {
-            return 'ok';
+    public static function requirement( $posted, $had, $is_new, $status, $current = '', $missing = array() ) {
+        $missing = array_values( (array) $missing );
+
+        if ( null !== $posted ) {
+            $posted = array_values( array_filter( array_map( 'intval', (array) $posted ) ) );
+            if ( empty( $posted ) ) {
+                $had = array_values( array_filter( array_map( 'intval', (array) $had ) ) );
+                if ( ! empty( $had ) ) {
+                    return 'refuse';
+                }
+                if ( ! in_array( 'organizer', $missing, true ) ) {
+                    $missing[] = 'organizer';
+                }
+            }
         }
 
-        $had = array_values( array_filter( array_map( 'intval', (array) $had ) ) );
-        if ( ! empty( $had ) ) {
-            return 'refuse';
+        if ( empty( $missing ) ) {
+            return 'ok';
         }
 
         /* One of the hundred, saved as it is. Its status is not being raised,

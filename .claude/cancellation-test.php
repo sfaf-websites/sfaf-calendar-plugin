@@ -137,6 +137,10 @@ function sfaf_ap_time_range( $s, $e ) {
     $f = function ( $t ) { $ts = strtotime( '2026-01-01 ' . $t ); return $ts ? ltrim( date( 'g:i a', $ts ), '0' ) : ''; };
     return '' !== $e ? $f( $s ) . ' to ' . $f( $e ) : $f( $s );
 }
+/* 3.99.0: the change email zones the moved time through this. The zone is
+   the real formatter's answer for this site; which messages carry it is
+   email-zone-test.php's business, not this file's. */
+function sfaf_ap_zoned( $clock ) { return '' === (string) $clock ? '' : $clock . ' PT'; }
 function sfaf_ap_datetime( $ts, $f = '' ) { return gmdate( 'c', (int) $ts ); }
 function sfaf_event_location( $id ) { return (string) get_post_meta( $id, '_uc_location', true ); }
 function sfaf_google_calendar_url( $id ) { return 'https://calendar.google.com/calendar/render?e=' . (int) $id; }

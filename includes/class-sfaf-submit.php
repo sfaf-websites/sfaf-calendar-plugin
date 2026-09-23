@@ -426,6 +426,91 @@ class SFAF_Submit {
      * ================================================================== */
 
     /**
+     * WHAT THIS FORM REQUIRES, AS ONE LIST (3.99.0).
+     *
+     * validate() refuses from it and render_form() draws every asterisk and
+     * every `required` from it, so a field cannot be marked and optional, or
+     * required and unmarked. See SFAF_Submissions for what an entry holds.
+     *
+     * NOTHING ABOUT WHAT IS REQUIRED CHANGED WHEN THIS WAS WRITTEN. The
+     * messages are the ones validate() already gave, word for word.
+     *
+     * @return array<string,array>
+     */
+    public static function required_fields() {
+        return array(
+            'submitter_name'  => array( 'message' => 'Tell us your name, so we can get back to you.', 'inputs' => array( 'submitter_name' ) ),
+            'submitter_email' => array( 'message' => 'Give an email address we can reach you at.', 'inputs' => array( 'submitter_email[]' ) ),
+            'title'           => array( 'message' => 'The event needs a name.', 'inputs' => array( 'title' ) ),
+            'description'     => array( 'message' => 'Write a description. An event with none is blank on the calendar.', 'inputs' => array( 'description' ), 'carry' => 'aria' ),
+            'date'            => array( 'message' => 'Give the date, as a real calendar date.', 'inputs' => array( 'date' ) ),
+            'start_time'      => array( 'message' => 'Give a start time.', 'inputs' => array( 'start_time' ) ),
+            'end_time'        => array( 'message' => 'Give an end time.', 'inputs' => array( 'end_time' ) ),
+            'street'          => array(
+                'message' => 'Say where it happens, so people can get there. Pick a venue above, or give the street address.',
+                'inputs'  => array( 'street' ),
+                'when'    => array( 'venue' => '' ),
+            ),
+            'cost'            => array( 'message' => 'Say what it costs to come. Choose Free if there is no charge.', 'inputs' => array( 'cost' ) ),
+            'cost_other'      => array(
+                'message' => 'Say what it costs, or choose Free or Donation above.',
+                'inputs'  => array( 'cost_other' ),
+                'when'    => array( 'cost' => 'other' ),
+            ),
+            'age_other'       => array(
+                'message' => 'Say who can come, or choose one of the options above.',
+                'inputs'  => array( 'age_other' ),
+                'when'    => array( 'age_restriction' => 'other' ),
+            ),
+            'contact_name'    => array(
+                'message' => 'Give the name people should ask for.',
+                'inputs'  => array( 'contact_name' ),
+                'when'    => array( 'contact_same' => '' ),
+            ),
+            'contact_email'   => array(
+                'message' => 'Give an email address or a phone number, so people can ask about the event.',
+                'inputs'  => array( 'contact_email', 'contact_phone' ),
+                'when'    => array( 'contact_same' => '' ),
+                'carry'   => 'aria',
+            ),
+        );
+    }
+
+    /**
+     * The cleaned answers, by the input names required_fields() uses. The
+     * validator hands it what it cleaned; the form hands it what it is
+     * redisplaying, which is the same array.
+     *
+     * @param array $c
+     * @return array<string,string>
+     */
+    public static function required_values( $c ) {
+        $g = function ( $key ) use ( $c ) {
+            return isset( $c[ $key ] ) && is_scalar( $c[ $key ] ) ? trim( (string) $c[ $key ] ) : '';
+        };
+        return array(
+            'submitter_name'    => $g( 'submitter_name' ),
+            'submitter_email[]' => $g( 'submitter_email' ),
+            'title'             => $g( 'title' ),
+            'description'       => trim( wp_strip_all_tags( $g( 'description' ) ) ),
+            'date'              => $g( 'date' ),
+            'start_time'        => $g( 'start' ),
+            'end_time'          => $g( 'end' ),
+            // 0 is the select's "enter it by hand", which is no venue.
+            'venue'             => empty( $c['venue'] ) ? '' : $g( 'venue' ),
+            'street'            => $g( 'street' ),
+            'cost'              => $g( 'cost' ),
+            'cost_other'        => $g( 'cost_other' ),
+            'age_restriction'   => $g( 'age' ),
+            'age_other'         => $g( 'age_other' ),
+            'contact_same'      => empty( $c['contact_same'] ) ? '' : '1',
+            'contact_name'      => $g( 'contact_name' ),
+            'contact_email'     => $g( 'contact_email' ),
+            'contact_phone'     => $g( 'contact_phone' ),
+        );
+    }
+
+    /**
      * Everything from the browser, checked and reduced.
      *
      * NOTHING IS TRUSTED AND NOTHING IS OPTIONAL-BY-ACCIDENT. Every value is
@@ -450,11 +535,14 @@ class SFAF_Submit {
             );
         };
 
-        /* ---- Who is submitting. Internal, never shown publicly. ---- */
+        /* ---- Who is submitting. Internal, never shown publicly. ----
+         *
+         * WHAT IS REQUIRED IS NOT DECIDED IN THIS METHOD (3.99.0). It reads
+         * required_fields(), at the bottom, after everything is cleaned; the
+         * checks left inline here are about FORM (a date that has passed, an
+         * address that is not one), and they win over "missing" for the same
+         * field because they are the more specific thing to say. */
         $clean['submitter_name'] = $line( 'submitter_name', 120 );
-        if ( '' === $clean['submitter_name'] ) {
-            $errors['submitter_name'] = 'Tell us your name, so we can get back to you.';
-        }
 
         /*
          * UP TO MAX_EMAILS ADDRESSES, AND THE FIRST ONE IS THE SUBMITTER.
@@ -494,42 +582,26 @@ class SFAF_Submit {
         }
 
         $clean['submitter_email'] = isset( $clean['submitter_emails'][0] ) ? $clean['submitter_emails'][0] : '';
-        if ( '' === $clean['submitter_email'] ) {
-            $errors['submitter_email'] = 'Give an email address we can reach you at.';
-        } elseif ( $bad_email ) {
+        if ( '' !== $clean['submitter_email'] && $bad_email ) {
             $errors['submitter_email'] = 'One of those is not an email address. Check them and send again.';
         }
 
         /* ---- The event. ---- */
         $clean['title'] = $line( 'title', 200 );
-        if ( '' === $clean['title'] ) {
-            $errors['title'] = 'The event needs a name.';
-        }
 
         $clean['description'] = SFAF_Submissions::prose(
             isset( $post['description'] ) ? wp_unslash( $post['description'] ) : ''
         );
         $clean['description'] = SFAF_Request::cap( $clean['description'], 8000 );
-        if ( '' === trim( wp_strip_all_tags( $clean['description'] ) ) ) {
-            $errors['description'] = 'Write a description. An event with none is blank on the calendar.';
-        }
 
         /* ---- When. ---- */
         $clean['date'] = SFAF_Request::clean_date( isset( $post['date'] ) ? $post['date'] : '' );
-        if ( '' === $clean['date'] ) {
-            $errors['date'] = 'Give the date, as a real calendar date.';
-        } elseif ( $clean['date'] < current_time( 'Y-m-d' ) ) {
+        if ( '' !== $clean['date'] && $clean['date'] < current_time( 'Y-m-d' ) ) {
             $errors['date'] = 'That date has passed. Give the date the event actually happens.';
         }
 
         $clean['start'] = SFAF_Request::clean_time( isset( $post['start_time'] ) ? $post['start_time'] : '' );
         $clean['end']   = SFAF_Request::clean_time( isset( $post['end_time'] ) ? $post['end_time'] : '' );
-        if ( '' === $clean['start'] ) {
-            $errors['start_time'] = 'Give a start time.';
-        }
-        if ( '' === $clean['end'] ) {
-            $errors['end_time'] = 'Give an end time.';
-        }
         if ( '' !== $clean['start'] && '' !== $clean['end'] && $clean['end'] <= $clean['start'] ) {
             $errors['end_time'] = 'The end time needs to be after the start time.';
         }
@@ -577,9 +649,6 @@ class SFAF_Submit {
                 trim( $clean['state'] . ' ' . $clean['zip'] ),
             ) ) ) );
 
-        if ( ! $clean['venue'] && '' === $clean['street'] ) {
-            $errors['street'] = 'Say where it happens, so people can get there. Pick a venue above, or give the street address.';
-        }
 
         /* ---- Optional detail, as choices rather than open boxes. ---- */
         /*
@@ -593,18 +662,10 @@ class SFAF_Submit {
         $cost_key        = isset( $post['cost'] ) ? sanitize_key( wp_unslash( $post['cost'] ) ) : '';
         $clean['cost']   = array_key_exists( $cost_key, self::cost_options() ) ? $cost_key : '';
         $clean['cost_other'] = ( 'other' === $clean['cost'] ) ? $line( 'cost_other', 120 ) : '';
-        if ( '' === $clean['cost'] ) {
-            $errors['cost'] = 'Say what it costs to come. Choose Free if there is no charge.';
-        } elseif ( 'other' === $clean['cost'] && '' === $clean['cost_other'] ) {
-            $errors['cost_other'] = 'Say what it costs, or choose Free or Donation above.';
-        }
 
         $age_key       = isset( $post['age_restriction'] ) ? sanitize_key( wp_unslash( $post['age_restriction'] ) ) : '';
         $clean['age']  = array_key_exists( $age_key, self::age_options() ) ? $age_key : '';
         $clean['age_other'] = ( 'other' === $clean['age'] ) ? $line( 'age_other', 120 ) : '';
-        if ( 'other' === $clean['age'] && '' === $clean['age_other'] ) {
-            $errors['age_other'] = 'Say who can come, or choose one of the options above.';
-        }
 
         $clean['rsvp_url'] = SFAF_Submissions::url( isset( $post['rsvp_url'] ) ? wp_unslash( $post['rsvp_url'] ) : '' );
         if ( '' === $clean['rsvp_url'] && ! empty( $post['rsvp_url'] ) ) {
@@ -659,9 +720,6 @@ class SFAF_Submit {
              */
         } else {
             $clean['contact_name'] = $line( 'contact_name', 120 );
-            if ( '' === $clean['contact_name'] ) {
-                $errors['contact_name'] = 'Give the name people should ask for.';
-            }
 
             $c_email = isset( $post['contact_email'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $post['contact_email'] ) ) ) ) : '';
             $clean['contact_email'] = ( '' !== $c_email && is_email( $c_email ) ) ? $c_email : '';
@@ -670,10 +728,6 @@ class SFAF_Submit {
             }
 
             $clean['contact_phone'] = $line( 'contact_phone', 40 );
-
-            if ( '' === $clean['contact_email'] && '' === $clean['contact_phone'] && ! isset( $errors['contact_email'] ) ) {
-                $errors['contact_email'] = 'Give an email address or a phone number, so people can ask about the event.';
-            }
         }
 
         /*
@@ -710,6 +764,15 @@ class SFAF_Submit {
         $clean['notes'] = SFAF_Submissions::line(
             isset( $post['notes'] ) ? wp_unslash( $post['notes'] ) : '',
             2000
+        );
+
+        /* WHAT IS MISSING, FROM THE ONE LIST. array_merge() puts these first
+         * and lets any check above replace one for the same field: "that does
+         * not look like an email address" is the truer thing to say about a
+         * typed address than "give an email address". */
+        $errors = array_merge(
+            SFAF_Submissions::required_errors( self::required_fields(), self::required_values( $clean ) ),
+            $errors
         );
 
         return array( 'clean' => $clean, 'errors' => $errors );
@@ -1343,6 +1406,16 @@ class SFAF_Submit {
             return isset( $errors[ $key ] ) ? $errors[ $key ] : '';
         };
 
+        /* Every asterisk and every "required" below comes from here. */
+        $req      = self::required_fields();
+        $req_vals = self::required_values( $c );
+        $mark = function ( $key ) use ( $req, $req_vals ) {
+            return SFAF_Submissions::required_mark( $req, $key, $req_vals );
+        };
+        $attr = function ( $key ) use ( $req, $req_vals ) {
+            return SFAF_Submissions::required_attr( $req, $key, $req_vals );
+        };
+
         /*
          * THE EDITOR IS ENQUEUED BEFORE THE PAGE OPENS, because this builds its
          * own document and page_open() prints what has been enqueued by the
@@ -1373,13 +1446,15 @@ class SFAF_Submit {
             <form method="post" action="<?php echo esc_url( self::url( $series->slug ) ); ?>" class="uc-form" enctype="multipart/form-data">
                 <input type="hidden" name="uc_submit_action" value="submit_event" />
                 <?php SFAF_Submissions::honeypot(); ?>
+                <?php SFAF_Submissions::required_note(); ?>
+                <?php SFAF_Submissions::required_payload( $req ); ?>
 
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">About you</legend>
                     <p class="uc-hint">Not shown on the calendar.</p>
                     <label class="uc-field">
-                        <span class="uc-field-label">Your name</span>
-                        <input type="text" name="submitter_name" required maxlength="120" value="<?php echo esc_attr( $v( 'submitter_name' ) ); ?>" />
+                        <span class="uc-field-label">Your name<?php echo $mark( 'submitter_name' ); ?></span>
+                        <input type="text" name="submitter_name"<?php echo $attr( 'submitter_name' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'submitter_name' ) ); ?>" />
                         <?php SFAF_Submissions::field_error( $err( 'submitter_name' ) ); ?>
                     </label>
                     <?php
@@ -1414,7 +1489,7 @@ class SFAF_Submit {
                     $emails = array_slice( $emails, 0, self::MAX_EMAILS );
                     ?>
                     <div class="uc-field">
-                        <span class="uc-field-label">Your email, and anybody else who should get RSVPs</span>
+                        <span class="uc-field-label">Your email, and anybody else who should get RSVPs<?php echo $mark( 'submitter_email' ); ?></span>
                         <span class="uc-hint">The first one is yours. Your copy of this submission goes there.</span>
                         <div class="uc-repeater uc-email-repeat" data-repeater
                              data-repeater-max="<?php echo (int) self::MAX_EMAILS; ?>">
@@ -1425,7 +1500,7 @@ class SFAF_Submit {
                                             echo esc_html( 0 === (int) $i ? 'Your email' : 'Another email address' );
                                         ?></span>
                                         <input type="email" name="submitter_email[]" maxlength="200"
-                                               <?php echo ( 0 === (int) $i ) ? 'required autocomplete="email"' : 'autocomplete="off"'; ?>
+                                               <?php echo ( 0 === (int) $i ) ? ltrim( $attr( 'submitter_email' ) . ' autocomplete="email"' ) : 'autocomplete="off"'; ?>
                                                value="<?php echo esc_attr( $one ); ?>" />
                                     </label>
                                 <?php endforeach; ?>
@@ -1448,19 +1523,19 @@ class SFAF_Submit {
                 <legend class="uc-field-group-title">The event</legend>
 
                 <label class="uc-field">
-                    <span class="uc-field-label">Event name</span>
-                    <input type="text" name="title" required maxlength="200" value="<?php echo esc_attr( $v( 'title' ) ); ?>" />
+                    <span class="uc-field-label">Event name<?php echo $mark( 'title' ); ?></span>
+                    <input type="text" name="title"<?php echo $attr( 'title' ); ?> maxlength="200" value="<?php echo esc_attr( $v( 'title' ) ); ?>" />
                     <?php SFAF_Submissions::field_error( $err( 'title' ) ); ?>
                 </label>
 
                 <div class="uc-field">
-                    <span class="uc-field-label">Description</span>
+                    <span class="uc-field-label">Description<?php echo $mark( 'description' ); ?></span>
                     <?php
                     SFAF_Rich_Text::render(
                         'uc-submit-description',
                         'description',
                         (string) $v( 'description' ),
-                        array( 'rows' => 8 )
+                        array( 'rows' => 8, 'required' => SFAF_Submissions::is_required( $req, 'description', $req_vals ) )
                     );
                     ?>
                     <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
@@ -1472,20 +1547,20 @@ class SFAF_Submit {
                 <legend class="uc-field-group-title">When</legend>
 
                 <label class="uc-field">
-                    <span class="uc-field-label">Date</span>
-                    <input type="date" name="date" required value="<?php echo esc_attr( $v( 'date' ) ); ?>" />
+                    <span class="uc-field-label">Date<?php echo $mark( 'date' ); ?></span>
+                    <input type="date" name="date"<?php echo $attr( 'date' ); ?> value="<?php echo esc_attr( $v( 'date' ) ); ?>" />
                     <?php SFAF_Submissions::field_error( $err( 'date' ) ); ?>
                 </label>
 
                 <div class="uc-field-row">
                     <label class="uc-field">
-                        <span class="uc-field-label">Start</span>
-                        <?php echo sfaf_time_field( 'start_time', $v( 'start' ), array( 'label' => 'Start time', 'required' => true ) ); ?>
+                        <span class="uc-field-label">Start<?php echo $mark( 'start_time' ); ?></span>
+                        <?php echo sfaf_time_field( 'start_time', $v( 'start' ), array( 'label' => 'Start time', 'required' => SFAF_Submissions::is_required( $req, 'start_time', $req_vals ) ) ); ?>
                         <?php SFAF_Submissions::field_error( $err( 'start_time' ) ); ?>
                     </label>
                     <label class="uc-field">
-                        <span class="uc-field-label">End</span>
-                        <?php echo sfaf_time_field( 'end_time', $v( 'end' ), array( 'label' => 'End time', 'required' => true ) ); ?>
+                        <span class="uc-field-label">End<?php echo $mark( 'end_time' ); ?></span>
+                        <?php echo sfaf_time_field( 'end_time', $v( 'end' ), array( 'label' => 'End time', 'required' => SFAF_Submissions::is_required( $req, 'end_time', $req_vals ) ) ); ?>
                         <?php SFAF_Submissions::field_error( $err( 'end_time' ) ); ?>
                     </label>
                 </div>
@@ -1528,8 +1603,8 @@ class SFAF_Submit {
                             <span class="uc-hint">Shown above the address on the event page. Leave it blank if the address is the whole answer.</span>
                         </label>
                         <label class="uc-field">
-                            <span class="uc-field-label">Street address</span>
-                            <input type="text" name="street" maxlength="200" value="<?php echo esc_attr( $v( 'street' ) ); ?>"
+                            <span class="uc-field-label">Street address<?php echo $mark( 'street' ); ?></span>
+                            <input type="text" name="street"<?php echo $attr( 'street' ); ?> maxlength="200" value="<?php echo esc_attr( $v( 'street' ) ); ?>"
                                    placeholder="470 Castro St" />
                             <?php SFAF_Submissions::field_error( $err( 'street' ) ); ?>
                         </label>
@@ -1561,7 +1636,7 @@ class SFAF_Submit {
                 <legend class="uc-field-group-title">Cost and who can come</legend>
 
                 <div class="uc-field">
-                    <span class="uc-field-label">Cost</span>
+                    <span class="uc-field-label">Cost<?php echo $mark( 'cost' ); ?></span>
                     <?php
                     /*
                      * THE EMPTY OPTION IS A PROMPT, NOT AN ANSWER.
@@ -1574,7 +1649,7 @@ class SFAF_Submit {
                      * so the browser asks before the server has to.
                      */
                     ?>
-                    <select name="cost" required data-uc-reveal="uc-cost-other">
+                    <select name="cost"<?php echo $attr( 'cost' ); ?> data-uc-reveal="uc-cost-other">
                         <option value="" disabled <?php selected( '', (string) $v( 'cost' ) ); ?>>Choose one</option>
                         <?php foreach ( self::cost_options() as $key => $label ) : ?>
                             <option value="<?php echo esc_attr( $key ); ?>" <?php selected( (string) $v( 'cost' ), (string) $key ); ?>>
@@ -1584,8 +1659,8 @@ class SFAF_Submit {
                     </select>
                     <?php SFAF_Submissions::field_error( $err( 'cost' ) ); ?>
                     <label class="uc-field uc-reveal-target" id="uc-cost-other">
-                        <span class="uc-field-label">What it costs</span>
-                        <input type="text" name="cost_other" maxlength="120" value="<?php echo esc_attr( $v( 'cost_other' ) ); ?>"
+                        <span class="uc-field-label">What it costs<?php echo $mark( 'cost_other' ); ?></span>
+                        <input type="text" name="cost_other"<?php echo $attr( 'cost_other' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'cost_other' ) ); ?>"
                                placeholder="$15 at the door" />
                         <?php SFAF_Submissions::field_error( $err( 'cost_other' ) ); ?>
                     </label>
@@ -1601,8 +1676,8 @@ class SFAF_Submit {
                         <?php endforeach; ?>
                     </select>
                     <label class="uc-field uc-reveal-target" id="uc-age-other">
-                        <span class="uc-field-label">Who can come</span>
-                        <input type="text" name="age_other" maxlength="120" value="<?php echo esc_attr( $v( 'age_other' ) ); ?>"
+                        <span class="uc-field-label">Who can come<?php echo $mark( 'age_other' ); ?></span>
+                        <input type="text" name="age_other"<?php echo $attr( 'age_other' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'age_other' ) ); ?>"
                                placeholder="21+ after 9pm" />
                         <?php SFAF_Submissions::field_error( $err( 'age_other' ) ); ?>
                     </label>
@@ -1687,19 +1762,19 @@ class SFAF_Submit {
                             Give the details people should use to ask about the event, which may not be yours.
                         </p>
                         <label class="uc-field">
-                            <span class="uc-field-label">Name</span>
-                            <input type="text" name="contact_name" required maxlength="120" value="<?php echo esc_attr( $v( 'contact_name' ) ); ?>" />
+                            <span class="uc-field-label">Name<?php echo $mark( 'contact_name' ); ?></span>
+                            <input type="text" name="contact_name"<?php echo $attr( 'contact_name' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'contact_name' ) ); ?>" />
                             <?php SFAF_Submissions::field_error( $err( 'contact_name' ) ); ?>
                         </label>
                         <div class="uc-field-row">
                             <label class="uc-field">
-                                <span class="uc-field-label">Email</span>
-                                <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $v( 'contact_email' ) ); ?>" />
+                                <span class="uc-field-label">Email<?php echo $mark( 'contact_email' ); ?></span>
+                                <input type="email" name="contact_email"<?php echo $attr( 'contact_email' ); ?> maxlength="200" value="<?php echo esc_attr( $v( 'contact_email' ) ); ?>" />
                                 <?php SFAF_Submissions::field_error( $err( 'contact_email' ) ); ?>
                             </label>
                             <label class="uc-field">
-                                <span class="uc-field-label">Phone</span>
-                                <input type="tel" name="contact_phone" maxlength="40" value="<?php echo esc_attr( $v( 'contact_phone' ) ); ?>" />
+                                <span class="uc-field-label">Phone<?php echo $mark( 'contact_email' ); ?></span>
+                                <input type="tel" name="contact_phone"<?php echo $attr( 'contact_email' ); ?> maxlength="40" value="<?php echo esc_attr( $v( 'contact_phone' ) ); ?>" />
                             </label>
                         </div>
                         <span class="uc-hint">Give an email address, a phone number, or both. The phone number is shown too.</span>

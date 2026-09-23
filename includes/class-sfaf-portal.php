@@ -721,6 +721,7 @@ class SFAF_Portal {
                     'edit_scope' => $result['scope'],
                     'moved'      => (int) $result['moved'],
                     'told'       => (int) $result['told'],
+                    'needs'      => isset( $result['needs'] ) ? $result['needs'] : '',
                 ) );
                 break;
 
@@ -1990,6 +1991,131 @@ class SFAF_Portal {
      * Event create / update
      * ================================================================== */
 
+    /**
+     * WHICH OF SFAF_Sources::publish_fields() THIS SAVE WOULD LEAVE EMPTY (3.99.0).
+     *
+     * ASKED BEFORE ANYTHING IS WRITTEN, because the answer decides the status
+     * the event is written WITH. Writing first and asking afterwards would
+     * publish and then unpublish, and publishing is what sends mail and
+     * generates a series' dates.
+     *
+     * SO EACH FIELD IS READ FROM WHERE THE SAVE WILL TAKE IT: the posted value
+     * when the form showed the control and the platform does not own it, and
+     * the stored value otherwise. That is the $offered rule: a form that did
+     * not show a field does not speak for it, in either direction.
+     *
+     * The organizer is not answered here when the form showed it. The caller
+     * hands the posted ids to SFAF_Organizers::requirement(), which decides
+     * both the refusal and whether "none" is missing, from one place.
+     *
+     * @param int      $event_id  0 for a new event.
+     * @param WP_User  $user
+     * @param callable $is_locked field => bool, the platform-owned test.
+     * @return string[] publish_fields() keys, in that list's order.
+     */
+    private function publish_missing_from_post( $event_id, $user, $is_locked ) {
+        $event_id = (int) $event_id;
+        $post_str = function ( $key ) {
+            return isset( $_POST[ $key ] ) && is_scalar( $_POST[ $key ] )
+                ? trim( sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) )
+                : '';
+        };
+        $has_term = function ( $taxonomy ) use ( $event_id ) {
+            if ( ! $event_id ) {
+                return false;
+            }
+            $ids = wp_get_post_terms( $event_id, $taxonomy, array( 'fields' => 'ids' ) );
+            return ! is_wp_error( $ids ) && ! empty( $ids );
+        };
+
+        $filled = array();
+
+        /* A title. "(untitled event)" is what a save writes for none, so it
+         * is none. */
+        $title = ( ! $is_locked( 'title' ) && isset( $_POST['title'] ) )
+            ? $post_str( 'title' )
+            : ( $event_id ? trim( (string) get_post_field( 'post_title', $event_id ) ) : '' );
+        $filled['title'] = ( '' !== $title && '(untitled event)' !== $title );
+
+        foreach ( array( 'date' => '_uc_event_date', 'start_time' => '_uc_start_time', 'end_time' => '_uc_end_time' ) as $field => $key ) {
+            $value = ( ! $is_locked( $field ) && isset( $_POST[ $field ] ) )
+                ? $post_str( $field )
+                : ( $event_id ? trim( (string) get_post_meta( $event_id, $key, true ) ) : '' );
+            $filled[ $field ] = ( '' !== $value );
+        }
+
+        /* Organizers only when the form did not show them; see above. */
+        $filled['organizer'] = isset( $_POST['uc_organizer_present'] ) ? true : $has_term( 'uc_organizer' );
+
+        /* Categories, as save_manager_fields_from_post() will leave them. A
+         * contributor limited to some categories keeps any others the event
+         * already had, so those count. */
+        if ( ! $is_locked( 'category' ) && isset( $_POST['uc_category_present'] ) ) {
+            $cats = isset( $_POST['category'] ) ? array_filter( array_map( 'intval', (array) wp_unslash( $_POST['category'] ) ) ) : array();
+            $allowed = $this->allowed_categories( $user );
+            if ( 'contributor' === self::get_role( $user->ID ) && ! empty( $allowed ) ) {
+                $allowed = array_map( 'intval', $allowed );
+                $cats    = array_intersect( $cats, $allowed );
+                if ( $event_id ) {
+                    foreach ( (array) wp_get_post_terms( $event_id, 'uc_event_category', array( 'fields' => 'ids' ) ) as $kept ) {
+                        if ( ! in_array( (int) $kept, $allowed, true ) ) {
+                            $cats[] = (int) $kept;
+                        }
+                    }
+                }
+            }
+            $filled['category'] = ! empty( $cats );
+        } else {
+            $filled['category'] = $has_term( 'uc_event_category' );
+        }
+
+        /* A description with words in it. Markup alone is not one. */
+        if ( ! $is_locked( 'description' ) && isset( $_POST['description'] ) ) {
+            $filled['description'] = '' !== trim( sfaf_flatten_html( (string) wp_unslash( $_POST['description'] ) ) );
+        } else {
+            $filled['description'] = $event_id && '' !== trim( sfaf_flatten_html( (string) get_post_field( 'post_content', $event_id ) ) );
+        }
+
+        /* A venue, an address, or the online tick; hybrid is online and a room. */
+        $where = null;
+        if ( ! $is_locked( 'location' ) ) {
+            if ( isset( $_POST['uc_online_present'] ) ) {
+                $online = '1' === (string) wp_unslash( $_POST['uc_online'] ?? '' );
+                $hybrid = '1' === (string) wp_unslash( $_POST['uc_hybrid'] ?? '' );
+                if ( $online || $hybrid ) {
+                    $where = true;
+                }
+            }
+            if ( null === $where && isset( $_POST['location_mode'] ) ) {
+                $venue = isset( $_POST['venue'] ) ? intval( $_POST['venue'] ) : 0;
+                if ( 'venue' === sanitize_key( wp_unslash( $_POST['location_mode'] ) ) && $venue && SFAF_Venues::exists( $venue ) ) {
+                    $where = true;
+                } else {
+                    $parts = array();
+                    foreach ( array_keys( sfaf_location_part_keys() ) as $part ) {
+                        $parts[ $part ] = $post_str( 'location_' . $part );
+                    }
+                    $where = ( '' !== SFAF_Venues::compose( $parts ) ) || ( '' !== $post_str( 'location' ) );
+                }
+            } elseif ( null === $where && isset( $_POST['location'] ) ) {
+                $where = ( '' !== $post_str( 'location' ) );
+            }
+        }
+        if ( null === $where ) {
+            $where = $event_id && ( SFAF_Online::is_online( $event_id ) || SFAF_Online::is_hybrid( $event_id )
+                || '' !== trim( (string) sfaf_event_location( $event_id ) ) );
+        }
+        $filled['location'] = (bool) $where;
+
+        $missing = array();
+        foreach ( array_keys( SFAF_Sources::publish_fields() ) as $field ) {
+            if ( empty( $filled[ $field ] ) ) {
+                $missing[] = $field;
+            }
+        }
+        return $missing;
+    }
+
     private function save_event_from_post( $user ) {
         $event_id = isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0;
         $is_new   = ! $event_id;
@@ -2061,24 +2187,55 @@ class SFAF_Portal {
          * this is not a flat refusal and what the hundred grandfathered events
          * do.
          */
-        $org_verdict = 'ok';
+        // WHICH FIELDS THIS SAVE IS ALLOWED TO WRITE.
+        //
+        // A locked field renders `disabled`, and a disabled control submits
+        // NOTHING, so without this, saving an imported event would read '' for
+        // its title and description and write both back, replacing a real title
+        // with "(untitled event)" and blanking the description. Every meta
+        // field below is already guarded by isset(), which handles the absent
+        // case correctly; these two are not, because they have fallbacks.
+        //
+        // The list comes from the adapter, so it is the same list the editor
+        // disabled and the same list a fetch overwrites.
+        $src_slug   = $event_id ? (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) : '';
+        $src_owned  = ( '' !== $src_slug ) ? SFAF_Sources::owned_fields_for( $src_slug ) : array();
+        $is_locked  = function ( $field ) use ( $src_owned ) {
+            return in_array( $field, $src_owned, true );
+        };
+
+        /*
+         * AND FROM 3.99.0 THE SAME CHECK HOLDS A PUBLISH FOR EVERY FIELD IN
+         * SFAF_Sources::publish_fields(), not only the organizer. One verdict,
+         * one place deciding it: publish_missing_from_post() says what this
+         * save would leave empty, and requirement() decides what that means.
+         * The organizer's own posted ids go to requirement() as before, or null
+         * when the form did not show them.
+         */
+        $org_posted = null;
         if ( isset( $_POST['uc_organizer_present'] ) ) {
             $org_posted = isset( $_POST['organizer'] )
                 ? array_map( 'intval', (array) wp_unslash( $_POST['organizer'] ) )
                 : array();
-            $org_had = array();
-            if ( ! $is_new ) {
-                $terms = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) );
-                $org_had = is_wp_error( $terms ) ? array() : $terms;
-            }
-            $org_verdict = SFAF_Organizers::requirement(
-                $org_posted,
-                $org_had,
-                $is_new,
-                $status,
-                $is_new ? '' : (string) get_post_status( $event_id )
-            );
         }
+        $org_had = array();
+        if ( ! $is_new ) {
+            $terms = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) );
+            $org_had = is_wp_error( $terms ) ? array() : $terms;
+        }
+        $pub_missing = $this->publish_missing_from_post( $event_id, $user, $is_locked );
+        if ( null !== $org_posted && empty( array_filter( $org_posted ) ) && ! in_array( 'organizer', $pub_missing, true ) ) {
+            $pub_missing[] = 'organizer';
+            $pub_missing   = array_values( array_intersect( array_keys( SFAF_Sources::publish_fields() ), $pub_missing ) );
+        }
+        $org_verdict = SFAF_Organizers::requirement(
+            $org_posted,
+            $org_had,
+            $is_new,
+            $status,
+            $is_new ? '' : (string) get_post_status( $event_id ),
+            $pub_missing
+        );
 
         /*
          * REFUSED BEFORE ANYTHING IS WRITTEN. The event is left exactly as it
@@ -2109,23 +2266,6 @@ class SFAF_Portal {
             $existing_status = $is_new ? '' : (string) get_post_status( $event_id );
             $status = ( $existing_status && 'publish' !== $existing_status ) ? $existing_status : 'draft';
         }
-
-        // WHICH FIELDS THIS SAVE IS ALLOWED TO WRITE.
-        //
-        // A locked field renders `disabled`, and a disabled control submits
-        // NOTHING — so without this, saving an imported event would read '' for
-        // its title and description and write both back, replacing a real title
-        // with "(untitled event)" and blanking the description. Every meta
-        // field below is already guarded by isset(), which handles the absent
-        // case correctly; these two are not, because they have fallbacks.
-        //
-        // The list comes from the adapter, so it is the same list the editor
-        // disabled and the same list a fetch overwrites.
-        $src_slug   = $event_id ? (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) : '';
-        $src_owned  = ( '' !== $src_slug ) ? SFAF_Sources::owned_fields_for( $src_slug ) : array();
-        $is_locked  = function ( $field ) use ( $src_owned ) {
-            return in_array( $field, $src_owned, true );
-        };
 
         $postarr = array(
             'post_type'   => 'uc_event',
@@ -2684,7 +2824,7 @@ class SFAF_Portal {
          * them looking for the event on the calendar.
          */
         if ( $org_held ) {
-            $msg = 'organizer_needed_to_publish';
+            $msg = 'publish_needs';
         } elseif ( $generated ) {
             $msg = 'generated_' . $generated;
         } elseif ( 'all_upcoming' === $scope ) {
@@ -2705,6 +2845,9 @@ class SFAF_Portal {
             'scope'   => $scope,
             'moved'   => $moved ? 1 : 0,
             'told'    => $told,
+            // Which fields held a publish back, for the flash to name. Empty
+            // unless it was held.
+            'needs'   => $org_held ? implode( ',', $pub_missing ) : '',
         );
     }
 
@@ -3656,7 +3799,6 @@ class SFAF_Portal {
              * because what happened is not what the button said.
              */
             'organizer_required' => 'Nothing was saved. Tick at least one organizer.',
-            'organizer_needed_to_publish' => 'Saved, and not published. Tick at least one organizer, then publish.',
             'venue_made'     => 'That place is in the venue list now, and this event points at it. Correcting the address on the Venues screen will correct every event held there.',
             'venue_failed'   => 'That place could not be added. The event has no place name on it, or it already points at a venue.',
             'user_saved'     => 'User permissions updated.',
@@ -3709,6 +3851,29 @@ class SFAF_Portal {
             'venue_deleted' => 'Venue deleted. No event was held there, so nothing lost its location.',
         );
         $key = sanitize_key( $_GET['msg'] );
+
+        /*
+         * A PUBLISH HELD BACK, NAMING EVERYTHING IT WAS HELD FOR (3.99.0).
+         * One sentence, the shape the organizer-only message had, so fixing
+         * one field never reveals a second. The keys ride the redirect and are
+         * kept only when publish_fields() knows them, so the address bar cannot
+         * put words on this screen.
+         */
+        if ( 'publish_needs' === $key ) {
+            $known = SFAF_Sources::publish_fields();
+            $needs = array();
+            foreach ( explode( ',', isset( $_GET['needs'] ) ? sanitize_text_field( wp_unslash( $_GET['needs'] ) ) : '' ) as $one ) {
+                $one = sanitize_key( $one );
+                if ( isset( $known[ $one ] ) && ! in_array( $one, $needs, true ) ) {
+                    $needs[] = $one;
+                }
+            }
+            $what = ! empty( $needs ) ? SFAF_Sources::field_phrase( $needs ) : 'the fields marked *';
+            echo '<div class="uc-flash uc-flash-attention">'
+                . esc_html( 'Saved, and not published. Add ' . $what . ', then publish.' )
+                . '</div>';
+            return;
+        }
 
         /*
          * The pattern edit reports its count for the same reason a bulk save
@@ -7561,6 +7726,29 @@ class SFAF_Portal {
         <?php
     }
 
+    /**
+     * The asterisk after a field the editor will not publish without (3.99.0).
+     *
+     * Drawn from SFAF_Sources::publish_fields(), the list the save holds a
+     * publish back on, so the mark and the rule cannot disagree. Only on the
+     * editor: the queue's manager panel shares these fields and has no line
+     * saying what the mark means, and a mark nothing explains is decoration.
+     *
+     * aria-hidden, because a spoken "star" says nothing; the line at the top
+     * of the form says it in words.
+     *
+     * @param string $field  A publish_fields() key.
+     * @param string $screen 'editor' or 'queue'.
+     * @return string
+     */
+    private function publish_mark( $field, $screen = 'editor' ) {
+        if ( 'editor' !== $screen ) {
+            return '';
+        }
+        $fields = SFAF_Sources::publish_fields();
+        return isset( $fields[ $field ] ) ? '<span class="uc-req" aria-hidden="true">*</span>' : '';
+    }
+
     private function render_manager_control( $field, $ctx ) {
         $event_id = (int) $ctx['event_id'];
         $uid      = $ctx['uid'];
@@ -7680,7 +7868,7 @@ class SFAF_Portal {
             case 'description':
                 ?>
                 <div class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'description', $state ); ?>>
-                    <span class="uc-field-label">Description <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <span class="uc-field-label">Description<?php echo $this->publish_mark( 'description', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?></span>
                     <?php $this->description_editor( $ctx, $state ); ?>
                 </div>
                 <?php
@@ -7724,7 +7912,7 @@ class SFAF_Portal {
                 ?>
                 <div class="uc-field uc-cat-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'category', $state ); ?>
                      data-uc-chips>
-                    <span class="uc-field-label">Categories <?php echo $this->field_badge( $state, $label ); ?>
+                    <span class="uc-field-label">Categories<?php echo $this->publish_mark( 'category', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?>
                         <?php echo sfaf_help(
                             'uc-help-cats-' . $uid,
                             'An event can be in several, and it appears under each of them in the filter bar. The first one alphabetically supplies the card color and the placeholder picture, so the order you see the chips in is the order that decides it.',
@@ -7782,7 +7970,7 @@ class SFAF_Portal {
                 $current = array_map( 'intval', $current );
                 ?>
                 <div class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>>
-                    <span class="uc-field-label">Organizer <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <span class="uc-field-label">Organizer<?php echo $this->publish_mark( 'organizer', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?></span>
 
                     <?php // The marker, for the reason every other multi-value
                           // control on this form has one: every box unticked
@@ -12128,6 +12316,8 @@ class SFAF_Portal {
             <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_event', 'uc_nonce' ); ?>
 
+            <p class="uc-hint uc-required-note">Fields marked * are required to publish.</p>
+
             <?php $this->render_scope_header( $event_id, $bulk_targets, $bulk_locked ); ?>
 
             <?php
@@ -12546,7 +12736,7 @@ class SFAF_Portal {
                     <h2 class="uc-bento-title">Event details</h2>
                     <?php $s_title = $st( 'title' ); ?>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_title ) ); ?>"<?php echo $this->field_watch_attr( 'title', $s_title ); ?>>
-                        <span class="uc-field-label">Title <?php echo $this->field_badge( $s_title, $prov['label'] ); ?></span>
+                        <span class="uc-field-label">Title<?php echo $this->publish_mark( 'title' ); ?> <?php echo $this->field_badge( $s_title, $prov['label'] ); ?></span>
                         <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>"<?php echo $this->field_disabled( $s_title ); ?> <?php echo ( 'locked' === $s_title ) ? '' : 'required'; ?> />
                     </label>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
@@ -12604,16 +12794,16 @@ class SFAF_Portal {
                     $s_end   = $st( 'end_time' );
                     ?>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
-                        <span class="uc-field-label">Date <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
+                        <span class="uc-field-label">Date<?php echo $this->publish_mark( 'date' ); ?> <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
                         <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
                     </label>
                     <div class="uc-field-row">
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
-                            <span class="uc-field-label">Start <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
+                            <span class="uc-field-label">Start<?php echo $this->publish_mark( 'start_time' ); ?> <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
                             <?php echo sfaf_time_field( 'start_time', $g( '_uc_start_time' ), array( 'label' => 'Start time', 'disabled' => $this->field_disabled( $s_start ) ) ); ?>
                         </label>
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_end ) ); ?>">
-                            <span class="uc-field-label">End <?php echo $this->field_badge( $s_end, $prov['label'] ); ?></span>
+                            <span class="uc-field-label">End<?php echo $this->publish_mark( 'end_time' ); ?> <?php echo $this->field_badge( $s_end, $prov['label'] ); ?></span>
                             <?php echo sfaf_time_field( 'end_time', $g( '_uc_end_time' ), array( 'label' => 'End time', 'disabled' => $this->field_disabled( $s_end ) ) ); ?>
                         </label>
                     </div>
@@ -12711,7 +12901,7 @@ class SFAF_Portal {
                       // into Event details, with the title it belongs to. ?>
                 <?php $s_loc = $st( 'location' ); ?>
                 <section class="uc-bento-card">
-                    <h2 class="uc-bento-title">Location</h2>
+                    <h2 class="uc-bento-title">Location<?php echo $this->publish_mark( 'location' ); ?></h2>
                     <?php
                     // The RSVP controls are drawn inside this field now, each
                     // beside the thing it limits. What it placed comes back so

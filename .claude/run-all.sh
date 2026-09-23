@@ -41,6 +41,8 @@ for f in .claude/*.php; do
     # Run below with --run instead. Without it the page is only written and the
     # thing it exists to measure, what a press does in a browser, never happens.
     filter-submit-live.php) continue ;;
+    required-marks-live.php) continue ;;
+    wp-kit.php) continue ;;            # the miniature WordPress the 3.99.0 checks load, not a check
   esac
   run "$(basename "$f" .php)" php "$f"
 done
@@ -229,6 +231,10 @@ echo
 # asserts that none of them takes the page anywhere.
 echo "=== the filter bar, in a browser ==="
 run "filter-submit-live --run" php .claude/filter-submit-live.php --run
+
+echo
+echo "=== the required marks, in a browser ==="
+run "required-marks-live --run" php .claude/required-marks-live.php --run
 
 echo
 echo "=== shell guards ==="

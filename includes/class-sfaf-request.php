@@ -513,6 +513,56 @@ class SFAF_Request {
      * ================================================================== */
 
     /**
+     * WHAT THIS FORM REQUIRES, AS ONE LIST (3.99.0).
+     *
+     * validate() refuses from it and render_form() draws every asterisk and
+     * every `required` from it. See SFAF_Submissions for what an entry holds.
+     * The messages are the ones validate() already gave, word for word.
+     *
+     * THE ORGANIZER ENTRY EXISTS ONLY WHEN THERE ARE ORGANIZERS TO TICK. With
+     * none on the site the control is not drawn, and a form may only require
+     * what it showed: the $offered rule, from the other side.
+     *
+     * @return array<string,array>
+     */
+    public static function required_fields() {
+        $fields = array(
+            'requester_name' => array( 'message' => 'Tell us who is asking.', 'inputs' => array( 'requester_name' ) ),
+            'title'          => array( 'message' => 'The event needs a name.', 'inputs' => array( 'title' ) ),
+            'description'    => array( 'message' => 'Write a description. An event with none is blank on the calendar.', 'inputs' => array( 'description' ), 'carry' => 'aria' ),
+            'organizer'      => array( 'message' => 'Tick everybody putting this on.', 'inputs' => array( 'organizer[]' ), 'carry' => 'legend' ),
+            'date'           => array( 'message' => 'Give the date, as a real calendar date.', 'inputs' => array( 'date' ) ),
+            'start_time'     => array( 'message' => 'Give a start time.', 'inputs' => array( 'start_time' ) ),
+            'end_time'       => array( 'message' => 'Give an end time.', 'inputs' => array( 'end_time' ) ),
+        );
+        if ( empty( SFAF_Organizers::all() ) ) {
+            unset( $fields['organizer'] );
+        }
+        return $fields;
+    }
+
+    /**
+     * The cleaned answers, by the input names required_fields() uses.
+     *
+     * @param array $c What validate() cleaned, or what the form redisplays.
+     * @return array<string,string>
+     */
+    public static function required_values( $c ) {
+        $g = function ( $key ) use ( $c ) {
+            return isset( $c[ $key ] ) && is_scalar( $c[ $key ] ) ? trim( (string) $c[ $key ] ) : '';
+        };
+        return array(
+            'requester_name' => $g( 'name' ),
+            'title'          => $g( 'title' ),
+            'description'    => trim( wp_strip_all_tags( $g( 'description' ) ) ),
+            'organizer[]'    => empty( $c['organizer'] ) ? '' : '1',
+            'date'           => $g( 'date' ),
+            'start_time'     => $g( 'start' ),
+            'end_time'       => $g( 'end' ),
+        );
+    }
+
+    /**
      * Everything a submission may contain, checked one field at a time.
      *
      * NOTHING IS TRUSTED AND NOTHING IS PASSED THROUGH. Every id is resolved
@@ -540,16 +590,15 @@ class SFAF_Request {
             return trim( self::cap( $out, $max ) );
         };
 
-        /* ---- Who is asking, and what it is. ---- */
+        /* ---- Who is asking, and what it is. ----
+         *
+         * WHAT IS REQUIRED IS NOT DECIDED IN THIS METHOD (3.99.0). It reads
+         * required_fields(), at the bottom, after everything is cleaned. What
+         * stays inline is about FORM: a date that has passed, an end before the
+         * start, too many teams. */
         $clean['name'] = $str( 'requester_name', 120 );
-        if ( '' === $clean['name'] ) {
-            $errors['requester_name'] = 'Tell us who is asking.';
-        }
 
         $clean['title'] = $str( 'title', 200 );
-        if ( '' === $clean['title'] ) {
-            $errors['title'] = 'The event needs a name.';
-        }
 
         /*
          * PROSE, NOT A STRIPPED LINE (3.46.0).
@@ -570,9 +619,6 @@ class SFAF_Request {
             SFAF_Submissions::prose( isset( $post['description'] ) ? wp_unslash( $post['description'] ) : '' ),
             8000
         );
-        if ( '' === trim( wp_strip_all_tags( $clean['description'] ) ) ) {
-            $errors['description'] = 'Write a description. An event with none is blank on the calendar.';
-        }
 
         /* ---- Terms. Every id must resolve to a real one. ---- */
         $clean['categories'] = array();
@@ -618,7 +664,8 @@ class SFAF_Request {
             }
         }
         /*
-         * REQUIRED, AND CHECKED HERE RATHER THAN ONLY IN THE MARKUP (3.85.0).
+         * REQUIRED, AND CHECKED BY THE LIST RATHER THAN ONLY IN THE MARKUP
+         * (3.85.0; from required_fields() since 3.99.0).
          *
          * The control carries no `required` attribute, because a group of
          * checkboxes cannot: `required` on one box means THAT box, so a browser
@@ -635,9 +682,6 @@ class SFAF_Request {
          * control that was never shown is the $offered rule broken from the
          * other side.
          */
-        if ( empty( $clean['organizer'] ) && ! empty( SFAF_Organizers::all() ) ) {
-            $errors['organizer'] = 'Tick everybody putting this on.';
-        }
 
         $clean['venue']       = 0;
         $clean['venue_other'] = '';
@@ -658,20 +702,12 @@ class SFAF_Request {
 
         /* ---- When. ---- */
         $clean['date'] = self::clean_date( isset( $post['date'] ) ? $post['date'] : '' );
-        if ( '' === $clean['date'] ) {
-            $errors['date'] = 'Give the date, as a real calendar date.';
-        } elseif ( $clean['date'] < current_time( 'Y-m-d' ) ) {
+        if ( '' !== $clean['date'] && $clean['date'] < current_time( 'Y-m-d' ) ) {
             $errors['date'] = 'That date has passed. Give the date the event actually happens.';
         }
 
         $clean['start'] = self::clean_time( isset( $post['start_time'] ) ? $post['start_time'] : '' );
         $clean['end']   = self::clean_time( isset( $post['end_time'] ) ? $post['end_time'] : '' );
-        if ( '' === $clean['start'] ) {
-            $errors['start_time'] = 'Give a start time.';
-        }
-        if ( '' === $clean['end'] ) {
-            $errors['end_time'] = 'Give an end time.';
-        }
         if ( '' !== $clean['start'] && '' !== $clean['end'] && $clean['end'] <= $clean['start'] ) {
             $errors['end_time'] = 'The end time needs to be after the start time.';
         }
@@ -815,6 +851,13 @@ class SFAF_Request {
         $clean['faqs']    = self::faqs_for( $clean['faq_set'], $clean['faq_own'] );
 
         $clean['notes'] = $str( 'notes', 2000 );
+
+        /* WHAT IS MISSING, FROM THE ONE LIST. A check above for the same field
+         * replaces it, because it is the more specific thing to say. */
+        $errors = array_merge(
+            SFAF_Submissions::required_errors( self::required_fields(), self::required_values( $clean ) ),
+            $errors
+        );
 
         return array( 'clean' => $clean, 'errors' => $errors );
     }
@@ -1550,6 +1593,16 @@ class SFAF_Request {
             return isset( $errors[ $key ] ) ? $errors[ $key ] : '';
         };
 
+        /* Every asterisk and every `required` below comes from here. */
+        $req      = self::required_fields();
+        $req_vals = self::required_values( $c );
+        $mark = function ( $key ) use ( $req, $req_vals ) {
+            return SFAF_Submissions::required_mark( $req, $key, $req_vals );
+        };
+        $attr = function ( $key ) use ( $req, $req_vals ) {
+            return SFAF_Submissions::required_attr( $req, $key, $req_vals );
+        };
+
         /*
          * ENQUEUED BEFORE THE PAGE OPENS. This builds its own document, so
          * page_open() prints whatever has been enqueued BY THE TIME IT RUNS.
@@ -1616,6 +1669,8 @@ class SFAF_Request {
                 <input type="hidden" name="uc_request_action" value="submit_request" />
                 <input type="hidden" name="uc_token" value="<?php echo esc_attr( $token ); ?>" />
                 <?php self::honeypot(); ?>
+                <?php SFAF_Submissions::required_note(); ?>
+                <?php SFAF_Submissions::required_payload( $req ); ?>
 
                 <?php
                 /*
@@ -1680,7 +1735,7 @@ class SFAF_Request {
                 ?>
                 <?php if ( ! empty( $all_orgs ) ) : ?>
                     <fieldset class="uc-form-section-group">
-                        <legend class="uc-field-label">Who is putting this on?</legend>
+                        <legend class="uc-field-label">Who is putting this on?<?php echo $mark( 'organizer' ); ?></legend>
                         <div class="uc-check-grid">
                             <?php foreach ( $all_orgs as $o ) : ?>
                                 <label class="uc-check">
@@ -1809,25 +1864,25 @@ class SFAF_Request {
                 <legend class="uc-field-group-title">About the event</legend>
 
                 <label class="uc-field">
-                    <span class="uc-field-label">Your name</span>
-                    <input type="text" name="requester_name" required maxlength="120" value="<?php echo esc_attr( $v( 'name' ) ); ?>" />
+                    <span class="uc-field-label">Your name<?php echo $mark( 'requester_name' ); ?></span>
+                    <input type="text" name="requester_name"<?php echo $attr( 'requester_name' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'name' ) ); ?>" />
                     <?php self::field_error( $err( 'requester_name' ) ); ?>
                 </label>
 
                 <label class="uc-field">
-                    <span class="uc-field-label">Event name</span>
-                    <input type="text" name="title" required maxlength="200" value="<?php echo esc_attr( $v( 'title' ) ); ?>" />
+                    <span class="uc-field-label">Event name<?php echo $mark( 'title' ); ?></span>
+                    <input type="text" name="title"<?php echo $attr( 'title' ); ?> maxlength="200" value="<?php echo esc_attr( $v( 'title' ) ); ?>" />
                     <?php self::field_error( $err( 'title' ) ); ?>
                 </label>
 
                 <div class="uc-field">
-                    <span class="uc-field-label">Description</span>
+                    <span class="uc-field-label">Description<?php echo $mark( 'description' ); ?></span>
                     <?php
                     SFAF_Rich_Text::render(
                         'uc-request-description',
                         'description',
                         (string) $v( 'description' ),
-                        array( 'rows' => 6 )
+                        array( 'rows' => 6, 'required' => SFAF_Submissions::is_required( $req, 'description', $req_vals ) )
                     );
                     ?>
                     <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
@@ -1874,20 +1929,20 @@ class SFAF_Request {
                 <legend class="uc-field-group-title">When</legend>
 
                 <label class="uc-field">
-                    <span class="uc-field-label">Date</span>
-                    <input type="date" name="date" required value="<?php echo esc_attr( $v( 'date' ) ); ?>" />
+                    <span class="uc-field-label">Date<?php echo $mark( 'date' ); ?></span>
+                    <input type="date" name="date"<?php echo $attr( 'date' ); ?> value="<?php echo esc_attr( $v( 'date' ) ); ?>" />
                     <?php self::field_error( $err( 'date' ) ); ?>
                 </label>
 
                 <div class="uc-field-row">
                     <label class="uc-field">
-                        <span class="uc-field-label">Start</span>
-                        <?php echo sfaf_time_field( 'start_time', $v( 'start' ), array( 'label' => 'Start time', 'required' => true ) ); ?>
+                        <span class="uc-field-label">Start<?php echo $mark( 'start_time' ); ?></span>
+                        <?php echo sfaf_time_field( 'start_time', $v( 'start' ), array( 'label' => 'Start time', 'required' => SFAF_Submissions::is_required( $req, 'start_time', $req_vals ) ) ); ?>
                         <?php self::field_error( $err( 'start_time' ) ); ?>
                     </label>
                     <label class="uc-field">
-                        <span class="uc-field-label">End</span>
-                        <?php echo sfaf_time_field( 'end_time', $v( 'end' ), array( 'label' => 'End time', 'required' => true ) ); ?>
+                        <span class="uc-field-label">End<?php echo $mark( 'end_time' ); ?></span>
+                        <?php echo sfaf_time_field( 'end_time', $v( 'end' ), array( 'label' => 'End time', 'required' => SFAF_Submissions::is_required( $req, 'end_time', $req_vals ) ) ); ?>
                         <?php self::field_error( $err( 'end_time' ) ); ?>
                     </label>
                 </div>

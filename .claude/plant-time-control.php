@@ -121,7 +121,7 @@ $plants = array(
     /* ---- AND ONE CONTROL LEFT BEHIND. ---------------------------------- */
     'one of the twelve is still a browser time input' => array(
         'file' => 'includes/class-sfaf-submit.php',
-        'from' => "<?php echo sfaf_time_field( 'end_time', \$v( 'end' ), array( 'label' => 'End time', 'required' => true ) ); ?>",
+        'from' => "<?php echo sfaf_time_field( 'end_time', \$v( 'end' ), array( 'label' => 'End time', 'required' => SFAF_Submissions::is_required( \$req, 'end_time', \$req_vals ) ) ); ?>",
         'to'   => "<input type=\"time\" name=\"end_time\" required value=\"<?php echo esc_attr( \$v( 'end' ) ); ?>\" step=\"300\" />",
     ),
 );

@@ -408,6 +408,8 @@ class SFAF_Sources {
        an event with no series is complete, which is the whole reason a control
        for choosing one has to be visible rather than nagged about. */
     public static function completeness_fields( $id ) { return array(); }
+    /* 3.99.0: the editor's asterisks. None of them is the series either. */
+    public static function publish_fields() { return array(); }
     public static function completeness_payload( $id ) { return array( 'fields' => array() ); }
     public static function field_is_filled( $field, $id ) { return true; }
     public static function field_change_phrase( $a, $b ) { return ''; }

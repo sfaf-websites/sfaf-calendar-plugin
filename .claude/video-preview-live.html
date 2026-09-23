@@ -147,6 +147,8 @@ function ucDismissOnBackdrop(dialog) {
         // before their editors are started.
         run('richText', initRichText);
         run('completeness', initCompleteness);
+        // After richText, so an editor started there is one this can mark.
+        run('requiredMarks', initRequiredMarks);
         run('asyncActions', initAsyncActions);
         run('disclosures', initDisclosures);
         run('filterLists', initFilterLists);
@@ -3326,6 +3328,103 @@ function ucDismissOnBackdrop(dialog) {
         return missing;
     }
     /* --- completeness engine end ---------------------------------------- */
+
+    /* ---------------------------------------------------------------------
+     * REQUIRED MARKS THAT MOVE WITH THEIR CONDITION (3.99.0)
+     *
+     * The two public forms draw every asterisk from one list per form, the
+     * same list their validator refuses from. Most entries never change, and
+     * the server draws those and is done. The ones handed here in
+     * `script[data-uc-required]` are the ones that can: a box required only
+     * once "Something else" is chosen, a contact required only while "use my
+     * details" is off, a street required only while no venue is picked. This
+     * re-reads those entries whenever the form changes.
+     *
+     * IT ONLY SHOWS AND HIDES WHAT THE SERVER ALREADY DREW, and it only ever
+     * sets what the entry says the control carries: `required` on a control
+     * that can take it, aria-required on one that cannot. With this script
+     * missing, each mark and attribute stays as the server drew it for the
+     * answers on the page, and the validator is still the check.
+     *
+     * A SELECT READING "0" IS EMPTY, as the server reads it: that is the venue
+     * select's "enter it by hand". A "0" typed into a box is an answer.
+     * ------------------------------------------------------------------- */
+    function initRequiredMarks() {
+        document.querySelectorAll('script[data-uc-required]').forEach(function (node) {
+            var form = node.closest('form');
+            if (!form) { return; }
+            var list;
+            try { list = JSON.parse(node.textContent || '[]'); } catch (err) { return; }
+            if (!Array.isArray(list) || !list.length) { return; }
+
+            function valueOf(name) {
+                var out = '';
+                form.querySelectorAll('[name="' + name + '"]').forEach(function (el) {
+                    if ('' !== out) { return; }
+                    /* A checkbox carries its value ticked or not; `checked`
+                     * is the only thing that answers for one. */
+                    if ('checkbox' === el.type || 'radio' === el.type) {
+                        if (el.checked) { out = String(el.value); }
+                        return;
+                    }
+                    out = String(el.value || '').trim();
+                    if ('SELECT' === el.tagName && '0' === out) { out = ''; }
+                });
+                return out;
+            }
+
+            function sync() {
+                list.forEach(function (entry) {
+                    var when = entry.when || {};
+                    var on = Object.keys(when).every(function (name) {
+                        return valueOf(name) === String(when[name]);
+                    });
+                    form.querySelectorAll('[data-uc-req-mark="' + entry.key + '"], [data-uc-req-said="' + entry.key + '"]').forEach(function (m) {
+                        m.hidden = !on;
+                    });
+                    (entry.inputs || []).forEach(function (name) {
+                        form.querySelectorAll('[name="' + name + '"]').forEach(function (el) {
+                            if ('required' === entry.carry) {
+                                el.required = on;
+                            } else if ('aria' === entry.carry) {
+                                if (on) { el.setAttribute('aria-required', 'true'); } else { el.removeAttribute('aria-required'); }
+                            }
+                        });
+                    });
+                });
+            }
+
+            form.addEventListener('change', sync);
+            form.addEventListener('input', sync);
+            sync();
+        });
+
+        /* A REQUIRED RICH TEXT BOX SAYS SO WHERE THE READER ACTUALLY IS. The
+         * textarea carries aria-required, but TinyMCE hides it and the cursor
+         * is in the editor's own body. Editors can start before or after this
+         * runs, so both are covered. */
+        if (!window.tinymce) { return; }
+        function mirror(ed) {
+            try {
+                var area = ed.getElement && ed.getElement();
+                var body = ed.getBody && ed.getBody();
+                if (area && body && 'true' === area.getAttribute('aria-required')) {
+                    body.setAttribute('aria-required', 'true');
+                }
+            } catch (err) { /* the textarea still says it */ }
+        }
+        function watch(ed) {
+            if (!ed || typeof ed.on !== 'function') { return; }
+            if (ed.initialized) { mirror(ed); } else { ed.on('init', function () { mirror(ed); }); }
+        }
+        var started = window.tinymce.editors || [];
+        for (var i = 0; i < started.length; i++) { watch(started[i]); }
+        if (typeof window.tinymce.on === 'function') {
+            try {
+                window.tinymce.on('AddEditor', function (e) { watch(e && e.editor); });
+            } catch (err) { /* nothing else depends on this */ }
+        }
+    }
 
     /* ---------------------------------------------------------------------
      * The live completeness check.

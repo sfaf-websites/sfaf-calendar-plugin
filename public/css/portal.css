@@ -3381,6 +3381,18 @@ body.uc-modal-open { overflow: hidden; }
 .uc-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
+/* THE REQUIRED MARK (3.99.0). The label's own colour and weight, never red:
+   "Fields marked * are required" at the top of the form is what says what it
+   means, and a red that meant "required" would be the colour errors use saying
+   something that is not an error. Nothing but a gap, so it reads as part of
+   the label. [hidden] is restated because a conditional mark is toggled with
+   it and a later display rule would otherwise win. */
+.uc-req { color: inherit; font-weight: inherit; margin-left: 0.2em; }
+.uc-req[hidden] { display: none; }
+/* The line that says what the mark means. Two classes, because .uc-hint sets
+   its margin with one and this has to clear the card below it. */
+.uc-hint.uc-required-note { margin: 0 0 14px; }
+
 /* ---------------------------------------------------------------------------
    REGISTRATIONS: the event's settings, closed, and left aligned.
 
