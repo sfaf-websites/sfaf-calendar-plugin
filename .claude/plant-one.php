@@ -313,6 +313,38 @@ $edits = array(
     'email-no-zone-formatter' => array( 'includes/sfaf-template-functions.php',
         "    return ( 'zone' === \$style ) ? sfaf_ap_zoned( \$clock ) : \$clock;",
         "    return \$clock;" ),
+    /* ---- 3.100.0: the EveryAction panel. ---- */
+
+    /* A stored credential reaches the screen: the key rendered into its field. */
+    'ea-key-on-screen' => array( 'admin/class-sfaf-admin.php',
+        'name="uc_settings[everyaction_api_key]" value=""',
+        'name="uc_settings[everyaction_api_key]" value="<?php echo esc_attr( SFAF_Credentials::get( \'everyaction_api_key\' ) ); ?>"' ),
+
+    /* A credential reaches the log: the login body, key and password in it. */
+    'ea-key-in-log' => array( 'includes/class-sfaf-everyaction.php',
+        "        \$r = self::reply( wp_remote_post( \$cfg['hub'] . '/api/login.json', array(",
+        "        error_log( 'EveryAction login: ' . wp_json_encode( \$body ) );\n        \$r = self::reply( wp_remote_post( \$cfg['hub'] . '/api/login.json', array(" ),
+
+    /* A credential reaches the message: a hub that echoes one is not scrubbed. */
+    'ea-unscrubbed' => array( 'includes/class-sfaf-everyaction.php',
+        "        \$message = self::scrub( \$message, \$cfg, \$token );",
+        "        \$message = (string) \$message;" ),
+
+    /* The password is stored encoded. */
+    'ea-password-encoded' => array( 'includes/class-sfaf-credentials.php',
+        "                \$value = \$raw;\n            } elseif",
+        "                \$value = base64_encode( \$raw );\n            } elseif" ),
+
+    /* A settings save drops the key: it is no longer a known credential. */
+    'ea-save-drops-key' => array( 'includes/class-sfaf-credentials.php',
+        "            'everyaction_api_key'      => 'secret',\n",
+        "" ),
+
+    /* A settings save with the password field blank clears it. */
+    'ea-blank-clears-password' => array( 'includes/class-sfaf-credentials.php',
+        "                if ( '' === trim( \$raw ) ) {\n                    continue;\n                }\n                \$value = \$raw;",
+        "                \$value = \$raw;" ),
+
 );
 
 if ( 'off-ladder' === $which ) {

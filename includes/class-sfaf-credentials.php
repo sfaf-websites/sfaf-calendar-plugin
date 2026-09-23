@@ -117,13 +117,33 @@ class SFAF_Credentials {
              */
             'turnstile_site_key'       => 'text',
             'turnstile_secret_key'     => 'secret',
+
+            // EveryAction, through the hub's tracker (3.100.0). The password
+            // is its own type: write-only like a secret, and stored exactly as
+            // typed, because trimming would change a password with a space at
+            // either end. SFAF_EveryAction::login() encodes it, and nothing
+            // else ever does.
+            'everyaction_hub_url'      => 'url',
+            'everyaction_api_key'      => 'secret',
+            'everyaction_username'     => 'text',
+            'everyaction_password'     => 'password',
+            'everyaction_tracker_id'   => 'text',
         );
     }
 
     /** True for keys that must never be rendered back into their form field. */
     public static function is_secret( $key ) {
         $keys = self::keys();
-        return isset( $keys[ $key ] ) && 'secret' === $keys[ $key ];
+        return isset( $keys[ $key ] ) && in_array( $keys[ $key ], array( 'secret', 'password' ), true );
+    }
+
+    /**
+     * A stored value exactly as it was saved, not trimmed. For a password,
+     * where get()'s trim would change the credential.
+     */
+    public static function raw( $key ) {
+        $all = self::all();
+        return isset( $all[ $key ] ) && is_scalar( $all[ $key ] ) ? (string) $all[ $key ] : '';
     }
 
     /* ---------------------------------------------------------------------
@@ -228,6 +248,13 @@ class SFAF_Credentials {
                 if ( '' === $value ) {
                     continue;
                 }
+            } elseif ( 'password' === $type ) {
+                // Blank keeps the stored one, as a secret does; anything else
+                // is kept byte for byte.
+                if ( '' === trim( $raw ) ) {
+                    continue;
+                }
+                $value = $raw;
             } elseif ( 'url' === $type ) {
                 $trimmed = trim( $raw );
                 $value   = ( '' === $trimmed ) ? '' : esc_url_raw( $trimmed );

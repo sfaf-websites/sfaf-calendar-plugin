@@ -83,6 +83,14 @@ try draft-refused   "a draft is refused for a missing description" .claude/publi
 try email-no-zone-site "one email time has no zone"     .claude/email-zone-test.php
 try email-no-zone-formatter "the formatter drops the zone" .claude/email-render-test.php
 try email-no-zone-formatter "the formatter drops the zone: sweep" .claude/email-zone-test.php
+# 3.100.0, the EveryAction panel.
+try ea-key-on-screen "a stored key is rendered on screen" .claude/everyaction-test.php
+try ea-key-on-screen "a stored key on screen: browser"   .claude/everyaction-live.php --run
+try ea-key-in-log   "a credential reaches the log"       .claude/everyaction-test.php
+try ea-unscrubbed   "an echoed credential reaches a message" .claude/everyaction-test.php
+try ea-password-encoded "the password is stored encoded" .claude/everyaction-test.php
+try ea-save-drops-key "a settings save drops the key"    .claude/everyaction-test.php
+try ea-blank-clears-password "a blank field clears the password" .claude/everyaction-test.php
 
 restore
 echo "-------------------------------------------"

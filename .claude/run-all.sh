@@ -43,6 +43,8 @@ for f in .claude/*.php; do
     filter-submit-live.php) continue ;;
     required-marks-live.php) continue ;;
     wp-kit.php) continue ;;            # the miniature WordPress the 3.99.0 checks load, not a check
+    everyaction-hub.php) continue ;;   # the model hub the EveryAction checks load, not a check
+    everyaction-live.php) continue ;;  # run below with --run
   esac
   run "$(basename "$f" .php)" php "$f"
 done
@@ -235,6 +237,10 @@ run "filter-submit-live --run" php .claude/filter-submit-live.php --run
 echo
 echo "=== the required marks, in a browser ==="
 run "required-marks-live --run" php .claude/required-marks-live.php --run
+
+echo
+echo "=== the EveryAction panel, in a browser ==="
+run "everyaction-live --run" php .claude/everyaction-live.php --run
 
 echo
 echo "=== shell guards ==="

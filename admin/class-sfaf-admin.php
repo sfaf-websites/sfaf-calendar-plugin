@@ -2362,6 +2362,74 @@ class SFAF_Admin {
                     </div>
                 </div>
 
+                <!-- EVERYACTION -->
+                <?php
+                // Values are shown only for the two fields that are not
+                // credentials. The key and the password are write-only: the
+                // screen says whether one is stored and never what it is.
+                $ea_status = SFAF_EveryAction::status();
+                ?>
+                <div class="uc-integration-panel uc-everyaction-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><?php echo sfaf_icon( 'calendar', array( 'size' => '20px' ) ); ?></span>
+                        <div class="uc-panel-info">
+                            <h2>EveryAction</h2>
+                            <p>Events from Val's tracker on the hub</p>
+                        </div>
+                        <span class="uc-panel-status uc-everyaction-panel-status <?php echo $ea_status['connected'] ? 'uc-status-connected' : 'uc-status-pending'; ?>"><?php
+                            echo $ea_status['connected'] ? 'Connected' : ( $ea_status['checked_at'] ? 'Not connected' : 'Not tested' );
+                        ?></span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="description"><strong>Nothing is imported yet:</strong> there is no fetch, no Auto-Import and no schedule for EveryAction.</p>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-hub">Hub address</label>
+                            <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="<?php echo esc_attr( SFAF_EveryAction::hub() ); ?>" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-key">API key</label>
+                            <input type="password" id="uc-ea-key" name="uc_settings[everyaction_api_key]" value="" autocomplete="new-password"
+                                   placeholder="<?php echo SFAF_Credentials::has( 'everyaction_api_key' ) ? 'Saved. Leave blank to keep it' : 'Paste the API key'; ?>"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-user">Username</label>
+                            <input type="text" id="uc-ea-user" name="uc_settings[everyaction_username]" value="<?php echo esc_attr( SFAF_Credentials::get( 'everyaction_username' ) ); ?>" autocomplete="off" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-pass">Password</label>
+                            <input type="password" id="uc-ea-pass" name="uc_settings[everyaction_password]" value="" autocomplete="new-password"
+                                   placeholder="<?php echo ( '' !== SFAF_Credentials::raw( 'everyaction_password' ) ) ? 'Saved. Leave blank to keep it' : 'The account\'s MangoApps password'; ?>"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-tracker">Tracker ID</label>
+                            <input type="text" id="uc-ea-tracker" name="uc_settings[everyaction_tracker_id]" value="<?php echo esc_attr( SFAF_EveryAction::tracker_id() ); ?>" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-connect">Test connection</button>
+                                <span class="uc-conn-pill uc-everyaction-pill <?php echo $ea_status['connected'] ? 'is-connected' : ''; ?>"><?php
+                                    echo $ea_status['connected'] ? 'Connected' : 'Not connected';
+                                ?></span>
+                            </div>
+                        </div>
+                        <p class="description uc-everyaction-conn-msg"<?php echo '' === $ea_status['message'] ? ' hidden' : ''; ?>><?php echo esc_html( $ea_status['message'] ); ?></p>
+
+                        <div class="uc-probe-box uc-everyaction-probe-box">
+                            <h3>Tracker probe <span class="uc-probe-tag">diagnostic</span></h3>
+                            <p class="description">Logs in, reads the first page of the tracker, logs out, and prints the body exactly as the hub sent it. <strong>Read-only:</strong> it imports nothing and changes nothing.</p>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-probe">Probe tracker</button>
+                            </div>
+                            <p class="description uc-everyaction-probe-msg" hidden></p>
+                            <pre class="uc-probe-pre uc-everyaction-probe-out" hidden></pre>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PARDOT / SALESFORCE -->
                 <div class="uc-integration-panel">
                     <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">

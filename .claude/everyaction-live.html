@@ -1,0 +1,101 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>EveryAction panel</title><link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/admin/css/admin.css"><script>window.EL_PAYLOADS = [{"success":true,"data":{"ok":true,"step":"done","message":"Connected. Tracker reachable, 57 rows.","rows":57}},{"success":false,"data":{"ok":false,"step":"login","message":"Login failed: Login id or Password is Incorrect.","rows":null}},{"success":false,"data":{"ok":false,"step":"login","message":"Login failed: HTTP 502.","rows":null}},{"success":false,"data":{"ok":false,"step":"tracker","message":"Tracker read failed: the hub answered with a web page (text\/html; charset=utf-8), not data.","rows":null}},{"success":true,"data":{"ok":true,"error":"","url":"\/api\/v2\/trackers\/162570\/fetch-all-entries","status":200,"type":"application\/json; charset=utf-8","length":79,"truncated":false,"body":"{\"ms_response\":{\"entries\":[{\"id\":1,\"Series ID\":\"A\"},{\"id\":2,\"Series ID\":\"A\"}]}}","rows":2,"total":null,"where":"ms_response.entries","logout":"Logged out.","max_body":250000}},{"success":true,"data":{"ok":false,"error":"Login failed: Login id or Password is Incorrect.","url":"","status":0,"type":"","length":0,"truncated":false,"body":"","rows":null,"total":null,"where":"","logout":"","max_body":250000}}]; window.EL_PRESSES = ["test","test","test","test","probe","probe"];</script><script>(function () {
+  var queue = window.EL_PAYLOADS.slice(), posted = [], out = { errors: [], steps: [], fields: {}, posted: posted };
+  window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+  window.sfafAdmin = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'n' };
+  window.fetch = function (url, opts) {
+    var got = {}; opts.body.forEach(function (v, k) { got[k] = v; }); posted.push(got);
+    var p = queue.shift();
+    return Promise.resolve({ status: 200, json: function () { return Promise.resolve(p); } });
+  };
+  function txt(sel) { var e = document.querySelector(sel); return e ? e.textContent.trim() : null; }
+  function shown(sel) { var e = document.querySelector(sel); return !!(e && !e.hidden && e.getClientRects().length); }
+  function wait() { return new Promise(function (r) { setTimeout(r, 60); }); }
+  window.addEventListener('load', function () {
+    /* Opened as a person opens it: the header is what toggles the body. */
+    document.querySelector('.uc-everyaction-panel .uc-panel-header').click();
+    out.openedBody = shown('.uc-everyaction-panel .uc-panel-body');
+    /* The password as a person would type it, to see what is posted. */
+    document.querySelector('[name="uc_settings[everyaction_password]"]').value = 'typed pass ';
+    ['everyaction_hub_url', 'everyaction_api_key', 'everyaction_username', 'everyaction_password', 'everyaction_tracker_id'].forEach(function (n) {
+      var e = document.querySelector('[name="uc_settings[' + n + ']"]');
+      out.fields[n] = e ? { type: e.type, value: e.value, label: (document.querySelector('label[for="' + e.id + '"]') || {}).textContent || '' } : null;
+    });
+    out.buttons = [txt('.uc-everyaction-connect'), txt('.uc-everyaction-probe')];
+    out.notBuilt = txt('.uc-everyaction-panel .uc-panel-body > .description');
+    out.heading = txt('.uc-everyaction-panel h2') + ' / ' + txt('.uc-everyaction-panel .uc-panel-info p');
+    var chain = Promise.resolve();
+    window.EL_PRESSES.forEach(function (press) {
+      chain = chain.then(function () {
+        document.querySelector(press === 'test' ? '.uc-everyaction-connect' : '.uc-everyaction-probe').click();
+        return wait();
+      }).then(function () {
+        out.steps.push(press === 'test'
+          ? { msg: txt('.uc-everyaction-conn-msg'), msgShown: shown('.uc-everyaction-conn-msg'), pill: txt('.uc-everyaction-pill'), badge: txt('.uc-everyaction-panel-status') }
+          : { msg: txt('.uc-everyaction-probe-msg'), msgShown: shown('.uc-everyaction-probe-msg'), body: shown('.uc-everyaction-probe-out') ? document.querySelector('.uc-everyaction-probe-out').textContent : null });
+      });
+    });
+    chain.then(function () {
+      out.html = document.documentElement.outerHTML.length;
+      out.pageText = document.body.innerText;
+      var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+    });
+  });
+})();</script></head><body class="wp-admin"><div class="wrap uc-admin-wrap"><form><!-- EVERYACTION -->
+                                <div class="uc-integration-panel uc-everyaction-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>EveryAction</h2>
+                            <p>Events from Val's tracker on the hub</p>
+                        </div>
+                        <span class="uc-panel-status uc-everyaction-panel-status uc-status-pending">Not tested</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="description"><strong>Nothing is imported yet:</strong> there is no fetch, no Auto-Import and no schedule for EveryAction.</p>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-hub">Hub address</label>
+                            <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="https://hub.sfaf.org" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-key">API key</label>
+                            <input type="password" id="uc-ea-key" name="uc_settings[everyaction_api_key]" value="" autocomplete="new-password"
+                                   placeholder="Saved. Leave blank to keep it"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-user">Username</label>
+                            <input type="text" id="uc-ea-user" name="uc_settings[everyaction_username]" value="svc-calendar@sfaf.org" autocomplete="off" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-pass">Password</label>
+                            <input type="password" id="uc-ea-pass" name="uc_settings[everyaction_password]" value="" autocomplete="new-password"
+                                   placeholder="Saved. Leave blank to keep it"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-tracker">Tracker ID</label>
+                            <input type="text" id="uc-ea-tracker" name="uc_settings[everyaction_tracker_id]" value="162570" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-connect">Test connection</button>
+                                <span class="uc-conn-pill uc-everyaction-pill ">Not connected</span>
+                            </div>
+                        </div>
+                        <p class="description uc-everyaction-conn-msg" hidden></p>
+
+                        <div class="uc-probe-box uc-everyaction-probe-box">
+                            <h3>Tracker probe <span class="uc-probe-tag">diagnostic</span></h3>
+                            <p class="description">Logs in, reads the first page of the tracker, logs out, and prints the body exactly as the hub sent it. <strong>Read-only:</strong> it imports nothing and changes nothing.</p>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-probe">Probe tracker</button>
+                            </div>
+                            <p class="description uc-everyaction-probe-msg" hidden></p>
+                            <pre class="uc-probe-pre uc-everyaction-probe-out" hidden></pre>
+                        </div>
+                    </div>
+                </div>
+
+                </form></div><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/admin/js/everyaction.js"></script></body></html>

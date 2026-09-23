@@ -137,6 +137,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-sync.php',
     'includes/class-sfaf-gfmp.php',
     'includes/class-sfaf-eventbrite.php',
+    // EveryAction: a connection test and a probe only, no adapter (3.100.0).
+    'includes/class-sfaf-everyaction.php',
     'includes/class-sfaf-faq-sets.php',
     'includes/class-sfaf-teams.php',
     'includes/class-sfaf-search.php',
@@ -264,6 +266,10 @@ function sfaf_init() {
 
     $eventbrite = new SFAF_Eventbrite();
     $eventbrite->register();
+
+    // EveryAction: Test connection and the tracker probe. Nothing imports.
+    $everyaction = new SFAF_EveryAction();
+    $everyaction->register();
 
     // Third-party import framework. The queue statuses are registered here,
     // on `init`, which is where register_post_status() must be called.
@@ -427,6 +433,15 @@ function sfaf_enqueue_admin_assets( $hook ) {
         'ajaxUrl' => admin_url( 'admin-ajax.php' ),
         'nonce'   => wp_create_nonce( 'uc_admin_nonce' ),
     ) );
+    // The EveryAction panel's two buttons. Plain script, after admin.js so
+    // sfafAdmin exists; it does nothing on a screen without the panel.
+    wp_enqueue_script(
+        'sfaf-everyaction',
+        SFAF_PLUGIN_URL . 'admin/js/everyaction.js',
+        array( 'sfaf-calendar-admin' ),
+        SFAF_VERSION,
+        true
+    );
 
     // The embed generator previews the block by running the real embed script
     // against the real endpoint, so it loads exactly what a remote site loads.

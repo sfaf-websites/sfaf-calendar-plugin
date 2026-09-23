@@ -39,6 +39,7 @@ function kit_reset() {
     $GLOBALS['kit_next']  = 500;
     $GLOBALS['kit_trans'] = array();
     $GLOBALS['kit_organizers'] = true; // whether the site has any organizers
+    $GLOBALS['kit_options'] = array();   // name => value
 }
 kit_reset();
 
@@ -105,8 +106,10 @@ function home_url( $p = '' ) { return 'https://resources.sfaf.org' . $p; }
 function site_url( $p = '' ) { return 'https://resources.sfaf.org' . $p; }
 function admin_url( $p = '' ) { return 'https://resources.sfaf.org/wp-admin/' . $p; }
 function add_query_arg( $a, $b = '', $c = '' ) { return is_array( $a ) ? ( $b . '?' . http_build_query( $a ) ) : ( $c . '?' . $a . '=' . $b ); }
-function get_option( $n, $d = false ) { return $d; }
-function update_option( $n, $v = null, $a = null ) { return true; }
+function get_option( $n, $d = false ) { return ( isset( $GLOBALS['kit_options'] ) && array_key_exists( $n, $GLOBALS['kit_options'] ) ) ? $GLOBALS['kit_options'][ $n ] : $d; }
+function update_option( $n, $v = null, $a = null ) { $GLOBALS['kit_options'][ $n ] = $v; return true; }
+function add_option( $n, $v = '', $d = '', $a = null ) { if ( isset( $GLOBALS['kit_options'][ $n ] ) ) { return false; } $GLOBALS['kit_options'][ $n ] = $v; return true; }
+function delete_option( $n ) { unset( $GLOBALS['kit_options'][ $n ] ); return true; }
 function get_bloginfo( $s = '' ) { return 'SFAF'; }
 function is_wp_error( $t ) { return $t instanceof WP_Error; }
 function wp_create_nonce( $a = '' ) { return 'nonce'; }
@@ -222,7 +225,7 @@ function get_term_link( $t, $tax = '' ) { return 'https://resources.sfaf.org/ter
 foreach ( array(
     'status_header', 'language_attributes', 'bloginfo', 'wp_print_styles', 'wp_print_head_scripts',
     'wp_print_footer_scripts', 'sanitize_html_class', 'wp_enqueue_media', 'wp_enqueue_editor',
-    'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates',
+    'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates', 'submit_button', 'rest_url', 'settings_fields',
 ) as $kit_fn ) {
     if ( ! function_exists( $kit_fn ) ) { eval( 'function ' . $kit_fn . '( ...$a ) { return null; }' ); }
 }
