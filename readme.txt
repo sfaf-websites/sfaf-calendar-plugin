@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.98.0
+Stable tag: 3.98.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -531,6 +531,21 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.98.1 =
+
+**A category pill in the embedded calendar filtered the list and then reloaded the page on top of it. The pills were submit buttons and nobody had said so.**
+
+**INTRODUCED IN 3.85.0**, which put a real GET form round the filter bar so the calendar works with script off. The pills were written in 3.8.0, when nothing around them was a form, as plain `<button>` elements with no `type`. A `<button>` with no type IS a submit button: that is the HTML default. So from 3.85.0 every press did two things, the script filtered the block in place and the browser submitted the form a moment later, and what a visitor saw was the right list for half a second and then a reload with the category gone.
+
+**THE ORGANIZERS AND GROUPS DROPDOWN WAS NEVER AFFECTED**, which is what made this look like the pills alone: changing a `<select>` submits nothing. The search field was never affected either, because both scripts already take Enter's default away in the box.
+
+**THE FIX IS IN THREE PLACES AND ALL THREE ARE NEEDED.** Both scripts now prevent the default in the pill handler, which is what stops the reload. Every pill says `type="submit"` out loud, so the next person reading it can see the decision rather than inherit a default. And each pill carries `name="uc_cat"` with its own slug.
+
+**THAT LAST ONE IS THE NO-SCRIPT PATH, AND IT HAD NEVER WORKED.** The bar carried the chosen category in a hidden field, and a hidden field is sent by whichever control submits, so with script off a press of "Testing" reloaded with whatever category was already on screen. Only the activating submit button sends its own name and value, so a pill now sends its own slug, "All Events" sends an empty one, and Apply sends the one already chosen. The hidden field is gone, and the address can never hold two answers to the same question.
+
+**THE CHECK IS A BROWSER, BECAUSE THE FAULT WAS A DEFAULT.** There was no `type="submit"` to grep for, no submit handler to find and no navigation written anywhere; the whole fault was the absence of one line in two files. `.claude/filter-submit-live.php` renders the real filter bar through a miniature WordPress, loads the real `embed.js` and the real `calendar.js` on two pages, presses every control on the bar, and fails if any of them would take the page anywhere. It also reads the address a script-less press would produce out of the browser's own form serialisation rather than reasoning about it. `.claude/plant-filter-submit.php` plants five shapes of the fault and confirms the check goes red on each.
+
+**AND THE AUDIT ASKS A SECOND QUESTION NOW.** `.claude/form-owner-audit.php` came back clean on this throughout: it was asking whether each submit button had a form, and these had one. It now also asks whether the type was written down at all. Those two pills were the only buttons in the plugin without one.
 = 3.98.0 =
 
 **Nine pieces: the RSVP form's format control, the editor's capacity row, its button row and labels, a live video preview, where a description comes from, time controls that actually step by five minutes, and the meeting link going out by default.**

@@ -2234,8 +2234,10 @@ class SFAF_Shortcodes {
      * @param string[]  $org_on
      * @param string[]  $group_on
      * @param array     $map        group slug => organizer slugs
+     * @param array     $counts     org and group slug => upcoming count
+     * @param string    $active_category  what Apply carries, with script off
      */
-    private function render_who_picker( $organizers, $groups, $org_on, $group_on, $map, $counts = array() ) {
+    private function render_who_picker( $organizers, $groups, $org_on, $group_on, $map, $counts = array(), $active_category = '' ) {
         if ( empty( $organizers ) && empty( $groups ) ) {
             return;
         }
@@ -2538,7 +2540,17 @@ class SFAF_Shortcodes {
                      * carries the other's leftovers.
                      */
                     ?>
-                    <button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>
+                    <?php
+                    /*
+                     * AND IT CARRIES THE CHOSEN CATEGORY (3.98.1). The bar's
+                     * hidden uc_cat field went when the pills started carrying
+                     * their own, and this is the other control that submits, so
+                     * without this an Apply with script off would clear a
+                     * category somebody had already chosen.
+                     */
+                    ?>
+                    <button type="submit" name="uc_cat" value="<?php echo esc_attr( $active_category ); ?>"
+                            class="uc-who-apply" data-uc-who-apply>Apply</button>
                 </div>
                 </noscript>
             </div>
@@ -3387,9 +3399,22 @@ class SFAF_Shortcodes {
                 <?php if ( '' !== $filters['s'] ) : ?>
                     <input type="hidden" name="uc_s" value="<?php echo esc_attr( $filters['s'] ); ?>" />
                 <?php endif; ?>
-                <?php if ( '' !== $active_category ) : ?>
-                    <input type="hidden" name="uc_cat" value="<?php echo esc_attr( $active_category ); ?>" />
-                <?php endif; ?>
+                <?php
+                /*
+                 * THERE IS NO HIDDEN uc_cat HERE, AND THERE WAS ONE UNTIL
+                 * 3.98.1. A hidden field is sent by WHICHEVER control submits,
+                 * so it carried the category the page was rendered with even
+                 * when the thing being pressed was a pill asking for a
+                 * different one. With script off that made every pill press
+                 * reload the category already on screen.
+                 *
+                 * THE CATEGORY IS NOW CARRIED BY THE BUTTON THAT SUBMITS.
+                 * Only the activating submit button contributes its own name
+                 * and value, so a pill sends its own slug and Apply sends the
+                 * one already chosen, and the address can never hold two
+                 * answers to the same question.
+                 */
+                ?>
             <div class="uc-filters">
                 <div class="uc-search-wrap">
                     <?php
@@ -3445,13 +3470,37 @@ class SFAF_Shortcodes {
                     }
                     $active_slugs = ( '' === $active_category ) ? array() : explode( ',', $active_category );
                     ?>
-                    <button class="uc-filter-btn<?php echo empty( $active_slugs ) ? ' active' : ''; ?>"
+                    <?php
+                    /*
+                     * EVERY PILL IS A SUBMIT BUTTON THAT SAYS SO, AND CARRIES
+                     * ITS OWN ANSWER (3.98.1).
+                     *
+                     * A <button> with no `type` IS a submit button, which is
+                     * the HTML default and the case nobody sees. 3.85.0 put a
+                     * real GET form round this bar and left these two written
+                     * as they were, so from that release every pill press
+                     * submitted the form as well as filtering: the list
+                     * changed, then the page reloaded a moment later and threw
+                     * the change away. The dropdown was never affected because
+                     * a <select> does not submit anything by being changed.
+                     *
+                     * `name` AND `value` ARE WHAT MAKE THE NO-SCRIPT PATH
+                     * REAL. Only the activating submit button sends its own
+                     * name and value, so the reload carries the slug of the
+                     * pill that was actually pressed. "All Events" sends an
+                     * empty uc_cat, which is what "no category" is spelled as
+                     * everywhere else.
+                     */
+                    ?>
+                    <button type="submit" name="uc_cat" value=""
+                            class="uc-filter-btn<?php echo empty( $active_slugs ) ? ' active' : ''; ?>"
                             data-category="all" aria-pressed="<?php echo empty( $active_slugs ) ? 'true' : 'false'; ?>">All Events</button>
                     <?php foreach ( $categories as $cat ) :
                         $color = sfaf_category_color( $cat->term_id );
                         $on    = in_array( $cat->slug, $active_slugs, true );
                     ?>
-                        <button class="uc-filter-btn<?php echo $on ? ' active' : ''; ?>"
+                        <button type="submit" name="uc_cat" value="<?php echo esc_attr( $cat->slug ); ?>"
+                                class="uc-filter-btn<?php echo $on ? ' active' : ''; ?>"
                                 data-category="<?php echo esc_attr( $cat->slug ); ?>"
                                 aria-pressed="<?php echo $on ? 'true' : 'false'; ?>"
                                 style="--cat-color: <?php echo esc_attr( $color ); ?>">
@@ -3550,7 +3599,8 @@ class SFAF_Shortcodes {
                     $org_on,
                     ( '' === $active_groups ) ? array() : explode( ',', $active_groups ),
                     $who['map'],
-                    $who
+                    $who,
+                    $active_category
                 );
                 ?>
                 <?php endif; ?>

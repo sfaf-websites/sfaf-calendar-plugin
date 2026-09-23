@@ -4,11 +4,16 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-18, at 3.98.0, released.
+**Last updated:** 2026-09-22, at 3.98.1, released.
 
 ---
 
 ## What shipped last
+
+**3.98.1** is one fault, live on sfaf.org since 3.85.0: a category pill filtered
+the embedded list and then reloaded the page on top of it, because a `<button>`
+with no `type` is a submit button and 3.85.0 put a GET form round the bar.
+`PROJECT.md` 1 has the shape.
 
 **3.98.0** is nine pieces: the RSVP format question is the calendar's pick-one
 control, capacity is one row, an existing event's buttons are Delete / Cancel
@@ -20,12 +25,9 @@ broken since 3.96.0. **3.96.0 is the big one**: hybrid events end to end, the
 event video, pictures inside descriptions.
 **`readme.txt` is the changelog** and has the reasoning for all of it.
 
-> **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** GoFundMe Pro and
-> Eventbrite count their own places. The tick is locked and off, both capacity
-> boxes are hidden, the event page offers the source's own link instead, and a
-> one-time pass switched it off on events that already had it on. **It deleted
-> nobody**: registrations already taken are still on the registrations screen.
-> **A hand-made event is untouched whatever links it carries.** `PROJECT.md` 3.
+> **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** The tick is locked off,
+> a one-time pass switched it off where it was on, and **it deleted nobody**. A
+> hand-made event is untouched whatever links it carries. `PROJECT.md` 3.
 
 > **THE EDITOR'S BUTTON ROW IS OUTSIDE THE EVENT FORM**, so every button in it
 > lives or dies by its `form=` attribute; **never add one without it**.
@@ -37,21 +39,19 @@ event video, pictures inside descriptions.
 > **Delete must never be first in the MARKUP**: Enter in a text field presses
 > the form's first submit, and the left-to-right order is CSS `order`, which
 > moves neither the document nor the keyboard.
+> **AND EVERY BUTTON SAYS ITS TYPE (3.98.1)**: one with none is a submit, which
+> is how the category pills reloaded the page for thirteen releases.
+> `form-owner-audit.php` asks that too now.
 
-**THREE FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` for featured
-pictures, `calendar-submissions/` for what strangers send,
-`calendar-descriptions/` for prose. `PROJECT.md` 1 has why.
+**THREE FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` for featured,
+`calendar-submissions/` for strangers, `calendar-descriptions/` for prose.
 
 > **HYBRID EVENTS ARE SHIPPED, AND THREE THINGS ARE DELIBERATELY NOT IN THEM.**
 > A registrant cannot change format after registering, neither public form
 > offers hybrid, and there is no per-registrant approval. **These are decisions,
-> not gaps**, so do not re-open them as oversights. It is one capacity PER
-> FORMAT: the form has to say "online is full, there are still places in person"
-> and one number cannot. `PROJECT.md` 2 has the model and the credential rule.
-> **A HYBRID EVENT ALWAYS TAKES RSVPS (3.97.2)**: the format question is asked
-> on the registration form and nowhere else. **AND EVERY PERSON OBJECT REACHING
-> A MAIL BUILDER CARRIES `format` (3.97.3)**, or the gates refuse the link to
-> the one person it is for. `PROJECT.md` 7 has that shape.
+> not gaps**, so do not re-open them as oversights. One capacity PER FORMAT.
+> **EVERY PERSON OBJECT REACHING A MAIL BUILDER CARRIES `format` (3.97.3)**, or
+> the gates refuse the link to the one person it is for. `PROJECT.md` 2 and 7.
 
 **Three things a new session needs, each retiring or reversing something:**
 
@@ -97,7 +97,7 @@ pictures, `calendar-submissions/` for what strangers send,
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 185 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 187 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.

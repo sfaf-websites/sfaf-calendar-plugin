@@ -1085,8 +1085,25 @@ renders and the script reorders only when the panel is next opened.
 `<form>`, no submit and no `<noscript>` anywhere in the file: the search box, the
 organizer select and the group checkboxes were all read by JavaScript. "The
 calendar works without script" was true of the LISTS and was never true of the
-FILTERS. `popovertarget` opens the panel declaratively, Apply is a real submit on
-a real GET form, and the script intercepts exactly as `initLoadMore()` does.
+FILTERS. There is a real GET form round the bar, Apply is a real submit inside
+`<noscript>`, and the script intercepts exactly as `initLoadMore()` does.
+
+**THE CATEGORY IS CARRIED BY THE BUTTON THAT SUBMITS, NEVER BY A HIDDEN FIELD**
+(3.98.1). A hidden field is sent by whichever control submits, so the bar's
+hidden `uc_cat` carried the category the page was RENDERED with even when the
+thing being pressed asked for a different one, and with script off a pill press
+reloaded the category already on screen. Only the activating submit button sends
+its own name and value, so each pill carries `name="uc_cat"` with its own slug,
+"All Events" carries an empty one, and Apply carries the one already chosen.
+There is exactly one `uc_cat` in the address whatever is pressed.
+
+> **AND EVERY BUTTON ON THIS BAR SAYS ITS TYPE.** The pills had none, which
+> makes a `<button>` a submit button, so from 3.85.0 a press filtered the block
+> in place and then reloaded the page on top of it. Both scripts prevent the
+> default in the pill handler; the type is written down so the next reader sees
+> a decision rather than a default. `form-owner-audit.php` asks for the type as
+> well as the owner now, and `filter-submit-live.php` presses every control on
+> this bar in headless Chrome under each script in turn.
 
 **THIS MADE GROUPS A FIRST-LEVEL FILTER**, undoing the staging that kept them
 hidden until a category was chosen so that nobody was looking at two taxonomies
@@ -5867,6 +5884,39 @@ new panel rendered its empty state beside a sidebar listing the same events.
 **A feature added to a mode has to be walked against every decision that mode
 already made**, and there were three: the toggle, the pagination and the render
 mode.
+
+### A default nobody chose is invisible to every question about what is there (3.98.1)
+
+The public calendar's category pills reloaded the page for thirteen releases.
+They are `<button>` elements, and a `<button>` with no `type` IS a submit
+button; 3.85.0 put a real GET form round the filter bar so the calendar works
+with script off, and did not revisit two buttons written in 3.8.0 when nothing
+around them was a form.
+
+**EVERY COMMITTED CHECK CAME BACK CLEAN, AND EACH WAS RIGHT TO.** The file
+parses. The callable audit is clean. The pills are there, they carry their
+slugs, their handlers are bound and their classes are right.
+`form-owner-audit.php` reported them as healthy because the question it asks is
+whether a submit button has a form, and these had one.
+
+> **WHEN THE FAULT IS AN ABSENCE, NO QUESTION ABOUT WHAT IS PRESENT WILL FIND
+> IT.** There was no `type="submit"` to grep for, no submit handler to find and
+> no navigation written anywhere. The only place a default is visible is a
+> running page, which is why the check for this is a browser pressing the
+> control and watching whether anything moves.
+
+**THE SECOND HALF IS THE ONE WORTH KEEPING.** The remedy is not only the
+`preventDefault()` that stops the reload: it is that the type is now WRITTEN
+DOWN on every button, so the next reader sees a decision instead of inheriting a
+default, and the audit asks for it. Those two pills were the only buttons in the
+plugin without one, which is what made the rule cheap to adopt and is exactly
+why it had gone unnoticed.
+
+**AND THE NO-SCRIPT PATH HAD NEVER WORKED EITHER**, which nobody had looked at
+because the fault with script on was the visible one. The category rode in a
+hidden field, and a hidden field is sent by whichever control submits, so a
+press of one pill reloaded with the category of a different one. **A control
+that speaks for a choice has to carry that choice itself.**
 
 A shared thread runs through most of these: **a verified change is not a
 verified outcome.** `git log -S` answers "was my edit applied"; it does not

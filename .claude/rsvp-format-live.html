@@ -1005,7 +1005,16 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
     }
 
     function initFilters() {
-        $(document).on('click', '.uc-filter-btn', function () {
+        $(document).on('click', '.uc-filter-btn', function (e) {
+            /*
+             * THE PILL IS A SUBMIT BUTTON AND THIS IS WHAT STOPS IT SUBMITTING
+             * (3.98.1). It sits inside the filter bar's real GET form, which is
+             * what makes it work with script off, so with script on the default
+             * has to be taken away or the block filters in place and the page
+             * reloads on top of it a moment later. The same line is in
+             * embed.js.
+             */
+            e.preventDefault();
             var $btn   = $(this);
             var $block = $btn.closest('.uc-calendar, .uc-upcoming-widget');
             var cat    = String($btn.attr('data-category') || 'all');

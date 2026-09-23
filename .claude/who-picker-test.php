@@ -152,7 +152,11 @@ if ( strpos( $sc, 'data-uc-who-apply' ) === false ) {
  * is still the strong one: a browser with scripting on never parses this
  * button, which is what <noscript> in front of it guarantees however much
  * markup sits in between. */
-if ( ! preg_match( '#<noscript>\s*(<div class="uc-who-foot">\s*)?(<\?php.*?\?>\s*)?<button type="submit" class="uc-who-apply"#s', $sc ) ) {
+/* AND THE BUTTON CARRIES THE CHOSEN CATEGORY FROM 3.98.1, so the class is no
+ * longer the attribute straight after the type. Matched with `.*?` rather than
+ * a character class excluding `>`, because the value it now carries holds a PHP
+ * tag and such a class stops dead at its `?>`. */
+if ( ! preg_match( '#<noscript>\s*(<div class="uc-who-foot">\s*)?(<\?php.*?\?>\s*)?<button type="submit".*?class="uc-who-apply"#s', $sc ) ) {
     $fails[] = 'Apply is not inside <noscript>, so it exists for people who have script and every other filter here applies immediately';
 }
 if ( strpos( $css, '[data-uc-who-live]' ) !== false ) {

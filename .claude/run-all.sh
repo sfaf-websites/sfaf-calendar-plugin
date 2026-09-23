@@ -37,6 +37,10 @@ for f in .claude/*.php; do
     audit-callables.php) continue ;;   # run separately, with its self-test
     plant-one.php) continue ;;         # a fault planter, not a check
     plant-follow.php) continue ;;      # likewise, for follow-test.php
+    plant-filter-submit.php) continue ;; # likewise, and it drives Chrome a dozen times
+    # Run below with --run instead. Without it the page is only written and the
+    # thing it exists to measure, what a press does in a browser, never happens.
+    filter-submit-live.php) continue ;;
   esac
   run "$(basename "$f" .php)" php "$f"
 done
@@ -213,6 +217,15 @@ run "prefill-image-test --self-test" node .claude/prefill-image-test.js --self-t
 # And the DOM stub under repeater-max-test.js, for the same reason: it decides
 # whether a button is IN the document, which is the whole assertion there.
 run "repeater-max-test --self-test" node .claude/repeater-max-test.js --self-test
+
+echo
+# THE ONE THING ONLY A BROWSER CAN ANSWER. A <button> with no type submits the
+# form round it, and there is no attribute to grep for, no handler to find and
+# no navigation written anywhere: the fault is a DEFAULT. This clicks every
+# control on the filter bar in headless Chrome, under each script in turn, and
+# asserts that none of them takes the page anywhere.
+echo "=== the filter bar, in a browser ==="
+run "filter-submit-live --run" php .claude/filter-submit-live.php --run
 
 echo
 echo "=== shell guards ==="

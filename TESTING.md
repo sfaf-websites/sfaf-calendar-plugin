@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 185 items.** Quick 156, needs real conditions 26, blocked on other
+**Outstanding: 187 items.** Quick 158, needs real conditions 26, blocked on other
 people 3.
 
 ---
@@ -2371,6 +2371,35 @@ check the extra entry is gone on reopening.
 **Why it needs a person:** it needs an event holding such a time, which is a
 state no test here can construct, and the thing being checked is that a save
 that did not touch the field did not quietly round it.
+
+### 1.160 A category pill on the real sfaf.org embed (3.98.1)
+
+Open a page on sfaf.org carrying the embedded calendar and **press a category
+pill**. The list must narrow and **stay narrowed**: no reload, and the address
+bar unchanged. Press another, then press **All Events**. Then do the same on
+resources.sfaf.org, which runs the other script.
+
+**Why it needs a person:** this is the fault as reported, on the real page,
+through the real endpoint, and the one thing the headless check cannot include
+is a host page. sfaf.org's own theme and its own scripts are on that page too,
+and `.claude/filter-submit-live.php` has neither.
+
+> **AND IT MAY NEED A HARD REFRESH.** embed.js is cached by the browser on the
+> host page. If a pill still reloads, check the version the console warns about
+> before reporting the fix as not taken.
+
+### 1.161 A pill press with JavaScript switched off (3.98.1)
+
+In the browser's site settings, **block JavaScript for resources.sfaf.org**, open
+the calendar, and press a category pill. The page reloads, the address carries
+`?uc_cat=<that category>` and the list below is that category. Press **All
+Events**: `uc_cat` is empty and every event is back. Tick an organizer and press
+**Apply**: the category chosen before it is still in the address and still
+applied.
+
+**Why it needs a person:** the headless check reads what the browser would send
+by asking the form for it, which is the right question but is not the same thing
+as a browser with scripting genuinely off rendering the page that comes back.
 
 ## 2. Needs real conditions
 

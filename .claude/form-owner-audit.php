@@ -51,8 +51,19 @@
  * code actually does; a button three renderers deep would still be reported,
  * and should be, because nobody can follow that by eye either.
  *
+ * AND IT ASKS A SECOND QUESTION SINCE 3.98.1: IS THE TYPE WRITTEN DOWN.
+ * ---------------------------------------------------------------------------
+ * The calendar's two category pills had no `type` at all. Every question below
+ * came back clean for them: submit buttons, inside a form, and the form is on
+ * the page. What was wrong is that nobody had DECIDED they should submit, and
+ * from 3.85.0, which put the form there, pressing one filtered the block and
+ * then reloaded the page on top of it. A default nobody chose is not visible
+ * to a question about ownership, so it is asked separately: a submit button
+ * says `type="submit"` or it is a fault.
+ *
  * WHAT IT DECIDES, per submit button:
  *
+ *   no type attribute at all      A FAULT. This is the 3.98.1 bug.
  *   inside an open <form>         fine
  *   in a method always called
  *     from inside a form          fine
@@ -209,6 +220,9 @@ function fo_scan( $markup ) {
             'tag'    => preg_replace( '/\s+/', ' ', $tag ),
             'inside' => ( $depth > 0 ),
             'owner'  => $owner,
+            /* Whether the author WROTE the type, as distinct from whether the
+             * browser computes one. See the second question below. */
+            'typed'  => (bool) $has_type,
         );
     }
 
@@ -321,6 +335,35 @@ foreach ( $files as $rel ) {
             $checked++;
             $short = substr( $b['tag'], 0, 92 );
 
+            /*
+             * THE SECOND QUESTION: DID SOMEBODY CHOOSE THIS (3.98.1).
+             *
+             * A <button> with no `type` submits, and the two that had none
+             * were the calendar's category pills. They were written in 3.8.0
+             * when nothing round them was a form; 3.85.0 put a real GET form
+             * round the bar and did not revisit them, so from that release
+             * every pill press filtered the block and then reloaded the page
+             * on top of it. Everything this audit already asked came back
+             * clean: the buttons are submits, they are inside a form, and the
+             * form is on the page. What was wrong is that nobody had decided
+             * they should submit.
+             *
+             * SO THE TYPE IS WRITTEN DOWN OR IT IS A FAULT. It costs eleven
+             * characters, it makes the intention reviewable, and it is the one
+             * question that separates a submit somebody wanted from a submit
+             * nobody noticed.
+             */
+            if ( ! $b['typed'] ) {
+                $fails[] = sprintf(
+                    '%s::%s  a button with no type attribute, which makes it a submit button by default: %s',
+                    $rel,
+                    $method,
+                    $short
+                );
+                $rows[] = array( $rel, $method, 'NO TYPE', $short );
+                continue;
+            }
+
             if ( $b['inside'] ) {
                 $rows[] = array( $rel, $method, 'inside a form', $short );
                 continue;
@@ -401,6 +444,17 @@ if ( 'self' === $mode ) {
             array( '<form id="f1"><div></div><button type="submit">Save</button></form>', 'pass' ),
         'two forms, and the button falls between them' =>
             array( '<form id="f1"></form><button type="submit">X</button><form id="f2"></form>', 'fail' ),
+
+        /* THE SECOND QUESTION (3.98.1). The first four worlds above all put an
+         * untyped button OUTSIDE a form, where the owner question already
+         * condemns it. These put it inside one, which is where the category
+         * pills were and where every other check came back clean. */
+        'THE 3.98.1 FAULT: an untyped button inside a form' =>
+            array( '<form id="f1"><button class="uc-filter-btn">All Events</button></form>', 'fail' ),
+        'the same button with its type written down' =>
+            array( '<form id="f1"><button type="submit" class="uc-filter-btn">All Events</button></form>', 'pass' ),
+        'a plain button inside a form is not a submit at all' =>
+            array( '<form id="f1"><button type="button">Clear all</button></form>', 'pass' ),
     );
 
     foreach ( $worlds as $name => $w ) {
@@ -408,6 +462,7 @@ if ( 'self' === $mode ) {
         $s   = fo_scan( $markup );
         $bad_here = false;
         foreach ( $s['buttons'] as $b ) {
+            if ( ! $b['typed'] ) { $bad_here = true; continue; }
             if ( $b['inside'] ) { continue; }
             if ( null === $b['owner'] || ! in_array( $b['owner'], $s['ids'], true ) ) { $bad_here = true; }
         }
@@ -469,6 +524,10 @@ if ( $fails ) {
     exit( 1 );
 }
 
-echo 'every one of the ' . $checked . " submit buttons resolves to a form on its own page:\n";
-echo "inside one, inside its caller's, or naming one by an id that file opens.\n";
+echo 'every one of the ' . $checked . " submit buttons says type=\"submit\" and resolves
+";
+echo "to a form on its own page: inside one, inside its caller's, or naming one by an
+";
+echo "id that file opens.
+";
 exit( 0 );

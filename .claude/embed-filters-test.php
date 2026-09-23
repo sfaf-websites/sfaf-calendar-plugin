@@ -81,6 +81,27 @@ if ( ! preg_match( "#run\(\s*'who',\s*initWhoPicker\s*\)#", $cal ) ) {
 }
 
 /* ---------------------------------------------------------------------------
+ * 1b. THE PILL HANDLER TAKES THE SUBMIT AWAY, IN BOTH (3.98.1).
+ *
+ * The pills sit inside the filter bar's real GET form, which is what makes them
+ * work with script off. With script on, a handler that filters in place and
+ * does not prevent the default gets both: the block redraws and then the page
+ * reloads on top of it. That was live on sfaf.org from 3.85.0.
+ *
+ * ASSERTED ON THE HANDLER, NOT THE FILE. Both scripts call preventDefault in a
+ * dozen places, so a search for the word proves nothing; what matters is that
+ * the pill handler takes an event and prevents it, which is what these two
+ * patterns pin. filter-submit-live.php then presses the pills in a browser and
+ * watches whether anything moves, which is the half no source read can do.
+ * ------------------------------------------------------------------------ */
+if ( ! preg_match( "#addEventListener\('click', function \(e\) \{\s*(?:/\*.*?\*/\s*)?e\.preventDefault\(\);#s", $emb ) ) {
+    $fails[] = 'embed.js binds the category pills with a handler that does not prevent the default, so a press filters the block and then reloads the page on top of it';
+}
+if ( ! preg_match( "#on\('click', '\.uc-filter-btn', function \(e\) \{\s*(?:/\*.*?\*/\s*)?e\.preventDefault\(\);#s", $cal ) ) {
+    $fails[] = 'calendar.js binds the category pills with a handler that does not prevent the default, so a press filters the block and then reloads the page on top of it';
+}
+
+/* ---------------------------------------------------------------------------
  * 2. SEARCH REDRAWS THE MONTH IN BOTH.
  *
  * THIS IS THE FAULT MARK FOUND IN THE NETWORK TAB. The embed asked for

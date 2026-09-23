@@ -1322,8 +1322,18 @@ check(
 /* AND THE NO-SCRIPT SUBMIT IS STILL IN IT. Moving Clear must not have taken
  * Apply with it: without script, ticking a box does nothing until this submits. */
 check(
-    false !== strpos( $code, '<button type="submit" class="uc-who-apply" data-uc-who-apply>Apply</button>' ),
+    /* `.*?` RATHER THAN `[^>]*`, because the value attribute holds a PHP tag
+     * and a character class excluding `>` stops dead at its `?>`. */
+    (bool) preg_match( '/<button type="submit".*?class="uc-who-apply" data-uc-who-apply>Apply<\/button>/s', $code ),
     'the no-script Apply button is gone, so with script off the filter cannot be applied at all'
+);
+/* AND IT CARRIES THE CHOSEN CATEGORY (3.98.1). The bar's hidden uc_cat went
+ * when the pills started carrying their own, and only the activating submit
+ * button sends its own name and value, so without this an Apply with script off
+ * clears a category somebody had already chosen. */
+check(
+    (bool) preg_match( '/<button type="submit" name="uc_cat" value="<\?php echo esc_attr\( \$active_category \); \?>"\s*\n\s*class="uc-who-apply"/s', $code ),
+    'Apply no longer carries the chosen category, so with script off applying an organizer clears it'
 );
 /* CLEAR IS FIRST IN THE PANEL'S MARKUP. Absolute positioning moves it visually
  * and not in the tab order, so drawn at the top and written at the bottom
