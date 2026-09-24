@@ -107,14 +107,12 @@
                         say(probeMsg, d.error + (d.logout ? ' ' + d.logout : ''), false);
                         return;
                     }
-                    var rows = (d.total !== null && d.total !== undefined)
-                        ? d.total + ' rows by the hub\'s count'
-                        : (d.rows !== null && d.rows !== undefined)
-                            ? d.rows + ' rows in this page, counted at ' + d.where
-                            : 'no list of rows found in the reply';
+                    var rows = (d.rows !== null && d.rows !== undefined)
+                        ? d.rows + (d.rows === 1 ? ' row' : ' rows') + ' at ' + d.where + '.'
+                        : 'no list of rows at ' + d.where + '.';
                     say(probeMsg,
                         'GET ' + d.url + ': HTTP ' + d.status + ', ' + (d.type || 'no content type') + ', ' + d.length + ' bytes, '
-                        + rows + '.' + (d.truncated ? ' Shown up to ' + d.max_body + ' bytes; the rest is cut.' : '')
+                        + rows + (d.problem ? ' ' + d.problem : '') + (d.truncated ? ' Shown up to ' + d.max_body + ' bytes; the rest is cut.' : '')
                         + ' ' + d.logout + ' Nothing was imported or changed.',
                         !!d.ok);
                     probeOut.textContent = d.body === '' ? '(empty body)' : d.body;

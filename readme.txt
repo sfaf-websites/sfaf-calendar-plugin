@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.100.1
+Stable tag: 3.100.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,18 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.100.2 =
+
+**EveryAction: Test connection and the probe read the tracker at the version 1 address, where the hub hands over the rows.**
+
+**THE VERSION 2 READ IS REFUSED FOR THIS TRACKER.** With the real account, Test connection logged in, but `GET /api/v2/trackers/{id}/fetch-all-entries` answered 200 with `{"ms_error":"You don't have permission."}`. Val's own working call, with the same session cookie, is `GET {hub}/api/trackers/forms/get_submissions/{id}`, and it returns the rows as a list at `ms_response.data`. Both buttons now read there. The login, the cookie and the logout are unchanged.
+
+**TEST CONNECTION COUNTS THE ROWS AT `ms_response.data`.** "Connected. Tracker reachable, N rows." A reply with no list there is a failure, and says so.
+
+**A 200 THAT CARRIES `ms_error` IS A REFUSAL.** The hub's message is read from `ms_error` as well as from `ms_errors`, so "You don't have permission." now reads "Tracker read failed: You don't have permission." instead of passing as a connection. The probe still prints the body, and says the refusal beside it.
+
+**CHECKED.** The model hub answers the version 1 address, and answers the version 2 one with the real hub's refusal. `everyaction-test.php` asserts the exact tracker address. Planting the version 2 address fails it and the browser check; planting an unread `ms_error` fails it.
 
 = 3.100.1 =
 

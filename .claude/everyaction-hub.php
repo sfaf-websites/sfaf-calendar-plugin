@@ -21,7 +21,10 @@ function hub_route( $method, $url, $args ) {
     $path = (string) parse_url( $url, PHP_URL_PATH );
     if ( '/api/login.json' === $path ) { $k = 'login'; }
     elseif ( '/api/logout' === $path ) { $k = 'logout'; }
-    elseif ( preg_match( '#^/api/v2/trackers/[^/]+/fetch-all-entries$#', $path ) ) { $k = 'tracker'; }
+    elseif ( preg_match( '#^/api/trackers/forms/get_submissions/[^/]+$#', $path ) ) { $k = 'tracker'; }
+    /* The version 2 read, answered as the real hub answers it for this
+     * tracker (3.100.2): 200, and a refusal in the body. */
+    elseif ( preg_match( '#^/api/v2/trackers/[^/]+/fetch-all-entries$#', $path ) ) { return hub_resp( 200, '{"ms_error":"You don\'t have permission."}' ); }
     else { return hub_resp( 404, '' ); }
     $r = isset( $GLOBALS['hub'][ $k ] ) ? $GLOBALS['hub'][ $k ] : hub_resp( 500, '' );
     return is_callable( $r ) ? $r( $args ) : $r;

@@ -94,6 +94,10 @@ try ea-blank-clears-password "a blank field clears the password" .claude/everyac
 # 3.100.1, the login request.
 try ea-form-encoded "the login body is form-encoded"   .claude/everyaction-test.php
 try ea-no-wrapper   "the login body loses ms_request"  .claude/everyaction-test.php
+# 3.100.2, the version 1 tracker read.
+try ea-v2-read      "the tracker read uses version 2"  .claude/everyaction-test.php
+try ea-v2-read      "version 2 read: browser"          .claude/everyaction-live.php --run
+try ea-ms-error-unread "a 200 refusal reads as Connected" .claude/everyaction-test.php
 
 restore
 echo "-------------------------------------------"

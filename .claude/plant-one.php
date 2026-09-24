@@ -357,6 +357,18 @@ $edits = array(
         '            \'body\'        => wp_json_encode( $body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),',
         '            \'body\'        => wp_json_encode( $body[\'ms_request\'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),' ),
 
+    /* ---- 3.100.2: the version 1 tracker read. ---- */
+
+    /* The tracker is read at the version 2 address, which the hub refuses. */
+    'ea-v2-read' => array( 'includes/class-sfaf-everyaction.php',
+        "        return '/api/trackers/forms/get_submissions/' . rawurlencode( (string) \$cfg['tracker'] );",
+        "        return '/api/v2/trackers/' . rawurlencode( (string) \$cfg['tracker'] ) . '/fetch-all-entries';" ),
+
+    /* A 200 carrying ms_error is not read as a refusal. */
+    'ea-ms-error-unread' => array( 'includes/class-sfaf-everyaction.php',
+        "        if ( isset( \$json['ms_error'] ) && is_string( \$json['ms_error'] ) && '' !== trim( \$json['ms_error'] ) ) {",
+        "        if ( false ) {" ),
+
 );
 
 if ( 'off-ladder' === $which ) {

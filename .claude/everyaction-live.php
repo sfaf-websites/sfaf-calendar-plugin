@@ -59,14 +59,14 @@ function el_run( $action, $post = array() ) {
 $ok_login = hub_resp( 200, json_encode( array( 'ms_response' => array( 'user' => array( '_token' => L_TOK ) ) ) ) );
 $ok_hub   = array(
     'login'   => $ok_login,
-    'tracker' => hub_resp( 200, '{"ms_response":{"total_count":57,"entries":[{"id":1}]}}' ),
+    'tracker' => hub_resp( 200, '{"ms_response":{"data":[{"RowId":1},{"RowId":2},{"RowId":3}]}}' ),
     'logout'  => hub_resp( 200, '{}' ),
 );
 $steps = array();
 
 $GLOBALS['hub'] = $ok_hub;
 $steps[] = array( 'press' => 'test', 'payload' => el_run( 'ajax_test' ),
-    'msg' => 'Connected. Tracker reachable, 57 rows.', 'pill' => 'Connected', 'badge' => 'Connected' );
+    'msg' => 'Connected. Tracker reachable, 3 rows.', 'pill' => 'Connected', 'badge' => 'Connected' );
 
 $GLOBALS['hub'] = array( 'login' => hub_resp( 200, '{"ms_errors":{"error":{"message":" Login id or Password is Incorrect.","error_code":"AUTHENTICATION_ERROR"}}}' ) );
 $steps[] = array( 'press' => 'test', 'payload' => el_run( 'ajax_test' ),
@@ -81,12 +81,20 @@ $GLOBALS['hub']['tracker'] = hub_resp( 200, '<!DOCTYPE html><title>Sign in to yo
 $steps[] = array( 'press' => 'test', 'payload' => el_run( 'ajax_test' ),
     'msg' => 'Tracker read failed: the hub answered with a web page (text/html; charset=utf-8), not data.', 'pill' => 'Not connected', 'badge' => 'Not connected' );
 
-$raw = '{"ms_response":{"entries":[{"id":1,"Series ID":"A"},{"id":2,"Series ID":"A"}]}}';
+$raw = '{"ms_response":{"data":[{"RowId":1,"Series_ID":"A"},{"RowId":2,"Series_ID":"A"}]}}';
 $GLOBALS['hub'] = $ok_hub;
 $GLOBALS['hub']['tracker'] = hub_resp( 200, $raw );
 $steps[] = array( 'press' => 'probe', 'payload' => el_run( 'ajax_probe' ),
-    'msg' => 'GET /api/v2/trackers/162570/fetch-all-entries: HTTP 200, application/json; charset=utf-8, ' . strlen( $raw ) . ' bytes, 2 rows in this page, counted at ms_response.entries. Logged out. Nothing was imported or changed.',
+    'msg' => 'GET /api/trackers/forms/get_submissions/162570: HTTP 200, application/json; charset=utf-8, ' . strlen( $raw ) . ' bytes, 2 rows at ms_response.data. Logged out. Nothing was imported or changed.',
     'body' => $raw );
+
+/* The refusal the version 2 read gave (3.100.2): the body shown, the refusal said. */
+$refused = '{"ms_error":"You don\'t have permission."}';
+$GLOBALS['hub'] = $ok_hub;
+$GLOBALS['hub']['tracker'] = hub_resp( 200, $refused );
+$steps[] = array( 'press' => 'probe', 'payload' => el_run( 'ajax_probe' ),
+    'msg' => 'GET /api/trackers/forms/get_submissions/162570: HTTP 200, application/json; charset=utf-8, ' . strlen( $refused ) . ' bytes, no list of rows at ms_response.data. Tracker read failed: You don\'t have permission. Logged out. Nothing was imported or changed.',
+    'body' => $refused );
 
 $GLOBALS['hub'] = array( 'login' => hub_resp( 200, '{"ms_errors":{"error":{"message":" Login id or Password is Incorrect."}}}' ) );
 $steps[] = array( 'press' => 'probe', 'payload' => el_run( 'ajax_probe' ),

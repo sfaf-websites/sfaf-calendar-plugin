@@ -54,10 +54,18 @@ function ea_store_creds() {
     ) );
 }
 
+/* One row as the version 1 read gives it (3.100.2): flat, Val's keys. */
+function ea_row( $i ) {
+    return array( 'RowId' => $i, 'UUID' => 'EA' . $i, 'Title' => 'Coffee ' . $i, 'Start_Time' => '2026-10-0' . $i . 'T18:00:00+0000',
+        'End_Time' => '2026-10-0' . $i . 'T19:30:00+0000', 'Location_Name' => 'SFAF', 'Location_Street' => '1035 Market St', 'Location_City' => 'San Francisco',
+        'Location_State' => 'CA', 'Location_Zip' => '94103', 'Series_ID' => 'A', 'Description' => 'Talk', 'Public_URL' => 'https://example.org/e/' . $i,
+        'Visibility' => 'Public', 'Capacity' => 40, 'SignUps' => 7 );
+}
+
 function ea_ok_hub( $tracker_body = null ) {
     $GLOBALS['hub'] = array(
         'login'   => hub_resp( 200, json_encode( array( 'ms_response' => array( 'user' => array( '_token' => TOK, 'id' => 9 ) ) ) ) ),
-        'tracker' => hub_resp( 200, null !== $tracker_body ? $tracker_body : json_encode( array( 'ms_response' => array( 'total_count' => 57, 'entries' => array( array( 'id' => 1, 'name' => 'Coffee' ) ) ) ) ) ),
+        'tracker' => hub_resp( 200, null !== $tracker_body ? $tracker_body : json_encode( array( 'ms_response' => array( 'data' => array( ea_row( 1 ), ea_row( 2 ), ea_row( 3 ) ) ) ) ) ),
         'logout'  => hub_resp( 200, '{}' ),
     );
 }
@@ -96,12 +104,12 @@ function ea_case( $name, $hub, $want_msg, $want_ok, $calls ) {
 }
 
 $LOGIN   = 'POST /api/login.json';
-$TRACKER = 'GET /api/v2/trackers/162570/fetch-all-entries';
+$TRACKER = 'GET /api/trackers/forms/get_submissions/162570';
 $LOGOUT  = 'POST /api/logout';
 
 /* ---- 1. Success, and exactly what the hub was sent. ---- */
 ea_ok_hub();
-ea_case( 'success', $GLOBALS['hub'], 'Connected. Tracker reachable, 57 rows.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
+ea_case( 'success', $GLOBALS['hub'], 'Connected. Tracker reachable, 3 rows.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
 $seen = $GLOBALS['hub_seen'];
 $login_body = json_decode( $seen[0]['args']['body'], true );
 ea( 'application/json' === $seen[0]['args']['headers']['Content-Type'], 'the login is not sent as JSON' );
@@ -109,13 +117,19 @@ ea( isset( $login_body['ms_request']['user'] ) && array_keys( $login_body['ms_re
 ea( KEY === $login_body['ms_request']['user']['api_key'] && USER === $login_body['ms_request']['user']['username'], 'the login carries the wrong key or username' );
 ea( base64_encode( PASS ) === $login_body['ms_request']['user']['password'], 'the password on the wire is not base64 of the password as typed' );
 ea( '_felix_session_id=' . TOK === $seen[1]['args']['headers']['Cookie'], 'the tracker read does not carry the session cookie' );
-ea( false !== strpos( $seen[1]['url'], 'limit=1' ), 'Test connection does not ask the tracker for one row' );
+/* THE VERSION 1 READ, WHOLE (3.100.2): no query, no version 2 address. */
+ea( 'https://hub.example.org/api/trackers/forms/get_submissions/162570' === $seen[1]['url'], 'the tracker read went to ' . $seen[1]['url'] );
+ea( 'GET' === $seen[1]['method'], 'the tracker read is not a GET' );
 ea( '_felix_session_id=' . TOK === $seen[2]['args']['headers']['Cookie'], 'the logout does not carry the session cookie' );
 ea( PASS === SFAF_Credentials::raw( 'everyaction_password' ), 'the stored password is not the password as typed' );
 
-/* ---- 2. A hub that gives no total. ---- */
-ea_ok_hub( json_encode( array( 'ms_response' => array( 'entries' => array( array( 'id' => 1 ) ) ) ) ) );
-ea_case( 'no total', $GLOBALS['hub'], 'Connected. Tracker reachable, 1 row in the reply; the hub gave no total.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
+/* ---- 2. One row, none, and a reply with no list where the rows go. ---- */
+ea_ok_hub( json_encode( array( 'ms_response' => array( 'data' => array( ea_row( 1 ) ) ) ) ) );
+ea_case( 'one row', $GLOBALS['hub'], 'Connected. Tracker reachable, 1 row.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
+ea_ok_hub( '{"ms_response":{"data":[]}}' );
+ea_case( 'no rows', $GLOBALS['hub'], 'Connected. Tracker reachable, 0 rows.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
+ea_ok_hub( '{"ms_response":{"entries":[{"id":1}]}}' );
+ea_case( 'rows elsewhere', $GLOBALS['hub'], 'Tracker read failed: the hub answered without a list of rows at ms_response.data.', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
 
 /* ---- 3. Every way the login can fail. ---- */
 ea_case( 'login refused', array( 'login' => hub_resp( 200, '{"ms_errors":{"transaction_id":null,"error":{"message":" Login id or Password is Incorrect.","error_code":"AUTHENTICATION_ERROR"}}}' ) ),
@@ -184,11 +198,14 @@ $h['tracker'] = hub_resp( 403, '' );
 ea_case( 'tracker 403', $h, 'Tracker read failed: HTTP 403.', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
 $h['tracker'] = hub_resp( 200, '<!DOCTYPE html><title>Sign in to your account</title>', 'text/html; charset=utf-8' );
 ea_case( 'a sign-in page', $h, 'Tracker read failed: the hub answered with a web page (text/html; charset=utf-8), not data.', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
+/* The refusal the version 2 read gave in 3.100.1, word for word: a 200. */
+$h['tracker'] = hub_resp( 200, '{"ms_error":"You don\'t have permission."}' );
+ea_case( 'a 200 refusal', $h, 'Tracker read failed: You don\'t have permission.', false, array( $LOGIN, $TRACKER, $LOGOUT ) );
 
 /* ---- 5. A failed logout after a good read is said, not hidden. ---- */
 ea_ok_hub();
 $h = $GLOBALS['hub']; $h['logout'] = hub_resp( 500, '' );
-ea_case( 'logout failed', $h, 'Connected. Tracker reachable, 57 rows. Logout failed: HTTP 500.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
+ea_case( 'logout failed', $h, 'Connected. Tracker reachable, 3 rows. Logout failed: HTTP 500.', true, array( $LOGIN, $TRACKER, $LOGOUT ) );
 
 /* ---- 6. A hub that echoes the credentials back never gets them onto the screen. ---- */
 ea_case( 'echoing hub', array( 'login' => hub_resp( 200, json_encode( array( 'ms_errors' => array( 'error' => array( 'message' => 'Bad login for key ' . KEY . ' with ' . base64_encode( PASS ) ) ) ) ) ) ),
@@ -209,23 +226,29 @@ $p = ea_ajax( 'ajax_test', array( 'hub' => 'https://hub.example.org/', 'api_key'
 $lb = json_decode( $GLOBALS['hub_seen'][0]['args']['body'], true );
 ea( 'typed-user' === $lb['ms_request']['user']['username'], 'a typed username was not used' );
 ea( KEY === $lb['ms_request']['user']['api_key'] && base64_encode( PASS ) === $lb['ms_request']['user']['password'], 'a blank key or password did not fall back to the stored one' );
-ea( false !== strpos( $GLOBALS['hub_seen'][1]['url'], '/api/v2/trackers/999/' ), 'a typed tracker ID was not used' );
+ea( false !== strpos( $GLOBALS['hub_seen'][1]['url'], '/api/trackers/forms/get_submissions/999' ), 'a typed tracker ID was not used' );
 
 /* ---- 9. The probe: the body as sent, the count, and nothing written. ---- */
 $GLOBALS['kit_options'] = array();
 ea_store_creds();
-$raw = '{"ms_response":{"entries":[{"id":1,"Series ID":"A"},{"id":2,"Series ID":"A"}],"note":"echo ' . TOK . '"}}';
+$raw = '{"ms_response":{"data":[{"RowId":1,"Series_ID":"A"},{"RowId":2,"Series_ID":"A"}],"note":"echo ' . TOK . '"}}';
 ea_ok_hub( $raw );
 $before = json_encode( $GLOBALS['kit_options'] );
 $p = ea_ajax( 'ajax_probe' );
 ea( true === $p['success'], 'the probe did not answer' );
 $d = $p['data'];
 ea( str_replace( TOK, '[hidden, ' . strlen( TOK ) . ' characters]', $raw ) === $d['body'], 'the probe did not print the body as the hub sent it, with only the session token masked' );
-ea( 2 === $d['rows'] && 'ms_response.entries' === $d['where'], 'the probe counted ' . var_export( $d['rows'], true ) . ' rows at ' . $d['where'] );
-ea( false === strpos( $GLOBALS['hub_seen'][1]['url'], 'limit' ), 'the probe asked for fewer rows than the first page' );
+ea( 2 === $d['rows'] && 'ms_response.data' === $d['where'], 'the probe counted ' . var_export( $d['rows'], true ) . ' rows at ' . $d['where'] );
+ea( 'https://hub.example.org/api/trackers/forms/get_submissions/162570' === $GLOBALS['hub_seen'][1]['url'], 'the probe read ' . $GLOBALS['hub_seen'][1]['url'] );
+ea( '/api/trackers/forms/get_submissions/162570' === $d['url'] && true === $d['ok'] && '' === $d['problem'], 'the probe reported ' . json_encode( array( $d['url'], $d['ok'], $d['problem'] ) ) );
 ea( 'POST /api/logout' === $GLOBALS['hub_seen'][2]['method'] . ' ' . parse_url( $GLOBALS['hub_seen'][2]['url'], PHP_URL_PATH ), 'the probe did not log out' );
 ea( $before === json_encode( $GLOBALS['kit_options'] ), 'the probe wrote something' );
 ea( empty( ea_leaks( json_encode( $p ) ) ), 'the probe printed a credential' );
+/* A refused read: the body is still printed, and the refusal is said. */
+$GLOBALS['hub']['tracker'] = hub_resp( 200, '{"ms_error":"You don\'t have permission."}' );
+$p = ea_ajax( 'ajax_probe' );
+ea( false === $p['data']['ok'] && 'Tracker read failed: You don\'t have permission.' === $p['data']['problem'] && '{"ms_error":"You don\'t have permission."}' === $p['data']['body'],
+    'a refused probe reported ' . json_encode( array( $p['data']['ok'], $p['data']['problem'], $p['data']['body'] ) ) );
 $GLOBALS['hub']['login'] = hub_resp( 200, '{"ms_errors":{"error":{"message":" Login id or Password is Incorrect."}}}' );
 $p = ea_ajax( 'ajax_probe' );
 ea( 'Login failed: Login id or Password is Incorrect.' === $p['data']['error'], 'a refused probe says: ' . $p['data']['error'] );
@@ -249,7 +272,7 @@ ea( KEY === SFAF_Credentials::get( 'everyaction_api_key' ) && PASS === SFAF_Cred
 
 /* ---- 11. The panel as the screen draws it, with credentials stored. ---- */
 ea_store_creds();
-update_option( SFAF_EveryAction::STATUS_OPTION, array( 'connected' => true, 'message' => 'Connected. Tracker reachable, 57 rows.', 'checked_at' => time() ) );
+update_option( SFAF_EveryAction::STATUS_OPTION, array( 'connected' => true, 'message' => 'Connected. Tracker reachable, 3 rows.', 'checked_at' => time() ) );
 ob_start();
 try { $admin->render_settings_page(); } catch ( Throwable $t ) { echo 'RENDER FAILED: ' . $t->getMessage(); }
 $page = (string) ob_get_clean();
@@ -270,10 +293,11 @@ if ( $fails ) {
     foreach ( $fails as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "against a model hub: success, no total, nine login failures (the real hub's 422 and 500 among them),\n";
-echo "three tracker failures, a failed logout,\n";
+echo "against a model hub: three rows, one, none, rows in the wrong place, nine login failures (the real hub's\n";
+echo "422 and 500 among them), four tracker failures (the 200 refusal among them), a failed logout,\n";
 echo "an echoing hub and nothing stored each print the message they should, and call the hub as they should;\n";
 echo "the probe prints the body as sent and writes nothing; a settings save keeps every credential and\n";
 echo "stores the password as typed; and no credential reaches the screen, the status option or the log;\n";
-echo "and the login request is the documented one byte for byte: POST, two headers, a JSON string body.\n";
+echo "and the login request is the documented one byte for byte: POST, two headers, a JSON string body;\n";
+echo "and the tracker is read at the version 1 address, rows counted at ms_response.data.\n";
 exit( 0 );

@@ -14,7 +14,7 @@
  *   POST {hub}/api/login.json   {"ms_request":{"user":{api_key, username, password}}}
  *                               with the password base64-encoded
  *   ms_response.user._token  -> sent as the _felix_session_id cookie
- *   GET  {hub}/api/v2/trackers/{id}/fetch-all-entries
+ *   GET  {hub}/api/trackers/forms/get_submissions/{id}   rows at ms_response.data
  *   POST {hub}/api/logout
  *
  * THE PASSWORD IS STORED AS TYPED AND ENCODED ONLY IN login(). A stored
@@ -45,6 +45,9 @@ class SFAF_EveryAction {
     const PROBE_MAX_BODY = 250000;
 
     const TIMEOUT = 20;
+
+    /** Where the tracker read puts the rows (3.100.2). */
+    const ROWS_AT = 'ms_response.data';
 
     public function register() {
         add_action( 'wp_ajax_sfaf_everyaction_test', array( $this, 'ajax_test' ) );
@@ -169,6 +172,11 @@ class SFAF_EveryAction {
         if ( isset( $json['error'] ) && is_string( $json['error'] ) && '' !== trim( $json['error'] ) ) {
             return trim( $json['error'] );
         }
+        /* {"ms_error":"You don't have permission."}: the tracker read's
+         * refusal, answered 200 (3.100.2). */
+        if ( isset( $json['ms_error'] ) && is_string( $json['ms_error'] ) && '' !== trim( $json['ms_error'] ) ) {
+            return trim( $json['ms_error'] );
+        }
         $found = '';
         $walk  = function ( $node ) use ( &$walk, &$found ) {
             if ( '' !== $found || ! is_array( $node ) ) {
@@ -289,12 +297,19 @@ class SFAF_EveryAction {
         return $token;
     }
 
-    /** The tracker's entries, one call. $query is added to the address. */
-    public static function read_tracker( $cfg, $token, $query = array() ) {
-        $url = $cfg['hub'] . '/api/v2/trackers/' . rawurlencode( (string) $cfg['tracker'] ) . '/fetch-all-entries';
-        if ( ! empty( $query ) ) {
-            $url = add_query_arg( $query, $url );
-        }
+    /**
+     * The tracker read's path (3.100.2). THE VERSION 1 READ, because the hub
+     * refuses the version 2 one, /api/v2/trackers/{id}/fetch-all-entries, for
+     * this tracker with a 200 carrying "You don't have permission." The same
+     * session is given the rows here. PROJECT.md 8 has the row shape.
+     */
+    public static function tracker_path( $cfg ) {
+        return '/api/trackers/forms/get_submissions/' . rawurlencode( (string) $cfg['tracker'] );
+    }
+
+    /** The tracker's rows, one call. */
+    public static function read_tracker( $cfg, $token ) {
+        $url = $cfg['hub'] . self::tracker_path( $cfg );
         return self::reply( wp_remote_get( $url, array(
             'timeout'     => self::TIMEOUT,
             'redirection' => 0,
@@ -326,49 +341,29 @@ class SFAF_EveryAction {
                 ? 'the hub answered with a web page (' . $r['type'] . '), not data'
                 : 'the hub answered with something that is not JSON (' . ( '' !== $r['type'] ? $r['type'] : 'no content type' ) . ')';
         }
+        /* A 200 can be a refusal too: {"ms_error":"You don't have permission."}. */
+        if ( '' !== self::hub_message( $r['body'] ) ) {
+            return self::why( $r );
+        }
+        if ( null === self::count_rows( $r['body'] ) ) {
+            return 'the hub answered without a list of rows at ' . self::ROWS_AT;
+        }
         return '';
     }
 
     /**
-     * How many rows a reply holds, and where that number came from.
+     * How many rows a reply holds at ms_response.data, or null when there is
+     * no list there.
      *
-     * NOTHING HERE KNOWS THE SHAPE YET, which is the reason the probe exists.
-     * A total the hub states is preferred; otherwise the first list of records
-     * found is counted. Either way the path is returned, so the screen says
-     * which number it is.
-     *
-     * @return array{rows:int|null,total:int|null,where:string}
+     * @return int|null
      */
     public static function count_rows( $body ) {
         $json = json_decode( (string) $body, true );
-        $out  = array( 'rows' => null, 'total' => null, 'where' => '' );
-        if ( ! is_array( $json ) ) {
-            return $out;
+        if ( ! isset( $json['ms_response']['data'] ) || ! is_array( $json['ms_response']['data'] ) ) {
+            return null;
         }
-        $totals = array( 'total_count', 'total_entries', 'total_records', 'entries_count', 'total' );
-        $walk = function ( $node, $path, $depth ) use ( &$walk, &$out, $totals ) {
-            if ( ! is_array( $node ) || $depth > 4 ) {
-                return;
-            }
-            $is_list = array_keys( $node ) === range( 0, count( $node ) - 1 );
-            if ( $is_list ) {
-                if ( null === $out['rows'] && ( empty( $node ) || is_array( reset( $node ) ) ) ) {
-                    $out['rows']  = count( $node );
-                    $out['where'] = '' !== $path ? $path : '(top level)';
-                }
-                return;
-            }
-            foreach ( $node as $k => $v ) {
-                if ( null === $out['total'] && in_array( (string) $k, $totals, true ) && is_numeric( $v ) ) {
-                    $out['total'] = (int) $v;
-                }
-            }
-            foreach ( $node as $k => $v ) {
-                $walk( $v, ( '' !== $path ? $path . '.' : '' ) . $k, $depth + 1 );
-            }
-        };
-        $walk( $json, '', 0 );
-        return $out;
+        $data = $json['ms_response']['data'];
+        return ( array() === $data || array_keys( $data ) === range( 0, count( $data ) - 1 ) ) ? count( $data ) : null;
     }
 
     /* ---------------------------------------------------------------------
@@ -376,7 +371,7 @@ class SFAF_EveryAction {
      * ------------------------------------------------------------------- */
 
     /**
-     * Log in, read one row, log out, and say what happened.
+     * Log in, read the tracker, log out, and say what happened.
      *
      * @param array $over What the screen posted.
      * @return array{ok:bool,step:string,message:string,rows:int|null}
@@ -393,19 +388,16 @@ class SFAF_EveryAction {
             return self::remember( false, 'login', self::sentence( 'Login failed: ' . $token->get_error_message() ), null, $cfg );
         }
 
-        $r       = self::read_tracker( $cfg, $token, array( 'limit' => 1 ) );
-        $bad     = self::not_data( $r );
-        $counted = ( '' === $bad ) ? self::count_rows( $r['body'] ) : null;
-        $out     = self::logout( $cfg, $token );
+        $r   = self::read_tracker( $cfg, $token );
+        $bad = self::not_data( $r );
+        $out = self::logout( $cfg, $token );
 
         if ( '' !== $bad ) {
             return self::remember( false, 'tracker', self::sentence( 'Tracker read failed: ' . $bad ), null, $cfg, $token );
         }
 
-        $n = ( null !== $counted['total'] ) ? $counted['total'] : $counted['rows'];
-        $message = ( null !== $counted['total'] )
-            ? sprintf( 'Connected. Tracker reachable, %d %s.', $n, 1 === $n ? 'row' : 'rows' )
-            : sprintf( 'Connected. Tracker reachable, %d %s in the reply; the hub gave no total.', (int) $n, 1 === (int) $n ? 'row' : 'rows' );
+        $n       = self::count_rows( $r['body'] );
+        $message = sprintf( 'Connected. Tracker reachable, %d %s.', $n, 1 === $n ? 'row' : 'rows' );
 
         if ( ! $out['ok'] ) {
             $message .= ' ' . self::sentence( 'Logout failed: ' . self::why( $out ) );
@@ -445,7 +437,7 @@ class SFAF_EveryAction {
     }
 
     /**
-     * Log in, read the first page, log out, and hand back the body as the hub
+     * Log in, read the tracker, log out, and hand back the body as the hub
      * sent it. Reads nothing into the calendar and writes nothing anywhere,
      * the status option included: a probe is not a test.
      *
@@ -454,7 +446,7 @@ class SFAF_EveryAction {
     public static function probe( $over = array() ) {
         $cfg = self::config( $over );
         $out = array( 'ok' => false, 'error' => '', 'url' => '', 'status' => 0, 'type' => '', 'length' => 0,
-                      'truncated' => false, 'body' => '', 'rows' => null, 'total' => null, 'where' => '', 'logout' => '' );
+                      'truncated' => false, 'body' => '', 'rows' => null, 'where' => self::ROWS_AT, 'problem' => '', 'logout' => '' );
 
         $miss = self::missing( $cfg );
         if ( ! empty( $miss ) ) {
@@ -471,7 +463,7 @@ class SFAF_EveryAction {
         $r = self::read_tracker( $cfg, $token );
         $l = self::logout( $cfg, $token );
 
-        $out['url']    = '/api/v2/trackers/' . rawurlencode( (string) $cfg['tracker'] ) . '/fetch-all-entries';
+        $out['url']    = self::tracker_path( $cfg );
         $out['status'] = $r['status'];
         $out['type']   = $r['type'];
         $out['logout'] = $l['ok'] ? 'Logged out.' : self::scrub( self::sentence( 'Logout failed: ' . self::why( $l ) ), $cfg, $token );
@@ -488,12 +480,13 @@ class SFAF_EveryAction {
             $body             = substr( $body, 0, self::PROBE_MAX_BODY );
         }
         $out['body'] = $body;
-        $out['ok']   = $r['ok'];
 
-        $counted      = self::count_rows( $r['body'] );
-        $out['rows']  = $counted['rows'];
-        $out['total'] = $counted['total'];
-        $out['where'] = $counted['where'];
+        /* The body is printed either way; a refusal is also said, in the
+         * words Test connection would use. */
+        $bad            = self::not_data( $r );
+        $out['ok']      = ( '' === $bad );
+        $out['problem'] = ( '' === $bad ) ? '' : self::scrub( self::sentence( 'Tracker read failed: ' . $bad ), $cfg, $token );
+        $out['rows']    = self::count_rows( $r['body'] );
         return $out;
     }
 

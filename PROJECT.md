@@ -4209,22 +4209,24 @@ the class; it is not registered as a source.
 **The flow is the documented session login**, §8 has why: `POST
 {hub}/api/login.json` with `ms_request.user` carrying `api_key`, `username`
 and the password base64-encoded; `ms_response.user._token` becomes the
-`_felix_session_id` cookie; `GET /api/v2/trackers/{id}/fetch-all-entries`;
-`POST /api/logout`, which runs whenever a login succeeded, whatever the read did.
+`_felix_session_id` cookie; `GET /api/trackers/forms/get_submissions/{id}`,
+the version 1 read, rows at `ms_response.data` (3.100.2, §8 has why not version
+2); `POST /api/logout`, which runs whenever a login succeeded, whatever the read
+did.
 
-- **Test connection** reads with `limit=1` and says "Connected. Tracker
-  reachable, N rows." when the hub states a total, or how many came back and
-  that it gave none. **A failure names the step** (login, tracker read, logout)
-  and gives **the hub's own message** when the body has one, else the HTTP
-  status, else that the hub could not be reached. **A 200 that is a web page is
-  a failure**: the hub's browser surface answers 200 `text/html` with a sign-in
+- **Test connection** reads the tracker and says "Connected. Tracker
+  reachable, N rows.", N counted from the list at `ms_response.data`; a reply
+  with no list there is a failure. **A failure names the step** (login, tracker
+  read, logout) and gives **the hub's own message** when the body has one
+  (`ms_errors`, `error`, or `ms_error`), else the HTTP status, else that the hub
+  could not be reached. **A 200 that carries a message is a failure**: the
+  version 2 read answered 200 `{"ms_error":"You don't have permission."}`. So
+  is **a 200 that is a web page**: the hub's browser surface answers 200 `text/html` with a sign-in
   page, and that must never read as a successful fetch. Credentials that pass
   are stored, like GoFundMe Pro's, so a test without Save loses nothing.
-- **The probe** logs in, reads the first page with no limit, logs out, and
-  prints the body as sent, with the row count and the path it was counted at.
-  **It writes nothing, the status option included.** Nothing about the
-  tracker's shape is assumed anywhere: `count_rows()` takes a stated total
-  first and otherwise counts the first list of records it finds, and says where.
+- **The probe** logs in, reads the tracker, logs out, and prints the body as
+  sent, with the row count at `ms_response.data`, and any refusal in the words
+  Test connection would use. **It writes nothing, the status option included.**
 - **The outcome is kept in `sfaf_everyaction_status`**, disposable, like
   `sfaf_gfmp_token`.
 
@@ -4234,8 +4236,10 @@ session token with their length, for a hub that echoes one. Nothing logs. The
 screen never renders the key or the password, only whether one is stored.
 
 **Tested against a model hub.** `.claude/everyaction-hub.php` stands in for
-`wp_remote_*`; `everyaction-test.php` plays success, no total, four login
-failures, three tracker failures, a failed logout, an echoing hub and nothing
+`wp_remote_*`, answering the version 1 read and refusing the version 2 one as
+the real hub does; `everyaction-test.php` plays three rows, one, none, rows in
+the wrong place, the login failures, four tracker failures (the 200 refusal
+among them), a failed logout, an echoing hub and nothing
 stored, and checks the requests the hub received, what was stored, and that no
 credential reached the screen, the status option or PHP's log.
 `everyaction-live.php` runs the real panel and `admin/js/everyaction.js` in
@@ -6532,6 +6536,33 @@ half hour. For hourly data that is fine, and no special handling is needed.
 > recognising the API key.** §3 has the reproduction. The key is the next thing
 > to settle with Val.
 > **Do not build the adapter until a probe has returned rows.**
+
+#### The tracker read is the version 1 one (3.100.2)
+
+**THE VERSION 2 READ IS REFUSED FOR THIS TRACKER.** With the real account the
+login succeeded, and `GET {hub}/api/v2/trackers/{id}/fetch-all-entries`
+answered **200 with `{"ms_error":"You don't have permission."}`**. Val's own
+working call uses **`GET {hub}/api/trackers/forms/get_submissions/{id}`** with
+the same `_felix_session_id` cookie, and gets the rows. That is the read in use,
+for Test connection and the probe. Do not move back to version 2 without a
+probe showing it answers with rows.
+
+**The rows are a list at `ms_response.data`, each row a flat object.** Keys
+include `RowId`, `UUID`, `Title`, `Start_Time`, `End_Time`, `Location_Name`,
+`Location_Street`, `Location_City`, `Location_State`, `Location_Zip`,
+`Series_ID`, `Description`, `Public_URL`, `Visibility`, `Capacity` and
+`SignUps`. This is Val's description of his own call; the probe's output is
+still the sample the adapter is written against.
+
+**Two facts from Val, both of which an adapter gets wrong by default:**
+
+- **`Start_Time` and `End_Time` are Pacific local times carrying a `+0000`
+  label that must be ignored.** Parsed as written, every event lands seven or
+  eight hours early. Read the wall-clock digits and apply
+  `America/Los_Angeles`.
+- **`UUID` is EveryAction's event ID**, in the same series as `data-event-id`
+  on the public events page. It is the stable per-occurrence ID the field list
+  above asked for, and it joins a tracker row to the public list.
 
 **THE PUBLIC LIST HAS BEEN READ, 2026-09-21. THE TRACKER HAS NOT.** The two
 reads are separate and only one is done. The open questions above still stand,

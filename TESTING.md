@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 195 items.** Quick 163, needs real conditions 29, blocked on other
+**Outstanding: 196 items.** Quick 163, needs real conditions 30, blocked on other
 people 3.
 
 ---
@@ -2863,7 +2863,10 @@ Incorrect." **Report the exact sentence back**: it is the answer to the
 credential question, in the hub's words. **"HTTP 422, and the hub said "ok""
 means the hub does not recognise the API key** (3.100.1): check the key with Val
 before anything else, because the username and password are not read at all
-until the key is accepted.
+until the key is accepted. **From 3.100.2 the tracker is read at
+`/api/trackers/forms/get_submissions/{id}`**, the version 1 address Val's own call
+uses: the version 2 one answered "You don't have permission." If that sentence
+comes back now, the version 1 read is refused too, and that goes to Val.
 
 **Why it needs real conditions:** the real hub and a real account. Every answer
 the panel can give has been played against a model of the hub; which one the
@@ -2878,6 +2881,19 @@ else.
 
 **Why it needs real conditions:** it only exists once the credential works, and
 it carries real people's event data, so it is kept out of the repository.
+
+### 2.29 Check Val's two facts against the probe (3.100.2)
+
+With the probe's body from 2.28, pick three rows and find the same events on the
+public EveryAction events page. **The times:** `Start_Time` and `End_Time` should
+read as the Pacific time the page shows, despite ending in `+0000`. If they are
+seven or eight hours off instead, report which way. **The ID:** each row's
+`UUID` should equal the `data-event-id` on that event's entry on the page.
+Report both, with the three rows' titles. Also check the probe's row count
+agrees with the number of rows in the body.
+
+**Why it needs real conditions:** real rows from the real tracker, and the adapter
+is written on these two facts, so they are checked on data before it is.
 
 ## 3. Blocked on other people
 

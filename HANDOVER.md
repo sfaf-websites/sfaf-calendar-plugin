@@ -4,7 +4,7 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-23, at 3.100.1, released.
+**Last updated:** 2026-09-24, at 3.100.2, released.
 
 ---
 
@@ -13,7 +13,9 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 **3.100.0** puts an **EveryAction panel** on Settings & Integrations: the hub
 credentials, **Test connection** and a **Tracker probe**. No import. **3.100.1**:
 its "HTTP 422" is the hub not recognising the **API key**, reproduced with curl;
-the request was never the problem. `PROJECT.md` 3.
+the request was never the problem. **3.100.2**: the login now works, and the
+tracker is read at the **version 1** address, because version 2 answers "You
+don't have permission." `PROJECT.md` 3 and 8.
 **3.99.0**: both public forms mark every required field from the validator's
 own list; **the editor publishes only a complete event** (a draft needs only a
 title, a live event is saved as it is); every email time says "PT".
@@ -93,7 +95,7 @@ one**: hybrid events, the event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 195 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 196 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.
@@ -119,9 +121,9 @@ targets. Assume everything else unverified.
   defaults both ON for new and newly switched events only. `TESTING.md` 1.157.
 - **EveryAction: THE CREDENTIAL QUESTION MOVES INTO THE APP (3.100.0).** Type
   the hub credentials into Settings & Integrations and press **Test
-  connection**: the hub answers in its own words. From the site it said
-  **HTTP 422, an API key it does not recognise**: that key is the next
-  question for Val, before any password or SSO question. When it connects, the **Tracker probe** is the sample. **Two
+  connection**: the hub answers in its own words. **It logs in now**; 3.100.2
+  reads the tracker at the version 1 address Val's own call uses. Next: press
+  Test connection, then the **Tracker probe**, which is the sample. **Two
   programs are one Saturday event under two names.** `PROJECT.md` 3 and 8.
 
 **Named in a brief and designed nowhere yet**, so this is the only record:
