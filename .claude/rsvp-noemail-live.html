@@ -1739,7 +1739,7 @@
     function syncNoEmail() {
         var formats = (currentFormats || '').split(',').filter(Boolean);
         var chosen = $('#uc-rsvp-format input[type="radio"]:checked').val() || '';
-        var online = (formats.length === 1 && formats[0] === 'online') ||
+        var online = false && (formats.length === 1 && formats[0] === 'online') ||
             (formats.length > 1 && chosen === 'online');
         var box = $('#uc-rsvp-noemail');
         var field = document.getElementById('uc-rsvp-email');

@@ -157,7 +157,10 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     $report = html_entity_decode( strip_tags( $m[1] ), ENT_QUOTES, 'UTF-8' );
     echo $report . "\n";
 
-    $has = function ( $line, $why ) use ( $report ) { rn_check( false !== strpos( $report, $line ), $why ); };
+    /* ANCHORED TO THE START OF A LINE. "online: box hidden" is also the tail of
+     * "hybrid, then online: box hidden", and a plain substring search passed
+     * the online case on the hybrid line when the box was offered online. */
+    $has = function ( $line, $why ) use ( $report ) { rn_check( (bool) preg_match( '/^' . preg_quote( $line, '/' ) . '/m', $report ), $why ); };
     $has( 'script errors    none', 'the calendar script threw while the form was driven' );
     $has( 'privacy line: We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.',
         'the line under the email field is not the one agreed' );
