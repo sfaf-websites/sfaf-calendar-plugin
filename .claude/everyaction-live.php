@@ -16,7 +16,8 @@
  * script that ships.
  *
  * WHAT IT CHECKS: the five fields, their types and what they show; the two
- * buttons; the line saying nothing is imported; each press's message, pill and
+ * buttons; the Auto-Import switch, off by default, and the last fetch and
+ * signup-link lines (3.101.0); each press's message, pill and
  * header badge for success and for three failures; the probe's summary and
  * its body; that the page posted the typed password as typed; and that no
  * stored credential appears anywhere in the page, before or after.
@@ -131,7 +132,11 @@ $probe = <<<'JS'
       out.fields[n] = e ? { type: e.type, value: e.value, label: (document.querySelector('label[for="' + e.id + '"]') || {}).textContent || '' } : null;
     });
     out.buttons = [txt('.uc-everyaction-connect'), txt('.uc-everyaction-probe')];
-    out.notBuilt = txt('.uc-everyaction-panel .uc-panel-body > .description');
+    var auto = document.querySelector('[name="uc_settings[everyaction_auto_import]"]');
+    out.auto = auto ? { type: auto.type, checked: auto.checked, label: (document.querySelector('label[for="' + auto.id + '"]') || {}).textContent || '' } : null;
+    out.lastFetch = txt('.uc-everyaction-last-fetch');
+    out.links = txt('.uc-everyaction-links');
+    out.notBuilt = document.body.textContent.indexOf('Nothing is imported yet') >= 0;
     out.heading = txt('.uc-everyaction-panel h2') + ' / ' + txt('.uc-everyaction-panel .uc-panel-info p');
     var chain = Promise.resolve();
     window.EL_PRESSES.forEach(function (press) {
@@ -196,7 +201,10 @@ foreach ( $want_fields as $n => $w ) {
         "$n: " . json_encode( $f ) . ', wanted ' . json_encode( $w ) );
 }
 el_check( array( 'Test connection', 'Probe tracker' ) === $got['buttons'], 'the buttons read ' . json_encode( $got['buttons'] ) );
-el_check( 'Nothing is imported yet: there is no fetch, no Auto-Import and no schedule for EveryAction.' === $got['notBuilt'], 'the not-built line reads: ' . $got['notBuilt'] );
+el_check( false === $got['notBuilt'], 'the "nothing is imported yet" line is still on the panel' );
+el_check( is_array( $got['auto'] ) && 'checkbox' === $got['auto']['type'] && false === $got['auto']['checked'] && 'Auto-Import events' === trim( $got['auto']['label'] ),
+    'the Auto-Import switch: ' . json_encode( $got['auto'] ) );
+el_check( 'Not fetched yet.' === $got['lastFetch'] && 'Not read yet.' === $got['links'], 'the status lines read ' . json_encode( array( $got['lastFetch'], $got['links'] ) ) );
 
 foreach ( $steps as $i => $s ) {
     $r = isset( $got['steps'][ $i ] ) ? $got['steps'][ $i ] : null;
@@ -221,7 +229,7 @@ if ( $fails ) {
     foreach ( array_unique( $fails ) as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "the panel: five fields with the right types and defaults, both buttons, and the not-built line;\n";
+echo "the panel: five fields with the right types and defaults, both buttons, Auto-Import off, and the two status lines;\n";
 echo "Test connection on screen for success, a refused login, an HTTP error and a sign-in page, pill and\n";
 echo "badge following; the probe's summary and the body as the hub sent it; and no credential on screen.\n";
 exit( 0 );

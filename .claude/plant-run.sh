@@ -3,13 +3,13 @@
 # Requires a clean tree: restores with git checkout between plants.
 cd "$(dirname "$0")/.." || exit 1
 
-if [ -n "$(git status --porcelain includes public admin)" ]; then
+if [ -n "$(git status --porcelain includes public admin .claude/version-check.php)" ]; then
   echo "REFUSING: includes/, public/ or admin/ has uncommitted changes. Commit first."
   exit 2
 fi
 
 caught=0; missed=0; unplanted=0
-restore() { git checkout -- includes public admin 2>/dev/null; }
+restore() { git checkout -- includes public admin .claude/version-check.php 2>/dev/null; }
 trap restore EXIT
 
 try() { # plant-name, label, check-script, [arguments for the check]
@@ -98,6 +98,16 @@ try ea-no-wrapper   "the login body loses ms_request"  .claude/everyaction-test.
 try ea-v2-read      "the tracker read uses version 2"  .claude/everyaction-test.php
 try ea-v2-read      "version 2 read: browser"          .claude/everyaction-live.php --run
 try ea-ms-error-unread "a 200 refusal reads as Connected" .claude/everyaction-test.php
+# 3.101.0, the EveryAction import.
+I=.claude/everyaction-import-test.php
+try ea-time-unconverted "a time imported without conversion" $I
+try ea-match-by-title "a row matched by title, not UUID"    $I
+try ea-past-imported "a past row imported"                  $I
+try ea-second-fetch-duplicates "a second fetch duplicates"  $I
+try ea-empty-unpublishes "an empty fetch may unpublish"     $I
+try ea-link-wrong-id "a signup link on the wrong ID"        $I
+try ea-rsvp-accepted "an imported event takes an RSVP"      $I
+try ea-version-gate "a version mismatch passes the gate"    .claude/version-check-test.php
 
 restore
 echo "-------------------------------------------"

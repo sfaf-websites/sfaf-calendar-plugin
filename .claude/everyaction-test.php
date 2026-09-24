@@ -283,6 +283,30 @@ $panel = ( false !== $a && false !== $b ) ? substr( $page, $a, $b - $a ) : '';
 ea( '' !== $panel, 'the EveryAction panel is not on the settings page, between Eventbrite and Pardot' );
 file_put_contents( __DIR__ . '/everyaction-panel.html', $panel );
 
+/* ---- 11b. The panel after a fetch and a link read (3.101.0). ---- */
+update_option( 'uc_settings', array( 'everyaction_auto_import' => '1' ) );
+update_option( SFAF_EveryAction::FETCH_OPTION, array( 'at' => time(), 'rows' => 7, 'new' => 5, 'updated' => 1, 'error' => '' ) );
+update_option( SFAF_EveryAction::LINKS_RUN_OPTION, array( 'at' => time(), 'ok' => true, 'message' => '', 'pairs' => 13, 'matched' => 4, 'upcoming' => 5 ) );
+ob_start();
+try { $admin->render_settings_page(); } catch ( Throwable $t ) { echo 'RENDER FAILED: ' . $t->getMessage(); }
+$page2  = (string) ob_get_clean();
+$a2     = strpos( $page2, '<!-- EVERYACTION -->' ); $b2 = strpos( $page2, '<!-- PARDOT' );
+$panel2 = ( false !== $a2 && false !== $b2 ) ? substr( $page2, $a2, $b2 - $a2 ) : '';
+ea( (bool) preg_match( '#name="uc_settings\[everyaction_auto_import\]" value="1"\s+checked#', $panel2 ), 'Auto-Import on is not drawn ticked' );
+ea( (bool) preg_match( '#class="uc-everyaction-last-fetch">[^<]*: 7 rows read, 5 created, 1 updated\.</p>#', $panel2 ), 'the last fetch line: ' . ( preg_match( '#uc-everyaction-last-fetch">([^<]*)#', $panel2, $m ) ? $m[1] : '(absent)' ) );
+ea( (bool) preg_match( '#class="uc-everyaction-links">[^<]*: 4 of 5 upcoming events have their own signup page\.</p>#', $panel2 ), 'the signup links line: ' . ( preg_match( '#uc-everyaction-links">([^<]*)#', $panel2, $m ) ? $m[1] : '(absent)' ) );
+ea( false === strpos( $panel2, 'Nothing is imported yet' ), 'the "nothing is imported yet" line is still on the panel' );
+update_option( SFAF_EveryAction::FETCH_OPTION, array( 'at' => time(), 'rows' => 0, 'new' => 0, 'updated' => 0, 'error' => 'Login failed: Login id or Password is Incorrect.' ) );
+ob_start();
+$admin->render_settings_page();
+$page3 = (string) ob_get_clean();
+ea( (bool) preg_match( '#uc-everyaction-last-fetch">Failed [^<]*: Login failed: Login id or Password is Incorrect\.</p>#', $page3 ), 'a failed fetch is not said on the panel' );
+$post_toggles = $admin->sanitize_settings( array( 'everyaction_auto_import' => '1' ) );
+ea( '1' === $post_toggles['everyaction_auto_import'], 'a save does not keep Auto-Import on' );
+$post_toggles = $admin->sanitize_settings( array() );
+ea( '0' === $post_toggles['everyaction_auto_import'], 'a save without the box does not turn Auto-Import off' );
+update_option( 'uc_settings', array() );
+
 /* ---- 12. And none of it reached PHP's error log. ---- */
 $log = (string) file_get_contents( $GLOBALS['ea_log'] );
 ea( empty( ea_leaks( $log ) ), 'a credential reached the error log' );

@@ -10,7 +10,19 @@
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description"><strong>Nothing is imported yet:</strong> there is no fetch, no Auto-Import and no schedule for EveryAction.</p>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-auto">Auto-Import events</label>
+                            <label class="uc-toggle"><input type="checkbox" id="uc-ea-auto" name="uc_settings[everyaction_auto_import]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <p class="description">Off: EveryAction is read only when somebody presses Fetch updates on the Pending screen.</p>
+                                                <div class="uc-field-row">
+                            <label>Last fetch</label>
+                            <p class="uc-everyaction-last-fetch">Not fetched yet.</p>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Signup links</label>
+                            <p class="uc-everyaction-links">Not read yet.</p>
+                        </div>
                         <div class="uc-field-row">
                             <label for="uc-ea-hub">Hub address</label>
                             <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="https://hub.example.org" class="uc-input" />

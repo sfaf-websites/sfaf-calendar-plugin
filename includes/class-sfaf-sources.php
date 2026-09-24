@@ -184,6 +184,53 @@ abstract class SFAF_Source_Adapter {
     public function manager_fields_note() {
         return '';
     }
+
+    /* ---------------------------------------------------------------------
+     * Three hooks from 3.101.0, all no-ops by default, so an adapter that
+     * does not know about them behaves exactly as it did.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Whether the SCHEDULED runner may fetch this source.
+     *
+     * A manual "Fetch updates" always runs every active source. This is the
+     * per-source Auto-Import switch, and it gates only the unattended run, so
+     * a source can be fetched by hand and looked at before anything repeats.
+     *
+     * @return bool
+     */
+    public function runs_unattended() {
+        return true;
+    }
+
+    /** What the fetch report says when runs_unattended() is false. */
+    public function unattended_off_reason() {
+        return 'Auto-Import is off.';
+    }
+
+    /**
+     * After an item has been created or refreshed, for what the common shape
+     * cannot carry: a series, a place name and its address parts.
+     *
+     * Called only for an event the framework was allowed to write, so a
+     * dismissed or trashed event never reaches it.
+     *
+     * @param int   $post_id
+     * @param array $event   What normalize() returned.
+     * @param bool  $is_new  Created by this run.
+     * @return array Label => {from, to}, added to the run's report of changes.
+     */
+    public function after_save( $post_id, $event, $is_new ) {
+        return array();
+    }
+
+    /**
+     * After a run, with its result, which it may add notes to.
+     *
+     * @param array $result One run_adapter() result.
+     */
+    public function after_run( &$result ) {
+    }
 }
 
 class SFAF_Sources {
@@ -1511,6 +1558,7 @@ class SFAF_Sources {
 
         if ( is_wp_error( $response ) ) {
             $result['error'] = $response->get_error_message();
+            $adapter->after_run( $result );
             return $result;
         }
 
@@ -1586,6 +1634,11 @@ class SFAF_Sources {
                     continue;
                 }
 
+                $extra = $adapter->after_save( $existing, $event, false );
+                if ( is_array( $extra ) && ! empty( $extra ) ) {
+                    $update['changed'] = array_merge( $update['changed'], $extra );
+                }
+
                 if ( ! empty( $update['faqs'] ) ) {
                     $result['faq_added']   += (int) $update['faqs']['added'];
                     $result['faq_updated'] += (int) $update['faqs']['updated'];
@@ -1640,6 +1693,8 @@ class SFAF_Sources {
                 continue;
             }
 
+            $adapter->after_save( $post_id, $event, true );
+
             $result['new']++;
             $result['changed'][] = array(
                 'id'     => (int) $post_id,
@@ -1653,6 +1708,8 @@ class SFAF_Sources {
         }
 
         self::handle_removals( $adapter, $response, $seen_ids, $result );
+
+        $adapter->after_run( $result );
 
         return $result;
     }
@@ -1750,9 +1807,12 @@ class SFAF_Sources {
      *
      * One source failing — or throwing outright — does not stop the others.
      *
+     * @param string $trigger 'manual' (Fetch updates) or 'scheduled' (the
+     *                        runner). Only a scheduled run asks an adapter's
+     *                        runs_unattended(), since 3.101.0.
      * @return array One result array per active source.
      */
-    public static function run_all() {
+    public static function run_all( $trigger = 'manual' ) {
         $results = array();
 
         // Every REGISTERED adapter is reported on, not just the active ones.
@@ -1762,6 +1822,12 @@ class SFAF_Sources {
         foreach ( self::adapters() as $adapter ) {
             if ( ! $adapter->is_active() ) {
                 $results[] = self::blank_result( $adapter, true, (string) $adapter->inactive_reason(), '' );
+                continue;
+            }
+            if ( 'scheduled' === $trigger && ! $adapter->runs_unattended() ) {
+                $held         = self::blank_result( $adapter, true, (string) $adapter->unattended_off_reason(), '' );
+                $held['held'] = true;
+                $results[]    = $held;
                 continue;
             }
 
@@ -1795,6 +1861,10 @@ class SFAF_Sources {
      * @return string
      */
     public static function summarize( $result ) {
+        // Connected, and held back from the unattended run by its own switch.
+        if ( ! empty( $result['held'] ) ) {
+            return sprintf( '%s: %s A manual fetch still reads it.', $result['label'], $result['reason'] );
+        }
         if ( ! empty( $result['skipped'] ) ) {
             return sprintf( '%s: not connected. %s', $result['label'], $result['reason'] );
         }

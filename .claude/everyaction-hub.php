@@ -19,6 +19,11 @@ function hub_resp( $code, $body, $type = 'application/json; charset=utf-8' ) {
 function hub_route( $method, $url, $args ) {
     $GLOBALS['hub_seen'][] = array( 'method' => $method, 'url' => $url, 'args' => $args );
     $path = (string) parse_url( $url, PHP_URL_PATH );
+    /* The public events list (3.101.0): its own host, answered by 'list'. */
+    if ( '50plus.sfaf.org' === parse_url( $url, PHP_URL_HOST ) ) {
+        $r = isset( $GLOBALS['hub']['list'] ) ? $GLOBALS['hub']['list'] : hub_resp( 500, '' );
+        return is_callable( $r ) ? $r( $args, $url ) : $r;
+    }
     if ( '/api/login.json' === $path ) { $k = 'login'; }
     elseif ( '/api/logout' === $path ) { $k = 'logout'; }
     elseif ( preg_match( '#^/api/trackers/forms/get_submissions/[^/]+$#', $path ) ) { $k = 'tracker'; }
@@ -27,7 +32,7 @@ function hub_route( $method, $url, $args ) {
     elseif ( preg_match( '#^/api/v2/trackers/[^/]+/fetch-all-entries$#', $path ) ) { return hub_resp( 200, '{"ms_error":"You don\'t have permission."}' ); }
     else { return hub_resp( 404, '' ); }
     $r = isset( $GLOBALS['hub'][ $k ] ) ? $GLOBALS['hub'][ $k ] : hub_resp( 500, '' );
-    return is_callable( $r ) ? $r( $args ) : $r;
+    return is_callable( $r ) ? $r( $args, $url ) : $r;
 }
 function wp_remote_post( $url, $args = array() ) { return hub_route( 'POST', $url, $args ); }
 function wp_remote_get( $url, $args = array() ) { return hub_route( 'GET', $url, $args ); }

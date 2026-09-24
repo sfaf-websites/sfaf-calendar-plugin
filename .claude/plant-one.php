@@ -369,6 +369,49 @@ $edits = array(
         "        if ( isset( \$json['ms_error'] ) && is_string( \$json['ms_error'] ) && '' !== trim( \$json['ms_error'] ) ) {",
         "        if ( false ) {" ),
 
+    /* ---- 3.101.0: the EveryAction import. ---- */
+
+    /* A tracker time is stored as UTC, unconverted. */
+    'ea-time-unconverted' => array( 'includes/class-sfaf-source-everyaction.php',
+        '        $local = $utc->setTimezone( wp_timezone() );',
+        '        $local = $utc;' ),
+
+    /* A row is matched by its title instead of its UUID. */
+    'ea-match-by-title' => array( 'includes/class-sfaf-source-everyaction.php',
+        "            'external_id'     => \$uuid,",
+        "            'external_id'     => \$title," ),
+
+    /* A row whose end time has passed is imported. */
+    'ea-past-imported' => array( 'includes/class-sfaf-source-everyaction.php',
+        "            \$event['not_an_event'] = 'its end time has passed';",
+        "            \$event['ended'] = true;" ),
+
+    /* A second fetch duplicates: find_existing() asks for 'any', which leaves
+     * out both queue statuses. */
+    'ea-second-fetch-duplicates' => array( 'includes/class-sfaf-sources.php',
+        "            'post_status'            => self::all_statuses(),\n            'posts_per_page'         => 1,",
+        "            'post_status'            => 'any',\n            'posts_per_page'         => 1," ),
+
+    /* A fetch of nothing is called complete, so it may unpublish. */
+    'ea-empty-unpublishes' => array( 'includes/class-sfaf-source-everyaction.php',
+        "        \$complete = \$read['complete'] && ! empty( \$read['rows'] );",
+        "        \$complete = \$read['complete'];" ),
+
+    /* The signup link is looked for across the whole page, not in its entry. */
+    'ea-link-wrong-id' => array( 'includes/class-sfaf-everyaction.php',
+        "\$a = \$xp->query( \".//a[contains(",
+        "\$a = \$xp->query( \"//a[contains(" ),
+
+    /* The RSVP lock names the two sources that existed at 3.97.0. */
+    'ea-rsvp-accepted' => array( 'includes/class-sfaf-sources.php',
+        "        return ( '' !== (string) get_post_meta( (int) \$post_id, self::META_SOURCE, true ) );",
+        "        return in_array( (string) get_post_meta( (int) \$post_id, self::META_SOURCE, true ), array( 'eventbrite', 'gofundme_pro' ), true );" ),
+
+    /* The build gate stops reading embed.js. */
+    'ea-version-gate' => array( '.claude/version-check.php',
+        "        'EMBED_JS_VERSION (public/js/embed.js)'      => \$read( 'public/js/embed.js', \"/EMBED_JS_VERSION = '([^']+)';/\" ),\n",
+        '' ),
+
 );
 
 if ( 'off-ladder' === $which ) {

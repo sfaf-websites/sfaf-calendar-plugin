@@ -1,0 +1,45 @@
+{
+  "_about": "Tracker rows for .claude/everyaction-import-test.php (3.101.0). NOT a captured probe: no probe output was recorded in PROJECT.md 8. Built from the row shape stated in the 3.101.0 brief: UUID, Series_ID, Title, Start_Time and End_Time as MM/DD/YYYY hh:mm AM +0000 (UTC), Location_Name composed and its four parts, the rest usually empty, and RowId, CreatedAt and the Submitted fields as the hub's own. {Y} is replaced with next year so every row stays upcoming. UUIDs 7500593xx match data-event-id on the real list pages in this folder. Replace with a real probe body when there is one.",
+  "rows": [
+    {
+      "RowId": 101, "CreatedAt": "09/01/2026 04:12 PM +0000", "SubmittedBy": "val", "SubmittedAt": "09/01/2026 04:12 PM +0000",
+      "UUID": "750059398", "Series_ID": "CS50", "Title": "50-Plus Saturday AM Coffee Social",
+      "Start_Time": "10/09/{Y} 05:00 PM +0000", "End_Time": "10/09/{Y} 07:00 PM +0000",
+      "Location_Name": "Maxfield's House of Caffeine, 398 Dolores St, San Francisco, CA 94110",
+      "Location_Street": "398 Dolores St", "Location_City": "San Francisco", "Location_State": "CA", "Location_Zip": "94110",
+      "Description": "", "Public_URL": "", "Visibility": "", "Capacity": "", "SignUps": ""
+    },
+    {
+      "RowId": 102, "CreatedAt": "09/01/2026 04:12 PM +0000", "SubmittedBy": "val", "SubmittedAt": "09/01/2026 04:12 PM +0000",
+      "UUID": "750059399", "Series_ID": "CS50", "Title": "50-Plus Saturday AM Coffee Social",
+      "Start_Time": "11/13/{Y} 06:00 PM +0000", "End_Time": "11/13/{Y} 08:00 PM +0000",
+      "Location_Name": "Maxfield's House of Caffeine, 398 Dolores St, San Francisco, CA 94110",
+      "Location_Street": "398 Dolores St", "Location_City": "San Francisco", "Location_State": "CA", "Location_Zip": "94110",
+      "Description": "", "Public_URL": "", "Visibility": "", "Capacity": "", "SignUps": ""
+    },
+    {
+      "RowId": 103, "CreatedAt": "09/02/2026 06:40 PM +0000", "SubmittedBy": "val", "SubmittedAt": "09/02/2026 06:40 PM +0000",
+      "UUID": "750059054", "Series_ID": "CSAM", "Title": "Saturday AM Coffee Social",
+      "Start_Time": "10/09/{Y} 05:00 PM +0000", "End_Time": "10/09/{Y} 07:00 PM +0000",
+      "Location_Name": "Maxfield's House of Caffeine, 398 Dolores St, San Francisco, CA 94110",
+      "Location_Street": "398 Dolores St", "Location_City": "San Francisco", "Location_State": "CA", "Location_Zip": "94110",
+      "Description": "Join us every Saturday for coffee and chat", "Public_URL": "", "Visibility": "", "Capacity": "", "SignUps": ""
+    },
+    {
+      "RowId": 104, "CreatedAt": "09/03/2026 09:00 PM +0000", "SubmittedBy": "val", "SubmittedAt": "09/03/2026 09:00 PM +0000",
+      "UUID": "750059773", "Series_ID": "MCM", "Title": "Monthly Community Meal",
+      "Start_Time": "10/28/{Y} 01:00 AM +0000", "End_Time": "10/28/{Y} 03:00 AM +0000",
+      "Location_Name": "SFAF, 1035 Market St, San Francisco, CA 94103",
+      "Location_Street": "", "Location_City": "", "Location_State": "", "Location_Zip": "",
+      "Description": "Dinner with Friends, our community meal.", "Public_URL": "", "Visibility": "", "Capacity": "40", "SignUps": "12"
+    },
+    {
+      "RowId": 105, "CreatedAt": "09/04/2026 05:00 PM +0000", "SubmittedBy": "val", "SubmittedAt": "09/04/2026 05:00 PM +0000",
+      "UUID": "999000002", "Series_ID": "WALK", "Title": "Golden Gate Park Walking Group",
+      "Start_Time": "12/04/{Y} 06:30 PM +0000", "End_Time": "12/04/{Y} 08:00 PM +0000",
+      "Location_Name": "Conservatory of Flowers, 100 John F Kennedy Dr, San Francisco, CA 94118",
+      "Location_Street": "100 John F Kennedy Dr", "Location_City": "San Francisco", "Location_State": "CA", "Location_Zip": "94118",
+      "Description": "", "Public_URL": "", "Visibility": "Internal", "Capacity": "", "SignUps": ""
+    }
+  ]
+}

@@ -45,6 +45,7 @@ for f in .claude/*.php; do
     wp-kit.php) continue ;;            # the miniature WordPress the 3.99.0 checks load, not a check
     everyaction-hub.php) continue ;;   # the model hub the EveryAction checks load, not a check
     everyaction-live.php) continue ;;  # run below with --run
+    version-check.php) continue ;;     # the build gate itself; version-check-test.php runs it
   esac
   run "$(basename "$f" .php)" php "$f"
 done

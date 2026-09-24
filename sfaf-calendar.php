@@ -137,7 +137,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-sync.php',
     'includes/class-sfaf-gfmp.php',
     'includes/class-sfaf-eventbrite.php',
-    // EveryAction: a connection test and a probe only, no adapter (3.100.0).
+    // EveryAction: the hub session, the tracker read and the public signup
+    // links (3.100.0, the import from 3.101.0). The adapter is below.
     'includes/class-sfaf-everyaction.php',
     'includes/class-sfaf-faq-sets.php',
     'includes/class-sfaf-teams.php',
@@ -145,6 +146,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-sources.php',
     'includes/class-sfaf-source-eventbrite.php',
     'includes/class-sfaf-source-gfmp.php',
+    'includes/class-sfaf-source-everyaction.php',
     'includes/class-sfaf-seo.php',
     'includes/class-sfaf-portal.php',
     'includes/class-sfaf-orphans.php',
@@ -267,7 +269,7 @@ function sfaf_init() {
     $eventbrite = new SFAF_Eventbrite();
     $eventbrite->register();
 
-    // EveryAction: Test connection and the tracker probe. Nothing imports.
+    // EveryAction: Test connection, the tracker probe and the signup links.
     $everyaction = new SFAF_EveryAction();
     $everyaction->register();
 
@@ -276,11 +278,12 @@ function sfaf_init() {
     $sources = new SFAF_Sources();
     $sources->register();
 
-    // The source adapters. Both go through the same framework and the same
-    // "Fetch updates" run; EveryAction will register the same way, or from
+    // The source adapters. All three go through the same framework and the
+    // same "Fetch updates" run. Another can register the same way, or from
     // outside via the sfaf_source_adapters filter.
     SFAF_Sources::register_adapter( new SFAF_Source_Eventbrite() );
     SFAF_Sources::register_adapter( new SFAF_Source_GFMP() );
+    SFAF_Sources::register_adapter( new SFAF_Source_EveryAction() );
 
     // 2.6.0 wrote a source image to the manual-override key as well as its
     // own. Separate them once so a refetch can refresh the source image

@@ -416,7 +416,7 @@ class SFAF_Cron {
             ),
             'fetch'     => array(
                 'label'    => 'Fetch from sources',
-                'plain'    => 'Brings in new and changed events from Eventbrite and GoFundMe Pro.',
+                'plain'    => 'Brings in new and changed events from Eventbrite, GoFundMe Pro and EveryAction. EveryAction also needs its own Auto-Import switch on.',
                 'callback' => array( __CLASS__, 'run_fetch' ),
                 'on'       => array( __CLASS__, 'auto_fetch_enabled' ),
                 'off'      => 'Automated fetching is switched off. Use "Fetch updates" on the calendar portal\'s Pending screen to run it by hand.',
@@ -435,6 +435,18 @@ class SFAF_Cron {
                 'callback' => array( 'SFAF_Sources', 'sweep_queues' ),
                 'on'       => '__return_true',
                 'off'      => '',
+            ),
+            /*
+             * NOT INSIDE THE FETCH, and not behind Auto-Import: the list is a
+             * public page, and the first fetch, done by hand, should find the
+             * links already read.
+             */
+            'everyaction_links' => array(
+                'label'    => 'EveryAction signup links',
+                'plain'    => 'Once a day, reads the public EveryAction events list for each imported event\'s signup page.',
+                'callback' => array( 'SFAF_EveryAction', 'run_links' ),
+                'on'       => array( 'SFAF_EveryAction', 'configured' ),
+                'off'      => 'EveryAction has no hub login stored.',
             ),
             'orphans'   => array(
                 'label'    => 'Events with no organizer',
@@ -592,7 +604,7 @@ class SFAF_Cron {
      * vocabularies for it.
      */
     public static function run_fetch() {
-        $results = SFAF_Sources::run_all();
+        $results = SFAF_Sources::run_all( 'scheduled' );
         $lines   = array();
         $sources = array();
         $active  = 0;

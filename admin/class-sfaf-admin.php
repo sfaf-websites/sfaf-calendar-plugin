@@ -1248,7 +1248,7 @@ class SFAF_Admin {
         // from whether a real token is on file (SFAF_GFMP::status()), so it can
         // no longer be set by hand.
         $toggles = array(
-            'gofundme_show_progress', 'gofundme_auto_import',
+            'gofundme_show_progress', 'gofundme_auto_import', 'everyaction_auto_import',
             'pardot_auto_prospect', 'pardot_event_emails',
             'google_auto_publish', 'galaxy_auto_sync',
             'galaxy_import_events', 'galaxy_active_only',
@@ -2382,7 +2382,53 @@ class SFAF_Admin {
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description"><strong>Nothing is imported yet:</strong> there is no fetch, no Auto-Import and no schedule for EveryAction.</p>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-auto">Auto-Import events</label>
+                            <label class="uc-toggle"><input type="checkbox" id="uc-ea-auto" name="uc_settings[everyaction_auto_import]" value="1" <?php checked( SFAF_EveryAction::auto_import() ? '1' : '0', '1' ); ?> /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <p class="description">Off: EveryAction is read only when somebody presses Fetch updates on the Pending screen.</p>
+                        <?php
+                        $ea_fetch = SFAF_EveryAction::last_fetch();
+                        $ea_links = SFAF_EveryAction::links_run();
+                        ?>
+                        <div class="uc-field-row">
+                            <label>Last fetch</label>
+                            <p class="uc-everyaction-last-fetch"><?php
+                                if ( empty( $ea_fetch['at'] ) ) {
+                                    echo 'Not fetched yet.';
+                                } elseif ( '' !== (string) $ea_fetch['error'] ) {
+                                    echo esc_html( sprintf( 'Failed %s: %s', sfaf_ap_datetime( (int) $ea_fetch['at'] ), $ea_fetch['error'] ) );
+                                } else {
+                                    echo esc_html( sprintf(
+                                        '%s: %d %s read, %d created, %d updated.',
+                                        sfaf_ap_datetime( (int) $ea_fetch['at'] ),
+                                        (int) $ea_fetch['rows'],
+                                        1 === (int) $ea_fetch['rows'] ? 'row' : 'rows',
+                                        (int) $ea_fetch['new'],
+                                        (int) $ea_fetch['updated']
+                                    ) );
+                                }
+                            ?></p>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Signup links</label>
+                            <p class="uc-everyaction-links"><?php
+                                if ( empty( $ea_links['at'] ) ) {
+                                    echo 'Not read yet.';
+                                } else {
+                                    $ea_line = sprintf(
+                                        '%s: %d of %d upcoming events have their own signup page.',
+                                        sfaf_ap_datetime( (int) $ea_links['at'] ),
+                                        isset( $ea_links['matched'] ) ? (int) $ea_links['matched'] : 0,
+                                        isset( $ea_links['upcoming'] ) ? (int) $ea_links['upcoming'] : 0
+                                    );
+                                    if ( empty( $ea_links['ok'] ) && ! empty( $ea_links['message'] ) ) {
+                                        $ea_line .= ' ' . $ea_links['message'];
+                                    }
+                                    echo esc_html( $ea_line );
+                                }
+                            ?></p>
+                        </div>
                         <div class="uc-field-row">
                             <label for="uc-ea-hub">Hub address</label>
                             <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="<?php echo esc_attr( SFAF_EveryAction::hub() ); ?>" class="uc-input" />

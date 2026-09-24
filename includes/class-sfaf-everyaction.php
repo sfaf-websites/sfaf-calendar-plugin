@@ -1,13 +1,12 @@
 <?php
 /**
- * EveryAction events, through the MangoApps tracker on the hub (3.100.0).
+ * EveryAction events, through the MangoApps tracker on the hub (3.100.0), and
+ * the import from 3.101.0.
  *
- * A CONNECTION TEST AND A PROBE, AND NOTHING ELSE YET. There is no adapter, no
- * fetch on the runner, no pending-queue entry and no schedule. What this class
- * can do is log in, read the tracker, log out, and say what happened, so the
- * credential question can be answered on the settings screen by the person who
- * holds the credential, and the tracker's real shape can be seen before an
- * adapter is written against it. PROJECT.md 8 has why the adapter waits.
+ * THIS CLASS TALKS TO THE TWO PLACES THE IMPORT READS. The hub, for the rows,
+ * and the public events list, for each event's signup page. The adapter that
+ * turns rows into events is SFAF_Source_EveryAction; this class holds the
+ * session, the paged read, the list reader and what the panel shows.
  *
  * THE FLOW IS THE DOCUMENTED ONE, and it is a session, not a bearer token:
  *
@@ -15,6 +14,7 @@
  *                               with the password base64-encoded
  *   ms_response.user._token  -> sent as the _felix_session_id cookie
  *   GET  {hub}/api/trackers/forms/get_submissions/{id}   rows at ms_response.data
+ *        and ?page=N after the first, see read_rows()
  *   POST {hub}/api/logout
  *
  * THE PASSWORD IS STORED AS TYPED AND ENCODED ONLY IN login(). A stored
@@ -49,9 +49,46 @@ class SFAF_EveryAction {
     /** Where the tracker read puts the rows (3.100.2). */
     const ROWS_AT = 'ms_response.data';
 
+    /** The tracker answers a hundred rows a read; fewer means the last page. */
+    const PER_PAGE = 100;
+
+    /** A ceiling on reads per fetch, far above the tracker's size. */
+    const MAX_PAGES = 50;
+
+    /** The public events list, and how many entries it shows a page. */
+    const LIST_URL       = 'https://50plus.sfaf.org/a/asevents';
+    const LIST_PAGE_SIZE = 10;
+    const LIST_MAX_PAGES = 40;
+
+    /** How often the runner reads the list. */
+    const LINKS_EVERY = 86400;
+
+    /**
+     * UUID => signup address, from the last good read of the list. Replaced
+     * whole by each good read, and never by a failed or empty one.
+     */
+    const LINKS_OPTION = 'sfaf_everyaction_links';
+
+    /** The last read of the list: when, whether it worked, how many matched. */
+    const LINKS_RUN_OPTION = 'sfaf_everyaction_links_run';
+
+    /** The last fetch: when, rows read, created, updated, or what failed. */
+    const FETCH_OPTION = 'sfaf_everyaction_fetch';
+
     public function register() {
         add_action( 'wp_ajax_sfaf_everyaction_test', array( $this, 'ajax_test' ) );
         add_action( 'wp_ajax_sfaf_everyaction_probe', array( $this, 'ajax_probe' ) );
+    }
+
+    /** Whether the scheduled runner fetches EveryAction. Off unless ticked. */
+    public static function auto_import() {
+        $settings = get_option( 'uc_settings', array() );
+        return is_array( $settings ) && isset( $settings['everyaction_auto_import'] ) && '1' === (string) $settings['everyaction_auto_import'];
+    }
+
+    /** Whether everything a login needs is stored. */
+    public static function configured() {
+        return empty( self::missing( self::config() ) );
     }
 
     /* ---------------------------------------------------------------------
@@ -196,7 +233,7 @@ class SFAF_EveryAction {
 
     /** A clause as a sentence: a full stop unless it already ends in one. The
      * hub ends some messages with its own, and two in a row reads as a fault. */
-    private static function sentence( $text ) {
+    public static function sentence( $text ) {
         $text = rtrim( (string) $text );
         return preg_match( '/[.!?]$/', $text ) ? $text : $text . '.';
     }
@@ -307,9 +344,12 @@ class SFAF_EveryAction {
         return '/api/trackers/forms/get_submissions/' . rawurlencode( (string) $cfg['tracker'] );
     }
 
-    /** The tracker's rows, one call. */
-    public static function read_tracker( $cfg, $token ) {
+    /** One read of the tracker. $page 0 is the bare address. */
+    public static function read_tracker( $cfg, $token, $page = 0 ) {
         $url = $cfg['hub'] . self::tracker_path( $cfg );
+        if ( $page > 0 ) {
+            $url = add_query_arg( array( 'page' => (int) $page ), $url );
+        }
         return self::reply( wp_remote_get( $url, array(
             'timeout'     => self::TIMEOUT,
             'redirection' => 0,
@@ -364,6 +404,360 @@ class SFAF_EveryAction {
         }
         $data = $json['ms_response']['data'];
         return ( array() === $data || array_keys( $data ) === range( 0, count( $data ) - 1 ) ) ? count( $data ) : null;
+    }
+
+    /** The rows in one tracker reply, or an empty list. */
+    public static function rows_in( $body ) {
+        $json = json_decode( (string) $body, true );
+        if ( ! isset( $json['ms_response']['data'] ) || ! is_array( $json['ms_response']['data'] ) ) {
+            return array();
+        }
+        return array_values( array_filter( $json['ms_response']['data'], 'is_array' ) );
+    }
+
+    /* ---------------------------------------------------------------------
+     * The whole tracker (3.101.0)
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Every row, read a page at a time until a page comes back short.
+     *
+     * THE PAGE PARAMETER IS NOT DOCUMENTED. The hub's apidoc lists `id` and
+     * nothing else for this read, and `page` is what the rest of its version 1
+     * API pages with. So the read does not trust it, it checks it:
+     *
+     *   - The bare address is the first page.
+     *   - `page=1` is asked next. If it repeats the first page, pages count
+     *     from 1 and the read carries on at 2; if it does not, they count from
+     *     0 and it is already the second page. Either way nothing is skipped.
+     *   - A full page that adds no row not already read means the hub ignored
+     *     the parameter, or went round to the start. The read stops there and
+     *     says the list may be incomplete, which is what keeps the removal
+     *     step from running on it. It never loops and never counts a row twice.
+     *
+     * @param array  $cfg
+     * @param string $token
+     * @return array{rows:array,complete:bool,reason:string,reads:int,error:string}
+     */
+    public static function read_rows( $cfg, $token ) {
+        $out  = array( 'rows' => array(), 'complete' => false, 'reason' => '', 'reads' => 0, 'error' => '' );
+        $seen = array();
+
+        for ( $page = 0; $page <= self::MAX_PAGES; $page++ ) {
+            $r   = self::read_tracker( $cfg, $token, $page );
+            $bad = self::not_data( $r );
+            if ( '' !== $bad ) {
+                $out['error'] = ( 0 === $page )
+                    ? self::sentence( 'Tracker read failed: ' . $bad )
+                    : self::sentence( sprintf( 'Tracker read failed after %d rows: %s', count( $out['rows'] ), $bad ) );
+                return $out;
+            }
+            $out['reads']++;
+
+            $rows = self::rows_in( $r['body'] );
+            $new  = 0;
+            foreach ( $rows as $row ) {
+                $key = isset( $row['UUID'] ) && '' !== trim( (string) $row['UUID'] ) ? 'u:' . trim( (string) $row['UUID'] ) : 'r:' . md5( wp_json_encode( $row ) );
+                if ( isset( $seen[ $key ] ) ) {
+                    continue;
+                }
+                $seen[ $key ]  = true;
+                $out['rows'][] = $row;
+                $new++;
+            }
+
+            if ( count( $rows ) < self::PER_PAGE ) {
+                $out['complete'] = true;
+                return $out;
+            }
+            if ( 1 === $page && 0 === $new ) {
+                continue; // page=1 was the first page again: pages count from 1
+            }
+            if ( $page > 0 && 0 === $new ) {
+                $out['reason'] = 'the tracker gave the same rows twice, so its pages could not be told apart and the list may be incomplete';
+                return $out;
+            }
+        }
+
+        $out['reason'] = sprintf( 'the tracker ran past %d pages, so the list may be incomplete', self::MAX_PAGES );
+        return $out;
+    }
+
+    /* ---------------------------------------------------------------------
+     * The signup links, from the public events list (3.101.0)
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Pairs of event id and signup address from one page of the public list.
+     *
+     * Every entry is counted, with or without a link, because the page size is
+     * what says whether this was the last page. Only an entry carrying both an
+     * id and an address becomes a pair.
+     *
+     * @param string $html
+     * @return array<int,array{id:string,href:string}>
+     */
+    public static function parse_list( $html ) {
+        $html = (string) $html;
+        if ( '' === trim( $html ) ) {
+            return array();
+        }
+        $doc  = new DOMDocument();
+        $prev = libxml_use_internal_errors( true );
+        $doc->loadHTML( '<?xml encoding="utf-8"?>' . $html );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $prev );
+
+        $xp  = new DOMXPath( $doc );
+        $out = array();
+        foreach ( $xp->query( "//div[contains(concat(' ', normalize-space(@class), ' '), ' oa-event-result-container ')]" ) as $div ) {
+            $id   = trim( (string) $div->getAttribute( 'data-event-id' ) );
+            $href = '';
+            /* RELATIVE TO THIS ENTRY: the leading dot. Without it the query
+             * searches the whole page and every entry gets the first link. */
+            $a = $xp->query( ".//a[contains(concat(' ', normalize-space(@class), ' '), ' oa-event-result-signup-link ')]", $div )->item( 0 );
+            if ( $a ) {
+                $href = trim( (string) $a->getAttribute( 'href' ) );
+                if ( ! preg_match( '#^https?://#i', $href ) ) {
+                    $href = '';
+                }
+            }
+            $out[] = array( 'id' => $id, 'href' => $href );
+        }
+        return $out;
+    }
+
+    /**
+     * Read the whole list, page by page through ?pn=N.
+     *
+     * PAST ITS LAST PAGE THE LIST SHOWS PAGE ONE AGAIN, measured on 2026-09-24:
+     * pn=16 and pn=40 both answer with page one's entries. So a short page
+     * ends the read, and so does a page whose entries were all read already,
+     * which is the case a list of exactly a multiple of ten would reach.
+     *
+     * @return array{ok:bool,pairs:array,entries:int,pages:int,error:string}
+     */
+    public static function read_links() {
+        $out  = array( 'ok' => false, 'pairs' => array(), 'entries' => 0, 'pages' => 0, 'error' => '' );
+        $seen = array();
+
+        for ( $n = 1; $n <= self::LIST_MAX_PAGES; $n++ ) {
+            $url = ( 1 === $n ) ? self::LIST_URL : add_query_arg( array( 'pn' => $n ), self::LIST_URL );
+            $r   = self::reply( wp_remote_get( $url, array(
+                'timeout'     => self::TIMEOUT,
+                'redirection' => 3,
+                'headers'     => array( 'Accept' => 'text/html' ),
+            ) ) );
+            if ( ! $r['ok'] ) {
+                $out['error'] = self::sentence( sprintf( 'The events list could not be read at page %d: %s', $n, self::why( $r ) ) );
+                return $out;
+            }
+            $found = self::parse_list( $r['body'] );
+            $out['pages']++;
+
+            $fresh = 0;
+            foreach ( $found as $entry ) {
+                $key = '' !== $entry['id'] ? $entry['id'] : md5( $entry['href'] );
+                if ( isset( $seen[ $key ] ) ) {
+                    continue;
+                }
+                $seen[ $key ] = true;
+                $fresh++;
+                $out['entries']++;
+                if ( '' !== $entry['id'] && '' !== $entry['href'] ) {
+                    $out['pairs'][ $entry['id'] ] = $entry['href'];
+                }
+            }
+
+            if ( count( $found ) < self::LIST_PAGE_SIZE || 0 === $fresh ) {
+                break;
+            }
+        }
+
+        if ( empty( $out['pairs'] ) ) {
+            $out['error'] = 'The events list was read and held no signup links, so the last good set was kept.';
+            return $out;
+        }
+        $out['ok'] = true;
+        return $out;
+    }
+
+    /** UUID => signup address, from the last good read. */
+    public static function links() {
+        $stored = get_option( self::LINKS_OPTION, array() );
+        return ( is_array( $stored ) && isset( $stored['pairs'] ) && is_array( $stored['pairs'] ) ) ? $stored['pairs'] : array();
+    }
+
+    /** When the list was last read successfully, or 0. */
+    public static function links_read_at() {
+        $stored = get_option( self::LINKS_OPTION, array() );
+        return is_array( $stored ) && isset( $stored['at'] ) ? (int) $stored['at'] : 0;
+    }
+
+    /**
+     * The list itself, filtered to one day: where the button goes for an event
+     * whose own page the list does not show yet.
+     *
+     * The list's date filter is a form, and its own redirect turns that into
+     * date_start and date_end as MM-DD-YYYY, which it also reads from a plain
+     * link. Checked 2026-09-24: DateFrom and DateTo in the address are ignored.
+     *
+     * @param string $date Y-m-d.
+     * @return string
+     */
+    public static function day_url( $date ) {
+        $d = DateTime::createFromFormat( 'Y-m-d', (string) $date );
+        if ( ! $d ) {
+            return self::LIST_URL;
+        }
+        $day = $d->format( 'm-d-Y' );
+        return self::LIST_URL . '?date_start=' . $day . '&date_end=' . $day;
+    }
+
+    /** The event's own signup page from the last read, or '' when the list has none. */
+    public static function matched_url( $uuid ) {
+        $links = self::links();
+        $uuid  = (string) $uuid;
+        return isset( $links[ $uuid ] ) ? (string) $links[ $uuid ] : '';
+    }
+
+    /** Whether an address is the list's own, filtered or not, rather than an event's page. */
+    public static function is_list_url( $url ) {
+        return 0 === strpos( (string) $url, self::LIST_URL );
+    }
+
+    /**
+     * Imported EveryAction events a fetch may still write, as id => UUID.
+     *
+     * @return array<int,string>
+     */
+    private static function imported_events() {
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => SFAF_Sources::updatable_statuses(),
+            'posts_per_page'         => 1000,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'ignore_sticky_posts'    => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                array( 'key' => SFAF_Sources::META_SOURCE, 'value' => SFAF_Source_EveryAction::SLUG ),
+            ),
+        ) );
+        $out = array();
+        foreach ( $q->posts as $id ) {
+            $out[ (int) $id ] = (string) get_post_meta( (int) $id, SFAF_Sources::META_EXTERNAL_ID, true );
+        }
+        return $out;
+    }
+
+    /**
+     * How many upcoming imported events the list has a page for.
+     *
+     * The number the panel shows beside the read, so a change to the list's
+     * markup shows as this dropping rather than as nothing at all.
+     *
+     * @return array{matched:int,upcoming:int}
+     */
+    public static function count_matches() {
+        $links = self::links();
+        $today = SFAF_Sources::today();
+        $out   = array( 'matched' => 0, 'upcoming' => 0 );
+        foreach ( self::imported_events() as $id => $uuid ) {
+            $date = (string) get_post_meta( $id, '_uc_event_date', true );
+            if ( '' === $date || $date < $today ) {
+                continue;
+            }
+            $out['upcoming']++;
+            if ( '' !== $uuid && isset( $links[ $uuid ] ) ) {
+                $out['matched']++;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Read the list, keep the pairs, and give every imported event the address
+     * it now has. An event the list has no page for keeps the one it has,
+     * which is its day on the list until the id appears.
+     *
+     * @return array{ok:bool,message:string,pairs:int,matched:int,upcoming:int,changed:int}
+     */
+    public static function refresh_links() {
+        $read    = self::read_links();
+        $changed = 0;
+
+        if ( $read['ok'] ) {
+            update_option( self::LINKS_OPTION, array( 'at' => time(), 'pairs' => $read['pairs'] ), false );
+            foreach ( self::imported_events() as $id => $uuid ) {
+                if ( '' === $uuid || ! isset( $read['pairs'][ $uuid ] ) ) {
+                    continue;
+                }
+                $url = esc_url_raw( $read['pairs'][ $uuid ] );
+                if ( '' !== $url && (string) get_post_meta( $id, SFAF_Sources::META_SOURCE_URL, true ) !== $url ) {
+                    update_post_meta( $id, SFAF_Sources::META_SOURCE_URL, $url );
+                    $changed++;
+                }
+            }
+        }
+
+        $counts = self::count_matches();
+        $run    = array(
+            'at'       => time(),
+            'ok'       => (bool) $read['ok'],
+            'message'  => $read['ok'] ? '' : $read['error'],
+            'pairs'    => count( $read['ok'] ? $read['pairs'] : self::links() ),
+            'matched'  => $counts['matched'],
+            'upcoming' => $counts['upcoming'],
+            'changed'  => $changed,
+        );
+        update_option( self::LINKS_RUN_OPTION, $run, false );
+        return $run;
+    }
+
+    /**
+     * The runner's task: the list once a day, paced like the orphan check.
+     *
+     * @return array{status:string,summary:string,counts:array}
+     */
+    public static function run_links() {
+        $last = get_option( self::LINKS_RUN_OPTION, array() );
+        if ( is_array( $last ) && ! empty( $last['at'] ) && ( time() - (int) $last['at'] ) < self::LINKS_EVERY ) {
+            return array( 'status' => 'ok', 'summary' => 'Read within the last day already.', 'counts' => array() );
+        }
+        $run = self::refresh_links();
+        if ( ! $run['ok'] ) {
+            return array( 'status' => 'failed', 'summary' => $run['message'], 'counts' => array() );
+        }
+        return array(
+            'status'  => 'ok',
+            'summary' => sprintf( '%d signup links read; %d of %d upcoming imported events matched.', $run['pairs'], $run['matched'], $run['upcoming'] ),
+            'counts'  => array( 'matched' => $run['matched'], 'upcoming' => $run['upcoming'], 'changed' => $run['changed'] ),
+        );
+    }
+
+    /** The last read of the list, for the panel. */
+    public static function links_run() {
+        $run = get_option( self::LINKS_RUN_OPTION, array() );
+        return is_array( $run ) ? $run : array();
+    }
+
+    /** The last fetch, for the panel. */
+    public static function last_fetch() {
+        $f = get_option( self::FETCH_OPTION, array() );
+        return is_array( $f ) ? $f : array();
+    }
+
+    /** Record a fetch from its run_adapter() result. */
+    public static function record_fetch( $result ) {
+        update_option( self::FETCH_OPTION, array(
+            'at'      => time(),
+            'rows'    => isset( $result['fetched'] ) ? (int) $result['fetched'] : 0,
+            'new'     => isset( $result['new'] ) ? (int) $result['new'] : 0,
+            'updated' => isset( $result['updated'] ) ? (int) $result['updated'] : 0,
+            'error'   => isset( $result['error'] ) ? (string) $result['error'] : '',
+        ), false );
     }
 
     /* ---------------------------------------------------------------------

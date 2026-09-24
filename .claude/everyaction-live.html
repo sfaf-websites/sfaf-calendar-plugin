@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>EveryAction panel</title><link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/admin/css/admin.css"><script>window.EL_PAYLOADS = [{"success":false,"data":{"ok":false,"step":"tracker","message":"Tracker read failed: You don't have permission.","rows":null}},{"success":false,"data":{"ok":false,"step":"login","message":"Login failed: Login id or Password is Incorrect.","rows":null}},{"success":false,"data":{"ok":false,"step":"login","message":"Login failed: HTTP 502.","rows":null}},{"success":false,"data":{"ok":false,"step":"tracker","message":"Tracker read failed: You don't have permission.","rows":null}},{"success":true,"data":{"ok":false,"error":"","url":"\/api\/v2\/trackers\/162570\/fetch-all-entries","status":200,"type":"application\/json; charset=utf-8","length":41,"truncated":false,"body":"{\"ms_error\":\"You don't have permission.\"}","rows":null,"where":"ms_response.data","problem":"Tracker read failed: You don't have permission.","logout":"Logged out.","max_body":250000}},{"success":true,"data":{"ok":false,"error":"","url":"\/api\/v2\/trackers\/162570\/fetch-all-entries","status":200,"type":"application\/json; charset=utf-8","length":41,"truncated":false,"body":"{\"ms_error\":\"You don't have permission.\"}","rows":null,"where":"ms_response.data","problem":"Tracker read failed: You don't have permission.","logout":"Logged out.","max_body":250000}},{"success":true,"data":{"ok":false,"error":"Login failed: Login id or Password is Incorrect.","url":"","status":0,"type":"","length":0,"truncated":false,"body":"","rows":null,"where":"ms_response.data","problem":"","logout":"","max_body":250000}}]; window.EL_PRESSES = ["test","test","test","test","probe","probe","probe"];</script><script>(function () {
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>EveryAction panel</title><link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/admin/css/admin.css"><script>window.EL_PAYLOADS = [{"success":true,"data":{"ok":true,"step":"done","message":"Connected. Tracker reachable, 3 rows.","rows":3}},{"success":false,"data":{"ok":false,"step":"login","message":"Login failed: Login id or Password is Incorrect.","rows":null}},{"success":false,"data":{"ok":false,"step":"login","message":"Login failed: HTTP 502.","rows":null}},{"success":false,"data":{"ok":false,"step":"tracker","message":"Tracker read failed: the hub answered with a web page (text\/html; charset=utf-8), not data.","rows":null}},{"success":true,"data":{"ok":true,"error":"","url":"\/api\/trackers\/forms\/get_submissions\/162570","status":200,"type":"application\/json; charset=utf-8","length":82,"truncated":false,"body":"{\"ms_response\":{\"data\":[{\"RowId\":1,\"Series_ID\":\"A\"},{\"RowId\":2,\"Series_ID\":\"A\"}]}}","rows":2,"where":"ms_response.data","problem":"","logout":"Logged out.","max_body":250000}},{"success":true,"data":{"ok":false,"error":"","url":"\/api\/trackers\/forms\/get_submissions\/162570","status":200,"type":"application\/json; charset=utf-8","length":41,"truncated":false,"body":"{\"ms_error\":\"You don't have permission.\"}","rows":null,"where":"ms_response.data","problem":"Tracker read failed: You don't have permission.","logout":"Logged out.","max_body":250000}},{"success":true,"data":{"ok":false,"error":"Login failed: Login id or Password is Incorrect.","url":"","status":0,"type":"","length":0,"truncated":false,"body":"","rows":null,"where":"ms_response.data","problem":"","logout":"","max_body":250000}}]; window.EL_PRESSES = ["test","test","test","test","probe","probe","probe"];</script><script>(function () {
   var queue = window.EL_PAYLOADS.slice(), posted = [], out = { errors: [], steps: [], fields: {}, posted: posted };
   window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
   window.sfafAdmin = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'n' };
@@ -21,7 +21,11 @@
       out.fields[n] = e ? { type: e.type, value: e.value, label: (document.querySelector('label[for="' + e.id + '"]') || {}).textContent || '' } : null;
     });
     out.buttons = [txt('.uc-everyaction-connect'), txt('.uc-everyaction-probe')];
-    out.notBuilt = txt('.uc-everyaction-panel .uc-panel-body > .description');
+    var auto = document.querySelector('[name="uc_settings[everyaction_auto_import]"]');
+    out.auto = auto ? { type: auto.type, checked: auto.checked, label: (document.querySelector('label[for="' + auto.id + '"]') || {}).textContent || '' } : null;
+    out.lastFetch = txt('.uc-everyaction-last-fetch');
+    out.links = txt('.uc-everyaction-links');
+    out.notBuilt = document.body.textContent.indexOf('Nothing is imported yet') >= 0;
     out.heading = txt('.uc-everyaction-panel h2') + ' / ' + txt('.uc-everyaction-panel .uc-panel-info p');
     var chain = Promise.resolve();
     window.EL_PRESSES.forEach(function (press) {
@@ -52,7 +56,19 @@
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <p class="description"><strong>Nothing is imported yet:</strong> there is no fetch, no Auto-Import and no schedule for EveryAction.</p>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-auto">Auto-Import events</label>
+                            <label class="uc-toggle"><input type="checkbox" id="uc-ea-auto" name="uc_settings[everyaction_auto_import]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <p class="description">Off: EveryAction is read only when somebody presses Fetch updates on the Pending screen.</p>
+                                                <div class="uc-field-row">
+                            <label>Last fetch</label>
+                            <p class="uc-everyaction-last-fetch">Not fetched yet.</p>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Signup links</label>
+                            <p class="uc-everyaction-links">Not read yet.</p>
+                        </div>
                         <div class="uc-field-row">
                             <label for="uc-ea-hub">Hub address</label>
                             <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="https://hub.sfaf.org" class="uc-input" />

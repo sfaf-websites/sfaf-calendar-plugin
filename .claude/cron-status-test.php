@@ -95,6 +95,11 @@ class SFAF_Reminders {
 class SFAF_Notifications {
     public static function run_summaries() { return array( 'status' => 'ok', 'summary' => 'Nothing due.', 'counts' => array() ); }
 }
+/* The EveryAction signup-link task (3.101.0), off: no hub login stored. */
+class SFAF_EveryAction {
+    public static function configured() { return false; }
+    public static function run_links() { return array( 'status' => 'ok', 'summary' => 'Read within the last day already.', 'counts' => array() ); }
+}
 /*
  * THE STUB MODELS THE REAL API, AND DID NOT.
  *
@@ -109,7 +114,10 @@ class SFAF_Notifications {
  */
 class SFAF_Sources {
     public static $results = array();
-    public static function run_all() { return self::$results; }
+    /* Which run the runner asked for (3.101.0): only 'scheduled' holds a
+     * source whose own Auto-Import is off. */
+    public static $trigger = null;
+    public static function run_all( $trigger = 'manual' ) { self::$trigger = $trigger; return self::$results; }
     public static function adapters() { return self::$results; }
 
     /* The queue sweep is a task in its own right, so the runner calls it on
@@ -373,6 +381,7 @@ is( 'every source is recorded separately', count( $fetch['sources'] ), 3 );
 is( 'the working source is ok', $fetch['sources'][0]['state'], 'ok' );
 is( 'the erroring source is failed', $fetch['sources'][1]['state'], 'failed' );
 is( 'the unconnected source is skipped', $fetch['sources'][2]['state'], 'skipped' );
+is( 'the runner asks for a scheduled run, never a manual one', SFAF_Sources::$trigger, 'scheduled' );
 is( 'the failed source is named', $fetch['sources'][1]['label'], 'GoFundMe Pro' );
 
 /*
