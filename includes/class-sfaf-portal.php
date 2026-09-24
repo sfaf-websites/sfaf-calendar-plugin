@@ -672,6 +672,7 @@ class SFAF_Portal {
             case 'venues':     $this->render_venues( $user ); break;
             case 'organizers': $this->render_organizers( $user ); break;
             case 'faq-sets':   $this->render_faq_sets( $user ); break;
+            case 'preferences': $this->render_preferences( $user ); break;
             default:           $this->render_dashboard( $user );
         }
     }
@@ -1873,6 +1874,28 @@ class SFAF_Portal {
              * the event: the title, the date and everything else are the
              * editor's business and are not on this form.
              */
+            /*
+             * ONE'S OWN PREFERENCES, AND ONLY ONE'S OWN (3.102.0).
+             *
+             * No user id is read from the request: the save writes the
+             * signed-in person's, so there is no field that could name
+             * somebody else. Calendar access is asked here because this runs
+             * before handle()'s own gate.
+             */
+            case 'save_preferences':
+                if ( '' === self::get_role( $user->ID ) ) { wp_die( 'Denied' ); }
+                $digest_in = array(
+                    'frequency' => isset( $_POST['digest_frequency'] ) ? sanitize_key( wp_unslash( $_POST['digest_frequency'] ) ) : 'none',
+                );
+                foreach ( array_keys( SFAF_Digest::groups() ) as $digest_group ) {
+                    $digest_in[ $digest_group ] = isset( $_POST[ 'digest_' . $digest_group ] )
+                        ? array_map( 'intval', (array) wp_unslash( $_POST[ 'digest_' . $digest_group ] ) )
+                        : array();
+                }
+                SFAF_Digest::save( $user->ID, $digest_in );
+                $this->redirect( 'preferences', array( 'msg' => 'prefs_saved' ) );
+                break;
+
             case 'save_rsvp_settings':
                 $event_id = intval( $_POST['event_id'] );
                 $post     = get_post( $event_id );
@@ -3654,6 +3677,8 @@ class SFAF_Portal {
             $nav['pending'] = array( 'Pending', 'pending', 'clock' );
             $nav['users']   = array( 'Users & Teams', 'users', 'users' );
         }
+        // Everybody's own, last (3.102.0).
+        $nav['preferences'] = array( 'Preferences', 'preferences', 'bell' );
 
         /*
          * THE ONE COUNT THAT EARNS A BADGE.
@@ -3849,6 +3874,9 @@ class SFAF_Portal {
             // Venues.
             'venue_saved'   => 'Venue saved. Every event held there now shows this address, including ones already published: they point at the venue rather than keeping a copy.',
             'venue_deleted' => 'Venue deleted. No event was held there, so nothing lost its location.',
+
+            // Preferences (3.102.0).
+            'prefs_saved'   => 'Preferences saved.',
         );
         $key = sanitize_key( $_GET['msg'] );
 
@@ -15300,8 +15328,9 @@ class SFAF_Portal {
             <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Who hears about this event</h4>
                 <p class="uc-hint">
-                    Everybody here is told when somebody registers, gets one copy of the morning-of reminder, and gets the
-                    list of who is coming two hours before. It changes nothing about who can edit this event.
+                    Everybody here is told when somebody registers or cancels, gets the number registered at 6 am the day
+                    before, one copy of the morning-of reminder, and the list of who is coming two hours before. It changes
+                    nothing about who can edit this event.
                 </p>
 
                 <?php if ( ! $reminders_on ) : ?>
@@ -15410,10 +15439,11 @@ class SFAF_Portal {
                     <summary class="uc-team-add-toggle" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
                         <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
                         <span>
+                            <?php $kinds_n = count( SFAF_Notifications::kinds() ); ?>
                             <?php if ( ! $off_count ) : ?>
-                                Emails for this event: all four are on
+                                Emails for this event: all <?php echo (int) $kinds_n; ?> are on
                             <?php else : ?>
-                                Emails for this event: <?php echo (int) $off_count; ?> of 4 switched off
+                                Emails for this event: <?php echo (int) $off_count; ?> of <?php echo (int) $kinds_n; ?> switched off
                             <?php endif; ?>
                         </span>
                     </summary>
@@ -15461,11 +15491,16 @@ class SFAF_Portal {
                     <table class="uc-table">
                         <thead><tr><th>Recipient</th><th>Type</th><th>Result</th><th>When</th></tr></thead>
                         <tbody>
-                        <?php foreach ( $sent as $row ) : ?>
+                        <?php
+                        // Words for the stored keys (3.102.0), which now include the
+                        // day-before count and registrations taken without an email.
+                        $log_types   = array( 'rsvp' => 'Registered', 'notify' => 'Notification list', 'day_before' => 'Day-before count' );
+                        $log_results = array( 'sent' => 'Sent', 'failed' => 'Failed', 'claimed' => 'Claimed, not finished', 'no_address' => 'Not sent: no email' );
+                        foreach ( $sent as $row ) : ?>
                             <tr>
-                                <td><?php echo esc_html( $row->email ); ?></td>
-                                <td><?php echo esc_html( $row->recipient_type ); ?></td>
-                                <td><?php echo esc_html( $row->result ); ?></td>
+                                <td><?php echo '' !== (string) $row->email ? esc_html( $row->email ) : '<span class="uc-muted">Registered without an email</span>'; ?></td>
+                                <td><?php echo esc_html( isset( $log_types[ $row->recipient_type ] ) ? $log_types[ $row->recipient_type ] : $row->recipient_type ); ?></td>
+                                <td><?php echo esc_html( isset( $log_results[ $row->result ] ) ? $log_results[ $row->result ] : $row->result ); ?></td>
                                 <td><?php echo esc_html( $row->sent_at ? $row->sent_at : $row->claimed_at ); ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -16367,7 +16402,7 @@ class SFAF_Portal {
                                 $last = trim( (string) $r->last_name );
                                 echo '' !== $last ? esc_html( $last ) : '<span class="uc-muted">&ndash;</span>';
                             ?></td>
-                            <td><?php echo esc_html( $r->email ); ?></td>
+                            <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
                             <td><?php echo esc_html( $r->phone ); ?></td>
                             <td><?php
                                 $opted = isset( $consented[ strtolower( trim( (string) $r->email ) ) . '|' . (int) $r->event_id ] );
@@ -18121,6 +18156,68 @@ class SFAF_Portal {
      * Rendering — users & permissions
      * ================================================================== */
 
+    /**
+     * The signed-in person's own preferences (3.102.0). Today, the digest.
+     *
+     * EVERYBODY WITH CALENDAR ACCESS HAS ONE, and it is only ever their own:
+     * the form carries no user id and the save writes the caller's. What the
+     * digest may list is decided by the event gate when it is sent, not here,
+     * so a filter can narrow what somebody sees and never widen it.
+     */
+    private function render_preferences( $user ) {
+        $this->chrome_open( $user, 'preferences' );
+        $prefs = SFAF_Digest::prefs( $user->ID );
+        ?>
+        <div class="uc-page-head"><h1>Preferences</h1></div>
+
+        <form method="post" action="<?php echo esc_url( $this->url( 'preferences' ) ); ?>" class="uc-card uc-prefs">
+            <input type="hidden" name="uc_action" value="save_preferences" />
+            <?php wp_nonce_field( 'uc_portal_save_preferences', 'uc_nonce' ); ?>
+
+            <div class="uc-card-head"><h2>Digest email</h2></div>
+            <p class="uc-hint">Each event shows its date, time, place and how many have registered, with a link to the registrations. No names. Nothing is sent when there are no events.</p>
+
+            <fieldset class="uc-fieldset uc-prefs-frequency">
+                <legend>How often</legend>
+                <?php foreach ( SFAF_Digest::frequencies() as $fk => $fl ) : ?>
+                    <label class="uc-radio-row">
+                        <input type="radio" name="digest_frequency" value="<?php echo esc_attr( $fk ); ?>" <?php checked( $prefs['frequency'], $fk ); ?> />
+                        <span><?php echo esc_html( $fl ); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </fieldset>
+
+            <p class="uc-hint">Tick nothing in a group to include everything in it.</p>
+            <?php foreach ( SFAF_Digest::groups() as $gk => $spec ) :
+                $terms = get_terms( array( 'taxonomy' => $spec['taxonomy'], 'hide_empty' => false, 'orderby' => 'name' ) );
+                $terms = is_wp_error( $terms ) ? array() : $terms;
+                ?>
+                <fieldset class="uc-fieldset uc-prefs-group" data-uc-prefs-group="<?php echo esc_attr( $gk ); ?>">
+                    <legend><?php echo esc_html( $spec['label'] ); ?></legend>
+                    <?php if ( empty( $terms ) ) : ?>
+                        <p class="uc-muted">None yet.</p>
+                    <?php else : ?>
+                        <div class="uc-check-grid">
+                            <?php foreach ( $terms as $t ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="digest_<?php echo esc_attr( $gk ); ?>[]" value="<?php echo (int) $t->term_id; ?>"
+                                           <?php checked( in_array( (int) $t->term_id, $prefs[ $gk ], true ) ); ?> />
+                                    <?php echo esc_html( $t->name ); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </fieldset>
+            <?php endforeach; ?>
+
+            <div class="uc-form-actions">
+                <button type="submit" class="uc-btn uc-btn-primary">Save preferences</button>
+            </div>
+        </form>
+        <?php
+        $this->chrome_close();
+    }
+
     private function render_users( $user ) {
         if ( ! $this->is_admin_role( $user ) ) {
             $this->render_dashboard( $user );
@@ -18262,6 +18359,13 @@ class SFAF_Portal {
                     <div class="uc-user-id">
                         <strong><?php echo esc_html( $m->display_name ); ?></strong>
                         <span class="uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
+                        <?php
+                        /* WHAT THEY HAVE ASKED FOR, READ ONLY (3.102.0). Only the
+                         * person can change it, on their own Preferences. */
+                        $digest_line = SFAF_Digest::describe( $m->ID );
+                        if ( '' !== $digest_line ) : ?>
+                            <span class="uc-muted uc-user-digest"><?php echo esc_html( $digest_line ); ?></span>
+                        <?php endif; ?>
                     </div>
                     <div class="uc-user-controls">
                         <?php if ( $is_wpadm ) : ?>

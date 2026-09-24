@@ -411,9 +411,11 @@ class SFAF_Email {
             // better than an empty cell.
             $name = SFAF_RSVP::display_name( $row );
             $name = ( '' !== $name ) ? $name : 'No name given';
+            // Registered without an email (3.102.0): said, not a blank cell.
+            $addr = ( '' !== trim( (string) $row->email ) ) ? (string) $row->email : 'No email';
             $out .= '<tr>'
                 . '<td valign="top" style="padding:8px 12px 0 0; font-family:' . self::FONT . '; font-size:14px; line-height:1.4; color:' . self::C_INK . ';">' . esc_html( $name ) . '</td>'
-                . '<td valign="top" style="padding:8px 12px 0 0; font-family:' . self::FONT . '; font-size:14px; line-height:1.4; color:' . self::C_INK . ';">' . esc_html( $row->email ) . '</td>'
+                . '<td valign="top" style="padding:8px 12px 0 0; font-family:' . self::FONT . '; font-size:14px; line-height:1.4; color:' . self::C_INK . ';">' . esc_html( $addr ) . '</td>'
                 . '<td valign="top" style="padding:8px 0 0 0; font-family:' . self::FONT . '; font-size:14px; line-height:1.4; color:' . self::C_MUTED . ';">' . esc_html( sfaf_ap_date( $row->created_at, 'short' ) ) . '</td>'
                 . '</tr>';
         }

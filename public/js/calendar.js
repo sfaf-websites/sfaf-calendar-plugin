@@ -6,6 +6,7 @@
 
     var modal = null;
     var currentEventId = null;
+    var currentFormats = '';   // the opened button's data-uc-formats (3.102.0)
 
     /**
      * Run one initialiser without letting it take the others down.
@@ -1542,10 +1543,20 @@
                             '<input type="text" id="uc-rsvp-last-name" autocomplete="family-name" placeholder="Your last name" /></div>' +
                         '<div><label for="uc-rsvp-email">Email *</label>' +
                             '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" />' +
-                            // Said next to the field it applies to, in plain
-                            // words, because this is the address the morning-of
-                            // reminder will go to.
-                            '<p class="uc-rsvp-note">Event reminders and updates will be sent to this email address.</p></div>' +
+                            // WHAT THE ADDRESS IS USED FOR, on every form and
+                            // whether or not the box below is ticked (3.102.0).
+                            '<p class="uc-rsvp-note">We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.</p>' +
+                            // REGISTERING WITHOUT ONE (3.102.0). The field stays
+                            // required; this box is the only way past it. It is
+                            // not offered to somebody joining online, and the
+                            // line after it says so in its place. syncNoEmail()
+                            // decides which of the two shows.
+                            '<label class="uc-rsvp-optin uc-rsvp-noemail" id="uc-rsvp-noemail-wrap">' +
+                                '<input type="checkbox" id="uc-rsvp-noemail" value="1" />' +
+                                '<span>I do not use email, or prefer not to share it.</span>' +
+                            '</label>' +
+                            '<p class="uc-rsvp-note" id="uc-rsvp-noemail-note" hidden>You will not get a confirmation, a reminder, or notice of changes.</p>' +
+                            '<p class="uc-rsvp-note" id="uc-rsvp-online-note" hidden>Joining online needs an email address for the meeting link.</p></div>' +
                         // NOT FORMATTED AS THEY TYPE. The number is punctuated
                         // once, on the server, when it is complete and only if
                         // it is a plain US ten-digit number. See
@@ -1630,11 +1641,13 @@
             // stamped. Drawn before the reset below, so the reset clears these
             // radios too and no previous event's choice survives into this one.
             renderFormatChoice(this);
+            currentFormats = ($(this).attr('data-uc-formats') || '');
 
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
             $('#uc-rsvp-first-name, #uc-rsvp-last-name, #uc-rsvp-email, #uc-rsvp-phone').val('');
             $('#uc-rsvp-optin').prop('checked', false);
+            $('#uc-rsvp-noemail').prop('checked', false);
             $('#uc-rsvp-error').hide();
             // The previous registrant's greeting and their add-to-calendar
             // links belong to their event, not to this one.
@@ -1646,6 +1659,8 @@
             $('#uc-rsvp-submit-btn').prop('disabled', false).text('Register Now');
             $('.uc-rsvp-form-view').show();
             $('#uc-rsvp-success').hide();
+            $('#uc-rsvp-success .uc-rsvp-inbox-note').show();
+            syncNoEmail();
 
             openOverlay(modal);
         });
@@ -1659,6 +1674,11 @@
         });
         $(document).on('keydown', function(e) {
             if (e.key === 'Escape') closeModal();
+        });
+
+        // The no-email box, and a format choice that can take it away.
+        $(document).on('change', '#uc-rsvp-noemail, #uc-rsvp-format input[type="radio"]', function () {
+            syncNoEmail();
         });
 
         // Submit RSVP
@@ -1675,6 +1695,49 @@
     function closeModal() {
         closeOverlay(modal);
         currentEventId = null;
+    }
+
+    /**
+     * Whether somebody may register without an email, and what the field does.
+     *
+     * NOT WHEN THEY ARE JOINING ONLINE (3.102.0). The meeting link is sent by
+     * email and nowhere else. That is an online event, or a hybrid one with
+     * online chosen, both read from what the server stamped on the button and
+     * the radio the person picked. The box is taken away, unticked, and one
+     * line says why in its place. SFAF_RSVP::submit() refuses the same case.
+     *
+     * TICKED, THE FIELD IS CLEARED AND DISABLED rather than hidden, so the
+     * form still shows where an address would go, and nothing typed there can
+     * be sent by accident.
+     */
+    function syncNoEmail() {
+        var formats = (currentFormats || '').split(',').filter(Boolean);
+        var chosen = $('#uc-rsvp-format input[type="radio"]:checked').val() || '';
+        var online = (formats.length === 1 && formats[0] === 'online') ||
+            (formats.length > 1 && chosen === 'online');
+        var box = $('#uc-rsvp-noemail');
+        var field = document.getElementById('uc-rsvp-email');
+
+        if (online) {
+            box.prop('checked', false);
+            $('#uc-rsvp-noemail-wrap').attr('hidden', 'hidden');
+            $('#uc-rsvp-online-note').removeAttr('hidden');
+        } else {
+            $('#uc-rsvp-noemail-wrap').removeAttr('hidden');
+            $('#uc-rsvp-online-note').attr('hidden', 'hidden');
+        }
+
+        var none = box.is(':checked');
+        if (none) {
+            $('#uc-rsvp-email').val('');
+            if (window.sfafEmail && field) { window.sfafEmail.clear(field); }
+        }
+        $('#uc-rsvp-email').prop('disabled', none);
+        if (none) {
+            $('#uc-rsvp-noemail-note').removeAttr('hidden');
+        } else {
+            $('#uc-rsvp-noemail-note').attr('hidden', 'hidden');
+        }
     }
 
     /**
@@ -1760,6 +1823,7 @@
         var email = $('#uc-rsvp-email').val().trim();
         var phone = $('#uc-rsvp-phone').val().trim();
         var optin = $('#uc-rsvp-optin').is(':checked') ? '1' : '';
+        var noEmail = $('#uc-rsvp-noemail').is(':checked') && !$('#uc-rsvp-noemail-wrap').attr('hidden');
 
         /*
          * Validation. The email field is judged by the shared validator, which
@@ -1795,12 +1859,12 @@
             $('#uc-rsvp-first-name').focus();
             return;
         }
-        if (window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-rsvp-email'))) {
+        if (!noEmail && window.sfafEmail && !window.sfafEmail.validate(document.getElementById('uc-rsvp-email'))) {
             $('#uc-rsvp-error').hide();
             $('#uc-rsvp-email').focus();
             return;
         }
-        if (!email) {
+        if (!noEmail && !email) {
             $('#uc-rsvp-error').text('Please fill in your email.').show();
             return;
         }
@@ -1818,7 +1882,8 @@
                 event_id:   currentEventId,
                 first_name: first,
                 last_name:  last,
-                email:      email,
+                email:      noEmail ? '' : email,
+                no_email:   noEmail ? '1' : '',
                 phone:      phone,
                 optin:      optin,
                 // '' on every event that did not ask. submit() validates it
@@ -1855,6 +1920,9 @@
                         $('#uc-rsvp-ics').hide();
                     }
                     $('#uc-rsvp-addcal').toggle(anyCal);
+
+                    // No address, no confirmation to look for.
+                    $('#uc-rsvp-success .uc-rsvp-inbox-note').toggle(!response.no_email);
 
                     // Show success
                     $('.uc-rsvp-form-view').hide();

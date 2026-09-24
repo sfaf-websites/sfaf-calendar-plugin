@@ -131,6 +131,9 @@ $sfaf_includes = array(
     // Following a series. After SFAF_Email, which builds its confirmation, and
     // after SFAF_Reminders, whose new_token() is the one token generator.
     'includes/class-sfaf-follow.php',
+    // A person's daily or weekly list of events (3.102.0). After SFAF_Email
+    // and SFAF_Reminders, whose builder and ledger it uses.
+    'includes/class-sfaf-digest.php',
     'includes/class-sfaf-cron.php',
     'includes/class-sfaf-recurrence.php',
     'includes/class-sfaf-list-columns.php',

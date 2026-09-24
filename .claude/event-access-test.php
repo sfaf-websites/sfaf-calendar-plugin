@@ -452,12 +452,23 @@ $ALLOWED = array(
     'POST:import_dismiss'         => array( 'caladmin' ),
     'POST:import_restore'         => array( 'caladmin' ),
     'POST:add_user'               => array( 'caladmin' ),
-    'POST:remove_user'            => array( 'caladmin' ),
+    'POST:remove_user'            => array( 'caladmin', 'access' ),   // get_role() of the person being removed, after the admin gate
     'POST:set_user_role'          => array( 'caladmin' ),
     'POST:save_team'              => array( 'caladmin' ),
     'POST:delete_team'            => array( 'caladmin' ),
     'GET:pending'                 => array( 'caladmin' ),
     'GET:users'                   => array( 'caladmin' ),
+
+    /*
+     * ONE'S OWN PREFERENCES (3.102.0). The save writes the caller's own user
+     * meta and takes no user id from the form, so there is nobody else's to
+     * reach; it asks for calendar access because dispatch_post() runs before
+     * handle()'s gate. It reads and writes no event: what a digest may list is
+     * decided by the event gate when it is sent.
+     */
+    'POST:save_preferences'       => array( 'access' ),
+    // Reached only past handle()'s get_role() check, and draws the caller's own.
+    'GET:preferences'             => array( 'none' ),
 
     /*
      * --- Deliberately ungated, each with its reason. -----------------------
@@ -521,6 +532,13 @@ function gate_keys( $code ) {
      * is_admin_role() asks and a different answer.
      */
     if ( preg_match( '#\bSFAF_Media::(can_tag|can_upload)\s*\(#', $code ) )       { $out[] = 'role'; }
+    /*
+     * CALENDAR ACCESS AT ALL (3.102.0), get_role() asked directly and compared
+     * with ''. Preferences are a person's own and touch no event, so no event
+     * gate has anything to say; what they need is to be somebody the calendar
+     * knows.
+     */
+    if ( preg_match( '#\bself::get_role\s*\(#', $code ) )                        { $out[] = 'access'; }
     return $out;
 }
 

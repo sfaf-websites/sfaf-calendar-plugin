@@ -133,6 +133,8 @@ class SFAF_RSVP {
             // submit() validates this against that event's own list rather
             // than trusting it. See the capacity block there.
             'format'     => isset( $_POST['format'] ) ? sanitize_key( wp_unslash( $_POST['format'] ) ) : '',
+            // The tick under the email field (3.102.0): registering with none.
+            'no_email'   => ! empty( $_POST['no_email'] ),
         ) );
 
         wp_send_json( $result );
@@ -234,11 +236,22 @@ class SFAF_RSVP {
         $data['first_name'] = isset( $data['first_name'] ) ? trim( (string) $data['first_name'] ) : '';
         $data['last_name']  = isset( $data['last_name'] ) ? trim( (string) $data['last_name'] ) : '';
 
-        if ( empty( $data['event_id'] ) || '' === $data['first_name'] || empty( $data['email'] ) ) {
+        /*
+         * WITHOUT AN EMAIL, WHEN THE PERSON SAYS SO (3.102.0). The tick is the
+         * only way past the email check, and what it saves is an empty address,
+         * never whatever was left in the field: the form clears it, and so does
+         * this, so a half-typed address cannot be stored as though it worked.
+         */
+        $data['no_email'] = ! empty( $data['no_email'] );
+        if ( $data['no_email'] ) {
+            $data['email'] = '';
+        }
+
+        if ( empty( $data['event_id'] ) || '' === $data['first_name'] || ( ! $data['no_email'] && empty( $data['email'] ) ) ) {
             return array( 'success' => false, 'message' => 'First name and email are required.' );
         }
 
-        if ( ! is_email( $data['email'] ) ) {
+        if ( ! $data['no_email'] && ! is_email( $data['email'] ) ) {
             return array( 'success' => false, 'message' => 'Please enter a valid email address.' );
         }
 
@@ -271,8 +284,9 @@ class SFAF_RSVP {
             return array( 'success' => false, 'message' => 'RSVP is not available for this event.' );
         }
 
-        // Check for duplicate
-        $existing = $wpdb->get_var( $wpdb->prepare(
+        // Check for duplicate. Only by address: two people who both registered
+        // without one are two people, and an empty string would match them all.
+        $existing = ( '' === $data['email'] ) ? 0 : $wpdb->get_var( $wpdb->prepare(
             "SELECT COUNT(*) FROM $table WHERE event_id = %d AND email = %s AND status = 'confirmed'",
             $data['event_id'],
             $data['email']
@@ -306,6 +320,17 @@ class SFAF_RSVP {
             $format = in_array( $asked, $formats, true ) ? $asked : $formats[0];
         }
         $data['format'] = $format;
+
+        /*
+         * JOINING ONLINE NEEDS AN ADDRESS (3.102.0). The meeting link is sent by
+         * email and nowhere else, so somebody with none could register and never
+         * be able to join. The form does not offer the tick in that case; this is
+         * the refusal, because a form is not a refusal.
+         */
+        $attending = $hybrid ? $format : ( isset( $formats[0] ) ? (string) $formats[0] : '' );
+        if ( $data['no_email'] && SFAF_Online::MODE_ONLINE === $attending ) {
+            return array( 'success' => false, 'message' => 'Joining online needs an email address for the meeting link.' );
+        }
 
         /*
          * CAPACITY IS PER FORMAT, AND "THE EVENT IS FULL" IS A DIFFERENT
@@ -376,7 +401,7 @@ class SFAF_RSVP {
             // The marketing opt-in, if it was ticked. Recorded separately from
             // the RSVP on purpose: they are two different consents, and the
             // RSVP row must never be the evidence for a mailing list.
-            if ( ! empty( $data['optin'] ) ) {
+            if ( ! empty( $data['optin'] ) && '' !== $data['email'] ) {
                 SFAF_Optins::record( $data['email'], $data['name'], $data['event_id'], 'rsvp' );
             }
 
@@ -401,6 +426,9 @@ class SFAF_RSVP {
                 // FIRST NAME ONLY for the greeting on screen, matching the
                 // confirmation email's "You are registered, Mark."
                 'first_name' => $data['first_name'],
+                // No address, so no confirmation: the screen does not say to
+                // look for one.
+                'no_email'   => ( '' === $data['email'] ),
                 'count'      => sfaf_get_rsvp_count( $data['event_id'] ),
                 // The same two add-to-calendar destinations the confirmation
                 // email carries, built by the same two helpers, so the modal
@@ -473,7 +501,7 @@ class SFAF_RSVP {
          * been saved, which is the 3.25.0 change: a fresh install used to send
          * nothing until somebody found a toggle.
          */
-        if ( self::confirmations_enabled() && SFAF_Notifications::on( $event_id, 'confirmation' ) ) {
+        if ( '' !== $person->email && self::confirmations_enabled() && SFAF_Notifications::on( $event_id, 'confirmation' ) ) {
             SFAF_Notifications::send_confirmation( $event_id, $person );
         }
 

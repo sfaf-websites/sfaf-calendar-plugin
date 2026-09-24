@@ -1,10 +1,10 @@
 <?php
 /**
- * The five emails, who gets them, and whether they are switched on.
+ * The six per-event emails, who gets them, and whether they are switched on.
  *
  * NONE OF THIS HAS EVER RUN. See the note at the top of SFAF_Email.
  *
- * THE FIVE
+ * THE SIX
  * ---------------------------------------------------------------------------
  *   confirmation  to the person, the moment they register
  *   reminder      to everybody registered on the morning of the event, with the
@@ -14,6 +14,8 @@
  *                 who is coming
  *   cancel_alert  to the notification list, the moment somebody cancels their
  *                 registration
+ *   day_before    to the notification list, at 6 am the day before, with the
+ *                 number registered and never the names (3.102.0)
  *
  * ONE NOTIFICATION LIST, AND THIS REVERSES A DOCUMENTED DECISION.
  * ---------------------------------------------------------------------------
@@ -39,7 +41,7 @@
  *
  * DEFAULT ON, AND STORED AS THE EXCEPTION.
  * ---------------------------------------------------------------------------
- * All five are on for an event that says nothing, so creating an event is
+ * All six are on for an event that says nothing, so creating an event is
  * title, date, time, place, category, image, save, and working email. The meta
  * records only what somebody has switched OFF, so a default costs no writes and
  * an event created before any of this existed behaves like one created after.
@@ -57,6 +59,9 @@ class SFAF_Notifications {
     /** How long before the event the summary goes out. */
     const SUMMARY_LEAD_SECONDS = 7200; // two hours
 
+    /** The day-before pass for this event has completed (3.102.0). */
+    const DAY_BEFORE_DONE_META = '_uc_day_before_sent_at';
+
     /** Every kind, and what a manager is turning off when they untick it. */
     public static function kinds() {
         return array(
@@ -67,6 +72,16 @@ class SFAF_Notifications {
             'alert' => array(
                 'label' => 'Alert to your notification list when somebody registers',
                 'note'  => 'One email per registration, as it happens.',
+            ),
+            /*
+             * THE SIXTH, ADDED 3.102.0: how many are coming, the day before.
+             * The summary two hours out is too late to order food or set out a
+             * room. This says the number and never the names, so it is safe
+             * for everybody on the list; the RSVP link is per recipient.
+             */
+            'day_before' => array(
+                'label' => 'Count of who is coming, to your notification list, the day before',
+                'note'  => 'Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.',
             ),
             'reminder' => array(
                 'label' => 'Morning-of reminder to everybody registered',
@@ -102,7 +117,7 @@ class SFAF_Notifications {
      * Is this kind switched on for this event?
      *
      * Absent meta means on. That is what makes the common path free: an event
-     * nobody has configured gets all five.
+     * nobody has configured gets all six.
      */
     public static function on( $event_id, $kind ) {
         $off = get_post_meta( (int) $event_id, self::OFF_META, true );
@@ -203,6 +218,8 @@ class SFAF_Notifications {
                 return self::build_cancel_alert( $event_id, $person, $context );
             case 'summary':
                 return self::build_summary( $event_id, $context );
+            case 'day_before':
+                return self::build_day_before( $event_id, $context );
             case 'cancelled':
                 return self::build_cancelled( $event_id, $person );
             case 'changed':
@@ -1099,7 +1116,7 @@ class SFAF_Notifications {
                 $text .= $g['label'] . ' (' . count( $g['rows'] ) . ")\n";
                 foreach ( $g['rows'] as $row ) {
                     $name = SFAF_RSVP::display_name( $row );
-                    $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
+                    $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ( '' !== (string) $row->email ? ' <' . $row->email . '>' : ', no email' ) . "\n";
                 }
                 $text .= "\n";
             }
@@ -1114,7 +1131,7 @@ class SFAF_Notifications {
                 // people apart is the point. display_name() is the one place
                 // that joins the pair.
                 $name = SFAF_RSVP::display_name( $row );
-                $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ' <' . $row->email . '>' . "\n";
+                $text .= '- ' . ( '' !== $name ? $name : 'No name given' ) . ( '' !== (string) $row->email ? ' <' . $row->email . '>' : ', no email' ) . "\n";
             }
         }
         if ( $link ) {
@@ -1124,6 +1141,60 @@ class SFAF_Notifications {
 
         return array(
             'subject' => sprintf( 'Starting soon: %s, %s registered', $f['title'], $n ),
+            'html'    => SFAF_Email::shell( sprintf( '%s. %s.', $f['time'] ? $f['time'] : $f['date'], $places ), $html ),
+            'text'    => $text,
+        );
+    }
+
+    /**
+     * (d3) THE DAY BEFORE, to staff (3.102.0).
+     *
+     * THE NUMBER, NEVER THE NAMES. The summary two hours out names everybody,
+     * because it is the list somebody reads at the door. This goes a day ahead,
+     * to the same list, and the list is gated on nothing, so it says how many
+     * and links to who for the people who may open that screen.
+     *
+     * THE LINK IS THE SCOPED RSVP LIST, asked of the event gate, which is what
+     * /caladmin/rsvps?event_id=N applies. Anybody the gate refuses gets the
+     * public event page, exactly as the summary decides.
+     *
+     * @param array $context can_edit_event: bool.
+     * @return array|null Null when nobody is registered: not a message.
+     */
+    private static function build_day_before( $event_id, $context = array() ) {
+        $f = self::facts( $event_id );
+        $n = (int) sfaf_get_rsvp_count( $event_id );
+        if ( $n < 1 ) {
+            return null;
+        }
+
+        $cap    = (int) sfaf_event_capacity( $event_id );
+        $places = $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
+
+        if ( ! empty( $context['can_edit_event'] ) ) {
+            $link  = add_query_arg( 'event_id', (int) $event_id, SFAF_Portal::link( 'rsvps' ) );
+            $label = 'See who has registered';
+        } else {
+            $link  = $f['url'];
+            $label = 'See the event page';
+        }
+
+        $html  = SFAF_Email::heading( sprintf( 'Tomorrow: %s', $f['title'] ) );
+        $html .= SFAF_Email::para( $places . '.' );
+        $html .= SFAF_Email::details( self::detail_rows( $f ) );
+        if ( $link ) {
+            $html .= SFAF_Email::button( $link, $label, 'primary' );
+        }
+
+        $text  = sprintf( "Tomorrow: %s\n\n%s.\n\n", $f['title'], $places );
+        $text .= self::detail_text( $f ) . "\n\n";
+        if ( $link ) {
+            $text .= $label . ': ' . $link . "\n";
+        }
+        $text .= "\n" . SFAF_Email::POSTAL;
+
+        return array(
+            'subject' => sprintf( 'Tomorrow: %s, %d registered', $f['title'], $n ),
             'html'    => SFAF_Email::shell( sprintf( '%s. %s.', $f['time'] ? $f['time'] : $f['date'], $places ), $html ),
             'text'    => $text,
         );
@@ -1518,6 +1589,148 @@ class SFAF_Notifications {
                 '%d event%s: %d sent to %d recipient%s.',
                 $counts['events'], 1 === $counts['events'] ? '' : 's',
                 $counts['sent'], $counts['recipients'], 1 === $counts['recipients'] ? '' : 's'
+            ),
+            'counts'  => $counts,
+        );
+    }
+
+    /* =====================================================================
+     * The day before (3.102.0)
+     * ================================================================== */
+
+    /**
+     * Events tomorrow whose day-before count is due now: native, published,
+     * not cancelled, switched on, not already done, and the morning-of
+     * reminder hour reached today.
+     *
+     * @return int[]
+     */
+    public static function day_before_due_events() {
+        $tz  = wp_timezone();
+        $now = new DateTime( 'now', $tz );
+        $due = new DateTime( $now->format( 'Y-m-d' ) . ' ' . sprintf( '%02d:00', SFAF_Reminders::DUE_HOUR ), $tz );
+        if ( $now < $due ) {
+            return array();
+        }
+        $tomorrow = ( clone $now )->modify( '+1 day' )->format( 'Y-m-d' );
+
+        $query = new WP_Query( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array(
+                'relation' => 'AND',
+                array( 'key' => '_uc_event_date', 'value' => $tomorrow ),
+                array( 'key' => self::DAY_BEFORE_DONE_META, 'compare' => 'NOT EXISTS' ),
+            ),
+        ) );
+
+        $out = array();
+        foreach ( $query->posts as $id ) {
+            // The same three questions the reminder and the summary ask, in
+            // the same order, so no job reaches a different answer about the
+            // same event.
+            if ( SFAF_Cancellation::skip_scheduled( $id ) ) {
+                continue;
+            }
+            if ( SFAF_Reminders::is_imported( $id ) ) {
+                continue;
+            }
+            if ( ! self::on( $id, 'day_before' ) ) {
+                continue;
+            }
+            $out[] = (int) $id;
+        }
+        return $out;
+    }
+
+    /**
+     * Send one event's day-before count.
+     *
+     * NOBODY REGISTERED: NOT SENT AND NOT MARKED DONE, the summary's rule, so
+     * somebody registering later that day is still counted.
+     *
+     * EACH SEND IS CLAIMED IN THE LEDGER FIRST, keyed "day_before|address" on
+     * this event, which is a different key from the morning-of reminder's for
+     * the same person on the same event. A second pass fails the claim.
+     *
+     * @return array{recipients:int,sent:int,already:int,skipped:string}
+     */
+    public static function send_day_before_for_event( $event_id ) {
+        $event_id = (int) $event_id;
+        $out      = array( 'recipients' => 0, 'sent' => 0, 'already' => 0, 'skipped' => '' );
+
+        $variants = array( 'public' => self::build( 'day_before', $event_id, null, array( 'can_edit_event' => false ) ) );
+        if ( ! $variants['public'] ) {
+            $out['skipped'] = 'nobody registered';
+            return $out;
+        }
+
+        $reply = SFAF_Reminders::reply_to_for( $event_id );
+
+        foreach ( self::staff_entries( $event_id ) as $email => $entry ) {
+            $can = ( ! empty( $entry['user_id'] ) && SFAF_Portal::user_can_edit_event( (int) $entry['user_id'], $event_id ) );
+            $key = $can ? 'edit' : 'public';
+            if ( ! isset( $variants[ $key ] ) ) {
+                $variants[ $key ] = self::build( 'day_before', $event_id, null, array( 'can_edit_event' => $can ) );
+            }
+            $built = $variants[ $key ];
+            if ( ! $built ) {
+                continue;
+            }
+
+            $out['recipients']++;
+            $claim = SFAF_Reminders::claim_key( $event_id, 'day_before|' . $email, $email, 'day_before' );
+            if ( ! $claim ) {
+                $out['already']++;
+                continue;
+            }
+            $sent = SFAF_Email::send( $email, $built['subject'], $built['html'], $built['text'], $reply );
+            SFAF_Reminders::finish_row( $claim['id'], $sent ? 'sent' : 'failed' );
+            if ( $sent ) {
+                $out['sent']++;
+            }
+        }
+
+        update_post_meta( $event_id, self::DAY_BEFORE_DONE_META, time() );
+        return $out;
+    }
+
+    /**
+     * The day-before pass, for SFAF_Cron.
+     *
+     * @return array{status:string,summary:string,counts:array}
+     */
+    public static function run_day_before() {
+        $counts = array( 'events' => 0, 'recipients' => 0, 'sent' => 0, 'already' => 0, 'skipped' => 0 );
+        foreach ( self::day_before_due_events() as $event_id ) {
+            $one = self::send_day_before_for_event( $event_id );
+            if ( '' !== $one['skipped'] ) {
+                $counts['skipped']++;
+                continue;
+            }
+            $counts['events']++;
+            $counts['recipients'] += $one['recipients'];
+            $counts['sent']       += $one['sent'];
+            $counts['already']    += $one['already'];
+        }
+
+        if ( ! $counts['events'] ) {
+            return array(
+                'status'  => 'ok',
+                'summary' => 'Nothing due: no event tomorrow has somebody registered and a count still to send.',
+                'counts'  => $counts,
+            );
+        }
+        return array(
+            'status'  => 'ok',
+            'summary' => sprintf(
+                '%d event%s tomorrow: %d sent to %d recipient%s, %d already recorded.',
+                $counts['events'], 1 === $counts['events'] ? '' : 's',
+                $counts['sent'], $counts['recipients'], 1 === $counts['recipients'] ? '' : 's',
+                $counts['already']
             ),
             'counts'  => $counts,
         );

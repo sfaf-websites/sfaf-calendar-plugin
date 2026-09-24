@@ -180,6 +180,7 @@ class SFAF_Reminders {
             'sent'       => 0,
             'already'    => 0,
             'failed'     => 0,
+            'no_address' => 0,
         );
 
         if ( ! self::enabled() ) {
@@ -198,6 +199,7 @@ class SFAF_Reminders {
             $counts['sent']       += $one['sent'];
             $counts['already']    += $one['already'];
             $counts['failed']     += $one['failed'];
+            $counts['no_address'] += $one['no_address'];
         }
 
         if ( ! $counts['events'] ) {
@@ -209,10 +211,10 @@ class SFAF_Reminders {
         }
 
         $summary = sprintf(
-            '%d event%s due, %d recipient%s: %d sent, %d already recorded, %d failed.',
+            '%d event%s due, %d recipient%s: %d sent, %d already recorded, %d failed, %d registered without an email.',
             $counts['events'], 1 === $counts['events'] ? '' : 's',
             $counts['recipients'], 1 === $counts['recipients'] ? '' : 's',
-            $counts['sent'], $counts['already'], $counts['failed']
+            $counts['sent'], $counts['already'], $counts['failed'], $counts['no_address']
         );
 
         return array(
@@ -359,8 +361,14 @@ class SFAF_Reminders {
      * non-hybrid event '' has always meant "the event never asked" and they are
      * told exactly as before.
      *
-     * @return array<string,array{type:string,format:string}> lowercased email =>
-     *         pair, type being 'rsvp' or 'notify'
+     * SOMEBODY WHO REGISTERED WITHOUT AN EMAIL IS IN THE LIST TOO (3.102.0),
+     * under a key made from their registration row, with an empty address. The
+     * pass claims a ledger row for them and sends nothing, so the ledger says
+     * who the reminder could not reach rather than leaving them out of it.
+     *
+     * @return array<string,array{type:string,format:string,email:string,rsvp_id:int}>
+     *         ledger key => recipient. The key is the lowercased address, or
+     *         "rsvp:ID" for a registration with none. type is 'rsvp' or 'notify'.
      */
     public static function recipients( $event_id ) {
         global $wpdb;
@@ -368,27 +376,51 @@ class SFAF_Reminders {
         $table = $wpdb->prefix . 'uc_rsvps';
 
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT email, format FROM $table WHERE event_id = %d AND status = 'confirmed'",
+            "SELECT id, email, format FROM $table WHERE event_id = %d AND status = 'confirmed'",
             $event_id
         ) );
         foreach ( (array) $rows as $row ) {
             $email = self::normalize( $row->email );
-            if ( '' === $email || isset( $out[ $email ] ) ) {
+            $key   = self::recipient_key( $email, isset( $row->id ) ? (int) $row->id : 0 );
+            if ( '' === $key || isset( $out[ $key ] ) ) {
                 continue;
             }
-            $out[ $email ] = array(
-                'type'   => 'rsvp',
-                'format' => isset( $row->format ) ? (string) $row->format : '',
+            $out[ $key ] = array(
+                'type'    => 'rsvp',
+                'format'  => isset( $row->format ) ? (string) $row->format : '',
+                'email'   => $email,
+                'rsvp_id' => isset( $row->id ) ? (int) $row->id : 0,
             );
         }
 
         foreach ( self::notify_list( $event_id ) as $email => $label ) {
             if ( ! isset( $out[ $email ] ) ) {
-                $out[ $email ] = array( 'type' => 'notify', 'format' => '' );
+                $out[ $email ] = array( 'type' => 'notify', 'format' => '', 'email' => $email, 'rsvp_id' => 0 );
             }
         }
 
         return $out;
+    }
+
+    /**
+     * Who a ledger row is about, as a string unique per person per event.
+     *
+     * THE ADDRESS WHEN THERE IS ONE, AND THE REGISTRATION ROW WHEN THERE IS NOT
+     * (3.102.0). Hashing an empty address gives every emailless registrant the
+     * same key, and the ledger's unique key would then refuse the second of them
+     * as a duplicate of the first. Nothing is invented: "rsvp:" and the row id
+     * is not an address and can never collide with one.
+     *
+     * @param string $email
+     * @param int    $rsvp_id
+     * @return string '' when there is neither.
+     */
+    public static function recipient_key( $email, $rsvp_id = 0 ) {
+        $email = self::normalize( $email );
+        if ( '' !== $email ) {
+            return $email;
+        }
+        return ( (int) $rsvp_id > 0 ) ? 'rsvp:' . (int) $rsvp_id : '';
     }
 
     /**
@@ -540,7 +572,7 @@ class SFAF_Reminders {
      * @return array{recipients:int,sent:int,already:int,failed:int}
      */
     public static function send_for_event( $event_id ) {
-        $result = array( 'recipients' => 0, 'sent' => 0, 'already' => 0, 'failed' => 0 );
+        $result = array( 'recipients' => 0, 'sent' => 0, 'already' => 0, 'failed' => 0, 'no_address' => 0 );
 
         // Re-check both guards here, not just in due_events(): send_for_event()
         // is also reachable from a manual run.
@@ -556,16 +588,24 @@ class SFAF_Reminders {
             return $result;
         }
 
-        foreach ( self::recipients( $event_id ) as $email => $who ) {
+        foreach ( self::recipients( $event_id ) as $key => $who ) {
             $type   = $who['type'];
             $format = $who['format'];
+            $email  = $who['email'];
             $result['recipients']++;
 
-            $claim = self::claim( $event_id, $email, $type );
+            $claim = self::claim_key( $event_id, $key, $email, $type );
             if ( ! $claim ) {
-                // The unique key refused it: this address already has a row for
+                // The unique key refused it: this person already has a row for
                 // this event, from this run or any earlier one.
                 $result['already']++;
+                continue;
+            }
+
+            // Registered without an email: the row records it, nothing is sent.
+            if ( '' === $email ) {
+                self::finish_row( $claim['id'], 'no_address' );
+                $result['no_address']++;
                 continue;
             }
 
@@ -584,16 +624,32 @@ class SFAF_Reminders {
     }
 
     /**
-     * Reserve the right to send to this address for this event.
+     * Reserve the right to send one message about one event to one person.
      *
      * The INSERT is the claim. A duplicate (event_id, recipient_hash) is
      * rejected by the unique key and $wpdb->insert() returns false, which is
      * the whole send-once guarantee in one statement.
      *
+     * ONE LEDGER, SEVERAL MESSAGES (3.102.0). The morning-of reminder keys a
+     * row on the recipient alone, as it always has. The day-before count and
+     * the digest put their own name in front of the key ("day_before|...",
+     * "digest|..."), so each has its own row per person and none of them can
+     * refuse another's. The digest is about no single event and uses event_id
+     * 0, which no post ever has.
+     *
+     * @param int    $event_id
+     * @param string $key   Who, unique per person: see recipient_key().
+     * @param string $email The address, or '' for somebody with none.
+     * @param string $type  What the row is: rsvp, notify, day_before, digest.
      * @return array{id:int,token:string}|null
      */
-    private static function claim( $event_id, $email, $type ) {
+    public static function claim_key( $event_id, $key, $email, $type ) {
         global $wpdb;
+
+        $key = (string) $key;
+        if ( '' === $key ) {
+            return null;
+        }
 
         $token = self::new_token();
         $now   = current_time( 'mysql' );
@@ -603,8 +659,8 @@ class SFAF_Reminders {
         $previous = $wpdb->suppress_errors( true );
         $ok = $wpdb->insert( self::table(), array(
             'event_id'       => (int) $event_id,
-            'email'          => $email,
-            'recipient_hash' => hash( 'sha256', $email ),
+            'email'          => (string) $email,
+            'recipient_hash' => hash( 'sha256', $key ),
             'recipient_type' => $type,
             'token'          => $token,
             'claimed_at'     => $now,
@@ -618,16 +674,21 @@ class SFAF_Reminders {
         return array( 'id' => (int) $wpdb->insert_id, 'token' => $token );
     }
 
-    /** Record the outcome against the claimed row. */
-    private static function finish( $row_id, $sent ) {
+    /** Record the outcome against the claimed row: sent, failed or no_address. */
+    public static function finish_row( $row_id, $result ) {
         global $wpdb;
         $wpdb->update(
             self::table(),
-            array( 'result' => $sent ? 'sent' : 'failed', 'sent_at' => current_time( 'mysql' ) ),
+            array( 'result' => (string) $result, 'sent_at' => current_time( 'mysql' ) ),
             array( 'id' => (int) $row_id ),
             array( '%s', '%s' ),
             array( '%d' )
         );
+    }
+
+    /** The same, from a send's answer. */
+    private static function finish( $row_id, $sent ) {
+        self::finish_row( $row_id, $sent ? 'sent' : 'failed' );
     }
 
     /**
@@ -875,6 +936,16 @@ class SFAF_Reminders {
      */
     public static function cancel_rsvp( $event_id, $email ) {
         global $wpdb;
+
+        /*
+         * NEVER BY AN EMPTY ADDRESS (3.102.0). Registrations taken without an
+         * email all hold '', so matching on it would release every one of them
+         * at once. None of them is ever sent a cancel link, so no token reaches
+         * here with an empty address except by somebody building the request.
+         */
+        if ( '' === trim( (string) $email ) ) {
+            return false;
+        }
         $table = $wpdb->prefix . 'uc_rsvps';
         $rows  = $wpdb->query( $wpdb->prepare(
             "UPDATE $table SET status = 'cancelled', cancelled_at = %s WHERE event_id = %d AND email = %s AND status = 'confirmed'",

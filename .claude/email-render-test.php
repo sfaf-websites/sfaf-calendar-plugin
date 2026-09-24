@@ -139,6 +139,13 @@ class SFAF_RSVP {
 class SFAF_Portal {
     public static function link( $path = '' ) { return 'https://resources.example.org/caladmin/' . ltrim( $path, '/' ); }
     public static function user_can_view_all( $user_id ) { return 1 === (int) $user_id; }
+    /* The digest's link asks this (3.102.0). User 7 may open event 42. */
+    public static function user_can_edit_event( $user_id, $post ) { return 7 === (int) $user_id; }
+}
+/* The digest reads where an event registers (3.102.0). Event 42 is native. */
+class SFAF_Sources {
+    public static function takes_rsvps_at_source( $id ) { return false; }
+    public static function provenance( $id ) { return array( 'label' => '' ); }
 }
 
 
@@ -169,6 +176,7 @@ require $root . '/includes/class-sfaf-online.php';
  */
 require $root . '/includes/class-sfaf-cancellation.php';
 require $root . '/includes/class-sfaf-notifications.php';
+require $root . '/includes/class-sfaf-digest.php';
 
 /* The event under test. */
 $GLOBALS['sfaf_meta'] = array(
@@ -176,6 +184,7 @@ $GLOBALS['sfaf_meta'] = array(
     '_uc_start_time'  => '18:00',
     '_uc_end_time'    => '19:30',
     '_uc_capacity'    => '25',
+    '_uc_rsvp_enabled' => '1',
 );
 $GLOBALS['sfaf_options'] = array();
 
@@ -248,6 +257,14 @@ $cases = array(
      * would get wrong silently.
      */
     'reinstated' => array( 'person' => $person, 'cancel' => true ),
+    /*
+     * THE SIXTH KIND AND THE DIGEST (3.102.0). The day-before count twice,
+     * for a recipient the gate allows and one it does not; the digest built
+     * through its own builder, which a case can name with 'build'.
+     */
+    'day_before'        => array( 'person' => null, 'cancel' => false ),
+    'day_before-editor' => array( 'type' => 'day_before', 'person' => null, 'cancel' => false, 'context' => array( 'can_edit_event' => true ) ),
+    'digest'            => array( 'person' => null, 'cancel' => false, 'build' => function () { return SFAF_Digest::build( 7, array( 42 ), 'daily' ); } ),
     'reinstated-moved' => array(
         'type' => 'reinstated', 'person' => $person, 'cancel' => true,
         'context' => array( 'was' => '2026-08-05' ),
@@ -264,7 +281,7 @@ $cases = array(
  * handed. A new email that wants one has to be added deliberately, and the
  * per-recipient routing is then checked by alert-recipients-test.php.
  */
-$MAY_LINK_TO_CALADMIN = array( 'alert-viewer', 'summary-editor' );
+$MAY_LINK_TO_CALADMIN = array( 'alert-viewer', 'summary-editor', 'day_before-editor', 'digest' );
 
 $fails = array();
 $built = array();
@@ -278,7 +295,7 @@ foreach ( $cases as $name => $case ) {
     if ( ! empty( $case['meta'] ) ) {
         $GLOBALS['sfaf_meta'] = array_merge( $GLOBALS['sfaf_meta'], $case['meta'] );
     }
-    $out  = SFAF_Notifications::build( $type, 42, $case['person'], $ctx );
+    $out  = isset( $case['build'] ) ? call_user_func( $case['build'] ) : SFAF_Notifications::build( $type, 42, $case['person'], $ctx );
     $GLOBALS['sfaf_meta'] = $meta_was;
 
     if ( ! is_array( $out ) ) {

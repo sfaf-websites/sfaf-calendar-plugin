@@ -1772,7 +1772,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    where the next person to read `.uc-field input` will see it. */
 .uc-radio-row { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 6px;
     font-size: 14px; font-weight: 400; cursor: pointer; text-align: left; }
-.uc-radio-row input[type="radio"] { flex: 0 0 auto; width: auto; margin: 0; }
+.uc-radio-row input[type="radio"] { flex: 0 0 auto; width: 16px; margin: 0; }   /* 16px, the baseline's size: auto left a 13 by 16 box (3.102.0) */
 .uc-radio-row span { flex: 1 1 auto; }
 
 /* ---------------------------------------------------------------------------
@@ -4618,3 +4618,10 @@ body.uc-modal-open { overflow: hidden; }
     font-size: 11px; line-height: 1.35; color: var(--p-muted, #6B6764);
     text-align: right; cursor: help;
 }
+
+/* ---------------------------------------------------------------------------
+   PREFERENCES (3.102.0). Four fieldsets in one card, a gap between each.
+   The digest line on a user row is its own line under the address.
+   ------------------------------------------------------------------------ */
+.uc-prefs .uc-fieldset { margin: 0 0 14px; }
+.uc-user-id .uc-user-digest { display: block; margin-top: 2px; }

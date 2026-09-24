@@ -407,6 +407,25 @@ class SFAF_Cron {
                 'on'       => array( 'SFAF_Reminders', 'enabled' ),
                 'off'      => 'Reminder emails are switched off in Settings.',
             ),
+            /*
+             * THE DAY BEFORE AND THE DIGEST (3.102.0). Both at the reminder
+             * hour, both claim a ledger row per person before sending, and
+             * neither sends when there is nothing to say.
+             */
+            'day_before' => array(
+                'label'    => 'Count for tomorrow',
+                'plain'    => 'At 6 am, tells each event\'s notification list how many have registered for tomorrow. Nothing goes out for an event nobody has registered for.',
+                'callback' => array( 'SFAF_Notifications', 'run_day_before' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
+            'digest'    => array(
+                'label'    => 'Digest emails',
+                'plain'    => 'At 6 am, sends each person who asked for one their daily or weekly list of events. A digest with no events in it is not sent.',
+                'callback' => array( 'SFAF_Digest', 'run' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
             'summaries' => array(
                 'label'    => 'Who is coming',
                 'plain'    => 'Emails the people running an event a list of who has registered, two hours before it starts.',

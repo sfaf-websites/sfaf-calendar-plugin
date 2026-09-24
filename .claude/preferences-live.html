@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Preferences - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.101.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.101.0" />
+<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.101.0" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.101.0" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                <div class="uc-portal-brand">
+                                            <span class="uc-portal-brandmark">SFAF</span>
+                                        <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 2"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 3"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 9"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 11"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                        <div class="uc-portal-user">
+                        <a class="uc-portal-logout" href="">Log out</a>
+                    </div>
+                </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head"><h1>Preferences</h1></div>
+
+        <form method="post" action="https://resources.sfaf.org/caladmin/preferences" class="uc-card uc-prefs">
+            <input type="hidden" name="uc_action" value="save_preferences" />
+            <input type="hidden" name="uc_nonce" value="nonce" />
+            <div class="uc-card-head"><h2>Digest email</h2></div>
+            <p class="uc-hint">Each event shows its date, time, place and how many have registered, with a link to the registrations. No names. Nothing is sent when there are no events.</p>
+
+            <fieldset class="uc-fieldset uc-prefs-frequency">
+                <legend>How often</legend>
+                                    <label class="uc-radio-row">
+                        <input type="radio" name="digest_frequency" value="none"  checked="checked" />
+                        <span>None</span>
+                    </label>
+                                    <label class="uc-radio-row">
+                        <input type="radio" name="digest_frequency" value="daily"  />
+                        <span>Daily, at 6 am, with that day&#039;s events</span>
+                    </label>
+                                    <label class="uc-radio-row">
+                        <input type="radio" name="digest_frequency" value="weekly"  />
+                        <span>Weekly, Mondays at 6 am, with the seven days ahead</span>
+                    </label>
+                            </fieldset>
+
+            <p class="uc-hint">Tick nothing in a group to include everything in it.</p>
+                            <fieldset class="uc-fieldset uc-prefs-group" data-uc-prefs-group="venues">
+                    <legend>Venues</legend>
+                                            <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="digest_venues[]" value="11"
+                                            />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="digest_venues[]" value="12"
+                                            />
+                                    Beta                                </label>
+                                                    </div>
+                                    </fieldset>
+                            <fieldset class="uc-fieldset uc-prefs-group" data-uc-prefs-group="series">
+                    <legend>Series</legend>
+                                            <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="digest_series[]" value="11"
+                                            />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="digest_series[]" value="12"
+                                            />
+                                    Beta                                </label>
+                                                    </div>
+                                    </fieldset>
+                            <fieldset class="uc-fieldset uc-prefs-group" data-uc-prefs-group="organizers">
+                    <legend>Organizers</legend>
+                                            <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="digest_organizers[]" value="11"
+                                            />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="digest_organizers[]" value="12"
+                                            />
+                                    Beta                                </label>
+                                                    </div>
+                                    </fieldset>
+            
+            <div class="uc-form-actions">
+                <button type="submit" class="uc-btn uc-btn-primary">Save preferences</button>
+            </div>
+        </form>
+                        </main>
+            </div>
+        </div>
+        <script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.101.0"></script>
+<script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.101.0"></script>
+<script>(function () {
+var out = { errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+window.addEventListener('load', function () { setTimeout(function () {
+  function css(el, p) { return el ? getComputedStyle(el).getPropertyValue(p).trim() : 'ABSENT'; }
+  var form = document.querySelector('form.uc-prefs');
+  var nav = document.querySelector('.uc-nav-item[aria-current="page"]');
+  out.h1 = (document.querySelector('.uc-page-head h1') || {}).textContent || '';
+  out.navCurrent = nav ? nav.textContent.replace(/\s+/g, ' ').trim() : '';
+  out.navLast = (function () { var a = document.querySelectorAll('.uc-portal-nav .uc-nav-item'); return a.length ? a[a.length - 1].textContent.replace(/\s+/g, ' ').trim() : ''; })();
+  var radios = form ? form.querySelectorAll('input[type="radio"][name="digest_frequency"]') : [];
+  out.radios = Array.prototype.map.call(radios, function (r) { return r.value + (r.checked ? '*' : ''); });
+  out.legends = Array.prototype.map.call(form ? form.querySelectorAll('fieldset > legend') : [], function (l) { return l.textContent.trim(); });
+  out.groups = {};
+  ['venues', 'series', 'organizers'].forEach(function (g) {
+    var boxes = form.querySelectorAll('input[type="checkbox"][name="digest_' + g + '[]"]');
+    var b = boxes[0];
+    out.groups[g] = {
+      count: boxes.length,
+      ticked: Array.prototype.filter.call(boxes, function (x) { return x.checked; }).length,
+      size: b ? Math.round(b.getBoundingClientRect().width) + 'x' + Math.round(b.getBoundingClientRect().height) : 'none',
+      gap: b ? Math.round(b.closest('label').getBoundingClientRect().right > 0 ? (function () {
+        var lab = b.closest('label'); var r = document.createRange(); r.selectNodeContents(lab);
+        var t = Array.prototype.filter.call(lab.childNodes, function (n) { return n.nodeType === 3 && n.textContent.trim(); })[0];
+        if (!t) { return -1; } r.selectNodeContents(t); return r.getBoundingClientRect().left - b.getBoundingClientRect().right; })() : -1) : -1
+    };
+  });
+  var fs = form.querySelectorAll('fieldset');
+  out.fieldsetGap = fs.length > 1 ? Math.round(fs[1].getBoundingClientRect().top - fs[0].getBoundingClientRect().bottom) : -1;
+  var radio = radios[0];
+  out.radioSize = radio ? Math.round(radio.getBoundingClientRect().width) + 'x' + Math.round(radio.getBoundingClientRect().height) : 'none';
+  var btn = form.querySelector('button[type="submit"]');
+  out.button = btn ? btn.textContent.trim() + ' / ' + css(btn, 'background-color') : 'none';
+  out.hints = Array.prototype.map.call(form.querySelectorAll('.uc-hint'), function (p) { return p.textContent.replace(/\s+/g, ' ').trim(); });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script></body></html>

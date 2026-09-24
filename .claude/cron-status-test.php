@@ -94,6 +94,12 @@ class SFAF_Reminders {
 }
 class SFAF_Notifications {
     public static function run_summaries() { return array( 'status' => 'ok', 'summary' => 'Nothing due.', 'counts' => array() ); }
+    /* The day-before count (3.102.0). */
+    public static function run_day_before() { return array( 'status' => 'ok', 'summary' => 'Nothing due.', 'counts' => array() ); }
+}
+/* The digest (3.102.0). */
+class SFAF_Digest {
+    public static function run() { return array( 'status' => 'ok', 'summary' => 'Nothing due: no digest is waiting to go out.', 'counts' => array() ); }
 }
 /* The EveryAction signup-link task (3.101.0), off: no hub login stored. */
 class SFAF_EveryAction {

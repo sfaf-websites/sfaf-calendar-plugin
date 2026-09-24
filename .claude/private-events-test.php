@@ -519,6 +519,7 @@ $WHITELIST = array(
     'class-sfaf-notifications.php'   => 'the pre-event summary, which section 3 says still sends',
     'class-sfaf-sources.php'         => 'the import queue and its matching, before anybody sees anything',
     'class-sfaf-source-gfmp.php'     => 'matching an incoming campaign to an event already here',
+    'class-sfaf-digest.php'          => 'a staff member\'s own digest, every event the event gate lets them open, as caladmin shows them',
     'class-sfaf-everyaction.php'     => 'imported EveryAction events, for their signup links and the panel\'s match count; renders no list',
     'class-sfaf-teams.php'           => 'which events name a team, for the deletion refusal',
     'class-sfaf-venues.php'          => 'which events use a venue, for the deletion refusal',

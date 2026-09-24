@@ -42,8 +42,8 @@ $plants = array(
      * places the format can be dropped and either alone is the whole fault. */
     'the reminder query stops selecting the format' => array(
         'file' => 'includes/class-sfaf-reminders.php',
-        'from' => "\"SELECT email, format FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
-        'to'   => "\"SELECT email FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
+        'from' => "\"SELECT id, email, format FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
+        'to'   => "\"SELECT id, email FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
     ),
 
     'the reminder builds a person with no format' => array(

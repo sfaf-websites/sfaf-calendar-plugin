@@ -320,7 +320,7 @@ foreach ( $cases as $case ) {
  * ------------------------------------------------------------------------ */
 $rem = file_get_contents( $root . '/includes/class-sfaf-reminders.php' );
 
-check( (bool) preg_match( '/SELECT email, format FROM/', $rem ),
+check( (bool) preg_match( '/SELECT (?:id, )?email, format FROM/', $rem ),
     'the reminder list does not select the format column, so it has nothing to pass on however the person object is built' );
 
 /*

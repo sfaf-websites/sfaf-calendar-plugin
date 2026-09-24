@@ -5140,3 +5140,16 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
        spending it. */
     .uc-mp .uc-mp-go:hover { background: #0B666F; color: #fff; }
 }
+
+/* ---------------------------------------------------------------------------
+   REGISTERING WITHOUT AN EMAIL (3.102.0). The field is disabled, not hidden,
+   while the box under it is ticked, so it reads as set aside rather than gone.
+   The box itself wears .uc-rsvp-optin and is laid out by it.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-modal-overlay .uc-rsvp-form input[type="email"]:disabled {
+    background: var(--uc-bg); color: var(--uc-secondary); cursor: not-allowed;
+}
+.uc-rsvp-form .uc-rsvp-noemail { margin-top: 8px; }
+/* .uc-rsvp-optin sets display:flex, which beats the user agent's [hidden] rule,
+   so the box would stay on screen for somebody joining online. (0,3,0). */
+.uc-rsvp-form .uc-rsvp-noemail[hidden] { display: none; }
