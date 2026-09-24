@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 194 items.** Quick 163, needs real conditions 28, blocked on other
+**Outstanding: 199 items.** Quick 165, needs real conditions 31, blocked on other
 people 3.
 
 ---
@@ -2461,6 +2461,43 @@ still log in with what was saved, not report the key or password missing.
 `sanitize_settings()` in a miniature WordPress; the real options screen, its
 redirect and a real database are not in it.
 
+### 1.167 Register without an email, on the live form (3.102.0)
+
+On a live in-person event that takes RSVPs, press **RSVP**. Under the email
+field read the line "We use your email only for this event: your confirmation,
+a reminder, and any changes. It is never shared or added to a list." Type
+something into the email field, then tick **I do not use email, or prefer not to
+share it.** The field should empty and grey out, and "You will not get a
+confirmation, a reminder, or notice of changes." should appear. Register with a
+first name. The success screen should **not** tell you to check your inbox.
+Then:
+
+1. In caladmin, open that event's registrations: the name is there and the
+   email column shows a dash.
+2. Check that the notification list got the registration alert, with no Email
+   line in it.
+3. Register a second person the same way. Both must be listed: two people
+   without an email are two registrations.
+4. Open RSVP on an **online** event: the box is not there, and "Joining online
+   needs an email address for the meeting link." is. On a **hybrid** event, the
+   box appears for In person and disappears for Online.
+
+**Why it needs a person:** the form was driven in headless Chrome against a
+stand-in server, and the save, the alert and the registrations screen were run
+in a model WordPress. The live form, a real database and a delivered alert are
+not in either.
+
+### 1.168 Preferences, and the Users screen line (3.102.0)
+
+Sign in to caladmin as a **contributor**. **Preferences** is the last item in
+the navigation. Choose **Daily**, tick one venue, save: "Preferences saved."
+Reload: the choice is still there. Then sign in as an **admin** and open
+**Users & Teams**: under that contributor's address it should read "Daily
+digest. Venues: …". There must be no way on that screen to change it.
+
+**Why it needs a person:** the screen was rendered through the real renderer in
+a miniature WordPress and read in Chrome, but a real save to user meta, a real
+reload and two real accounts are not in it.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -2890,6 +2927,59 @@ two buttons in step 6 went.
 real published event. The build proved each rule against a model hub and a
 saved copy of the list, but the tracker rows it used were built from the row
 shape as described, because no probe body was ever recorded.
+### 2.31 A real daily digest, and a real weekly one (3.102.0)
+
+Set **Daily** on Preferences for an admin and for a contributor who organizes
+something, and **Weekly** for a third person. The next morning after 6 am, each
+daily subscriber should have one message, "Today: N events". Check:
+
+1. The admin's lists every published event today; the contributor's lists only
+   their own and their teams'.
+2. Each event shows date, time **with PT**, place and how many have registered.
+   **No registrant names anywhere**, in either the HTML or the plain text.
+3. **See who has registered** opens that event's registrations in caladmin, for
+   both people.
+4. Nobody with nothing on today got a digest at all.
+5. The Automation screen shows **Digest emails** ran, and **Run now** a second
+   time sends nothing more.
+
+On the next **Monday** after 6 am, the weekly subscriber should get "This week:
+N events" covering Monday to Sunday.
+
+**Why it needs real conditions:** an unattended run at 6 am, real accounts with
+real roles, and a delivered message. The lists, the gate, the ledger and the
+message were proved in a model; the real schedule and a real inbox were not.
+
+### 2.32 The day-before count, for an event with registrations (3.102.0)
+
+Pick an event tomorrow with at least two registrations and a notification list
+holding its organizer and one typed address. After 6 am today:
+
+1. Both receive "Tomorrow: [title], N registered", with the number and **no
+   names**.
+2. The organizer's button is **See who has registered** and opens the
+   registrations; the typed address's is **See the event page**.
+3. An event tomorrow with **nobody** registered sends nothing.
+4. On another event, untick **Count of who is coming, to your notification
+   list, the day before** on the notification card, save, and check that one
+   sends nothing the next day.
+5. The card's line reads "Everybody here is told when somebody registers or
+   cancels, gets the number registered at 6 am the day before, one copy of the
+   morning-of reminder, and the list of who is coming two hours before." and
+   the switch count reads "all 6 are on".
+
+**Why it needs real conditions:** an unattended run the day before a real event
+with real registrations, and delivered mail to two kinds of recipient.
+
+### 2.33 The morning-of reminder with somebody registered without an email (3.102.0)
+
+On the morning of an event that has one registration without an email and one
+with, open the event's **Reminder log** after the reminder has run. The person
+with an address shows **Sent**; the person without shows "Registered without
+an email" and **Not sent: no email**. Nothing else changed about the reminder.
+
+**Why it needs real conditions:** the reminder runs unattended on the day, and
+the log is a real ledger table. It was proved against a model of that table.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.

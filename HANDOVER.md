@@ -4,18 +4,18 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-24, at 3.101.0, released.
+**Last updated:** 2026-09-24, at 3.102.0, released.
 
 ---
 
 ## What shipped last
 
-**3.101.0 IMPORTS EVERYACTION** into the pending queue: keyed on UUID, times
-converted from UTC, a series per `Series_ID`, and each event's signup page read
-once a day from the public list. **Auto-Import is off** and gates only the
-runner. **Description is the manager's**, seeded once: owned, it would have
-left most events unpublishable. 3.100.x built the panel and the login.
-`PROJECT.md` 3.
+**3.102.0**: a **Preferences** screen in caladmin with a daily or weekly
+**digest** of the events the event gate lets you open; a sixth per-event email,
+the **day-before count**; and **registering without an email** on the public
+form, except to join online. `PROJECT.md` 4 and 5.
+**3.101.0 IMPORTS EVERYACTION** into Pending, keyed on UUID, **Auto-Import off**;
+the description is the manager's. `PROJECT.md` 3.
 **3.99.0**: both public forms mark every required field from the validator's
 own list; **the editor publishes only a complete event** (a draft needs only a
 title, a live event is saved as it is); every email time says "PT".
@@ -84,9 +84,6 @@ one**: hybrid events, the event video, pictures inside descriptions.
 
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
-- **The external cron ping does not exist.** Visitor traffic and the page-view
-  nudge drive the runner. `PROJECT.md` 4 has the order; the wrong order leaves
-  the site with no scheduler.
 - **Automated fetching is ON and its own copy says it should not be**, and only
   Mark can say which: it can unpublish a live event unattended, four times an
   hour. `TESTING.md` 2.8.
@@ -95,7 +92,7 @@ one**: hybrid events, the event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 194 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 199 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Assume everything else unverified.

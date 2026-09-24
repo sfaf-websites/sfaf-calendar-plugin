@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.101.0
+Stable tag: 3.102.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,28 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.102.0 =
+
+**A Preferences screen with daily or weekly digest emails, a sixth per-event email the day before, and registering without an email.**
+
+**DIGESTS, DECIDED BY THE EVENT GATE.** Preferences is the last item in caladmin's navigation, for everybody. It offers none (the default), daily at 6 am for that day's events, or weekly on Mondays at 6 am for the seven days ahead, and three optional tick lists: venues, series and organizers. Which events a digest lists is decided by the same function every caladmin route asks, so an admin or editor gets every published event and a contributor gets their own and their teams'. The link to each event's registrations is asked of that gate again inside the builder, so no way of assembling the list can hand somebody a link to a screen that will refuse them. The digest names nobody: each event shows its date, time with the zone, place, and how many have registered. An empty digest is not sent. A person without calendar access gets none, even for events they organize, because the gate answers yes for an organizer whether or not they can still sign in.
+
+**YOUR OWN, AND ONLY YOUR OWN.** Preferences are stored against the person, never an event. The save writes the signed-in person's own and takes no user id at all, so nothing on the form could name somebody else. An admin sees each person's choice as one read-only line on Users & Teams.
+
+**THE DAY BEFORE, A NUMBER AND NOT THE NAMES.** A sixth switch on every event, on by default: at 6 am the day before, the notification list is told how many have registered. The two-hour summary names everybody because it is the door list; a day ahead the need is a number, for food or chairs. Its button follows the summary's rule: the registrations for anybody the event gate allows, the public page for everybody else. Nothing goes out when nobody has registered. The notification card now says what everybody on the list receives, and counts its switches from the list instead of saying "all four", which had already been wrong since the fifth was added.
+
+**ONE LEDGER, NO DOUBLE SENDS.** Both new messages claim a row in the reminder ledger before they send, under keys of their own, so a second run, or two at once, sends nothing more. A day-before row cannot block the same person's morning-of reminder.
+
+**REGISTERING WITHOUT AN EMAIL.** The email field stays required, with a tick box under it: "I do not use email, or prefer not to share it." Ticking it clears and disables the field and says what they will not get. Nothing is ever sent to them; the list is still told, the counts include them, and the registrations list shows their name with no address. The box is not offered to somebody joining online, because the meeting link has nowhere else to go, and the server refuses that case too. Under the field on every form, a line now says what the address is used for.
+
+**THEIR LEDGER KEY IS THEIR ROW.** The reminder ledger keyed each person on a hash of their address, which would have given every emailless registrant the same key and refused all but the first. It is the registration row now, and the reminder records "not sent: no email" for them instead of leaving them out.
+
+**ONE THING THIS DOES NOT SOLVE, AND IT IS SAID.** The only way to release a place is the link in an email, and these registrants get none. There is no staff control to release a registration, for anybody; that was already so. The cancel path now refuses an empty address, which would otherwise have released every emailless place on the event at once.
+
+**RADIO BUTTONS ARE SQUARE AGAIN.** Every radio row in caladmin was drawn 13 by 16, because a reset to width auto undid the shared 16 by 16 size along with the full-width rule it was aimed at. Found by measuring the new screen in Chrome.
+
+**CHECKED.** Two new tests run the real digest, day-before, registration and reminder code over a miniature WordPress whose database enforces the ledger's unique keys, with the event gate lifted from the portal. Two more render the Preferences screen and drive the RSVP form in headless Chrome. The email render test builds the digest and both versions of the day-before message. Nine faults were planted and each failed a check: a digest listing an event the gate refuses, a digest link to somebody the gate refuses, a digest sent twice, a filter ignored, a day-before count sent twice, one sent with nobody registered, an emailless registrant handed to the sender, the box offered on an online registration, and two emailless registrants sharing a ledger key. The online-box plant first passed, because the check found its words at the end of a different line of the report; every line is anchored now.
 
 = 3.101.0 =
 

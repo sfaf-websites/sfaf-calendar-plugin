@@ -1079,7 +1079,7 @@ margin and a color of its own.
 Windows renders with Word's engine. There is no flexbox, no grid, no reliable
 `border-radius`, and a stylesheet in `<head>` is unreliable across clients
 generally. Everything below is enforced by `.claude/email-render-test.php`,
-which builds all four messages and fails on any of it.
+which builds every message and fails on any of it.
 
 - **Tables for layout, inline styles for everything.** A div with modern CSS
   renders as a stack of full-width blocks in the client a large share of these

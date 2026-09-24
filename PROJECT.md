@@ -4819,9 +4819,9 @@ move sends nothing.
 morning-of reminder and the two-hour summary are the thing the person signed up
 for, are not caused by an edit, and are never gated on an answer.
 
-### The five message types
+### The six message types
 
-All five are **on** by default. `_uc_notify_off` records only what somebody has
+All six are **on** by default. `_uc_notify_off` records only what somebody has
 switched off, so a default costs no writes and an event created before any of
 this existed behaves like one created after.
 
@@ -4831,6 +4831,7 @@ this existed behaves like one created after.
 | `alert` | the event's notification list | one per registration, as it happens |
 | `cancel_alert` | the event's notification list | one per cancellation, as it happens |
 | `reminder` | everybody registered, list copied in | 6am on the day (midnight if the event starts earlier) |
+| `day_before` | the notification list | 6am the day before; the number registered, never the names; nothing sent if nobody registered (3.102.0) |
 | `summary` | the notification list | two hours before; nothing sent if nobody registered |
 | `reinstated` | everybody registered | when a cancelled event is put back on, and only on an explicit yes |
 
@@ -4839,6 +4840,15 @@ wiring: `on()` reads it, `set_off()` intersects against `array_keys( kinds() )`
 so the form saves it, `off_count()` counts it, and the caladmin card renders it
 by iterating. That is how `cancel_alert` was added in 3.56.0 without a new
 mechanism.
+
+**`day_before` SAYS HOW MANY, NEVER WHO (3.102.0).** The summary two hours out
+names everybody because it is the door list; a day ahead the need is a number to
+order food or set out a room. Its button is per recipient like the summary's:
+the scoped registrations list for anybody the event gate allows, the public
+page for everybody else. Not sent and not marked done when nobody is
+registered, so a registration later that day is still counted. Each send is
+claimed in the ledger under `day_before|address`, a different key from the same
+person's morning-of reminder on the same event.
 
 > **`cancel_alert` IS NOT `cancelled`.** `cancelled` tells REGISTRANTS the EVENT
 > is off. `cancel_alert` tells STAFF that one REGISTRANT has dropped out. The
@@ -4960,6 +4970,76 @@ a string typed in a box rather than that person.
 There are only ever two versions of each message, so a list of thirty people
 costs two builds.
 
+### Digests, and the Preferences screen (3.102.0)
+
+**A person's own list of events, by email.** Preferences in caladmin, last in
+the navigation for everybody with calendar access, holds one choice: **none**
+(the default), **daily** (6 am, that day's events) or **weekly** (Mondays at
+6 am, Monday to Sunday), plus three optional tick lists, **venues**, **series**
+and **organizers**. Nothing ticked in a group does not narrow; groups that have
+something ticked must all match. `SFAF_Digest` is the class.
+
+**STORED PER USER, NEVER PER EVENT**, in the user meta `_uc_digest`. **Nobody
+sets anybody else's**, and that is a property of the code rather than the form:
+the save takes no user id and writes the signed-in person's. An admin sees each
+person's choice as one read-only line on Users & Teams.
+
+**THE EVENT GATE DECIDES WHAT IS LISTED**, the same one every route asks (§5):
+an admin or editor gets every published event in the window, a contributor
+their own and their teams'. Cancelled events are left out, as from every other
+scheduled message. **The link to an event's registrations is asked of the gate
+again, per event, inside the builder**, so a list assembled any other way still
+cannot carry a link to a screen that would refuse the reader. A person with no
+calendar access gets no digest at all, even for events they organize, because
+the gate answers yes for an organizer whether or not they can still sign in.
+
+**NO NAMES.** Each row is the title, date, time with its zone, place, the
+registration count (or where an imported event registers), and the link. **An
+empty digest is not sent.** It is built with `SFAF_Email` like every other
+message: tables, a plain-text part, one yellow button (Open your events).
+
+**SENT ONCE PER PERIOD.** The ledger row is keyed `digest|period|user` on event
+0; the claim comes before the send, so a second run fails it. A per-user marker,
+`_uc_digest_done`, says the period has been looked at, sent or empty, so a quiet
+day is not rebuilt every fifteen minutes. Filters can only narrow what the gate
+allows; they never widen it.
+
+### Registering without an email (3.102.0)
+
+**The email field stays required, and a tick box under it is the only way past
+it**: "I do not use email, or prefer not to share it." Ticking it clears and
+disables the field and says "You will not get a confirmation, a reminder, or
+notice of changes." The row is saved with an **empty** `email`, never whatever
+was left in the field. Under the field on every form: "We use your email only
+for this event: your confirmation, a reminder, and any changes. It is never
+shared or added to a list."
+
+**NOT FOR JOINING ONLINE.** The meeting link is sent by email and nowhere else,
+so the box is not offered on an online event or a hybrid one with Online
+chosen, and "Joining online needs an email address for the meeting link." takes
+its place. `SFAF_RSVP::submit()` refuses the same case, because a form is not a
+refusal.
+
+**WHAT CHANGES FOR THEM, AND NOTHING ELSE DOES.** No confirmation, no reminder,
+no change or cancellation notice (`SFAF_Announce` already skipped any row
+without a valid address). The alert still goes to the list, with no Email line.
+Counts include them. The registrations list and the staff summary show the name
+with a dash or "No email". **No opt-in is recorded** without an address, and
+the duplicate check is skipped: two people with no email are two people.
+
+**THE LEDGER KEY IS THE ROW, NOT AN ADDRESS.** `SFAF_Reminders::recipient_key()`
+is the address when there is one and `rsvp:ID` when there is not, so two
+emailless registrants cannot collide on the unique key and nothing is invented
+that looks like an address. The reminder pass claims a row for each and records
+`no_address` instead of sending, so the event's reminder log says who it could
+not reach.
+
+**NOBODY CAN RELEASE SUCH A PLACE, AND THAT IS A GAP.** The only way to cancel a
+registration is the token link in an email, and these people get none.
+`cancel_rsvp()` refuses an empty address rather than release every emailless
+place on the event at once. There is no staff control to release a
+registration by row, for anybody; that was already true and is reported rather
+than built.
 ### Cancellation tokens
 
 A registration gets a **128-bit token** (`SFAF_Reminders::new_token()`). The
@@ -5061,8 +5141,9 @@ any read of `uc_rsvps`, because those are the invariants the release exists for.
 
 There is **one** runner, `SFAF_Cron`, on a **15-minute** recurrence, for every
 unattended job. `SFAF_Cron::tasks()` is the single list of them: the reminder
-pass, the pre-event summary, the third-party fetch, the queue sweep, the
-EveryAction signup-link read (once a day, 3.101.0) and the orphan check. `run()` iterates it and
+pass, the day-before count and the digests (3.102.0), the pre-event summary,
+the third-party fetch, the queue sweep, the EveryAction signup-link read (once
+a day, 3.101.0) and the orphan check. `run()` iterates it and
 the Automation screen iterates it, so a job cannot be run without appearing on
 the screen and cannot appear without being run. Anything added later joins that
 list rather than scheduling its own event, so there is one lock and one log.
@@ -5115,7 +5196,8 @@ fails.
 Three things drive the runner, and it does not care which:
 
 1. **An external scheduler** requesting `wp-cron.php?doing_wp_cron` every 15
-   minutes, with `DISABLE_WP_CRON` set. This is the intended setup, and it is
+   minutes, with `DISABLE_WP_CRON` set. **It exists: EasyCron, every 15
+   minutes.** This is the intended setup, and it is
    deliberately an external service rather than a server cron job so the plugin
    needs no server configuration and stays portable.
 2. **The embed script.** Any page carrying a calendar, including sfaf.org, which
@@ -5173,7 +5255,11 @@ being told early costs nothing.
 with a 15-minute TTL so a fatal mid-run cannot stop the runner permanently and
 silently. Under it, the reminder ledger has a UNIQUE key on
 `(event_id, recipient_hash)` and the row is **inserted before the send**, so a
-second attempt fails the insert and skips. The second layer needs no cooperation
+second attempt fails the insert and skips. Since 3.102.0 the hash is of a key
+rather than always an address: the address for the morning-of reminder, as
+before; `rsvp:ID` for somebody registered without one; `day_before|address`
+for the day-before count; `digest|period|user` on event 0 for a digest. One
+table, one claim, and no message can refuse another's row. The second layer needs no cooperation
 from the first and holds even with the lock broken.
 
 A send that fails is recorded as failed and **not retried**: `wp_mail()`
@@ -5232,6 +5318,12 @@ them would be worse than useless, because they cannot pass the portal's entrance
 gate, so every link the answer produces opens a "Denied" page. The pre-event
 summary asks exactly this question to decide whether to send such a link. That is
 defect five below, rebuilt out of new parts.
+
+**The digest reads this gate (3.102.0)**, twice: once to decide which events a
+person's digest lists, and again per event inside the builder to decide whether
+it links to that event's registrations. It is a list sent to a person, so it
+asks exactly what a caladmin screen would, and a filter on Preferences can only
+narrow the answer.
 
 **Team membership is live.** Nothing is copied onto the event, so joining a team
 grants access to every event that team already owns and leaving removes it, both
@@ -5896,6 +5988,15 @@ nothing for two releases, and the moment it took load it broke both forms.
 > what else that class declares**, the same way a container audit lists what
 > else a property brings.
 
+### A check can pass on somebody else's line (3.102.0)
+
+`rsvp-noemail-live.php` looked for "online: box hidden, …" in the report with a
+plain substring search. The report also held "hybrid, then online: box hidden,
+…", which ends with the same words, so when the box was planted back onto the
+online form the check found the hybrid line and passed. The plant is what
+showed it; the check had been green all along. **A report of lines is read a
+line at a time**: every expected line is anchored to the start of a line now.
+`rsvp-format-live.php` reads its report the old way and has not been changed.
 ### A block can land in the wrong function and look right in review (3.73.0, found 3.79.0)
 
 The bulk category control shipped with tick boxes on the events list, and there
