@@ -108,6 +108,18 @@ try ea-empty-unpublishes "an empty fetch may unpublish"     $I
 try ea-link-wrong-id "a signup link on the wrong ID"        $I
 try ea-rsvp-accepted "an imported event takes an RSVP"      $I
 try ea-version-gate "a version mismatch passes the gate"    .claude/version-check-test.php
+# 3.102.0, the digest, the day before, registering without an email.
+D=.claude/digest-test.php
+N=.claude/emailless-test.php
+try dg-no-gate "a digest lists an event the gate refuses"    $D
+try dg-link-ungated "a digest links a refused person to RSVPs" $D
+try dg-twice "a digest sent twice"                          $D
+try dg-filter-ignored "a digest filter ignored"             $D
+try db-twice "a day-before count sent twice"                $D
+try db-empty "a day-before count sent with nobody"          $D
+try nm-sent "an emailless registrant handed to the sender"  $N
+try nm-box-online "the box offered to an online registrant" .claude/rsvp-noemail-live.php --run
+try nm-ledger-collide "two emailless registrants collide"   $N
 
 restore
 echo "-------------------------------------------"

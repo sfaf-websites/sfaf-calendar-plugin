@@ -412,6 +412,53 @@ $edits = array(
         "        'EMBED_JS_VERSION (public/js/embed.js)'      => \$read( 'public/js/embed.js', \"/EMBED_JS_VERSION = '([^']+)';/\" ),\n",
         '' ),
 
+    /* ---- 3.102.0: the digest, the day before, registering without an email. ---- */
+
+    /* The digest lists events the gate does not allow. */
+    'dg-no-gate' => array( 'includes/class-sfaf-digest.php',
+        "            if ( ! SFAF_Portal::user_can_edit_event( (int) \$user_id, \$id ) ) {\n                continue;\n            }\n            if ( ! self::matches( \$id, \$prefs ) ) {",
+        "            if ( ! self::matches( \$id, \$prefs ) ) {" ),
+
+    /* The digest's registrations link stops asking the gate. */
+    'dg-link-ungated' => array( 'includes/class-sfaf-digest.php',
+        "( \$reg['listed'] && SFAF_Portal::user_can_edit_event( (int) \$user_id, \$id ) )",
+        "\$reg['listed']" ),
+
+    /* The digest goes out whatever the ledger says. */
+    'dg-twice' => array( 'includes/class-sfaf-digest.php',
+        "        if ( ! \$claim ) {\n            return 'already';\n        }\n",
+        "" ),
+
+    /* The filters are ignored. */
+    'dg-filter-ignored' => array( 'includes/class-sfaf-digest.php',
+        "    public static function matches( \$event_id, \$prefs ) {\n        \$event_id = (int) \$event_id;\n",
+        "    public static function matches( \$event_id, \$prefs ) {\n        \$event_id = (int) \$event_id;\n        return true;\n" ),
+
+    /* The day-before count goes out whatever the ledger says. */
+    'db-twice' => array( 'includes/class-sfaf-notifications.php',
+        "            if ( ! \$claim ) {\n                \$out['already']++;\n                continue;\n            }\n",
+        "" ),
+
+    /* The day-before count goes out with nobody registered. */
+    'db-empty' => array( 'includes/class-sfaf-notifications.php',
+        "        \$n = (int) sfaf_get_rsvp_count( \$event_id );\n        if ( \$n < 1 ) {\n            return null;\n        }\n",
+        "        \$n = (int) sfaf_get_rsvp_count( \$event_id );\n" ),
+
+    /* A registrant with no email is handed to the sender like anybody else. */
+    'nm-sent' => array( 'includes/class-sfaf-reminders.php',
+        "            if ( '' === \$email ) {\n                self::finish_row( \$claim['id'], 'no_address' );\n                \$result['no_address']++;\n                continue;\n            }\n",
+        "" ),
+
+    /* The box is offered to somebody joining an online event. */
+    'nm-box-online' => array( 'public/js/calendar.js',
+        "        var online = (formats.length === 1 && formats[0] === 'online') ||",
+        "        var online = false && (formats.length === 1 && formats[0] === 'online') ||" ),
+
+    /* Every registrant with no email gets the same ledger key. */
+    'nm-ledger-collide' => array( 'includes/class-sfaf-reminders.php',
+        "        return ( (int) \$rsvp_id > 0 ) ? 'rsvp:' . (int) \$rsvp_id : '';",
+        "        return 'rsvp:';" ),
+
 );
 
 if ( 'off-ladder' === $which ) {
