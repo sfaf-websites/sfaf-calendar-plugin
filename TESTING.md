@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 196 items.** Quick 163, needs real conditions 30, blocked on other
+**Outstanding: 194 items.** Quick 163, needs real conditions 28, blocked on other
 people 3.
 
 ---
@@ -2854,47 +2854,42 @@ real client. `.claude/email-zone-test.php` proves every mail call site asks
 for the zone and `email-render-test.php` renders the notifications; neither
 sends anything.
 
-### 2.27 Test connection against the real hub (3.100.0)
+### 2.30 The first EveryAction fetch, by hand, and one event through to its signup page (3.101.0)
 
-With the account Val provides saved in the EveryAction panel, press **Test
-connection**. Either "Connected. Tracker reachable, N rows." or a failure that
-names the step and quotes the hub, such as "Login failed: Login id or Password is
-Incorrect." **Report the exact sentence back**: it is the answer to the
-credential question, in the hub's words. **"HTTP 422, and the hub said "ok""
-means the hub does not recognise the API key** (3.100.1): check the key with Val
-before anything else, because the username and password are not read at all
-until the key is accepted. **From 3.100.2 the tracker is read at
-`/api/trackers/forms/get_submissions/{id}`**, the version 1 address Val's own call
-uses: the version 2 one answered "You don't have permission." If that sentence
-comes back now, the version 1 read is refused too, and that goes to Val.
+**Before starting:** ideally Val has removed the tracker's duplicates (the 2027
+Saturdays under two UUID runs, and the coffee social under two names), or the
+queue will hold both copies. Either way, **leave Auto-Import off throughout.**
 
-**Why it needs real conditions:** the real hub and a real account. Every answer
-the panel can give has been played against a model of the hub; which one the
-real hub gives is the thing still unknown.
+1. **Settings & Integrations, EveryAction.** Auto-Import events is off. Press
+   **Test connection**: it should say Connected.
+2. **Pending, Fetch updates.** The report's EveryAction line should say how many
+   events were added and how many rows were checked. **If it says the list "may
+   be incomplete", stop and tell me**: the tracker's page parameter is not the
+   one the build guessed, and nothing past the first hundred rows was read.
+3. **The queue.** Open three EveryAction rows. The coffee social should start at
+   **10 am in both October and November**. A date in the evening, or one an hour
+   out after early November, means the times are converted wrongly. The place
+   name should read "Maxfield's House of Caffeine" with the address under it.
+   Each program should sit in its own series, named after it. Descriptions are
+   mostly empty and marked as needing filling in.
+4. **Settings & Integrations again.** Last fetch shows the rows read and the
+   number created. Signup links shows "N of M upcoming events have their own
+   signup page", and **N should be most of M**. N near zero means the public
+   list's markup has changed.
+5. **Approve one.** Pick a coffee social date. Give it a category, an organizer,
+   a description and a picture, and publish it.
+6. **Its page.** The registration button should open **that date's page on
+   han.sfaf.org**, not the list and not a different Saturday. Then find an
+   event whose button goes to the list instead (one the public list does not show
+   yet): the list should open filtered to that event's day.
 
-### 2.28 Run the tracker probe and keep what it prints (3.100.0)
+Report the numbers from steps 2 and 4, the three times from step 3, and where the
+two buttons in step 6 went.
 
-Once Test connection says Connected, press **Probe tracker**. Copy the whole body
-from the box and save it outside the repository. That body is the sample
-`PROJECT.md` 8 has been waiting for, and the adapter is built from it and nothing
-else.
-
-**Why it needs real conditions:** it only exists once the credential works, and
-it carries real people's event data, so it is kept out of the repository.
-
-### 2.29 Check Val's two facts against the probe (3.100.2)
-
-With the probe's body from 2.28, pick three rows and find the same events on the
-public EveryAction events page. **The times:** `Start_Time` and `End_Time` should
-read as the Pacific time the page shows, despite ending in `+0000`. If they are
-seven or eight hours off instead, report which way. **The ID:** each row's
-`UUID` should equal the `data-event-id` on that event's entry on the page.
-Report both, with the three rows' titles. Also check the probe's row count
-agrees with the number of rows in the body.
-
-**Why it needs real conditions:** real rows from the real tracker, and the adapter
-is written on these two facts, so they are checked on data before it is.
-
+**Why it needs real conditions:** the real tracker, the real public list and a
+real published event. The build proved each rule against a model hub and a
+saved copy of the list, but the tracker rows it used were built from the row
+shape as described, because no probe body was ever recorded.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
@@ -2902,7 +2897,7 @@ Nothing here can move until somebody outside the build answers.
 | Who | What is needed | Status |
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
-| **Val** | The EveryAction MangoApps Trackers endpoint, plus a **sample response with real events**, and confirmation his hourly job **writes atomically** | Asked. Field list in `PROJECT.md` §8. Do not build the adapter against a guessed shape. |
+| **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

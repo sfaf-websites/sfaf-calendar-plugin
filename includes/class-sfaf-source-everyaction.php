@@ -4,7 +4,7 @@
  * GoFundMe Pro, through the same framework and the same field contract.
  *
  * WHERE THE ROWS COME FROM. Val's tracker on the hub, read with the session
- * SFAF_EveryAction holds: log in, read every page, log out. PROJECT.md 8 has
+ * SFAF_EveryAction holds: log in, read every page, log out. PROJECT.md 3 has
  * why it is the tracker and not the EveryAction API, and the row shape.
  *
  * WHAT A ROW BECOMES.
@@ -79,7 +79,7 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
     }
 
     public function manager_fields_note() {
-        return 'The tracker has no picture and rarely a description. Set them here once and a fetch will never change them.';
+        return 'A fetch never changes these.';
     }
 
     public function is_active() {

@@ -48,11 +48,13 @@ bash .claude/lint-php.sh .          # PHP 8.3, every file, fails on first error
   3.20.0.
 - Run both again against the EXTRACTED zip, not only the working tree.
 
-Release mechanics: bump the minor version in all three places (plugin header,
-`SFAF_VERSION`, readme `Stable tag`), name the zip to match, archive older zips
-to `Old Calendar Files`, keep only the current zip in the main folder, build
-with `bsdtar` (PowerShell writes backslash entries and breaks the zip), push
-after the build.
+Release mechanics: bump the minor version in all four places (plugin header,
+`SFAF_VERSION`, readme `Stable tag`, and `EMBED_JS_VERSION` in
+`public/js/embed.js`), name the zip to match. `build-zip.sh` runs
+`.claude/version-check.php` first and builds nothing while the four disagree.
+Archive older zips to `Old Calendar Files`, keep only the current zip in the
+main folder, build with `bsdtar` (PowerShell writes backslash entries and breaks
+the zip), push after the build.
 
 ---
 
@@ -194,12 +196,10 @@ visual or CSS decisions (`DESIGN.md` does), and it does not carry working rules
   including the reasons an alternative was rejected, which is the part nobody
   can reconstruct. Move an entry into the body when it ships and delete it from
   that section.
-- The EveryAction arrangement is the first entry there. The source is a
-  **MangoApps Trackers endpoint**, and what is still being waited on from Val is
-  that endpoint plus a sample response. It is not an EveryAction API call
-  because an EveryAction key cannot be scoped to events only, which is the part
-  of that entry worth protecting. `PROJECT.md` §8 carries the detail, including
-  the file-based shape this superseded.
+- The EveryAction arrangement was the first entry there and shipped in 3.101.0,
+  so it moved into `PROJECT.md` §3. It reads a **MangoApps tracker**, not the
+  EveryAction API, because an EveryAction key cannot be scoped to events only.
+  That reason is the part of it worth protecting, and §3 opens with it.
 
 `HANDOVER.md` is the current situation, and Mark opens a fresh chat with it, so
 it has to read cold. Keep it under 150 lines: if it grows past that, something

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.100.2
+Stable tag: 3.101.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.101.0 =
+
+**EveryAction events import into the pending queue, each with its own signup page. Auto-Import is off until somebody turns it on.**
+
+**THE THIRD SOURCE, THROUGH THE SAME FRAMEWORK.** A fetch logs in to the hub, reads every page of Val's tracker, logs out, and every row whose end time has not passed becomes an event in Pending, exactly as a GoFundMe Pro campaign or an Eventbrite listing does. **It is found by its UUID and never by its title**, so a renamed row updates its event and two programs with the same name stay two events. Title, dates, times and the place belong to the tracker and refresh on every fetch; category, organizer, picture, privacy and description are the manager's and a fetch never touches them. Registration stays at the source, by the rule 3.97.0 made: the RSVP switch is locked off and the button goes to EveryAction.
+
+**THE TIMES ARE UTC, AND 3.100.2 HAD THAT BACKWARDS.** The tracker writes "MM/DD/YYYY hh:mm AM +0000", and 3.100.2 recorded that the +0000 was a label on a Pacific time. The coffee social settles it: it reads 5 pm in October and 6 pm in November, which is 10 am Pacific either side of the clock change. A label on a local time would not move. Every time is converted to the site's timezone.
+
+**THE DESCRIPTION IS THE MANAGER'S, SEEDED ONCE.** The brief made it the tracker's. It is usually empty there, a field the source owns is locked in the editor, and since 3.99.0 an event cannot be published without a description, so owning it would have left most of these events impossible to approve. Mark chose instead: the first import writes the tracker's description when it has one, and after that it is the manager's.
+
+**A SERIES PER PROGRAM, A PLACE NAME PER ROW.** Every row with one `Series_ID` goes into one series, named from the program the first time it is seen; a series a manager moves an event to afterwards stays theirs. The text before the first comma of the location is the place name, and the address comes from its four parts. An event somebody promotes to a venue keeps pointing at the venue: the fetch does not write the text back beside it.
+
+**THE SIGNUP LINK COMES FROM THE PUBLIC LIST.** Once a day the runner reads the public EveryAction events list, page by page, and pairs each entry's event ID with its Sign Up link. An imported event gets its own page by its UUID. **An event the list does not show yet** gets the list filtered to its own day, and the next read replaces that with its page. **An event that has its page keeps it**, even when the list stops showing it. The panel shows how many upcoming imported events have their own page, so a change to EveryAction's markup shows as that number dropping. Two things about the list were measured rather than assumed: past its last page it shows page one again, so the read also stops on a page it has seen; and the day filter works only as `date_start` and `date_end`, which is what its own form redirects to.
+
+**THE TRACKER'S PAGE PARAMETER IS NOT DOCUMENTED, SO IT IS CHECKED.** Rows come a hundred at a time, and the hub's documentation lists no paging for this read. The fetch asks with `page`, which is what the rest of that API uses, and **proves the hub honoured it**: a full page that brings no new row stops the read and marks it incomplete, and an incomplete read never takes anything off the calendar. It cannot loop and cannot count a row twice. The walk in TESTING.md asks for exactly this to be looked at.
+
+**NOTHING FROM THE HUB UNPUBLISHES NOTHING.** A fetch that comes back empty is never read as "everything was deleted": the adapter says so, and the framework's own guard says so again. A row gone from a whole, non-empty read takes its event off the calendar, as for the other two sources.
+
+**AUTO-IMPORT GATES THE RUNNER, NOT THE BUTTON.** The switch on the panel is off by default. With it off, the unattended fetch leaves EveryAction alone and says why in the log, and **Fetch updates on Pending still reads it**, so the first fetch can be done by hand and the queue looked at before anything repeats. The panel also shows the last fetch and the signup-link count, and no longer says nothing is imported.
+
+**NOT DONE, ON PURPOSE: DE-DUPLICATION.** The tracker holds the 2027 Saturdays twice under two runs of UUIDs, and the public list has the coffee social under two names. The import copies what the source holds. Guessing which copy is real by matching times would be wrong the first time two genuine events shared a slot, so it is Val's to clean up before Auto-Import goes on.
+
+**THE VERSION LIVES IN FOUR PLACES, AND THE BUILD NOW REFUSES WHEN THEY DISAGREE.** `EMBED_JS_VERSION` in embed.js was the fourth, found in 3.100.2 by a test that happened to look. The check is now its own script, which the build runs before anything is staged, and a test runs it against trees that disagree in each place.
+
+**CHECKED.** A new test runs the real framework and adapter against a model hub and the real list's saved markup. Eight faults were planted and each one failed it: a time left in UTC, a row matched by title, a past row imported, a second fetch duplicating (find_existing asking for 'any'), an empty fetch called complete, a signup link searched across the whole page, an imported event taking an RSVP, and the build gate forgetting embed.js. The tracker rows in that test were built from the row shape as described, because no probe body was ever recorded.
 
 = 3.100.2 =
 

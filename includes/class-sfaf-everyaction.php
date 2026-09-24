@@ -338,7 +338,7 @@ class SFAF_EveryAction {
      * The tracker read's path (3.100.2). THE VERSION 1 READ, because the hub
      * refuses the version 2 one, /api/v2/trackers/{id}/fetch-all-entries, for
      * this tracker with a 200 carrying "You don't have permission." The same
-     * session is given the rows here. PROJECT.md 8 has the row shape.
+     * session is given the rows here. PROJECT.md 3 has the row shape.
      */
     public static function tracker_path( $cfg ) {
         return '/api/trackers/forms/get_submissions/' . rawurlencode( (string) $cfg['tracker'] );
@@ -368,7 +368,7 @@ class SFAF_EveryAction {
     /**
      * Whether a tracker reply is data. A 200 can be a sign-in page: the hub
      * sends a browser surface to Microsoft Entra and answers 200 text/html,
-     * which parses as a successful fetch and is the failure PROJECT.md 8 names.
+     * which parses as a successful fetch and is the failure PROJECT.md 3 names.
      *
      * @return string '' when it is data, otherwise why not.
      */

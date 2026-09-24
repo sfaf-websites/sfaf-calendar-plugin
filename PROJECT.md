@@ -3829,7 +3829,7 @@ featured-image branch should stop passing through `large`, and whether
 
 ### The import framework
 
-Both platforms import through one framework (`SFAF_Sources`). Imported events
+Every platform imports through one framework (`SFAF_Sources`). Imported events
 land in a **pending queue**; somebody approves them; a fetch may run again
 afterwards.
 
@@ -3842,8 +3842,21 @@ abstract base: `slug()`, `label()`, `is_active()`, `inactive_reason()`,
 **Adding a platform means writing an adapter and registering it. No file in
 `class-sfaf-sources.php` changes.** GFMP proved that when it was added: the
 framework was untouched. Registration is in `sfaf_init()`, or externally through
-the `sfaf_source_adapters` filter. **EveryAction is expected to arrive this
-way** (see §8).
+the `sfaf_source_adapters` filter. **EveryAction arrived this way in 3.101.0**,
+with three hooks added to the base class, each a no-op by default so the other
+two adapters are unchanged:
+
+```
+runs_unattended()          false holds the source back from the SCHEDULED run
+                           only; Fetch updates still reads it. run_all() takes
+                           'manual' (the default) or 'scheduled' (the runner).
+after_save( id, event, new )  after an event is created or refreshed, for what
+                           the common shape cannot carry; returns changes for
+                           the report. Never called for a dismissed or trashed
+                           event.
+after_run( &$result )      after a run, with its result, to add notes or record
+                           numbers.
+```
 
 `normalize()` returns a common shape keyed `external_source`, `external_id`,
 `title`, `description`, `start_date`, `start_time`, `end_date`, `end_time`,
@@ -4192,83 +4205,256 @@ is Eventbrite's record rather than a term in our Organizers taxonomy, and
 guessing a mapping between the two would create duplicate terms nobody asked
 for.
 
-### EveryAction, a panel with no importer (3.100.0)
+### EveryAction (panel 3.100.0, import 3.101.0)
 
-**Settings & Integrations carries an EveryAction panel beside GoFundMe Pro and
-Eventbrite**: hub address (default `https://hub.sfaf.org`), API key, username,
-password, tracker ID (default `162570`), **Test connection**, and a **Tracker
-probe**. **There is no adapter, no fetch on the runner, no pending-queue entry
-and no Auto-Import**, and the panel says so in one line. `SFAF_EveryAction` is
-the class; it is not registered as a source.
+EveryAction events come from **Val's tracker on the MangoApps hub**
+(`hub.sfaf.org`), read with a session login, and become ordinary imported events
+in the pending queue through the same framework as GoFundMe Pro and Eventbrite.
+The signup link for each comes from the **public events list** at
+`50plus.sfaf.org/a/asevents`. `SFAF_EveryAction` holds the session, the paged
+read, the list reader and the panel's numbers; `SFAF_Source_EveryAction` is the
+adapter.
 
-> **The brief said "in Automation".** The GoFundMe Pro and Eventbrite panels are
-> on Settings & Integrations (`uc-settings`), and Automation is the runner's
-> screen, so the panel went beside them, which is what "mirror it in shape and
-> placement" asked.
+**WHY THE TRACKER AND NOT THE EVERYACTION API, AND IT IS THE PART WORTH
+PROTECTING.** EveryAction API keys **cannot be scoped to events only**. Any key
+that returns event listings also exposes client and attendee records from the
+**Aging Services** program. The API route was rejected on **privacy grounds,
+not technical ones**, agreed 2026-08-17. It would work, and the exposure is
+unacceptable. Do not revisit this by finding a cleverer set of API calls; the
+constraint is the key's scope. For the same reason, **never solve a hub login
+problem with a stored browser session cookie**: it expires, it belongs to a
+person, and it would put an Entra session for the Aging Services tenant in our
+database, which is that objection one step worse.
 
-**The flow is the documented session login**, §8 has why: `POST
-{hub}/api/login.json` with `ms_request.user` carrying `api_key`, `username`
-and the password base64-encoded; `ms_response.user._token` becomes the
-`_felix_session_id` cookie; `GET /api/trackers/forms/get_submissions/{id}`,
-the version 1 read, rows at `ms_response.data` (3.100.2, §8 has why not version
-2); `POST /api/logout`, which runs whenever a login succeeded, whatever the read
-did.
+#### The session, the read and the panel
 
-- **Test connection** reads the tracker and says "Connected. Tracker
-  reachable, N rows.", N counted from the list at `ms_response.data`; a reply
-  with no list there is a failure. **A failure names the step** (login, tracker
-  read, logout) and gives **the hub's own message** when the body has one
-  (`ms_errors`, `error`, or `ms_error`), else the HTTP status, else that the hub
-  could not be reached. **A 200 that carries a message is a failure**: the
-  version 2 read answered 200 `{"ms_error":"You don't have permission."}`. So
-  is **a 200 that is a web page**: the hub's browser surface answers 200 `text/html` with a sign-in
-  page, and that must never read as a successful fetch. Credentials that pass
-  are stored, like GoFundMe Pro's, so a test without Save loses nothing.
-- **The probe** logs in, reads the tracker, logs out, and prints the body as
-  sent, with the row count at `ms_response.data`, and any refusal in the words
-  Test connection would use. **It writes nothing, the status option included.**
-- **The outcome is kept in `sfaf_everyaction_status`**, disposable, like
-  `sfaf_gfmp_token`.
+```
+POST {hub}/api/login.json   {"ms_request":{"user":{api_key, username, password}}}
+                            the password base64-encoded, the body a JSON STRING
+ms_response.user._token  -> the _felix_session_id cookie on every call after
+GET  {hub}/api/trackers/forms/get_submissions/{id}      rows at ms_response.data
+     then ?page=N, see below
+POST {hub}/api/logout       whenever the login succeeded, whatever the read did
+```
 
-**No credential leaves the class.** Every message and every body shown goes
-through `scrub()`, which replaces the API key, the password in both forms and the
-session token with their length, for a hub that echoes one. Nothing logs. The
-screen never renders the key or the password, only whether one is stored.
+**The version 1 read, not version 2.** `GET /api/v2/trackers/{id}/fetch-all-entries`
+answers **200 with `{"ms_error":"You don't have permission."}`** for this tracker
+(3.100.2). Val's own working call is the version 1 read above, with the same
+cookie. Do not move back to version 2 without a probe showing it answers with
+rows. **A 200 that carries a message is a failure** (`ms_errors`, `error` or
+`ms_error`), and so is **a 200 that is a web page**: the hub's browser surface
+answers 200 `text/html` with a Microsoft sign-in page, and that must never read
+as a successful fetch.
 
-**Tested against a model hub.** `.claude/everyaction-hub.php` stands in for
-`wp_remote_*`, answering the version 1 read and refusing the version 2 one as
-the real hub does; `everyaction-test.php` plays three rows, one, none, rows in
-the wrong place, the login failures, four tracker failures (the 200 refusal
-among them), a failed logout, an echoing hub and nothing
-stored, and checks the requests the hub received, what was stored, and that no
-credential reached the screen, the status option or PHP's log.
+**Settings & Integrations carries the panel**: hub address (default
+`https://hub.sfaf.org`), API key, username, password, tracker ID (default
+`162570`), **Auto-Import events** (off by default), **Last fetch** (when, rows
+read, created, updated, or the failure), **Signup links** (when the list was
+last read, and how many upcoming imported events have their own page),
+**Test connection** and the **Tracker probe**.
+
+- **Test connection** logs in, reads the first page, logs out, and says
+  "Connected. Tracker reachable, N rows." or names the step that failed with the
+  hub's own words. Credentials that pass are stored, so a test without Save
+  loses nothing. The outcome is kept in `sfaf_everyaction_status`, disposable.
+- **The probe** prints the first page's body as sent, with the row count, and
+  writes nothing.
+- **No credential leaves the class.** Every message and every body shown goes
+  through `scrub()`, which replaces the API key, the password in both forms and
+  the session token with their length. Nothing logs. The key and the password
+  are write-only fields. Credentials live in `sfaf_credentials`, never
+  `uc_settings`. Auto-Import is a setting, not a credential, so it is in
+  `uc_settings` and absent means off.
+
+#### What a row becomes
+
+| Tracker | Event |
+|---|---|
+| `UUID` | `_uc_external_id`. **The only key.** An event is found by it and never by its title, so two programs with one title stay two events and a renamed row stays one. It is EveryAction's event ID, the same number as `data-event-id` on the public list, which is what the signup link joins on. |
+| `Title` | The title. Source-owned. |
+| `Start_Time`, `End_Time` | `"MM/DD/YYYY hh:mm AM +0000"`. **UTC, converted to the site's timezone.** Date, start and end time, end date. Source-owned. |
+| `Location_Name` | Composed, `"Place, street, city, ST zip"`. **The text before the first comma is the place name**, `_uc_location_name`. |
+| `Location_Street`, `_City`, `_State`, `_Zip` | The four address parts and the line they compose, `_uc_location`. When all four are empty, the rest of `Location_Name` is read with the venues parser. Source-owned. |
+| `Series_ID` | **The series.** One `uc_series` term per code, see below. |
+| `Description` | **Seeds the description once**, see below. |
+| `Visibility` | Empty means public. Any other value is said in the fetch report ("1 row is marked "Internal" at the source. Check it before publishing."). The privacy flag stays the manager's. |
+| `Capacity`, `SignUps` | Not read. Registration is at the source (3.97.0), so a capacity here has nothing to limit. |
+| `Public_URL` | Not read. Usually empty; the signup link comes from the list. |
+| `RowId`, `CreatedAt`, the `Submitted` fields | The hub's own. Not event data. |
+
+**THE TIMES ARE UTC, AND THE +0000 IS CORRECT.** 3.100.2 recorded Val's reading
+that these are Pacific times carrying a label to ignore. That was wrong, and
+the evidence is the coffee social: it reads 5 pm in October and 6 pm in
+November, which is 10 am Pacific either side of the clock change. A label on a
+local time would not move by an hour across the change. `to_local()` parses the
+shape exactly and converts; anything else is refused rather than guessed.
+
+**PAST ROWS ARE NOT IMPORTED, judged on the end time**, not on the day, so a
+morning event is not imported that afternoon. The refusal is the framework's
+`not_an_event`, so it applies only where a new row would be made: an event
+already here is still refreshed, and still counts as present at the source.
+
+**THE DESCRIPTION IS THE MANAGER'S, SEEDED ONCE (decided 2026-09-24).** The
+brief made it source-owned. It is usually empty at the source, an owned field
+is locked in the editor, and since 3.99.0 an event cannot be published without
+one, so owning it would have left most of these events unpublishable. It is in
+`manager_fields()` instead: the first import writes the tracker's text when
+there is one, and no fetch changes it after that. The queue marks it as needing
+filling in, like the image.
+
+**THE PLACE IS WRITTEN BY THE ADAPTER, NOT THE FRAMEWORK**, through
+`after_save()`, because it is a name and four parts rather than one line, and
+because **an event a person promoted to a venue must not get its text back**.
+Promotion deletes the event's own name, parts and line; an event has a venue or
+its own text, never both (§2). So the adapter skips the place on any event that
+points at a venue. It never creates a venue itself: that is an approver's
+decision on the pending row, and the row offers it because the place name is
+there.
+
+**THE SERIES.** One series per `Series_ID`, found by the term meta
+`_sfaf_series_everyaction_id`. The first time a code is seen, the series is
+named from that row's title. A series of that name that no code has claimed is
+used, as a repeat does with its own title; one another code has claimed is not,
+and the new series carries the code after its name. **It is set only on an
+event that has no series**, so a series a person moves an event to afterwards
+stays theirs.
+
+**Fields.** Owned: title, date, start and end time, end date, location, source
+URL. Manager's: description, image, category, organizer, private. The tracker
+has no image.
+
+#### Reading every page, when the page parameter is not documented
+
+The hub's apidoc lists `id` and nothing else for this read. Rows come a hundred
+at a time, and `page` is what the rest of its version 1 API pages with. So
+`read_rows()` **checks the parameter rather than trusting it**:
+
+- The bare address is the first page. A page of fewer than a hundred ends it.
+- `page=1` comes next. If it repeats the first page, pages count from 1 and the
+  read carries on at 2; if not, it is already the second page. Nothing is
+  skipped either way.
+- **A full page that adds no new UUID** means the hub ignored the parameter or
+  went round. The read stops and says the list may be incomplete, which is what
+  keeps the removal step from running on it. It never loops and never counts a
+  row twice. A ceiling of 50 reads says the same.
+
+**Removal is the framework's, with the adapter's word on top.** A run is
+complete only when every page was read AND something came back. **An empty
+tracker unpublishes nothing**: the adapter says so, and the framework's own
+guard says so again. A row gone from a whole, non-empty list makes its event a
+draft, as for the other two sources.
+
+#### The signup link
+
+The event page's registration button is `source_url` (3.97.0). For an
+EveryAction event that is **its own page on the public list**, found by UUID.
+
+**THE LIST, READ ONCE A DAY.** A runner task, `everyaction_links`, reads
+`https://50plus.sfaf.org/a/asevents` and then `?pn=2`, `?pn=3` and on, with
+`DOMDocument`. From each `div.oa-event-result-container` it takes
+`data-event-id` and the `href` of `a.oa-event-result-signup-link`, **searched
+within that entry** (a query from the whole page gives every entry the first
+link). The pairs go into `sfaf_everyaction_links`, **replaced whole by each good
+read and never by a failed or empty one**, and every imported event whose UUID
+is there gets that address. It runs whenever a hub login is stored, not behind
+Auto-Import, so the first fetch by hand finds the links read. A fetch also
+reads the list first when the last good read is more than a day old.
+
+**PAST ITS LAST PAGE THE LIST SHOWS PAGE ONE AGAIN** (measured 2026-09-24:
+`pn=16` and `pn=40` both answer with page one). So a short page ends the read,
+and so does a page whose entries were all read already, which is the case a
+list of exactly a multiple of ten would reach. A 40-page ceiling backs both.
+
+**NO MATCH: THE LIST, FILTERED TO THE EVENT'S DAY.**
+`https://50plus.sfaf.org/a/asevents?date_start=MM-DD-YYYY&date_end=MM-DD-YYYY`.
+The filter on the page is a form; its own redirect turns the dates into those
+two parameters, and the list reads them from a plain link. `DateFrom` and
+`DateTo` in the address are ignored. **An event keeps a matched page once it has
+one**: a fetch writes only a matched address, so an event the list stops
+showing (full, or closed) does not fall back to its day. The day address is
+written only where there is no page, and follows the date if it moves.
+
+**The number on the panel**, "N of M upcoming events have their own signup
+page", is recounted after every read and every fetch. **A change to the list's
+markup shows as this number dropping.** That is the whole of the monitoring:
+the list is EveryAction's page, not ours, and every selector above is theirs.
+
+**The list is on a different host from the signup pages.** Every signup link is
+`han.sfaf.org/a/<slug>`, the kebab-cased title plus an occurrence number that is
+not derivable from the date, which is why the link has to be read rather than
+built.
+
+#### Auto-Import gates the runner, not the button
+
+`SFAF_Sources::run_all( $trigger )` takes `'manual'` (Fetch updates on the
+Pending screen, the default) or `'scheduled'` (the runner). A scheduled run
+skips any adapter whose `runs_unattended()` is false and the log says
+"EveryAction: Auto-Import is off. A manual fetch still reads it." **Fetch updates
+always reads EveryAction**, so the first fetch can be done by hand with the
+switch off and the queue looked at before anything repeats. The unattended
+fetch also needs the Automation screen's own switch, `auto_fetch_enabled`, on.
+
+#### The data questions that are Val's, not the adapter's
+
+**The adapter imports what the tracker holds and de-duplicates nothing.** Two
+things in the source would each arrive twice:
+
+- **The 2027 Saturdays are in the tracker twice**, under two runs of UUIDs.
+- **Two programs are one Saturday event under two names.** "50-Plus Saturday AM
+  Coffee Social" and "Saturday AM Coffee Social" both run Saturdays 10:00 to
+  12:00 at Maxfield's, as separate entries with separate ids, and only the
+  second carries a description ("fotr" for "for"). Each has its own
+  `Series_ID`, so each gets its own series.
+
+Matching on title and time to merge them would be the adapter guessing which is
+real, and it would guess wrong the first time two genuinely separate events
+shared a slot. It is a data question for Val and Mark.
+
+#### Tested against a model hub and the real list
+
+`.claude/everyaction-hub.php` stands in for `wp_remote_*`, including the list's
+host. `everyaction-test.php` covers the panel, the login and the probe;
 `everyaction-live.php` runs the real panel and `admin/js/everyaction.js` in
-Chrome, answering each press with the real handler's payload.
+Chrome. `everyaction-import-test.php` runs the real framework, adapter, series,
+venues and credentials over a model WordPress, against
+`fixtures/everyaction-tracker.json` and **the real list's markup** saved
+2026-09-24 in `fixtures/`. **The tracker fixture is not a captured probe**: no
+probe body was recorded, so it is built from the row shape as described, and
+its `_about` says so. Replace it with a real body when there is one. Its dates
+are next year's, so it never goes stale.
+
+#### How the login was established (3.100.0, 3.100.1)
+
+**The first reads, 2026-09-21, went to the browser surface.**
+`GET /user/v2/tracker/data` answered **302** to `/oauth2/init?provider=35303`
+and then a Microsoft Entra sign-in page, **200 `text/html`**, which is the
+failure worth naming because a 200 parses as a successful fetch. `/api/v2/`
+answered a bearer key with 401, and `client_credentials` was unsupported. The
+documented flow is the session login above, from `start.mangoapps.com/apidoc`.
 
 **THE LOGIN'S 422 IS THE KEY, NOT THE SHAPE (3.100.1).** The panel reported
-"Login failed: HTTP 422." and the brief read it as a malformed request. It was
-reproduced against the real hub with placeholder credentials before anything
-changed, and **the documented request, sent by curl with curl's headers, got the
-same 422**, with a plain-text body of "ok". So did an empty `{}`, and so did
-the request carrying WordPress 7.1.2's exact headers. The same request with the
-real key was answered 200 with ms_errors ("Login id or Password is Incorrect")
-on 2026-09-23. **The hub answers 422 "ok" to a key it does not recognise, before
-it reads the username or the password**, so a placeholder can never reach the
-structured answer and cannot prove the shape. What the hub does to other
-shapes, for the record: no `.json` suffix is 400 "Please post a valid data
-structure", a form-encoded body or an empty key is a 500, a GET is 401.
+"Login failed: HTTP 422." and it was reproduced against the real hub before
+anything changed: **the documented request, sent by curl, got the same 422**,
+with a plain-text body of "ok". So did an empty `{}`, and so did the request
+carrying WordPress 7.1.2's exact headers. The same request with the real key was
+answered 200 with ms_errors ("Login id or Password is Incorrect") on 2026-09-23.
+**The hub answers 422 "ok" to a key it does not recognise, before it reads the
+username or the password.** For the record: no `.json` suffix is 400 "Please
+post a valid data structure", a form-encoded body or an empty key is a 500, a
+GET is 401.
 
 **The plugin's bytes were checked, not assumed.** `login()` was run through
-WordPress core's own `WP_Http` and Requests, downloaded, against a local echo
-server: the 144-byte body is identical to curl's, and the only header
-differences are the three WordPress always sends (`User-Agent`,
-`Accept-Encoding`, `Connection: Close`), which the replay showed the hub
-ignores. Two things changed anyway: the JSON keeps a slash in a base64 password
-as a slash, so the bytes are a hand-written body's, and a hub address typed with
-a path is cut to its origin, so `/api/api/login.json` cannot happen.
-`everyaction-test.php` asserts the exact request as bytes. **Any failure now
-gives the status and then what the hub said**, and a login 422 says to check the
-key.
+WordPress core's own `WP_Http` and Requests against a local echo server: the
+144-byte body is identical to curl's, and the only header differences are the
+three WordPress always sends, which the replay showed the hub ignores. The JSON
+keeps a slash in a base64 password as a slash, and a hub address typed with a
+path is cut to its origin, so `/api/api/login.json` cannot happen.
+`everyaction-test.php` asserts the exact request as bytes. **Any failure gives
+the status and then what the hub said**, and a login 422 says to check the key.
+
+**A service account, not a person's login.** A person's own login carries their
+access to everything else in the hub and dies when they change their password or
+leave, so the plugin holds a service account's.
 
 ### Pardot / Salesforce, pending
 
@@ -4320,7 +4506,8 @@ store their credentials properly, and **nothing calls those APIs**. There is no
 Galaxy request anywhere in the plugin; the "Sync Now" button raises a JavaScript
 alert. Similarly `gofundme_auto_import` is a stored setting that is wired to
 nothing (the unattended fetch is `auto_fetch_enabled`, which is a different
-setting and is wired). These are kept on purpose rather than removed, in the
+setting and is wired). EveryAction's own Auto-Import, by contrast, is wired: it
+holds that source back from the scheduled run (3.101.0). These are kept on purpose rather than removed, in the
 same spirit as the satellite feed. Do not report them as working, and do not
 delete them assuming they are.
 
@@ -4874,8 +5061,8 @@ any read of `uc_rsvps`, because those are the invariants the release exists for.
 
 There is **one** runner, `SFAF_Cron`, on a **15-minute** recurrence, for every
 unattended job. `SFAF_Cron::tasks()` is the single list of them: the reminder
-pass, the pre-event summary, the third-party fetch, the queue sweep and the
-orphan check. `run()` iterates it and
+pass, the pre-event summary, the third-party fetch, the queue sweep, the
+EveryAction signup-link read (once a day, 3.101.0) and the orphan check. `run()` iterates it and
 the Automation screen iterates it, so a job cannot be run without appearing on
 the screen and cannot appear without being run. Anything added later joins that
 list rather than scheduling its own event, so there is one lock and one log.
@@ -6467,246 +6654,6 @@ occurrence in the middle of somebody's editing. The unit people care about is
 
 **Dismiss exists because of that same editing session.** A date created and then
 removed, or created only to correct a typo, must be closable without mail.
-
-### EveryAction event import, agreed 2026-08-17
-
-**Why not an API.** EveryAction API keys **cannot be scoped to events only**.
-Any key that returns event listings also exposes client and attendee records
-from the **Aging Services** program. The API route was rejected on **privacy
-grounds, not technical ones**. It would work, and the exposure is unacceptable.
-Do not revisit this by finding a cleverer set of API calls; the constraint is
-the key's scope.
-
-> **THE SOURCE HAS MOVED TO A MangoApps TRACKERS ENDPOINT**, and what is being
-> waited on from Val is now that endpoint plus a **sample response**. The shape
-> below was agreed when it was going to be a file he wrote; the privacy
-> reasoning above is unaffected and is the part worth keeping, because it is the
-> half nobody can reconstruct later. **Do not build the adapter until the sample
-> exists**: the GFMP spec has been wrong or silent four times and every one cost
-> a release.
-
-**The agreed mechanism**, as it stood when the file was the source.
-
-- **Val**, who manages EveryAction, runs a **cron job on the hour** that writes a
-  **JSON file of events** to the shared host.
-- The plugin **fetches it over plain HTTPS at half past the hour**. No
-  authentication layer, no API client. This has already been proven with an
-  earlier PHP file, so the fetch path is known to work.
-- Imported events land in the **pending queue**, exactly like GFMP and
-  Eventbrite, and go through the same `owned_fields()` / `manager_fields()`
-  contract in §3.
-
-**"Half past" means the first visit after that.** WordPress cron does not fire on
-a schedule on its own (§4), so the fetch happens on the first run at or after the
-half hour. For hourly data that is fine, and no special handling is needed.
-
-**Fields requested from Val:**
-
-| Field | Why |
-|---|---|
-| A **stable unique ID per occurrence** | So a refetch updates rather than duplicates. Without it, every fetch creates a new event. |
-| Title | |
-| Start and end **date and time, with timezone** | |
-| **The public signup URL for that specific occurrence** | Each date has its own. **This is the field that makes the integration worth building at all.** A generic program URL does not do the job. |
-| Location name and address | |
-| Description | |
-| Image URL | |
-| Public or internal | Maps to the private flag. |
-| Capacity, if available | |
-| **Something identifying the recurring group** an occurrence belongs to | So a weekly coffee social groups as one series rather than arriving as 52 unrelated events. |
-
-**Open questions, both to be settled before the adapter is written:**
-
-1. **A sample file with real events has been requested.** Do not build the
-   adapter against a guessed shape. The GFMP spec has been wrong or silent four
-   times (§3) and every one of those cost a release.
-2. **Does Val's job write atomically** (temp name, then rename), so a fetch
-   cannot catch a half-written file? A partial JSON read on the hour is a
-   plausible and silent failure mode.
-
-> **THE TRACKER READ NOW HAPPENS THROUGH THE PROBE (3.100.0).** The panel on
-> Settings & Integrations holds the credentials (§3) and runs the documented
-> login from the site itself. **Test connection answers the credential question
-> in the hub's own words; the Tracker probe prints the first page as sent**,
-> which is the sample this entry has been waiting for. `private/everyaction.json`
-> is deleted: the plugin is the only home for these credentials. The two failed
-> attempts below stand as the record; the second was repeated on 2026-09-23 with
-> a new account and got the same answer, "Login id or Password is Incorrect".
-> **From the site, the panel's first answer was HTTP 422 (3.100.1): the hub not
-> recognising the API key.** §3 has the reproduction. The key is the next thing
-> to settle with Val.
-> **Do not build the adapter until a probe has returned rows.**
-
-#### The tracker read is the version 1 one (3.100.2)
-
-**THE VERSION 2 READ IS REFUSED FOR THIS TRACKER.** With the real account the
-login succeeded, and `GET {hub}/api/v2/trackers/{id}/fetch-all-entries`
-answered **200 with `{"ms_error":"You don't have permission."}`**. Val's own
-working call uses **`GET {hub}/api/trackers/forms/get_submissions/{id}`** with
-the same `_felix_session_id` cookie, and gets the rows. That is the read in use,
-for Test connection and the probe. Do not move back to version 2 without a
-probe showing it answers with rows.
-
-**The rows are a list at `ms_response.data`, each row a flat object.** Keys
-include `RowId`, `UUID`, `Title`, `Start_Time`, `End_Time`, `Location_Name`,
-`Location_Street`, `Location_City`, `Location_State`, `Location_Zip`,
-`Series_ID`, `Description`, `Public_URL`, `Visibility`, `Capacity` and
-`SignUps`. This is Val's description of his own call; the probe's output is
-still the sample the adapter is written against.
-
-**Two facts from Val, both of which an adapter gets wrong by default:**
-
-- **`Start_Time` and `End_Time` are Pacific local times carrying a `+0000`
-  label that must be ignored.** Parsed as written, every event lands seven or
-  eight hours early. Read the wall-clock digits and apply
-  `America/Los_Angeles`.
-- **`UUID` is EveryAction's event ID**, in the same series as `data-event-id`
-  on the public events page. It is the stable per-occurrence ID the field list
-  above asked for, and it joins a tracker row to the public list.
-
-**THE PUBLIC LIST HAS BEEN READ, 2026-09-21. THE TRACKER HAS NOT.** The two
-reads are separate and only one is done. The open questions above still stand,
-and **what follows is the public list only, not a substitute for the sample
-response.**
-
-#### Why the tracker read failed, 2026-09-21, with the real keys
-
-**THE CREDENTIALS WERE SUPPLIED AND THE READ STILL RETURNED NO DATA.** Val's
-endpoint is not an API endpoint. Record this so the next session does not spend
-the trip establishing it again. Credentials live in `private/everyaction.json`,
-which is gitignored; nothing below carries one.
-
-| What was asked | What came back |
-|---|---|
-| `GET /user/v2/tracker/data?id=...&project_id=...`, the endpoint as given | **302** to `/oauth2/init?provider=35303`, plus a `_felix_session_id` cookie |
-| The same, following the redirect | **200 `text/html`**, a Microsoft Entra ID page titled "Sign in to your account" |
-| `GET /api/v2/tracker/data?id=...&project_id=...`, bearer key | **401**, `text/plain`, no `WWW-Authenticate` |
-| `POST /oauth2/token`, `grant_type=client_credentials` | **400** `unsupported_grant_type` |
-| `POST /api/oauth2/token` | **404** |
-
-**`/user/v2/` IS THE BROWSER SURFACE, NOT THE API.** It redirects to SSO before
-any credential is considered, so no header can ever satisfy it: the 200 that
-comes back is a login page, which is the failure mode worth naming because **it
-is a 200 and it parses as a successful fetch**. An adapter pointed at this URL
-would store a Microsoft login page and report success.
-
-**`/api/v2/` IS THE API**, a Rack application that answers 401 rather than
-redirecting. So the path exists and the credential was refused on it.
-
-**MangoApps issues API tokens from Admin > API > Tokens**, per their developer
-reference, and authenticates with `Authorization: Bearer <token>`. That is
-consistent with `client_credentials` being unsupported: there is no exchange,
-the token is minted in the admin UI. **So the likeliest reading is that the key
-and secret are not an Admin > API token**, or not one scoped to this tracker.
-
-> **WHAT TO ASK VAL, AND IT IS ONE QUESTION.** Not "it did not work". Ask for
-> **the `/api/v2/` path for tracker 162570 in project 1547861, and a token from
-> Admin > API > Tokens with read access to it**. If the tracker can only be
-> reached by a signed-in browser session, then the arrangement in this section
-> does not work at all and the answer is a scheduled export he pushes to us,
-> which is the file-based shape this entry already describes above. **Do not
-> solve this with a stored session cookie**: it expires, it belongs to a person,
-> and it would put an Entra session for the Aging Services tenant in our
-> database, which is the privacy objection that ruled out the API key in the
-> first place, one step worse.
-
-#### The login flow was the right flow, and it was also refused (2026-09-21)
-
-**THE HEADER PROBES ABOVE WERE THE WRONG FLOW.** The documented one, at
-`start.mangoapps.com/apidoc` and matching Val's own script, is a session login
-that yields a cookie. It was run and it authenticates nothing.
-
-```
-POST {hub}/api/login.json          Content-Type: application/json
-  { "ms_request": { "user": {
-      "api_key": "...", "username": "...", "password": "<base64>" } } }
-
-  -> 200  {"ms_errors":{"error":{
-             "message":" Login id or Password is Incorrect.",
-             "error_code":"AUTHENTICATION_ERROR"}}}
-```
-
-**THE REQUEST SHAPE IS CONFIRMED CORRECT**, not guessed: the apidoc's own
-parameter list for `POST /api/login` is `ms_request[user]` carrying `username`,
-`password` and `api_key`, which is exactly what was sent. **The password was
-tried base64 and plain and both were refused identically**, so the encoding is
-not the fault. **No session was established, so no tracker call was made and
-`/api/logout` was not needed.**
-
-> **THE LIKELIEST CAUSE IS SSO, AND IT FOLLOWS FROM WHAT IS ALREADY ABOVE.**
-> `hub.sfaf.org` sends browser logins to `/oauth2/init?provider=35303` and on to
-> Microsoft Entra. **An account provisioned through Entra normally has no
-> MangoApps-local password at all**, and `/api/login.json` checks a local
-> password. So a person can sign in through the browser every day and still have
-> nothing this endpoint can accept: the password they type is Microsoft's, and
-> MangoApps never sees it. That is consistent with every result in this section,
-> including `client_credentials` being unsupported.
-
-**WHAT IS STILL NEEDED IS ONE THING AND IT IS NOT A BETTER GUESS.** A MangoApps
-account that can authenticate without SSO, or a token minted in Admin > API >
-Tokens, either of them scoped to tracker 162570 in project 1547861. **The
-plugin needs a service account for this regardless**, because a person's own
-login is not a credential a scheduled job may hold: it carries their access to
-everything else in the hub, and it dies when they change their password or
-leave. That question is with Val.
-
-#### The public list at `50plus.sfaf.org/a/asevents` (read 2026-09-21)
-
-**It is an EveryAction-hosted page, not ours.** The response sets a cookie on
-`everyaction.com` and loads `static.everyaction.com`, so the markup below is
-theirs and can change without notice. Treat every selector as a fixture to
-assert, not a contract.
-
-**Paging is `?pn=N`, ten entries a page, fifteen pages.** Page one is the bare
-URL and `?pn=1` is not linked. The pager links 2 to 5, an ellipsis, then Last at
-`?pn=15`, so the list holds up to 150 occurrences.
-
-**Each entry is one `div.oa-event-result-container`** carrying:
-
-| Attribute or class | Example from a real entry |
-|---|---|
-| `data-event-id` | `750059398` |
-| `data-event-type` | `50 Plus Event Type` |
-| `data-event-name` | `50-Plus Saturday AM Coffee Social` |
-| `.oa-event-result-name-link` `href` | `https://han.sfaf.org/a/50-plus-saturday-am-coffee-social-12` |
-| `.oa-event-result-startdate` | `September 26, 2026` |
-| `.oa-event-result-starttime` | `10:00 AM` |
-| `.oa-event-result-endtime` | `12:00 PM` |
-| `.oa-event-result-location` | `Maxfield's House of Caffeine, 398 Dolores St, San Francisco, CA 94110` |
-| `.oa-event-result-signup-link` `href` | same as the name link |
-| `.oa-event-result-description` | present on some entries, absent on others |
-
-**`data-event-id` IS DISTINCT PER OCCURRENCE.** Five consecutive Saturdays came
-back as 750059398, 399, 400, 401 and 402. If the tracker carries the same
-number, that is the stable per-occurrence ID the adapter needs and the link
-lookup is a join on it rather than on a title and a date. **Confirm that against
-the tracker before relying on it**, because an ID that exists only on the public
-page cannot key an import whose source is the tracker.
-
-**`data-event-name` is the recurring group**, shared by every occurrence of a
-program and distinct from the per-occurrence slug.
-
-**THE SIGNUP URL IS ON A DIFFERENT HOST FROM THE LIST.** The list is
-`50plus.sfaf.org`; every signup link is `han.sfaf.org/a/<slug>`. The slug is the
-kebab-cased title plus an occurrence number, `-12`, `-13`, and the first
-occurrence of a program can have none at all, as `monthly-community-meal` does.
-**The number is not the date and not derivable from it**, which is the whole
-reason the lookup has to read this page rather than construct the URL.
-
-**No timezone appears anywhere on the page**, and neither does an end date: the
-entries read as same-day local times. The timezone has to come from the tracker
-or be asserted as America/Los_Angeles by us.
-
-> **TWO PROGRAMS ARE THE SAME EVENT UNDER TWO NAMES, AND MARK HAS TO SAY WHICH
-> IS REAL.** "50-Plus Saturday AM Coffee Social" (slugs `-12` to `-16`) and
-> "Saturday AM Coffee Social" (slugs `-8` to `-11`) both run Saturdays 10:00 to
-> 12:00 at Maxfield's, and both were on page one for September 26, October 3, 10
-> and 17 as separate entries with separate ids. **An importer told to take this
-> page would create two events per Saturday.** The two also disagree on
-> description: only the second carries one, and it has a typo, "fotr". The pair
-> ends at different points, so October 24 has only the 50-Plus one. This is a
-> data question for Val and Mark, not something the adapter should try to
-> de-duplicate by matching times.
 
 ### A parameter nothing passes is a feature nothing has (3.73.0)
 
