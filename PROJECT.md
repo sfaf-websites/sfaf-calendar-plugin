@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.32.0**.
+Current version at last update of this file: **3.103.0**.
 
 ---
 
@@ -976,8 +976,9 @@ requester said, before it was ever stored.
 The community form has no organizer question at all, deliberately: it is reached
 at a series' own address by somebody outside SFAF, who is in no position to
 guess which programme is putting an event on. It **inherits** every organizer
-the series lends, read off the series' most recent event, and inheriting only
-the first put a co-hosted submission under one team's filter and not the other's.
+the series lends: the series' default organizers when it names them (3.103.0),
+read off the series' most recent event otherwise. Inheriting only the first put
+a co-hosted submission under one team's filter and not the other's.
 
 **AND IT INHERITED NOTHING AT ALL UNTIL 3.85.0, BECAUSE THE EVENT WAS ITS OWN
 SOURCE.** `create_event()` added the new event to the series and then asked
@@ -1061,8 +1062,9 @@ with longer pauses between them. Narrowing and relabelling stay instant, because
 they are local and cost nothing; only the whole-block redraw waits.
 
 **THE NARROWING IS ONE-WAY AND DERIVED FROM EVENTS.** Nothing stores a group's
-organizer: a series carries a description, an image and a FAQ set, and an
-organizer is a property of the EVENTS in it. `who_counts()` reads them off the
+organizer for this: an organizer is a property of the EVENTS in it. A series'
+default organizers (3.103.0) are what a NEW event is given, not a statement about
+the group, so the filter does not read them. `who_counts()` reads them off the
 published, non-private events in each group as it counts, so a group appears
 under every organizer that runs anything in it, and a collaboration appears
 under both. Selecting organizers hides non-matching groups; selecting groups does NOT
@@ -2606,9 +2608,33 @@ event, and the import warning is unchanged.
   refuse a draft. A save that arrives with no title anyway is still stored as
   "(untitled event)", as it always was.
 
-**What the gate does not cover.** It is the editor's save. The pending queue's
-Approve, its manager panel's Publish, bulk publish on the events list and on the
-series schedule each set the status by their own route and are not held by it.
+**EVERY OTHER WAY OF PUBLISHING ASKS THE SAME LIST (3.103.0).** Until 3.103.0 the
+gate was the editor's save alone: Approve, bulk publish on the events list and
+on a series' schedule each set the status their own way, so a submission with no
+category could go live from the queue while the editor would have held it.
+`SFAF_Sources::publish_missing( $id )` is the same list asked of STORAGE, for
+the routes that write nothing but the status:
+
+| Route | How it asks |
+|---|---|
+| Approve, on the queue and in the editor's request panel | `SFAF_Portal::publish_one()` |
+| Publish on the pending queue's bulk bar | `SFAF_Portal::publish_one()` |
+| Bulk publish on the events list | `SFAF_Series::publish_skip_reason()` |
+| Bulk publish on a series' schedule | `SFAF_Series::publish_skip_reason()` |
+
+`publish_one()` is the check and the status write together, so Approve and the
+bar cannot disagree; `publish_skip_reason()` asks the list last, after its five
+older tests. **Nothing is refused silently**: every held row is kept in a
+transient and `render_held()` lists it on the page the redirect lands on, by
+title, linked to its editor, with what it needs. The import row's own Publish
+has always opened the editor, so it always had the rule.
+
+**A DESCRIPTION IS THE EVENT'S OWN OR ITS SERIES'**, in both halves of the rule
+(3.103.0). An event with none of its own shows the series description on every
+surface (3.98.0), and 3.99.0 held such an event for a description it already
+showed. The editor asks the series the event will be in AFTER the save, and
+counts a category or organizer the series is about to fill as filled; see
+"Series defaults" in section 2.
 
 **Tested in a miniature WordPress.** `.claude/wp-kit.php` loads the whole
 plugin against an in-memory store, so `publish-gate-test.php` runs the real
@@ -2735,6 +2761,36 @@ source, by its first guard.
 > planted to prove it can fail, including the two real ones above. All six were
 > caught. See the note in §1 on what a rendering test can and cannot prove.
 
+### The pending queue's bulk bar (3.103.0)
+
+**A tick on every row and a bar above the list: Set series, Set categories, Set
+organizers, Publish, Dismiss.** It is the events list's arrangement, stacked:
+one form, one set of ticks, `uc_action` names the form and `uc_do` the button.
+The rows hold forms of their own, so the ticks join the bar by `form=` and
+`initTickPickers()` reads them through `form.elements`. Every button is typed
+and inside the bar's form, the 3.97.1 and 3.98.1 rules.
+
+**`pending_bulk_apply()` does the work and returns what happened;** the route
+around it redirects. That split is what lets `.claude/series-defaults-test.php`
+run it. The ticks narrow and never widen: a ticked id that is not in
+`pending_entries()` now, or that `can_edit_event()` refuses, is named and not
+touched, and nothing reads the queue to decide which rows to act on.
+
+- **Set categories and Set organizers REPLACE** a row's terms, one call with
+  the whole set, and say so on the screen. A field the row's source owns is
+  refused and named.
+- **Set series** fills anything a row lacks from the defaults, even on a row
+  already in that series; see "Series defaults" in section 2.
+- **Publish** is `publish_one()`, the rule Approve uses. Its count is only the
+  ticked rows the rule lets through: the rule's answer rides on each box as
+  `data-uc-tick-block`, and the row says it in words, "Not ready to publish:
+  needs a category." It tells no submitter; Approve on the row still asks.
+- **Dismiss takes imports only.** A submission is named and left, because its
+  way out is Reject, which can tell the person who sent it.
+
+Each action reports how many rows it changed, and every row it did not change is
+listed with the reason by `render_held()`.
+
 ### Bulk actions on the events list, and the one rule that decides publishing
 
 The events list carries **two** bulk actions, added in 3.73.0 and 3.79.0: add a
@@ -2760,7 +2816,8 @@ reasoning is in the block above `SFAF_Portal::bulk_plan()`.
 **PUBLISHING IS DECIDED BY ONE METHOD, AND IT IS NOT ON THIS SCREEN.**
 `SFAF_Series::publish_skip_reason( $id, $today )` refuses a past date, an event
 with no date, a submission awaiting review, anything carrying source provenance,
-and an import parked as a draft because it vanished at its source. It was
+an import parked as a draft because it vanished at its source, and, from
+3.103.0, anything the editor's publish rule would hold ("needs a category"). It was
 written for the schedule screen in 3.71.0, and it is written **per event with
 the date passed in**: it asks nothing about a series and takes no term id, so it
 was already the general rule and the events list is simply its second caller.
@@ -3059,8 +3116,56 @@ old code excluded series from event queries in about a dozen places and got it
 wrong in some of them. A term has no date, is never returned by a `uc_event`
 query, and cannot be found as an event, because it is not one.
 
-A series carries name, description, image and a default FAQ set. **A series with
-no events is valid** and is not cleaned up.
+A series carries name, description, image, video, a default FAQ set, and from
+3.103.0 default categories and default organizers. **A series with no events is
+valid** and is not cleaned up.
+
+### Series defaults: copied once, into what is empty (3.103.0)
+
+**An event that joins a series with no category receives the series' default
+categories; with no organizer, its default organizers.** Stored as term meta,
+`_sfaf_series_categories` and `_sfaf_series_organizers`, arrays of ids, and
+read through `default_categories()` and `default_organizers()`, which drop an
+id that no longer exists.
+
+**EVERY JOIN IS `SFAF_Series::join()`**: an import into the series (EveryAction's
+`after_save()`), the staff request form, the community form, the event editor,
+the WordPress post editor, and `create_for_event()`. `set_for_event()` stays the
+bare term write, for callers that are not a join, such as moving events off a
+series being removed. A new way into a series that calls `set_for_event()`
+instead is the defect to look for.
+
+**THREE RULES, EACH A DECISION:**
+
+- **Only what is empty is filled.** An event's own category is never replaced.
+  So `join()` has to run AFTER the event's own values are written: the editor
+  calls it after `save_manager_fields_from_post()`, and the request form writes
+  the requester's categories and organizers before it joins.
+- **Copied, not inherited.** A category and an organizer are how an event is
+  FILED. Somebody who re-files one event must not have that undone because the
+  default moved, so a change to the defaults reaches only events that join
+  afterwards, which is the FAQ set's rule. The video is the opposite, inherited,
+  because it is one recording of one group.
+- **Joining means a change of series.** Saving an event already in its series
+  is not a join, so a category somebody cleared on purpose is not refilled. The
+  pending bar's **Set series** is the one exception, on purpose: it calls
+  `apply_defaults()` on every ticked row, because pressing it is somebody asking
+  for the defaults.
+
+**WHAT WAS COPIED IS RECORDED ON THE EVENT**, as `_uc_series_filled`, and read
+only by `filled_from()` for the editor's note, "Filled in from the Coffee Social
+series." The note shows while the event's terms are still exactly the copied
+ones, so re-filing takes it away and nothing has to clear the record.
+
+**THE EDITOR'S PUBLISH RULE KNOWS ABOUT IT.** Giving an event its series and
+pressing Publish in one save works: `publish_missing_from_post()` counts a
+category or organizer the joining series will fill, and an empty description
+when the series has one. See section 1, "What is required".
+
+**THE PREFILL OFFERS THE DEFAULTS FIRST.** `prefill_data()` answers categories
+and organizers from the defaults when the series names them, and from its most
+recent event otherwise, which is also what `organizers_for()` and so the
+community form now read.
 
 In practice there is **one series per repeating event**. The series screen is
 where the schedule is edited, and schedule writes are **upcoming-only**.
@@ -5997,6 +6102,16 @@ online form the check found the hybrid line and passed. The plant is what
 showed it; the check had been green all along. **A report of lines is read a
 line at a time**: every expected line is anchored to the start of a line now.
 `rsvp-format-live.php` reads its report the old way and has not been changed.
+### A branch that returns what its caller never prints (3.73.0, found 3.103.0)
+
+`flash()` is called for what it PRINTS. Two of its branches, the events list's
+bulk category and bulk publish outcomes, `return`ed their sentence instead, and
+the caller discarded it, so neither message ever appeared. The category branch
+also held `'%1\$d'` in single quotes, which keeps the backslash, and PHP 8's
+`sprintf()` throws on it: the page after Add category would have stopped with a
+fatal error. Nothing had rendered either branch, and every check that read the
+source found a sentence with the right words in it. **Render the message.**
+`.claude/series-defaults-test.php` renders the held list for this reason.
 ### A block can land in the wrong function and look right in review (3.73.0, found 3.79.0)
 
 The bulk category control shipped with tick boxes on the events list, and there

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.102.0
+Stable tag: 3.103.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.103.0 =
+
+**A series carries a default category and organizer, the pending queue takes bulk actions, and every way of publishing holds an incomplete event and says which.**
+
+**SERIES DEFAULTS, COPIED ONCE, INTO WHAT IS EMPTY.** The series screen gains Default categories and Default organizers, beside the description, picture, video and FAQ set. When an event joins the series with no category, it receives the series categories; with no organizer, the series organizers. An event that has its own keeps it: a default never replaces anything. "Joins" is every way in: an import into the series, either public form, the event editor, the WordPress post editor, and Set series on the pending queue. All of them now go through one method, `SFAF_Series::join()`.
+
+**WHY COPIED AND NOT INHERITED.** A category and an organizer are how an event is filed. Somebody who re-files one event must not have that undone because the series default moved later, so the values are the event's own from the moment they are copied, the way the FAQ set has always been. A change to the defaults reaches only events that join afterwards, and the release changes no existing event. The video stays inherited, because it is one recording of one group and correcting it should correct it everywhere.
+
+**JOINING MEANS A CHANGE OF SERIES.** Saving an event that is already in its series does not refill a category somebody cleared on purpose. Set series on the pending queue is the one exception, deliberately: it is somebody asking for the defaults, so it fills anything a ticked row lacks even when the row was already in that series.
+
+**THE EDITOR SAYS WHERE A VALUE CAME FROM.** Under a category or organizer copied from the series: "Filled in from the Coffee Social series." It stays while the value is still exactly what was copied, so re-filing the event takes it away. The New Event prefill offers the series defaults when the series has them, and the most recent event's values otherwise, as before. The community form's organizer comes from the defaults the same way.
+
+**THE EDITOR HELD A SERIES-FILLED EVENT FOR A DESCRIPTION IT ALREADY SHOWED.** Checked as the brief asked, and it did. Since 3.98.0 an event with no description of its own shows its series description on every surface, but the 3.99.0 publish rule counted only the event's own words, so such an event could not be published. It now counts the series description, asked of the series the event will be in once the save is written. It also counts a category and an organizer the series is about to fill, so giving an event its series and pressing Publish works in one step.
+
+**BULK ACTIONS ON PENDING.** A tick on every row, a select-all, and a bar above the queue: Set series, Set categories, Set organizers, Publish, Dismiss. Set categories and Set organizers replace what a ticked row has, and say so. Dismiss takes imports only; a submission is named and left for Reject on its own row, which can tell the person who sent it. Each action reports how many rows it changed and names every ticked row it did not change, with the reason. The bar follows the 3.97.1 and 3.98.1 rules: every button is typed and inside the form it submits, and the row ticks join that form by `form=`, because the rows already hold forms of their own. The ticks narrow and never widen: a row that is not in the queue, or not the viewer's, is refused at the write whatever the form says.
+
+**ONE PUBLISH RULE, EVERYWHERE.** Approve (on the queue and in the editor's request panel), the bar's Publish, bulk publish on the events list and bulk publish on a series' schedule all apply the editor's rule now: title, date, both times, an organizer, a category, a description of its own or its series', and a venue, an address or the online tick. Until now each set the status its own way. An event missing any of them is left where it was, and the page it lands on lists it by title, linked to its editor, with what it needs. Approve held means nothing is written and nobody is told or listed. The bar's Publish counts only the ticked rows the rule lets through, and a row that cannot be published yet says "Not ready to publish: needs a category." under its title. Publishing from the bar tells no submitter; Approve on the row still asks. The import row's own Publish button already opened the editor, so it always had the rule.
+
+**TWO OUTCOMES ON THE EVENTS LIST THAT NEVER APPEARED.** The bulk publish and bulk category messages were returned to a caller that printed nothing, so neither had shown since 3.73.0 and 3.79.0. The category one also carried `%1\$d` inside single quotes, which PHP 8 refuses with a fatal error, so the page after Add category would have stopped with an error; the category was already saved by then. Both print now, and name the held rows.
+
+**AN EMPTY WARNING LINE ON EVERY QUEUE ROW.** A row with no submitted picture printed an empty amber paragraph, because the picture note was only read inside the picture branch.
+
+**CHECKED.** A new test runs the real editor save, both forms' `create_event()`, the EveryAction `after_save()`, and the Approve and bulk routes to their redirect, over the miniature WordPress, which gained term meta, a query answerer and redirects that can be run to. 58 checks. A second renders the series screen, the editor and the pending queue in headless Chrome and reads the defaults, the note, and the bar's counts as a person would tick them. Nine faults were planted and each failed a check: a default overwriting an event's own category, the import joining without the defaults, new defaults rewriting events already in the series, the bar's Publish skipping the rule, the list and schedule publish skipping it, Approve skipping it, an empty series description counted as one, the editor forgetting the series description, and a bulk action reaching a row nobody ticked. The series publish self-test gained the rule as a sixth hole.
 
 = 3.102.0 =
 

@@ -4,16 +4,20 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-24, at 3.102.0, released.
+**Last updated:** 2026-09-25, at 3.103.0, released.
 
 ---
 
 ## What shipped last
 
-**3.102.0**: a **Preferences** screen in caladmin with a daily or weekly
-**digest** of the events the event gate lets you open; a sixth per-event email,
-the **day-before count**; and **registering without an email** on the public
-form, except to join online. `PROJECT.md` 4 and 5.
+**3.103.0**: a series names **default categories and organizers**, copied once
+into an event that joins it with none (`SFAF_Series::join()`, every join site);
+**bulk actions on Pending** (Set series, categories, organizers, Publish,
+Dismiss); and **one publish rule everywhere**: Approve and every bulk publish
+hold an incomplete event and name it. The events list's two bulk messages had
+never shown, and Add category may have errored on PHP 8. `PROJECT.md` 1 and 2.
+**3.102.0**: **Preferences** and the **digest**, the **day-before count**, and
+**registering without an email**. `PROJECT.md` 4 and 5.
 **3.101.0 IMPORTS EVERYACTION** into Pending, keyed on UUID, **Auto-Import off**;
 the description is the manager's. `PROJECT.md` 3.
 **3.99.0**: both public forms mark every required field from the validator's
@@ -92,10 +96,11 @@ one**: hybrid events, the event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 199 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 204 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
-targets. Assume everything else unverified.
+targets. Then **1.171**, which settles whether Add category on the events list
+was erroring live. Assume everything else unverified.
 
 **Waiting on a decision or an address**, each with its reasoning in `PROJECT.md`
 8 unless another section is named:
@@ -108,8 +113,6 @@ targets. Assume everything else unverified.
   because it sorts first. The rule working.
 - **The community form's age options and two email fields.** What the public
   forms require is settled: unchanged, now shown (3.99.0).
-- **Whether Approve and bulk publish should hold an incomplete event** as the
-  editor now does. They set the status their own way. `PROJECT.md` 1.
 - **222 published event addresses die with The Events Calendar.** A redirect
   table from the export is cheapest.
 - **Four things the calendar publicly asserts that are untrue** (`SFAF_Seo`).

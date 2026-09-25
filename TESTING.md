@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 199 items.** Quick 165, needs real conditions 31, blocked on other
+**Outstanding: 204 items.** Quick 169, needs real conditions 32, blocked on other
 people 3.
 
 ---
@@ -2498,6 +2498,64 @@ digest. Venues: …". There must be no way on that screen to change it.
 **Why it needs a person:** the screen was rendered through the real renderer in
 a miniature WordPress and read in Chrome, but a real save to user meta, a real
 reload and two real accounts are not in it.
+
+### 1.169 Series defaults, and the note in the editor (3.103.0)
+
+Open any series in **Series & Categories**. Under Video there are two new tick
+groups, **Default categories** and **Default organizers**. Tick one of each,
+save, reload: both still ticked. Then **Events, New Event**: give it a title, a
+date, both times and a place, choose that series under "Is this part of a
+series?" **without** touching Categories or Organizer, and press **Publish**.
+It should publish, with the series' category and organizer on it, and under
+each field the line "Filled in from the (series name) series." Untick that
+category and tick another, save: the line under Categories goes away.
+
+Last, change the series' default category and save the series. Open the event
+from the first step: **its category must not have changed.**
+
+**Why it needs a person:** the save, the editor and the note were run in a
+miniature WordPress and read in Chrome, but not against a real database, where
+term meta and term relationships are real rows.
+
+### 1.170 Approve an event that is not complete (3.103.0)
+
+Find a submission in **Pending** with no category, or remove its category in the
+editor and save it without approving. Press **Approve** on its row and answer the
+dialog. It should **not** be published: the flash reads "Not approved. It is
+still waiting, and nobody has been told.", and under it a box lists the event by
+name, as a link, with "needs a category". It is still in the queue, and the
+person who sent it got no email. Give it a category and Approve again: it
+publishes as before.
+
+**Why it needs a person:** the route was run to its redirect in the test kit,
+which has no real redirect, no real flash on the next page and no real mail.
+
+### 1.171 The events list's bulk messages, which never showed before (3.103.0)
+
+On **Events**, tick two drafts and use **Add to events** with a category. The
+page should come back with "(category) added to 2 events. They kept the
+categories they already had." Until this release **nothing** showed here, and on
+PHP 8 the page may have stopped with an error. Then tick one complete draft and
+one with no category and press **Publish**: "1 event published", and a box
+naming the other with "needs a category".
+
+**Why it needs a person:** the two messages were rendered in the test kit, but
+whether the live site was erroring on Add to events depends on the server's PHP
+version, which only the site can show.
+
+### 1.172 The pending queue's bulk bar (3.103.0)
+
+On **Pending**, every row has a tick, and above the list there is a bar with a
+series choice, **Set categories** and **Set organizers** behind two
+disclosures, and **Publish** and **Dismiss**. With nothing ticked every button
+reads 0 and is greyed. Tick **Select every event in this list**: the numbers
+fill in, and **Publish counts only the rows that do not say "Not ready to
+publish"**. Tick one submission and press **Dismiss**: nothing is dismissed and
+the box names it, "a submission, which is rejected from its own row".
+
+**Why it needs a person:** the counts were read in headless Chrome over a
+rendered copy of the page, not the live one, and the confirmation dialogs were
+not pressed.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -2980,6 +3038,28 @@ an email" and **Not sent: no email**. Nothing else changed about the reminder.
 
 **Why it needs real conditions:** the reminder runs unattended on the day, and
 the log is a real ledger table. It was proved against a model of that table.
+### 2.34 The coffee social walk: defaults, Set series, Publish (3.103.0)
+
+**After 2.30**, which is what puts the coffee social dates in Pending.
+
+1. **Series & Categories, the coffee social series.** Tick its default category
+   and its default organizer. Give it a description if it has none. Save.
+2. **Pending.** Tick every pending coffee social date.
+3. **Set series**, choosing the coffee social series. The flash should say how
+   many it set. Every ticked row should now have the category and organizer, and
+   the "Not ready to publish" line should be gone from every one that had only
+   those missing.
+4. **Tick them again and press Publish.** The count on the button should match
+   the rows that no longer say "Not ready to publish". Any row still missing
+   something is listed in the box under the flash, with what it needs.
+5. **The public calendar.** The published dates are live, under the category,
+   with the series description on each event page.
+
+Report the numbers from steps 3 and 4, and any row the box named.
+
+**Why it needs real conditions:** real imported rows in the queue, a real series
+and the real public calendar.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
