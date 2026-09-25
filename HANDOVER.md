@@ -4,21 +4,21 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-25, at 3.104.0, built and not yet released.
+**Last updated:** 2026-09-25, at 3.104.0, released.
 
 ---
 
 ## What shipped last
 
-**3.104.0**: the Pending bar's three setters are **one panel with one Apply**,
-which leaves a blank control alone. `PROJECT.md` 1.
-**3.103.0**: a series names **default categories and organizers**, copied once
-into an event that joins it with none (`SFAF_Series::join()`, every join site);
-**bulk actions on Pending**; and **one publish rule everywhere**: Approve and every bulk publish
-hold an incomplete event and name it. The events list's two bulk messages had
-never shown, and Add category may have errored on PHP 8. `PROJECT.md` 1 and 2.
-**3.102.0**: **Preferences** and the **digest**, the **day-before count**, and
-**registering without an email**. `PROJECT.md` 4 and 5.
+**3.104.0**: **times had not saved on a real request since 3.98.0**, so Publish
+held complete new events and **both public forms refused every submission**
+("Give a start time"); fixed, `TESTING.md` 1.173 and 1.174 first. A **typed
+image URL** now beats the series picture wherever it points. The Pending bar is
+**one panel with one Apply**. `PROJECT.md` 1.
+**3.103.0**: **series defaults** (`SFAF_Series::join()`), **bulk actions on
+Pending**, and **one publish rule everywhere**, each held event named.
+`PROJECT.md` 1 and 2. **3.102.0**: **Preferences**, the **digest**, the
+**day-before count**, **registering without an email**. `PROJECT.md` 4 and 5.
 **3.101.0 IMPORTS EVERYACTION** into Pending, keyed on UUID, **Auto-Import off**;
 the description is the manager's. `PROJECT.md` 3.
 **3.99.0**: both public forms mark every required field from the validator's
@@ -97,7 +97,7 @@ one**: hybrid events, the event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 204 items.** Two want doing
+**`TESTING.md` holds the manual testing backlog: 207 items.** Two want doing
 first, in this order: **1.74**, naming and tagging the six pictures, which is
 what makes every picker's work visible at all, and **1.80**, the preview's two
 targets. Then **1.171**, which settles whether Add category on the events list

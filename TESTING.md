@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 204 items.** Quick 169, needs real conditions 32, blocked on other
+**Outstanding: 207 items.** Quick 172, needs real conditions 32, blocked on other
 people 3.
 
 ---
@@ -2557,6 +2557,42 @@ the box names it, "a submission, which is rejected from its own row".
 **Why it needs a person:** the counts were read in headless Chrome over a
 rendered copy of the page, not the live one, and the confirmation dialogs were
 not pressed.
+
+### 1.173 Publish a new event with both times, and change the times on one (3.104.0)
+
+**Do this first after updating.** New Event: title, date, **Start 6:00 pm, End
+7:30 pm**, a category, an organizer, a description, a place. Press **Publish**.
+It should say it was published, not "Add a start time and an end time". Reopen
+it: both times are there. Then open any published event, change its start time,
+press **Save changes**, reopen: the NEW time is there. Last, a new event with a
+start and no end: Publish should say "Add an end time, then publish."
+
+**Why it needs a person:** the fault only existed on a real WordPress request.
+The check drove the real editor in Chrome and ran the post through the hook the
+way WordPress does, but not through WordPress itself.
+
+### 1.174 Submit both public forms with times (3.104.0)
+
+**From 3.98.0 until this release both forms refused every submission with
+"Give a start time."** Fill in the staff request form and the community form
+for a series, with a start and an end time, and submit each. Both should be
+accepted and land in Pending with the times shown on the row. If anybody
+reported being unable to submit an event since mid-September, this is why.
+
+**Why it needs a person:** real forms on the real site, with Turnstile and a
+real request.
+
+### 1.175 A typed image URL beats the series picture (3.104.0)
+
+Open an event in a series that has a picture. In **Or an image URL**, paste the
+address of a picture in the media library that is NOT in the calendar folder
+(one under uploads/2026/…). Save. The tag beside Featured Image should read
+**Event-specific**, and the event page, its card on the calendar and its tile's
+hover preview should all show that picture, not the series one. Empty the box
+and save: the series picture comes back.
+
+**Why it needs a person:** the renderers were read in the test kit, not on the
+real pages or the embed on sfaf.org.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

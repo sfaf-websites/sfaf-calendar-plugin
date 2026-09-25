@@ -2098,6 +2098,31 @@ year-and-month setting: the folder IS the organisation for these, and a date
 directory underneath would scatter the same pictures across twelve places a
 year. Without it an upload would be invisible to the picker that made it.
 
+### A typed image URL is exempt from the folder rule (3.104.0, reversing 3.83.0 for one box)
+
+**Mark's decision.** A URL a person types into the editor's "Or an image URL"
+box is the event's own picture and wins over the series picture, wherever it
+points. Under 3.83.0 a typed address inside `/wp-content/uploads/` but outside
+the calendar folder was ignored at resolution, so the event went on showing its
+series picture while the box held the address somebody had just typed.
+
+**ONLY THAT BOX.** The folder rule stays for attachments and for anything else
+written to `_uc_image_url`: the imported pictures it was made for, a recurrence
+copy, a duplicate. The two are told apart by RECORDING what was typed:
+`save_manager_fields_from_post()`, the one save the editor and the pending row's
+panel both go through, writes the URL to `_uc_image_url_typed`
+(`SFAF_Portal::META_IMAGE_TYPED`) beside `_uc_image_url`, and clears both
+together. `sfaf_event_own_image_url()` exempts `_uc_image_url` only while it is
+still exactly that string, so a later writer that replaces the URL loses the
+exemption without anything having to clear it.
+
+**THE EDITOR AND THE CALENDAR STILL AGREE**, because the exemption is inside
+`sfaf_event_own_image_url()`, which `sfaf_event_has_own_image()` and
+`sfaf_event_image_source()` read: the tag says "Event-specific" exactly when
+every surface draws the typed picture. `.claude/typed-image-test.php` saves
+through the real panel save and reads the event page, both cards, the month
+tile's hover preview and the pending row.
+
 ### A picture's name, and when the heuristic is not consulted
 
 **EVERY PICKER SHOWS A PICTURE'S TITLE WHERE IT HAS A REAL ONE AND ITS FILE NAME
@@ -2500,6 +2525,19 @@ function decorated an input type that no longer exists anywhere, and the test
 asserted that every time input carried it: with none left it passed on zero
 controls while its own summary repeated the claim that had turned out false. A
 check that can only pass is worse than no check.
+
+> **THE FOLD NEVER RAN ON A REAL REQUEST FROM 3.98.0 TO 3.104.0.** WordPress
+> calls an action that carries no arguments with an empty string, so
+> `sfaf_normalize_time_post()` received `''` where it expected its default
+> list and folded nothing. A new event saved no times and, from 3.99.0, was
+> held by the publish rule for "a start time and an end time"; an existing
+> event kept its stored times and silently dropped a change; both public forms
+> refused every submission with "Give a start time." It now takes anything that
+> is not a non-empty list as the default. **Every check had called the function
+> by hand with no argument, the one call WordPress never makes, and every save
+> test posted `start_time` directly, which no browser does.**
+> `.claude/publish-times-live.php` presses the real buttons in Chrome and runs
+> the POST through the hook as WordPress runs it (`kit_run_hook()`).
 
 ### "Has this field been filled in" is asked in two languages, off one list
 
@@ -6122,6 +6160,15 @@ also held `'%1\$d'` in single quotes, which keeps the backslash, and PHP 8's
 fatal error. Nothing had rendered either branch, and every check that read the
 source found a sentence with the right words in it. **Render the message.**
 `.claude/series-defaults-test.php` renders the held list for this reason.
+### A hook passes an argument even when it has none (3.98.0, found 3.104.0)
+
+`do_action( 'init' )` hands each callback `''`, sliced to its accepted
+arguments, so a callback with a defaulted first parameter never sees the
+default. `sfaf_normalize_time_post( $names = array( … ) )` looked correct, was
+correct when called by hand, and did nothing on every real request for six
+releases. **Anything registered on a hook is tested through the hook**:
+`wp-kit.php` records registrations, and `kit_run_hook()` runs one with the
+arguments WordPress would pass.
 ### A block can land in the wrong function and look right in review (3.73.0, found 3.79.0)
 
 The bulk category control shipped with tick boxes on the events list, and there
@@ -6392,7 +6439,8 @@ month grid tall enough to need it.
 one somebody curated into `uploads/calendar/`, at the shape a 16:9 card wants,
 reachable from the Images screen and taggable to a series. Anything else is
 ignored and the chain falls through to the series picture and then the category
-placeholder.
+placeholder. **From 3.104.0 a URL typed into the editor's image box is exempt**;
+see "A typed image URL is exempt from the folder rule" in section 1.
 
 **ENFORCED AT RESOLUTION, NOT BY CLEARING WHAT IS STORED.** The 2026-09-03
 import carried 270 events' pictures across from The Events Calendar. Clearing
