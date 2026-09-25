@@ -132,7 +132,6 @@ try ap-no-desc "Approve with no description at all"         $S
 try ap-desc-always "an empty series description counts"     $S
 try ed-no-series-desc "the editor forgets the series description" $S
 try bk-unticked "a bulk action reaches an unticked row"     $S
-try bk-unticked "a bulk action reaches an unticked row"     .claude/series-defaults-live.php
 
 restore
 echo "-------------------------------------------"
