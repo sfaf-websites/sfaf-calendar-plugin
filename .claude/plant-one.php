@@ -459,6 +459,53 @@ $edits = array(
         "        return ( (int) \$rsvp_id > 0 ) ? 'rsvp:' . (int) \$rsvp_id : '';",
         "        return 'rsvp:';" ),
 
+    /* ---- 3.103.0: series defaults, the pending bar, one publish rule. ---- */
+
+    /* A series default overwrites an event's own category. */
+    'sd-overwrite' => array( 'includes/class-sfaf-series.php',
+        "            if ( ! is_wp_error( \$has ) && ! empty( \$has ) ) {\n                continue;\n            }\n",
+        "" ),
+
+    /* The import puts a row in its series without the defaults. */
+    'sd-import' => array( 'includes/class-sfaf-source-everyaction.php',
+        "                SFAF_Series::join( \$post_id, \$term_id );",
+        "                SFAF_Series::set_for_event( \$post_id, \$term_id );" ),
+
+    /* Saving new defaults rewrites the events already in the series. */
+    'sd-rewrite' => array( 'includes/class-sfaf-series.php',
+        "            if ( \$ids ) {\n                update_term_meta( \$term_id, \$key, \$ids );\n",
+        "            if ( \$ids ) {\n                update_term_meta( \$term_id, \$key, \$ids );\n                foreach ( self::events( \$term_id, array( 'status' => array( 'publish', 'draft', 'pending' ), 'limit' => -1 ) ) as \$e ) {\n                    wp_set_object_terms( (int) \$e, \$ids, 'categories' === \$arg ? 'uc_event_category' : 'uc_organizer' );\n                }\n" ),
+
+    /* The pending bar's Publish sets the status past the rule. */
+    'bp-no-category' => array( $P,
+        "                    \$why = \$this->publish_one( \$id );",
+        "                    \$why = ''; wp_update_post( array( 'ID' => \$id, 'post_status' => 'publish' ) );" ),
+
+    /* The events list and schedule bulk publish stop asking the rule. */
+    'bp-skip-rule' => array( 'includes/class-sfaf-series.php',
+        "        if ( \$missing ) {\n            return 'needs ' . SFAF_Sources::field_phrase( \$missing );",
+        "        if ( false ) {\n            return 'needs ' . SFAF_Sources::field_phrase( \$missing );" ),
+
+    /* Approve sets the status past the rule, as it did until 3.103.0. */
+    'ap-no-desc' => array( $P,
+        "                \$approve_why = \$this->publish_one( \$event_id );",
+        "                \$approve_why = ''; wp_update_post( array( 'ID' => \$event_id, 'post_status' => 'publish' ) );" ),
+
+    /* A series with no description counts as one. */
+    'ap-desc-always' => array( 'includes/class-sfaf-sources.php',
+        "        return \$term && '' !== trim( sfaf_flatten_html( (string) \$term->description ) );",
+        "        return true;" ),
+
+    /* The editor forgets the series description, the 3.99.0 behaviour. */
+    'ed-no-series-desc' => array( $P,
+        "        if ( ! \$filled['description'] ) {\n            \$filled['description'] = SFAF_Sources::series_description_is_filled( \$this->series_after_post( \$event_id ) );\n        }\n",
+        "" ),
+
+    /* The pending bar acts on the whole queue, not the ticks. */
+    'bk-unticked' => array( $P,
+        "        foreach ( array_unique( array_map( 'intval', (array) \$ids ) ) as \$id ) {",
+        "        foreach ( array_keys( \$entries ) as \$id ) {" ),
+
 );
 
 if ( 'off-ladder' === $which ) {

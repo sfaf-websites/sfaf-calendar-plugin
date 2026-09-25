@@ -120,6 +120,19 @@ try db-empty "a day-before count sent with nobody"          $D
 try nm-sent "an emailless registrant handed to the sender"  $N
 try nm-box-online "the box offered to an online registrant" .claude/rsvp-noemail-live.php --run
 try nm-ledger-collide "two emailless registrants collide"   $N
+# 3.103.0, series defaults, the pending bar, one publish rule.
+S=.claude/series-defaults-test.php
+try sd-overwrite "a series default overwrites a category"   $S
+try sd-import "a default not applied on import"             $S
+try sd-rewrite "a series change rewrites an existing event" $S
+try bp-no-category "bulk publish with no category"          $S
+try bp-skip-rule "list and schedule publish skip the rule"  $S
+try bp-skip-rule "list and schedule publish skip the rule"  .claude/series-publish-test.php
+try ap-no-desc "Approve with no description at all"         $S
+try ap-desc-always "an empty series description counts"     $S
+try ed-no-series-desc "the editor forgets the series description" $S
+try bk-unticked "a bulk action reaches an unticked row"     $S
+try bk-unticked "a bulk action reaches an unticked row"     .claude/series-defaults-live.php
 
 restore
 echo "-------------------------------------------"
