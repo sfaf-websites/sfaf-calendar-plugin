@@ -40,6 +40,9 @@ function kit_reset() {
     $GLOBALS['kit_trans'] = array();
     $GLOBALS['kit_organizers'] = true; // whether the site has any organizers
     $GLOBALS['kit_options'] = array();   // name => value
+    $GLOBALS['kit_term_meta'] = array(); // term id => key => value (3.103.0)
+    $GLOBALS['kit_term_desc'] = array(); // term id => description (3.103.0)
+    $GLOBALS['kit_query'] = null;         // callable( args ) => WP_Post[], or null for no rows (3.103.0)
 }
 kit_reset();
 
@@ -47,7 +50,7 @@ class WP_Error { public $m; public $c; function __construct( $c = '', $m = '' ) 
 class WP_Post { public $ID = 0; public $post_title = ''; public $post_type = 'uc_event'; public $post_status = 'draft'; public $post_content = ''; public $post_author = 0; public $post_name = ''; public $post_parent = 0; public $post_date = '2026-09-01 00:00:00'; }
 class WP_User { public $ID = 1; public $user_email = 'admin@sfaf.org'; public $display_name = 'Admin'; public $roles = array( 'administrator' ); function has_cap( $c ) { return true; } function exists() { return true; } }
 class WP_Term { public $term_id; public $name; public $slug; public $taxonomy; public $count = 0; public $description = ''; public $parent = 0; public $term_taxonomy_id; }
-class WP_Query { public $posts = array(); public $found_posts = 0; public $max_num_pages = 0; function __construct( $a = array() ) {} function have_posts() { return false; } }
+class WP_Query { public $posts = array(); public $found_posts = 0; public $max_num_pages = 0; function __construct( $a = array() ) { if ( ! empty( $GLOBALS['kit_query'] ) ) { $this->posts = (array) call_user_func( $GLOBALS['kit_query'], $a ); $this->found_posts = count( $this->posts ); } } function have_posts() { return false; } }
 class wpdb {
     public $prefix = 'wp_'; public $posts = 'wp_posts'; public $postmeta = 'wp_postmeta'; public $terms = 'wp_terms';
     public $term_taxonomy = 'wp_term_taxonomy'; public $term_relationships = 'wp_term_relationships';
@@ -118,7 +121,13 @@ function selected( $a, $b = true, $e = true ) { $o = ( (string) $a === (string) 
 function checked( $a, $b = true, $e = true ) { $o = ( (string) $a === (string) $b ) ? ' checked="checked"' : ''; if ( $e ) { echo $o; } return $o; }
 function disabled( $a, $b = true, $e = true ) { $o = ( (string) $a === (string) $b ) ? ' disabled="disabled"' : ''; if ( $e ) { echo $o; } return $o; }
 function wp_die( $m = '' ) { throw new RuntimeException( 'wp_die: ' . ( is_string( $m ) ? $m : '' ) ); }
-function wp_safe_redirect( $u ) { $GLOBALS['kit_redirect'] = $u; return true; }
+/* A redirect ends a request with exit, which would end the test too. With
+ * kit_redirect_throws set it throws instead, so a POST route can be run to its
+ * redirect and the test goes on (3.103.0). */
+class KitRedirect extends RuntimeException {}
+function wp_safe_redirect( $u ) { $GLOBALS['kit_redirect'] = $u; if ( ! empty( $GLOBALS['kit_redirect_throws'] ) ) { throw new KitRedirect( (string) $u ); } return true; }
+function wp_verify_nonce( $n, $a = -1 ) { return 1; }
+function wp_update_term( $id, $tax, $a = array() ) { if ( isset( $a['description'] ) ) { $GLOBALS['kit_term_desc'][ (int) $id ] = $a['description']; } return array( 'term_id' => (int) $id ); }
 function wp_redirect( $u ) { $GLOBALS['kit_redirect'] = $u; return true; }
 
 /* ---- Time. ---- */
@@ -171,7 +180,9 @@ function get_post_meta( $id, $k = '', $s = false ) {
 function update_post_meta( $id, $k, $v, $prev = '' ) { $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
 function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
 function delete_post_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ); return true; }
-function get_term_meta( $id, $k = '', $s = false ) { return $s ? '' : array(); }
+function get_term_meta( $id, $k = '', $s = false ) { if ( isset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ) ) { $v = $GLOBALS['kit_term_meta'][ (int) $id ][ $k ]; return $s ? $v : array( $v ); } return $s ? '' : array(); }
+function update_term_meta( $id, $k, $v, $p = '' ) { $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] = $v; return true; }
+function delete_term_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ); return true; }
 function has_post_thumbnail( $id = 0 ) { return false; }
 function get_post_thumbnail_id( $id = 0 ) { return 0; }
 function set_post_thumbnail( $id, $t ) { return true; }
@@ -191,6 +202,7 @@ function kit_fake_terms( $tax ) {
     $o = array();
     foreach ( array( 11 => 'Alpha', 12 => 'Beta' ) as $id => $n ) {
         $t = new WP_Term(); $t->term_id = $id; $t->term_taxonomy_id = $id; $t->name = $n; $t->slug = strtolower( $n ); $t->taxonomy = (string) $tax;
+        if ( isset( $GLOBALS['kit_term_desc'][ $id ] ) && 'uc_series' === $tax ) { $t->description = $GLOBALS['kit_term_desc'][ $id ]; }
         $o[] = $t;
     }
     return $o;
@@ -226,6 +238,7 @@ foreach ( array(
     'status_header', 'language_attributes', 'bloginfo', 'wp_print_styles', 'wp_print_head_scripts',
     'wp_print_footer_scripts', 'sanitize_html_class', 'wp_enqueue_media', 'wp_enqueue_editor',
     'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates', 'submit_button', 'rest_url', 'settings_fields',
+    'get_the_date',
 ) as $kit_fn ) {
     if ( ! function_exists( $kit_fn ) ) { eval( 'function ' . $kit_fn . '( ...$a ) { return null; }' ); }
 }

@@ -17671,6 +17671,9 @@ class SFAF_Portal {
          * SFAF_Uploads::url() answers '' and this simply is not drawn. */
         $shot_id = (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true );
         $shot    = ( 'submission' === $shape ) ? SFAF_Uploads::url( $shot_id, 'thumbnail' ) : '';
+        /* Read under the picture below, and only there; a row with no picture has
+         * no note, and an unset one printed an empty warning line (3.103.0). */
+        $shot_note = '';
 
         /* Who sent it, for the two questions Approve asks. One reader for both
          * forms; see SFAF_Submissions::submitter(). */
