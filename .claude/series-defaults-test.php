@@ -227,26 +227,30 @@ sd_world();
 $a = sd_event( 'uc_imported' );
 $b = sd_event( 'uc_imported' );
 $x = sd_event( 'uc_imported' );
-$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'categories',
-    'pending_ids' => array( $a, $b ), 'bulk_categories' => array( '11' ) ) );
-sd_is( sd_terms( $a, 'uc_event_category' ), array( 11 ), 'Set categories reaches a ticked row' );
-sd_is( sd_terms( $b, 'uc_event_category' ), array( 11 ), 'Set categories reaches the other ticked row' );
-sd_is( sd_terms( $x, 'uc_event_category' ), array(), 'Set categories DOES NOT reach the row nobody ticked' );
+/* The panel's Apply (3.104.0). Categories only, on two of the three rows. */
+$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
+    'pending_ids' => array( $a, $b ), 'bulk_series' => '', 'bulk_categories' => array( '11' ) ) );
+sd_is( sd_terms( $a, 'uc_event_category' ), array( 11 ), 'Apply sets the categories on a ticked row' );
+sd_is( sd_terms( $b, 'uc_event_category' ), array( 11 ), 'Apply sets them on the other ticked row' );
+sd_is( sd_terms( $x, 'uc_event_category' ), array(), 'Apply DOES NOT reach the row nobody ticked' );
 sd_is( false !== strpos( $url, 'did=2' ), true, 'the bar reports how many rows it changed: ' . $url );
 
-sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'organizers',
-    'pending_ids' => array( $a ), 'bulk_organizers' => array( '12' ) ) );
-sd_is( sd_terms( $a, 'uc_organizer' ), array( 12 ), 'Set organizers reaches the ticked row' );
-sd_is( sd_terms( $b, 'uc_organizer' ), array(), 'Set organizers does not reach an unticked row' );
+/* Organizers only: the categories just set and the series are left alone. */
+sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
+    'pending_ids' => array( $a ), 'bulk_series' => '', 'bulk_organizers' => array( '12' ) ) );
+sd_is( sd_terms( $a, 'uc_organizer' ), array( 12 ), 'Apply sets the organizers on the ticked row' );
+sd_is( sd_terms( $a, 'uc_event_category' ), array( 11 ), 'Apply LEAVES a blank control alone: the categories are not cleared' );
+sd_is( sd_terms( $a, 'uc_series' ), array(), 'Apply leaves the series alone when none is chosen' );
+sd_is( sd_terms( $b, 'uc_organizer' ), array(), 'Apply does not reach an unticked row' );
 
-/* Set series, then Publish: the walk. $x has no category of its own; $a does. */
-$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'series',
+/* Series only, then Publish: the walk. $x has nothing of its own; $a has both. */
+$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
     'pending_ids' => array( $a, $x ), 'bulk_series' => '11' ) );
-sd_is( sd_terms( $x, 'uc_event_category' ), array( 12 ), 'Set series fills a missing category from the defaults' );
-sd_is( sd_terms( $x, 'uc_organizer' ), array( 11 ), 'Set series fills a missing organizer from the defaults' );
-sd_is( sd_terms( $a, 'uc_event_category' ), array( 11 ), 'Set series leaves a row\'s own category alone' );
-sd_is( sd_terms( $a, 'uc_organizer' ), array( 12 ), 'Set series leaves a row\'s own organizer alone' );
-sd_is( sd_terms( $b, 'uc_series' ), array(), 'Set series does not reach an unticked row' );
+sd_is( sd_terms( $x, 'uc_event_category' ), array( 12 ), 'a series with defaults fills a missing category' );
+sd_is( sd_terms( $x, 'uc_organizer' ), array( 11 ), 'a series with defaults fills a missing organizer' );
+sd_is( sd_terms( $a, 'uc_event_category' ), array( 11 ), 'the series leaves a row\'s own category alone' );
+sd_is( sd_terms( $a, 'uc_organizer' ), array( 12 ), 'the series leaves a row\'s own organizer alone' );
+sd_is( sd_terms( $b, 'uc_series' ), array(), 'the series does not reach an unticked row' );
 
 $url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'publish',
     'pending_ids' => array( $a, $b, $x ) ) );
@@ -256,6 +260,37 @@ sd_is( get_post_status( $b ), 'uc_imported', 'bulk Publish holds a row with no o
 $held = get_transient( 'sfaf_held_1' );
 sd_is( isset( $held[ $b ] ) ? $held[ $b ] : '', 'needs an organizer and a description', 'and names the row and why' );
 sd_is( false !== strpos( $url, 'did=2' ) && false !== strpos( $url, 'held=1' ), true, 'Publish reports two done and a held row: ' . $url );
+
+/* All three at once, in one save: the ticked category wins over the series
+ * default, and the blank organizer is filled from it. */
+sd_world();
+$y = sd_event( 'uc_imported' );
+$z = sd_event( 'uc_imported', array( 'uc_organizer' => array( 12 ) ) );
+$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
+    'pending_ids' => array( $y ), 'bulk_series' => '11', 'bulk_categories' => array( '11' ) ) );
+sd_is( sd_terms( $y, 'uc_series' ), array( 11 ), 'Apply with three controls sets the series' );
+sd_is( sd_terms( $y, 'uc_event_category' ), array( 11 ), 'the ticked category wins over the series default' );
+sd_is( sd_terms( $y, 'uc_organizer' ), array( 11 ), 'the organizer left blank is filled from the series default' );
+sd_is( sd_terms( $z, 'uc_organizer' ), array( 12 ), 'and the unticked row keeps its own organizer' );
+sd_is( sd_terms( $z, 'uc_series' ), array(), 'and is not put in the series' );
+
+/* An Apply with nothing chosen changes nothing and says so. */
+$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
+    'pending_ids' => array( $z ), 'bulk_series' => '' ) );
+sd_is( false !== strpos( $url, 'msg=pending_bulk_choose' ), true, 'an Apply with every control blank asks for a choice: ' . $url );
+sd_is( sd_terms( $z, 'uc_organizer' ), array( 12 ), 'and clears nothing' );
+
+/* A row already set that way is named, not counted. */
+$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
+    'pending_ids' => array( $z ), 'bulk_organizers' => array( '12' ) ) );
+$held = get_transient( 'sfaf_held_1' );
+sd_is( isset( $held[ $z ] ) ? $held[ $z ] : '', 'already set that way', 'a row Apply would not change is named with the reason' );
+sd_is( false !== strpos( $url, 'did=0' ), true, 'and not counted as changed: ' . $url );
+
+/* The old one-control verbs are gone: a POST naming one changes nothing. */
+$url = sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'categories',
+    'pending_ids' => array( $z ), 'bulk_categories' => array( '11' ) ) );
+sd_is( sd_terms( $z, 'uc_event_category' ), array(), 'a retired verb from 3.103.0 does nothing' );
 
 /* A row with no category, alone. */
 sd_world();
@@ -276,7 +311,7 @@ sd_is( isset( $held[ $subm ] ), true, 'and names it' );
 /* A row that is not in the queue is never reached, whatever the form says. */
 sd_world();
 $live = sd_event( 'publish' );
-sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'categories',
+sd_route( $portal, 'pending_bulk', array( 'uc_pending_bulk_present' => '1', 'uc_do' => 'apply',
     'pending_ids' => array( $live ), 'bulk_categories' => array( '12' ) ) );
 sd_is( sd_terms( $live, 'uc_event_category' ), array(), 'a published event named in the POST is not changed by the pending bar' );
 

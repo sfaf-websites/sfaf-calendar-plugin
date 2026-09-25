@@ -119,6 +119,11 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.holds = Array.prototype.map.call(holds, function (h) { return (seen(h) ? '' : 'HIDDEN ') + text(h); });
     out.holdColor = holds[0] ? getComputedStyle(holds[0]).color : 'none';
     out.pageWidth = document.documentElement.scrollWidth;
+    var cols = document.querySelectorAll('[data-uc-pending-panel] > .uc-pending-panel-col');
+    out.cols = Array.prototype.map.call(cols, function (c) { var r = c.getBoundingClientRect(); return Math.round(r.left) + '@' + Math.round(r.top); });
+    out.colLabels = Array.prototype.map.call(cols, function (c) { return text(c.querySelector('.uc-field-label')); });
+    var hint = form && form.querySelector('button[value="apply"]') && form.querySelector('button[value="apply"]').parentNode.querySelector('.uc-hint');
+    out.applyHint = seen(hint) ? text(hint) : 'HIDDEN';
   }
   var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 }, 400); });
@@ -175,15 +180,22 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     sl_check( isset( $p['ticks'], $p['rows'] ) && 3 === $p['ticks'] && 3 === $p['rows'], 'pending: a tick per row: ' . json_encode( array( isset( $p['ticks'] ) ? $p['ticks'] : null, isset( $p['rows'] ) ? $p['rows'] : null ) ) );
     sl_check( isset( $p['tickSize'] ) && in_array( $p['tickSize'], $normal, true ), 'pending: the row tick is not a normal size: ' . ( isset( $p['tickSize'] ) ? $p['tickSize'] : '' ) );
     sl_check( ! empty( $p['allSeen'] ), 'pending: select-all is not revealed' );
-    $want_btns = array( 'series:submit:owned', 'categories:submit:owned', 'organizers:submit:owned', 'publish:submit:owned', 'dismiss:submit:owned' );
+    $want_btns = array( 'apply:submit:owned', 'publish:submit:owned', 'dismiss:submit:owned' );
     sl_check( isset( $p['buttons'] ) && $want_btns === $p['buttons'], 'pending: the buttons, their types and owners: ' . json_encode( isset( $p['buttons'] ) ? $p['buttons'] : null ) );
-    $rest = array( 'series' => '0 off', 'categories' => '0 off', 'organizers' => '0 off', 'publish' => '0 off', 'dismiss' => '0 off' );
+    $rest = array( 'apply' => '0 off', 'publish' => '0 off', 'dismiss' => '0 off' );
     sl_check( isset( $p['atRest'] ) && $rest === $p['atRest'], 'pending: at rest every button should read 0 and be off: ' . json_encode( isset( $p['atRest'] ) ? $p['atRest'] : null ) );
-    $all = array( 'series' => '3 on', 'categories' => '3 on', 'organizers' => '3 on', 'publish' => '2 on', 'dismiss' => '3 on' );
+    $all = array( 'apply' => '3 on', 'publish' => '2 on', 'dismiss' => '3 on' );
     sl_check( isset( $p['allTicked'] ) && $all === $p['allTicked'], 'pending: everything ticked, Publish should count the 2 it would publish and the rest 3: ' . json_encode( isset( $p['allTicked'] ) ? $p['allTicked'] : null ) );
     sl_check( isset( $p['noneTicked'] ) && $rest === $p['noneTicked'], 'pending: unticking everything should turn every button off: ' . json_encode( isset( $p['noneTicked'] ) ? $p['noneTicked'] : null ) );
     sl_check( isset( $p['holds'] ) && array( 'Not ready to publish: needs an organizer, a category, and a description.' ) === $p['holds'], 'pending: the held row says why: ' . json_encode( isset( $p['holds'] ) ? $p['holds'] : null ) );
     sl_check( isset( $p['holdColor'] ) && 'rgb(180, 83, 9)' === $p['holdColor'], 'pending: the held line is not the measured amber: ' . ( isset( $p['holdColor'] ) ? $p['holdColor'] : '' ) );
+    /* ONE PANEL (3.104.0): the three controls side by side, level, in this order. */
+    $cols = isset( $p['cols'] ) ? $p['cols'] : array();
+    $tops = array_map( function ( $c ) { return (int) substr( $c, strpos( $c, '@' ) + 1 ); }, $cols );
+    $lefts = array_map( 'intval', $cols );
+    sl_check( 3 === count( $cols ) && 1 === count( array_unique( $tops ) ) && $lefts[0] < $lefts[1] && $lefts[1] < $lefts[2], 'pending: the three controls are not side by side: ' . json_encode( $cols ) );
+    sl_check( isset( $p['colLabels'] ) && array( 'Series', 'Categories', 'Organizers' ) === $p['colLabels'], 'pending: the panel' . chr(39) . 's controls: ' . json_encode( isset( $p['colLabels'] ) ? $p['colLabels'] : null ) );
+    sl_check( isset( $p['applyHint'] ) && false !== strpos( $p['applyHint'], 'A series with defaults also fills the category and organizer' ), 'pending: the line beside Apply: ' . ( isset( $p['applyHint'] ) ? $p['applyHint'] : '' ) );
     sl_check( isset( $p['pageWidth'] ) && $p['pageWidth'] <= 1200, 'pending: the page scrolls sideways: ' . ( isset( $p['pageWidth'] ) ? $p['pageWidth'] : '' ) );
 }
 

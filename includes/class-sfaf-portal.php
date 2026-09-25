@@ -3981,7 +3981,7 @@ class SFAF_Portal {
             'approved'       => 'Event approved and published.',
             'approve_held'   => 'Not approved. It is still waiting, and nobody has been told.',
             'pending_bulk_none'   => 'Nothing was changed. Tick the events first, then press the button.',
-            'pending_bulk_choose' => 'Nothing was changed. Choose what to set, then press the button again.',
+            'pending_bulk_choose' => 'Nothing was changed. Choose a series, a category or an organizer, then press Apply.',
             'rejected'       => 'Event rejected.',
             /*
              * Both say what to do, and the second also says what happened,
@@ -4284,9 +4284,7 @@ class SFAF_Portal {
             $do   = isset( $_GET['do'] ) ? sanitize_key( wp_unslash( $_GET['do'] ) ) : '';
             $noun = _n( 'event', 'events', $did );
             $said = array(
-                'series'     => sprintf( 'Series set on %d %s.', $did, $noun ),
-                'categories' => sprintf( 'Categories set on %d %s.', $did, $noun ),
-                'organizers' => sprintf( 'Organizers set on %d %s.', $did, $noun ),
+                'apply'      => sprintf( 'Applied to %d %s.', $did, $noun ),
                 'publish'    => sprintf( '%d %s published. %s on the public calendar now.', $did, $noun, 1 === $did ? 'It is' : 'They are' ),
                 'dismiss'    => sprintf( '%d %s dismissed.', $did, $noun ),
             );
@@ -17340,18 +17338,24 @@ class SFAF_Portal {
     }
 
     /**
-     * THE BULK BAR ABOVE THE PENDING QUEUE (3.103.0).
+     * THE BULK BAR ABOVE THE PENDING QUEUE (3.103.0, one panel from 3.104.0).
      *
-     * ONE FORM, ONE SET OF TICKS, FIVE VERBS, the events list's arrangement.
+     * ONE FORM, ONE SET OF TICKS, THREE VERBS, the events list's arrangement.
      * The rows already hold their own forms for Publish, Dismiss, Approve and
      * Reject, and forms cannot nest, so the ticks are associated by `form=`
      * and initTickPickers() reads them through form.elements. `uc_action`
-     * names the form and `uc_do` names the button.
+     * names the form and `uc_do` names the button: apply, publish, dismiss.
+     *
+     * SERIES, CATEGORIES AND ORGANIZERS ARE ONE PANEL WITH ONE APPLY (3.104.0).
+     * 3.103.0 gave each its own button, so setting all three on forty rows was
+     * three presses and three saves per row. Apply writes every control that
+     * has a value and leaves a blank one alone, so nothing in the panel means
+     * "clear this".
      *
      * EVERY BUTTON SAYS ITS TYPE AND IS INSIDE THE FORM IT SUBMITS, the 3.97.1
-     * and 3.98.1 rules. Nothing here is `required`, because a required series
-     * select would stop Publish being pressed; the server answers an empty
-     * choice with a sentence instead.
+     * and 3.98.1 rules. Nothing here is `required`, because a required control
+     * would stop Publish being pressed; the server answers an empty panel with
+     * a sentence instead.
      *
      * PUBLISH COUNTS ONLY THE TICKS THE PUBLISH RULE WOULD LET THROUGH. A row
      * missing a field carries the reason on its box as data-uc-tick-block, and
@@ -17378,72 +17382,51 @@ class SFAF_Portal {
                 Select every event in this list
             </label>
 
-            <div class="uc-pending-bulk-row">
-                <label class="uc-field uc-bulk-cat-pick">
+            <div class="uc-pending-panel" data-uc-pending-panel>
+                <label class="uc-field uc-pending-panel-col">
                     <span class="uc-field-label">Series</span>
                     <select name="bulk_series">
-                        <option value="">Choose a series</option>
+                        <option value="">Leave as it is</option>
                         <?php foreach ( $series as $term ) : ?>
                             <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <div class="uc-bulk-cat-go">
-                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="series"
-                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event">
-                        Set series on <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
-                    </button>
-                    <span class="uc-hint">An event with no category or organizer gets the series defaults.</span>
+
+                <div class="uc-field uc-pending-panel-col" role="group" aria-labelledby="uc-pending-panel-cats">
+                    <span class="uc-field-label" id="uc-pending-panel-cats">Categories</span>
+                    <div class="uc-pending-panel-list">
+                        <?php foreach ( $cats as $c ) : ?>
+                            <label class="uc-check">
+                                <input type="checkbox" name="bulk_categories[]" value="<?php echo (int) $c->term_id; ?>" />
+                                <?php echo esc_html( $c->name ); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="uc-field uc-pending-panel-col" role="group" aria-labelledby="uc-pending-panel-orgs">
+                    <span class="uc-field-label" id="uc-pending-panel-orgs">Organizers</span>
+                    <div class="uc-pending-panel-list">
+                        <?php foreach ( $orgs as $o ) : ?>
+                            <label class="uc-check">
+                                <input type="checkbox" name="bulk_organizers[]" value="<?php echo (int) $o->term_id; ?>" />
+                                <?php echo esc_html( $o->name ); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
 
-            <details class="uc-queue-panel uc-pending-bulk-group">
-                <summary>
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
-                    Set categories
-                </summary>
-                <div class="uc-check-grid">
-                    <?php foreach ( $cats as $c ) : ?>
-                        <label class="uc-check">
-                            <input type="checkbox" name="bulk_categories[]" value="<?php echo (int) $c->term_id; ?>" />
-                            <?php echo esc_html( $c->name ); ?>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <div class="uc-bulk-cat-go">
-                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="categories"
-                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
-                            data-uc-confirm="Replace the categories on the ticked events with these?"
-                            data-uc-tick-confirm="Replace the categories on {n} {noun} with these?">
-                        Set on <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
-                    </button>
-                    <span class="uc-hint">Replaces the categories each ticked event has.</span>
-                </div>
-            </details>
-
-            <details class="uc-queue-panel uc-pending-bulk-group">
-                <summary>
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
-                    Set organizers
-                </summary>
-                <div class="uc-check-grid">
-                    <?php foreach ( $orgs as $o ) : ?>
-                        <label class="uc-check">
-                            <input type="checkbox" name="bulk_organizers[]" value="<?php echo (int) $o->term_id; ?>" />
-                            <?php echo esc_html( $o->name ); ?>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <div class="uc-bulk-cat-go">
-                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="organizers"
-                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
-                            data-uc-confirm="Replace the organizers on the ticked events with these?"
-                            data-uc-tick-confirm="Replace the organizers on {n} {noun} with these?">
-                        Set on <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
-                    </button>
-                    <span class="uc-hint">Replaces the organizers each ticked event has.</span>
-                </div>
-            </details>
+            <div class="uc-bulk-cat-go">
+                <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="apply"
+                        data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
+                        data-uc-confirm="Apply these to the ticked events? Ticked categories and organizers replace what each event has."
+                        data-uc-tick-confirm="Apply these to {n} {noun}? Ticked categories and organizers replace what each event has.">
+                    Apply to <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                </button>
+                <span class="uc-hint">A blank control is left as it is. A series with defaults also fills the category and organizer on any event that has none.</span>
+            </div>
 
             <div class="uc-pending-bulk-row">
                 <div class="uc-bulk-cat-go">
@@ -17480,7 +17463,7 @@ class SFAF_Portal {
      * so this can run against the miniature WordPress in .claude/wp-kit.php.
      *
      * @param WP_User $user
-     * @param string  $do   series, categories, organizers, publish or dismiss.
+     * @param string  $do   apply, publish or dismiss.
      * @param int[]   $ids  Ticked ids.
      * @param array   $args series => int, categories => int[], organizers => int[].
      * @return array{did:int,held:array<int,string>,choose:bool}
@@ -17490,12 +17473,12 @@ class SFAF_Portal {
         $entries = $this->pending_entries( $user );
 
         $series = isset( $args['series'] ) ? (int) $args['series'] : 0;
+        $series = SFAF_Series::exists( $series ) ? $series : 0;
         $cats   = array_values( array_filter( array_map( 'intval', isset( $args['categories'] ) ? (array) $args['categories'] : array() ), array( 'SFAF_Categories', 'exists' ) ) );
         $orgs   = array_values( array_filter( array_map( 'intval', isset( $args['organizers'] ) ? (array) $args['organizers'] : array() ), array( 'SFAF_Organizers', 'exists' ) ) );
 
-        if ( ( 'series' === $do && ! SFAF_Series::exists( $series ) )
-            || ( 'categories' === $do && empty( $cats ) )
-            || ( 'organizers' === $do && empty( $orgs ) ) ) {
+        /* An Apply with every control blank has nothing to do. */
+        if ( 'apply' === $do && ! $series && empty( $cats ) && empty( $orgs ) ) {
             $out['choose'] = true;
             return $out;
         }
@@ -17514,37 +17497,14 @@ class SFAF_Portal {
                 continue;
             }
 
-            $src   = (string) get_post_meta( $id, SFAF_Sources::META_SOURCE, true );
-            $owned = ( '' !== $src ) ? SFAF_Sources::owned_fields_for( $src ) : array();
-
             switch ( $do ) {
-                case 'series':
-                    $was = (int) SFAF_Series::id_for_event( $id );
-                    SFAF_Series::set_for_event( $id, $series );
-                    /* Anything the row lacks, whether or not it was already in
-                     * the series: Set series is somebody asking for the
-                     * defaults on these rows. */
-                    $filled = SFAF_Series::apply_defaults( $id, $series );
-                    if ( $was !== $series ) {
-                        SFAF_FAQ_Sets::apply_series_default( $id, $series );
-                    }
-                    if ( $was !== $series || $filled ) {
+                case 'apply':
+                    $why = $this->pending_apply_one( $id, $series, $cats, $orgs );
+                    if ( '' === $why ) {
                         $out['did']++;
                     } else {
-                        $out['held'][ $id ] = 'already in that series with nothing to fill';
+                        $out['held'][ $id ] = $why;
                     }
-                    break;
-
-                case 'categories':
-                case 'organizers':
-                    $field = ( 'categories' === $do ) ? 'category' : 'organizer';
-                    if ( in_array( $field, $owned, true ) ) {
-                        $prov = SFAF_Sources::provenance( $id );
-                        $out['held'][ $id ] = 'its ' . $do . ' come from ' . ( $prov['label'] ? $prov['label'] : 'its source' );
-                        break;
-                    }
-                    wp_set_object_terms( $id, ( 'categories' === $do ) ? $cats : $orgs, ( 'categories' === $do ) ? 'uc_event_category' : 'uc_organizer' );
-                    $out['did']++;
                     break;
 
                 case 'publish':
@@ -17571,6 +17531,76 @@ class SFAF_Portal {
     }
 
     /**
+     * The panel's Apply, on one row: one save, all or nothing (3.104.0).
+     *
+     * A BLANK CONTROL IS NOT WRITTEN. Empty $cats leaves the row's categories as
+     * they are; it never means "no categories". Same for organizers and series.
+     *
+     * THE ORDER IS THE RULE. The ticked categories and organizers are written
+     * first and the series last, so the series defaults fill only what the row
+     * still lacks and never replace what this same Apply just set. Set series
+     * fills a lacking row even when it was already in that series, because
+     * choosing the series here is somebody asking for its defaults.
+     *
+     * REFUSED WHOLE, NOT IN PART. When the row's source owns a field the panel
+     * would write, nothing is written to the row and it is named, so a row is
+     * never left half changed by one press.
+     *
+     * @param int   $id
+     * @param int   $series 0 to leave the series alone.
+     * @param int[] $cats   Empty to leave the categories alone.
+     * @param int[] $orgs   Empty to leave the organizers alone.
+     * @return string '' when the row changed, otherwise why not.
+     */
+    private function pending_apply_one( $id, $series, $cats, $orgs ) {
+        $id    = (int) $id;
+        $src   = (string) get_post_meta( $id, SFAF_Sources::META_SOURCE, true );
+        $owned = ( '' !== $src ) ? SFAF_Sources::owned_fields_for( $src ) : array();
+
+        foreach ( array( 'category' => $cats, 'organizer' => $orgs ) as $field => $want ) {
+            if ( ! empty( $want ) && in_array( $field, $owned, true ) ) {
+                $prov = SFAF_Sources::provenance( $id );
+                return 'its ' . ( 'category' === $field ? 'categories come' : 'organizers come' ) . ' from ' . ( $prov['label'] ? $prov['label'] : 'its source' );
+            }
+        }
+
+        $before = array(
+            'series' => (int) SFAF_Series::id_for_event( $id ),
+            'cats'   => $this->sorted_terms( $id, 'uc_event_category' ),
+            'orgs'   => $this->sorted_terms( $id, 'uc_organizer' ),
+        );
+
+        if ( $cats ) {
+            wp_set_object_terms( $id, $cats, 'uc_event_category' );
+        }
+        if ( $orgs ) {
+            wp_set_object_terms( $id, $orgs, 'uc_organizer' );
+        }
+        if ( $series ) {
+            SFAF_Series::set_for_event( $id, $series );
+            SFAF_Series::apply_defaults( $id, $series );
+            if ( $before['series'] !== $series ) {
+                SFAF_FAQ_Sets::apply_series_default( $id, $series );
+            }
+        }
+
+        $after = array(
+            'series' => (int) SFAF_Series::id_for_event( $id ),
+            'cats'   => $this->sorted_terms( $id, 'uc_event_category' ),
+            'orgs'   => $this->sorted_terms( $id, 'uc_organizer' ),
+        );
+        return ( $before === $after ) ? 'already set that way' : '';
+    }
+
+    /** A row's term ids in one taxonomy, sorted, for a before and after. */
+    private function sorted_terms( $id, $taxonomy ) {
+        $ids = wp_get_object_terms( (int) $id, $taxonomy, array( 'fields' => 'ids' ) );
+        $ids = is_wp_error( $ids ) ? array() : array_map( 'intval', (array) $ids );
+        sort( $ids );
+        return $ids;
+    }
+
+    /**
      * The pending bar's POST, read and answered (3.103.0). See
      * pending_bulk_apply() for the rules.
      *
@@ -17581,7 +17611,7 @@ class SFAF_Portal {
             $this->redirect( 'pending', array( 'msg' => 'pending_bulk_none' ) );
         }
         $do = isset( $_POST['uc_do'] ) ? sanitize_key( wp_unslash( $_POST['uc_do'] ) ) : '';
-        if ( ! in_array( $do, array( 'series', 'categories', 'organizers', 'publish', 'dismiss' ), true ) ) {
+        if ( ! in_array( $do, array( 'apply', 'publish', 'dismiss' ), true ) ) {
             $this->redirect( 'pending', array( 'msg' => 'pending_bulk_none' ) );
         }
         $ids = isset( $_POST['pending_ids'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['pending_ids'] ) ) : array();

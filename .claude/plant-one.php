@@ -506,6 +506,18 @@ $edits = array(
         "        foreach ( array_unique( array_map( 'intval', (array) \$ids ) ) as \$id ) {",
         "        foreach ( array_keys( \$entries ) as \$id ) {" ),
 
+    /* ---- 3.104.0: the pending bar is one panel. ---- */
+
+    /* Apply writes a blank category control, which clears the row's categories. */
+    'apply-clears-blank' => array( $P,
+        "        if ( \$cats ) {\n            wp_set_object_terms( \$id, \$cats, 'uc_event_category' );\n        }\n",
+        "        wp_set_object_terms( \$id, \$cats, 'uc_event_category' );\n" ),
+
+    /* Apply reaches every row in the queue as well as the ticked ones. */
+    'apply-unticked' => array( $P,
+        "        foreach ( array_unique( array_map( 'intval', (array) \$ids ) ) as \$id ) {",
+        "        foreach ( array_unique( array_merge( array_map( 'intval', (array) \$ids ), array_keys( \$entries ) ) ) as \$id ) {" ),
+
 );
 
 if ( 'off-ladder' === $which ) {

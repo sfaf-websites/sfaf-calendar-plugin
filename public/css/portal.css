@@ -3943,10 +3943,9 @@ body.uc-modal-open { overflow: hidden; }
 /* ---------------------------------------------------------------------------
    THE PENDING QUEUE'S BULK BAR (3.103.0).
 
-   The events list's bar, stacked: a series row, two disclosures for the
-   tick groups and an action row, separated from the list by the same hairline
-   the events list uses and carrying no card of its own. The disclosures take
-   .uc-queue-panel's quiet summary, so they read as the queue's own.
+   The events list's bar, stacked: one panel with one Apply, and an action
+   row, separated from the list by the same hairline the events list uses
+   and carrying no card of its own.
    --------------------------------------------------------------------------- */
 .uc-pending-bulk {
     display: flex; flex-direction: column; gap: 10px;
@@ -3954,7 +3953,15 @@ body.uc-modal-open { overflow: hidden; }
     border-bottom: 1px solid var(--p-border);
 }
 .uc-pending-bulk-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
-.uc-pending-bulk-group .uc-bulk-cat-go { margin-top: 10px; }
+/* ONE PANEL, THREE CONTROLS SIDE BY SIDE (3.104.0), and one Apply under them.
+   The two tick lists scroll inside a fixed height so a long organizer list
+   cannot push Apply off the screen; below 720px the columns stack. */
+.uc-pending-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.uc-pending-panel-col { margin: 0; min-width: 0; }
+.uc-pending-panel-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 8px; }
+@media (max-width: 720px) {
+    .uc-pending-panel { grid-template-columns: 1fr; }
+}
 .uc-pending-bulk button[disabled] { opacity: 0.55; cursor: not-allowed; }
 
 /* The row's tick, first in the row and level with the title's first line. */

@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.102.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.102.0" />
-<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.102.0" />
+    <link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.103.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.103.0" />
+<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.103.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.102.0" />
+    <link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.103.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -482,8 +482,8 @@
                                 </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.102.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.102.0"></script>
-<script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.102.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.103.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.103.0"></script>
+<script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.103.0"></script>
 <script>window.SL_PAGE="series";(function () {
 var out = { page: window.SL_PAGE, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
@@ -536,6 +536,11 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.holds = Array.prototype.map.call(holds, function (h) { return (seen(h) ? '' : 'HIDDEN ') + text(h); });
     out.holdColor = holds[0] ? getComputedStyle(holds[0]).color : 'none';
     out.pageWidth = document.documentElement.scrollWidth;
+    var cols = document.querySelectorAll('[data-uc-pending-panel] > .uc-pending-panel-col');
+    out.cols = Array.prototype.map.call(cols, function (c) { var r = c.getBoundingClientRect(); return Math.round(r.left) + '@' + Math.round(r.top); });
+    out.colLabels = Array.prototype.map.call(cols, function (c) { return text(c.querySelector('.uc-field-label')); });
+    var hint = form && form.querySelector('button[value="apply"]') && form.querySelector('button[value="apply"]').parentNode.querySelector('.uc-hint');
+    out.applyHint = seen(hint) ? text(hint) : 'HIDDEN';
   }
   var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 }, 400); });
