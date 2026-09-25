@@ -135,6 +135,9 @@ try bk-unticked "a bulk action reaches an unticked row"     $S
 # 3.104.0, the pending bar is one panel.
 try apply-clears-blank "Apply clears a field left blank"   $S
 try apply-unticked "Apply touches an unticked row"         $S
+# 3.104.0, times fold on a real request.
+try times-unfolded "a hook folds no time pair"           .claude/publish-times-live.php --run
+try typed-loses "a typed URL loses to the series picture" .claude/typed-image-test.php
 
 restore
 echo "-------------------------------------------"

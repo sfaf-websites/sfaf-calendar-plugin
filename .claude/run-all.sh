@@ -49,6 +49,7 @@ for f in .claude/*.php; do
     mail-kit.php) continue ;;          # the miniature WordPress the 3.102.0 mail checks load, not a check
     rsvp-noemail-live.php) continue ;; # run below with --run
     preferences-live.php) continue ;;  # run below with --run
+    publish-times-live.php) continue ;; # run below with --run
     series-defaults-live.php) continue ;; # run below with --run
   esac
   run "$(basename "$f" .php)" php "$f"
@@ -252,6 +253,7 @@ echo "=== the RSVP form without an email, and Preferences, in a browser ==="
 run "rsvp-noemail-live --run" php .claude/rsvp-noemail-live.php --run
 run "preferences-live --run"  php .claude/preferences-live.php --run
 run "series-defaults-live --run" php .claude/series-defaults-live.php --run
+run "publish-times-live --run" php .claude/publish-times-live.php --run
 
 echo
 echo "=== shell guards ==="

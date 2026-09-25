@@ -11,6 +11,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SFAF_Portal {
 
     /**
+     * Post meta: the URL a person typed into the image box, stored as typed
+     * (3.104.0). The folder rule exempts `_uc_image_url` only while it equals
+     * this. See sfaf_event_own_image_url().
+     */
+    const META_IMAGE_TYPED = '_uc_image_url_typed';
+
+    /**
      * Where a bulk save parks one occurrence's date, time and location before
      * moving it, so the "this event has moved" email can say what it was.
      *
@@ -3131,7 +3138,7 @@ class SFAF_Portal {
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
-            '_uc_image_url', '_uc_image_override',
+            '_uc_image_url', '_uc_image_url_typed', '_uc_image_override',
             // Whether the fundraising figures are published. It travels with
             // the donate URL and goal it governs: a group that shares a
             // campaign should not show its progress on one date and not the
@@ -3344,7 +3351,7 @@ class SFAF_Portal {
             '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
-            '_uc_image_url', '_uc_image_override',
+            '_uc_image_url', '_uc_image_url_typed', '_uc_image_override',
             SFAF_Reminders::NOTIFY_USERS_META,
             SFAF_Reminders::NOTIFY_EMAILS_META,
             SFAF_Reminders::NOTIFY_AUTHOR_OPTOUT_META,
@@ -8506,6 +8513,7 @@ class SFAF_Portal {
         } elseif ( isset( $_POST['reset_series_image'] ) ) {
             delete_post_thumbnail( $event_id );
             delete_post_meta( $event_id, '_uc_image_url' );
+            delete_post_meta( $event_id, self::META_IMAGE_TYPED );
             delete_post_meta( $event_id, '_uc_image_override' );
         } elseif ( isset( $_POST['featured_image_id'] ) || isset( $_POST['image_url'] ) ) {
             $thumb_id = isset( $_POST['featured_image_id'] ) ? intval( $_POST['featured_image_id'] ) : 0;
@@ -8516,10 +8524,18 @@ class SFAF_Portal {
             }
             if ( isset( $_POST['image_url'] ) ) {
                 $img_url = esc_url_raw( wp_unslash( $_POST['image_url'] ) );
+                /*
+                 * WHAT A PERSON TYPED IS RECORDED AS TYPED (3.104.0), so the
+                 * folder rule can exempt this box and nothing else: see
+                 * sfaf_event_own_image_url(). Written beside the URL and
+                 * cleared with it, in this one place both screens save through.
+                 */
                 if ( $img_url ) {
                     update_post_meta( $event_id, '_uc_image_url', $img_url );
+                    update_post_meta( $event_id, self::META_IMAGE_TYPED, $img_url );
                 } else {
                     delete_post_meta( $event_id, '_uc_image_url' );
+                    delete_post_meta( $event_id, self::META_IMAGE_TYPED );
                 }
             }
             // Flag a per-event image override so series image changes skip it.

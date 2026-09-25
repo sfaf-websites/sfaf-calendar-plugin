@@ -1330,7 +1330,7 @@ class SFAF_Embed {
             $keys = array_flip( array(
                 '_uc_event_date', '_uc_start_time', '_uc_end_time', '_uc_end_date',
                 '_uc_location', '_uc_recurrence', '_uc_capacity',
-                '_uc_image_url', '_uc_image_override', '_uc_external_image', '_thumbnail_id',
+                '_uc_image_url', '_uc_image_url_typed', '_uc_image_override', '_uc_external_image', '_thumbnail_id',
                 // A series is a term now, so a change to one arrives on the
                 // taxonomy hooks rather than here. What is left of the old
                 // group is the recurrence marker, which nothing renders.

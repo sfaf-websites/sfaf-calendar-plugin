@@ -518,6 +518,17 @@ $edits = array(
         "        foreach ( array_unique( array_map( 'intval', (array) \$ids ) ) as \$id ) {",
         "        foreach ( array_unique( array_merge( array_map( 'intval', (array) \$ids ), array_keys( \$entries ) ) ) as \$id ) {" ),
 
+    /* The 3.98.0 fault: the default list only when no argument is passed,
+     * which a WordPress hook never does, so '' folds nothing. */
+    'times-unfolded' => array( 'includes/sfaf-template-functions.php',
+        "    if ( ! is_array( \$names ) || empty( \$names ) ) {",
+        "    if ( null === \$names ) {" ),
+
+    /* A typed URL outside the folder still loses to the series picture. */
+    'typed-loses' => array( 'includes/sfaf-template-functions.php',
+        "    if ( \$own === (string) get_post_meta( \$post_id, '_uc_image_url_typed', true ) ) {",
+        "    if ( false ) {" ),
+
 );
 
 if ( 'off-ladder' === $which ) {

@@ -2798,6 +2798,18 @@ function sfaf_event_own_image_url( $post_id, $size = 'large' ) {
     if ( '' === $own ) {
         return '';
     }
+    /*
+     * A URL A PERSON TYPED IS THE EVENT'S OWN PICTURE, WHEREVER IT POINTS
+     * (3.104.0, Mark's decision, reversing 3.83.0 for this one box). The
+     * editor's "Or an image URL" box, which the pending row's image control
+     * shares, records what was typed in SFAF_Portal::META_IMAGE_TYPED. The
+     * exemption holds only while `_uc_image_url` is still exactly that string,
+     * so a value any other writer puts there later (an import, a copy) answers
+     * to the folder rule below as it always has. Attachments are untouched.
+     */
+    if ( $own === (string) get_post_meta( $post_id, '_uc_image_url_typed', true ) ) {
+        return $own;
+    }
     if ( ! $folder ) {
         return $own;
     }
