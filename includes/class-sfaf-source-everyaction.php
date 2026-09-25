@@ -329,7 +329,7 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
         if ( ! empty( $x['series_id'] ) && ! SFAF_Series::id_for_event( $post_id ) ) {
             $term_id = self::series_for( $x['series_id'], isset( $event['title'] ) ? $event['title'] : '' );
             if ( $term_id ) {
-                SFAF_Series::set_for_event( $post_id, $term_id );
+                SFAF_Series::join( $post_id, $term_id );
                 if ( ! $is_new ) {
                     $term = SFAF_Series::get( $term_id );
                     $changed['Series'] = array( 'from' => '', 'to' => $term ? $term->name : '' );

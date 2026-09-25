@@ -3272,6 +3272,7 @@ body.uc-modal-open { overflow: hidden; }
    list, the schedule's bulk publish and this. One answer for all three.
    ------------------------------------------------------------------------ */
 .uc-bulk-cat .uc-btn-primary[disabled],
+.uc-pending-bulk .uc-btn-primary[disabled],
 .uc-publish-picker .uc-btn-primary[disabled] {
     background: var(--p-surface-2, #f6f7f8);
     border-color: var(--p-border);
@@ -3938,6 +3939,38 @@ body.uc-modal-open { overflow: hidden; }
 @media (max-width: 720px) {
     .uc-queue-actions { flex: 1 1 100%; padding-top: 8px; }
 }
+
+/* ---------------------------------------------------------------------------
+   THE PENDING QUEUE'S BULK BAR (3.103.0).
+
+   The events list's bar, stacked: a series row, two disclosures for the
+   tick groups and an action row, separated from the list by the same hairline
+   the events list uses and carrying no card of its own. The disclosures take
+   .uc-queue-panel's quiet summary, so they read as the queue's own.
+   --------------------------------------------------------------------------- */
+.uc-pending-bulk {
+    display: flex; flex-direction: column; gap: 10px;
+    margin: 0 0 14px; padding: 0 0 14px;
+    border-bottom: 1px solid var(--p-border);
+}
+.uc-pending-bulk-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.uc-pending-bulk-group .uc-bulk-cat-go { margin-top: 10px; }
+.uc-pending-bulk button[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* The row's tick, first in the row and level with the title's first line. */
+.uc-queue-tick { flex: 0 0 auto; padding-top: 3px; }
+.uc-queue-tick input[type="checkbox"] { margin: 0; width: auto; }
+
+/* WHY A ROW WILL NOT PUBLISH YET, in the amber the picture warning uses on
+   this row (#b45309, 5.02:1). A step in the job, not a fault. */
+.uc-queue-hold { margin: 0 0 4px; font-size: 12px; font-weight: 400; line-height: 1.4; color: #b45309; }
+
+/* EVERY ROW A PUBLISH HELD, NAMED (3.103.0). Under the outcome sentence, on
+   the warn flash, one line per event with the title as the way in. */
+.uc-held p.uc-held-head { margin: 0; }
+.uc-held-list { margin: 6px 0 0; padding-left: 18px; font-weight: 400; }
+.uc-held-list li { margin: 2px 0; }
+.uc-held-list a { color: inherit; text-decoration: underline; }
 
 /* ---------------------------------------------------------------------------
    THE FOUR EMAILS, BEHIND A DISCLOSURE (3.25.0).

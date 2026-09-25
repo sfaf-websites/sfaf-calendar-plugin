@@ -1429,7 +1429,19 @@ class SFAF_Portal {
             case 'approve_event':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
-                wp_update_post( array( 'ID' => $event_id, 'post_status' => 'publish' ) );
+
+                /*
+                 * THE EDITOR'S PUBLISH RULE (3.103.0). Approve set the status
+                 * past it, so a submission with no category went live from
+                 * here while the editor would have held it. Held means nothing
+                 * is written, nobody is told and nobody is listed: the event
+                 * stays in the queue, and the flash names what it needs.
+                 */
+                $approve_why = $this->publish_one( $event_id );
+                if ( '' !== $approve_why ) {
+                    $this->remember_held( $user, array( $event_id => $approve_why ) );
+                    $this->redirect( 'pending', array( 'msg' => 'approve_held', 'held' => 1 ) );
+                }
 
                 /*
                  * THE TWO ANSWERS FROM THE APPROVAL PROMPT (3.48.0).
@@ -1632,6 +1644,13 @@ class SFAF_Portal {
             /* The scheduled runner's controls (Run now, Clear log) moved to
              * the WordPress admin in 2.13.0 along with the rest of Automation.
              * See SFAF_Admin::handle_cron_action(). */
+
+            /* The pending queue's bulk bar (3.103.0). Admin, like every other
+             * action on that screen, and the event gate again per row. */
+            case 'pending_bulk':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $this->pending_bulk_from_post( $user );
+                break;
 
             case 'import_dismiss':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -2036,6 +2055,33 @@ class SFAF_Portal {
      * @param callable $is_locked field => bool, the platform-owned test.
      * @return string[] publish_fields() keys, in that list's order.
      */
+    /**
+     * The series this save puts the event INTO, or 0 when it joins none
+     * (3.103.0). Staying in the series it was already in is not joining.
+     *
+     * The editor posts 'series' only where the control is drawn, so an
+     * absent key means the series does not change.
+     *
+     * @param int $event_id 0 for a new event.
+     * @return int
+     */
+    private function series_joined_from_post( $event_id ) {
+        if ( ! isset( $_POST['series'] ) ) {
+            return 0;
+        }
+        $now = intval( $_POST['series'] );
+        $was = $event_id ? (int) SFAF_Series::id_for_event( (int) $event_id ) : 0;
+        return ( $now && $now !== $was && SFAF_Series::exists( $now ) ) ? $now : 0;
+    }
+
+    /** The series the event will be in once this save is written, or 0. */
+    private function series_after_post( $event_id ) {
+        if ( isset( $_POST['series'] ) ) {
+            return intval( $_POST['series'] );
+        }
+        return $event_id ? (int) SFAF_Series::id_for_event( (int) $event_id ) : 0;
+    }
+
     private function publish_missing_from_post( $event_id, $user, $is_locked ) {
         $event_id = (int) $event_id;
         $post_str = function ( $key ) {
@@ -2067,8 +2113,18 @@ class SFAF_Portal {
             $filled[ $field ] = ( '' !== $value );
         }
 
+        /*
+         * WHAT JOINING A SERIES WILL FILL IN (3.103.0). SFAF_Series::join()
+         * runs after the event's own categories and organizers are written,
+         * and fills each one that is still empty from the series defaults, so
+         * an empty field the series will fill is not missing.
+         */
+        $joined     = $this->series_joined_from_post( $event_id );
+        $series_cat = $joined ? SFAF_Series::default_categories( $joined ) : array();
+        $series_org = $joined ? SFAF_Series::default_organizers( $joined ) : array();
+
         /* Organizers only when the form did not show them; see above. */
-        $filled['organizer'] = isset( $_POST['uc_organizer_present'] ) ? true : $has_term( 'uc_organizer' );
+        $filled['organizer'] = isset( $_POST['uc_organizer_present'] ) ? true : ( $has_term( 'uc_organizer' ) || ! empty( $series_org ) );
 
         /* Categories, as save_manager_fields_from_post() will leave them. A
          * contributor limited to some categories keeps any others the event
@@ -2091,12 +2147,26 @@ class SFAF_Portal {
         } else {
             $filled['category'] = $has_term( 'uc_event_category' );
         }
+        if ( ! $filled['category'] && ! empty( $series_cat ) ) {
+            $filled['category'] = true;
+        }
 
-        /* A description with words in it. Markup alone is not one. */
+        /*
+         * A description with words in it. Markup alone is not one.
+         *
+         * OR THE SERIES' (3.103.0). An event with no description of its own
+         * shows its series description on every surface (3.98.0), and until
+         * 3.103.0 this held such an event back for a description it already
+         * shows. The series asked is the one the event will be in after this
+         * save.
+         */
         if ( ! $is_locked( 'description' ) && isset( $_POST['description'] ) ) {
             $filled['description'] = '' !== trim( sfaf_flatten_html( (string) wp_unslash( $_POST['description'] ) ) );
         } else {
             $filled['description'] = $event_id && '' !== trim( sfaf_flatten_html( (string) get_post_field( 'post_content', $event_id ) ) );
+        }
+        if ( ! $filled['description'] ) {
+            $filled['description'] = SFAF_Sources::series_description_is_filled( $this->series_after_post( $event_id ) );
         }
 
         /* A venue, an address, or the online tick; hybrid is online and a room. */
@@ -2245,6 +2315,20 @@ class SFAF_Portal {
         if ( ! $is_new ) {
             $terms = wp_get_post_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) );
             $org_had = is_wp_error( $terms ) ? array() : $terms;
+        }
+        /*
+         * A SERIES THIS SAVE JOINS FILLS AN EMPTY ORGANIZER (3.103.0), so
+         * "none ticked" on an event that had none is the series defaults,
+         * which is what SFAF_Series::join() will write. An event that HAD
+         * organizers and posts none is still refused: that is somebody
+         * unticking them, and the series fills only what was empty.
+         */
+        if ( null !== $org_posted && empty( array_filter( $org_posted ) ) && empty( $org_had ) ) {
+            $joining = $this->series_joined_from_post( $event_id );
+            $from_series = $joining ? SFAF_Series::default_organizers( $joining ) : array();
+            if ( $from_series ) {
+                $org_posted = $from_series;
+            }
         }
         $pub_missing = $this->publish_missing_from_post( $event_id, $user, $is_locked );
         if ( null !== $org_posted && empty( array_filter( $org_posted ) ) && ! in_array( 'organizer', $pub_missing, true ) ) {
@@ -2662,7 +2746,11 @@ class SFAF_Portal {
         if ( isset( $_POST['series'] ) ) {
             $series_was = SFAF_Series::id_for_event( $event_id );
             $series_now = intval( $_POST['series'] );
-            SFAF_Series::set_for_event( $event_id, $series_now );
+            /* join(), NOT set_for_event() (3.103.0): moving into a series
+             * fills an empty category and organizer from its defaults. After
+             * save_manager_fields_from_post() above, so it sees what this
+             * save wrote and never replaces a value the event has. */
+            SFAF_Series::join( $event_id, $series_now );
             if ( $series_now && $series_now !== $series_was ) {
                 SFAF_FAQ_Sets::apply_series_default( $event_id, $series_now );
             }
@@ -3787,6 +3875,79 @@ class SFAF_Portal {
                 <main class="uc-portal-content">
         <?php
         $this->flash();
+        $this->render_held();
+    }
+
+    /**
+     * Publish one event from a queue, under the editor's rule (3.103.0).
+     *
+     * APPROVE AND THE PENDING QUEUE'S BULK PUBLISH BOTH CALL THIS, so the two
+     * cannot disagree about what may go live. wp_update_post() rather than a
+     * status write, so save_post fires for every listener, as publish_drafts()
+     * does.
+     *
+     * @param int $event_id
+     * @return string '' when published, otherwise why not.
+     */
+    private function publish_one( $event_id ) {
+        $event_id = (int) $event_id;
+        $missing  = SFAF_Sources::publish_missing( $event_id );
+        if ( $missing ) {
+            return 'needs ' . SFAF_Sources::field_phrase( $missing );
+        }
+        $res = wp_update_post( array( 'ID' => $event_id, 'post_status' => 'publish' ), true );
+        return ( is_wp_error( $res ) || ! $res ) ? 'could not be saved' : '';
+    }
+
+    /**
+     * Keep the rows a publish held back, for the page the redirect lands on
+     * (3.103.0). Ids and reasons only; the titles are read when it is drawn.
+     *
+     * @param WP_User            $user
+     * @param array<int,string>  $held id => reason
+     */
+    private function remember_held( $user, $held ) {
+        if ( empty( $held ) ) {
+            return;
+        }
+        set_transient( 'sfaf_held_' . (int) $user->ID, $held, 10 * MINUTE_IN_SECONDS );
+    }
+
+    /**
+     * EVERY ROW A PUBLISH HELD, NAMED, WITH WHAT IT NEEDS (3.103.0).
+     *
+     * A count says something was left out and not what. The person then opens
+     * forty events to find the four, so the list is the answer and each title
+     * opens its editor. Drawn only on the redirect that asked for it, so a
+     * stale list never lands on an unrelated screen.
+     */
+    private function render_held() {
+        if ( empty( $_GET['held'] ) ) {
+            return;
+        }
+        $key  = 'sfaf_held_' . get_current_user_id();
+        $held = get_transient( $key );
+        delete_transient( $key );
+        if ( empty( $held ) || ! is_array( $held ) ) {
+            return;
+        }
+        ?>
+        <div class="uc-flash uc-flash-warn uc-held" role="status">
+            <p class="uc-held-head"><?php echo esc_html( sprintf(
+                _n( '%d event was not published:', '%d events were not published:', count( $held ) ),
+                count( $held )
+            ) ); ?></p>
+            <ul class="uc-held-list">
+                <?php foreach ( $held as $held_id => $why ) : ?>
+                    <li data-uc-held="<?php echo (int) $held_id; ?>">
+                        <a href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $held_id ) ); ?>"><?php
+                            echo esc_html( get_the_title( (int) $held_id ) ?: '(untitled)' );
+                        ?></a>: <?php echo esc_html( (string) $why ); ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php
     }
 
     private function chrome_close() {
@@ -3818,6 +3979,9 @@ class SFAF_Portal {
             'duplicated'     => 'Copied. This is a new draft with no date and no registrations, and the event it came from is unchanged. Set the date, check the details, then publish. If the original was imported, this copy is not: nothing here is tied to the platform and every field is yours to edit.',
             'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
+            'approve_held'   => 'Not approved. It is still waiting, and nobody has been told.',
+            'pending_bulk_none'   => 'Nothing was changed. Tick the events first, then press the button.',
+            'pending_bulk_choose' => 'Nothing was changed. Choose what to set, then press the button again.',
             'rejected'       => 'Event rejected.',
             /*
              * Both say what to do, and the second also says what happened,
@@ -4099,7 +4263,35 @@ class SFAF_Portal {
                     $failed
                 );
             }
-            return $said;
+            /*
+             * PRINTED, NOT RETURNED (3.103.0). flash() is called for what it
+             * prints, and this branch and bulk_cat_done below returned their
+             * sentence to a caller that discarded it, so neither bulk outcome
+             * had ever appeared on the events list. bulk_cat_done also threw a
+             * ValueError on PHP 8 from a `%1\$d` inside single quotes.
+             */
+            echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
+            return;
+        }
+
+        /*
+         * THE PENDING BAR'S OUTCOME (3.103.0). The count says what changed;
+         * every row it could not change is named in the list under this, with
+         * the reason, by render_held().
+         */
+        if ( 'pending_bulk_done' === $key ) {
+            $did  = isset( $_GET['did'] ) ? max( 0, (int) $_GET['did'] ) : 0;
+            $do   = isset( $_GET['do'] ) ? sanitize_key( wp_unslash( $_GET['do'] ) ) : '';
+            $noun = _n( 'event', 'events', $did );
+            $said = array(
+                'series'     => sprintf( 'Series set on %d %s.', $did, $noun ),
+                'categories' => sprintf( 'Categories set on %d %s.', $did, $noun ),
+                'organizers' => sprintf( 'Organizers set on %d %s.', $did, $noun ),
+                'publish'    => sprintf( '%d %s published. %s on the public calendar now.', $did, $noun, 1 === $did ? 'It is' : 'They are' ),
+                'dismiss'    => sprintf( '%d %s dismissed.', $did, $noun ),
+            );
+            echo '<div class="uc-flash">' . esc_html( isset( $said[ $do ] ) ? $said[ $do ] : sprintf( '%d %s changed.', $did, $noun ) ) . '</div>';
+            return;
         }
 
         if ( 'bulk_cat_done' === $key ) {
@@ -4109,7 +4301,7 @@ class SFAF_Portal {
 
             $said = sprintf(
                 /* translators: 1: how many events, 2: event or events, 3: the category name. */
-                _n( 'Added to %1\$d %2\$s.', 'Added to %1\$d %2\$s.', $did ),
+                _n( 'Added to %1$d %2$s.', 'Added to %1$d %2$s.', $did ),
                 $did,
                 _n( 'event', 'events', $did )
             );
@@ -4124,7 +4316,8 @@ class SFAF_Portal {
                     $refused
                 );
             }
-            return $said;
+            echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
+            return;
         }
 
         if ( 'schedule_published' === $key ) {
@@ -4132,7 +4325,7 @@ class SFAF_Portal {
             $failed = isset( $_GET['failed'] ) ? max( 0, intval( $_GET['failed'] ) ) : 0;
 
             $said = sprintf( '%d %s now on the public calendar.', $made, _n( 'draft is', 'drafts are', $made ) );
-            $said .= ' Past dates, events with no date yet, imported events and submissions were left as they were.';
+            $said .= ' Past dates, events with no date yet, imported events, submissions and drafts missing a required field were left as they were.';
             if ( $failed > 0 ) {
                 $said .= ' ' . sprintf( '%d could not be published and %s still %s.', $failed, _n( 'is', 'are', $failed ), _n( 'a draft', 'drafts', $failed ) );
             }
@@ -7777,6 +7970,23 @@ class SFAF_Portal {
         return isset( $fields[ $field ] ) ? '<span class="uc-req" aria-hidden="true">*</span>' : '';
     }
 
+    /**
+     * One line under a category or organizer that came from the series
+     * defaults and is still exactly what was copied (3.103.0). Re-filing the
+     * event takes it away. See SFAF_Series::filled_from().
+     *
+     * @param int    $event_id
+     * @param string $field 'category' or 'organizer'.
+     */
+    private function series_filled_note( $event_id, $field ) {
+        $name = $event_id ? SFAF_Series::filled_from( (int) $event_id, $field ) : '';
+        if ( '' === $name ) {
+            return;
+        }
+        echo '<span class="uc-hint" data-uc-from-series="' . esc_attr( $field ) . '">'
+            . esc_html( 'Filled in from the ' . $name . ' series.' ) . '</span>';
+    }
+
     private function render_manager_control( $field, $ctx ) {
         $event_id = (int) $ctx['event_id'];
         $uid      = $ctx['uid'];
@@ -7971,6 +8181,7 @@ class SFAF_Portal {
                         <?php endforeach; endif; ?>
                     </div>
 
+                    <?php $this->series_filled_note( $event_id, 'category' ); ?>
                 </div>
                 <?php
                 break;
@@ -8019,6 +8230,7 @@ class SFAF_Portal {
                     <?php if ( count( $current ) > 1 ) : ?>
                         <span class="uc-hint uc-hint-spec">Co-hosted. The event page names them in this order.</span>
                     <?php endif; ?>
+                    <?php $this->series_filled_note( $event_id, 'organizer' ); ?>
                 </div>
 
                 <?php
@@ -8515,6 +8727,16 @@ class SFAF_Portal {
             'faq_set'     => sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ?? '' ) ),
             'video'       => trim( (string) wp_unslash( $_POST['series_video'] ?? '' ) ),
         );
+
+        /*
+         * THE DEFAULTS (3.103.0), under their marker: a tick group with every
+         * box empty posts nothing, and that has to mean "no default" rather
+         * than "this form did not ask".
+         */
+        if ( isset( $_POST['uc_series_defaults_present'] ) ) {
+            $args['categories'] = isset( $_POST['series_categories'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_categories'] ) ) : array();
+            $args['organizers'] = isset( $_POST['series_organizers'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_organizers'] ) ) : array();
+        }
 
         /*
          * A VIDEO THAT DOES NOT PARSE IS REPORTED AND NOT STORED, the same rule
@@ -9163,6 +9385,56 @@ class SFAF_Portal {
                         It plays on every event in this series unless that event has its own.
                     </span>
                 </label>
+
+                <?php
+                /*
+                 * THE DEFAULT CATEGORIES AND ORGANIZERS (3.103.0). Copied onto
+                 * an event when it joins the series with none of its own, the
+                 * FAQ set's rule, so changing them reaches only events that
+                 * join afterwards. The hint says that, because it is the thing
+                 * somebody would otherwise assume the opposite of.
+                 */
+                $def_cats = $term_id ? SFAF_Series::default_categories( $term_id ) : array();
+                $def_orgs = $term_id ? SFAF_Series::default_organizers( $term_id ) : array();
+                $all_cats = SFAF_Categories::all();
+                $all_orgs = SFAF_Organizers::all();
+                ?>
+                <input type="hidden" name="uc_series_defaults_present" value="1" />
+                <div class="uc-field uc-series-default" data-uc-series-default="category" role="group" aria-labelledby="uc-series-default-category">
+                    <span class="uc-field-label" id="uc-series-default-category">Default categories</span>
+                    <?php if ( empty( $all_cats ) ) : ?>
+                        <p class="uc-hint">There are no categories yet.</p>
+                    <?php else : ?>
+                        <div class="uc-check-grid">
+                            <?php foreach ( $all_cats as $c ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="series_categories[]" value="<?php echo (int) $c->term_id; ?>"
+                                           <?php checked( in_array( (int) $c->term_id, $def_cats, true ) ); ?> />
+                                    <?php echo esc_html( $c->name ); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <span class="uc-hint">Given to an event that joins this series with no category. Events already in it keep their own.</span>
+                </div>
+
+                <div class="uc-field uc-series-default" data-uc-series-default="organizer" role="group" aria-labelledby="uc-series-default-organizer">
+                    <span class="uc-field-label" id="uc-series-default-organizer">Default organizers</span>
+                    <?php if ( empty( $all_orgs ) ) : ?>
+                        <p class="uc-hint">There are no organizers yet.</p>
+                    <?php else : ?>
+                        <div class="uc-check-grid">
+                            <?php foreach ( $all_orgs as $o ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="series_organizers[]" value="<?php echo (int) $o->term_id; ?>"
+                                           <?php checked( in_array( (int) $o->term_id, $def_orgs, true ) ); ?> />
+                                    <?php echo esc_html( $o->name ); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
+                </div>
 
                 <label class="uc-field">
                     <span class="uc-field-label">Default FAQ set</span>
@@ -10940,6 +11212,7 @@ class SFAF_Portal {
         $failed  = 0;
         $refused = 0;
         $skipped = 0;
+        $held    = array();
 
         foreach ( array_unique( $wanted ) as $pub_id ) {
             $pub_id   = (int) $pub_id;
@@ -10951,8 +11224,12 @@ class SFAF_Portal {
                 $refused++;
                 continue;
             }
-            if ( '' !== SFAF_Series::publish_skip_reason( $pub_id, $today ) ) {
+            $pub_why = SFAF_Series::publish_skip_reason( $pub_id, $today );
+            if ( '' !== $pub_why ) {
                 $skipped++;
+                if ( 'not a draft' !== $pub_why ) {
+                    $held[ $pub_id ] = $pub_why;
+                }
                 continue;
             }
 
@@ -10964,8 +11241,12 @@ class SFAF_Portal {
             }
         }
 
+        /* Every held row, named, on the page the redirect lands on (3.103.0). */
+        $this->remember_held( $user, $held );
+        $held_arg = $held ? array( 'held' => 1 ) : array();
+
         if ( 0 === $did && 0 === $failed ) {
-            $this->redirect( 'events', array( 'msg' => 'bulk_pub_none' ) );
+            $this->redirect( 'events', array( 'msg' => 'bulk_pub_none' ) + $held_arg );
         }
 
         $this->redirect( 'events', array(
@@ -10974,7 +11255,7 @@ class SFAF_Portal {
             'failed'  => $failed,
             'refused' => $refused,
             'skipped' => $skipped,
-        ) );
+        ) + $held_arg );
     }
 
     private function schedule_publish_from_post() {
@@ -11007,15 +11288,29 @@ class SFAF_Portal {
 
         $result = SFAF_Series::publish_drafts( $term_id, $only );
 
+        /*
+         * THE DRAFTS THE PUBLISH RULE HELD, NAMED (3.103.0). They carry no tick
+         * on this screen, so a press never reaches them, and the list says
+         * which they are and what each needs.
+         */
+        $held = array();
+        foreach ( $result['blocked'] as $held_id => $why ) {
+            if ( 0 === strpos( (string) $why, 'needs ' ) ) {
+                $held[ (int) $held_id ] = $why;
+            }
+        }
+        $this->remember_held( wp_get_current_user(), $held );
+        $held_arg = $held ? array( 'held' => 1 ) : array();
+
         if ( 0 === $result['published'] && 0 === $result['failed'] ) {
-            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_publish_none' ) );
+            $this->redirect( 'series/edit/' . $term_id, array( 'msg' => 'schedule_publish_none' ) + $held_arg );
         }
 
         $this->redirect( 'series/edit/' . $term_id, array(
             'msg'    => 'schedule_published',
             'made'   => $result['published'],
             'failed' => $result['failed'],
-        ) );
+        ) + $held_arg );
     }
 
     private function schedule_extend_from_post() {
@@ -17019,6 +17314,7 @@ class SFAF_Portal {
                 <?php if ( ! empty( $ids ) ) : ?><span class="uc-count-badge"><?php echo count( $ids ); ?></span><?php endif; ?>
             </div>
             <?php $this->pending_sort_control( $kind, $orderby, $order ); ?>
+            <?php $this->render_pending_bulk( $ids ); ?>
             <?php if ( empty( $ids ) ) : ?>
                 <p class="uc-empty"><?php
                     /* THE EMPTY MESSAGE SAYS WHICH LIST IS EMPTY. "Nothing
@@ -17041,6 +17337,274 @@ class SFAF_Portal {
         <?php $this->render_dismissed_queue(); ?>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * THE BULK BAR ABOVE THE PENDING QUEUE (3.103.0).
+     *
+     * ONE FORM, ONE SET OF TICKS, FIVE VERBS, the events list's arrangement.
+     * The rows already hold their own forms for Publish, Dismiss, Approve and
+     * Reject, and forms cannot nest, so the ticks are associated by `form=`
+     * and initTickPickers() reads them through form.elements. `uc_action`
+     * names the form and `uc_do` names the button.
+     *
+     * EVERY BUTTON SAYS ITS TYPE AND IS INSIDE THE FORM IT SUBMITS, the 3.97.1
+     * and 3.98.1 rules. Nothing here is `required`, because a required series
+     * select would stop Publish being pressed; the server answers an empty
+     * choice with a sentence instead.
+     *
+     * PUBLISH COUNTS ONLY THE TICKS THE PUBLISH RULE WOULD LET THROUGH. A row
+     * missing a field carries the reason on its box as data-uc-tick-block, and
+     * the server asks the rule again at the write.
+     *
+     * @param int[] $ids The rows on screen.
+     */
+    private function render_pending_bulk( $ids ) {
+        if ( empty( $ids ) ) {
+            return;
+        }
+        $series = SFAF_Series::all();
+        $cats   = SFAF_Categories::all();
+        $orgs   = SFAF_Organizers::all();
+        ?>
+        <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>"
+              class="uc-pending-bulk" id="uc-pending-bulk" data-uc-tick-picker>
+            <input type="hidden" name="uc_action" value="pending_bulk" />
+            <input type="hidden" name="uc_pending_bulk_present" value="1" />
+            <?php wp_nonce_field( 'uc_portal_pending_bulk', 'uc_nonce' ); ?>
+
+            <label class="uc-check uc-tick-all" hidden data-uc-tick-all-row>
+                <input type="checkbox" data-uc-tick-all />
+                Select every event in this list
+            </label>
+
+            <div class="uc-pending-bulk-row">
+                <label class="uc-field uc-bulk-cat-pick">
+                    <span class="uc-field-label">Series</span>
+                    <select name="bulk_series">
+                        <option value="">Choose a series</option>
+                        <?php foreach ( $series as $term ) : ?>
+                            <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <div class="uc-bulk-cat-go">
+                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="series"
+                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event">
+                        Set series on <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <span class="uc-hint">An event with no category or organizer gets the series defaults.</span>
+                </div>
+            </div>
+
+            <details class="uc-queue-panel uc-pending-bulk-group">
+                <summary>
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
+                    Set categories
+                </summary>
+                <div class="uc-check-grid">
+                    <?php foreach ( $cats as $c ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="bulk_categories[]" value="<?php echo (int) $c->term_id; ?>" />
+                            <?php echo esc_html( $c->name ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <div class="uc-bulk-cat-go">
+                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="categories"
+                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
+                            data-uc-confirm="Replace the categories on the ticked events with these?"
+                            data-uc-tick-confirm="Replace the categories on {n} {noun} with these?">
+                        Set on <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <span class="uc-hint">Replaces the categories each ticked event has.</span>
+                </div>
+            </details>
+
+            <details class="uc-queue-panel uc-pending-bulk-group">
+                <summary>
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
+                    Set organizers
+                </summary>
+                <div class="uc-check-grid">
+                    <?php foreach ( $orgs as $o ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="bulk_organizers[]" value="<?php echo (int) $o->term_id; ?>" />
+                            <?php echo esc_html( $o->name ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <div class="uc-bulk-cat-go">
+                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="organizers"
+                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
+                            data-uc-confirm="Replace the organizers on the ticked events with these?"
+                            data-uc-tick-confirm="Replace the organizers on {n} {noun} with these?">
+                        Set on <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <span class="uc-hint">Replaces the organizers each ticked event has.</span>
+                </div>
+            </details>
+
+            <div class="uc-pending-bulk-row">
+                <div class="uc-bulk-cat-go">
+                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" name="uc_do" value="publish"
+                            data-uc-tick-submit data-uc-tick-eligible
+                            data-uc-tick-word="events" data-uc-tick-word-one="event"
+                            data-uc-confirm="Publish the ticked events? They go on the public calendar straight away, and nobody who sent one is told."
+                            data-uc-tick-confirm="Publish {n} {noun}? They go on the public calendar straight away, and nobody who sent one is told.">
+                        Publish <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="dismiss"
+                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
+                            data-uc-confirm="Dismiss the ticked imports? A fetch never offers a dismissed import again."
+                            data-uc-tick-confirm="Dismiss {n} {noun}? A fetch never offers a dismissed import again.">
+                        Dismiss <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <span class="uc-hint">Dismiss takes imports only. Reject a submission from its own row.</span>
+                </div>
+            </div>
+        </form>
+        <?php
+    }
+
+    /**
+     * Apply one bulk verb to the ticked pending rows (3.103.0).
+     *
+     * THE TICKS NARROW AND NEVER WIDEN. Only ids that are in the pending queue
+     * now, as pending_entries() reads it, and that the viewer may edit are
+     * touched. Everything else ticked is named with the reason. Nothing here
+     * reads the queue to decide WHICH rows: the ticked list is the whole of
+     * that, so a row nobody ticked cannot be reached.
+     *
+     * RETURNS WHAT HAPPENED, and pending_bulk_from_post() does the redirect,
+     * so this can run against the miniature WordPress in .claude/wp-kit.php.
+     *
+     * @param WP_User $user
+     * @param string  $do   series, categories, organizers, publish or dismiss.
+     * @param int[]   $ids  Ticked ids.
+     * @param array   $args series => int, categories => int[], organizers => int[].
+     * @return array{did:int,held:array<int,string>,choose:bool}
+     */
+    private function pending_bulk_apply( $user, $do, $ids, $args = array() ) {
+        $out     = array( 'did' => 0, 'held' => array(), 'choose' => false );
+        $entries = $this->pending_entries( $user );
+
+        $series = isset( $args['series'] ) ? (int) $args['series'] : 0;
+        $cats   = array_values( array_filter( array_map( 'intval', isset( $args['categories'] ) ? (array) $args['categories'] : array() ), array( 'SFAF_Categories', 'exists' ) ) );
+        $orgs   = array_values( array_filter( array_map( 'intval', isset( $args['organizers'] ) ? (array) $args['organizers'] : array() ), array( 'SFAF_Organizers', 'exists' ) ) );
+
+        if ( ( 'series' === $do && ! SFAF_Series::exists( $series ) )
+            || ( 'categories' === $do && empty( $cats ) )
+            || ( 'organizers' === $do && empty( $orgs ) ) ) {
+            $out['choose'] = true;
+            return $out;
+        }
+
+        foreach ( array_unique( array_map( 'intval', (array) $ids ) ) as $id ) {
+            if ( ! $id ) {
+                continue;
+            }
+            $post = get_post( $id );
+            if ( ! $post || 'uc_event' !== $post->post_type || ! isset( $entries[ $id ] ) ) {
+                $out['held'][ $id ] = 'not waiting in Pending';
+                continue;
+            }
+            if ( ! $this->can_edit_event( $user, $post ) ) {
+                $out['held'][ $id ] = 'not yours to change';
+                continue;
+            }
+
+            $src   = (string) get_post_meta( $id, SFAF_Sources::META_SOURCE, true );
+            $owned = ( '' !== $src ) ? SFAF_Sources::owned_fields_for( $src ) : array();
+
+            switch ( $do ) {
+                case 'series':
+                    $was = (int) SFAF_Series::id_for_event( $id );
+                    SFAF_Series::set_for_event( $id, $series );
+                    /* Anything the row lacks, whether or not it was already in
+                     * the series: Set series is somebody asking for the
+                     * defaults on these rows. */
+                    $filled = SFAF_Series::apply_defaults( $id, $series );
+                    if ( $was !== $series ) {
+                        SFAF_FAQ_Sets::apply_series_default( $id, $series );
+                    }
+                    if ( $was !== $series || $filled ) {
+                        $out['did']++;
+                    } else {
+                        $out['held'][ $id ] = 'already in that series with nothing to fill';
+                    }
+                    break;
+
+                case 'categories':
+                case 'organizers':
+                    $field = ( 'categories' === $do ) ? 'category' : 'organizer';
+                    if ( in_array( $field, $owned, true ) ) {
+                        $prov = SFAF_Sources::provenance( $id );
+                        $out['held'][ $id ] = 'its ' . $do . ' come from ' . ( $prov['label'] ? $prov['label'] : 'its source' );
+                        break;
+                    }
+                    wp_set_object_terms( $id, ( 'categories' === $do ) ? $cats : $orgs, ( 'categories' === $do ) ? 'uc_event_category' : 'uc_organizer' );
+                    $out['did']++;
+                    break;
+
+                case 'publish':
+                    $why = $this->publish_one( $id );
+                    if ( '' === $why ) {
+                        $out['did']++;
+                    } else {
+                        $out['held'][ $id ] = $why;
+                    }
+                    break;
+
+                case 'dismiss':
+                    if ( 'import' !== $entries[ $id ]['shape'] ) {
+                        $out['held'][ $id ] = 'a submission, which is rejected from its own row';
+                    } elseif ( SFAF_Sources::move( $id, SFAF_Sources::STATUS_DISMISSED ) ) {
+                        $out['did']++;
+                    } else {
+                        $out['held'][ $id ] = 'could not be saved';
+                    }
+                    break;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The pending bar's POST, read and answered (3.103.0). See
+     * pending_bulk_apply() for the rules.
+     *
+     * @param WP_User $user
+     */
+    private function pending_bulk_from_post( $user ) {
+        if ( ! isset( $_POST['uc_pending_bulk_present'] ) ) {
+            $this->redirect( 'pending', array( 'msg' => 'pending_bulk_none' ) );
+        }
+        $do = isset( $_POST['uc_do'] ) ? sanitize_key( wp_unslash( $_POST['uc_do'] ) ) : '';
+        if ( ! in_array( $do, array( 'series', 'categories', 'organizers', 'publish', 'dismiss' ), true ) ) {
+            $this->redirect( 'pending', array( 'msg' => 'pending_bulk_none' ) );
+        }
+        $ids = isset( $_POST['pending_ids'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['pending_ids'] ) ) : array();
+        if ( empty( $ids ) ) {
+            $this->redirect( 'pending', array( 'msg' => 'pending_bulk_none' ) );
+        }
+
+        $result = $this->pending_bulk_apply( $user, $do, $ids, array(
+            'series'     => isset( $_POST['bulk_series'] ) ? intval( $_POST['bulk_series'] ) : 0,
+            'categories' => isset( $_POST['bulk_categories'] ) ? (array) wp_unslash( $_POST['bulk_categories'] ) : array(),
+            'organizers' => isset( $_POST['bulk_organizers'] ) ? (array) wp_unslash( $_POST['bulk_organizers'] ) : array(),
+        ) );
+
+        if ( $result['choose'] ) {
+            $this->redirect( 'pending', array( 'msg' => 'pending_bulk_choose', 'do' => $do ) );
+        }
+
+        $this->remember_held( $user, $result['held'] );
+        $args = array( 'msg' => 'pending_bulk_done', 'do' => $do, 'did' => (int) $result['did'] );
+        if ( $result['held'] ) {
+            $args['held'] = 1;
+        }
+        $this->redirect( 'pending', $args );
     }
 
     /**
@@ -17117,6 +17681,23 @@ class SFAF_Portal {
         <li class="uc-queue-item<?php echo $needs_t ? ' uc-queue-item-needs' : ''; ?>"
             data-uc-id="<?php echo $id; ?>" data-uc-kind="<?php echo esc_attr( $kind ); ?>">
             <div class="uc-queue-row">
+                <?php
+                /*
+                 * THE TICK (3.103.0), associated with the bar by form= because
+                 * this row holds forms of its own. The publish rule's answer
+                 * rides on the box, so the bar's Publish counts only the rows
+                 * it would publish; the line under the title says the same in
+                 * words.
+                 */
+                $hold_missing = SFAF_Sources::publish_missing( $id );
+                $hold_why     = $hold_missing ? 'needs ' . SFAF_Sources::field_phrase( $hold_missing ) : '';
+                ?>
+                <span class="uc-queue-tick">
+                    <input type="checkbox" name="pending_ids[]" value="<?php echo $id; ?>"
+                           form="uc-pending-bulk" data-uc-tick-one
+                           <?php if ( '' !== $hold_why ) : ?>data-uc-tick-block="<?php echo esc_attr( $hold_why ); ?>"<?php endif; ?>
+                           aria-label="<?php echo esc_attr( 'Select ' . ( get_the_title( $id ) ?: 'this event' ) ); ?>" />
+                </span>
                 <?php if ( '' !== $shot ) : ?>
                     <div class="uc-submitted-shot">
                         <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
@@ -17210,6 +17791,9 @@ class SFAF_Portal {
                     ?>
                     <?php if ( '' !== $shot_note ) : ?>
                         <p class="uc-submitted-warn"><?php echo esc_html( $shot_note ); ?></p>
+                    <?php endif; ?>
+                    <?php if ( '' !== $hold_why ) : ?>
+                        <p class="uc-queue-hold" data-uc-hold><?php echo esc_html( 'Not ready to publish: ' . $hold_why . '.' ); ?></p>
                     <?php endif; ?>
                     <p class="uc-queue-meta">
                         <span><?php echo esc_html( $this->pending_when( $id, $date, $prov ) ); ?></span>

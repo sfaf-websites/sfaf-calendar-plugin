@@ -366,6 +366,9 @@ class SFAF_Sources {
         }
         return $out;
     }
+    /* The publish rule's answer for the row's tick (3.103.0). What it holds
+     * is pending-bulk-test.php's question; this file asks who is in the list. */
+    public static function publish_missing( $id ) { return array(); }
     public static function field_phrase( $fields ) {
         $words = array( 'location' => 'a location', 'image' => 'an image', 'description' => 'a description' );
         $out   = array();
@@ -415,7 +418,13 @@ class SFAF_Privacy {
 class SFAF_Search {
     public static function apply( &$q, $s ) {}
 }
-class SFAF_Series { const TAXONOMY = 'uc_series'; }
+class SFAF_Series {
+    const TAXONOMY = 'uc_series';
+    public static function all() { return array(); }
+}
+/* The bulk bar's pickers (3.103.0). Empty lists are enough to draw it. */
+class SFAF_Categories { public static function all() { return array(); } public static function exists( $id ) { return false; } }
+class SFAF_Organizers { public static function all() { return array(); } public static function exists( $id ) { return false; } }
 
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';

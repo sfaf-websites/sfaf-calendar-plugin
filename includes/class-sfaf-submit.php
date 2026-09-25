@@ -998,7 +998,10 @@ class SFAF_Submit {
             SFAF_Venues::set_for_event( $event_id, (int) $c['venue'] );
         }
 
-        SFAF_Series::set_for_event( $event_id, (int) $series->term_id );
+        /* join(): an empty category and organizer take the series defaults
+         * (3.103.0). This event has neither yet, so both are filled when the
+         * series names them. */
+        SFAF_Series::join( $event_id, (int) $series->term_id );
         update_post_meta( $event_id, self::META_SERIES, (int) $series->term_id );
 
         /* Optional, and written only when there is something to write, so a

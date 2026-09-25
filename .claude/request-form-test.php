@@ -87,6 +87,7 @@ class SFAF_Organizers {
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
     public static function set_for_event( $a, $b ) {}
+    public static function join( $a, $b ) { return array(); }
     public static function all() { return array(); }
 }
 class SFAF_Venues {

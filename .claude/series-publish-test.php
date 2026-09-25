@@ -53,6 +53,14 @@ class SFAF_Sources {
             'external_id' => (string) get_post_meta( $post_id, '_uc_external_id', true ),
         );
     }
+    /* The editor's publish rule (3.103.0), answered from the case: a case
+     * names what it is missing, and the phrase is the keys joined. */
+    public static function publish_missing( $post_id ) {
+        return isset( $GLOBALS['posts'][ $post_id ]['missing'] ) ? $GLOBALS['posts'][ $post_id ]['missing'] : array();
+    }
+    public static function field_phrase( $fields ) {
+        return implode( ' and ', (array) $fields );
+    }
 }
 class SFAF_Submissions {
     const META_KIND = '_uc_submission_kind';
@@ -107,6 +115,10 @@ function cases() {
         14 => array( 'draft',   array( '_uc_event_date' => '2026-12-16', '_uc_notify_author_optout' => '1' ), '' ),
         // And one of its generated occurrences, which also carries a group.
         15 => array( 'draft',   array( '_uc_event_date' => '2026-11-18', '_uc_notify_author_optout' => '1', '_uc_recurrence_group' => 'rg_abc' ), '' ),
+        // The editor's publish rule (3.103.0): a dated, upcoming, hand-made
+        // draft missing a field is held, and the reason names the field.
+        16 => array( 'draft',   array( '_uc_event_date' => '2026-11-18' ), 'needs category', array( 'category' ) ),
+        17 => array( 'draft',   array( '_uc_event_date' => '2026-11-18' ), 'needs category and description', array( 'category', 'description' ) ),
     );
 }
 
@@ -114,7 +126,7 @@ function run_cases( $cls, $verbose ) {
     $fails = 0;
     foreach ( cases() as $id => $c ) {
         list( $status, $meta, $want ) = $c;
-        $GLOBALS['posts'] = array( $id => array( 'status' => $status, 'meta' => $meta ) );
+        $GLOBALS['posts'] = array( $id => array( 'status' => $status, 'meta' => $meta, 'missing' => isset( $c[3] ) ? $c[3] : array() ) );
         $got = $cls::publish_skip_reason( $id, '2026-09-10' );
         $ok  = ( $got === $want );
         if ( $verbose ) {
@@ -142,6 +154,8 @@ if ( $self ) {
             array( "if ( '' !== \$prov['source'] || '' !== \$prov['external_id'] ) {", "if ( false ) {" ),
         'the submission check dropped' =>
             array( "if ( '' !== (string) get_post_meta( \$id, SFAF_Submissions::META_KIND, true ) ) {", "if ( false ) {" ),
+        'the publish rule dropped (3.103.0)' =>
+            array( "if ( \$missing ) {", "if ( false ) {" ),
     );
 
     $missed = 0;

@@ -935,13 +935,13 @@ class SFAF_Post_Types {
             SFAF_Privacy::set( $post_id, isset( $_POST['uc_private'] ) );
         }
 
-        // Which series this event belongs to. A plain term assignment: nothing
-        // is inherited from it and nothing about the event changes because of
-        // it, beyond the image fallback and the badge.
+        // Which series this event belongs to. Joining one fills an empty
+        // category and organizer from its defaults (3.103.0); see
+        // SFAF_Series::join(). Nothing else is inherited.
         if ( isset( $_POST['uc_series'] ) ) {
             $was = SFAF_Series::id_for_event( $post_id );
             $now = (int) $_POST['uc_series'];
-            SFAF_Series::set_for_event( $post_id, $now );
+            SFAF_Series::join( $post_id, $now );
 
             // Moving INTO a series applies that series' default FAQ set, and
             // only when the event has no questions of its own. Copied, once,

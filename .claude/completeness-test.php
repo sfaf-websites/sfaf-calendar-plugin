@@ -224,6 +224,7 @@ class SFAF_Series {
     const TAXONOMY = 'uc_series';
     public static function all() { return array(); }
     public static function for_event( $id ) { return null; }
+    public static function filled_from( $id, $f ) { return ''; }
     public static function id_for_event( $id ) { return 0; }
     public static function image_url( $tid, $s = 'medium' ) { return ''; }
 }

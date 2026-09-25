@@ -69,6 +69,29 @@ class SFAF_Series {
     const META_VIDEO = '_sfaf_series_video';
 
     /**
+     * Term meta: the categories and organizers an event receives when it joins
+     * this series with none of its own (3.103.0). Arrays of term ids.
+     *
+     * COPIED, ONCE, AT THE MOMENT OF JOINING, which is the FAQ set's rule and
+     * the prefill's, and not the video's. A category and an organizer are how
+     * an event is FILED, and somebody who re-files one event must not have that
+     * undone because the series default moved later. So a change here reaches
+     * only events that join afterwards. See join() and apply_defaults().
+     */
+    const META_CATEGORIES = '_sfaf_series_categories';
+    const META_ORGANIZERS = '_sfaf_series_organizers';
+
+    /**
+     * Post meta on the EVENT: what apply_defaults() wrote, keyed by field.
+     *
+     * READ ONLY TO SAY "this came from the series" under the field in the
+     * editor. The note is shown while the event's terms are still exactly the
+     * ones copied, so re-filing the event takes the note away without anything
+     * having to clear this.
+     */
+    const META_EVENT_FILLED = '_uc_series_filled';
+
+    /**
      * Term meta: the post ID of the uc_event that used to BE this series.
      *
      * THIS IS WHAT KEEPS EXISTING EMBED CODE WORKING. Every [sfaf_calendar]
@@ -451,6 +474,173 @@ class SFAF_Series {
     }
 
     /**
+     * The series' default categories, as ids that still exist (3.103.0).
+     *
+     * A deleted category is dropped here rather than when it is deleted, so a
+     * default can never hand an event a term that is not there.
+     *
+     * @param int $term_id
+     * @return int[]
+     */
+    public static function default_categories( $term_id ) {
+        return self::stored_ids( $term_id, self::META_CATEGORIES, array( 'SFAF_Categories', 'exists' ) );
+    }
+
+    /**
+     * The series' default organizers, as ids that still exist (3.103.0).
+     *
+     * @param int $term_id
+     * @return int[]
+     */
+    public static function default_organizers( $term_id ) {
+        return self::stored_ids( $term_id, self::META_ORGANIZERS, array( 'SFAF_Organizers', 'exists' ) );
+    }
+
+    /** One stored list of term ids, narrowed to the ones that exist. */
+    private static function stored_ids( $term_id, $key, $exists ) {
+        $term_id = (int) $term_id;
+        if ( ! $term_id ) {
+            return array();
+        }
+        $raw = get_term_meta( $term_id, $key, true );
+        $out = array();
+        foreach ( (array) $raw as $id ) {
+            $id = (int) $id;
+            if ( $id && ! in_array( $id, $out, true ) && call_user_func( $exists, $id ) ) {
+                $out[] = $id;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * What joining this series would give an event: the defaults for each
+     * field the event has nothing in (3.103.0).
+     *
+     * ASKED OF THE EVENT AS IT IS STORED, which is why the editor's save calls
+     * join() after save_manager_fields_from_post() has written the event's own
+     * categories and organizers. An event with one category of its own gets no
+     * category from the series, whatever the series default is: the event's
+     * own value is never overwritten, only an empty one is filled.
+     *
+     * @param int $post_id
+     * @param int $term_id
+     * @return array<string,int[]> 'category' and/or 'organizer' => ids.
+     */
+    public static function defaults_for_event( $post_id, $term_id ) {
+        $post_id = (int) $post_id;
+        $term_id = (int) $term_id;
+        $out     = array();
+        if ( ! $post_id || ! $term_id ) {
+            return $out;
+        }
+
+        foreach ( array(
+            'category'  => array( 'uc_event_category', self::default_categories( $term_id ) ),
+            'organizer' => array( 'uc_organizer', self::default_organizers( $term_id ) ),
+        ) as $field => $pair ) {
+            list( $taxonomy, $ids ) = $pair;
+            if ( empty( $ids ) ) {
+                continue;
+            }
+            $has = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+            if ( ! is_wp_error( $has ) && ! empty( $has ) ) {
+                continue;
+            }
+            $out[ $field ] = $ids;
+        }
+        return $out;
+    }
+
+    /**
+     * Fill an event's empty category and organizer from this series (3.103.0).
+     *
+     * ONE CALL PER TAXONOMY WITH THE WHOLE SET. wp_set_object_terms() replaces,
+     * and a call per id would keep the last one, which is the 3.8.0 categories
+     * fault and the 3.40.0 organizers fault.
+     *
+     * @param int $post_id
+     * @param int $term_id
+     * @return string[] The fields that were filled.
+     */
+    public static function apply_defaults( $post_id, $term_id ) {
+        $post_id = (int) $post_id;
+        $fill    = self::defaults_for_event( $post_id, $term_id );
+        if ( empty( $fill ) ) {
+            return array();
+        }
+
+        $taxonomy = array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer' );
+        $record   = get_post_meta( $post_id, self::META_EVENT_FILLED, true );
+        $record   = is_array( $record ) ? $record : array();
+
+        foreach ( $fill as $field => $ids ) {
+            wp_set_object_terms( $post_id, $ids, $taxonomy[ $field ] );
+            $record[ $field ] = array( 'series' => (int) $term_id, 'ids' => $ids );
+        }
+        update_post_meta( $post_id, self::META_EVENT_FILLED, $record );
+
+        return array_keys( $fill );
+    }
+
+    /**
+     * Put an event in a series, and when that is a CHANGE, fill what it lacks
+     * from the series defaults (3.103.0).
+     *
+     * EVERY WAY AN EVENT JOINS A SERIES CALLS THIS: an import into the series,
+     * both public forms, the event editor, the WordPress post editor and the
+     * pending queue's Set series. set_for_event() stays the bare term write for
+     * the callers that are not a join, such as moving events off a series that
+     * is being removed.
+     *
+     * "A CHANGE" IS WHAT KEEPS AN EDIT FROM REFILLING. Saving an event that is
+     * already in the series is not joining it, so an event whose categories
+     * somebody cleared on purpose is not handed the defaults again on the next
+     * save.
+     *
+     * @param int $post_id
+     * @param int $term_id 0 takes the event out of every series.
+     * @return string[] The fields filled from the series.
+     */
+    public static function join( $post_id, $term_id ) {
+        $post_id = (int) $post_id;
+        $term_id = (int) $term_id;
+        $was     = self::id_for_event( $post_id );
+        self::set_for_event( $post_id, $term_id );
+        if ( ! $term_id || $term_id === (int) $was || ! self::exists( $term_id ) ) {
+            return array();
+        }
+        return self::apply_defaults( $post_id, $term_id );
+    }
+
+    /**
+     * Whether an event's value for a field is still the one copied from its
+     * series, for the note under the field in the editor.
+     *
+     * @param int    $post_id
+     * @param string $field 'category' or 'organizer'.
+     * @return string The series name, or '' when the value is the event's own.
+     */
+    public static function filled_from( $post_id, $field ) {
+        $post_id = (int) $post_id;
+        $record  = get_post_meta( $post_id, self::META_EVENT_FILLED, true );
+        if ( ! is_array( $record ) || empty( $record[ $field ]['ids'] ) ) {
+            return '';
+        }
+        $taxonomy = ( 'organizer' === $field ) ? 'uc_organizer' : 'uc_event_category';
+        $now      = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+        $now      = is_wp_error( $now ) ? array() : array_map( 'intval', (array) $now );
+        $was      = array_map( 'intval', (array) $record[ $field ]['ids'] );
+        sort( $now );
+        sort( $was );
+        if ( $now !== $was ) {
+            return '';
+        }
+        $term = self::get( (int) $record[ $field ]['series'] );
+        return $term ? (string) $term->name : '';
+    }
+
+    /**
      * The public address of a series.
      *
      * @param int $term_id
@@ -824,6 +1014,16 @@ class SFAF_Series {
         if ( '' !== (string) get_post_meta( $id, SFAF_Submissions::META_KIND, true ) ) {
             return 'a submission';
         }
+        /*
+         * THE EDITOR'S PUBLISH RULE, LAST (3.103.0). Until 3.103.0 both bulk
+         * publishes set the status past it, so a draft the editor would have
+         * held went live from a list. The reason names what is missing, and it
+         * is what the row prints beside its tick.
+         */
+        $missing = SFAF_Sources::publish_missing( $id );
+        if ( $missing ) {
+            return 'needs ' . SFAF_Sources::field_phrase( $missing );
+        }
         return '';
     }
 
@@ -855,7 +1055,7 @@ class SFAF_Series {
      *
      * @param int        $term_id
      * @param int[]|null $only Ids the manager ticked, or null for every ready one.
-     * @return array{published:int,skipped:array<string,int>,failed:int}
+     * @return array{published:int,skipped:array<string,int>,failed:int,blocked:array<int,string>}
      */
     public static function publish_drafts( $term_id, $only = null ) {
         $plan   = self::publishable( $term_id );
@@ -876,7 +1076,7 @@ class SFAF_Series {
             }
         }
 
-        return array( 'published' => $done, 'skipped' => $plan['skipped'], 'failed' => $failed );
+        return array( 'published' => $done, 'skipped' => $plan['skipped'], 'failed' => $failed, 'blocked' => $plan['blocked'] );
     }
 
     /**
@@ -989,6 +1189,31 @@ class SFAF_Series {
                 delete_term_meta( $term_id, self::META_VIDEO );
             }
         }
+        /*
+         * THE DEFAULTS (3.103.0). Only ids that exist are stored, and an empty
+         * list deletes the key, so "no default" has one shape.
+         */
+        foreach ( array(
+            'categories' => array( self::META_CATEGORIES, array( 'SFAF_Categories', 'exists' ) ),
+            'organizers' => array( self::META_ORGANIZERS, array( 'SFAF_Organizers', 'exists' ) ),
+        ) as $arg => $pair ) {
+            if ( ! array_key_exists( $arg, $args ) ) {
+                continue;
+            }
+            list( $key, $exists ) = $pair;
+            $ids = array();
+            foreach ( (array) $args[ $arg ] as $id ) {
+                $id = (int) $id;
+                if ( $id && ! in_array( $id, $ids, true ) && call_user_func( $exists, $id ) ) {
+                    $ids[] = $id;
+                }
+            }
+            if ( $ids ) {
+                update_term_meta( $term_id, $key, $ids );
+            } else {
+                delete_term_meta( $term_id, $key );
+            }
+        }
         if ( ! empty( $args['legacy_id'] ) ) {
             update_term_meta( $term_id, self::META_LEGACY_ID, (int) $args['legacy_id'] );
         }
@@ -1080,6 +1305,27 @@ class SFAF_Series {
             $out['faq_set_name'] = $set ? $set['name'] : '';
         }
 
+        /*
+         * THE SERIES DEFAULTS FIRST (3.103.0). When the series names a
+         * category or an organizer, that is the answer; the most recent event
+         * is read below only for a field the series leaves empty.
+         */
+        foreach ( self::default_categories( $term_id ) as $cid ) {
+            $c = SFAF_Categories::get( $cid );
+            $out['categories'][]     = (int) $cid;
+            $out['category_names'][] = $c ? $c->name : '';
+        }
+        $org_names = array();
+        foreach ( self::default_organizers( $term_id ) as $oid ) {
+            $o = SFAF_Organizers::get( $oid );
+            $out['organizers'][] = (int) $oid;
+            $org_names[]          = $o ? $o->name : '';
+        }
+        if ( $org_names ) {
+            natcasesort( $org_names );
+            $out['organizer_name'] = SFAF_Organizers::join( $org_names );
+        }
+
         /* ---- From its most recent event. ----------------------------
          *
          * NOT limit => 1. events() takes no order argument and always returns
@@ -1131,20 +1377,24 @@ class SFAF_Series {
             }
         }
 
-        foreach ( (array) wp_get_post_terms( $id, 'uc_event_category' ) as $c ) {
-            if ( is_object( $c ) ) {
-                $out['categories'][]     = (int) $c->term_id;
-                $out['category_names'][] = $c->name;
+        if ( empty( $out['categories'] ) ) {
+            foreach ( (array) wp_get_post_terms( $id, 'uc_event_category' ) as $c ) {
+                if ( is_object( $c ) ) {
+                    $out['categories'][]     = (int) $c->term_id;
+                    $out['category_names'][] = $c->name;
+                }
             }
         }
 
         // Every organizer, so a co-hosted series lends both. The label is the
         // same phrase the event page uses, so the checkbox in the prefill panel
         // reads the way the result will.
-        foreach ( SFAF_Organizers::for_event( $id ) as $term ) {
-            $out['organizers'][] = (int) $term->term_id;
+        if ( empty( $out['organizers'] ) ) {
+            foreach ( SFAF_Organizers::for_event( $id ) as $term ) {
+                $out['organizers'][] = (int) $term->term_id;
+            }
+            $out['organizer_name'] = SFAF_Organizers::phrase( $id );
         }
-        $out['organizer_name'] = SFAF_Organizers::phrase( $id );
 
         return $out;
     }
@@ -1152,13 +1402,13 @@ class SFAF_Series {
     /**
      * The organizers a series lends a new event, or an empty array.
      *
-     * A SERIES DOES NOT CARRY AN ORGANIZER AND THIS IS NOT AN OVERSIGHT. The
-     * term holds a description, an image and a default FAQ set; an organizer is
-     * a property of the EVENTS in it, like the location and the times, which is
-     * why prefill_data() reads it off the most recent one. This is that same
-     * read with nothing else attached, for a caller that wants only this.
+     * THE SERIES DEFAULT FIRST, THEN THE MOST RECENT EVENT (3.103.0). Until
+     * 3.103.0 a series carried no organizer and this was only ever derived off
+     * its newest event. A series can now name default organizers, and when it
+     * does, prefill_data() answers with those; otherwise it still reads the
+     * most recent event, as it always did.
      *
-     * SO IT IS DERIVED AND NOT STORED, AND THE CALLER HAS TO COPE WITH EMPTY.
+     * SO IT CAN STILL BE EMPTY, AND THE CALLER HAS TO COPE WITH THAT.
      * A series whose events have no organizer, and a series with no events at
      * all, both answer with nothing. That is a real state: a series created
      * this morning for a campaign starting next month has no event to read
@@ -1230,7 +1480,7 @@ class SFAF_Series {
             $term_id = (int) $created;
         }
 
-        self::set_for_event( $post_id, $term_id );
+        self::join( $post_id, $term_id );
         return $term_id;
     }
 

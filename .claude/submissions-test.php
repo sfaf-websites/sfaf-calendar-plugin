@@ -843,7 +843,7 @@ foreach ( token_get_all( $sub_raw ) as $tok ) {
 }
 
 $at_resolve = strpos( $sub_code, 'SFAF_Series::organizers_for(' );
-$at_join    = strpos( $sub_code, 'SFAF_Series::set_for_event(' );
+$at_join    = strpos( $sub_code, 'SFAF_Series::join(' );
 $at_write   = strpos( $sub_code, "'uc_organizer'" );
 
 if ( false === $at_resolve ) {

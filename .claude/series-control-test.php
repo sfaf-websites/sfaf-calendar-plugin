@@ -516,6 +516,9 @@ class SFAF_Series {
     /** post_id => term_id, for the events in the world below. */
     public static $of_event = array();
 
+    /** The editor's note under a field copied from the series (3.103.0). */
+    public static function filled_from( $id, $field ) { return ''; }
+
     public static function all() {
         $out = array();
         foreach ( self::$terms as $id => $name ) {

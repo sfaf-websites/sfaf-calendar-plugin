@@ -1130,9 +1130,6 @@ class SFAF_Request {
         if ( ! empty( $c['categories'] ) ) {
             wp_set_object_terms( $event_id, $c['categories'], 'uc_event_category' );
         }
-        if ( $c['series'] ) {
-            SFAF_Series::set_for_event( $event_id, $c['series'] );
-        }
         /* Who is putting it on, when the requester said. An empty set writes
          * nothing, which leaves the event exactly as it arrived before this
          * field existed.
@@ -1147,6 +1144,17 @@ class SFAF_Request {
         $organizers = array_values( array_filter( array_map( 'intval', (array) $c['organizer'] ) ) );
         if ( ! empty( $organizers ) ) {
             wp_set_object_terms( $event_id, $organizers, 'uc_organizer' );
+        }
+
+        /*
+         * THE SERIES AFTER THE CATEGORIES AND ORGANIZERS, AND THE ORDER IS THE
+         * RULE (3.103.0). join() fills each of the two only when it is empty,
+         * so it has to see what the requester chose: asked before, it would
+         * fill both and the requester's own organizers would then replace one
+         * of them and not the other.
+         */
+        if ( $c['series'] ) {
+            SFAF_Series::join( $event_id, $c['series'] );
         }
 
         /*

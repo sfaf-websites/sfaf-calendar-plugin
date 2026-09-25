@@ -751,6 +751,92 @@ class SFAF_Sources {
     }
 
     /**
+     * WHICH OF publish_fields() A STORED EVENT IS MISSING (3.103.0).
+     *
+     * THE EDITOR'S RULE, ASKED OF STORAGE, FOR EVERY PUBLISH THAT IS NOT THE
+     * EDITOR'S SAVE: Approve on the pending queue and in the editor's request
+     * panel, the pending queue's bulk Publish, bulk publish on the events list
+     * and on a series' schedule. The editor asks the same list of what it is
+     * about to write (SFAF_Portal::publish_missing_from_post()); these routes
+     * write nothing but the status, so what is stored is the whole answer.
+     *
+     * A DESCRIPTION IS THE EVENT'S OWN OR ITS SERIES'. An event with none of its
+     * own shows the series description on every surface (3.98.0), so the words
+     * a visitor reads are there and holding the event back for them would be
+     * holding it for nothing. Markup with no words in it is not a description.
+     *
+     * A LOCATION IS A VENUE, AN ADDRESS OR THE ONLINE TICK, hybrid included,
+     * as in the editor.
+     *
+     * @param int $post_id
+     * @return string[] publish_fields() keys, in that list's order.
+     */
+    public static function publish_missing( $post_id ) {
+        $post_id = (int) $post_id;
+        $missing = array();
+
+        foreach ( array_keys( self::publish_fields() ) as $field ) {
+            switch ( $field ) {
+                case 'title':
+                    $title  = trim( (string) get_post_field( 'post_title', $post_id ) );
+                    $filled = ( '' !== $title && '(untitled event)' !== $title );
+                    break;
+                case 'date':
+                    $filled = '' !== trim( (string) get_post_meta( $post_id, '_uc_event_date', true ) );
+                    break;
+                case 'start_time':
+                    $filled = '' !== trim( (string) get_post_meta( $post_id, '_uc_start_time', true ) );
+                    break;
+                case 'end_time':
+                    $filled = '' !== trim( (string) get_post_meta( $post_id, '_uc_end_time', true ) );
+                    break;
+                case 'organizer':
+                    $filled = self::has_term( $post_id, 'uc_organizer' );
+                    break;
+                case 'category':
+                    $filled = self::has_term( $post_id, 'uc_event_category' );
+                    break;
+                case 'description':
+                    $filled = self::description_is_filled( $post_id );
+                    break;
+                case 'location':
+                    $filled = ( class_exists( 'SFAF_Online' ) && ( SFAF_Online::is_online( $post_id ) || SFAF_Online::is_hybrid( $post_id ) ) )
+                        || '' !== trim( (string) sfaf_event_location( $post_id ) );
+                    break;
+                default:
+                    $filled = true;
+            }
+            if ( ! $filled ) {
+                $missing[] = $field;
+            }
+        }
+        return $missing;
+    }
+
+    /**
+     * Words the event page will show as the description: the event's own, or,
+     * with none, its series'. Answered from a series term id too, for the
+     * editor, which asks before the event is in the series it was given.
+     *
+     * @param int      $post_id
+     * @param int|null $series_id Null for the series the event is in now.
+     * @return bool
+     */
+    public static function description_is_filled( $post_id, $series_id = null ) {
+        $post_id = (int) $post_id;
+        if ( $post_id && '' !== trim( sfaf_flatten_html( (string) get_post_field( 'post_content', $post_id ) ) ) ) {
+            return true;
+        }
+        return self::series_description_is_filled( null === $series_id ? SFAF_Series::id_for_event( $post_id ) : $series_id );
+    }
+
+    /** Whether a series has a description with words in it. */
+    public static function series_description_is_filled( $series_id ) {
+        $term = $series_id ? SFAF_Series::get( (int) $series_id ) : null;
+        return $term && '' !== trim( sfaf_flatten_html( (string) $term->description ) );
+    }
+
+    /**
      * The `$_POST` key a control name arrives under.
      *
      * One line, in one place, so nothing has to remember which way the

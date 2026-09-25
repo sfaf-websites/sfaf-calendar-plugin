@@ -450,6 +450,7 @@ $ALLOWED = array(
     'POST:fetch_sources'          => array( 'caladmin' ),
     'POST:import_publish'         => array( 'caladmin' ),
     'POST:import_dismiss'         => array( 'caladmin' ),
+    'POST:pending_bulk'           => array( 'caladmin' ),   // 3.103.0; the event gate again per row, inside
     'POST:import_restore'         => array( 'caladmin' ),
     'POST:add_user'               => array( 'caladmin' ),
     'POST:remove_user'            => array( 'caladmin', 'access' ),   // get_role() of the person being removed, after the admin gate
